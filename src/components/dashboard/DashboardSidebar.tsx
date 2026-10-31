@@ -39,7 +39,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
-import { DEALER_ROUTE_CONFIG, dealerRouteIsActive } from "@/config/dealerRouteConfig"
+import { DEALER_ROUTE_CONFIG, dealerRouteIsActive, sortBySection } from "@/config/dealerRouteConfig"
 import { BUY_AND_BID_TABS } from "@/components/dealer/BuyAndBidTabs"
 import { getPendingOffersCount, getBuyerActionCount } from "@/lib/listingApi"
 import { getOrCreateSupportRoom } from "@/lib/chatApi"
@@ -189,7 +189,14 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
     // Secondary dealer tools: kept out of the main list to keep it short, but
     // always listed under "More tools" so no dealer option is ever unreachable.
     const dealerMoreLinks: LinkObj[] = role === 'dealer'
-        ? DEALER_ROUTE_CONFIG.filter(route => route.hidden && dealerRouteVisible(route) && !BUY_AND_BID_TABS.some(tab => tab.href === route.href)).map(toDealerLink)
+        ? sortBySection(DEALER_ROUTE_CONFIG.filter(route =>
+            route.hidden && dealerRouteVisible(route)
+            // Tabs are reachable through the Buy & Bid hub only when the staff
+            // member can VIEW_TRADE. VIEW_PURCHASES-only staff must still have
+            // an Auction Wins link in More tools (desktop and mobile).
+            && (!BUY_AND_BID_TABS.some(tab => tab.href === route.href)
+                || !hasDealerPermission('VIEW_TRADE'))
+        ).map(toDealerLink))
         : []
 
     // activePrefixes: older standalone pages (opened from notifications and
@@ -251,9 +258,9 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
             { href: "/dashboard/insurance/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
             { href: "/profile", label: "Account Settings", icon: Settings },
         ],
-        dealer: DEALER_ROUTE_CONFIG
+        dealer: sortBySection(DEALER_ROUTE_CONFIG
             .filter(route => !route.hidden && dealerRouteVisible(route))
-            .map(toDealerLink),
+            .map(toDealerLink)),
         admin: [
             { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard, section: "Workspace" },
             { href: "/dashboard/admin/messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Workspace" },
@@ -332,7 +339,10 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
     // but repeat them inside More so the panel is a complete dealer menu rather
     // than a partial overflow list that can look like missing functionality.
     const mobileOverflowLinks = role === 'dealer'
-        ? [...currentLinks, ...dealerMoreLinks.map(link => ({ ...link, section: `More tools · ${link.section ?? 'Other'}` }))]
+        // One heading per group (Sell, Buy, Business, Services) in the same
+        // order as the CarMazium app drawer, instead of a second run of
+        // "More tools · …" headings repeating the same groups.
+        ? sortBySection([...currentLinks, ...dealerMoreLinks])
         : [
             ...currentLinks.filter(link => !primaryMobileHrefs.includes(link.href)),
             ...userMoreLinks.map(link => ({ ...link, section: `More tools · ${link.section ?? 'Other'}` })),

@@ -52,6 +52,8 @@ interface MenuItem {
   alertTitle?: string;
   alertMsg?: string;
   requiredPermission?: DealerPermission;
+  /** Dealer menu group. Same groups and order as the website sidebar. */
+  section?: 'Sell' | 'Buy' | 'Business';
 }
 
 const ITEMS: MenuItem[] = [
@@ -184,22 +186,24 @@ const USER_ITEMS: MenuItem[] = [
   },
 ];
 
-// Keep core day-to-day tools first. Permissions are still filtered before the
-// menu is rendered, so reordering never grants staff additional access.
+// Grouped Sell, Buy, Business: the same groups and order as the website
+// dealer sidebar (src/config/dealerRouteConfig.ts DEALER_SECTION_ORDER).
+// Permissions are still filtered before the menu is rendered, so reordering
+// never grants staff additional access.
 const DEALER_ITEMS: MenuItem[] = [
-  { id: 'dealer-inventory', label: 'Stock', icon: 'albums-outline', iconLib: 'ion', requiredPermission: 'VIEW_INVENTORY', stackScreen: 'DealerInventory' },
-  { id: 'dealer-auctions', label: 'Manage Auctions', icon: 'gavel', iconLib: 'mci', requiredPermission: 'MANAGE_INVENTORY', stackScreen: 'SellerAuctions' },
-  { id: 'dealer-wishlist', label: 'Saved Cars', icon: 'heart-outline', iconLib: 'ion', tabName: 'Saved' },
-  { id: 'dealer-offers', label: 'Offers', icon: 'pricetag-outline', iconLib: 'ion', requiredPermission: 'MANAGE_OFFERS', stackScreen: 'DealerOffers' },
-  { id: 'dealer-my-offers', label: 'My Retail Offers', icon: 'send-outline', iconLib: 'ion', requiredPermission: 'MANAGE_OFFERS', stackScreen: 'DealerMyOffers' },
-  { id: 'dealer-purchases', label: 'Purchases', icon: 'receipt-outline', iconLib: 'ion', requiredPermission: 'VIEW_PURCHASES', stackScreen: 'DealerPurchases' },
-  { id: 'dealer-leads', label: 'Customers', icon: 'people-outline', iconLib: 'ion', requiredPermission: 'MANAGE_CRM', stackScreen: 'DealerLeads' },
-  { id: 'dealer-analytics', label: 'Analytics', icon: 'bar-chart-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerAnalytics' },
-  { id: 'dealer-team', label: 'Team', icon: 'people-outline', iconLib: 'ion', requiredPermission: 'MANAGE_TEAM', stackScreen: 'DealerTeam' },
-  { id: 'dealer-earnings', label: 'Earnings', icon: 'wallet-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerEarnings' },
-  { id: 'dealer-finance', label: 'Finance', icon: 'calculator-outline', iconLib: 'ion', stackScreen: 'DealerFinance' },
-  { id: 'dealer-kyc', label: 'Business verification', icon: 'shield-checkmark-outline', iconLib: 'ion', requiredPermission: 'MANAGE_KYC', stackScreen: 'DealerKYC' },
-  { id: 'dealer-onboarding', label: 'Dealer onboarding', icon: 'trail-sign-outline', iconLib: 'ion', requiredPermission: 'MANAGE_KYC', stackScreen: 'DealerOnboarding' },
+  { id: 'dealer-inventory', section: 'Sell', label: 'Stock', icon: 'albums-outline', iconLib: 'ion', requiredPermission: 'VIEW_INVENTORY', stackScreen: 'DealerInventory' },
+  { id: 'dealer-leads', section: 'Sell', label: 'Customers', icon: 'people-outline', iconLib: 'ion', requiredPermission: 'MANAGE_CRM', stackScreen: 'DealerLeads' },
+  { id: 'dealer-offers', section: 'Sell', label: 'Offers', icon: 'pricetag-outline', iconLib: 'ion', requiredPermission: 'MANAGE_OFFERS', stackScreen: 'DealerOffers' },
+  { id: 'dealer-auctions', section: 'Sell', label: 'Manage Auctions', icon: 'gavel', iconLib: 'mci', requiredPermission: 'MANAGE_INVENTORY', stackScreen: 'SellerAuctions' },
+  { id: 'dealer-purchases', section: 'Buy', label: 'Purchases', icon: 'receipt-outline', iconLib: 'ion', requiredPermission: 'VIEW_PURCHASES', stackScreen: 'DealerPurchases' },
+  { id: 'dealer-wishlist', section: 'Buy', label: 'Saved Cars', icon: 'heart-outline', iconLib: 'ion', tabName: 'Saved' },
+  { id: 'dealer-my-offers', section: 'Buy', label: 'My Retail Offers', icon: 'send-outline', iconLib: 'ion', requiredPermission: 'MANAGE_OFFERS', stackScreen: 'DealerMyOffers' },
+  { id: 'dealer-team', section: 'Business', label: 'Team', icon: 'people-outline', iconLib: 'ion', requiredPermission: 'MANAGE_TEAM', stackScreen: 'DealerTeam' },
+  { id: 'dealer-analytics', section: 'Business', label: 'Analytics', icon: 'bar-chart-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerAnalytics' },
+  { id: 'dealer-earnings', section: 'Business', label: 'Earnings', icon: 'wallet-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerEarnings' },
+  { id: 'dealer-finance', section: 'Business', label: 'Finance', icon: 'calculator-outline', iconLib: 'ion', stackScreen: 'DealerFinance' },
+  { id: 'dealer-kyc', section: 'Business', label: 'Business verification', icon: 'shield-checkmark-outline', iconLib: 'ion', requiredPermission: 'MANAGE_KYC', stackScreen: 'DealerKYC' },
+  { id: 'dealer-onboarding', section: 'Business', label: 'Dealer onboarding', icon: 'trail-sign-outline', iconLib: 'ion', requiredPermission: 'MANAGE_KYC', stackScreen: 'DealerOnboarding' },
 ];
 
 export const GlobalDrawer: React.FC = () => {
@@ -575,9 +579,12 @@ export const GlobalDrawer: React.FC = () => {
             <>
               <View style={styles.divider} />
               <Text style={[styles.groupLabel, styles.groupLabelDealer]}>DEALER CONTROLS</Text>
-              {visibleDealerItems.slice(0, showAllDealerTools ? visibleDealerItems.length : 6).map((item) => (
+              {visibleDealerItems.slice(0, showAllDealerTools ? visibleDealerItems.length : 6).map((item, index, shown) => (
+                <React.Fragment key={item.id}>
+                {item.section && item.section !== shown[index - 1]?.section && (
+                  <Text style={styles.dealerSectionLabel} accessibilityRole="header">{item.section.toUpperCase()}</Text>
+                )}
                 <TouchableOpacity
-                  key={item.id}
                   style={styles.row}
                   onPress={() => handleItem(item)}
                   activeOpacity={0.7}
@@ -591,6 +598,7 @@ export const GlobalDrawer: React.FC = () => {
                   </Text>
                   <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
+                </React.Fragment>
               ))}
               {visibleDealerItems.length > 6 && (
                 <TouchableOpacity style={styles.moreToggle} onPress={() => setShowAllDealerTools(v => !v)} accessibilityRole="button" accessibilityState={{ expanded: showAllDealerTools }} activeOpacity={0.8}>
@@ -990,6 +998,15 @@ const styles = StyleSheet.create({
   },
   groupLabelDealer: {
     color: Colors.warning,
+  },
+  dealerSectionLabel: {
+    fontSize: FontSize.size9,
+    fontFamily: FontFamily.bold,
+    color: Colors.iconMuted,
+    letterSpacing: 1.2,
+    marginLeft: 24,
+    marginTop: 10,
+    marginBottom: 4,
   },
   groupLabelSeller: {
     color: Colors.infoBlue,

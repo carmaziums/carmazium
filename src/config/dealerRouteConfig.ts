@@ -49,7 +49,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Dealer Command Centre",
         subHeader: "Run your dealership from one place",
         icon: LayoutDashboard,
-        section: "Main"
+        section: "Dashboard"
     },
     {
         href: "/dashboard/dealer/inventory",
@@ -58,7 +58,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Stock",
         subHeader: "Manage live, draft and sold stock",
         icon: Car,
-        section: "Main",
+        section: "Sell",
         activePrefixes: ["/dashboard/dealer/add-listing", "/dashboard/dealer/put-on-auction"]
     },
     {
@@ -68,7 +68,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Customers",
         subHeader: "Enquiries, offers and buyer follow-up",
         icon: Kanban,
-        section: "Main",
+        section: "Sell",
         activePrefixes: ["/dashboard/dealer/offers"]
     },
     {
@@ -79,7 +79,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         subHeader: "Review offers buyers made on your vehicles",
         icon: Tag,
         hidden: true,
-        section: "Selling"
+        section: "Sell"
     },
     {
         href: "/dashboard/dealer/auctions",
@@ -88,7 +88,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Auctions & Buying",
         subHeader: "Live auctions, bids and purchases",
         icon: Gavel,
-        section: "Main",
+        section: "Buy",
         activePrefixes: ["/dashboard/dealer/auctions", "/dashboard/dealer/bids"]
     },
     {
@@ -98,7 +98,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Purchase History",
         subHeader: "Every vehicle you have bought, retail and auction",
         icon: ShoppingBag,
-        section: "Main"
+        section: "Buy"
     },
     {
         href: "/dashboard/dealer/auctions/won",
@@ -108,7 +108,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         subHeader: "Auction wins and next handover steps",
         icon: Trophy,
         hidden: true,
-        section: "Buying"
+        section: "Buy"
     },
     {
         href: "/dashboard/cancellations",
@@ -116,7 +116,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Sale Cancellations",
         subHeader: "Review buyer and seller cancellation requests",
         icon: ShieldCheck,
-        section: "Purchases",
+        section: "Buy",
         hidden: true
     },
     {
@@ -189,7 +189,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         subHeader: "Retail offers made on marketplace vehicles",
         icon: Tag,
         hidden: true,
-        section: "Buying"
+        section: "Buy"
     },
     {
         href: "/dashboard/dealer/bids",
@@ -199,7 +199,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         subHeader: "Auctions you are currently bidding on",
         icon: Gavel,
         hidden: true,
-        section: "Buying"
+        section: "Buy"
     },
     {
         href: "/dashboard/dealer/wishlist",
@@ -208,7 +208,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         subHeader: "Vehicles saved for later",
         icon: Heart,
         hidden: true,
-        section: "Buying"
+        section: "Buy"
     },
     {
         href: "/dashboard/dealer/finance",
@@ -227,7 +227,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         subHeader: "Dealership performance and insights",
         icon: BarChart3,
         hidden: true,
-        section: "Performance"
+        section: "Business"
     },
     {
         href: "/dashboard/dealer/earnings",
@@ -237,9 +237,28 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         subHeader: "Revenue and platform sales history",
         icon: Receipt,
         hidden: true,
-        section: "Performance"
+        section: "Business"
     }
 ]
+
+/**
+ * Menu groups, in display order. The website sidebar and the CarMazium app
+ * drawer use the same groups and order (checked by check-product-parity.mjs):
+ * Sell, then Buy, then Business, then Services. Each group heading appears
+ * once; less-used tools sit inside their group under "More tools".
+ */
+export const DEALER_SECTION_ORDER = ["Dashboard", "Sell", "Buy", "Business", "Services"] as const
+
+/** Stable sort of menu entries into DEALER_SECTION_ORDER. */
+export function sortBySection<T extends { section?: string }>(items: T[]): T[] {
+    const rank = (section?: string) => {
+        const i = DEALER_SECTION_ORDER.indexOf(section as (typeof DEALER_SECTION_ORDER)[number])
+        return i === -1 ? DEALER_SECTION_ORDER.length : i
+    }
+    return items.map((item, i) => ({ item, i }))
+        .sort((a, b) => rank(a.item.section) - rank(b.item.section) || a.i - b.i)
+        .map(({ item }) => item)
+}
 
 /** The dealer menu item that owns `pathname` (exact match first, then its related pages). */
 export function dealerRouteIsActive(route: Pick<DealerRoute, "href" | "activePrefixes">, pathname: string): boolean {
