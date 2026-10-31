@@ -24,6 +24,9 @@ test("backend gate: off by default, capture is post-commit, first capture wins",
     assert.match(record, /update: \{\},/)
     assert.match(record, /where: \{ saleId: sale\.id \}/)
     assert.match(record, /RETRY_DELAYS_MS = \[1_000, 5_000\]/)
+    // The sweep never back-fills purchases from before snapshots were switched on.
+    assert.match(record, /AND s\."createdAt" >= \$\{enabledAt\}/)
+    assert.match(record, /if \(!enabledAt\) \{/)
     assert.match(read("backend/src/tasks/purchase-snapshot-sweep.service.ts"), /@Cron\('\*\/10 \* \* \* \*'\)/)
     assert.match(read("backend/src/tasks/tasks.module.ts"), /PurchaseSnapshotSweepService,/)
     const sql = read("backend/prisma/migrations/20261031120000_purchase_snapshots_inspection_notes/migration.sql")
@@ -67,6 +70,8 @@ test("web and app show the snapshot label and only show notes when switched on",
     const app = read(APP + "screens/main/DealerPurchaseDetailScreen.tsx")
     for (const src of [web, app]) {
         assert.match(src, /Saved when you bought this vehicle/)
+        // Delayed captures state the actual time and warn about edits in between.
+        assert.match(src, /after the sale was recorded on \$\{(fmtDateTime\(purchasedAt\)|dateTime\(detail\.purchasedAt\))\}\. The seller could have changed the advert in between\./)
         assert.match(src, /Later changes by the seller don(&apos;|')t affect it/)
         assert.match(src, /The seller may have changed it since you bought the vehicle/)
     }

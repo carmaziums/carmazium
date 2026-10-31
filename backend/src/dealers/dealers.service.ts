@@ -19,7 +19,7 @@ import {
 } from './dealer-access';
 import { buyerFeeDeadlineAt } from '../auctions/buyer-fee-deadline';
 import {
-    buildListingRecordData, LISTING_RECORD_SELECT, purchaseSnapshotsEnabled,
+    buildListingRecordData, LISTING_RECORD_SELECT, purchaseSnapshotsEnabled, SNAPSHOT_DELAY_NOTICE_MS,
     type ListingRecordData,
 } from './purchase-listing-record';
 import type { CreateInspectionNoteDto } from './dto/create-inspection-note.dto';
@@ -2103,8 +2103,9 @@ export class DealersService {
                 ...(snapshot.data as unknown as ListingRecordData),
                 source: 'PURCHASE_SNAPSHOT' as const,
                 capturedAt: snapshot.capturedAt.toISOString(),
-                // Saved by the retry sweep rather than at the sale itself.
-                capturedAfterSale: snapshot.capturedAt.getTime() - sale.createdAt.getTime() > 60 * 60 * 1000,
+                // Saved by a retry or the sweep rather than at the sale itself;
+                // the UI then shows the exact capture time and a warning.
+                capturedAfterSale: snapshot.capturedAt.getTime() - sale.createdAt.getTime() > SNAPSHOT_DELAY_NOTICE_MS,
                 lastUpdatedAt: snapshot.capturedAt.toISOString(),
                 // Whether the live advert has been removed since; the
                 // snapshot itself is unaffected.

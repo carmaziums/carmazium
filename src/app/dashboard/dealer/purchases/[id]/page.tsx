@@ -200,7 +200,7 @@ export default function DealerPurchaseDetailPage() {
                             </section>
 
                             {purchase.listingRecord && (
-                                <PurchaseVehicleRecord record={purchase.listingRecord} title={purchase.vehicle.title} />
+                                <PurchaseVehicleRecord record={purchase.listingRecord} title={purchase.vehicle.title} purchasedAt={purchase.purchasedAt} />
                             )}
 
                             {purchase.inspectionNotesEnabled && <PurchaseInspectionNotes saleId={purchase.id} />}

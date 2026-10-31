@@ -76,6 +76,22 @@ export function purchaseSnapshotsEnabled(): boolean {
     return process.env.PURCHASE_SNAPSHOTS_ENABLED === 'true';
 }
 
+/**
+ * When snapshots were switched on (PURCHASE_SNAPSHOTS_ENABLED_AT, ISO time).
+ * The sweep only recovers sales recorded after this, so switching the
+ * feature on never turns the current state of an older purchase's advert
+ * into a "purchase-time" snapshot. Unset or invalid: the sweep does nothing.
+ */
+export function purchaseSnapshotsEnabledAt(): Date | null {
+    const raw = process.env.PURCHASE_SNAPSHOTS_ENABLED_AT;
+    if (!raw) return null;
+    const at = new Date(raw);
+    return Number.isFinite(at.getTime()) ? at : null;
+}
+
+/** A capture this long after the sale is shown as delayed, with its time. */
+export const SNAPSHOT_DELAY_NOTICE_MS = 5 * 60 * 1000;
+
 const logger = new Logger('PurchaseSnapshot');
 
 /** Delays between attempts; the sweep (PurchaseSnapshotSweepService) is the backstop. */
@@ -135,6 +151,11 @@ export async function capturePurchaseSnapshot(
  */
 export async function sweepMissingPurchaseSnapshots(prisma: PrismaService, limit = 200): Promise<number> {
     if (!purchaseSnapshotsEnabled()) return 0;
+    const enabledAt = purchaseSnapshotsEnabledAt();
+    if (!enabledAt) {
+        logger.warn('PURCHASE_SNAPSHOTS_ENABLED_AT is not set; snapshot sweep skipped');
+        return 0;
+    }
     const missing = await prisma.$queryRaw<Array<{ listingId: string; buyerId: string }>>`
         SELECT s."listingId", s."buyerId"
         FROM "sales" s
@@ -142,6 +163,7 @@ export async function sweepMissingPurchaseSnapshots(prisma: PrismaService, limit
         WHERE p.id IS NULL
           AND s."buyerId" IS NOT NULL
           AND s."createdAt" > NOW() - INTERVAL '7 days'
+          AND s."createdAt" >= ${enabledAt}
         ORDER BY s."createdAt" ASC
         LIMIT ${limit}
     `;

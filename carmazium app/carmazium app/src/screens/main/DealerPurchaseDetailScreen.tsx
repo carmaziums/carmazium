@@ -83,6 +83,9 @@ interface Seller {
 
 const money = (amount: number): string =>
   '£' + Number(amount).toLocaleString('en-GB', { maximumFractionDigits: 0 });
+const dateTime = (value: string | null | undefined): string => value
+  ? new Date(value).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  : 'an unknown time';
 const date = (value: string | null | undefined): string =>
   value ? new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     : 'Not yet recorded';
@@ -270,7 +273,7 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
                   <Text style={r.source === 'PURCHASE_SNAPSHOT' ? styles.snapshotNote : styles.warning}>
                     {r.source === 'PURCHASE_SNAPSHOT'
                       ? `${r.capturedAfterSale
-                        ? `Saved ${r.capturedAt ? date(r.capturedAt) : ''}, shortly after the sale was recorded.`
+                        ? `Saved ${r.capturedAt ? dateTime(r.capturedAt) : 'at an unknown time'}, after the sale was recorded on ${dateTime(detail.purchasedAt)}. The seller could have changed the advert in between.`
                         : `Saved when you bought this vehicle${r.capturedAt ? `, ${date(r.capturedAt)}` : ''}.`} Later changes by the seller don't affect it.${r.removedFromSaleAt ? ` The live advert was removed ${date(r.removedFromSaleAt)}.` : ''}`
                       : `Current listing${r.lastUpdatedAt ? `, last updated ${date(r.lastUpdatedAt)}` : ''}. The seller may have changed it since you bought the vehicle.${r.removedFromSaleAt ? ` Removed from sale ${date(r.removedFromSaleAt)}.` : ''}`}
                   </Text>

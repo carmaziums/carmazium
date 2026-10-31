@@ -162,6 +162,14 @@ describe('purchase detail with snapshot, and inspection notes', () => {
         expect(prisma.purchaseInspectionNote.create).not.toHaveBeenCalled();
     });
 
+    it('does not flag a capture made by the in-process retry seconds later', async () => {
+        prisma.purchaseListingSnapshot.findUnique.mockResolvedValue({
+            capturedAt: new Date('2026-10-30T16:48:00Z'), data: buildListingRecordData(listingRow()),
+        });
+        const result: any = await service.getDealerPurchaseDetail('owner-1', 'sale-1');
+        expect(result.listingRecord.capturedAfterSale).toBe(false);
+    });
+
     it('labels a snapshot saved later by the sweep', async () => {
         prisma.purchaseListingSnapshot.findUnique.mockResolvedValue({
             capturedAt: new Date('2026-10-30T18:00:00Z'), data: buildListingRecordData(listingRow()),
@@ -192,7 +200,21 @@ describe('purchase snapshot retries and sweep', () => {
         expect(prisma.purchaseListingSnapshot.upsert).toHaveBeenCalledTimes(1);
     });
 
+    it('sweep only runs once an activation time is set, and only for sales after it', async () => {
+        delete process.env.PURCHASE_SNAPSHOTS_ENABLED_AT;
+        const prisma: any = { $queryRaw: jest.fn().mockResolvedValue([]) };
+        await expect(sweepMissingPurchaseSnapshots(prisma)).resolves.toBe(0);
+        expect(prisma.$queryRaw).not.toHaveBeenCalled();
+        process.env.PURCHASE_SNAPSHOTS_ENABLED_AT = '2026-11-05T09:00:00Z';
+        await sweepMissingPurchaseSnapshots(prisma);
+        // Tagged-template values: the activation date is bound as a parameter.
+        const values = prisma.$queryRaw.mock.calls[0].slice(1);
+        expect(values).toContainEqual(new Date('2026-11-05T09:00:00Z'));
+        delete process.env.PURCHASE_SNAPSHOTS_ENABLED_AT;
+    });
+
     it('sweep captures recent sales that have no snapshot, and is off with the flag', async () => {
+        process.env.PURCHASE_SNAPSHOTS_ENABLED_AT = '2026-11-05T09:00:00Z';
         const prisma: any = {
             $queryRaw: jest.fn().mockResolvedValue([{ listingId: 'l1', buyerId: 'b1' }]),
             sale: { findUnique: jest.fn().mockResolvedValue({ id: 's1', buyerId: 'b1' }) },
@@ -205,5 +227,6 @@ describe('purchase snapshot retries and sweep', () => {
         prisma.$queryRaw.mockClear();
         await expect(sweepMissingPurchaseSnapshots(prisma)).resolves.toBe(0);
         expect(prisma.$queryRaw).not.toHaveBeenCalled();
+        delete process.env.PURCHASE_SNAPSHOTS_ENABLED_AT;
     });
 });

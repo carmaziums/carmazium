@@ -14,6 +14,7 @@ import type { PurchaseListingRecord } from "@/lib/dealerPurchaseDetail"
 const ThreeDVehicleViewer = dynamic(() => import("@/components/listing/ThreeDVehicleViewer").then(m => m.ThreeDVehicleViewer), { ssr: false })
 
 const yesNo = (v: boolean | null) => v == null ? "Not provided" : v ? "Yes" : "No"
+const fmtDateTime = (v: string | null) => v ? new Date(v).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "an unknown time"
 const fmtDate = (v: string | null) => v ? new Date(v).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : null
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -32,7 +33,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
  * declarations and declared damage. Used during physical inspection.
  * Listing evidence only: seller contact details are never shown here.
  */
-export function PurchaseVehicleRecord({ record, title }: { record: PurchaseListingRecord; title: string }) {
+export function PurchaseVehicleRecord({ record, title, purchasedAt = null }: { record: PurchaseListingRecord; title: string; purchasedAt?: string | null }) {
     const photos = React.useMemo(
         () => record.images.filter(Boolean).map(raw => ({ raw, src: parseVehicleImagePresentation(raw).src })),
         [record.images])
@@ -56,7 +57,7 @@ export function PurchaseVehicleRecord({ record, title }: { record: PurchaseListi
                     <History size={15} className={`mt-0.5 shrink-0 ${record.source === "PURCHASE_SNAPSHOT" ? "text-emerald-500" : "text-amber-500"}`} />
                     {record.source === "PURCHASE_SNAPSHOT"
                         ? <>{record.capturedAfterSale
-                            ? `Saved ${fmtDate(record.capturedAt ?? null)}, shortly after the sale was recorded.`
+                            ? `Saved ${fmtDateTime(record.capturedAt ?? null)}, after the sale was recorded on ${fmtDateTime(purchasedAt)}. The seller could have changed the advert in between.`
                             : `Saved when you bought this vehicle${record.capturedAt ? `, ${fmtDate(record.capturedAt)}` : ""}.`} Later changes by the seller don&apos;t affect it.{record.removedFromSaleAt ? ` The live advert was removed ${fmtDate(record.removedFromSaleAt)}.` : ""}</>
                         : <>Current listing{record.lastUpdatedAt ? `, last updated ${fmtDate(record.lastUpdatedAt)}` : ""}. The seller may have changed it since you bought the vehicle.{record.removedFromSaleAt ? ` Removed from sale ${fmtDate(record.removedFromSaleAt)}.` : ""}</>}
                 </p>

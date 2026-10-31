@@ -1,7 +1,9 @@
 -- Purchase-time listing snapshots and dealer inspection notes.
 --
 -- NOT YET APPLIED ANYWHERE. Apply by hand, with the owner's approval, before
--- setting PURCHASE_SNAPSHOTS_ENABLED=true on the backend. Until that flag is
+-- setting PURCHASE_SNAPSHOTS_ENABLED=true and PURCHASE_SNAPSHOTS_ENABLED_AT
+-- (the switch-on time, ISO 8601) on the backend. The retry sweep only covers
+-- sales recorded after PURCHASE_SNAPSHOTS_ENABLED_AT. Until that flag is
 -- set the backend never reads or writes these tables, so deploying the code
 -- first is safe. Additive only: no existing table or row is changed.
 --
