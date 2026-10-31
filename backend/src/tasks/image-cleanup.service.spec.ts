@@ -208,4 +208,28 @@ describe('ImageCleanupService', () => {
 
         expect(remove).not.toHaveBeenCalled();
     });
+
+    it('deletes nothing if the snapshot-photo lookup fails', async () => {
+        const { service, prisma, list, remove } = makeService();
+        prisma.listing.findMany.mockResolvedValue([]);
+        prisma.$queryRaw
+            .mockResolvedValueOnce([{ present: true }])
+            .mockRejectedValueOnce(new Error('snapshot query failed'));
+        damageFolder(list, ['bought.jpg', 'orphan.jpg']);
+
+        await service.handleCron();
+
+        expect(remove).not.toHaveBeenCalled();
+    });
+
+    it('deletes nothing if the snapshot-table check itself fails', async () => {
+        const { service, prisma, list, remove } = makeService();
+        prisma.listing.findMany.mockResolvedValue([]);
+        prisma.$queryRaw.mockRejectedValueOnce(new Error('to_regclass failed'));
+        damageFolder(list, ['orphan.jpg']);
+
+        await service.handleCron();
+
+        expect(remove).not.toHaveBeenCalled();
+    });
 });
