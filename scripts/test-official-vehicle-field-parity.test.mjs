@@ -105,7 +105,7 @@ test('all seller-uploaded media remains buyer-accessible across retail and aucti
     assert.match(nativeRetail, /images\.map/);
 });
 
-test('buyer fields exclude private commercial data, VIN, seller contact and estate relationship free text', () => {
+test('buyer fields exclude private commercial data, seller contact and estate relationship free text', () => {
     // notOwnerRelationship is deliberately shown to buyers when the seller is
     // not the registered keeper (owner decision, 31 Oct 2026); see
     // scripts/test-buyer-official-vehicle-facts.test.mjs.
@@ -114,7 +114,7 @@ test('buyer fields exclude private commercial data, VIN, seller contact and esta
             'departedRelationship', 'stripeCustomerId']) {
             assert.ok(!panel.includes(unsafe), 'private field unexpectedly in public buyer panel: ' + unsafe);
         }
-        assert.ok(!/\bdata\.vin\b|\blisting\.vin\b/.test(panel), 'VIN should not be revealed in buyer panel');
+        assert.ok(/VIN \(recorded\)/.test(panel), 'Buyer must be able to see a legitimately recorded VIN');
     }
     const vehiclePage = read('src/app/vehicle/[id]/VehicleDetailPageClient.tsx');
     assert.match(vehiclePage, /listing\.hpiReport\?\.status === 'COMPLETED'/);
