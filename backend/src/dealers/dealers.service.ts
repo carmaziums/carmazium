@@ -1898,6 +1898,114 @@ export class DealersService {
     }
 
     /**
+     * Per-purchase detail, scoped to the purchasing dealership and the same
+     * VIEW_PURCHASES permission as the history and seller-contact endpoints.
+     * Never expose seller contact data here: /:id/seller enforces the channel,
+     * historical-auction and buyer-fee rules independently.
+     */
+    async getDealerPurchaseDetail(userId: string, saleId: string) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        assertDealerPermission(actor, 'VIEW_PURCHASES');
+        const buyerId = actor.ownerUserId;
+
+        const sale = await this.prisma.sale.findFirst({
+            where: { id: saleId, buyerId },
+            select: {
+                id: true, listingId: true, soldPrice: true,
+                createdAt: true, purchaseStatus: true,
+                listing: {
+                    select: {
+                        id: true, slug: true, type: true, status: true,
+                        title: true, images: true, year: true, make: true,
+                        model: true, mileage: true, vrm: true, location: true,
+                        auction: {
+                            select: {
+                                id: true, winnerId: true, buyerFeePaid: true,
+                                buyerFeeTransactionId: true, sellerFundsConfirmedAt: true,
+                                handoverSubmittedAt: true, handoverRejectedAt: true,
+                                sellerBonusReleased: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (!sale) throw new NotFoundException('Purchase not found');
+
+        const listing = sale.listing;
+        const auction = listing.auction;
+        // Conversion from an un-won historic auction to a retail listing does
+        // not create a new buyer-fee debt.
+        const auctionPurchase = listing.type === 'AUCTION' || !!auction?.winnerId;
+        const buyerFeeSettled = !!(
+            auctionPurchase && auction?.winnerId === buyerId
+            && auction.buyerFeePaid && auction.buyerFeeTransactionId
+        );
+
+        // Only customer-owned delivery jobs for this exact vehicle; no partner
+        // addresses or quotes are exposed through the purchase record.
+        const delivery = await this.prisma.serviceJob.findFirst({
+            where: {
+                customerId: buyerId,
+                serviceType: 'DELIVERY',
+                vehicles: { some: { listingId: sale.listingId } },
+            },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true, status: true, createdAt: true, requestedFor: true },
+        });
+
+        return {
+            id: sale.id,
+            listingId: sale.listingId,
+            vehicle: {
+                title: listing.title,
+                imageUrl: listing.images[0] ?? null,
+                slug: listing.slug,
+                year: listing.year,
+                make: listing.make,
+                model: listing.model,
+                mileage: listing.mileage,
+                registration: listing.vrm,
+                listedLocation: listing.location,
+            },
+            purchasePrice: Number(sale.soldPrice),
+            purchasedAt: sale.createdAt.toISOString(),
+            purchaseStatus: sale.purchaseStatus,
+            retailSold: listing.type === 'CLASSIFIED' && listing.status === 'SOLD',
+            channel: auctionPurchase ? 'AUCTION' : 'RETAIL',
+            buyerFee: {
+                required: auctionPurchase,
+                settled: auctionPurchase ? buyerFeeSettled : true,
+                // Monetary figures and exemptions are never inferred here.
+                // Current fee policy is displayed by the authorised checkout.
+            },
+            payment: {
+                route: 'DIRECT_TO_SELLER',
+                sellerFundsConfirmedAt: auctionPurchase
+                    ? (auction?.sellerFundsConfirmedAt?.toISOString() ?? null)
+                    : null,
+            },
+            delivery: delivery ? {
+                jobId: delivery.id, status: delivery.status,
+                createdAt: delivery.createdAt.toISOString(),
+                requestedFor: delivery.requestedFor?.toISOString() ?? null,
+            } : null,
+            documents: {
+                // A handover photo is not proof of vehicle payment, nor a
+                // seller collection address. No retail document workflow
+                // exists yet; never fabricate a completed-document status.
+                handoverSubmittedAt: auctionPurchase
+                    ? (auction?.handoverSubmittedAt?.toISOString() ?? null)
+                    : null,
+                handoverRejectedAt: auctionPurchase
+                    ? (auction?.handoverRejectedAt?.toISOString() ?? null)
+                    : null,
+                sellerBonusReleased: auctionPurchase && !!auction?.sellerBonusReleased,
+            },
+        };
+    }
+
+    /**
      * Purchased seller details are not a public profile endpoint.
      * Only the buyer's dealership (or its authorised VIEW_PURCHASES staff)
      * may read the record. Auction contact information stays locked until
