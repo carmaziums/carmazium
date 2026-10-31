@@ -36,11 +36,16 @@ test("a recorded VIN is still published in vehicle structured data", () => {
 test("public search and detail strip seller-private fields but never official vehicle facts", () => {
     const privateList = service.match(/PUBLIC_DETAIL_PRIVATE_FIELDS = \[([\s\S]*?)\] as const/)
     assert.ok(privateList, "private field list exists")
-    for (const field of ["notOwnerRelationship", "rejectionReason", "partnerDistributionAcceptedAt", "deletedAt"]) {
+    for (const field of ["rejectionReason", "partnerDistributionAcceptedAt", "deletedAt"]) {
         assert.match(privateList[1], new RegExp(`'${field}'`))
     }
-    for (const official of ["vin", "dateOfLastV5CIssued", "motHistory", "officialVehicleData", "motExpiryDate"]) {
+    // Owner decision: the seller's keeper-relationship note is for buyers too.
+    for (const official of ["vin", "dateOfLastV5CIssued", "motHistory", "officialVehicleData", "motExpiryDate", "notOwnerRelationship"]) {
         assert.doesNotMatch(privateList[1], new RegExp(`'${official}'`), official)
     }
     assert.match(service, /if \(!\(await this\.viewerManagesListing\(viewerId, listing\.sellerId\)\)\)/)
+})
+
+test("the seller's keeper-relationship note stays in the buyer API (owner decision)", () => {
+    assert.doesNotMatch(service, /notOwnerRelationship: _notOwnerRelationship/)
 })

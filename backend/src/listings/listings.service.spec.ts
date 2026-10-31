@@ -2541,7 +2541,7 @@ describe('ListingsService', () => {
             const defaultOrder = prisma.listing.findMany.mock.calls[0][0].orderBy;
             expect(defaultOrder[0]).toEqual({ isFeatured: 'desc' });
         });
-        it('never returns seller-private declaration text, moderation notes or internal timestamps from public search (#723)', async () => {
+        it('never returns moderation notes or internal timestamps from public search, but keeps the keeper disclosure for buyers (#723)', async () => {
             prisma.listing.findMany.mockResolvedValue([{
                 id: 'retail-1', type: 'CLASSIFIED', status: 'ACTIVE', price: 7000,
                 priceMin: 6000, priceMax: 8000,
@@ -2553,9 +2553,11 @@ describe('ListingsService', () => {
             prisma.listing.count.mockResolvedValue(1);
             const { data } = await service.findAll({} as any);
             const row = data[0] as any;
-            for (const field of ['priceMin', 'priceMax', 'notOwnerRelationship', 'rejectionReason', 'partnerDistributionAcceptedAt', 'deletedAt']) {
+            for (const field of ['priceMin', 'priceMax', 'rejectionReason', 'partnerDistributionAcceptedAt', 'deletedAt']) {
                 expect(row).not.toHaveProperty(field);
             }
+            // Owner decision: the seller's keeper-relationship note is for buyers.
+            expect(row.notOwnerRelationship).toBe('Selling for my aunt');
             // Fields public cards and the app's detail screen rely on stay.
             expect(row.motHistory).toEqual([{ testDate: '2026-01-01' }]);
             expect(row.description).toBe('Clean car');
@@ -2582,8 +2584,9 @@ describe('ListingsService', () => {
             jest.spyOn(service as any, 'backfillRetailMotOnView').mockImplementation(() => undefined);
             return await service.findBySlug('ford-focus-2017-ab12', viewerId) as any;
         };
-        const PRIVATE = ['notOwnerRelationship', 'rejectionReason', 'partnerDistributionAcceptedAt', 'deletedAt'];
-        const OFFICIAL = ['vin', 'dateOfLastV5CIssued', 'motHistory', 'officialVehicleData', 'motExpiryDate', 'taxStatus'];
+        const PRIVATE = ['rejectionReason', 'partnerDistributionAcceptedAt', 'deletedAt'];
+        // Official facts plus the seller's keeper-relationship disclosure are buyer information.
+        const OFFICIAL = ['vin', 'dateOfLastV5CIssued', 'motHistory', 'officialVehicleData', 'motExpiryDate', 'taxStatus', 'notOwnerRelationship'];
 
         it.each([['anonymous visitor', undefined], ['signed-in buyer', 'buyer-1']])('%s sees official DVLA/MOT facts but no private seller data', async (_label, viewer) => {
             const listing = await load(viewer as string | undefined);
@@ -2591,21 +2594,21 @@ describe('ListingsService', () => {
             for (const field of [...PRIVATE, 'priceMin', 'priceMax']) expect(listing).not.toHaveProperty(field);
         });
 
-        it('the seller keeps their declarations and price boundaries for editing', async () => {
+        it('the seller keeps moderation notes and price boundaries for editing', async () => {
             const listing = await load('seller-1');
-            expect(listing.notOwnerRelationship).toBe('Selling for my aunt');
+            expect(listing.rejectionReason).toBe('Old moderation note');
             expect(listing.priceMin).toBe(6000);
             expect(listing.vin).toBe('WF0XXXGCDXHA12345');
         });
 
-        it('staff of the seller dealership keep declarations; staff of another dealership do not', async () => {
+        it('staff of the seller dealership keep moderation notes; staff of another dealership do not', async () => {
             prisma.dealerStaff.findFirst.mockImplementation(async ({ where }: any) => (
                 where.userId === 'staff-own' ? { role: 'SALES_AGENT', dealerProfile: { id: 'dp-1', userId: 'seller-1', isVerified: true } }
                     : where.userId === 'staff-other' ? { role: 'ADMIN', dealerProfile: { id: 'dp-2', userId: 'other-dealer', isVerified: true } }
                         : null
             ));
-            expect((await load('staff-own')).notOwnerRelationship).toBe('Selling for my aunt');
-            expect(await load('staff-other')).not.toHaveProperty('notOwnerRelationship');
+            expect((await load('staff-own')).rejectionReason).toBe('Old moderation note');
+            expect(await load('staff-other')).not.toHaveProperty('rejectionReason');
         });
     });
 
