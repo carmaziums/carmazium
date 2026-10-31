@@ -184,7 +184,7 @@ describe('ImageCleanupService', () => {
         expect(remove).not.toHaveBeenCalledWith(expect.arrayContaining([`${ownerId}/damage/declared.jpg`]));
     });
 
-    it('keeps photos referenced by purchase snapshots once that table exists', async () => {
+    it('keeps damage photos referenced by purchase snapshots once that table exists', async () => {
         const { service, prisma, list, remove } = makeService();
         prisma.listing.findMany.mockResolvedValue([]);
         prisma.$queryRaw
@@ -231,5 +231,27 @@ describe('ImageCleanupService', () => {
         await service.handleCron();
 
         expect(remove).not.toHaveBeenCalled();
+    });
+
+    it('does not protect ordinary gallery photos just because a snapshot exists', async () => {
+        const { service, prisma, list, remove } = makeService();
+        prisma.listing.findMany.mockResolvedValue([]);
+        prisma.$queryRaw
+            .mockResolvedValueOnce([{ present: true }])
+            .mockResolvedValueOnce([]); // only damage URLs are queried
+        list.mockImplementation(async (prefix: string) => {
+            if (prefix === '') return { data: [{ name: ownerId, id: null }], error: null };
+            if (prefix === `${ownerId}/exterior`) {
+                return { data: [{ name: 'gallery.jpg', id: 'g', created_at: oldDate() }], error: null };
+            }
+            return { data: [], error: null };
+        });
+
+        await service.handleCron();
+
+        expect(remove).toHaveBeenCalledWith([`${ownerId}/exterior/gallery.jpg`]);
+        const snapshotSql = prisma.$queryRaw.mock.calls[1][0].join('');
+        expect(snapshotSql).toContain("p.data->'damage'");
+        expect(snapshotSql).not.toContain("data->'images'");
     });
 });

@@ -144,17 +144,16 @@ export class ImageCleanupService {
                 if (record.imageUrl) referencedImages.add(record.imageUrl.split('#')[0]);
             });
 
-            // Photos saved in purchase-time snapshots are a buyer's evidence
-            // of what they bought, even after the seller edits the advert.
-            // The table only exists once its migration is applied.
+            // Damage photos saved in purchase-time snapshots are the buyer's
+            // evidence of the declared damage, even if the seller later edits
+            // the advert. Owner policy: only damage evidence is kept; ordinary
+            // gallery photos in a snapshot are NOT protected and follow the
+            // normal cleanup. The table only exists once its migration is applied.
             const [snapshotTable] = await this.prisma.$queryRaw<Array<{ present: boolean }>>`
                 SELECT to_regclass('public.purchase_listing_snapshots') IS NOT NULL AS present
             `;
             if (snapshotTable?.present) {
                 const evidence = await this.prisma.$queryRaw<Array<{ url: string | null }>>`
-                    SELECT jsonb_array_elements_text(COALESCE(data->'images', '[]'::jsonb)) AS url
-                    FROM purchase_listing_snapshots
-                    UNION
                     SELECT d->>'imageUrl' AS url
                     FROM purchase_listing_snapshots p,
                          jsonb_array_elements(COALESCE(p.data->'damage', '[]'::jsonb)) d

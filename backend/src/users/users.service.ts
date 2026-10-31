@@ -30,6 +30,9 @@ function assertValidPhone(phone: string) {
     }
 }
 
+/** Service-owned storage prefix for evidence kept after an account is deleted. */
+const RETAINED_EVIDENCE_PREFIX = 'retained-evidence/';
+
 @Injectable()
 export class UsersService {
     private readonly logger = new Logger(UsersService.name);
@@ -241,8 +244,75 @@ export class UsersService {
             add('chat-attachments', message.attachmentPath);
         }
 
+        // Owner policy: declared-damage photos of a vehicle that was sold are
+        // kept as the buyer's purchase evidence; ordinary gallery photos are
+        // not. Copy those damage photos out of the seller's space first (the
+        // originals are still removed below, which Auth deletion requires).
+        await this.retainSoldVehicleDamagePhotos(userId, byBucket.get('listings') ?? new Set<string>());
+
         for (const [bucket, paths] of byBucket) {
             await this.removeStoragePaths(bucket, paths);
+        }
+    }
+
+    /**
+     * Copy declared-damage photos of the seller's SOLD vehicles (a Sale exists)
+     * to a service-owned evidence path and repoint the damage records (and any
+     * purchase snapshots) at the copy. Only photos this account owns, i.e.
+     * ones about to be deleted, are copied. Any failure stops the deletion
+     * before anything is removed, so the user can retry safely.
+     */
+    private async retainSoldVehicleDamagePhotos(userId: string, ownedListingPaths: Set<string>): Promise<void> {
+        const records = await this.prisma.damageRecord.findMany({
+            where: { imageUrl: { not: null }, listing: { sellerId: userId, sale: { isNot: null } } },
+            select: { id: true, listingId: true, imageUrl: true },
+        });
+        if (!records.length) return;
+
+        const storage = this.deletionStorageClient().storage.from('listings');
+        const moved: Array<{ id: string; listingId: string; from: string; to: string }> = [];
+        for (const record of records) {
+            const path = this.publicStoragePath(record.imageUrl, 'listings');
+            if (!path || !ownedListingPaths.has(path) || path.startsWith(RETAINED_EVIDENCE_PREFIX)) continue;
+            const target = `${RETAINED_EVIDENCE_PREFIX}damage/${record.listingId}/${record.id}-${path.split('/').pop()}`;
+            const { error } = await storage.copy(path, target);
+            // A retry after a partial run finds the copy already in place.
+            if (error && !/already exists|duplicate/i.test(error.message ?? '')) {
+                this.logger.error(`Could not retain damage evidence ${record.id}: ${error.message}`);
+                throw new ServiceUnavailableException(
+                    'Could not keep the damage photos of vehicles you have sold. Nothing has been deleted; please try again.',
+                );
+            }
+            const fragment = record.imageUrl!.includes('#') ? `#${record.imageUrl!.split('#').slice(1).join('#')}` : '';
+            moved.push({
+                id: record.id,
+                listingId: record.listingId,
+                from: record.imageUrl!,
+                to: storage.getPublicUrl(target).data.publicUrl + fragment,
+            });
+        }
+
+        for (const m of moved) {
+            await this.prisma.damageRecord.update({ where: { id: m.id }, data: { imageUrl: m.to } });
+        }
+
+        // Purchase snapshots (once that table exists) hold the same URL.
+        if (!moved.length) return;
+        const [snapshots] = await this.prisma.$queryRaw<Array<{ present: boolean }>>`
+            SELECT to_regclass('public.purchase_listing_snapshots') IS NOT NULL AS present
+        `;
+        if (!snapshots?.present) return;
+        for (const m of moved) {
+            await this.prisma.$executeRaw`
+                UPDATE purchase_listing_snapshots
+                SET data = jsonb_set(data, '{damage}', (
+                    SELECT COALESCE(jsonb_agg(
+                        CASE WHEN d->>'imageUrl' = ${m.from} THEN jsonb_set(d, '{imageUrl}', to_jsonb(${m.to}::text)) ELSE d END
+                    ), '[]'::jsonb)
+                    FROM jsonb_array_elements(COALESCE(data->'damage', '[]'::jsonb)) d
+                ))
+                WHERE "listingId" = ${m.listingId}
+            `;
         }
     }
 
