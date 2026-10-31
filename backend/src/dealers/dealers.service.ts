@@ -20,6 +20,7 @@ import {
 import { buyerFeeDeadlineAt } from '../auctions/buyer-fee-deadline';
 import {
     buildListingRecordData, LISTING_RECORD_SELECT, purchaseSnapshotsEnabled,
+    type ListingRecordData,
 } from './purchase-listing-record';
 import type { CreateInspectionNoteDto } from './dto/create-inspection-note.dto';
 
@@ -2089,7 +2090,8 @@ export class DealersService {
             // exists, otherwise the current listing, always labelled with
             // which one it is. Never presented as original when it is not.
             listingRecord: snapshot ? {
-                ...(snapshot.data as Record<string, unknown>),
+                // Written by buildListingRecordData at capture, so same shape.
+                ...(snapshot.data as unknown as ListingRecordData),
                 source: 'PURCHASE_SNAPSHOT' as const,
                 capturedAt: snapshot.capturedAt.toISOString(),
                 lastUpdatedAt: snapshot.capturedAt.toISOString(),
