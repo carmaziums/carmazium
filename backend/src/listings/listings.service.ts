@@ -3299,6 +3299,75 @@ export class ListingsService {
             'You do not have permission to mark this listing as sold',
         );
 
+        return this.completeRetailSale(listing, userId, dto);
+    }
+
+    /**
+     * Buyer-side completion of an accepted retail offer.
+     *
+     * Owner rule: either party can complete the sale, so a deal is not left
+     * "Sale Pending" forever when a seller stops using CarMazium after selling.
+     * Only the buyer of the accepted offer (or their dealership, with offer
+     * permission) may do this, only from Sale Pending, and always at the
+     * accepted offer's price — the same rules as the seller's Mark as Sold.
+     * The seller is notified; a wrong completion is undone through the
+     * existing sale-cancellation process, never silently.
+     */
+    async completeRetailSaleAsBuyer(id: string, userId: string): Promise<Listing> {
+        const listing = await this.findById(id);
+        if (listing.type !== 'CLASSIFIED' || listing.status !== 'OFFER_ACCEPTED') {
+            throw new BadRequestException('Only a Sale Pending retail purchase can be completed by the buyer.');
+        }
+        const acceptedOffer = await this.prisma.offer.findFirst({
+            where: { listingId: id, status: 'ACCEPTED' },
+            orderBy: { updatedAt: 'desc' },
+            select: { buyerId: true },
+        });
+        if (!acceptedOffer?.buyerId) {
+            throw new BadRequestException('No accepted offer was found for this vehicle.');
+        }
+
+        const actor = await resolveDealerActor(this.prisma, userId);
+        // Dealership staff act for the dealership and need offer permission,
+        // whether or not they made the offer themselves.
+        if (actor && !actor.isOwner) {
+            assertDealerPermission(actor, 'MANAGE_OFFERS', 'Your dealership role cannot complete purchases.');
+        }
+        let isBuyer = acceptedOffer.buyerId === userId;
+        if (!isBuyer && actor) {
+            const offerBuyer = await resolveDealerActor(this.prisma, acceptedOffer.buyerId);
+            isBuyer = !!offerBuyer && offerBuyer.dealerProfileId === actor.dealerProfileId;
+        }
+        if (!isBuyer) {
+            throw new ForbiddenException('Only the buyer of the accepted offer can complete this purchase.');
+        }
+
+        const completed = await this.completeRetailSale(listing, userId, { soldPrice: 0 }, 'BUYER');
+
+        if (listing.sellerId) {
+            this.notificationsService.create({
+                userId: listing.sellerId,
+                type: 'SALE_COMPLETED_BY_BUYER',
+                title: 'Sale completed by the buyer',
+                message: `The buyer has confirmed the purchase of "${listing.title}" at the accepted offer price. If this is wrong, open a cancellation request.`,
+                entityType: 'LISTING',
+                entityId: id,
+                link: '/dashboard/cancellations',
+            } as any).catch((err: any) => {
+                console.error(`completeRetailSaleAsBuyer: seller notification failed for ${id}:`, err?.message);
+            });
+        }
+        return completed;
+    }
+
+    /** Shared completion used by the seller (Mark as Sold) and the buyer. */
+    private async completeRetailSale(
+        listing: Awaited<ReturnType<ListingsService['findById']>>,
+        userId: string,
+        dto: { soldPrice: number; buyerId?: string; buyerName?: string; buyerEmail?: string; buyerPostcode?: string },
+        completedBy: 'SELLER' | 'BUYER' = 'SELLER',
+    ): Promise<Listing> {
+        const id = listing.id;
         if (listing.status === 'SOLD') {
             throw new BadRequestException('This listing is already marked as sold');
         }
@@ -3313,7 +3382,12 @@ export class ListingsService {
             );
         }
 
-        const effectiveSellerId = listing.sellerId || userId;
+        // Only a seller completing their own sale may stand in for a missing
+        // sellerId; a buyer completion never records the buyer as the seller.
+        const effectiveSellerId = listing.sellerId || (completedBy === 'SELLER' ? userId : null);
+        if (!effectiveSellerId) {
+            throw new BadRequestException('This listing has no seller on record, so the sale cannot be completed here. Please contact support.');
+        }
 
         // When a retail offer has already been accepted, the accepted negotiation
         // is authoritative for buyer + sold price. The seller must not be able to

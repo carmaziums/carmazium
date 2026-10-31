@@ -20,6 +20,7 @@ import { getMyOffers, type Offer } from "@/lib/listingApi"
 import { pendingRetailPurchases } from "@/lib/pendingRetailPurchases"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 import { PurchaseDestinations } from "@/components/dealer/PurchaseDestinations"
+import { CompletePurchaseButton } from "@/components/purchases/CompletePurchaseButton"
 import { useDealerAccess } from "@/context/DealerAccessContext"
 import {
     buyerCancelledSales, isPurchaseHistoryStatus, loadAllPages, matchesPurchaseSearch,
@@ -410,8 +411,8 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" }) {
                                 </span>
                             </div>
                             <p className="text-sm text-[var(--text-muted)]">
-                                Your accepted offers appear here immediately. These are agreed deals, not completed sales.
-                                Contact the seller to arrange inspection, payment and collection.
+                                The seller has accepted your offer and the car is reserved for you. Arrange inspection, payment and
+                                collection with the seller. Once you have paid, either you or the seller can complete the sale.
                             </p>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                                 {shownPendingRetail.map(offer => (
@@ -436,6 +437,7 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" }) {
                                         >
                                             View accepted offer and contact seller
                                         </Link>
+                                        <CompletePurchaseButton listingId={offer.listingId} onCompleted={() => setRefreshVersion(v => v + 1)} />
                                     </article>
                                 ))}
                             </div>

@@ -21,6 +21,7 @@ import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { CounterLedger } from '../../components/offers/CounterLedger';
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
+import { CompletePurchaseButton } from '../../components/purchases/CompletePurchaseButton';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -50,6 +51,7 @@ interface Offer {
     title?: string;
     price?: number;
     images?: string[];
+    status?: string;
   };
   seller?: {
     id?: string;
@@ -395,9 +397,12 @@ export const DealerMyOffersScreen: React.FC = () => {
         {offer.status === 'ACCEPTED' && (
           <>
             <Text style={styles.acceptedStatusText}>
-              Your offer of {formatPrice(offer.amount)} was accepted! Contact the seller to
-              complete the purchase.
+              Your offer of {formatPrice(offer.amount)} was accepted! Arrange payment and collection
+              with the seller; once paid, either of you can complete the sale.
             </Text>
+            {offer.listing?.status === 'OFFER_ACCEPTED' && !!(offer.listing?.id || offer.listingId) && (
+              <CompletePurchaseButton listingId={(offer.listing?.id || offer.listingId)!} onCompleted={() => void fetchData()} />
+            )}
             <View style={styles.actionsRow}>
               <TouchableOpacity
                 style={[styles.actionBtn, styles.actionBtnAcceptCounter, { flex: 1 }]}
@@ -460,7 +465,7 @@ export const DealerMyOffersScreen: React.FC = () => {
         )}
       </View>
     );
-  }, [actionLoading, handleWithdraw, handleCounterRespond, handleMessageSeller]);
+  }, [actionLoading, handleWithdraw, handleCounterRespond, handleMessageSeller, fetchData]);
 
   // ─────────────── main render ───────────────────────
 
