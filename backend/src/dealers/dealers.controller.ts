@@ -195,6 +195,17 @@ export class DealersController {
         return new PaginatedResponse(data, total, page!, limit!);
     }
 
+    @Get('purchases/listing-lookup')
+    @ApiOperation({ summary: 'Find this dealer\'s recorded purchases for a set of auction listing IDs' })
+    @ApiQuery({ name: 'listingIds', required: true, description: 'Comma-separated listing UUIDs (up to 50)' })
+    async lookupDealerPurchaseIds(
+        @CurrentUser() user: any,
+        @Query('listingIds') listingIds: string,
+    ): Promise<StandardResponse<any>> {
+        const ids = (listingIds || '').split(',');
+        return new StandardResponse(await this.dealersService.getDealerPurchaseLookup(user.id, ids));
+    }
+
     @Get('purchases/:id')
     @ApiOperation({ summary: 'Get one recorded dealership purchase, with fee, delivery and handover status' })
     @ApiParam({ name: 'id', description: 'Sale ID — only the buyer and its VIEW_PURCHASES staff' })
