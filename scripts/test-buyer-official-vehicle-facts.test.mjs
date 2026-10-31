@@ -29,8 +29,10 @@ test("app buyer facts match web for the V5C date and MOT history", () => {
     assert.match(read(APP + "screens/vehicle/AuctionDetailScreen.tsx"), /<BuyerVehicleFacts record=/)
 })
 
-test("a recorded VIN is still published in vehicle structured data", () => {
+test("recorded VIN is available both visibly to buyers and in vehicle structured data", () => {
     assert.match(read("src/components/seo/JsonLd.tsx"), /if \(vin\) schema\.vehicleIdentificationNumber = vin/)
+    assert.match(webFacts, /\{ label: "VIN \(recorded\)", value: listing\.vin \}/)
+    assert.match(appFacts, /\['VIN \(recorded\)', data\.vin\]/)
 })
 
 test("public search and detail strip seller-private fields but never official vehicle facts", () => {
@@ -46,8 +48,10 @@ test("public search and detail strip seller-private fields but never official ve
     assert.match(service, /if \(!\(await this\.viewerManagesListing\(viewerId, listing\.sellerId\)\)\)/)
 })
 
-test("the seller's keeper-relationship note stays in the buyer API (owner decision)", () => {
+test("keeper relationship is public only when seller answers No", () => {
     assert.doesNotMatch(service, /notOwnerRelationship: _notOwnerRelationship/)
+    assert.match(service, /if \(safe\.isLegalRegisteredKeeper !== false\) delete safe\.notOwnerRelationship/)
+    assert.match(service, /if \(listing\.isLegalRegisteredKeeper !== false\) delete listingWithCount\.notOwnerRelationship/)
 })
 
 test("buyers see the seller's relationship to the owner when the seller is not the registered keeper (web and app)", () => {
