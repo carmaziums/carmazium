@@ -4,7 +4,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
-    Loader2, Clock, FileSearch, CheckCircle2, Truck, LayoutList, Columns3, ChevronLeft, ChevronRight, RefreshCw,
+    Loader2, Package, Clock, FileSearch, CheckCircle2, Truck, LayoutList, Columns3, ChevronLeft, ChevronRight, RefreshCw,
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
