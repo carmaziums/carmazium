@@ -107,11 +107,11 @@ const USER_ITEMS: MenuItem[] = [
     tabName: 'Profile',
   },
   {
-    id: 'user-listings',
-    label: 'My listings',
+    id: 'user-cars',
+    label: 'My cars',
     icon: 'car-outline',
     iconLib: 'ion',
-    stackScreen: 'SellerListings',
+    stackScreen: 'MyCars',
   },
   {
     id: 'user-sent-offers',
@@ -127,13 +127,6 @@ const USER_ITEMS: MenuItem[] = [
     iconLib: 'ion',
     stackScreen: 'SellerOffers',
   },
-  {
-    id: 'user-auctions',
-    label: 'My auctions',
-    icon: 'gavel',
-    iconLib: 'mci',
-    stackScreen: 'SellerAuctions',
-  },
   // The next three screens were fully built and registered in
   // MainStackNavigator but had no drawer entry, so nothing in the app
   // navigated to them — a buyer could place bids, buy a car and request
@@ -148,7 +141,7 @@ const USER_ITEMS: MenuItem[] = [
   },
   {
     id: 'user-purchases',
-    label: 'Purchase history',
+    label: 'Purchases',
     icon: 'receipt-outline',
     iconLib: 'ion',
     stackScreen: 'BuyerPurchaseHistory',
