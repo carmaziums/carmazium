@@ -1,19 +1,19 @@
 import Link from "next/link"
-import { History, ShoppingBag, Trophy } from "lucide-react"
+import { History, ShoppingBag, Trophy, CarFront } from "lucide-react"
 import { PURCHASE_DESTINATIONS, type PurchaseDestinationId } from "@/lib/purchaseDestinations"
 
-const ICONS = { wins: Trophy, all: ShoppingBag, history: History } as const
+const ICONS = { wins: Trophy, retail: CarFront, all: ShoppingBag, history: History } as const
 
 /**
- * Auction Wins | All Purchases | Purchase History.
+ * Auction Wins | Retail Purchases | All Purchases | Purchase History.
  *
- * Three equal columns at every width (icon above the label on phones), so
+ * Two-by-two tabs on phones and four columns from 640px (icons above the label), so
  * nothing is clipped off the end of a scrolling strip on a 360px Samsung
  * screen and the selected destination is a solid red block.
  */
 export function PurchaseDestinations({ active, className = "" }: { active: PurchaseDestinationId; className?: string }) {
     return (
-        <nav aria-label="Purchases" className={`grid grid-cols-3 gap-1 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-1.5 ${className}`}>
+        <nav aria-label="Purchases" className={`grid grid-cols-2 sm:grid-cols-4 gap-1 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-1.5 ${className}`}>
             {PURCHASE_DESTINATIONS.map(item => {
                 const Icon = ICONS[item.id]
                 const selected = item.id === active
