@@ -62,6 +62,7 @@ interface PurchaseItem {
   sellerPhone?: string;
   status: PurchaseStatus;
   retailSold?: boolean;
+  purchaseChannel?: 'AUCTION' | 'RETAIL';
 }
 
 interface PurchasesResponse {
@@ -164,6 +165,7 @@ export const DealerPurchasesScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteProp<MainStackParamList, 'DealerPurchases'>>();
   const isHistory = route.params?.view === 'history';
+  const isRetail = route.params?.view === 'retail';
   const userId = useAuthStore((s) => s.user?.id);
   // Staff act for the dealership owner, whose id is on every Sale.
   const { access } = useDealerAccess();
@@ -179,13 +181,14 @@ export const DealerPurchasesScreen: React.FC = () => {
 
   // Switching destination resets the filter so a stage hidden in this view
   // can't leave the list looking empty.
-  useEffect(() => { setStatusFilter('ALL'); }, [isHistory]);
+  useEffect(() => { setStatusFilter('ALL'); }, [isHistory, isRetail]);
 
   const visible = useMemo(() => purchases.filter(p => {
+    if (isRetail && !(p.purchaseChannel === 'RETAIL' || (!p.purchaseChannel && p.retailSold))) return false;
     if (isHistory && !HISTORY_STATUSES.includes(p.status)) return false;
     if (statusFilter !== 'ALL' && p.status !== statusFilter) return false;
     return matchesSearch([p.vehicleTitle, p.vehicleSubtitle, p.sellerName, p.id], query);
-  }), [purchases, isHistory, statusFilter, query]);
+  }), [purchases, isHistory, isRetail, statusFilter, query]);
   // Same rule as web buyerCancelledSales: the server's viewer.isBuyer is
   // authoritative; otherwise compare with the dealership owner id.
   const shownCancelled = useMemo(() => (isHistory ? cancelled : [])
@@ -194,13 +197,14 @@ export const DealerPurchasesScreen: React.FC = () => {
       : !!dealershipBuyerId && c.buyerId === dealershipBuyerId))
     .filter(c => matchesSearch([c.listing?.title, c.listing?.vrm, c.id], query)), [cancelled, isHistory, query, dealershipBuyerId]);
   const statusChoices = STATUS_FILTER_ORDER.filter(s =>
-    (!isHistory || HISTORY_STATUSES.includes(s)) && (s === statusFilter || purchases.some(p => p.status === s)));
+    (!isHistory || HISTORY_STATUSES.includes(s)) && (s === statusFilter || purchases.some(p =>
+      (!isRetail || p.purchaseChannel === 'RETAIL' || (!p.purchaseChannel && p.retailSold)) && p.status === s)));
 
   const totalSpent = visible.reduce((sum, p) => sum + p.purchasePrice, 0);
 
   const selectDestination = useCallback((destination: PurchaseDestination) => {
     if (destination === 'wins') navigation.navigate('SellerAuctions', { initialTab: 'WON' });
-    else navigation.setParams({ view: destination === 'history' ? 'history' : 'all' });
+    else navigation.setParams({ view: destination === 'history' ? 'history' : destination === 'retail' ? 'retail' : 'all' });
   }, [navigation]);
 
   const fetchData = useCallback(async (isRefresh = false) => {
@@ -245,12 +249,14 @@ export const DealerPurchasesScreen: React.FC = () => {
     <View style={styles.emptyState}>
       <EmptyState
         icon="receipt-outline"
-        title={narrowed ? 'No purchases match' : isHistory ? 'No completed purchases yet' : 'No purchases yet'}
+        title={narrowed ? 'No purchases match' : isHistory ? 'No completed purchases yet' : isRetail ? 'No retail purchases yet' : 'No purchases yet'}
         subtitle={narrowed
           ? 'Try a different search or status.'
           : isHistory
             ? 'Purchased, Checks Complete and Delivery Requested purchases, plus cancelled sales, are kept here. Earlier stages are under All Purchases.'
-            : 'Vehicles your dealership buys will show up here with their delivery status'}
+            : isRetail
+              ? 'Accepted retail offers can be viewed under My Offers. Recorded retail purchases appear here at every stage.'
+              : 'Vehicles your dealership buys will show up here with their delivery status'}
       />
     </View>
   ));
@@ -389,7 +395,7 @@ export const DealerPurchasesScreen: React.FC = () => {
       <View style={styles.header}>
         <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>{isHistory ? 'Purchase History' : 'All Purchases'}</Text>
+        <Text style={styles.headerTitle}>{isHistory ? 'Purchase History' : isRetail ? 'Retail Purchases' : 'All Purchases'}</Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           {purchases.length > 0 && (
@@ -403,7 +409,7 @@ export const DealerPurchasesScreen: React.FC = () => {
         </View>
       </View>
 
-      <PurchaseDestinations active={isHistory ? 'history' : 'all'} onSelect={selectDestination} />
+      <PurchaseDestinations active={isHistory ? 'history' : isRetail ? 'retail' : 'all'} onSelect={selectDestination} />
 
       {/* ── Content ── */}
       {fetchError ? (
@@ -425,7 +431,15 @@ export const DealerPurchasesScreen: React.FC = () => {
           renderItem={renderPurchaseCard}
           ListHeaderComponent={
             <>
-              {purchases.length > 0 && renderFilters()}
+              {(purchases.length > 0 || isRetail) && renderFilters()}
+              {isRetail && (
+                <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('DealerMyOffers')}
+                  style={[styles.purchaseCard, { marginBottom: 12 }]}
+                >
+                  <Text style={styles.vehicleTitle}>Accepted retail offers — Sale Pending</Text>
+                  <Text style={styles.purchaseDate}>View accepted offers, message sellers and arrange collection in My Offers.</Text>
+                </TouchableOpacity>
+              )}
               {visible.length > 0 && renderTotalsBar()}
             </>
           }

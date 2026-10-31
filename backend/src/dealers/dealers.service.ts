@@ -1894,6 +1894,10 @@ export class DealersService {
                 sellerEmail: contactUnlocked ? (sale.seller?.email ?? undefined) : undefined,
                 sellerPhone: contactUnlocked ? (sale.seller?.phone ?? undefined) : undefined,
                 status: sale.purchaseStatus,
+                // Stable channel based on the same auction/retail fee semantics
+                // as seller contact gating. Do not infer retail purchases from
+                // retailSold: a retail sale may still be awaiting confirmation.
+                purchaseChannel: isAuctionPurchase ? 'AUCTION' : 'RETAIL',
                 // The recorded sale is SOLD even when optional post-sale
                 // documentation or collection is not yet complete.
                 retailSold: l?.type === 'CLASSIFIED' && l?.status === 'SOLD',

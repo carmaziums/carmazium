@@ -104,6 +104,16 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         activePrefixes: ["/dashboard/dealer/purchases"]
     },
     {
+        href: "/dashboard/dealer/purchases/retail",
+        requiredPermission: "VIEW_PURCHASES",
+        label: "Retail Purchases",
+        title: "Retail Purchases",
+        subHeader: "Accepted retail offers and recorded retail purchases",
+        icon: ShoppingBag,
+        hidden: true,
+        section: "Buy"
+    },
+    {
         href: "/dashboard/dealer/purchases/history",
         requiredPermission: "VIEW_PURCHASES",
         label: "Purchase History",
