@@ -30,6 +30,9 @@ function assertValidPhone(phone: string) {
     }
 }
 
+/** Service-owned storage prefix for evidence kept after an account is deleted. */
+const RETAINED_EVIDENCE_PREFIX = 'retained-evidence/';
+
 @Injectable()
 export class UsersService {
     private readonly logger = new Logger(UsersService.name);
@@ -241,9 +244,114 @@ export class UsersService {
             add('chat-attachments', message.attachmentPath);
         }
 
+        // Owner policy: declared-damage photos of a vehicle that was sold are
+        // kept as the buyer's purchase evidence; ordinary gallery photos are
+        // not. Copy those damage photos out of the seller's space first (the
+        // originals are still removed below, which Auth deletion requires).
+        await this.retainSoldVehicleDamagePhotos(userId, byBucket.get('listings') ?? new Set<string>());
+
         for (const [bucket, paths] of byBucket) {
             await this.removeStoragePaths(bucket, paths);
         }
+    }
+
+    /**
+     * Owner policy: declared-damage photos are purchase evidence; gallery
+     * photos are not. Before the seller's files are deleted, copy every
+     * damage photo a buyer may rely on to a service-owned evidence path:
+     *  - damage records on vehicles that were bought (a Sale exists, or a
+     *    recorded sale was later cancelled), and
+     *  - damage photos inside purchase snapshots of the seller's listings,
+     *    which also covers records the seller removed after the sale.
+     * Only photos this account owns (i.e. about to be deleted) are copied.
+     *
+     * Retry-safe: copies use a target derived from the original path, every
+     * reference (records and snapshots) is repointed in ONE transaction, and
+     * any failure throws before a file is deleted. A retry re-discovers any
+     * reference still pointing at an original, so evidence is never removed
+     * while something still refers to it.
+     */
+    private async retainSoldVehicleDamagePhotos(userId: string, ownedListingPaths: Set<string>): Promise<void> {
+        const cancelledSales = await this.prisma.saleCancellationRequest.findMany({
+            where: { sellerId: userId, status: 'APPROVED' as any },
+            select: { listingId: true },
+        });
+        const cancelledListingIds = [...new Set(cancelledSales.map(row => row.listingId))];
+        const records = await this.prisma.damageRecord.findMany({
+            where: {
+                imageUrl: { not: null },
+                listing: {
+                    sellerId: userId,
+                    OR: [
+                        { sale: { isNot: null } },
+                        ...(cancelledListingIds.length ? [{ id: { in: cancelledListingIds } }] : []),
+                    ],
+                },
+            },
+            select: { listingId: true, imageUrl: true },
+        });
+
+        const [snapshotTable] = await this.prisma.$queryRaw<Array<{ present: boolean }>>`
+            SELECT to_regclass('public.purchase_listing_snapshots') IS NOT NULL AS present
+        `;
+        const snapshotRefs = snapshotTable?.present
+            ? await this.prisma.$queryRaw<Array<{ listingId: string; url: string }>>`
+                SELECT p."listingId", d->>'imageUrl' AS url
+                FROM purchase_listing_snapshots p
+                JOIN listings l ON l.id = p."listingId",
+                     jsonb_array_elements(COALESCE(p.data->'damage', '[]'::jsonb)) d
+                WHERE l."sellerId" = ${userId} AND d->>'imageUrl' IS NOT NULL
+            `
+            : [];
+
+        // Exact URL strings that point at one of this account's files.
+        const refs = new Map<string, { listingId: string; path: string }>();
+        for (const ref of [
+            ...records.map(r => ({ listingId: r.listingId, url: r.imageUrl! })),
+            ...snapshotRefs,
+        ]) {
+            const path = this.publicStoragePath(ref.url, 'listings');
+            if (!path || !ownedListingPaths.has(path) || path.startsWith(RETAINED_EVIDENCE_PREFIX)) continue;
+            if (!refs.has(ref.url)) refs.set(ref.url, { listingId: ref.listingId, path });
+        }
+        if (!refs.size) return;
+
+        const storage = this.deletionStorageClient().storage.from('listings');
+        const copied = new Map<string, string>(); // original path -> retained public URL
+        for (const { listingId, path } of refs.values()) {
+            if (copied.has(path)) continue;
+            // Deterministic per original file, so a retry reuses the same copy.
+            const target = `${RETAINED_EVIDENCE_PREFIX}damage/${listingId}/${path.replace(/\//g, '_')}`;
+            const { error } = await storage.copy(path, target);
+            if (error && !/already exists|duplicate/i.test(error.message ?? '')) {
+                this.logger.error(`Could not retain damage evidence ${path}: ${error.message}`);
+                throw new ServiceUnavailableException(
+                    'Could not keep the damage photos of vehicles you have sold. Nothing has been deleted; please try again.',
+                );
+            }
+            copied.set(path, storage.getPublicUrl(target).data.publicUrl);
+        }
+
+        // All-or-nothing repoint of every reference, records and snapshots.
+        await this.prisma.$transaction(async (tx) => {
+            for (const [url, { path }] of refs) {
+                const fragment = url.includes('#') ? `#${url.split('#').slice(1).join('#')}` : '';
+                const next = copied.get(path)! + fragment;
+                await tx.damageRecord.updateMany({ where: { imageUrl: url }, data: { imageUrl: next } });
+                if (snapshotTable?.present) {
+                    await tx.$executeRaw`
+                        UPDATE purchase_listing_snapshots
+                        SET data = jsonb_set(data, '{damage}', (
+                            SELECT COALESCE(jsonb_agg(
+                                CASE WHEN d->>'imageUrl' = ${url} THEN jsonb_set(d, '{imageUrl}', to_jsonb(${next}::text)) ELSE d END
+                            ), '[]'::jsonb)
+                            FROM jsonb_array_elements(COALESCE(data->'damage', '[]'::jsonb)) d
+                        ))
+                        WHERE data->'damage' @> jsonb_build_array(jsonb_build_object('imageUrl', ${url}::text))
+                    `;
+                }
+            }
+        });
     }
 
     private async deleteSupabaseIdentity(userId: string): Promise<void> {

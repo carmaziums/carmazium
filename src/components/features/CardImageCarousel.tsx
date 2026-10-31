@@ -6,6 +6,7 @@ import Link from "next/link"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { ImageLightbox } from "./ImageLightbox"
 import { parseVehicleImagePresentation } from "@/lib/vehicleImagePresentation"
+import { cardImageUrl } from "@/lib/cardImageUrl"
 
 interface Props {
     images: string[]
@@ -57,6 +58,11 @@ export function CardImageCarousel({
 }: Props) {
     const bounded = React.useMemo(() => images.filter(Boolean).slice(0, maxImages).map(value => ({ raw: value, ...parseVehicleImagePresentation(value) })), [images, maxImages])
     const [index, setIndex] = React.useState(0)
+    // Only photos up to one past the furthest slide reached are rendered.
+    // Cards used to put every photo (often 20-30 per car) into the page, so
+    // a homepage of 10 cars carried hundreds of <img> tags. Slides already
+    // seen stay mounted so swiping back never flickers.
+    const [maxReached, setMaxReached] = React.useState(0)
     const [lightboxOpen, setLightboxOpen] = React.useState(false)
     const trackRef = React.useRef<HTMLDivElement>(null)
     const hasMultiple = bounded.length > 1
@@ -65,7 +71,15 @@ export function CardImageCarousel({
         const el = trackRef.current
         if (!el) return
         const clamped = Math.max(0, Math.min(bounded.length - 1, i))
-        el.scrollTo({ left: clamped * el.clientWidth, behavior: "smooth" })
+        // Mount the destination (and its next neighbour) before the browser
+        // starts moving the track. Otherwise a rapid arrow/keyboard click
+        // can reveal an empty snap slide while React catches up on scroll.
+        setMaxReached((prev) => Math.max(prev, clamped + 1))
+        requestAnimationFrame(() => {
+            if (trackRef.current === el) {
+                el.scrollTo({ left: clamped * el.clientWidth, behavior: "smooth" })
+            }
+        })
     }, [bounded.length])
 
     const go = React.useCallback((delta: number) => scrollToIndex(index + delta), [index, scrollToIndex])
@@ -77,6 +91,7 @@ export function CardImageCarousel({
         if (!el || el.clientWidth === 0) return
         const i = Math.round(el.scrollLeft / el.clientWidth)
         setIndex((prev) => (prev === i ? prev : i))
+        setMaxReached((prev) => (i > prev ? i : prev))
     }
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -115,8 +130,9 @@ export function CardImageCarousel({
                             below the image and clicks would land on the img element
                             (which has no handler). z-10 on the overlay guarantees
                             hit-testing reaches it. */}
+                        {i <= maxReached + 1 && (
                         <Image
-                            src={photo.src}
+                            src={cardImageUrl(photo.src)}
                             alt={i === 0 ? alt : `${alt} — image ${i + 1}`}
                             fill
                             sizes={sizes}
@@ -125,6 +141,7 @@ export function CardImageCarousel({
                             loading={i === 0 && eagerFirstImage ? "eager" : "lazy"}
                             draggable={false}
                         />
+                        )}
                         {lightboxOnTap ? (
                             <button
                                 type="button"

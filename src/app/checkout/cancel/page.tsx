@@ -87,7 +87,7 @@ function CheckoutCancelContent() {
                         </Button>
                     ) : listingId && (
                         <Button asChild className="gap-2 bg-gradient-to-r from-primary to-[#ff4d4d] hover:from-[#ff4d4d] hover:to-primary px-6">
-                            <Link href={`/vehicle/${listingId}`}>
+                            <Link href={`/buy-cars/${listingId}`}>
                                 <ArrowLeft size={18} /> Back to Vehicle
                             </Link>
                         </Button>

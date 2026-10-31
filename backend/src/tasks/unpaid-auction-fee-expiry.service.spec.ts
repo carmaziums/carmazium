@@ -25,7 +25,8 @@ function harness(sample: any = auction()) {
     };
     const email: any = { sendAuctionBuyerFeeReminderEmail: jest.fn().mockResolvedValue(undefined) };
     const auctions: any = { revertUnpaidWins: jest.fn().mockResolvedValue({ reverted: 0 }) };
-    const service = new UnpaidAuctionFeeExpiryService(auctions, prisma, notifications, email);
+    const grants: any = { applyPurchaseGrantToAuctionIfEligible: jest.fn().mockResolvedValue(false) };
+    const service = new UnpaidAuctionFeeExpiryService(auctions, prisma, notifications, email, grants);
     return { service, prisma, notifications, email, auctions };
 }
 
@@ -92,5 +93,44 @@ describe('72h auction buyer-fee reminder cron', () => {
         const h = harness();
         await h.service.handleUnpaidAuctionFeeExpiry();
         expect(h.auctions.revertUnpaidWins).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('buyer-fee reminders and Free Purchase Grants', () => {
+    it('does not ask for £125 when a grant that covered the win is applied', async () => {
+        const h = harness();
+        const grants: any = { applyPurchaseGrantToAuctionIfEligible: jest.fn().mockResolvedValue(true) };
+        const service = new UnpaidAuctionFeeExpiryService(h.auctions, h.prisma, h.notifications, h.email, grants);
+        await service.remindUnpaidWinners(new Date('2026-10-03T11:00:00.000Z'));
+        expect(grants.applyPurchaseGrantToAuctionIfEligible).toHaveBeenCalledWith('auction-1', 'winner-1');
+        expect(h.notifications.create).not.toHaveBeenCalled();
+        expect(h.email.sendAuctionBuyerFeeReminderEmail).not.toHaveBeenCalled();
+    });
+
+    it('still reminds when the check confirms no grant applies', async () => {
+        const h = harness();
+        const grants: any = { applyPurchaseGrantToAuctionIfEligible: jest.fn().mockResolvedValue(false) };
+        const service = new UnpaidAuctionFeeExpiryService(h.auctions, h.prisma, h.notifications, h.email, grants);
+        await service.remindUnpaidWinners(new Date('2026-10-03T11:00:00.000Z'));
+        expect(h.notifications.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('defers (does not claim or send) the reminder when grant cover cannot be confirmed', async () => {
+        const h = harness();
+        const grants: any = { applyPurchaseGrantToAuctionIfEligible: jest.fn().mockRejectedValue(new Error('db')) };
+        const service = new UnpaidAuctionFeeExpiryService(h.auctions, h.prisma, h.notifications, h.email, grants);
+        await service.remindUnpaidWinners(new Date('2026-10-03T11:00:00.000Z'));
+        expect(h.prisma.auction.updateMany).not.toHaveBeenCalled();
+        expect(h.notifications.create).not.toHaveBeenCalled();
+    });
+});
+
+describe('missing grant service fails safe (reminders)', () => {
+    it('sends no £125 reminder when the grant service is absent', async () => {
+        const h = harness();
+        const service = new UnpaidAuctionFeeExpiryService(h.auctions, h.prisma, h.notifications, h.email, undefined as any);
+        await service.remindUnpaidWinners(new Date('2026-10-03T11:00:00.000Z'));
+        expect(h.prisma.auction.updateMany).not.toHaveBeenCalled();
+        expect(h.notifications.create).not.toHaveBeenCalled();
     });
 });

@@ -15,12 +15,12 @@ import {
     PipelineRow,
 } from "@/components/dealer/PipelineRow"
 import type { PurchaseItem, PurchaseStatus } from "@/components/dealer/PipelineRow"
+import { PendingRetailPurchaseRow } from "@/components/dealer/PendingRetailPurchaseRow"
 import { apiClient } from "@/lib/apiClient"
 import { getMyOffers, type Offer } from "@/lib/listingApi"
 import { pendingRetailPurchases } from "@/lib/pendingRetailPurchases"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 import { PurchaseDestinations } from "@/components/dealer/PurchaseDestinations"
-import { CompletePurchaseButton } from "@/components/purchases/CompletePurchaseButton"
 import { useDealerAccess } from "@/context/DealerAccessContext"
 import {
     buyerCancelledSales, isPurchaseHistoryStatus, loadAllPages, matchesPurchaseSearch,
@@ -414,31 +414,9 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" }) {
                                 The seller has accepted your offer and the car is reserved for you. Arrange inspection, payment and
                                 collection with the seller. Once you have paid, either you or the seller can complete the sale.
                             </p>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                            <div className="space-y-2">
                                 {shownPendingRetail.map(offer => (
-                                    <article key={offer.id} className="dealer-glass-card p-4 md:p-5 space-y-3">
-                                        <div className="flex flex-wrap items-start justify-between gap-2">
-                                            <div className="min-w-0">
-                                                <h3 className="font-bold break-words">{offer.listing?.title || "Retail vehicle"}</h3>
-                                                <p className="text-xs text-[var(--text-muted)] mt-1">
-                                                    Accepted {new Date(offer.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                                                </p>
-                                            </div>
-                                            <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-bold text-amber-300">
-                                                Sale Pending
-                                            </span>
-                                        </div>
-                                        <p className="text-lg font-black tabular-nums">
-                                            £{Number(offer.finalAmount ?? offer.counterAmount ?? offer.amount).toLocaleString("en-GB")}
-                                        </p>
-                                        <Link
-                                            href="/dashboard/buyer/offers"
-                                            className="inline-flex min-h-[44px] items-center rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
-                                        >
-                                            View accepted offer and contact seller
-                                        </Link>
-                                        <CompletePurchaseButton listingId={offer.listingId} onCompleted={() => setRefreshVersion(v => v + 1)} />
-                                    </article>
+                                    <PendingRetailPurchaseRow key={offer.id} offer={offer} onCompleted={() => setRefreshVersion(v => v + 1)} />
                                 ))}
                             </div>
                         </section>

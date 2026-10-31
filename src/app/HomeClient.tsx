@@ -11,7 +11,8 @@ import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
 import { useRef, useState, useEffect } from "react"
 import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
-import { formatPrice, type Listing } from "@/lib/listingApi"
+import { formatPrice } from "@/lib/listingApi"
+import type { HomeCardListing } from "@/lib/homeCardListing"
 import { aiSearch, type AiSearchResult } from "@/lib/aiApi"
 import { CarCard } from "@/components/features/CarCard"
 import { getActiveAuctions, type Auction, getCurrentBid, getBidCount } from "@/lib/auctionApi"
@@ -30,8 +31,8 @@ const BrowseByBodyType = dynamic(() => import("@/components/features/BrowseByBod
 const TestimonialsSection = dynamic(() => import("@/components/features/TestimonialsSection").then(mod => mod.TestimonialsSection))
 
 interface HomeClientProps {
-  initialListings: Listing[]
-  latestRetailListings: Listing[]
+  initialListings: HomeCardListing[]
+  latestRetailListings: HomeCardListing[]
   latestBlogPosts?: BlogPostSummary[]
 }
 

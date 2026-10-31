@@ -426,6 +426,30 @@ export class FreeListingGrantsService {
      * contact gating, handover validation, seller-bonus review and audit trails
      * keep using the existing buyerFeePaid/buyerFeeTransactionId lifecycle.
      */
+    /**
+     * An earlier, since-replaced grant of this user that covered `wonAt`.
+     * The history table is filled by a database trigger when a grant row is
+     * replaced (manual migration 20261031_admin_free_purchase_grant_history);
+     * before that migration is applied there is no history to consult.
+     */
+    private async replacedGrantCovering(tx: Prisma.TransactionClient, userId: string, wonAt: Date): Promise<string | null> {
+        const [table] = await tx.$queryRaw<Array<{ present: boolean }>>(Prisma.sql`
+            SELECT to_regclass('public.admin_free_purchase_grant_history') IS NOT NULL AS present
+        `);
+        if (table?.present !== true) return null;
+        const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+            SELECT "id"
+            FROM "admin_free_purchase_grant_history"
+            WHERE "userId" = ${userId}
+              AND "startedAt" <= ${wonAt}
+              AND ("expiresAt" IS NULL OR "expiresAt" > ${wonAt})
+              AND ("revokedAt" IS NULL OR "revokedAt" > ${wonAt})
+            ORDER BY "startedAt" DESC
+            LIMIT 1
+        `);
+        return rows[0]?.id ?? null;
+    }
+
     async applyPurchaseGrantToAuctionIfEligible(auctionId: string, userId: string): Promise<boolean> {
         return this.prisma.$transaction(async (tx) => {
             const rows = await tx.$queryRaw<FreePurchaseGrantRow[]>(Prisma.sql`
@@ -437,7 +461,11 @@ export class FreeListingGrantsService {
                 FOR UPDATE
             `);
             const grant = rows[0];
-            if (!grant || this.purchaseStatus(grant) !== 'ACTIVE') return false;
+            // Owner rule: eligibility is decided by when the auction was WON,
+            // not when this runs. A grant that has since expired or been
+            // revoked still covers a win made while it was active; expiry and
+            // revocation are compared with wonAt below, never with "now".
+            if (!grant) return false;
 
             // Serialize with any fee application against this same auction.
             await tx.$queryRaw(Prisma.sql`
@@ -471,14 +499,23 @@ export class FreeListingGrantsService {
                 return false;
             }
 
-            // A grant is prospective. Creating/replacing one after a dealer has
-            // already won an auction must not silently waive an existing £125 fee.
-            if (!auction.wonAt || auction.wonAt.getTime() < grant.createdAt.getTime()) {
-                return false;
-            }
-            if (grant.expiresAt && auction.wonAt.getTime() >= grant.expiresAt.getTime()) {
-                return false;
-            }
+            if (!auction.wonAt) return false;
+            const wonAt = auction.wonAt;
+            // A grant window covers wins from its start until it expired or
+            // was revoked. A grant is prospective: creating/replacing one after
+            // a dealer has already won must not waive an existing £125 fee.
+            const covers = (w: { createdAt: Date; expiresAt: Date | null; revokedAt: Date | null }) =>
+                wonAt.getTime() >= w.createdAt.getTime()
+                && (!w.expiresAt || wonAt.getTime() < w.expiresAt.getTime())
+                && (!w.revokedAt || wonAt.getTime() < w.revokedAt.getTime());
+            // The current grant, or an earlier one an admin has since replaced
+            // (re-granting overwrites the row; the database keeps the replaced
+            // window in admin_free_purchase_grant_history).
+            const coveringIsCurrent = covers(grant);
+            const coveringId = coveringIsCurrent
+                ? grant.id
+                : await this.replacedGrantCovering(tx, userId, wonAt);
+            if (!coveringId) return false;
 
             // The checkout-reservation path takes the same auction row lock.
             // Do not waive a fee while a current-run Checkout/PaymentIntent
@@ -504,7 +541,7 @@ export class FreeListingGrantsService {
                     amount: 0,
                     type: 'COMMISSION',
                     status: 'COMPLETED',
-                    description: `${ADMIN_FREE_PURCHASE_TRANSACTION_PREFIX}${grant.id})`,
+                    description: `${ADMIN_FREE_PURCHASE_TRANSACTION_PREFIX}${coveringId})`,
                 },
                 select: { id: true },
             });
@@ -517,16 +554,26 @@ export class FreeListingGrantsService {
                 },
             });
 
-            await tx.$executeRaw(Prisma.sql`
-                UPDATE "admin_free_purchase_grants"
-                SET
-                    "lastUsedAt" = NOW(),
-                    "useCount" = "useCount" + 1,
-                    "updatedAt" = NOW()
-                WHERE "id" = ${grant.id}
-                  AND "revokedAt" IS NULL
-                  AND ("expiresAt" IS NULL OR "expiresAt" > NOW())
-            `);
+            // Counted on whichever grant covered the win, even if it has since
+            // expired, been revoked or been replaced.
+            if (coveringIsCurrent) {
+                await tx.$executeRaw(Prisma.sql`
+                    UPDATE "admin_free_purchase_grants"
+                    SET
+                        "lastUsedAt" = NOW(),
+                        "useCount" = "useCount" + 1,
+                        "updatedAt" = NOW()
+                    WHERE "id" = ${grant.id}
+                `);
+            } else {
+                await tx.$executeRaw(Prisma.sql`
+                    UPDATE "admin_free_purchase_grant_history"
+                    SET "useCount" = "useCount" + 1
+                    WHERE "id" = ${coveringId}
+                `);
+            }
+            // (Counted even if the grant has since expired or been revoked: the
+            // use belongs to a win made while it was active.)
 
             return true;
         });

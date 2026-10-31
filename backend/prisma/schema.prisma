@@ -1953,6 +1953,50 @@ model Sale {
   @@map("sales")
 }
 
+// Immutable copy of the advert a buyer committed to, taken when the Sale is
+// recorded. Deliberately has no foreign keys: it must outlive later edits,
+// soft deletion of the listing and cancellation of the Sale. One per
+// (listing, buyer); the first capture is never overwritten. Contains listing
+// evidence only (never seller contact details).
+// Applied by hand: prisma/migrations/20261031120000_purchase_snapshots_inspection_notes.
+// Reads and writes are off until PURCHASE_SNAPSHOTS_ENABLED=true.
+// One per Sale (not per listing+buyer), so a repeat purchase of the same car
+// after a cancellation gets its own snapshot and notes.
+model PurchaseListingSnapshot {
+  id         String   @id @default(uuid())
+  saleId     String   @unique
+  listingId  String
+  buyerId    String
+  capturedAt DateTime @default(now())
+  /// Output of buildListingRecordData() at capture time.
+  data       Json
+
+  @@index([listingId, buyerId])
+  @@map("purchase_listing_snapshots")
+}
+
+// A dealer's own inspection findings for a purchased vehicle, recorded
+// against the original disclosure. Append-only. Never changes the Sale's
+// price or status; any price change still goes through the existing
+// adjustments/cancellation process.
+model PurchaseInspectionNote {
+  id          String   @id @default(uuid())
+  listingId   String
+  /// Dealership owner user id (the Sale's buyerId), so staff notes stay with the business.
+  buyerId     String
+  saleId      String
+  authorId    String
+  /// NEW_DAMAGE, DIFFERS_FROM_ADVERT or GENERAL
+  kind        String
+  part        String?
+  description String
+  createdAt   DateTime @default(now())
+
+  @@index([listingId, buyerId])
+  @@index([saleId])
+  @@map("purchase_inspection_notes")
+}
+
 // ============================================================================
 // ADDRESS VERIFICATION (Trader/Buyer Protection unlock)
 // ============================================================================

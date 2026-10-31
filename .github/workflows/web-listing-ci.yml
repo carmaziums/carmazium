@@ -25,6 +25,8 @@ on:
       - "src/app/HomeClient.tsx"
       - "src/app/dashboard/dealer/purchases/**"
       - "src/app/dashboard/user/page.tsx"
+      - "src/lib/outgoingOfferFilters.ts"
+      - "scripts/test-outgoing-offer-filters.test.mjs"
       - "src/app/dashboard/buyer/**"
       - "src/app/dashboard/seller/**"
       - "src/components/dashboard/PrivatePurchasesTab.tsx"
@@ -38,6 +40,7 @@ on:
       - "src/lib/purchaseDestinations.ts"
       - "src/components/dealer/PurchaseDestinations.tsx"
       - "src/components/dealer/DealerPurchasesView.tsx"
+      - "src/components/dealer/PendingRetailPurchaseRow.tsx"
       - "src/components/dealer/PurchaseVehicleRecord.tsx"
       - "src/app/dashboard/dealer/purchases/**"
       - "src/app/dashboard/dealer/inventory/page.tsx"
@@ -51,6 +54,10 @@ on:
       - "src/app/dashboard/buyer/offers/page.tsx"
       - "src/components/dashboard/PrivatePurchasesTab.tsx"
       - "src/components/dashboard/PageHeader.tsx"
+      - "scripts/test-dealer-purchase-snapshot.test.mjs"
+      - "src/components/dealer/PurchaseInspectionNotes.tsx"
+      - "backend/src/dealers/**"
+      - "backend/prisma/migrations/20261031120000_purchase_snapshots_inspection_notes/**"
       - "src/components/dealer/BuyAndBidTabs.tsx"
       - "src/lib/pendingRetailPurchases.ts"
       - "scripts/test-dealer-pending-retail-purchases.test.mjs"
@@ -60,6 +67,10 @@ on:
       - "src/app/search/page.tsx"
       - "scripts/test-retail-card-transmission.test.mjs"
       - "scripts/test-home-retail-inventory-truth.test.mjs"
+      - "scripts/test-home-card-payload.test.mjs"
+      - "src/lib/homeCardListing.ts"
+      - "src/lib/cardImageUrl.ts"
+      - "src/components/features/CardImageCarousel.tsx"
       - "src/lib/googleAds.ts"
       - "src/lib/gtm.ts"
       - "src/app/checkout/success/page.tsx"
@@ -128,6 +139,9 @@ jobs:
       - name: Verify unified private buyer/seller dashboard and legacy compatibility
         run: node --test scripts/test-private-dashboard-consolidation.test.mjs
 
+      - name: Verify current, history, accepted, rejected and cancelled My Offers filters
+        run: node --test scripts/test-outgoing-offer-filters.test.mjs
+
       - name: Verify secure dealer purchase detail web and native parity
         run: node --test scripts/test-dealer-purchase-detail.test.mjs
 
@@ -137,6 +151,9 @@ jobs:
       - name: Verify dealer Stock status, sort and import controls fit on phones (web and app)
         run: node --test scripts/test-dealer-inventory-mobile.test.mjs
 
+      - name: Verify purchase snapshots ship switched off and inspection notes never change a sale
+        run: node --test scripts/test-dealer-purchase-snapshot.test.mjs
+
       - name: Verify either party can complete an accepted retail sale (web and app)
         run: node --test scripts/test-buyer-complete-sale.test.mjs
 
@@ -145,6 +162,9 @@ jobs:
 
       - name: Verify homepage live inventory and honest photo/payment presentation
         run: node --test scripts/test-home-retail-inventory-truth.test.mjs
+
+      - name: Homepage card payload and photo windowing
+        run: node --test scripts/test-home-card-payload.test.mjs
 
       - name: Verify admin-only review and dual-channel official data preservation
         run: node --test scripts/test-admin-vehicle-review.test.mjs

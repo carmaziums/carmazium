@@ -9,6 +9,11 @@ describe('ImageCleanupService', () => {
             listing: {
                 findMany: jest.fn(),
             },
+            damageRecord: {
+                findMany: jest.fn().mockResolvedValue([]),
+            },
+            // to_regclass check: snapshot table not present by default.
+            $queryRaw: jest.fn().mockResolvedValue([{ present: false }]),
         } as any;
         const config = {
             get: jest.fn(() => undefined),
@@ -155,5 +160,98 @@ describe('ImageCleanupService', () => {
             expect.objectContaining({ offset: 1000 }),
         );
         expect(remove).toHaveBeenCalledTimes(11);
+    });
+
+    const oldDate = () => new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    const damageFolder = (list: jest.Mock, names: string[]) => list.mockImplementation(async (prefix: string) => {
+        if (prefix === '') return { data: [{ name: ownerId, id: null }], error: null };
+        if (prefix === `${ownerId}/damage`) {
+            return { data: names.map(name => ({ name, id: name, created_at: oldDate() })), error: null };
+        }
+        return { data: [], error: null };
+    });
+    const url = (name: string) => `${supabaseUrl}/storage/v1/object/public/listings/${ownerId}/damage/${name}`;
+
+    it('never deletes declared-damage photos, which are not in listing.images', async () => {
+        const { service, prisma, list, remove } = makeService();
+        prisma.listing.findMany.mockResolvedValue([{ images: [] }]);
+        prisma.damageRecord.findMany.mockResolvedValue([{ imageUrl: `${url('declared.jpg')}#meta` }]);
+        damageFolder(list, ['declared.jpg', 'orphan.jpg']);
+
+        await service.handleCron();
+
+        expect(remove).toHaveBeenCalledWith([`${ownerId}/damage/orphan.jpg`]);
+        expect(remove).not.toHaveBeenCalledWith(expect.arrayContaining([`${ownerId}/damage/declared.jpg`]));
+    });
+
+    it('keeps damage photos referenced by purchase snapshots once that table exists', async () => {
+        const { service, prisma, list, remove } = makeService();
+        prisma.listing.findMany.mockResolvedValue([]);
+        prisma.$queryRaw
+            .mockResolvedValueOnce([{ present: true }])
+            .mockResolvedValueOnce([{ url: url('bought.jpg') }]);
+        damageFolder(list, ['bought.jpg', 'orphan.jpg']);
+
+        await service.handleCron();
+
+        expect(remove).toHaveBeenCalledWith([`${ownerId}/damage/orphan.jpg`]);
+        expect(remove).not.toHaveBeenCalledWith(expect.arrayContaining([`${ownerId}/damage/bought.jpg`]));
+    });
+
+    it('deletes nothing if the damage-photo lookup fails', async () => {
+        const { service, prisma, list, remove } = makeService();
+        prisma.listing.findMany.mockResolvedValue([]);
+        prisma.damageRecord.findMany.mockRejectedValue(new Error('db down'));
+        damageFolder(list, ['declared.jpg']);
+
+        await service.handleCron();
+
+        expect(remove).not.toHaveBeenCalled();
+    });
+
+    it('deletes nothing if the snapshot-photo lookup fails', async () => {
+        const { service, prisma, list, remove } = makeService();
+        prisma.listing.findMany.mockResolvedValue([]);
+        prisma.$queryRaw
+            .mockResolvedValueOnce([{ present: true }])
+            .mockRejectedValueOnce(new Error('snapshot query failed'));
+        damageFolder(list, ['bought.jpg', 'orphan.jpg']);
+
+        await service.handleCron();
+
+        expect(remove).not.toHaveBeenCalled();
+    });
+
+    it('deletes nothing if the snapshot-table check itself fails', async () => {
+        const { service, prisma, list, remove } = makeService();
+        prisma.listing.findMany.mockResolvedValue([]);
+        prisma.$queryRaw.mockRejectedValueOnce(new Error('to_regclass failed'));
+        damageFolder(list, ['orphan.jpg']);
+
+        await service.handleCron();
+
+        expect(remove).not.toHaveBeenCalled();
+    });
+
+    it('does not protect ordinary gallery photos just because a snapshot exists', async () => {
+        const { service, prisma, list, remove } = makeService();
+        prisma.listing.findMany.mockResolvedValue([]);
+        prisma.$queryRaw
+            .mockResolvedValueOnce([{ present: true }])
+            .mockResolvedValueOnce([]); // only damage URLs are queried
+        list.mockImplementation(async (prefix: string) => {
+            if (prefix === '') return { data: [{ name: ownerId, id: null }], error: null };
+            if (prefix === `${ownerId}/exterior`) {
+                return { data: [{ name: 'gallery.jpg', id: 'g', created_at: oldDate() }], error: null };
+            }
+            return { data: [], error: null };
+        });
+
+        await service.handleCron();
+
+        expect(remove).toHaveBeenCalledWith([`${ownerId}/exterior/gallery.jpg`]);
+        const snapshotSql = prisma.$queryRaw.mock.calls[1][0].join('');
+        expect(snapshotSql).toContain("p.data->'damage'");
+        expect(snapshotSql).not.toContain("data->'images'");
     });
 });
