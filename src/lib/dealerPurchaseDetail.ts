@@ -28,12 +28,18 @@ export interface DealerPurchaseDetail {
     }
     /** Auction purchases only. */
     auction?: { wonAt: string | null; winningBid: number | null; buyerFeeDeadlineAt: string | null } | null
-    /** Seller-supplied advert as currently stored (no purchase-time snapshot yet). */
+    /** Seller-supplied advert: the purchase-time snapshot when one exists, else the current listing. */
     listingRecord?: PurchaseListingRecord
+    /** True once the backend has snapshots and inspection notes switched on. */
+    inspectionNotesEnabled?: boolean
 }
 
 export interface PurchaseListingRecord {
     source: "CURRENT_LISTING" | "PURCHASE_SNAPSHOT"
+    /** When the snapshot was saved; null for the current-listing fallback. */
+    capturedAt?: string | null
+    /** The snapshot was saved more than an hour after the sale (by the retry sweep). */
+    capturedAfterSale?: boolean
     lastUpdatedAt: string | null
     removedFromSaleAt: string | null
     images: string[]

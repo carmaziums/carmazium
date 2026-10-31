@@ -1,3 +1,4 @@
+import { capturePurchaseSnapshot } from '../dealers/purchase-listing-record';
 import { buildFeatureConditions } from './feature-search';
 import { buildGradeSearchWhere } from './grade-search';
 import { summariseHistoricalQuotes, ArchivedValuationObservation, QUOTE_HISTORY_MONTHS } from './valuation-quote-history';
@@ -3446,6 +3447,8 @@ export class ListingsService {
 
             return updatedListing;
         });
+        // Post-commit and best-effort: keep the advert the buyer committed to.
+        void capturePurchaseSnapshot(this.prisma, { listingId: id, buyerId: agreedBuyerId });
 
         if (effectiveSellerId) {
             this.sellersService.incrementSales(effectiveSellerId).catch((err) => {

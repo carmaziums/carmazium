@@ -11,6 +11,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { BottomSheet } from '../../components/BottomSheet';
 import { ImageLightbox } from '../../components/ImageLightbox';
 import { BuyerDamageViewer } from '../../components/damage/BuyerDamageViewer';
+import { PurchaseInspectionNotes } from '../../components/dealer/PurchaseInspectionNotes';
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 import { apiClient } from '../../lib/apiClient';
 import { getServiceSettings } from '../../lib/servicesApi';
@@ -44,9 +45,13 @@ interface PurchaseDetail {
     sellerBonusReleased: boolean;
   };
   auction?: { wonAt: string | null; winningBid: number | null; buyerFeeDeadlineAt: string | null } | null;
-  /** Seller-supplied advert as currently stored; no purchase-time snapshot yet. */
+  /** True once the backend has snapshots and inspection notes switched on. */
+  inspectionNotesEnabled?: boolean;
+  /** Seller-supplied advert: purchase-time snapshot when one exists, else the current listing. */
   listingRecord?: {
     source: 'CURRENT_LISTING' | 'PURCHASE_SNAPSHOT';
+    capturedAt?: string | null;
+    capturedAfterSale?: boolean;
     lastUpdatedAt: string | null; removedFromSaleAt: string | null;
     images: string[]; description: string | null;
     variant: string | null; fuelType: string | null; transmission: string | null;
@@ -78,6 +83,9 @@ interface Seller {
 
 const money = (amount: number): string =>
   '£' + Number(amount).toLocaleString('en-GB', { maximumFractionDigits: 0 });
+const dateTime = (value: string | null | undefined): string => value
+  ? new Date(value).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  : 'an unknown time';
 const date = (value: string | null | undefined): string =>
   value ? new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     : 'Not yet recorded';
@@ -122,6 +130,8 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
   // The 3D viewer is a WebView, so it only mounts when the dealer asks for it.
   const [show3d, setShow3d] = useState(false);
+  // Gallery photos are not kept forever (only damage evidence is).
+  const [missingPhotos, setMissingPhotos] = useState<Set<number>>(() => new Set());
   // Same emergency switch as the website (NEXT_PUBLIC_FEATURE_DELIVERY),
   // read from the backend that enforces it. Viewing an existing job is
   // always allowed; only new delivery jobs are blocked.
@@ -260,9 +270,13 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
               const damagePhotos = r.damage.map(x => x.imageUrl).filter((u): u is string => !!u);
               return (
                 <DetailSection title="Listing record" icon="clipboard-outline">
-                  {/* Honest provenance: no purchase-time snapshot exists yet. */}
-                  <Text style={styles.warning}>
-                    {r.source === 'PURCHASE_SNAPSHOT' ? 'Saved when you bought this vehicle.'
+                  {/* Honest provenance: the purchase-time snapshot, or the
+                      current advert for purchases made before snapshots. */}
+                  <Text style={r.source === 'PURCHASE_SNAPSHOT' ? styles.snapshotNote : styles.warning}>
+                    {r.source === 'PURCHASE_SNAPSHOT'
+                      ? `${r.capturedAfterSale
+                        ? `Saved ${r.capturedAt ? dateTime(r.capturedAt) : 'at an unknown time'}, after the sale was recorded on ${dateTime(detail.purchasedAt)}. The seller could have changed the advert in between.`
+                        : `Saved when you bought this vehicle${r.capturedAt ? `, ${date(r.capturedAt)}` : ''}.`} Later changes by the seller don't affect it.${r.removedFromSaleAt ? ` The live advert was removed ${date(r.removedFromSaleAt)}.` : ''}`
                       : `Current listing${r.lastUpdatedAt ? `, last updated ${date(r.lastUpdatedAt)}` : ''}. The seller may have changed it since you bought the vehicle.${r.removedFromSaleAt ? ` Removed from sale ${date(r.removedFromSaleAt)}.` : ''}`}
                   </Text>
                   {photos.length > 0 ? (
@@ -271,7 +285,14 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
                         <TouchableOpacity key={uri + i} accessibilityRole="imagebutton"
                           accessibilityLabel={`Open photo ${i + 1} of ${photos.length}`}
                           onPress={() => setLightbox({ images: photos, index: i })}>
-                          <Image source={{ uri }} style={styles.recordPhoto} contentFit="cover" />
+                          {missingPhotos.has(i) ? (
+                            <View style={[styles.recordPhoto, styles.recordPhotoMissing]}>
+                              <Text style={styles.recordPhotoMissingText}>Photo no longer available</Text>
+                            </View>
+                          ) : (
+                            <Image source={{ uri }} style={styles.recordPhoto} contentFit="cover"
+                              onError={() => setMissingPhotos(prev => new Set(prev).add(i))} />
+                          )}
                         </TouchableOpacity>
                       ))}
                     </ScrollView>
@@ -320,6 +341,8 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
                 </DetailSection>
               );
             })()}
+
+            {detail.inspectionNotesEnabled && <PurchaseInspectionNotes saleId={detail.id} />}
 
             <DetailSection title="Seller details" icon="person-outline">
               {sellerError && <Text style={styles.warning}>Seller details could not be loaded.</Text>}
@@ -492,9 +515,12 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
 const styles = StyleSheet.create({
   recordPhotos: { marginVertical: 10 },
   recordPhoto: { width: 132, height: 99, borderRadius: 10, marginRight: 8, backgroundColor: Colors.bgCard },
+  recordPhotoMissing: { alignItems: 'center', justifyContent: 'center', padding: 6 },
+  recordPhotoMissingText: { color: Colors.textMuted, fontSize: 11, textAlign: 'center' },
   recordText: { color: Colors.textPrimary, fontSize: 14, lineHeight: 20, marginVertical: 6, flexShrink: 1 },
   recordSubhead: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 15, marginTop: 12, marginBottom: 4 },
   damageRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  snapshotNote: { color: Colors.success, fontFamily: FontFamily.medium, fontSize: 13, lineHeight: 19 },
   show3dButton: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, alignSelf: 'flex-start' },
   show3dText: { fontFamily: FontFamily.bold, fontSize: 14, color: Colors.accent },
   damagePhoto: { width: 72, height: 54, borderRadius: 8, backgroundColor: Colors.bgCard },
