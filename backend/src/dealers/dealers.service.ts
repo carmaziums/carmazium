@@ -17,6 +17,7 @@ import {
     hasDealerPermission,
     resolveDealerActor,
 } from './dealer-access';
+import { buyerFeeDeadlineAt } from '../auctions/buyer-fee-deadline';
 
 @Injectable()
 export class DealersService {
@@ -1937,9 +1938,27 @@ export class DealersService {
                         id: true, slug: true, type: true, status: true,
                         title: true, images: true, year: true, make: true,
                         model: true, mileage: true, vrm: true, location: true,
+                        // Full advert record for inspection. Listing evidence
+                        // only; seller contact stays behind /:id/seller.
+                        description: true, variant: true, fuelType: true,
+                        transmission: true, color: true, doors: true, seats: true,
+                        engineSize: true, bhp: true, bodyType: true, driveType: true,
+                        features: true, vin: true, condition: true,
+                        monthOfFirstRegistration: true, motStatus: true,
+                        motExpiryDate: true, motHistory: true, serviceHistory: true,
+                        numberOfKeys: true, owners: true, exteriorGrade: true,
+                        writeOffCategory: true, mechanicalIssues: true,
+                        electricalIssues: true, hasOutstandingFinance: true,
+                        stolenRecovered: true, isLegalRegisteredKeeper: true,
+                        updatedAt: true, deletedAt: true,
+                        damageRecords: {
+                            select: { id: true, part: true, type: true, size: true, coords: true, imageUrl: true, createdAt: true },
+                            orderBy: { createdAt: 'asc' },
+                        },
                         auction: {
                             select: {
                                 id: true, winnerId: true, buyerFeePaid: true,
+                                status: true, wonAt: true, winningBidAmount: true,
                                 buyerFeeTransactionId: true, sellerFundsConfirmedAt: true,
                                 handoverSubmittedAt: true, handoverRejectedAt: true,
                                 sellerBonusReleased: true,
@@ -2003,6 +2022,43 @@ export class DealersService {
                 sellerFundsConfirmedAt: auctionPurchase
                     ? (auction?.sellerFundsConfirmedAt?.toISOString() ?? null)
                     : null,
+            },
+            auction: auctionPurchase && auction ? {
+                wonAt: auction.wonAt?.toISOString() ?? null,
+                winningBid: auction.winningBidAmount != null ? Number(auction.winningBidAmount) : null,
+                // 72 hours from the recorded win (buyer-fee-deadline.ts); null once paid.
+                buyerFeeDeadlineAt: auction.winnerId === buyerId ? buyerFeeDeadlineAt(auction) : null,
+            } : null,
+            // Seller-supplied advert as currently stored. CarMazium does not yet
+            // keep a snapshot taken at purchase, so this is labelled as the
+            // current record; never presented as the original advert.
+            listingRecord: {
+                source: 'CURRENT_LISTING' as const,
+                lastUpdatedAt: listing.updatedAt?.toISOString() ?? null,
+                removedFromSaleAt: listing.deletedAt?.toISOString() ?? null,
+                images: listing.images ?? [],
+                description: listing.description,
+                variant: listing.variant, fuelType: listing.fuelType,
+                transmission: listing.transmission, color: listing.color,
+                doors: listing.doors, seats: listing.seats, engineSize: listing.engineSize,
+                bhp: listing.bhp, bodyType: listing.bodyType, driveType: listing.driveType,
+                features: listing.features, vin: listing.vin, condition: listing.condition,
+                firstRegistered: listing.monthOfFirstRegistration,
+                motStatus: listing.motStatus, motExpiryDate: listing.motExpiryDate,
+                motHistory: listing.motHistory, serviceHistory: listing.serviceHistory,
+                numberOfKeys: listing.numberOfKeys, owners: listing.owners,
+                exteriorGrade: listing.exteriorGrade, writeOffCategory: listing.writeOffCategory,
+                sellerDeclarations: {
+                    mechanicalIssues: listing.mechanicalIssues,
+                    electricalIssues: listing.electricalIssues,
+                    hasOutstandingFinance: listing.hasOutstandingFinance,
+                    stolenRecovered: listing.stolenRecovered,
+                    isLegalRegisteredKeeper: listing.isLegalRegisteredKeeper,
+                },
+                damage: (listing.damageRecords ?? []).map(d => ({
+                    id: d.id, part: d.part, type: d.type, size: d.size,
+                    coords: d.coords, imageUrl: d.imageUrl,
+                })),
             },
             delivery: delivery ? {
                 jobId: delivery.id, status: delivery.status,

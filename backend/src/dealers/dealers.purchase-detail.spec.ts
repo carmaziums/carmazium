@@ -96,6 +96,37 @@ describe('DealersService purchased vehicle detail', () => {
         expect(result.payment.sellerFundsConfirmedAt).toBeNull();
     });
 
+    it('returns the full advert record for inspection, labelled as the current listing, without seller contact', async () => {
+        const base = sale('AUCTION', {
+            id: 'auction-1', winnerId: 'owner-1', status: 'ENDED',
+            wonAt: new Date('2026-10-30T10:00:00Z'), winningBidAmount: 7400,
+            buyerFeePaid: false, buyerFeeTransactionId: null,
+            sellerFundsConfirmedAt: null, handoverSubmittedAt: null,
+            handoverRejectedAt: null, sellerBonusReleased: false,
+        });
+        Object.assign(base.listing, {
+            images: ['https://example.test/1.jpg', 'https://example.test/2.jpg'],
+            description: 'One owner, full history', numberOfKeys: 2, owners: '1',
+            serviceHistory: 'Full Main Dealer', mechanicalIssues: 'Slight clutch judder',
+            updatedAt: new Date('2026-10-31T09:00:00Z'), deletedAt: null,
+            damageRecords: [{ id: 'd1', part: 'Front Bumper', type: 'Scratch', size: '0-5cm',
+                coords: { x: 1, y: 2, view: 'FRONT' }, imageUrl: 'https://example.test/d1.jpg' }],
+        });
+        prisma.sale.findFirst.mockResolvedValue(base);
+        const result = await service.getDealerPurchaseDetail('owner-1', 'sale-1');
+        expect(result.listingRecord.source).toBe('CURRENT_LISTING');
+        expect(result.listingRecord.images).toHaveLength(2);
+        expect(result.listingRecord.sellerDeclarations.mechanicalIssues).toBe('Slight clutch judder');
+        expect(result.listingRecord.damage[0]).toMatchObject({ part: 'Front Bumper', imageUrl: 'https://example.test/d1.jpg' });
+        expect(result.auction).toEqual({
+            wonAt: '2026-10-30T10:00:00.000Z', winningBid: 7400,
+            buyerFeeDeadlineAt: '2026-11-02T10:00:00.000Z',
+        });
+        // Unpaid fee: listing evidence is visible, seller contact never is.
+        const json = JSON.stringify(result);
+        for (const key of ['sellerEmail', 'sellerPhone', 'sellerAddress']) expect(json).not.toContain(key);
+    });
+
     it('reports confirmed auction funds and actual recorded delivery job only', async () => {
         prisma.sale.findFirst.mockResolvedValue(sale('AUCTION', {
             id: 'auction-1', winnerId: 'owner-1',
