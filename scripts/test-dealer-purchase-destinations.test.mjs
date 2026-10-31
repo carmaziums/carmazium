@@ -7,8 +7,8 @@ import ts from "typescript"
 // Dealer mobile UX spec, items 1 and 2:
 //  - an Auction Wins card opens that vehicle's purchase record, which carries
 //    the full advert evidence but never seller contact before the fee gate;
-//  - Auction Wins, All Purchases and Purchase History are three separate
-//    destinations on web and app, and All Purchases no longer lands on a page
+//  - Retail Purchases is a fourth web destination between Auction Wins
+//    and All Purchases; existing native app destinations remain unchanged.
 //    titled Purchase History.
 
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8")
@@ -33,35 +33,57 @@ function load(path, modules = {}) {
 const dest = load("src/lib/purchaseDestinations.ts")
 const { getDealerRoute } = load("src/config/dealerRouteConfig.ts")
 
-test("three distinct purchase destinations, each with its own page", () => {
+test("four distinct web purchase destinations, each with its own page", () => {
     const hrefs = Array.from(dest.PURCHASE_DESTINATIONS, d => d.href)
-    assert.deepEqual(Array.from(dest.PURCHASE_DESTINATIONS, d => d.label), ["Auction Wins", "All Purchases", "Purchase History"])
-    assert.equal(new Set(hrefs).size, 3)
+    assert.deepEqual(Array.from(dest.PURCHASE_DESTINATIONS, d => d.label), ["Auction Wins", "Retail Purchases", "All Purchases", "Purchase History"])
+    assert.equal(new Set(hrefs).size, 4)
     assert.ok(existsSync(new URL("../src/app/dashboard/dealer/auctions/won/page.tsx", import.meta.url)))
     assert.ok(existsSync(new URL("../src/app/dashboard/dealer/purchases/page.tsx", import.meta.url)))
+    assert.ok(existsSync(new URL("../src/app/dashboard/dealer/purchases/retail/page.tsx", import.meta.url)))
     assert.ok(existsSync(new URL("../src/app/dashboard/dealer/purchases/history/page.tsx", import.meta.url)))
     assert.match(read("src/app/dashboard/dealer/purchases/page.tsx"), /<DealerPurchasesView mode="all" \/>/)
+    assert.match(read("src/app/dashboard/dealer/purchases/retail/page.tsx"), /<DealerPurchasesView mode="retail" \/>/)
     assert.match(read("src/app/dashboard/dealer/purchases/history/page.tsx"), /<DealerPurchasesView mode="history" \/>/)
 })
 
 test("All Purchases is titled All Purchases, not Purchase History", () => {
     assert.equal(getDealerRoute("/dashboard/dealer/purchases").title, "All Purchases")
     assert.equal(getDealerRoute("/dashboard/dealer/purchases/history").title, "Purchase History")
+    assert.equal(getDealerRoute("/dashboard/dealer/purchases/retail").title, "Retail Purchases")
+    assert.equal(getDealerRoute("/dashboard/dealer/purchases/retail").requiredPermission, "VIEW_PURCHASES")
     assert.equal(getDealerRoute("/dashboard/dealer/purchases/history").requiredPermission, "VIEW_PURCHASES")
     const view = read("src/components/dealer/DealerPurchasesView.tsx")
-    assert.match(view, /title=\{isHistory \? "Purchase History" : "All Purchases"\}/)
+    assert.match(view, /title=\{isHistory \? "Purchase History" : isRetail \? "Retail Purchases" : "All Purchases"\}/)
     // No redirect from one destination to the other.
     assert.doesNotMatch(read("src/app/dashboard/dealer/purchases/page.tsx"), /redirect|router\.replace/)
 })
 
-test("the destination bar is on all three pages and never scrolls sideways", () => {
+test("the four web destination tabs use a 2x2 mobile grid without scrolling", () => {
     const bar = read("src/components/dealer/PurchaseDestinations.tsx")
-    assert.match(bar, /grid grid-cols-3/)
+    assert.match(bar, /grid grid-cols-2 sm:grid-cols-4/)
     assert.doesNotMatch(bar, /overflow-x-auto/)
     assert.match(bar, /aria-current="page"/)
     assert.match(bar, /min-h-\[56px\]/)
     assert.match(read("src/app/dashboard/dealer/auctions/won/page.tsx"), /<PurchaseDestinations active="wins" \/>/)
-    assert.match(read("src/components/dealer/DealerPurchasesView.tsx"), /<PurchaseDestinations active=\{isHistory \? "history" : "all"\} \/>/)
+    assert.match(read("src/components/dealer/DealerPurchasesView.tsx"), /<PurchaseDestinations active=\{isHistory \? "history" : isRetail \? "retail" : "all"\} \/>/)
+})
+
+test("Retail Purchases includes pending retail deals and recorded retail sales, never auction wins", () => {
+    const eligible = [
+        { id: "retail-pending", status: "awaiting_confirmation", purchaseChannel: "RETAIL", retailSold: false },
+        { id: "retail-confirmed", status: "sold", purchaseChannel: "RETAIL", retailSold: true },
+        { id: "auction-settled", status: "sale_confirmed", purchaseChannel: "AUCTION", retailSold: false },
+        { id: "legacy-retail", status: "sold", retailSold: true },
+        { id: "legacy-unknown", status: "awaiting_confirmation", retailSold: false },
+    ]
+    assert.deepEqual(Array.from(eligible.filter(dest.isRetailPurchase), item => item.id),
+        ["retail-pending", "retail-confirmed", "legacy-retail"])
+    const source = read("src/components/dealer/DealerPurchasesView.tsx")
+    assert.match(source, /if \(isRetail && !isRetailPurchase\(p\)\) return false/)
+    assert.match(source, /isHistory \|\| \(statusFilter !== "all" && statusFilter !== "pending_retail"\)/)
+    assert.match(source, /<PendingRetailPurchaseRow key=\{offer\.id\} offer=\{offer\} \/>/)
+    assert.match(read("backend/src/dealers/dealers.service.ts"), /purchaseChannel: isAuctionPurchase \? 'AUCTION' : 'RETAIL'/)
+    assert.match(read("src/app/dashboard/dealer/layout.tsx"), /\["\/dashboard\/dealer\/purchases", "VIEW_PURCHASES"\]/)
 })
 
 test("Purchase History keeps finished stages only; it never changes a status", () => {
@@ -190,7 +212,7 @@ test("Auction Wins does not repeat the purchase destinations in the Buy & Bid ta
     const tabs = read("src/components/dealer/BuyAndBidTabs.tsx")
     assert.match(tabs, /label: "Purchases", icon: Trophy, permission: "VIEW_PURCHASES"/)
     assert.match(tabs, /activePaths: \["\/dashboard\/dealer\/purchases", "\/dashboard\/dealer\/purchases\/history"\]/)
-    for (const label of ["Auction Wins", "All Purchases", "Purchase History"]) assert.ok(!tabs.includes(`label: "${label}"`), label)
+    for (const label of ["Auction Wins", "Retail Purchases", "All Purchases", "Purchase History"]) assert.ok(!tabs.includes(`label: "${label}"`), label)
 })
 
 test("free purchase grants: a settled fee never shows a deadline or a second £125 checkout", () => {
