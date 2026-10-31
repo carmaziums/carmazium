@@ -195,6 +195,16 @@ export class DealersController {
         return new PaginatedResponse(data, total, page!, limit!);
     }
 
+    @Get('purchases/:id')
+    @ApiOperation({ summary: 'Get one recorded dealership purchase, with fee, delivery and handover status' })
+    @ApiParam({ name: 'id', description: 'Sale ID — only the buyer and its VIEW_PURCHASES staff' })
+    async getDealerPurchaseDetail(
+        @CurrentUser() user: any,
+        @Param('id') id: string,
+    ): Promise<StandardResponse<any>> {
+        return new StandardResponse(await this.dealersService.getDealerPurchaseDetail(user.id, id));
+    }
+
     @Get('purchases/:id/seller')
     @ApiOperation({ summary: 'Seller contact and address for a purchased vehicle (fee-gated for auction winners)' })
     @ApiParam({ name: 'id', description: 'Sale ID from the dealer purchase history' })
