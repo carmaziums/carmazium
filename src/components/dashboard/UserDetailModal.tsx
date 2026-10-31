@@ -11,6 +11,7 @@ import {
 import { getAdminUserDetail, banUser, unbanUser, lockUser, unlockUser } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
 import { normalizeExternalUrl } from "@/lib/externalUrl"
+import { isSelfDeletedEmail } from "@/lib/accountDeletion"
 
 function fmtDate(d: string | null | undefined) {
     if (!d) return "—"
@@ -141,7 +142,7 @@ async function exportUserDetailPdf(detail: any) {
     doc.setTextColor(90)
     const flags = [
         `Role: ${detail.role}`,
-        detail.deletedAt ? "BANNED" : null,
+        detail.deletedAt ? (isSelfDeletedEmail(detail.email) ? "DELETED BY USER" : "BANNED") : null,
         detail.lockoutUntil && new Date(detail.lockoutUntil) > new Date() ? "LOCKED" : null,
     ].filter(Boolean).join(" · ")
     doc.text(flags, 14, y)
@@ -334,7 +335,9 @@ export function UserDetailModal({ userId, onClose, onChanged, onMessage }: { use
                                     <h2 className="text-xl font-bold">{name}</h2>
                                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                                         <span className="text-xs font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">{detail.role}</span>
-                                        {detail.deletedAt && <span className="text-xs font-bold px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">BANNED</span>}
+                                        {detail.deletedAt && (isSelfDeletedEmail(detail.email)
+                                            ? <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-500/10 text-[var(--text-muted)] border border-slate-500/20">DELETED BY USER</span>
+                                            : <span className="text-xs font-bold px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">BANNED</span>)}
                                         {detail.lockoutUntil && new Date(detail.lockoutUntil) > new Date() && (
                                             <span className="text-xs font-bold px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">LOCKED</span>
                                         )}
@@ -352,6 +355,11 @@ export function UserDetailModal({ userId, onClose, onChanged, onMessage }: { use
                                     <MessageCircle size={13} /> Message {name.split(" ")[0]}
                                 </button>
                             )}
+                            {isSelfDeletedEmail(detail.email) ? (
+                                <p className="mb-4 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] p-3 text-xs text-[var(--text-muted)]">
+                                    This person deleted their own account. It is kept only as an anonymised record of past activity and can&apos;t be restored. They can sign up again with the same email.
+                                </p>
+                            ) : (
                             <div className="flex gap-2 mb-4">
                                 {detail.deletedAt ? (
                                     <button disabled={acting} onClick={() => handleAction("unban")} className="flex-1 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-widest hover:bg-emerald-500/20 disabled:opacity-50 cursor-pointer">Unban</button>
@@ -364,6 +372,7 @@ export function UserDetailModal({ userId, onClose, onChanged, onMessage }: { use
                                     <button disabled={acting} onClick={() => handleAction("lock")} className="flex-1 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs font-bold uppercase tracking-widest hover:bg-yellow-500/20 disabled:opacity-50 inline-flex items-center justify-center gap-1.5 cursor-pointer"><LockKeyhole size={13} /> Lock</button>
                                 )}
                             </div>
+                            )}
 
                             {/* Contact & Account */}
                             <Section title="Contact & Account" icon={Mail}>

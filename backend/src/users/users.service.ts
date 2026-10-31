@@ -1,3 +1,4 @@
+import { DELETED_EMAIL_DOMAIN, SELF_DELETED_PASSWORD_MARKER } from './account-deletion';
 import {
     Injectable,
     NotFoundException,
@@ -441,7 +442,7 @@ export class UsersService {
         await this.deleteSupabaseIdentity(userId);
 
         const deletedAt = new Date();
-        const deletedEmail = `deleted-${userId}@deleted.carmazium.com`;
+        const deletedEmail = `deleted-${userId}@${DELETED_EMAIL_DOMAIN}`;
 
         await this.prisma.$transaction(async (tx) => {
             // Remove transient/personal records that have no reason to survive
@@ -659,7 +660,7 @@ export class UsersService {
                 data: {
                     deletedAt,
                     email: deletedEmail,
-                    passwordHash: 'ACCOUNT_DELETED',
+                    passwordHash: SELF_DELETED_PASSWORD_MARKER,
                     firstName: 'Deleted',
                     lastName: 'User',
                     phone: null,

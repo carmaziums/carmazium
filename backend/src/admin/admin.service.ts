@@ -1,4 +1,5 @@
 import { Injectable, Optional, Logger, NotFoundException, BadRequestException, BadGatewayException, ConflictException } from '@nestjs/common';
+import { isSelfDeletedAccount } from '../users/account-deletion';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { ListingStatus, Prisma, UserRole } from '@prisma/client';
@@ -270,6 +271,14 @@ export class AdminService {
     }
 
     async unbanUser(userId: string) {
+        // A self-deleted account is an anonymised audit record with no sign-in
+        // identity; "unbanning" it would only revive an empty "Deleted User".
+        // The person can sign up again with their email instead.
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user) throw new NotFoundException('User not found');
+        if (isSelfDeletedAccount(user)) {
+            throw new BadRequestException('This person deleted their own account. They can sign up again with the same email; this record cannot be restored.');
+        }
         return this.prisma.user.update({
             where: { id: userId },
             data: { deletedAt: null },

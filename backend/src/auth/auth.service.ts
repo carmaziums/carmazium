@@ -1,3 +1,4 @@
+import { SELF_DELETED_PASSWORD_MARKER } from '../users/account-deletion';
 import {
     Injectable,
     ConflictException,
@@ -410,6 +411,24 @@ export class AuthService {
         return safeUser;
     }
 
+    /**
+     * Remove a leftover Supabase identity of a self-deleted account so the same
+     * email can sign up again. Best effort: a failure only leaves today's
+     * behaviour (sign-in refused) in place.
+     */
+    private async releaseSelfDeletedIdentity(supabaseUserId: string): Promise<void> {
+        try {
+            const { error } = await this.supabase.auth.admin.deleteUser(supabaseUserId);
+            if (error && !/not found/i.test(error.message || '')) {
+                this.logger.error(`Could not release sign-in identity of deleted account ${supabaseUserId}: ${error.message}`);
+                return;
+            }
+            this.logger.log(`Released sign-in identity of self-deleted account ${supabaseUserId}; the email can register again`);
+        } catch (err: any) {
+            this.logger.error(`Could not release sign-in identity of deleted account ${supabaseUserId}: ${err?.message || err}`);
+        }
+    }
+
     async verifySupabaseToken(token: string) {
         if (!token?.trim()) {
             this.logger.warn('verifySupabaseToken: empty token');
@@ -555,7 +574,21 @@ export class AuthService {
             }
 
             if (localUser.deletedAt) {
-                this.logger.warn(`User ${email} is marked as deleted`);
+                this.logger.warn(`User ${localUser.id} is marked as deleted`);
+                // Owner rule (31 Oct 2026): someone who deleted their own account
+                // may sign up again with the same email. Account deletion removes
+                // the Supabase sign-in identity, but accounts deleted before that
+                // step existed still hold it, which blocks a new sign-up. If this
+                // still-live identity belongs to a self-deleted account (never an
+                // admin ban, which keeps its password marker), remove it so the
+                // email can be registered afresh. The anonymised local row stays
+                // as the audit anchor for past sales and bids.
+                if (
+                    localUser.id === data.user.id
+                    && localUser.passwordHash === SELF_DELETED_PASSWORD_MARKER
+                ) {
+                    await this.releaseSelfDeletedIdentity(data.user.id);
+                }
                 return null;
             }
 
