@@ -26,6 +26,8 @@ export interface PurchaseItem {
     imageUrl?: string
     purchasePrice: number
     purchaseDate: string
+    /** From the authenticated purchase API; never infer channel from status. */
+    purchaseChannel?: "AUCTION" | "RETAIL"
     sellerName?: string
     sellerEmail?: string
     sellerPhone?: string
