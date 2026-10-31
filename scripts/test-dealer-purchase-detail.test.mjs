@@ -89,4 +89,8 @@ test("native purchase detail is gated and routes booking to typed delivery form"
     assert.match(detail, /Book delivery/)
     assert.match(detail, /Adjustments & cancellations/)
     assert.match(job, /listingId: purchase\?\.listingId/)
+    const nativeWins = read("carmazium app/carmazium app/src/screens/seller/SellerAuctionsScreen.tsx")
+    assert.match(nativeWins, /purchases\/listing-lookup\?listingIds=/)
+    assert.match(nativeWins, /navigate\('DealerPurchaseDetail', \{ saleId: purchaseId \}\)/)
+    assert.match(nativeWins, /canViewPurchases/)
 })
