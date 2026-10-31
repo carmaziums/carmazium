@@ -73,17 +73,15 @@ export async function prepareImageForUpload(file: File): Promise<File> {
     // Never return an original file unchanged, even if it is already below 2MB.
     // EXIF headers in small JPEGs can contain sensitive GPS coordinates.
     const objectUrl = URL.createObjectURL(sourceFile)
-    let decodedImage: HTMLImageElement | null = null
+    const image = document.createElement('img')
 
     try {
-        const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-            const element = document.createElement('img')
-            decodedImage = element
-            element.onload = () => resolve(element)
-            element.onerror = () => reject(new Error(
+        await new Promise<void>((resolve, reject) => {
+            image.onload = () => resolve()
+            image.onerror = () => reject(new Error(
                 `${sourceFile.name}: This photo could not be decoded after conversion. Please use JPEG, PNG or WebP.`
             ))
-            element.src = objectUrl
+            image.src = objectUrl
         })
 
         const width = image.naturalWidth
@@ -141,12 +139,10 @@ export async function prepareImageForUpload(file: File): Promise<File> {
         // very low-resolution damage picture just to meet a storage target.
         throw new Error(`${sourceFile.name}: The photo could not be optimised below 2MB. Please choose a smaller image.`)
     } finally {
-        if (decodedImage) {
-            // Drop decoded pixels and handlers before the next photo in a batch.
-            decodedImage.onload = null
-            decodedImage.onerror = null
-            decodedImage.removeAttribute('src')
-        }
+        // Drop decoded pixels and event handlers before the next photo in a batch.
+        image.onload = null
+        image.onerror = null
+        image.removeAttribute('src')
         URL.revokeObjectURL(objectUrl)
     }
 }
