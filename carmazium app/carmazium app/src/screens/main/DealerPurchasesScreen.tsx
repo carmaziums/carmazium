@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Dimensions,
   FlatList,
-  Linking,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -15,8 +14,6 @@ import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@/components/BrandIcon';
-import { BottomSheet } from '../../components/BottomSheet';
-import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
@@ -40,7 +37,8 @@ type PurchaseStatus =
   | 'AWAITING_CONFIRMATION'
   | 'REVIEWING_DOCS'
   | 'CHECKS_COMPLETE'
-  | 'DELIVERY_REQUESTED';
+  | 'DELIVERY_REQUESTED'
+  | 'SOLD';
 
 interface PurchaseItem {
   id: string;
@@ -54,6 +52,7 @@ interface PurchaseItem {
   sellerEmail?: string;
   sellerPhone?: string;
   status: PurchaseStatus;
+  retailSold?: boolean;
 }
 
 interface PurchasesResponse {
@@ -79,6 +78,13 @@ const STATUS_CONFIG: Record<
   PurchaseStatus,
   { label: string; icon: string; color: string; bg: string; border: string }
 > = {
+  SOLD: {
+    label: 'Sold',
+    icon: 'checkmark-circle-outline',
+    color: Colors.success,
+    bg: Colors.successAlpha12,
+    border: Colors.successAlpha25,
+  },
   AWAITING_CONFIRMATION: {
     label: 'Awaiting Confirmation',
     icon: 'time-outline',
@@ -119,8 +125,6 @@ export const DealerPurchasesScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
-  const [summaryItem, setSummaryItem] = useState<PurchaseItem | null>(null);
-  const [cancelItem, setCancelItem] = useState<PurchaseItem | null>(null);
 
   const totalSpent = purchases.reduce((sum, p) => sum + p.purchasePrice, 0);
 
@@ -130,7 +134,9 @@ export const DealerPurchasesScreen: React.FC = () => {
     try {
       const res = await apiClient<PurchasesResponse>('/dealers/purchases?page=1&limit=100');
       if (res?.success) {
-        setPurchases(Array.isArray(res.data) ? res.data : []);
+        setPurchases(Array.isArray(res.data)
+          ? res.data.map(item => ({ ...item, status: item.retailSold ? 'SOLD' as const : item.status }))
+          : []);
       }
     } catch {
       setFetchError(true);
@@ -143,16 +149,6 @@ export const DealerPurchasesScreen: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  // ─────────────── actions ────────────────
-
-  const handleEmailSeller = (item: PurchaseItem) => {
-    if (item.sellerEmail) Linking.openURL(`mailto:${item.sellerEmail}`);
-  };
-
-  const handleCallSeller = (item: PurchaseItem) => {
-    if (item.sellerPhone) Linking.openURL(`tel:${item.sellerPhone}`);
-  };
 
   // ─────────────── render helpers ─────────────────────
 
@@ -194,7 +190,7 @@ export const DealerPurchasesScreen: React.FC = () => {
     return (
       <TouchableOpacity
         activeOpacity={0.8}
-        onPress={() => setSummaryItem(item)}
+        onPress={() => navigation.navigate('DealerPurchaseDetail', { saleId: item.id })}
       >
         <View style={styles.purchaseCard}>
           <View style={styles.cardTopRow}>
@@ -228,7 +224,7 @@ export const DealerPurchasesScreen: React.FC = () => {
         </View>
       </TouchableOpacity>
     );
-  }, []);
+  }, [navigation]);
 
   // ─────────────── main render ───────────────────────
 
@@ -297,137 +293,7 @@ export const DealerPurchasesScreen: React.FC = () => {
         />
       )}
 
-      {cancelItem && (
-        <SaleCancellationSheet
-          visible
-          listingId={cancelItem.listingId}
-          vehicleTitle={cancelItem.vehicleTitle}
-          onClose={() => setCancelItem(null)}
-          onCreated={() => void fetchData(true)}
-        />
-      )}
 
-      {/* ── Purchase summary / seller contact modal ── */}
-      <BottomSheet
-        visible={summaryItem != null}
-        onClose={() => setSummaryItem(null)}
-      >
-          {summaryItem && (
-            // gap replicates the old modalSheet wrapper's spacing, which BottomSheet's
-            // own sheet style doesn't provide
-            <View style={{ gap: 12 }}>
-              <View style={styles.modalTopRow}>
-                {summaryItem.imageUrl ? (
-                  <Image source={{ uri: summaryItem.imageUrl }} style={styles.modalThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" alt={summaryItem.vehicleTitle} />
-                ) : (
-                  <View style={[styles.modalThumb, styles.thumbPlaceholder]}>
-                    <Ionicons name="car-outline" size={24} color={Colors.textMuted} />
-                  </View>
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.modalVehicleTitle} numberOfLines={1}>{summaryItem.vehicleTitle}</Text>
-                  {!!summaryItem.vehicleSubtitle && (
-                    <Text style={styles.modalVehicleSubtitle} numberOfLines={1}>{summaryItem.vehicleSubtitle}</Text>
-                  )}
-                </View>
-              </View>
-
-              <View style={styles.modalDivider} />
-
-              {/* Price + date */}
-              <View style={styles.modalRow}>
-                <Text style={styles.modalLabel}>PURCHASE PRICE</Text>
-                <Text style={styles.modalValue}>{formatPrice(summaryItem.purchasePrice)}</Text>
-              </View>
-              <View style={styles.modalRow}>
-                <Text style={styles.modalLabel}>PURCHASE DATE</Text>
-                <Text style={styles.modalValueSecondary}>{formatDate(summaryItem.purchaseDate)}</Text>
-              </View>
-
-              {/* Status */}
-              {(() => {
-                const cfg = STATUS_CONFIG[summaryItem.status] ?? STATUS_CONFIG.AWAITING_CONFIRMATION;
-                return (
-                  <View style={[styles.statusChip, { backgroundColor: cfg.bg, borderColor: cfg.border, alignSelf: 'flex-start' }]}>
-                    <Ionicons name={cfg.icon} size={13} color={cfg.color} />
-                    <Text style={[styles.statusChipText, { color: cfg.color }]}>{cfg.label}</Text>
-                  </View>
-                );
-              })()}
-
-              <View style={styles.modalDivider} />
-
-              {/* Seller details */}
-              <Text style={styles.sellerSectionLabel}>SELLER DETAILS</Text>
-              <View style={styles.sellerRow}>
-                <View style={styles.sellerAvatar}>
-                  <Text style={styles.sellerInitial}>
-                    {summaryItem.sellerName?.charAt(0)?.toUpperCase() ?? 'S'}
-                  </Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.sellerName} numberOfLines={1}>
-                    {summaryItem.sellerName ?? 'Private Seller'}
-                  </Text>
-                  {!!summaryItem.sellerEmail && (
-                    <Text style={styles.sellerSub} numberOfLines={1}>{summaryItem.sellerEmail}</Text>
-                  )}
-                </View>
-              </View>
-
-              <View style={styles.sellerActionsRow}>
-                <TouchableOpacity
-                  style={[styles.sellerActionBtn, !summaryItem.sellerEmail && styles.sellerActionBtnDisabled]}
-                  activeOpacity={0.75}
-                  disabled={!summaryItem.sellerEmail}
-                  onPress={() => handleEmailSeller(summaryItem)}
-                >
-                  <Ionicons name="mail-outline" size={15} color={summaryItem.sellerEmail ? Colors.textPrimary : Colors.textMuted} />
-                  <Text style={[styles.sellerActionText, !summaryItem.sellerEmail && { color: Colors.textMuted }]}>Email</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.sellerActionBtn, !summaryItem.sellerPhone && styles.sellerActionBtnDisabled]}
-                  activeOpacity={0.75}
-                  disabled={!summaryItem.sellerPhone}
-                  onPress={() => handleCallSeller(summaryItem)}
-                >
-                  <Ionicons name="call-outline" size={15} color={summaryItem.sellerPhone ? Colors.textPrimary : Colors.textMuted} />
-                  <Text style={[styles.sellerActionText, !summaryItem.sellerPhone && { color: Colors.textMuted }]}>Call</Text>
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity
-                style={{
-                  minHeight: 46,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: Colors.accentAlpha30,
-                  backgroundColor: Colors.accentAlpha08,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                activeOpacity={0.75}
-                onPress={() => {
-                  const item = summaryItem;
-                  setSummaryItem(null);
-                  setCancelItem(item);
-                }}
-              >
-                <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent }}>
-                  Request Sale Cancellation
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.modalCloseBtn}
-                activeOpacity={0.75}
-                onPress={() => setSummaryItem(null)}
-              >
-                <Text style={styles.modalCloseBtnText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-      </BottomSheet>
     </View>
   );
 };

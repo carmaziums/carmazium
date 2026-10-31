@@ -12,7 +12,6 @@ import { PageHeader } from "@/components/dashboard/PageHeader"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import {
     PipelineRow,
-    ModalOverlay,
 } from "@/components/dealer/PipelineRow"
 import type { PurchaseItem, PurchaseStatus } from "@/components/dealer/PipelineRow"
 import { apiClient } from "@/lib/apiClient"
@@ -111,9 +110,11 @@ export default function DealerPurchasesPage() {
     }, [authLoading, user?.id, refreshVersion])
 
     // Modal state
-    const [summaryItem, setSummaryItem] = React.useState<PurchaseItem | null>(null)
     const [cancelItem, setCancelItem] = React.useState<PurchaseItem | null>(null)
 
+    const openPurchaseDetail = (item: PurchaseItem) => {
+        router.push(`/dashboard/dealer/purchases/${encodeURIComponent(item.id)}`)
+    }
     const openSellerDetails = (item: PurchaseItem) => {
         router.push(`/dashboard/dealer/purchases/${encodeURIComponent(item.id)}/seller`)
     }
@@ -335,7 +336,7 @@ export default function DealerPurchasesPage() {
                                                     <PipelineRow
                                                         key={item.id}
                                                         item={item}
-                                                        onViewSummary={setSummaryItem}
+                                                        onViewSummary={openPurchaseDetail}
                                                         onViewSeller={openSellerDetails}
                                                         onRequestCancellation={setCancelItem}
                                                     />
@@ -385,7 +386,7 @@ export default function DealerPurchasesPage() {
                                                 <PipelineRow
                                                     key={item.id}
                                                     item={item}
-                                                    onViewSummary={setSummaryItem}
+                                                    onViewSummary={openPurchaseDetail}
                                                     onViewSeller={openSellerDetails}
                                                     onRequestCancellation={setCancelItem}
                                                 />
@@ -413,68 +414,6 @@ export default function DealerPurchasesPage() {
                 />
             )}
 
-            {/* Purchase Summary Modal */}
-            <ModalOverlay
-                open={!!summaryItem}
-                onClose={() => setSummaryItem(null)}
-                title="Purchase Summary"
-            >
-                {summaryItem && (
-                    <div className="space-y-5">
-                        <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] flex items-center justify-center shrink-0">
-                                <Package size={24} className="text-gray-600" />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-black">{summaryItem.vehicleTitle}</h3>
-                                {summaryItem.vehicleSubtitle && (
-                                    <p className="text-sm text-[var(--text-muted)]">{summaryItem.vehicleSubtitle}</p>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
-                                <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Purchase Price</span>
-                                <span className="text-xl font-black text-[var(--text-primary)] tabular-nums">£{summaryItem.purchasePrice.toLocaleString()}</span>
-                            </div>
-                            <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
-                                <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Purchase Date</span>
-                                <span className="text-sm font-bold">
-                                    {new Date(summaryItem.purchaseDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
-                            <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Current Status</span>
-                            <span className={`inline-flex items-center gap-2 text-sm font-bold ${
-                                STATUS_LABELS[summaryItem.status].color
-                            }`}>
-                                {React.createElement(STATUS_LABELS[summaryItem.status].icon, { size: 14 })}
-                                {STATUS_LABELS[summaryItem.status].label}
-                            </span>
-                        </div>
-
-                        <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
-                            <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Reference</span>
-                            {/* Short, readable reference; the full record ID stays in the tooltip for support. */}
-                            <span className="text-sm text-[var(--text-secondary)] font-mono" title={summaryItem.id}>
-                                {summaryItem.id.replace(/-/g, "").slice(0, 8).toUpperCase()}
-                            </span>
-                        </div>
-
-                        {summaryItem.estimatedDelivery && (
-                            <div className="bg-violet-500/5 rounded-xl p-4 border border-violet-500/10">
-                                <span className="text-xs font-bold uppercase tracking-widest text-violet-400 block mb-1">Estimated Delivery</span>
-                                <span className="text-sm font-bold text-violet-300">
-                                    {new Date(summaryItem.estimatedDelivery).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </ModalOverlay>
 
         </div>
     )

@@ -12,11 +12,12 @@ const postcodeValid = (value: string) => /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i.
 export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) => {
   const serviceType: ServiceType = route.params.serviceType;
   const delivery = serviceType === 'DELIVERY';
-  const [title, setTitle] = useState('');
+  const purchase = route.params.purchase;
+  const [title, setTitle] = useState(purchase ? `${purchase.title} delivery` : '');
   const [description, setDescription] = useState('');
-  const [registration, setRegistration] = useState('');
-  const [make, setMake] = useState('');
-  const [model, setModel] = useState('');
+  const [registration, setRegistration] = useState(purchase?.registration || '');
+  const [make, setMake] = useState(purchase?.make || '');
+  const [model, setModel] = useState(purchase?.model || '');
   const [pickup, setPickup] = useState('');
   const [destination, setDestination] = useState('');
   const [address, setAddress] = useState('');
@@ -31,8 +32,8 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
   );
   const submit = async () => {
     if (saving) return;
-    if (!title.trim() || !registration.trim()) {
-      Alert.alert('Missing information', 'Enter a job title and vehicle registration.');
+    if (!title.trim() || (!registration.trim() && !(make.trim() && model.trim()))) {
+      Alert.alert('Missing information', 'Enter a job title and vehicle registration or make and model.');
       return;
     }
     if (!postcodeValid(delivery ? pickup : destination) || (delivery && !postcodeValid(destination))) {
@@ -50,7 +51,12 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
           ...(delivery
             ? { pickupPostcode: pickup.trim().toUpperCase(), deliveryPostcode: destination.trim().toUpperCase(), isRecovery: recovery }
             : { servicePostcode: destination.trim().toUpperCase(), serviceAddress: address.trim() || undefined }),
-          vehicles: [{ registration: registration.replace(/\s+/g, '').toUpperCase(), make: make.trim() || undefined, model: model.trim() || undefined }],
+          vehicles: [{
+            listingId: purchase?.listingId,
+            registration: registration.replace(/\s+/g, '').toUpperCase() || undefined,
+            make: make.trim() || undefined,
+            model: model.trim() || undefined,
+          }],
         }),
         timeoutMs: 30000,
       });

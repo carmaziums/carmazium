@@ -154,6 +154,13 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                     <p className="text-xs text-[var(--text-muted)] mt-1 font-medium">
                         Purchased {new Date(item.purchaseDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
+                    {onViewSummary && (
+                        <button type="button" onClick={() => onViewSummary(item)}
+                            className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded"
+                            aria-label={`View purchase details for ${item.vehicleTitle}`}>
+                            View purchase details <ChevronRight size={13} aria-hidden="true" />
+                        </button>
+                    )}
                     {item.sellerName && (
                         <button
                             type="button"
