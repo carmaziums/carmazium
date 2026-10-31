@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import Link from "next/link"
 import Image from "next/image"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
@@ -13,7 +14,7 @@ import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
 import { getMyBids, getWatchlist, formatPrice, type BuyerStats, type Bid, type WatchlistItem } from "@/lib/listingApi"
 
-export default function BuyerDashboard() {
+function BuyerDashboard() {
     const { user, profile, loading: authLoading } = useAuth()
     const searchParams = useSearchParams()
     const router = useRouter()
@@ -212,5 +213,16 @@ export default function BuyerDashboard() {
                 </main>
             </div>
         </div>
+    )
+}
+
+/** Private dashboard canonicalisation; ?legacy=1 preserves specialist actions. */
+export default function CanonicalBuyerDashboard() {
+    return (
+        <React.Suspense fallback={<div className="min-h-[40vh]" />}>
+            <LegacyDashboardRedirect target="/dashboard/user?tab=overview">
+                <BuyerDashboard />
+            </LegacyDashboardRedirect>
+        </React.Suspense>
     )
 }
