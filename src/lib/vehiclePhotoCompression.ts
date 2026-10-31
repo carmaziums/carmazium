@@ -120,7 +120,7 @@ export async function prepareImageForUpload(file: File): Promise<File> {
             while (true) {
                 const blob = await canvasToBlob(canvas, quality)
                 if (blob.size <= TARGET_UPLOAD_SIZE) {
-                    const baseName = sourceFile.name.replace(/\\.[^.]+$/, '') || 'vehicle-photo'
+                    const baseName = sourceFile.name.replace(/\.[^.]+$/, '') || 'vehicle-photo'
                     return new File([blob], `${baseName}.jpg`, {
                         type: 'image/jpeg',
                         lastModified: sourceFile.lastModified,
