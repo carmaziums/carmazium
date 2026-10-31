@@ -72,7 +72,7 @@ test("native private dashboard groups selling and buying consistently", () => {
 
 test("private purchases do not confuse agreed offers with recorded funds or platform fees", () => {
     const purchases = read("src/components/dashboard/PrivatePurchasesTab.tsx")
-    assert.match(purchases, /offer\.status === "ACCEPTED"/)
+    assert.match(purchases, /o\.status === "ACCEPTED"/)
     assert.match(purchases, /Vehicle sale proceeds go directly to the seller/)
     assert.match(purchases, /A platform fee receipt is not evidence/)
 })
