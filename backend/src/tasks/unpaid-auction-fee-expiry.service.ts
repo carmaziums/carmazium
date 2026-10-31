@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { FreeListingGrantsService } from '../free-listings/free-listing-grants.service';
 import { Cron } from '@nestjs/schedule';
 import { GuardedAuctionExpiryService } from './guarded-auction-expiry.service';
 import { BUYER_FEE_GRACE_MS } from '../auctions/buyer-fee-deadline';
@@ -14,6 +15,7 @@ export class UnpaidAuctionFeeExpiryService {
         private readonly prisma: PrismaService,
         private readonly notifications: NotificationsService,
         private readonly email: EmailService,
+        @Optional() private readonly grants?: FreeListingGrantsService,
     ) {}
 
     /** Hourly, offset from the expiry job. A conditional database claim prevents
@@ -44,6 +46,20 @@ export class UnpaidAuctionFeeExpiryService {
                 const stage: 24 | 6 | null = hoursRemaining > 6 && hoursRemaining <= 24
                     ? 24 : hoursRemaining > 0 && hoursRemaining <= 6 ? 6 : null;
                 if (stage === null) continue;
+                // Never ask for £125 when the win is covered by a Free
+                // Purchase Grant that was active when it was won. If cover
+                // can't be confirmed, skip this run's reminder and retry; the
+                // reminder is only claimed once a check has completed.
+                if (this.grants) {
+                    let covered: boolean | 'unknown';
+                    try {
+                        covered = await this.grants.applyPurchaseGrantToAuctionIfEligible(auction.id, auction.winnerId);
+                    } catch (error: any) {
+                        this.logger.warn(`Free purchase grant check failed for auction ${auction.id}; reminder deferred: ${error?.message || error}`);
+                        covered = 'unknown';
+                    }
+                    if (covered !== false) continue;
+                }
                 const field = stage === 24 ? 'buyerFeeReminder24SentAt' : 'buyerFeeReminder6SentAt';
                 if (auction[field]) continue;
                 const claimed = await this.prisma.auction.updateMany({

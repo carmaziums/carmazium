@@ -189,3 +189,42 @@ describe('Guarded 72-hour auction expiry integration', () => {
     expect(h.tx.sellerProfile.updateMany).not.toHaveBeenCalled();
   });
 });
+
+describe('Free Purchase Grant before unpaid expiry', () => {
+  it('applies a grant that covered the win instead of reverting it', async () => {
+    const h = harness();
+    h.prisma.auction.findMany.mockResolvedValue([{ id: 'auction-1', winnerId: 'buyer-1' }]);
+    const grants: any = { applyPurchaseGrantToAuctionIfEligible: jest.fn().mockResolvedValue(true) };
+    const service = new GuardedAuctionExpiryService(h.prisma, h.notifications, h.gateway, grants);
+    expect(await service.revertUnpaidWins(NOW)).toEqual({ reverted: 0 });
+    expect(grants.applyPurchaseGrantToAuctionIfEligible).toHaveBeenCalledWith('auction-1', 'buyer-1');
+    expect(h.tx.sale.deleteMany).not.toHaveBeenCalled();
+    expect(h.notifications.create).not.toHaveBeenCalled();
+  });
+
+  it('still reverts a genuinely unpaid win when the check confirms no grant covers it', async () => {
+    const h = harness();
+    h.prisma.auction.findMany.mockResolvedValue([{ id: 'auction-1', winnerId: 'buyer-1' }]);
+    const grants: any = { applyPurchaseGrantToAuctionIfEligible: jest.fn().mockResolvedValue(false) };
+    const service = new GuardedAuctionExpiryService(h.prisma, h.notifications, h.gateway, grants);
+    expect(await service.revertUnpaidWins(NOW)).toEqual({ reverted: 1 });
+  });
+
+  it('a temporary grant-check failure just before the 72h expiry defers it: the win and Sale stay', async () => {
+    const h = harness();
+    h.prisma.auction.findMany.mockResolvedValue([{ id: 'auction-1', winnerId: 'buyer-1' }]);
+    const grants: any = { applyPurchaseGrantToAuctionIfEligible: jest.fn()
+      .mockRejectedValueOnce(new Error('connection reset'))
+      .mockResolvedValueOnce(true) };
+    const service = new GuardedAuctionExpiryService(h.prisma, h.notifications, h.gateway, grants);
+
+    expect(await service.revertUnpaidWins(NOW)).toEqual({ reverted: 0 });
+    expect(h.prisma.$transaction).not.toHaveBeenCalled();
+    expect(h.tx.sale.deleteMany).not.toHaveBeenCalled();
+    expect(h.current.winnerId).toBe('buyer-1');
+
+    // Next hourly run: the grant check succeeds and the win is settled.
+    expect(await service.revertUnpaidWins(NOW)).toEqual({ reverted: 0 });
+    expect(h.tx.sale.deleteMany).not.toHaveBeenCalled();
+  });
+});

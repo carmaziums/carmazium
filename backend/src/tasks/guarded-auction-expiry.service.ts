@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { FreeListingGrantsService } from '../free-listings/free-listing-grants.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuctionGateway } from '../auctions/auction.gateway';
@@ -20,7 +21,27 @@ export class GuardedAuctionExpiryService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly gateway: AuctionGateway,
+    @Optional() private readonly grants?: FreeListingGrantsService,
   ) {}
+
+  /**
+   * A win made while a Free Purchase Grant was active keeps its £125 waiver
+   * even if applying it at the win failed or was delayed, so it is applied
+   * before the fee is treated as unpaid.
+   *  - 'waived'       the grant covered the win and is now recorded
+   *  - 'not-covered'  checked: no grant covers this win (normal rules apply)
+   *  - 'unknown'      the check could not complete; the caller must NOT
+   *                   cancel the win and retries on the next run
+   */
+  private async grantOutcome(auctionId: string, winnerId: string | null): Promise<'waived' | 'not-covered' | 'unknown'> {
+    if (!this.grants || !winnerId) return 'not-covered';
+    try {
+      return (await this.grants.applyPurchaseGrantToAuctionIfEligible(auctionId, winnerId)) ? 'waived' : 'not-covered';
+    } catch (error: any) {
+      this.logger.error(`Free purchase grant check failed for auction ${auctionId}; expiry deferred: ${error?.message || error}`);
+      return 'unknown';
+    }
+  }
 
   async revertUnpaidWins(now = new Date()): Promise<{ reverted: number }> {
     const cutoff = new Date(now.getTime() - BUYER_FEE_GRACE_MS);
@@ -34,12 +55,15 @@ export class GuardedAuctionExpiryService {
       },
       // Scan IDs only, without a fixed oldest-N cap: a long-standing
       // unresolved PENDING checkout must not starve newer eligible wins.
-      select: { id: true },
+      select: { id: true, winnerId: true },
       orderBy: { wonAt: 'asc' },
     });
 
     let reverted = 0;
-    for (const { id } of candidates) {
+    for (const { id, winnerId } of candidates) {
+      // Covered wins are settled now; if cover can't be confirmed, the win is
+      // left in place and checked again on the next hourly run.
+      if ((await this.grantOutcome(id, winnerId)) !== 'not-covered') continue;
       try {
         const result = await this.prisma.$transaction(async (tx) => {
           // Force every expiry worker to serialize on the *same auction row*.
