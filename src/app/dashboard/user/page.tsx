@@ -45,6 +45,7 @@ import {
     Hash
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
+import { filterOutgoingOffers, outgoingOfferEmptyMessage, OUTGOING_OFFER_VIEWS, type OutgoingOfferView } from "@/lib/outgoingOfferFilters"
 import { useChat } from "@/context/ChatContext"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { DeleteAccountSection } from "@/components/dashboard/DeleteAccountSection"
@@ -1333,7 +1334,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [startingChat, setStartingChat] = React.useState<string | null>(null)
     const [counterAmounts, setCounterAmounts] = React.useState<Record<string, string>>({})
     const [buyerCountering, setBuyerCountering] = React.useState<string | null>(null)
-    const [viewMode, setViewMode] = React.useState<'current' | 'history' | 'all'>('current')
+    const [viewMode, setViewMode] = React.useState<OutgoingOfferView>('current')
     const [amendingOffer, setAmendingOffer] = React.useState<Offer | null>(null)
     const [cancelPurchaseListing, setCancelPurchaseListing] = React.useState<{ id: string; title: string } | null>(null)
     const router = useRouter()
@@ -1432,13 +1433,8 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
         }
     }
 
-    const currentOffers = offers.filter(offer => offer.status === 'PENDING' || offer.status === 'COUNTERED')
-    const historyOffers = offers.filter(offer => !['PENDING', 'COUNTERED'].includes(offer.status))
-    const displayedOffers = viewMode === 'current'
-        ? currentOffers
-        : viewMode === 'history'
-            ? historyOffers
-            : offers
+    const currentOffers = filterOutgoingOffers(offers, 'current')
+    const displayedOffers = filterOutgoingOffers(offers, viewMode)
     const needsActionCount = currentOffers.filter(offer =>
         offer.status === 'COUNTERED' && offer.lastCounteredBy === 'SELLER'
     ).length
@@ -1485,23 +1481,23 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
             <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <h3 className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2">
-                        <Tag size={14} /> {viewMode === 'current' ? 'Current Bids' : viewMode === 'history' ? 'Offer History' : 'All Offers'}
+                        <Tag size={14} /> {OUTGOING_OFFER_VIEWS.find(filter => filter.value === viewMode)?.heading}
                     </h3>
-                    <div className="flex flex-wrap gap-2">
-                        {([
-                            ['current', 'Current'],
-                            ['history', 'History'],
-                            ['all', 'All'],
-                        ] as const).map(([value, label]) => (
+                    <div role="group" aria-label="Filter my offers by status" className="flex flex-wrap gap-2">
+                        {OUTGOING_OFFER_VIEWS.map(({ value, label }) => (
                             <button
                                 key={value}
                                 type="button"
+                                aria-pressed={viewMode === value}
                                 onClick={() => setViewMode(value)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest border transition-colors ${viewMode === value
+                                className={`inline-flex min-h-10 items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-black uppercase tracking-wider border transition-colors ${viewMode === value
                                     ? 'bg-primary text-white border-primary'
-                                    : 'bg-[var(--bg-input)] text-[var(--text-muted)] border-[var(--border-default)]'}`}
+                                    : 'bg-[var(--bg-input)] text-[var(--text-muted)] border-[var(--border-default)] hover:border-primary/50'}`}
                             >
                                 {label}
+                                <span className="rounded-md bg-black/5 dark:bg-white/10 px-1.5 py-0.5 text-[10px] tabular-nums" aria-label={`${filterOutgoingOffers(offers, value).length} offers`}>
+                                    {filterOutgoingOffers(offers, value).length}
+                                </span>
                             </button>
                         ))}
                     </div>
@@ -1512,7 +1508,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                         {loading ? (
                             <div className="py-16 text-center"><Loader2 className="h-9 w-9 animate-spin text-primary mx-auto" /></div>
                         ) : displayedOffers.length === 0 ? (
-                            <div className="py-16 text-center text-[var(--text-secondary)] italic px-6">{viewMode === 'current' ? 'No current bids.' : viewMode === 'history' ? 'No closed offer history yet.' : 'No outgoing offers.'}</div>
+                            <div className="py-16 text-center text-[var(--text-secondary)] italic px-6">{outgoingOfferEmptyMessage(viewMode)}</div>
                         ) : (
                             displayedOffers.map(offer => {
                                 const thumb = offer.listing?.images?.[0] || '/assets/images/featured-sports.png'
@@ -1649,7 +1645,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                 {loading ? (
                                     <tr><td colSpan={4} className="px-6 py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></td></tr>
                                 ) : displayedOffers.length === 0 ? (
-                                    <tr><td colSpan={4} className="px-6 py-10 text-center text-[var(--text-secondary)] italic">{viewMode === 'current' ? 'No current bids.' : viewMode === 'history' ? 'No closed offer history yet.' : 'No outgoing offers.'}</td></tr>
+                                    <tr><td colSpan={4} className="px-6 py-10 text-center text-[var(--text-secondary)] italic">{outgoingOfferEmptyMessage(viewMode)}</td></tr>
                                 ) : (
                                     displayedOffers.map(offer => {
                                         const thumb = offer.listing?.images?.[0] || '/assets/images/featured-sports.png'
