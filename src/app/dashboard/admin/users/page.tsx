@@ -9,6 +9,7 @@ import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminUsers, updateUserRole, banUser, unbanUser, lockUser, unlockUser } from "@/lib/adminApi"
 import { createChatRoom } from "@/lib/chatApi"
+import { isSelfDeletedEmail } from "@/lib/accountDeletion"
 
 export default function AdminUsersPage() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -187,8 +188,11 @@ export default function AdminUsersPage() {
                         {/* ── Mobile cards (< sm) ── */}
                         <div className="sm:hidden divide-y divide-[var(--border-default)]">
                             {users.map((u) => {
-                                const isBanned = !!u.deletedAt
-                                const isLocked = !isBanned && !!u.lockoutUntil && new Date(u.lockoutUntil) > new Date()
+                                // Self-deleted accounts are anonymised records, not bans: the
+                                // person can sign up again with their email (owner rule).
+                                const isSelfDeleted = isSelfDeletedEmail(u.email)
+                                const isBanned = !!u.deletedAt && !isSelfDeleted
+                                const isLocked = !isBanned && !isSelfDeleted && !!u.lockoutUntil && new Date(u.lockoutUntil) > new Date()
                                 const isSelf = u.id === user?.id
                                 return (
                                     <div key={u.id} className={`p-4 ${isBanned ? 'bg-red-500/5' : ''}`}>
@@ -199,8 +203,8 @@ export default function AdminUsersPage() {
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
                                                     <p className="font-bold text-sm truncate hover:text-primary transition-colors">{u.firstName} {u.lastName}</p>
-                                                    <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-bold border shrink-0 ${isBanned ? 'bg-red-500/10 text-red-400 border-red-500/20' : isLocked ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
-                                                        {isBanned ? 'BAN' : isLocked ? 'LOCK' : 'OK'}
+                                                    <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-bold border shrink-0 ${isSelfDeleted ? 'bg-slate-500/10 text-[var(--text-muted)] border-slate-500/20' : isBanned ? 'bg-red-500/10 text-red-400 border-red-500/20' : isLocked ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
+                                                        {isSelfDeleted ? 'DELETED' : isBanned ? 'BAN' : isLocked ? 'LOCK' : 'OK'}
                                                     </span>
                                                 </div>
                                                 <p className="text-xs text-[var(--text-muted)] truncate">{u.email}</p>
@@ -237,7 +241,7 @@ export default function AdminUsersPage() {
                                                     <option value="ADMIN">ADMIN</option>
                                                 </select>
                                             )}
-                                            {!isSelf && (
+                                            {!isSelf && !isSelfDeleted && (
                                                 <div className="flex gap-1">
                                                     <button onClick={() => handleMessageUser(u.id)} className="p-2.5 bg-primary/10 rounded-lg text-primary"><MessageCircle size={14} /></button>
                                                     {isBanned ? (
@@ -275,9 +279,10 @@ export default function AdminUsersPage() {
                                 </thead>
                                 <tbody className="divide-y divide-[var(--border-default)]/80">
                                     {users.map((u) => {
-                                        const isBanned = !!u.deletedAt
-                                        const isLocked = !isBanned && !!u.lockoutUntil && new Date(u.lockoutUntil) > new Date()
-                                        const isActive = !isBanned && !isLocked
+                                        const isSelfDeleted = isSelfDeletedEmail(u.email)
+                                        const isBanned = !!u.deletedAt && !isSelfDeleted
+                                        const isLocked = !isBanned && !isSelfDeleted && !!u.lockoutUntil && new Date(u.lockoutUntil) > new Date()
+                                        const isActive = !isBanned && !isLocked && !isSelfDeleted
                                         const isSelf = u.id === user?.id
                                         return (
                                             <tr key={u.id} className={`transition-colors ${isBanned ? 'bg-red-500/5' : ''} hover:bg-[var(--bg-card)]`}>
@@ -335,11 +340,12 @@ export default function AdminUsersPage() {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold ${
+                                                        isSelfDeleted ? 'bg-slate-500/10 text-[var(--text-muted)] border border-slate-500/20' :
                                                         isBanned ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
                                                         isLocked ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' :
                                                         'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                                                     }`}>
-                                                        {isBanned ? 'BANNED' : isLocked ? 'LOCKED' : 'ACTIVE'}
+                                                        {isSelfDeleted ? 'DELETED BY USER' : isBanned ? 'BANNED' : isLocked ? 'LOCKED' : 'ACTIVE'}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4">
@@ -371,7 +377,7 @@ export default function AdminUsersPage() {
                                                     {new Date(u.createdAt).toLocaleDateString()}
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    {!isSelf && (
+                                                    {!isSelf && !isSelfDeleted && (
                                                         <div className="relative inline-block" ref={openMenu === u.id ? menuRef : undefined}>
                                                             <button
                                                                 onClick={() => setOpenMenu(openMenu === u.id ? null : u.id)}
