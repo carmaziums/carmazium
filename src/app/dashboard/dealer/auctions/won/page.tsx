@@ -18,6 +18,7 @@ import { getMyBids, type Bid } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { FUEL_TYPE_LABELS, BODY_TYPE_LABELS } from "@/lib/vehicleLabels"
 import { useDealerAccess } from "@/context/DealerAccessContext"
+import { apiClient } from "@/lib/apiClient"
 
 // This page is the single stop for everything about a dealer's auction bidding —
 // bids currently in play and every won auction's handover status — instead of
@@ -233,7 +234,7 @@ const GRADE_LABELS = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Averag
 
 // ─── Section 1: Won auctions, grouped by handover stage ───────────────────────
 
-function WonAuctionRow({ auction, canPayAuctionFee }: { auction: Auction; canPayAuctionFee: boolean }) {
+function WonAuctionRow({ auction, canPayAuctionFee, purchaseId }: { auction: Auction; canPayAuctionFee: boolean; purchaseId?: string }) {
     const l = auction.listing
     const stage = stageFor(auction)
     const s = STAGE_LABELS[stage]
@@ -266,6 +267,12 @@ function WonAuctionRow({ auction, canPayAuctionFee }: { auction: Auction; canPay
                 )}
                 {l.location && (
                     <span className="flex items-center gap-1"><MapPin size={11} className="shrink-0" /> {l.location}</span>
+                )}
+                {purchaseId && (
+                    <Link href={`/dashboard/dealer/purchases/${encodeURIComponent(purchaseId)}`}
+                        className="text-primary text-xs font-bold hover:underline">
+                        Purchase details
+                    </Link>
                 )}
                 {businessAddress && (
                     <span className="flex items-center gap-1"><MapPin size={11} className="shrink-0" /> {businessAddress}</span>
@@ -372,10 +379,12 @@ function ActiveBidRow({ bid, tick, canPlaceBid }: { bid: Bid; tick: number; canP
 
 export default function MyBidsPage() {
     const { user, loading: authLoading } = useAuth()
-    const { hasPermission } = useDealerAccess()
+    const { hasPermission, loading: accessLoading } = useDealerAccess()
     const canPayAuctionFee = hasPermission("PAY_AUCTION_FEE")
     const canPlaceBid = hasPermission("PLACE_BID")
+    const canViewPurchases = !accessLoading && hasPermission("VIEW_PURCHASES")
     const [wonAuctions, setWonAuctions] = React.useState<Auction[] | null>(null)
+    const [purchaseByListing, setPurchaseByListing] = React.useState<Record<string, string>>({})
     const [activeBids, setActiveBids] = React.useState<Bid[] | null>(null)
     const [loadError, setLoadError] = React.useState<string | null>(null)
     const [tick, setTick] = React.useState(0)
@@ -400,6 +409,24 @@ export default function MyBidsPage() {
             })
             .catch(() => setLoadError("Couldn't load your bids and wins."))
     }, [authLoading, user])
+
+    // The lookup returns only this dealer's Sale IDs. Unrecorded wins still
+    // use the auction-specific handover/fee pages; no fake sale is created.
+    React.useEffect(() => {
+        if (authLoading || accessLoading || !user || !canViewPurchases || !wonAuctions?.length) return
+        let alive = true
+        const ids = [...new Set(wonAuctions.map(a => a.listingId))].slice(0, 50)
+        apiClient<{ data: Array<{ id: string; listingId: string }> }>(
+            `/dealers/purchases/listing-lookup?listingIds=${encodeURIComponent(ids.join(","))}`,
+        ).then(response => {
+            if (alive) setPurchaseByListing(Object.fromEntries(
+                response.data.map(purchase => [purchase.listingId, purchase.id]),
+            ))
+        }).catch(() => {
+            if (alive) setPurchaseByListing({})
+        })
+        return () => { alive = false }
+    }, [authLoading, accessLoading, user?.id, canViewPurchases, wonAuctions])
 
     // Tick every 30s so "2h 14m left" style countdowns stay roughly current
     // without a per-second re-render cost on a list page.
@@ -469,7 +496,7 @@ export default function MyBidsPage() {
                                         <span className="text-sm text-[var(--text-muted)] font-bold">{grouped.fee_due.length}</span>
                                     </div>
                                     <div className="space-y-3">
-                                        {grouped.fee_due.map(a => <WonAuctionRow key={a.id} auction={a} canPayAuctionFee={canPayAuctionFee} />)}
+                                        {grouped.fee_due.map(a => <WonAuctionRow key={a.id} auction={a} canPayAuctionFee={canPayAuctionFee} purchaseId={purchaseByListing[a.listingId]} />)}
                                     </div>
                                 </section>
                             )}
@@ -495,7 +522,7 @@ export default function MyBidsPage() {
                                         <span className="text-sm text-[var(--text-muted)] font-bold">{grouped.in_progress.length}</span>
                                     </div>
                                     <div className="space-y-3">
-                                        {grouped.in_progress.map(a => <WonAuctionRow key={a.id} auction={a} canPayAuctionFee={canPayAuctionFee} />)}
+                                        {grouped.in_progress.map(a => <WonAuctionRow key={a.id} auction={a} canPayAuctionFee={canPayAuctionFee} purchaseId={purchaseByListing[a.listingId]} />)}
                                     </div>
                                 </section>
                             )}
@@ -508,7 +535,7 @@ export default function MyBidsPage() {
                                         <span className="text-sm text-[var(--text-muted)] font-bold">{grouped.denied.length}</span>
                                     </div>
                                     <div className="space-y-3">
-                                        {grouped.denied.map(a => <WonAuctionRow key={a.id} auction={a} canPayAuctionFee={canPayAuctionFee} />)}
+                                        {grouped.denied.map(a => <WonAuctionRow key={a.id} auction={a} canPayAuctionFee={canPayAuctionFee} purchaseId={purchaseByListing[a.listingId]} />)}
                                     </div>
                                 </section>
                             )}
@@ -521,7 +548,7 @@ export default function MyBidsPage() {
                                         <span className="text-sm text-[var(--text-muted)] font-bold">{grouped.complete.length}</span>
                                     </div>
                                     <div className="space-y-3">
-                                        {grouped.complete.map(a => <WonAuctionRow key={a.id} auction={a} canPayAuctionFee={canPayAuctionFee} />)}
+                                        {grouped.complete.map(a => <WonAuctionRow key={a.id} auction={a} canPayAuctionFee={canPayAuctionFee} purchaseId={purchaseByListing[a.listingId]} />)}
                                     </div>
                                 </section>
                             )}
