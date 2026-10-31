@@ -437,7 +437,11 @@ export class FreeListingGrantsService {
                 FOR UPDATE
             `);
             const grant = rows[0];
-            if (!grant || this.purchaseStatus(grant) !== 'ACTIVE') return false;
+            // Owner rule: eligibility is decided by when the auction was WON,
+            // not when this runs. A grant that has since expired or been
+            // revoked still covers a win made while it was active; expiry and
+            // revocation are compared with wonAt below, never with "now".
+            if (!grant) return false;
 
             // Serialize with any fee application against this same auction.
             await tx.$queryRaw(Prisma.sql`
@@ -477,6 +481,10 @@ export class FreeListingGrantsService {
                 return false;
             }
             if (grant.expiresAt && auction.wonAt.getTime() >= grant.expiresAt.getTime()) {
+                return false;
+            }
+            // Revocation is prospective: it ends cover for wins from that moment.
+            if (grant.revokedAt && auction.wonAt.getTime() >= grant.revokedAt.getTime()) {
                 return false;
             }
 
@@ -524,9 +532,9 @@ export class FreeListingGrantsService {
                     "useCount" = "useCount" + 1,
                     "updatedAt" = NOW()
                 WHERE "id" = ${grant.id}
-                  AND "revokedAt" IS NULL
-                  AND ("expiresAt" IS NULL OR "expiresAt" > NOW())
             `);
+            // (Counted even if the grant has since expired or been revoked: the
+            // use belongs to a win made while it was active.)
 
             return true;
         });

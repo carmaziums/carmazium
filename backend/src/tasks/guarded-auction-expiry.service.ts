@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { FreeListingGrantsService } from '../free-listings/free-listing-grants.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuctionGateway } from '../auctions/auction.gateway';
@@ -20,7 +21,23 @@ export class GuardedAuctionExpiryService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly gateway: AuctionGateway,
+    @Optional() private readonly grants?: FreeListingGrantsService,
   ) {}
+
+  /**
+   * A win made while a Free Purchase Grant was active keeps its £125 waiver
+   * even if applying it at the win failed or was delayed. Apply it before
+   * treating the fee as unpaid. Errors never block the normal path.
+   */
+  private async waiverApplied(auctionId: string, winnerId: string | null): Promise<boolean> {
+    if (!this.grants || !winnerId) return false;
+    try {
+      return await this.grants.applyPurchaseGrantToAuctionIfEligible(auctionId, winnerId);
+    } catch (error: any) {
+      this.logger.warn(`Free purchase grant check failed for auction ${auctionId}: ${error?.message || error}`);
+      return false;
+    }
+  }
 
   async revertUnpaidWins(now = new Date()): Promise<{ reverted: number }> {
     const cutoff = new Date(now.getTime() - BUYER_FEE_GRACE_MS);
@@ -34,12 +51,14 @@ export class GuardedAuctionExpiryService {
       },
       // Scan IDs only, without a fixed oldest-N cap: a long-standing
       // unresolved PENDING checkout must not starve newer eligible wins.
-      select: { id: true },
+      select: { id: true, winnerId: true },
       orderBy: { wonAt: 'asc' },
     });
 
     let reverted = 0;
-    for (const { id } of candidates) {
+    for (const { id, winnerId } of candidates) {
+      // Eligible grant wins are settled now and never reverted.
+      if (await this.waiverApplied(id, winnerId)) continue;
       try {
         const result = await this.prisma.$transaction(async (tx) => {
           // Force every expiry worker to serialize on the *same auction row*.

@@ -94,3 +94,29 @@ describe('72h auction buyer-fee reminder cron', () => {
         expect(h.auctions.revertUnpaidWins).toHaveBeenCalledTimes(1);
     });
 });
+
+describe('buyer-fee reminders and Free Purchase Grants', () => {
+    it('does not ask for £125 when a grant that covered the win is applied', async () => {
+        const h = harness();
+        const grants: any = { applyPurchaseGrantToAuctionIfEligible: jest.fn().mockResolvedValue(true) };
+        const service = new UnpaidAuctionFeeExpiryService(h.auctions, h.prisma, h.notifications, h.email, grants);
+        await service.remindUnpaidWinners(new Date('2026-10-03T11:00:00.000Z'));
+        expect(grants.applyPurchaseGrantToAuctionIfEligible).toHaveBeenCalledWith('auction-1', 'winner-1');
+        expect(h.notifications.create).not.toHaveBeenCalled();
+        expect(h.email.sendAuctionBuyerFeeReminderEmail).not.toHaveBeenCalled();
+    });
+
+    it('still reminds when no grant applies or the check fails', async () => {
+        for (const outcome of [false, 'error'] as const) {
+            const h = harness();
+            const grants: any = {
+                applyPurchaseGrantToAuctionIfEligible: outcome === 'error'
+                    ? jest.fn().mockRejectedValue(new Error('db'))
+                    : jest.fn().mockResolvedValue(false),
+            };
+            const service = new UnpaidAuctionFeeExpiryService(h.auctions, h.prisma, h.notifications, h.email, grants);
+            await service.remindUnpaidWinners(new Date('2026-10-03T11:00:00.000Z'));
+            expect(h.notifications.create).toHaveBeenCalledTimes(1);
+        }
+    });
+});

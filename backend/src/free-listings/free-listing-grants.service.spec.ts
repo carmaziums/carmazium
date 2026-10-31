@@ -316,16 +316,94 @@ describe('FreeListingGrantsService', () => {
         expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 
-    it('does not waive a buyer fee when the purchase grant is expired', async () => {
-        prisma.$queryRaw.mockResolvedValue([activePurchaseGrantRow({
-            expiresAt: new Date('2020-01-01T00:00:00.000Z'),
-        })]);
+    // Owner rule: eligibility is decided at the moment the auction was won.
+    describe('eligibility at the time of the win', () => {
+        const wonAuction = (wonAt: string, extra: Record<string, any> = {}) => ({
+            id: 'auction-1', listingId: 'listing-1', winnerId: 'user-1',
+            wonAt: new Date(wonAt), status: 'ENDED', deletedAt: null,
+            buyerFeePaid: false, buyerFeeTransactionId: null, ...extra,
+        });
+        const ready = () => {
+            prisma.transaction.findFirst.mockResolvedValue(null);
+            prisma.transaction.create.mockResolvedValue({ id: 'tx-free' });
+            prisma.auction.update.mockResolvedValue({ id: 'auction-1' });
+            prisma.$executeRaw.mockResolvedValue(1);
+        };
 
-        const applied = await service.applyPurchaseGrantToAuctionIfEligible('auction-1', 'user-1');
+        it('waives the fee for a win made while active, even if processed after expiry', async () => {
+            prisma.$queryRaw.mockResolvedValue([activePurchaseGrantRow({
+                createdAt: new Date('2020-01-01T00:00:00.000Z'),
+                expiresAt: new Date('2020-01-10T00:00:00.000Z'), // long expired now
+            })]);
+            prisma.auction.findUnique.mockResolvedValue(wonAuction('2020-01-05T12:00:00.000Z'));
+            ready();
+            expect(await service.applyPurchaseGrantToAuctionIfEligible('auction-1', 'user-1')).toBe(true);
+            expect(prisma.transaction.create).toHaveBeenCalledWith(expect.objectContaining({
+                data: expect.objectContaining({ amount: 0, type: 'COMMISSION', status: 'COMPLETED' }),
+            }));
+            // The use is recorded against the grant even though it has expired.
+            const sql = prisma.$executeRaw.mock.calls[0][0];
+            expect(String(sql.sql ?? (sql.strings ?? []).join(''))).not.toContain('"revokedAt" IS NULL');
+            expect(String(sql.sql ?? (sql.strings ?? []).join(''))).toContain('"useCount" = "useCount" + 1');
+        });
 
-        expect(applied).toBe(false);
-        expect(prisma.auction.findUnique).not.toHaveBeenCalled();
-        expect(prisma.transaction.create).not.toHaveBeenCalled();
+        it('charges the normal fee for a win after expiry', async () => {
+            prisma.$queryRaw.mockResolvedValue([activePurchaseGrantRow({
+                createdAt: new Date('2020-01-01T00:00:00.000Z'),
+                expiresAt: new Date('2020-01-10T00:00:00.000Z'),
+            })]);
+            prisma.auction.findUnique.mockResolvedValue(wonAuction('2020-01-10T00:00:01.000Z'));
+            ready();
+            expect(await service.applyPurchaseGrantToAuctionIfEligible('auction-1', 'user-1')).toBe(false);
+            expect(prisma.transaction.create).not.toHaveBeenCalled();
+            expect(prisma.auction.update).not.toHaveBeenCalled();
+        });
+
+        it('revocation is prospective: a win before it keeps the waiver', async () => {
+            prisma.$queryRaw.mockResolvedValue([activePurchaseGrantRow({
+                revokedAt: new Date('2026-09-14T13:00:00.000Z'),
+            })]);
+            prisma.auction.findUnique.mockResolvedValue(wonAuction('2026-09-14T12:00:00.000Z'));
+            ready();
+            expect(await service.applyPurchaseGrantToAuctionIfEligible('auction-1', 'user-1')).toBe(true);
+        });
+
+        it('a win at or after revocation pays the normal fee', async () => {
+            prisma.$queryRaw.mockResolvedValue([activePurchaseGrantRow({
+                revokedAt: new Date('2026-09-14T12:00:00.000Z'),
+            })]);
+            prisma.auction.findUnique.mockResolvedValue(wonAuction('2026-09-14T12:00:00.000Z'));
+            ready();
+            expect(await service.applyPurchaseGrantToAuctionIfEligible('auction-1', 'user-1')).toBe(false);
+            expect(prisma.transaction.create).not.toHaveBeenCalled();
+        });
+
+        it('leaves an existing completed waiver alone and never adds a second transaction', async () => {
+            prisma.$queryRaw.mockResolvedValue([activePurchaseGrantRow({
+                revokedAt: new Date('2026-09-20T00:00:00.000Z'),
+            })]);
+            prisma.auction.findUnique.mockResolvedValue(wonAuction('2026-09-14T12:00:00.000Z', {
+                buyerFeePaid: true, buyerFeeTransactionId: 'tx-free-existing',
+            }));
+            ready();
+            expect(await service.applyPurchaseGrantToAuctionIfEligible('auction-1', 'user-1')).toBe(false);
+            expect(prisma.transaction.create).not.toHaveBeenCalled();
+            expect(prisma.auction.update).not.toHaveBeenCalled();
+        });
+
+        it('no grant: no waiver', async () => {
+            prisma.$queryRaw.mockResolvedValue([]);
+            expect(await service.applyPurchaseGrantToAuctionIfEligible('auction-1', 'user-1')).toBe(false);
+            expect(prisma.auction.findUnique).not.toHaveBeenCalled();
+        });
+
+        it('revoking a grant never touches auctions or transactions', async () => {
+            prisma.$queryRaw.mockResolvedValue([activePurchaseGrantRow()]);
+            prisma.$executeRaw.mockResolvedValue(1);
+            await service.revokeFreePurchases('user-1');
+            expect(prisma.auction.update).not.toHaveBeenCalled();
+            expect(prisma.transaction.create).not.toHaveBeenCalled();
+        });
     });
 
     it('does not consume an expired grant', async () => {

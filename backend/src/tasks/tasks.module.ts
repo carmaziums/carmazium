@@ -19,6 +19,7 @@ import { UnverifiedAccountCleanupService } from './unverified-account-cleanup.se
 import { ValuationQuoteRetentionService } from './valuation-quote-retention.service';
 import { ProvisionalAuctionReminderService } from './provisional-auction-reminder.service';
 import { ProvisionalAuctionExpiryService } from './provisional-auction-expiry.service';
+import { FreeListingsModule } from '../free-listings/free-listings.module';
 
 @Module({
     imports: [
@@ -29,6 +30,7 @@ import { ProvisionalAuctionExpiryService } from './provisional-auction-expiry.se
         NotificationsModule,
         DeliveryModule,
         EmailModule,
+        FreeListingsModule,
     ],
     providers: [
         ImageCleanupService,
