@@ -90,6 +90,11 @@ on:
       - "src/lib/pricingConfig.ts"
       - "src/lib/sellPricingIntent.ts"
       - "scripts/test-pricing-seller-handoff.test.mjs"
+      - "scripts/test-pricing-signup-return.test.mjs"
+      - "src/app/auth/signup/**"
+      - "src/app/auth/onboarding/**"
+      - "src/app/auth/registration-complete/**"
+      - "src/lib/sellPricingIntent.ts"
       - "src/lib/auctionApi.ts"
       - "src/lib/auctionPricing.ts"
       - ".github/workflows/web-listing-ci.yml"
@@ -146,6 +151,9 @@ jobs:
 
       - name: Verify pricing CTA to correct selling channel and package
         run: node --test scripts/test-pricing-seller-handoff.test.mjs
+
+      - name: Verify package retained across new signup and valuation
+        run: node --test scripts/test-pricing-signup-return.test.mjs
 
       - name: Verify secure manual seller bonus payout fallback
         run: node --test scripts/test-seller-bonus-manual-fallback.test.mjs
