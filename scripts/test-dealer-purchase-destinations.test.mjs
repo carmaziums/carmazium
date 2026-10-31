@@ -173,10 +173,13 @@ test("purchase record shows every photo, the advert and declared damage, labelle
 
 test("app parity: same destinations, wins card opens the record, history and search", () => {
     const appBar = read(APP + "components/dealer/PurchaseDestinations.tsx")
-    for (const label of ["Auction Wins", "All Purchases", "Purchase History"]) assert.ok(appBar.includes(`label: '${label}'`), label)
+    for (const label of ["Auction Wins", "Retail Purchases", "All Purchases", "Purchase History"]) assert.ok(appBar.includes(`label: '${label}'`), label)
     assert.doesNotMatch(appBar, /<ScrollView|horizontal\b(?! strip)/)
     const screen = read(APP + "screens/main/DealerPurchasesScreen.tsx")
     assert.match(screen, /const isHistory = route\.params\?\.view === 'history'/)
+    assert.match(screen, /const isRetail = route\.params\?\.view === 'retail'/)
+    assert.match(screen, /isRetail && !\(p\.purchaseChannel === 'RETAIL'/)
+    assert.match(screen, /active=\{isHistory \? 'history' : isRetail \? 'retail' : 'all'\}/)
     assert.match(screen, /HISTORY_STATUSES: PurchaseStatus\[\] = \['SOLD', 'CHECKS_COMPLETE', 'DELIVERY_REQUESTED'\]/)
     assert.match(screen, /const dealershipBuyerId = access\?\.ownerUserId \?\? userId/)
     assert.match(screen, /c\.viewer\.isBuyer/)
@@ -185,7 +188,7 @@ test("app parity: same destinations, wins card opens the record, history and sea
     assert.match(screen, /<TextInput/)
     assert.match(screen, /flexWrap: 'wrap'/)
     assert.match(screen, /navigation\.navigate\('DealerPurchaseDetail', \{ saleId: item\.id \}\)/)
-    assert.match(read(APP + "navigation/MainStackNavigator.tsx"), /DealerPurchases: \{ view\?: 'all' \| 'history' \} \| undefined/)
+    assert.match(read(APP + "navigation/MainStackNavigator.tsx"), /DealerPurchases: \{ view\?: 'all' \| 'retail' \| 'history' \} \| undefined/)
     const wins = read(APP + "screens/seller/SellerAuctionsScreen.tsx")
     assert.match(wins, /onPress=\{\(\) => purchaseId\s*\? navigation\?\.navigate\('DealerPurchaseDetail', \{ saleId: purchaseId \}\)\s*: handleTap\(item as any\)\}/)
     assert.match(wins, /View advert/)
