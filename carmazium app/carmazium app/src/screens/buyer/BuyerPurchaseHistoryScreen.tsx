@@ -71,6 +71,16 @@ interface TransactionsResponse {
   data: RawTransaction[];
   pagination?: { total: number; page: number; limit: number; totalPages: number };
 }
+interface AcceptedOffer {
+  id: string;
+  status: string;
+  amount: number | string;
+  finalAmount?: number | string | null;
+  counterAmount?: number | string | null;
+  listing?: { title?: string; images?: string[] };
+}
+interface OffersResponse { success: boolean; data: AcceptedOffer[] }
+
 
 // ─────────────────────────── helpers ──────────────────────────────
 
@@ -127,6 +137,7 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
   const insets = useSafeAreaInsets();
 
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [acceptedOffers, setAcceptedOffers] = useState<AcceptedOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -160,11 +171,22 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
     else setLoading(true);
     setError(null);
     try {
-      const res = await apiClient<TransactionsResponse>(`/transactions/my?page=1&limit=${PAGE_LIMIT}`);
-      if (res.success) {
+      const [transactionResult, offerResult] = await Promise.allSettled([
+        apiClient<TransactionsResponse>(`/transactions/my?page=1&limit=${PAGE_LIMIT}`),
+        apiClient<OffersResponse>('/offers/my'),
+      ]);
+      if (transactionResult.status === 'fulfilled' && transactionResult.value.success) {
+        const res = transactionResult.value;
         setHistory((res.data || []).map(mapRow));
         setPage(1);
         setTotalPages(res.pagination?.totalPages ?? 1);
+      } else {
+        setError('Platform receipts could not be loaded.');
+      }
+      if (offerResult.status === 'fulfilled' && offerResult.value.success) {
+        setAcceptedOffers((offerResult.value.data || []).filter(o => o.status === 'ACCEPTED'));
+      } else {
+        setError('Some accepted purchases could not be loaded.');
       }
     } catch {
       setError('Could not load purchase history. Please try again.');
@@ -263,7 +285,7 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
     <View style={styles.totalsCard}>
       {/* Total Spent */}
       <View style={styles.totalCol}>
-        <Text style={styles.totalLabel}>TOTAL SPENT</Text>
+        <Text style={styles.totalLabel}>PAID PLATFORM TRANSACTIONS</Text>
         <Text style={styles.totalValue}>
           £{totalSpent.toLocaleString('en-GB')}
         </Text>
@@ -274,7 +296,7 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
 
       {/* Vehicles Purchased */}
       <View style={styles.totalCol}>
-        <Text style={styles.totalLabel}>VEHICLES PURCHASED</Text>
+        <Text style={styles.totalLabel}>COMPLETED PLATFORM PAYMENTS</Text>
         <Text style={styles.totalValue}>{completedItems.length}</Text>
       </View>
     </View>
@@ -367,7 +389,7 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
       <View style={styles.header}>
         <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>Purchase History</Text>
+        <Text style={styles.headerTitle}>Purchases</Text>
 
         {history.length > 0 ? (
           <View style={styles.countBadge}>
@@ -397,6 +419,32 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
         {error && !loading && (
           <ErrorBanner message={error} onRetry={() => fetchData()} />
         )}
+
+        <View style={styles.acceptedSection}>
+          <Text style={styles.acceptedHeading}>AGREED RETAIL PURCHASES</Text>
+          <Text style={styles.acceptedHint}>
+            An accepted offer is a deal agreed, not proof of payment or collection.
+            Vehicle money is paid directly to the seller.
+          </Text>
+          {!loading && acceptedOffers.length === 0 && !error && (
+            <Text style={styles.acceptedHint}>No accepted retail offers found.</Text>
+          )}
+          {!loading && acceptedOffers.map(offer => (
+            <View key={offer.id} style={styles.historyCard}>
+              <Text style={styles.historyTitle}>{offer.listing?.title || 'Retail vehicle'}</Text>
+              <Text style={styles.historyPrice}>
+                £{Number(offer.finalAmount ?? offer.counterAmount ?? offer.amount).toLocaleString('en-GB')}
+              </Text>
+              <Text style={styles.acceptedHint}>Offer accepted — confirm funds, inspection and collection directly with seller.</Text>
+              <TouchableOpacity accessibilityRole="button" style={styles.receiptBtn}
+                onPress={() => navigation?.navigate('BuyerOffers')}>
+                <Text style={styles.receiptBtnText}>View agreed offer</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+        {/* Platform receipts are separate from vehicle sale proceeds. */}
+        <Text style={styles.acceptedHeading}>PLATFORM RECEIPTS</Text>
 
         {/* Totals bar — only when there's data */}
         {!loading && history.length > 0 && renderTotalsBar()}
@@ -435,6 +483,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.bgPrimary,
   },
+
+  acceptedSection: { gap: 10, marginBottom: 10 },
+  acceptedHeading: { fontFamily: FontFamily.bold, fontSize: 14, color: Colors.textPrimary, marginBottom: 3 },
+  acceptedHint: { fontFamily: FontFamily.medium, fontSize: 12, color: Colors.textMuted, lineHeight: 19 },
 
   // ── Header ──
   header: {
