@@ -2311,6 +2311,9 @@ export class ListingsService {
                 deletedAt: _deletedAt,
                 ...safe
             } = row;
+            // A stale relationship explanation is not public when the seller
+            // has said they ARE the registered keeper.
+            if (safe.isLegalRegisteredKeeper !== false) delete safe.notOwnerRelationship;
             return brandListingSeller(safe);
         });
         return { data: publicData as Listing[], total };
@@ -2581,6 +2584,7 @@ export class ListingsService {
         // (owner decisions, 31 Oct 2026, #724).
         if (!(await this.viewerManagesListing(viewerId, listing.sellerId))) {
             for (const field of PUBLIC_DETAIL_PRIVATE_FIELDS) delete listingWithCount[field];
+            if (listing.isLegalRegisteredKeeper !== false) delete listingWithCount.notOwnerRelationship;
         }
 
         return listingWithCount as any;
