@@ -204,34 +204,23 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
     // always see where they are.
     const unifiedLinks: LinkObj[] = [
         { href: "/dashboard/user?tab=overview", label: "Home", icon: LayoutDashboard, section: "Dashboard" },
-        { href: "/dashboard/user?tab=inventory", label: "My Listings", icon: Car, section: "Selling", activePrefixes: ["/dashboard/seller/listings", "/dashboard/seller/add-listing"] },
+        { href: "/dashboard/user?tab=cars", label: "My cars", icon: Car, section: "Selling", activePrefixes: ["/dashboard/seller/listings", "/dashboard/seller/auctions"] },
         { href: "/dashboard/user?tab=offers", label: "Offers Received", icon: Tag, badge: pendingOffersCount, section: "Selling", activePrefixes: ["/dashboard/seller/offers"] },
         { href: "/dashboard/user?tab=earnings", label: "Sales & Earnings", icon: DollarSign, section: "Selling", activePrefixes: ["/dashboard/seller/earnings"] },
         { href: "/dashboard/user?tab=stats", label: "Listing Performance", icon: BarChart3, section: "Selling", activePrefixes: ["/dashboard/seller/performance"] },
         { href: "/dashboard/user?tab=bids", label: "My Offers", icon: Gavel, section: "Buying", activePrefixes: ["/dashboard/buyer/offers", "/dashboard/buyer/bids"] },
         { href: "/dashboard/user?tab=watchlist", label: "Saved Cars", icon: Heart, section: "Buying", activePrefixes: ["/dashboard/buyer/watchlist"] },
+        { href: "/dashboard/user?tab=purchases", label: "Purchases", icon: Receipt, section: "Buying", activePrefixes: ["/dashboard/buyer/history"] },
         { href: "/services/jobs", label: "Delivery & Inspections", icon: Briefcase, section: "Services" },
         { href: "/dashboard/cancellations", label: "Sale Cancellations", icon: ShieldCheck, section: "Account" },
         { href: "/dashboard/user?tab=messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account", activePrefixes: ["/dashboard/buyer/messages", "/dashboard/seller/messages"] },
         { href: "/profile", label: "Account Settings", icon: Settings, section: "Account" },
     ]
 
-    const sellerLinks: LinkObj[] = [
-        unifiedLinks[0],
-        unifiedLinks[1],
-        { href: "/dashboard/seller/auctions", label: "My Auctions", icon: Gavel, section: "Selling" },
-        ...unifiedLinks.slice(2),
-    ]
-
-    // Buyer/seller tools that only exist on the standalone pages. They were not
-    // linked from the dashboard menu at all; listing them under "More tools"
-    // keeps every option reachable without crowding the main menu.
-    const userMoreLinks: LinkObj[] = (role === 'buyer' || role === 'seller') ? [
-        { href: "/dashboard/seller/offers", label: "Offers & Delivery Requests", icon: Truck, section: "Selling" },
-        { href: "/dashboard/seller/earnings", label: "Earnings & Receipts", icon: Receipt, section: "Selling" },
-        { href: "/dashboard/buyer/offers", label: "My Offers & Delivery", icon: Truck, section: "Buying" },
-        { href: "/dashboard/buyer/history", label: "Payments & Receipts", icon: Receipt, section: "Buying" },
-    ] : []
+    // Buyer and seller share one canonical private dashboard. Specialist
+    // standalone actions remain accessible from the corresponding tab.
+    const sellerLinks: LinkObj[] = unifiedLinks
+    const userMoreLinks: LinkObj[] = []
     const moreLinks: LinkObj[] = role === 'dealer' ? dealerMoreLinks : userMoreLinks
 
     const links: Record<string, LinkObj[]> = {
@@ -304,14 +293,14 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
     ]
     const sellerMobileHrefs = [
         "/dashboard/user?tab=overview",
-        "/dashboard/user?tab=inventory",
+        "/dashboard/user?tab=cars",
         "/dashboard/user?tab=offers",
         "/dashboard/user?tab=messages",
     ]
     const buyerMobileHrefs = [
         "/dashboard/user?tab=overview",
         "/dashboard/user?tab=bids",
-        "/dashboard/user?tab=watchlist",
+        "/dashboard/user?tab=purchases",
         "/dashboard/user?tab=messages",
     ]
     const dealerMobileHrefs = [
