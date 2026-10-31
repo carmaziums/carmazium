@@ -92,8 +92,8 @@ const BUYER_STEPS = [
     },
     {
         icon: CreditCard,
-        title: "Pay the £125 buyer fee.",
-        desc: "A one-off £125 fee unlocks direct in-app chat with the seller so you can arrange handover — this is CarMazium's fee for the connection, not part of the vehicle price.",
+        title: "Pay the buyer fee, if applicable.",
+        desc: "After winning, pay the one-off £125 buyer fee unless your account has an approved fee waiver. Paying the fee, or an eligible waiver, unlocks in-app chat with the seller to arrange handover. The fee is separate from the vehicle price.",
     },
     {
         icon: Users,
@@ -109,7 +109,7 @@ const RULES = [
     { icon: Trophy, term: "Buy It Now", def: "Optional — sellers can set an instant-buy price. Buyers can request it; the seller has 24 hours to confirm or decline." },
     { icon: FileText, term: "Free to List", def: "Listing a car for auction costs nothing." },
     { icon: Banknote, term: "£100 Seller Bonus", def: "Paid once CarMazium approves your submitted handover proof." },
-    { icon: CreditCard, term: "£125 Buyer Fee", def: "Charged only when you win an auction — unlocks direct chat with the seller to arrange handover." },
+    { icon: CreditCard, term: "£125 Buyer Fee", def: "Charged on auction wins unless an approved fee waiver applies. Payment or a waiver unlocks seller chat." },
     { icon: ShieldCheck, term: "Verified Bidders Only", def: "Every bidder is a KYC-verified trade dealer." },
 ]
 
@@ -134,7 +134,7 @@ const FAQS = [
     },
     {
         q: "What's the £125 buyer fee for?",
-        a: "It's charged once you win an auction, and it's what unlocks direct in-app chat with the seller so you can arrange handover. It's a connection fee, not part of the price you pay for the car — that's negotiated and settled directly with the seller.",
+        a: "The standard fee is £125 after an auction win, unless your account has an approved waiver. Paying it, or having an eligible waiver, unlocks in-app chat with the seller for handover. The vehicle price is settled directly between buyer and seller.",
     },
     {
         q: "Does CarMazium handle payment for the car itself?",
@@ -236,7 +236,7 @@ export function HowAuctionsWork() {
                                     </p>
                                     <StepTimeline steps={BUYER_STEPS} />
                                     <div className="mt-2 rounded-xl border-l-[3px] border-primary bg-[var(--bg-card)] px-5 py-4 text-sm text-[var(--text-muted)] leading-relaxed">
-                                        <strong className="text-[var(--text-primary)]">Note:</strong> The £125 fee is charged only once you&apos;ve won an auction — there&apos;s nothing to pay just for bidding or browsing.
+                                        <strong className="text-[var(--text-primary)]">Note:</strong> The standard £125 fee is payable only after an auction win, unless an approved waiver applies — there&apos;s nothing to pay just for bidding or browsing.
                                     </div>
                                 </>
                             )}
