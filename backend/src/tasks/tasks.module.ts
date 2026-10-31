@@ -6,6 +6,7 @@ import { FeaturedBoostModule } from '../featured-boost/featured-boost.module';
 import { FeaturedBoostExpiryService } from './featured-boost-expiry.service';
 import { AuctionLifecycleService } from './auction-lifecycle.service';
 import { AuctionsModule } from '../auctions/auctions.module';
+import { FreeListingsModule } from '../free-listings/free-listings.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { DeliveryModule } from '../delivery/delivery.module';
 import { DeliveryExpiryService } from '../delivery/delivery-expiry.service';
@@ -30,6 +31,7 @@ import { PurchaseSnapshotSweepService } from './purchase-snapshot-sweep.service'
         NotificationsModule,
         DeliveryModule,
         EmailModule,
+        FreeListingsModule,
     ],
     providers: [
         ImageCleanupService,
