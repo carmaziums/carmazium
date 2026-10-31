@@ -549,6 +549,26 @@ export class ListingsController {
     }
 
     /**
+     * The buyer of an accepted retail offer completes the sale (either party
+     * may), at the accepted offer price. The seller is notified.
+     */
+    @Post(':id/complete-purchase')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Buyer completes an accepted retail purchase',
+        description: 'Only the accepted offer\'s buyer (or their dealership with MANAGE_OFFERS), only while Sale Pending, at the accepted price.',
+    })
+    @ApiParam({ name: 'id', description: 'UUID of the retail listing' })
+    async completePurchase(
+        @Param('id') id: string,
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<Listing>> {
+        return new StandardResponse(await this.listingsService.completeRetailSaleAsBuyer(id, user.id));
+    }
+
+    /**
      * Soft delete a listing
      * Requires authentication and ownership
      */

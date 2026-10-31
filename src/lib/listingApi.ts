@@ -1512,3 +1512,11 @@ export async function importFromUrl(params: {
     })
     return res.data
 }
+
+/**
+ * Buyer completes an accepted retail purchase (either party may complete the
+ * sale). Recorded at the accepted offer price; the seller is notified.
+ */
+export async function completePurchaseAsBuyer(listingId: string): Promise<void> {
+    await apiClient(`/listings/${encodeURIComponent(listingId)}/complete-purchase`, { method: 'POST' })
+}

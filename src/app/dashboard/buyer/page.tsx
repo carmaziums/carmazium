@@ -166,7 +166,7 @@ function BuyerDashboard() {
                                         <div className="text-right w-full md:w-auto flex flex-col items-center md:items-end gap-2">
                                             <p className="text-sm text-[var(--text-muted)]">Your Bid</p>
                                             <p className="text-2xl font-bold">{formatPrice(bid.amount)}</p>
-                                            <Link href={`/cars/${bid.listing.slug}`}>
+                                            <Link href={`/buy-cars/${bid.listing.slug}`}>
                                                 <Button size="sm" className="shadow-neon">View Auction</Button>
                                             </Link>
                                         </div>
@@ -195,7 +195,7 @@ function BuyerDashboard() {
                                 </div>
                             ) : (
                                 watchlist.map((item) => (
-                                    <Link key={item.id} href={`/cars/${item.listing.slug}`} className="glass-card p-4 group hover:bg-[var(--bg-card)] transition-colors">
+                                    <Link key={item.id} href={`/buy-cars/${item.listing.slug}`} className="glass-card p-4 group hover:bg-[var(--bg-card)] transition-colors">
                                         <div className="relative w-full h-32 rounded-lg overflow-hidden mb-3 bg-[var(--bg-input)]">
                                             {item.listing.images?.[0] ? (
                                                 <Image src={item.listing.images[0]} alt={item.listing.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500" />
