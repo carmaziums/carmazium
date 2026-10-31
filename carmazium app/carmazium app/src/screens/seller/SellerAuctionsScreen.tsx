@@ -178,6 +178,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   } = useDealerAccess(dealerIdentity);
   const canManageHandover = !dealerIdentity
     || (!dealerAccessLoading && hasDealerPermission('MANAGE_INVENTORY'));
+  const canViewPurchases = dealerIdentity && !dealerAccessLoading && hasDealerPermission('VIEW_PURCHASES');
   const insets = useSafeAreaInsets();
   const route = useRoute<any>();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
@@ -194,6 +195,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   const [auctions, setAuctions] = useState<AuctionItem[]>([]);
   const [wonAuctions, setWonAuctions] = useState<WonAuctionItem[]>([]);
+  const [purchaseByListing, setPurchaseByListing] = useState<Record<string, string>>({});
   const [wonNowMs, setWonNowMs] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => setWonNowMs(Date.now()), 30_000);
@@ -320,6 +322,29 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     void fetchAuctions();
     void fetchWonAuctions();
   }, [fetchAuctions, fetchWonAuctions]));
+
+  // Auction wins are not always Sales. Only a VIEW_PURCHASES dealer can
+  // resolve recorded Sale IDs; other wins retain the existing auction view.
+  useEffect(() => {
+    if (!canViewPurchases || wonAuctions.length === 0) {
+      setPurchaseByListing({});
+      return;
+    }
+    let active = true;
+    const ids = [...new Set(wonAuctions.map(a => a.listing.id))];
+    const batches: string[][] = [];
+    for (let i = 0; i < ids.length; i += 50) batches.push(ids.slice(i, i + 50));
+    Promise.all(batches.map(batch =>
+      apiClient<{ data: { id: string; listingId: string }[] }>(
+        `/dealers/purchases/listing-lookup?listingIds=${encodeURIComponent(batch.join(','))}`,
+      ),
+    )).then(responses => {
+      if (active) setPurchaseByListing(Object.fromEntries(
+        responses.flatMap(response => response.data).map(sale => [sale.listingId, sale.id]),
+      ));
+    }).catch(() => { if (active) setPurchaseByListing({}); });
+    return () => { active = false; };
+  }, [canViewPurchases, wonAuctions]);
 
   // SellCarFlow's Keep Auction + Also Retail action should reopen the same
   // Auction and seller-chosen price/plan, not make them search or upload again.
@@ -1384,14 +1409,15 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       || 'Private seller';
     const isLoadingNav = navigating === item.id;
 
+    const purchaseId = purchaseByListing[item.listing.id];
     return (
-      <TouchableOpacity
-        style={[styles.card, { borderLeftColor: Colors.success }]}
-        onPress={() => handleTap(item as any)}
-        activeOpacity={0.8}
-        disabled={!!navigating}
-      >
-        <View style={styles.cardRow}>
+      <View style={[styles.card, { borderLeftColor: Colors.success }]}>
+        <TouchableOpacity
+          style={styles.cardRow}
+          onPress={() => handleTap(item as any)}
+          activeOpacity={0.8}
+          disabled={!!navigating}
+        >
           <View style={styles.thumb}>
             {thumb ? (
               <Image source={{ uri: thumb }} style={styles.thumbImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
@@ -1422,10 +1448,20 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
             )}
           </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+        {purchaseId && (
+          <TouchableOpacity accessibilityRole="button"
+            onPress={() => navigation?.navigate('DealerPurchaseDetail', { saleId: purchaseId })}
+            style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 14,
+              borderTopWidth: 1, borderTopColor: Colors.borderSubtle }}>
+            <Text style={{ color: Colors.accent, fontFamily: FontFamily.bold, fontSize: 13 }}>
+              Purchase details
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
     );
-  }, [navigating, handleTap, wonNowMs]);
+  }, [navigating, handleTap, wonNowMs, purchaseByListing, navigation]);
 
   return (
     <View style={styles.container}>
