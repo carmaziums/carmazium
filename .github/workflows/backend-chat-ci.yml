@@ -37,3 +37,6 @@ jobs:
 
       - name: Run Analytics accuracy, performance and event-integrity regression tests
         run: npm test -- --runInBand analytics/analytics-data-accuracy.spec.ts analytics/analytics-reliability.spec.ts analytics/analytics-event-policy.spec.ts analytics/valuation-history.service.spec.ts
+
+      - name: Run dealer purchase record, snapshot and inspection-note tests
+        run: npm test -- --runInBand dealers/dealers.purchase-detail.spec.ts dealers/purchase-snapshot.spec.ts dealers/dealer-access.spec.ts
