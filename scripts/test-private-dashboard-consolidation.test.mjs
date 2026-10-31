@@ -75,6 +75,16 @@ test("native private dashboard groups selling and buying consistently", () => {
     assert.match(buyerPurchases, /PLATFORM RECEIPTS/)
 })
 
+test("status filters use full private inventory instead of only one API page", () => {
+    const view = read("src/app/dashboard/user/page.tsx")
+    const full = read("src/lib/privateCarsListings.ts")
+    assert.match(view, /getCompletePrivateListings\(\)/)
+    assert.match(view, /matchingListings\.slice\(\(page - 1\) \* 10, page \* 10\)/)
+    assert.match(view, /setStatusFilter\(value\); setPage\(1\)/)
+    assert.match(full, /for \(let page = 1; page <= maxPages; page\+\+\)/)
+    assert.match(full, /found\.size !== total/)
+})
+
 test("private purchases do not confuse agreed offers with recorded funds or platform fees", () => {
     const purchases = read("src/components/dashboard/PrivatePurchasesTab.tsx")
     assert.match(purchases, /o\.status === "ACCEPTED"/)
