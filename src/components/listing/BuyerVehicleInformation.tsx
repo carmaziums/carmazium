@@ -64,6 +64,7 @@ export function BuyerVehicleInformation({ listing }: { listing: Listing }) {
         { label: "Variant / trim", value: listing.variant },
         { label: "Year", value: listing.year },
         { label: "Registration", value: listing.vrm },
+        { label: "VIN (recorded)", value: listing.vin },
         { label: "First registered", value: listing.monthOfFirstRegistration },
         { label: "First registered with DVLA", value: official?.dvla?.monthOfFirstDvlaRegistration },
         { label: "MOT vehicle registration date", value: ukDate(official?.mot?.registrationDate) },
