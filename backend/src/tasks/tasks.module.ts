@@ -6,6 +6,7 @@ import { FeaturedBoostModule } from '../featured-boost/featured-boost.module';
 import { FeaturedBoostExpiryService } from './featured-boost-expiry.service';
 import { AuctionLifecycleService } from './auction-lifecycle.service';
 import { AuctionsModule } from '../auctions/auctions.module';
+import { FreeListingsModule } from '../free-listings/free-listings.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { DeliveryModule } from '../delivery/delivery.module';
 import { DeliveryExpiryService } from '../delivery/delivery-expiry.service';
@@ -19,7 +20,6 @@ import { UnverifiedAccountCleanupService } from './unverified-account-cleanup.se
 import { ValuationQuoteRetentionService } from './valuation-quote-retention.service';
 import { ProvisionalAuctionReminderService } from './provisional-auction-reminder.service';
 import { ProvisionalAuctionExpiryService } from './provisional-auction-expiry.service';
-import { FreeListingsModule } from '../free-listings/free-listings.module';
 
 @Module({
     imports: [
