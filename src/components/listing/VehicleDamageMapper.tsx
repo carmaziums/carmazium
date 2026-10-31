@@ -6,6 +6,7 @@ import { Camera, X, Plus, AlertTriangle, CheckCircle2, Trash2, Pencil, ChevronDo
 import Image from "next/image"
 import { ALL_ZONES } from "./ThreeDVehicleViewer"
 import { uploadImage } from "@/lib/supabase"
+import { prepareImageForUpload } from "@/lib/vehiclePhotoCompression"
 import type { ThreeDVehicleViewerProps, SurfacePoint } from "./ThreeDVehicleViewer"
 import { ThreeDErrorBoundary } from "./ThreeDErrorBoundary"
 import { computeExteriorGradeFromDefectCount } from "@/lib/exteriorGrade"
@@ -199,10 +200,12 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, onP
     setUploading(true)
     setUploadError(null)
     try {
-      if (!file.type.startsWith("image/") || file.size > 15 * 1024 * 1024) {
-        throw new Error("Choose an image smaller than 15 MB.")
+      const isSupportedImage = file.type.startsWith("image/") || /\.(heic|heif)$/i.test(file.name)
+      if (!isSupportedImage || file.size > 15 * 1024 * 1024) {
+        throw new Error("Choose a supported image no larger than 15 MB.")
       }
-      const url = await uploadImage(file, "listings", "damage")
+      const preparedFile = await prepareImageForUpload(file)
+      const url = await uploadImage(preparedFile, "listings", "damage")
       if (!url.startsWith("https://")) throw new Error("Photo storage did not return a permanent URL.")
       setPendingPhoto(url)
     } catch (error) {

@@ -4,6 +4,7 @@ import * as React from "react"
 import { Camera, X, Upload, Loader2, GripVertical, Star, Info, CheckCircle2, AlertCircle, Sparkles, ChevronLeft, ChevronRight } from "lucide-react"
 import Image from "next/image"
 import { uploadImage, deleteImage } from "@/lib/supabase"
+import { MAX_SOURCE_FILE_SIZE, PHONE_IMAGE_EXTENSIONS, prepareImageForUpload } from "@/lib/vehiclePhotoCompression"
 import { recommendVehicleCoverPhoto } from "@/lib/listingApi"
 import {
     encodeVehicleImageCategory,
@@ -43,130 +44,6 @@ const CATEGORIES: { id: ImageCategory; label: string; tip: string; minReq?: numb
         tip: 'Be transparent about any scratches, dents, or wear to build buyer trust and get an accurate valuation.'
     },
 ]
-
-const MAX_SOURCE_FILE_SIZE = 50 * 1024 * 1024 // Accept large modern phone photos up to 50MB before optimisation
-const MAX_IMAGE_EDGE = 1920 // Full HD-class output while preserving the original aspect ratio
-const TARGET_UPLOAD_SIZE = 4 * 1024 * 1024 // Keep standard Supabase uploads fast and reliable
-const INITIAL_JPEG_QUALITY = 0.9
-const MIN_JPEG_QUALITY = 0.68
-const PHONE_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']
-
-function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
-    return new Promise((resolve, reject) => {
-        canvas.toBlob(
-            (blob) => blob ? resolve(blob) : reject(new Error('Could not prepare this photo for upload.')),
-            'image/jpeg',
-            quality,
-        )
-    })
-}
-
-/**
- * Normalise customer photos before uploading:
- * - accepts high-resolution phone photos (up to 50MB source files)
- * - preserves aspect ratio
- * - downsizes the longest edge to 1920px (Full HD-class)
- * - converts to JPEG and targets <= 4MB for reliable mobile uploads
- */
-async function convertHeicToJpeg(file: File): Promise<File> {
-    const extension = file.name.split('.').pop()?.toLowerCase() || ''
-    const isHeic = ['heic', 'heif'].includes(extension)
-        || file.type === 'image/heic'
-        || file.type === 'image/heif'
-
-    if (!isHeic) return file
-
-    try {
-        const { default: heic2any } = await import('heic2any')
-        const converted = await heic2any({
-            blob: file,
-            toType: 'image/jpeg',
-            quality: INITIAL_JPEG_QUALITY,
-        })
-        const blob = Array.isArray(converted) ? converted[0] : converted
-        if (!blob) throw new Error('No JPEG was produced')
-
-        const baseName = file.name.replace(/\.[^.]+$/, '') || 'vehicle-photo'
-        return new File([blob], `${baseName}.jpg`, {
-            type: 'image/jpeg',
-            lastModified: file.lastModified,
-        })
-    } catch (error) {
-        console.error('HEIC conversion failed:', error)
-        throw new Error(`${file.name}: This HEIC/HEIF photo could not be converted. Please try the photo again or export it as JPEG.`)
-    }
-}
-
-/**
- * Normalise customer photos before uploading:
- * - accepts high-resolution phone photos (up to 50MB source files)
- * - converts HEIC/HEIF to browser-safe JPEG first
- * - preserves aspect ratio
- * - downsizes the longest edge to 1920px (Full HD-class)
- * - targets <= 4MB for reliable mobile uploads
- */
-async function prepareImageForUpload(file: File): Promise<File> {
-    const sourceFile = await convertHeicToJpeg(file)
-    const safeType = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(sourceFile.type)
-    const alreadyOptimised = safeType && sourceFile.size <= TARGET_UPLOAD_SIZE
-
-    const objectUrl = URL.createObjectURL(sourceFile)
-
-    try {
-        const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-            const element = document.createElement('img')
-            element.onload = () => resolve(element)
-            element.onerror = () => reject(new Error(
-                `${sourceFile.name}: This photo could not be decoded after conversion. Please use JPEG, PNG or WebP.`
-            ))
-            element.src = objectUrl
-        })
-
-        const width = image.naturalWidth
-        const height = image.naturalHeight
-
-        if (!width || !height) {
-            throw new Error(`${sourceFile.name}: Could not read the photo dimensions.`)
-        }
-
-        if (alreadyOptimised && Math.max(width, height) <= MAX_IMAGE_EDGE) {
-            return sourceFile
-        }
-
-        const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(width, height))
-        const targetWidth = Math.max(1, Math.round(width * scale))
-        const targetHeight = Math.max(1, Math.round(height * scale))
-
-        const canvas = document.createElement('canvas')
-        canvas.width = targetWidth
-        canvas.height = targetHeight
-
-        const context = canvas.getContext('2d')
-        if (!context) {
-            throw new Error(`${sourceFile.name}: Your browser could not prepare this photo for upload.`)
-        }
-
-        context.fillStyle = '#ffffff'
-        context.fillRect(0, 0, targetWidth, targetHeight)
-        context.drawImage(image, 0, 0, targetWidth, targetHeight)
-
-        let quality = INITIAL_JPEG_QUALITY
-        let blob = await canvasToBlob(canvas, quality)
-
-        while (blob.size > TARGET_UPLOAD_SIZE && quality > MIN_JPEG_QUALITY) {
-            quality = Math.max(MIN_JPEG_QUALITY, quality - 0.08)
-            blob = await canvasToBlob(canvas, quality)
-        }
-
-        const baseName = sourceFile.name.replace(/\.[^.]+$/, '') || 'vehicle-photo'
-        return new File([blob], `${baseName}.jpg`, {
-            type: 'image/jpeg',
-            lastModified: sourceFile.lastModified,
-        })
-    } finally {
-        URL.revokeObjectURL(objectUrl)
-    }
-}
 
 export function ImageUpload({
     onImagesChange,

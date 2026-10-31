@@ -8,6 +8,8 @@ on:
       - "src/app/vehicle/**"
       - "src/app/buy-cars/**"
       - "src/lib/damageMarkers.ts"
+      - "src/lib/vehiclePhotoCompression.ts"
+      - "scripts/test-vehicle-photo-compression.test.mjs"
       - "scripts/test-public-damage-pins.test.mjs"
       - "scripts/test-web-damage-release.test.mjs"
       - "src/components/features/ImportListingModal.tsx"
@@ -124,6 +126,9 @@ jobs:
 
       - name: Verify 3D damage upload, buyer evidence and safe navigation
         run: node --test scripts/test-web-damage-release.test.mjs
+
+      - name: Verify browser-side vehicle photo compression before storage
+        run: node --test scripts/test-vehicle-photo-compression.test.mjs
 
       - name: Verify exact and approximate damage marker mapping for auction and retail
         run: node --test scripts/test-public-damage-pins.test.mjs
