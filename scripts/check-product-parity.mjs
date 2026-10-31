@@ -1010,8 +1010,8 @@ if (
   }
 }
 
-// Purchase destinations: Auction Wins, All Purchases and Purchase History are
-// three separate places on web and app, in the same order, with the same
+// Purchase destinations: Auction Wins, Retail Purchases, All Purchases and
+// Purchase History are four places on web and app, in the same order, with the same
 // finished-stage rule for Purchase History.
 {
   const webDest = read('src/lib/purchaseDestinations.ts');
@@ -1021,7 +1021,7 @@ if (
   const nativeLabels = [...nativeDest.matchAll(/label: '([^']+)'/g)].map(m => m[1]);
   const webHistory = (webDest.match(/PURCHASE_HISTORY_STATUSES = \[([^\]]*)\]/)?.[1] || '').match(/"([a-z_]+)"/g)?.map(x => x.slice(1, -1).toUpperCase()) || [];
   const nativeHistory = (nativePurchases.match(/HISTORY_STATUSES: PurchaseStatus\[\] = \[([^\]]*)\]/)?.[1] || '').match(/'([A-Z_]+)'/g)?.map(x => x.slice(1, -1)) || [];
-  const expected = 'Auction Wins,All Purchases,Purchase History';
+  const expected = 'Auction Wins,Retail Purchases,All Purchases,Purchase History';
   if (webLabels.join(',') !== expected || nativeLabels.join(',') !== expected) {
     fail(`Purchase destinations differ: web (${webLabels.join(', ')}) app (${nativeLabels.join(', ')})`);
   } else if (webHistory.join(',') !== nativeHistory.join(',') || webHistory.length === 0) {
