@@ -32,6 +32,10 @@ test("web: buyer can complete from dealer purchases, private purchases and offer
     assert.match(read("src/components/dealer/PendingRetailPurchaseRow.tsx"), /<CompletePurchaseButton listingId=\{offer\.listingId\} onCompleted=\{onCompleted\}/)
     assert.match(read("src/components/dealer/DealerPurchasesView.tsx"), /<PendingRetailPurchaseRow key=\{offer\.id\} offer=\{offer\} onCompleted=/)
     assert.match(read("src/components/dashboard/PrivatePurchasesTab.tsx"), /offer\.listing\?\.status === "OFFER_ACCEPTED"[\s\S]{0,600}<CompletePurchaseButton/)
+    // /dashboard/buyer/offers redirects to the unified My Offers tab, which is
+    // where buyers actually land, so the action must be there (mobile + desktop rows).
+    const unified = read("src/app/dashboard/user/page.tsx")
+    assert.equal((unified.match(/offer\.listing\.status === 'OFFER_ACCEPTED' && \(\s*(?:\/\/[^\n]*\n\s*)?<CompletePurchaseButton/g) || []).length, 2)
     assert.match(read("src/app/dashboard/buyer/offers/page.tsx"), /listing\.status === 'OFFER_ACCEPTED' && \([\s\S]{0,240}<CompletePurchaseButton/)
 })
 

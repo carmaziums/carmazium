@@ -103,6 +103,7 @@ import { UserAttentionPanel } from "@/components/dashboard/UserAttentionPanel"
 import { MyCarsAuctionPanel } from "@/components/dashboard/MyCarsAuctionPanel"
 import { getCompletePrivateListings } from "@/lib/privateCarsListings"
 import { PrivatePurchasesTab } from "@/components/dashboard/PrivatePurchasesTab"
+import { CompletePurchaseButton } from "@/components/purchases/CompletePurchaseButton"
 
 export default function UnifiedUserDashboard() {
     return (
@@ -1606,6 +1607,10 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                             </button>
                                         )}
 
+                                        {offer.status === 'ACCEPTED' && offer.listing?.id && offer.listing.status === 'OFFER_ACCEPTED' && (
+                                            // Either party can complete the sale once paid (owner rule).
+                                            <CompletePurchaseButton listingId={offer.listing.id} onCompleted={() => { void fetchData(true); onRefreshStats?.() }} className="mt-3" />
+                                        )}
                                         {offer.status === 'ACCEPTED' && offer.listing?.id && (
                                             <button
                                                 onClick={() => setCancelPurchaseListing({ id: offer.listing!.id, title: offer.listing!.title || "Vehicle" })}
@@ -1767,6 +1772,9 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                     )}
                                                     {offer.status === 'ACCEPTED' && (
                                                         <>
+                                                        {offer.listing?.id && offer.listing.status === 'OFFER_ACCEPTED' && (
+                                                            <CompletePurchaseButton listingId={offer.listing.id} onCompleted={() => { void fetchData(true); onRefreshStats?.() }} />
+                                                        )}
                                                         {offer.listing?.id && (
                                                             <Button
                                                                 size="sm"
