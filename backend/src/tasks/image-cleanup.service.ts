@@ -131,6 +131,39 @@ export class ImageCleanupService {
                 });
             });
 
+            // Declared-damage photos live on damage_records, not in
+            // listing.images, and are stored under <owner>/damage, which this
+            // job scans. Without this they would be deleted 24h after upload,
+            // destroying the seller's damage disclosure. If either lookup
+            // fails the whole run stops before deleting anything.
+            const damagePhotos = await this.prisma.damageRecord.findMany({
+                where: { imageUrl: { not: null } },
+                select: { imageUrl: true },
+            });
+            damagePhotos.forEach((record) => {
+                if (record.imageUrl) referencedImages.add(record.imageUrl.split('#')[0]);
+            });
+
+            // Photos saved in purchase-time snapshots are a buyer's evidence
+            // of what they bought, even after the seller edits the advert.
+            // The table only exists once its migration is applied.
+            const [snapshotTable] = await this.prisma.$queryRaw<Array<{ present: boolean }>>`
+                SELECT to_regclass('public.purchase_listing_snapshots') IS NOT NULL AS present
+            `;
+            if (snapshotTable?.present) {
+                const evidence = await this.prisma.$queryRaw<Array<{ url: string | null }>>`
+                    SELECT jsonb_array_elements_text(COALESCE(data->'images', '[]'::jsonb)) AS url
+                    FROM purchase_listing_snapshots
+                    UNION
+                    SELECT d->>'imageUrl' AS url
+                    FROM purchase_listing_snapshots p,
+                         jsonb_array_elements(COALESCE(p.data->'damage', '[]'::jsonb)) d
+                `;
+                evidence.forEach((row) => {
+                    if (row.url) referencedImages.add(row.url.split('#')[0]);
+                });
+            }
+
             const objects = await this.findOwnerScopedVehicleObjects();
             const cutoff = Date.now() - ORPHAN_GRACE_HOURS * 60 * 60 * 1000;
             const orphans = objects
