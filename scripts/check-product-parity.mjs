@@ -71,6 +71,28 @@ function same(label, values) {
   }
 }
 
+// Private buyer/seller dashboard parity: both platforms have a single
+// My cars status-filtered workspace and a Purchases destination. Old advanced
+// workflow screens remain registered to prevent lost seller actions.
+const privateWeb = read('src/components/dashboard/DashboardSidebar.tsx');
+const privateNative = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
+const myCarsNative = read('carmazium app/carmazium app/src/screens/account/MyCarsScreen.tsx');
+const privateDashboard = read('src/app/dashboard/user/page.tsx');
+if (
+  !privateWeb.includes('label: "My cars"') ||
+  !privateWeb.includes('label: "Purchases"') ||
+  !privateNative.includes("label: 'My cars'") ||
+  !privateNative.includes("label: 'Purchases'") ||
+  !myCarsNative.includes("fetchAllMyAuctions") ||
+  !myCarsNative.includes("fetchAllMyListings") ||
+  !privateDashboard.includes("<PrivatePurchasesTab") ||
+  !privateDashboard.includes("<MyCarsAuctionPanel")
+) {
+  fail('Private My cars/Purchases web-native dashboard parity is missing');
+} else {
+  ok('Private buyer/seller My cars and Purchases remain consistent across web and native');
+}
+
 const manifest = JSON.parse(read('product-parity.json'));
 for (const feature of manifest.features) {
   const webMissing = (feature.web || []).filter((p) => !exists(p));
