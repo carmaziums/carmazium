@@ -117,7 +117,8 @@ export type MainStackParamList = {
   DealerTeam: undefined;
   DealerOnboarding: undefined;
   DealerOffers: undefined;
-  DealerMyOffers: undefined;
+  /** fromBidsOffers: opened from the Buy & Bid hub's "Bids & offers" switch. */
+  DealerMyOffers: { fromBidsOffers?: boolean } | undefined;
   DealerPurchases: undefined;
   DealerEarnings: undefined;
   DealerFinance: undefined;

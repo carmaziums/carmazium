@@ -226,7 +226,7 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
                 style={styles.bidsSwitchItem}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: false }}
-                onPress={() => navigation?.navigate('DealerMyOffers')}
+                onPress={() => navigation?.navigate('DealerMyOffers', { fromBidsOffers: true })}
               >
                 <Text style={styles.bidsSwitchText}>Retail offers</Text>
               </TouchableOpacity>

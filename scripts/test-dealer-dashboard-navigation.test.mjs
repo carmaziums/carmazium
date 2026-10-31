@@ -194,7 +194,11 @@ test("Bids & offers: one destination with auction-bid and retail-offer views on 
     const hub = read("carmazium app/carmazium app/src/screens/main/DealerBuyBidScreen.tsx")
     assert.ok(hub.includes("label: 'Bids & offers'"))
     assert.ok(hub.includes("hasPermission('MANAGE_OFFERS')"))
-    assert.ok(hub.includes("navigation?.navigate('DealerMyOffers')"))
+    assert.ok(hub.includes("navigation?.navigate('DealerMyOffers', { fromBidsOffers: true })"))
+    // The app's retail offers screen shows the same switch back to Auction bids.
+    const offersScreen = read("carmazium app/carmazium app/src/screens/main/DealerMyOffersScreen.tsx")
+    assert.ok(offersScreen.includes("route.params?.fromBidsOffers === true"))
+    assert.ok(offersScreen.includes(">Auction bids<") && offersScreen.includes(">Retail offers<"))
 })
 
 test("Bids & offers destination respects VIEW_TRADE-only and MANAGE_OFFERS-only dealer staff", () => {
