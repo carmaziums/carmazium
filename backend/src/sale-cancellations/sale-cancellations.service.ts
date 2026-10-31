@@ -319,19 +319,21 @@ export class SaleCancellationsService {
         }
     }
 
-    async mine(userId: string) {
+    async mine(userId: string, scope?: 'purchase-history') {
         const { canonicalId } = await this.actor(userId);
         const rows = await this.prisma.saleCancellationRequest.findMany({
-            where: {
-                OR: [
-                    { sellerId: canonicalId },
-                    { buyerId: canonicalId },
-                    { requestedById: canonicalId },
-                ],
-            },
+            where: scope === 'purchase-history'
+                ? { buyerId: canonicalId, status: 'APPROVED' as any }
+                : {
+                    OR: [
+                        { sellerId: canonicalId },
+                        { buyerId: canonicalId },
+                        { requestedById: canonicalId },
+                    ],
+                },
             include: { evidence: true },
             orderBy: { createdAt: 'desc' },
-            take: 100,
+            take: scope === 'purchase-history' ? 500 : 100,
         });
         return Promise.all(rows.map(async (row) => {
             const hydrated = await this.hydrate(row);
@@ -340,6 +342,9 @@ export class SaleCancellationsService {
                 ...hydrated,
                 viewer: {
                     isRequester: row.requestedById === canonicalId,
+                    // Dealer staff resolve to the dealership owner, so clients
+                    // must not compare buyerId with the signed-in user's id.
+                    isBuyer: row.buyerId === canonicalId,
                     canRespond: row.status === ('PENDING_COUNTERPARTY' as any) && counterpartId === canonicalId,
                     canWithdraw: ['PENDING_COUNTERPARTY', 'PENDING_ADMIN'].includes(row.status as any)
                         && row.requestedById === canonicalId,

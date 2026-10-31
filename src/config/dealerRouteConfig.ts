@@ -108,7 +108,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         requiredPermission: "VIEW_PURCHASES",
         label: "Purchase History",
         title: "Purchase History",
-        subHeader: "Finished purchases and cancelled sales",
+        subHeader: "Completed purchases and cancelled sales",
         icon: History,
         hidden: true,
         section: "Buy"

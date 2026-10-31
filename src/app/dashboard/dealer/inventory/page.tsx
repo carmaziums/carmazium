@@ -41,9 +41,16 @@ const STATUS_LABELS: Record<string, string> = {
     SOLD: "Sold",
     PENDING_REVIEW: "Under Review",
     REJECTED: "Rejected",
+    // Same buckets as the app's "Sale pending" and "Other" filters.
+    OFFER_ACCEPTED: "Sale pending",
+    WITHDRAWN: "Withdrawn",
 }
 
 const INVENTORY_STATUSES = ["ALL", "ACTIVE", "PENDING_REVIEW", "REJECTED", "DRAFT", "SOLD"] as const
+// Less common lifecycle states, listed after the six main ones (the app has
+// the same two as "Sale pending" and "Other"). Previously only under ALL.
+const EXTRA_INVENTORY_STATUSES = ["OFFER_ACCEPTED", "WITHDRAWN"] as const
+const ALL_INVENTORY_STATUSES: readonly string[] = [...INVENTORY_STATUSES, ...EXTRA_INVENTORY_STATUSES]
 
 // Sorting only reorders what is already loaded; it never filters anything out.
 // Same three orders as the app's Stock screen.
@@ -95,11 +102,11 @@ export default function DealerInventoryPage() {
     const [searchQuery,       setSearchQuery]       = React.useState("")
     const [statusFilter,      setStatusFilter]      = React.useState(() => {
         const requested = searchParams.get('status')
-        return requested && ["ALL", "ACTIVE", "PENDING_REVIEW", "REJECTED", "DRAFT", "SOLD"].includes(requested) ? requested : "ALL"
+        return requested && ALL_INVENTORY_STATUSES.includes(requested) ? requested : "ALL"
     })
     React.useEffect(() => {
         const requested = searchParams.get('status')
-        setStatusFilter(requested && ["ALL", "ACTIVE", "PENDING_REVIEW", "REJECTED", "DRAFT", "SOLD"].includes(requested) ? requested : "ALL")
+        setStatusFilter(requested && ALL_INVENTORY_STATUSES.includes(requested) ? requested : "ALL")
     }, [searchParams])
     const [sortBy,            setSortBy]            = React.useState<InventorySort>("newest")
     const [isBulkImportOpen,  setIsBulkImportOpen]  = React.useState(false)
@@ -309,7 +316,7 @@ export default function DealerInventoryPage() {
                                     onChange={e => setStatusFilter(e.target.value)}
                                     className="h-11 w-full min-w-0 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm font-semibold focus:border-primary focus:outline-none"
                                 >
-                                    {INVENTORY_STATUSES.map(s => (
+                                    {ALL_INVENTORY_STATUSES.map(s => (
                                         <option key={s} value={s}>
                                             {s === "ALL" ? "All statuses" : (STATUS_LABELS[s] || s)} ({statusCount(s)})
                                         </option>
@@ -328,8 +335,8 @@ export default function DealerInventoryPage() {
                             </label>
                         </div>
                         {/* Desktop: every status fits, so keep the one-click strip. */}
-                        <div className="hidden lg:flex gap-2 p-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl shrink-0">
-                            {INVENTORY_STATUSES.map(s => (
+                        <div className="hidden lg:flex lg:flex-wrap gap-2 p-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl">
+                            {ALL_INVENTORY_STATUSES.filter(s => (INVENTORY_STATUSES as readonly string[]).includes(s) || statusFilter === s || statusCount(s) > 0).map(s => (
                                 <button
                                     key={s}
                                     onClick={() => setStatusFilter(s)}

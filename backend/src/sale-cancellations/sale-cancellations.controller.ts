@@ -49,8 +49,11 @@ export class SaleCancellationsController {
 
     @Get('mine')
     @ApiOperation({ summary: 'Get sale cancellation requests involving the current user/business' })
-    async mine(@CurrentUser() user: any) {
-        return new StandardResponse(await this.service.mine(user.id));
+    async mine(@CurrentUser() user: any, @Query('scope') scope?: string) {
+        // scope=purchase-history: only approved cancellations where this
+        // user/business was the buyer, so the record cap is not used up by
+        // requests on cars it sold.
+        return new StandardResponse(await this.service.mine(user.id, scope === 'purchase-history' ? 'purchase-history' : undefined));
     }
 
     @Get('admin/pending')

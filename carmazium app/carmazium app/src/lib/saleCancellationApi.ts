@@ -88,6 +88,8 @@ export interface SaleCancellationRequest {
   }>;
   viewer?: {
     isRequester?: boolean;
+    /** True when the viewer\'s dealership (or the viewer) was the buyer. */
+    isBuyer?: boolean;
     canRespond?: boolean;
     canWithdraw?: boolean;
   };
@@ -119,9 +121,10 @@ export async function createSaleCancellation(input: {
   return response.data;
 }
 
-export async function getMySaleCancellations(): Promise<SaleCancellationRequest[]> {
+/** scope 'purchase-history': approved cancellations where you (or your dealership) were the buyer. */
+export async function getMySaleCancellations(scope?: 'purchase-history'): Promise<SaleCancellationRequest[]> {
   const response = await apiClient<{ data: SaleCancellationRequest[] }>(
-    '/sale-cancellations/mine',
+    `/sale-cancellations/mine${scope ? `?scope=${scope}` : ''}`,
   );
   return response.data ?? [];
 }
