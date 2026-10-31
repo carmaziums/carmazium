@@ -50,7 +50,7 @@ test("no dealer menu destination was removed", () => {
 })
 
 test("hidden routes are listed under More tools on desktop and mobile, not dropped", () => {
-    assert.match(sidebar, /DEALER_ROUTE_CONFIG\.filter\(route => route\.hidden && dealerRouteVisible\(route\)\)/)
+    assert.match(sidebar, /DEALER_ROUTE_CONFIG\.filter\(route => route\.hidden && dealerRouteVisible\(route\)/)
     assert.match(sidebar, /More tools/)
     assert.match(sidebar, /\.\.\.currentLinks, \.\.\.dealerMoreLinks/)
     assert.ok(DEALER_ROUTE_CONFIG.filter(r => r.hidden).length >= 10)
@@ -58,9 +58,11 @@ test("hidden routes are listed under More tools on desktop and mobile, not dropp
 
 test("menu items stay highlighted on their related pages", () => {
     const buy = getDealerRoute("/dashboard/dealer/auctions")
-    for (const p of ["/dashboard/dealer/auctions", "/dashboard/dealer/auctions/won", "/dashboard/dealer/auctions/shortlisted", "/dashboard/dealer/bids", "/dashboard/dealer/purchases"]) {
+    for (const p of ["/dashboard/dealer/auctions", "/dashboard/dealer/auctions/won", "/dashboard/dealer/auctions/shortlisted", "/dashboard/dealer/bids"]) {
         assert.ok(dealerRouteIsActive(buy, p), p)
     }
+    // Purchase History has been its own menu item since PR #697.
+    assert.ok(dealerRouteIsActive(getDealerRoute("/dashboard/dealer/purchases"), "/dashboard/dealer/purchases"))
     assert.ok(dealerRouteIsActive(getDealerRoute("/dashboard/dealer/crm"), "/dashboard/dealer/offers"))
     assert.ok(dealerRouteIsActive(getDealerRoute("/dashboard/dealer/inventory"), "/dashboard/dealer/add-listing"))
     // Home must not light up for every dealer page.
@@ -77,10 +79,11 @@ test("pages read their own titles, not a neighbour's", () => {
 })
 
 test("Buy & Bid tabs appear on every page in that area and keep all previous tabs", () => {
-    for (const label of ["My Auctions", "Live Auctions", "Shortlisted", "My Bids", "Purchases", "Purchase History"]) {
+    for (const label of ["My Auctions", "Live Auctions", "Shortlisted", "My Bids", "Auction Wins", "All Purchases"]) {
         assert.ok(tabs.includes(`label: "${label}"`), label)
     }
-    for (const page of ["auctions/page.tsx", "auctions/shortlisted/page.tsx", "bids/page.tsx", "auctions/won/page.tsx", "purchases/page.tsx"]) {
+    // Purchase History became its own menu item in PR #697 and no longer repeats this bar.
+    for (const page of ["auctions/page.tsx", "auctions/shortlisted/page.tsx", "bids/page.tsx", "auctions/won/page.tsx"]) {
         assert.match(read("src/app/dashboard/dealer/" + page), /<BuyAndBidTabs/, page)
     }
 })
@@ -136,4 +139,26 @@ test("attention list respects team permissions", () => {
         canManageOffers: false, canViewPurchases: false, canManageInventory: false,
     })
     assert.equal(items.length, 0)
+})
+
+test("dealer menu and bottom bar use the same names as the phone app", () => {
+    assert.equal(getDealerRoute("/dashboard/dealer/inventory").label, "Stock")
+    assert.equal(getDealerRoute("/dashboard/dealer/inventory").title, "Stock")
+    assert.equal(getDealerRoute("/dashboard/dealer/auctions").label, "Buy & Bid")
+    // Native Block 6 and its hub still use the established page title.
+    assert.equal(getDealerRoute("/dashboard/dealer/auctions").title, "Auctions & Buying")
+    // Expandable phone-menu rows read the label from config, not a hard-coded copy.
+    assert.ok(!sidebar.includes('font-medium">Stock<'))
+    assert.ok(!sidebar.includes('font-medium">Buy &amp; Bid<'))
+})
+
+test("Purchases sits with the other Main items, so the phone menu has one Main heading", () => {
+    const main = DEALER_ROUTE_CONFIG.filter(r => !r.hidden).map(r => r.section)
+    const firstOther = main.findIndex(s => s !== "Main")
+    assert.ok(firstOther > 0 && main.slice(firstOther).every(s => s !== "Main"), main.join(","))
+})
+
+test("dealer sidebar loads team permissions on pages outside the dealer layout", () => {
+    assert.match(sidebar, /props\.role === "dealer" && !provided/)
+    assert.match(sidebar, /<DealerAccessProvider>\s*<DashboardSidebarInner/)
 })

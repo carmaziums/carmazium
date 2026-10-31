@@ -40,7 +40,7 @@ export function BuyAndBidTabs({ className = "" }: { className?: string }) {
     return (
         <nav
             aria-label="Auction and buying navigation"
-            className={`flex w-full items-center gap-1 overflow-x-auto rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.06)] ${className}`}
+            className={`grid w-full grid-cols-3 gap-1 sm:flex sm:items-center sm:overflow-x-auto rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.06)] ${className}`}
         >
             {tabs.map(tab => {
                 const Icon = tab.icon
@@ -49,7 +49,7 @@ export function BuyAndBidTabs({ className = "" }: { className?: string }) {
                     <span
                         key={tab.href}
                         aria-current="page"
-                        className="flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-black text-white shadow-sm"
+                        className="flex min-h-[52px] sm:min-h-[44px] shrink-0 flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 rounded-xl bg-primary px-1.5 sm:px-4 py-2 sm:py-2.5 text-[11px] leading-tight sm:text-sm text-center font-black text-white shadow-sm"
                     >
                         <Icon size={16} /> {tab.label}
                     </span>
@@ -57,7 +57,7 @@ export function BuyAndBidTabs({ className = "" }: { className?: string }) {
                     <Link
                         key={tab.href}
                         href={tab.href}
-                        className="group flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black text-[var(--text-muted)] transition-all hover:bg-red-500/10 hover:text-primary"
+                        className="group flex min-h-[52px] sm:min-h-[44px] shrink-0 flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 rounded-xl px-1.5 sm:px-4 py-2 sm:py-2.5 text-[11px] leading-tight sm:text-sm text-center font-black text-[var(--text-muted)] transition-all hover:bg-red-500/10 hover:text-primary"
                     >
                         <Icon size={16} className="transition-transform group-hover:scale-110" /> {tab.label}
                     </Link>

@@ -13,6 +13,8 @@ interface DealerAccessContextValue {
     error: string | null
     hasPermission: (permission: DealerPermission) => boolean
     refresh: () => Promise<void>
+    /** False when no DealerAccessProvider is mounted above the caller. */
+    provided: boolean
 }
 
 const DealerAccessContext = React.createContext<DealerAccessContextValue>({
@@ -21,6 +23,7 @@ const DealerAccessContext = React.createContext<DealerAccessContextValue>({
     error: null,
     hasPermission: () => false,
     refresh: async () => {},
+    provided: false,
 })
 
 export function DealerAccessProvider({ children }: { children: React.ReactNode }) {
@@ -52,7 +55,7 @@ export function DealerAccessProvider({ children }: { children: React.ReactNode }
     )
 
     const value = React.useMemo(
-        () => ({ access, loading, error, hasPermission, refresh }),
+        () => ({ access, loading, error, hasPermission, refresh, provided: true }),
         [access, loading, error, hasPermission, refresh],
     )
 

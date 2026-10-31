@@ -457,7 +457,7 @@ export default function DealerCRMPage() {
                         ))}
                     </div>
 
-                    <div className="lg:hidden flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                    <div className="lg:hidden flex flex-wrap gap-2 pb-1">
                         {COLUMNS.map(col => (
                             <button
                                 key={col.key}

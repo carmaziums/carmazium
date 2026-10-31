@@ -54,8 +54,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     {
         href: "/dashboard/dealer/inventory",
         requiredPermission: "VIEW_INVENTORY",
-        label: "Sell Cars",
-        title: "Inventory",
+        label: "Stock",
+        title: "Stock",
         subHeader: "Manage live, draft and sold stock",
         icon: Car,
         section: "Main",
@@ -64,7 +64,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     {
         href: "/dashboard/dealer/crm",
         requiredPermission: "MANAGE_CRM",
-        label: "Customers & Enquiries",
+        label: "Customers",
         title: "Customers",
         subHeader: "Enquiries, offers and buyer follow-up",
         icon: Kanban,
@@ -84,12 +84,21 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     {
         href: "/dashboard/dealer/auctions",
         requiredPermission: "VIEW_TRADE",
-        label: "Buy Cars",
+        label: "Buy & Bid",
         title: "Auctions & Buying",
         subHeader: "Live auctions, bids and purchases",
         icon: Gavel,
         section: "Main",
         activePrefixes: ["/dashboard/dealer/auctions", "/dashboard/dealer/bids"]
+    },
+    {
+        href: "/dashboard/dealer/purchases",
+        requiredPermission: "VIEW_PURCHASES",
+        label: "Purchases",
+        title: "Purchase History",
+        subHeader: "Every vehicle you have bought, retail and auction",
+        icon: ShoppingBag,
+        section: "Main"
     },
     {
         href: "/dashboard/dealer/auctions/won",
@@ -191,15 +200,6 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         icon: Gavel,
         hidden: true,
         section: "Buying"
-    },
-    {
-        href: "/dashboard/dealer/purchases",
-        requiredPermission: "VIEW_PURCHASES",
-        label: "Purchases",
-        title: "Purchase History",
-        subHeader: "Every vehicle you have bought, retail and auction",
-        icon: ShoppingBag,
-        section: "Main"
     },
     {
         href: "/dashboard/dealer/wishlist",

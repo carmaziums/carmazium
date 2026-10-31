@@ -591,23 +591,31 @@ export function MaziumWidget() {
                     "flex items-center justify-center p-0 border-0",
                     isOpen
                         ? "h-14 w-14 rounded-full bg-slate-800 shadow-[0_4px_20px_rgba(237,28,36,0.5)] transition-all duration-300 hover:scale-105 active:scale-95"
-                        : "h-16 w-16 rounded-none bg-transparent shadow-none overflow-visible"
+                        : "h-12 w-12 lg:h-16 lg:w-16 rounded-full lg:rounded-none bg-transparent shadow-none overflow-visible"
                 )}
                 style={!isOpen ? { backgroundColor: "transparent", boxShadow: "none" } : undefined}
             >
                 {isOpen ? (
                     <X size={24} className="text-white" />
                 ) : (
-                    <Image
-                        src="/assets/images/mazium-bot-3d.png"
-                        alt="Mazium AI"
-                        width={64}
-                        height={64}
-                        className="block h-16 w-16 object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
-                        priority
-                        unoptimized
-                        draggable={false}
-                    />
+                    // Phones: a compact 48px round launcher so the mascot no
+                    // longer covers prices, chips and card text in the bottom-
+                    // right corner. Desktop keeps the full 64px mascot.
+                    <span
+                        className="flex h-12 w-12 items-center justify-center rounded-full border shadow-lg lg:h-16 lg:w-16 lg:rounded-none lg:border-0 lg:shadow-none bg-[var(--bg-dropdown)] lg:bg-transparent"
+                        style={{ borderColor: "var(--border-default)" }}
+                    >
+                        <Image
+                            src="/assets/images/mazium-bot-3d.png"
+                            alt="Mazium AI"
+                            width={64}
+                            height={64}
+                            className="block h-9 w-9 lg:h-16 lg:w-16 object-contain lg:drop-shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
+                            priority
+                            unoptimized
+                            draggable={false}
+                        />
+                    </span>
                 )}
             </button>
             </div>
