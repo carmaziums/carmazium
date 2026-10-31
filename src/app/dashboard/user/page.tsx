@@ -1121,7 +1121,7 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                     <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Offers Received</h2>
                     <p className="text-sm text-[var(--text-muted)] mt-1">Offers buyers have made on your cars. Accept, decline or counter each one.</p>
                 </div>
-                <Link href="/dashboard/seller/offers" className="inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline shrink-0">
+                <Link href="/dashboard/seller/offers?legacy=1" className="inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline shrink-0">
                     Delivery requests from buyers <ChevronRight size={14} />
                 </Link>
             </div>
@@ -1449,8 +1449,12 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
             <div>
                 <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Offers</h2>
                 <p className="text-sm text-[var(--text-muted)] mt-1">Offers you have made on other people&apos;s cars. Current offers are shown separately from your history.</p>
-                <Link href="/dashboard/buyer/offers" className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
+                <Link href="/dashboard/buyer/offers?legacy=1" className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
                     Ask a seller to arrange delivery <ChevronRight size={14} />
+                </Link>
+                <Link href="/dashboard/buyer/bids?legacy=1"
+                    className="ml-4 inline-flex min-h-10 items-center text-sm font-bold text-primary hover:underline">
+                    View auction bids and cancellation options <ChevronRight size={14}/>
                 </Link>
             </div>
 
@@ -1962,7 +1966,7 @@ function EarningsTab() {
                 <div>
                     <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Sales & Earnings</h2>
                     <p className="text-[var(--text-muted)] text-sm font-medium">Cars you have sold and what you earned.</p>
-                    <Link href="/dashboard/seller/earnings" className="mt-1 inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
+                    <Link href="/dashboard/seller/earnings?legacy=1" className="mt-1 inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
                         Payment receipts <ChevronRight size={14} />
                     </Link>
                 </div>
