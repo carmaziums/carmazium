@@ -45,7 +45,8 @@ test("public search and detail strip seller-private fields but never official ve
     for (const official of ["vin", "dateOfLastV5CIssued", "motHistory", "officialVehicleData", "motExpiryDate", "notOwnerRelationship"]) {
         assert.doesNotMatch(privateList[1], new RegExp(`'${official}'`), official)
     }
-    assert.match(service, /if \(!\(await this\.viewerManagesListing\(viewerId, listing\.sellerId\)\)\)/)
+    assert.match(service, /const managesListing = await this\.viewerManagesListing\(viewerId, listing\.sellerId\)/)
+    assert.match(service, /if \(!managesListing\)/)
 })
 
 test("keeper relationship is public only when seller answers No", () => {
