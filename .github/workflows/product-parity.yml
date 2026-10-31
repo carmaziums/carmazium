@@ -49,6 +49,8 @@ jobs:
         run: node --test scripts/test-website-mobile-app-downloads.test.mjs
       - name: Verify consistent compact homepage app marketing
         run: node --test scripts/test-home-app-promo-compact.test.mjs
+      - name: Verify chat fits a phone screen on every Messages page
+        run: node --test scripts/test-chat-mobile-width.test.mjs
       - name: Verify retired pages redirect and the dead newsletter form is gone
         run: node --test scripts/test-retired-page-redirects.test.mjs
       - name: Verify website audit fixes (images, SEO metadata, dead buttons, copy)
