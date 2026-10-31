@@ -68,6 +68,11 @@ test("native private dashboard groups selling and buying consistently", () => {
     assert.match(cars, /fetchAllMyListings/)
     assert.match(cars, /Filter/)
     assert.match(cars, /navigate\(channel === 'Listings' \? 'SellerListings' : 'SellerAuctions'\)/)
+    const buyerPurchases = read("carmazium app/carmazium app/src/screens/buyer/BuyerPurchaseHistoryScreen.tsx")
+    assert.match(buyerPurchases, /AGREED RETAIL PURCHASES/)
+    assert.match(buyerPurchases, /o\.status === 'ACCEPTED'/)
+    assert.match(buyerPurchases, /PAID PLATFORM TRANSACTIONS/)
+    assert.match(buyerPurchases, /PLATFORM RECEIPTS/)
 })
 
 test("private purchases do not confuse agreed offers with recorded funds or platform fees", () => {
