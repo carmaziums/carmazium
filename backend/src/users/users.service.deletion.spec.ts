@@ -7,7 +7,8 @@ describe('UsersService account deletion', () => {
         activeBid?: boolean;
         storageError?: string;
         authError?: string;
-        soldDamage?: Array<{ id: string; listingId: string; imageUrl: string }>;
+        soldDamage?: Array<{ listingId: string; imageUrl: string }>;
+        cancelledListings?: Array<{ listingId: string }>;
         copyError?: string;
     }) {
         const tx: any = {
@@ -41,6 +42,9 @@ describe('UsersService account deletion', () => {
                 update: jest.fn().mockResolvedValue({}),
             },
             user: { update: jest.fn().mockResolvedValue({}) },
+            // Used by the damage-evidence repoint transaction.
+            damageRecord: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+            $executeRaw: jest.fn().mockResolvedValue(1),
         };
 
         const prisma: any = {
@@ -102,9 +106,10 @@ describe('UsersService account deletion', () => {
             $transaction: jest.fn(async (fn: any) => fn(tx)),
             damageRecord: {
                 findMany: jest.fn().mockResolvedValue(options?.soldDamage ?? []),
-                update: jest.fn().mockResolvedValue({}),
             },
-            $executeRaw: jest.fn().mockResolvedValue(1),
+            saleCancellationRequest: {
+                findMany: jest.fn().mockResolvedValue(options?.cancelledListings ?? []),
+            },
         };
 
         const config: any = {
@@ -218,54 +223,91 @@ describe('UsersService account deletion', () => {
         expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
-    describe('damage evidence of sold vehicles', () => {
+    describe('damage evidence of purchased vehicles', () => {
         const owner = '11111111-1111-4111-8111-111111111111';
-        const damageUrl = `https://example.supabase.co/storage/v1/object/public/listings/${owner}/damage/scratch.jpg`;
+        const base = 'https://example.supabase.co/storage/v1/object/public/listings/';
+        const damageUrl = `${base}${owner}/damage/scratch.jpg`;
+        const removedUrl = `${base}${owner}/damage/removed-after-sale.jpg`;
+        const retained = (p: string) => `${base}retained-evidence/damage/l1/${p.replace(/\//g, '_')}`;
+        const owned = [
+            { bucket_id: 'listings', name: `${owner}/vehicle/front.jpg` },
+            { bucket_id: 'listings', name: `${owner}/damage/scratch.jpg` },
+            { bucket_id: 'listings', name: `${owner}/damage/removed-after-sale.jpg` },
+        ];
 
-        it('copies sold vehicles\' damage photos to retained evidence and repoints the records', async () => {
-            const { service, prisma, remove, copy } = build({
-                soldDamage: [{ id: 'd1', listingId: 'l1', imageUrl: damageUrl }],
+        it('copies damage photos from records AND snapshots, repoints them in one transaction, then deletes originals', async () => {
+            const { service, prisma, tx, remove, copy } = build({
+                soldDamage: [{ listingId: 'l1', imageUrl: damageUrl }],
+                cancelledListings: [{ listingId: 'l9' }],
             });
             prisma.$queryRaw
-                .mockResolvedValueOnce([
-                    { bucket_id: 'listings', name: `${owner}/vehicle/front.jpg` },
-                    { bucket_id: 'listings', name: `${owner}/damage/scratch.jpg` },
-                ])
-                .mockResolvedValueOnce([{ present: true }]);
+                .mockResolvedValueOnce(owned)
+                .mockResolvedValueOnce([{ present: true }])
+                // A damage record the seller deleted after the sale survives only in the snapshot.
+                .mockResolvedValueOnce([{ listingId: 'l1', url: removedUrl }, { listingId: 'l1', url: damageUrl }]);
 
             await service.deleteAccount(owner);
 
-            // Only sold vehicles (a Sale exists) owned by this seller.
+            // Bought vehicles: a Sale exists, or a recorded sale was cancelled.
             expect(prisma.damageRecord.findMany).toHaveBeenCalledWith(expect.objectContaining({
-                where: { imageUrl: { not: null }, listing: { sellerId: owner, sale: { isNot: null } } },
+                where: {
+                    imageUrl: { not: null },
+                    listing: { sellerId: owner, OR: [{ sale: { isNot: null } }, { id: { in: ['l9'] } }] },
+                },
             }));
-            expect(copy).toHaveBeenCalledWith(`${owner}/damage/scratch.jpg`, 'retained-evidence/damage/l1/d1-scratch.jpg');
-            expect(prisma.damageRecord.update).toHaveBeenCalledWith({
-                where: { id: 'd1' },
-                data: { imageUrl: 'https://example.supabase.co/storage/v1/object/public/listings/retained-evidence/damage/l1/d1-scratch.jpg' },
+            expect(copy).toHaveBeenCalledWith(`${owner}/damage/scratch.jpg`, `retained-evidence/damage/l1/${owner}_damage_scratch.jpg`);
+            expect(copy).toHaveBeenCalledWith(`${owner}/damage/removed-after-sale.jpg`, `retained-evidence/damage/l1/${owner}_damage_removed-after-sale.jpg`);
+            expect(tx.damageRecord.updateMany).toHaveBeenCalledWith({
+                where: { imageUrl: damageUrl }, data: { imageUrl: retained(`${owner}/damage/scratch.jpg`) },
             });
-            expect(prisma.$executeRaw).toHaveBeenCalled();
-            // Originals (gallery and damage) are still removed from the seller's space.
+            expect(tx.$executeRaw).toHaveBeenCalledTimes(2); // one per original URL, inside the transaction
             const removed = remove.mock.calls.flatMap((c: any[]) => c[0]);
             expect(removed).toEqual(expect.arrayContaining([`${owner}/vehicle/front.jpg`, `${owner}/damage/scratch.jpg`]));
-            // The copy itself is never removed.
-            expect(removed).not.toContain('retained-evidence/damage/l1/d1-scratch.jpg');
+            expect(removed.some((p: string) => p.startsWith('retained-evidence/'))).toBe(false);
+        });
+
+        it('a failed repoint deletes nothing, and the retry still protects every snapshot reference', async () => {
+            const first = build({ soldDamage: [{ listingId: 'l1', imageUrl: damageUrl }] });
+            first.prisma.$queryRaw
+                .mockResolvedValueOnce(owned)
+                .mockResolvedValueOnce([{ present: true }])
+                .mockResolvedValueOnce([{ listingId: 'l1', url: damageUrl }]);
+            // The snapshot update fails inside the single repoint transaction.
+            first.tx.$executeRaw.mockRejectedValueOnce(new Error('snapshot update failed'));
+            await expect(first.service.deleteAccount(owner)).rejects.toThrow('snapshot update failed');
+            expect(first.remove).not.toHaveBeenCalled();
+            expect(first.deleteUser).not.toHaveBeenCalled();
+
+            // Retry. Even if the live record had already moved (simulated: no
+            // record left pointing at the original), the snapshot still does,
+            // so the original is copied again (copy exists) and repointed
+            // before any deletion.
+            const retry = build({ soldDamage: [], copyError: 'The resource already exists' });
+            retry.prisma.$queryRaw
+                .mockResolvedValueOnce(owned)
+                .mockResolvedValueOnce([{ present: true }])
+                .mockResolvedValueOnce([{ listingId: 'l1', url: damageUrl }]);
+            await retry.service.deleteAccount(owner);
+            expect(retry.copy).toHaveBeenCalledWith(`${owner}/damage/scratch.jpg`, `retained-evidence/damage/l1/${owner}_damage_scratch.jpg`);
+            expect(retry.tx.$executeRaw).toHaveBeenCalledTimes(1);
+            const repointOrder = retry.tx.$executeRaw.mock.invocationCallOrder[0];
+            const removeOrder = retry.remove.mock.invocationCallOrder[0];
+            expect(repointOrder).toBeLessThan(removeOrder);
         });
 
         it('stops before deleting anything if a damage photo cannot be copied', async () => {
-            const { service, prisma, remove, deleteUser } = build({
-                soldDamage: [{ id: 'd1', listingId: 'l1', imageUrl: damageUrl }],
+            const { service, prisma, tx, remove, deleteUser } = build({
+                soldDamage: [{ listingId: 'l1', imageUrl: damageUrl }],
                 copyError: 'storage unavailable',
             });
-            prisma.$queryRaw.mockResolvedValueOnce([{ bucket_id: 'listings', name: `${owner}/damage/scratch.jpg` }]);
-
+            prisma.$queryRaw.mockResolvedValueOnce(owned).mockResolvedValueOnce([{ present: false }]);
             await expect(service.deleteAccount(owner)).rejects.toBeInstanceOf(ServiceUnavailableException);
             expect(remove).not.toHaveBeenCalled();
             expect(deleteUser).not.toHaveBeenCalled();
-            expect(prisma.damageRecord.update).not.toHaveBeenCalled();
+            expect(tx.damageRecord.updateMany).not.toHaveBeenCalled();
         });
 
-        it('leaves gallery photos to normal deletion when nothing was sold', async () => {
+        it('never copies gallery photos, and copies nothing when no vehicle was bought', async () => {
             const { service, copy, remove } = build();
             await service.deleteAccount(owner);
             expect(copy).not.toHaveBeenCalled();
