@@ -178,7 +178,7 @@ export default function DealerPurchaseDetailPage() {
                                         </p>
                                         <p className="text-2xl font-black tabular-nums">{formatGBP(purchase.purchasePrice)}</p>
                                         <p className="text-xs text-[var(--text-muted)]">
-                                            Purchased {formatDate(purchase.purchasedAt)} · Reference ${purchase.id.slice(0, 8).toUpperCase()}
+                                            Purchased {formatDate(purchase.purchasedAt)} · Reference {purchase.id.slice(0, 8).toUpperCase()}
                                         </p>
                                     </div>
                                 </div>
@@ -299,7 +299,14 @@ export default function DealerPurchaseDetailPage() {
                             className="min-h-[48px] flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--border-default)] px-2 text-xs sm:text-sm font-black">
                             <UserRound size={17} /> Seller&apos;s details
                         </Link>
-                        {canArrange ? (
+                        {purchase.delivery ? (
+                            // A delivery job already exists for this car: open it rather
+                            // than starting a second job (matches the app).
+                            <Link href={`/services/jobs/${encodeURIComponent(purchase.delivery.jobId)}`}
+                                className="min-h-[48px] flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-2 text-xs sm:text-sm font-black text-white">
+                                <Truck size={17} /> View delivery
+                            </Link>
+                        ) : canArrange ? (
                             <Link href={purchaseDeliveryHref(purchase)}
                                 className="min-h-[48px] flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-2 text-xs sm:text-sm font-black text-white">
                                 <Truck size={17} /> Book delivery

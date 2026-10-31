@@ -11,6 +11,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { BottomSheet } from '../../components/BottomSheet';
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 import { apiClient } from '../../lib/apiClient';
+import { getServiceSettings } from '../../lib/servicesApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
 import type { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -95,6 +96,17 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
   const [sellerError, setSellerError] = useState(false);
   const [actions, setActions] = useState(false);
   const [showSeller, setShowSeller] = useState(false);
+  // Same emergency switch as the website (NEXT_PUBLIC_FEATURE_DELIVERY),
+  // read from the backend that enforces it. Viewing an existing job is
+  // always allowed; only new delivery jobs are blocked.
+  const [deliveryAvailable, setDeliveryAvailable] = useState(true);
+  useEffect(() => {
+    let active = true;
+    getServiceSettings()
+      .then(s => { if (active) setDeliveryAvailable(s.availability?.DELIVERY !== false); })
+      .catch(() => { /* the backend still refuses new jobs if delivery is switched off */ });
+    return () => { active = false; };
+  }, []);
   const [cancelOpen, setCancelOpen] = useState(false);
 
   const load = useCallback(async () => {
@@ -136,6 +148,10 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
     }
     if (detail.delivery) {
       navigation.navigate('CustomerServiceJobDetail', { jobId: detail.delivery.jobId });
+      return;
+    }
+    if (!deliveryAvailable) {
+      Alert.alert('Delivery unavailable', 'Delivery jobs are currently unavailable. Please try again later.');
       return;
     }
     navigation.navigate('CreateServiceJob', {
@@ -199,7 +215,7 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
               <View style={styles.status}>
                 <Ionicons name="checkmark-circle-outline" color={Colors.success} size={16} />
                 <Text style={styles.statusText}>
-                  {detail.retailSold ? 'Sold' : detail.channel === 'AUCTION' ? 'Auction won'
+                  {detail.retailSold ? 'Purchased' : detail.channel === 'AUCTION' ? 'Auction won'
                     : detail.purchaseStatus.replace(/_/g, ' ')}
                 </Text>
               </View>
@@ -305,10 +321,11 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
             </TouchableOpacity>
             <TouchableOpacity accessibilityRole="button"
               style={[styles.buttonPrimary,
-                detail.buyerFee.required && !detail.buyerFee.settled && styles.buttonDisabled]}
+                !detail.delivery && ((detail.buyerFee.required && !detail.buyerFee.settled) || !deliveryAvailable)
+                  && styles.buttonDisabled]}
               onPress={bookDelivery}>
               <Ionicons name="car-sport-outline" color={Colors.white} size={17} />
-              <Text style={styles.buttonPrimaryText}>Book delivery</Text>
+              <Text style={styles.buttonPrimaryText}>{detail.delivery ? 'View delivery' : 'Book delivery'}</Text>
             </TouchableOpacity>
           </View>
         </>
