@@ -192,3 +192,16 @@ test("Auction Wins does not repeat the purchase destinations in the Buy & Bid ta
     assert.match(tabs, /activePaths: \["\/dashboard\/dealer\/purchases", "\/dashboard\/dealer\/purchases\/history"\]/)
     for (const label of ["Auction Wins", "All Purchases", "Purchase History"]) assert.ok(!tabs.includes(`label: "${label}"`), label)
 })
+
+test("free purchase grants: a settled fee never shows a deadline or a second £125 checkout", () => {
+    // A Free Purchase Grant sets buyerFeePaid + a £0 transaction, so the API
+    // reports buyerFee.settled = true (backend spec covers that mapping).
+    const web = read("src/app/dashboard/dealer/purchases/[id]/page.tsx")
+    assert.match(web, /purchase\.auction\?\.buyerFeeDeadlineAt && !purchase\.buyerFee\.settled/)
+    assert.match(web, /purchase\.buyerFee\.required && !purchase\.buyerFee\.settled[\s\S]{0,400}mode=auction_fee/)
+    assert.match(web, /const canArrange = !!purchase && \(!purchase\.buyerFee\.required \|\| purchase\.buyerFee\.settled\)/)
+    const app = read(APP + "screens/main/DealerPurchaseDetailScreen.tsx")
+    assert.match(app, /detail\.buyerFee\.required && !detail\.buyerFee\.settled/)
+    const deadline = read("backend/src/auctions/buyer-fee-deadline.ts")
+    assert.match(deadline, /a\.buyerFeePaid \|\| !a\.wonAt\) return null/)
+})

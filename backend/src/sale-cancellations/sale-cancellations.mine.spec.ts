@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { SaleCancellationsService } from './sale-cancellations.service';
 
 // Purchase History lists approved cancellations where the dealership was the
@@ -10,13 +11,13 @@ describe('SaleCancellationsService.mine', () => {
         status: 'APPROVED', evidence: [], createdAt: new Date(), ...over,
     });
 
-    function setup() {
+    function setup(role = 'SALES_AGENT') {
         const prisma: any = {
             dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
             // Staff member of owner-1's dealership.
             dealerStaff: {
                 findFirst: jest.fn().mockResolvedValue({
-                    role: 'SALES_AGENT', isActive: true,
+                    role, isActive: true,
                     dealerProfile: { id: 'dp', userId: 'owner-1', isVerified: true },
                 }),
             },
@@ -51,5 +52,28 @@ describe('SaleCancellationsService.mine', () => {
         const args = prisma.saleCancellationRequest.findMany.mock.calls[0][0];
         expect(args.where.OR).toHaveLength(3);
         expect(args.take).toBe(100);
+    });
+
+    it('purchase-history scope needs VIEW_PURCHASES for staff (all built-in roles have it)', async () => {
+        for (const role of ['ADMIN', 'SALES_AGENT', 'FINANCE_MANAGER']) {
+            const { service } = setup(role);
+            await expect(service.mine('staff-user', 'purchase-history')).resolves.toBeDefined();
+        }
+    });
+
+    it('refuses the purchase-history scope to staff without VIEW_PURCHASES', async () => {
+        // A role with no permission set (e.g. a future restricted role).
+        const { prisma, service } = setup('NO_PURCHASE_ACCESS');
+        await expect(service.mine('staff-user', 'purchase-history')).rejects.toBeInstanceOf(ForbiddenException);
+        expect(prisma.saleCancellationRequest.findMany).not.toHaveBeenCalled();
+    });
+
+    it('owners and private buyers are not blocked', async () => {
+        const { prisma, service } = setup();
+        prisma.dealerStaff.findFirst.mockResolvedValue(null);
+        prisma.dealerProfile.findUnique.mockResolvedValue({ id: 'dp', userId: 'owner-1', isVerified: true });
+        await expect(service.mine('owner-1', 'purchase-history')).resolves.toBeDefined();
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        await expect(service.mine('private-buyer', 'purchase-history')).resolves.toBeDefined();
     });
 });
