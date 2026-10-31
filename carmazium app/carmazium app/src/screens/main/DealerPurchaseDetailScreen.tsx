@@ -130,6 +130,8 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
   // The 3D viewer is a WebView, so it only mounts when the dealer asks for it.
   const [show3d, setShow3d] = useState(false);
+  // Gallery photos are not kept forever (only damage evidence is).
+  const [missingPhotos, setMissingPhotos] = useState<Set<number>>(() => new Set());
   // Same emergency switch as the website (NEXT_PUBLIC_FEATURE_DELIVERY),
   // read from the backend that enforces it. Viewing an existing job is
   // always allowed; only new delivery jobs are blocked.
@@ -283,7 +285,14 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
                         <TouchableOpacity key={uri + i} accessibilityRole="imagebutton"
                           accessibilityLabel={`Open photo ${i + 1} of ${photos.length}`}
                           onPress={() => setLightbox({ images: photos, index: i })}>
-                          <Image source={{ uri }} style={styles.recordPhoto} contentFit="cover" />
+                          {missingPhotos.has(i) ? (
+                            <View style={[styles.recordPhoto, styles.recordPhotoMissing]}>
+                              <Text style={styles.recordPhotoMissingText}>Photo no longer available</Text>
+                            </View>
+                          ) : (
+                            <Image source={{ uri }} style={styles.recordPhoto} contentFit="cover"
+                              onError={() => setMissingPhotos(prev => new Set(prev).add(i))} />
+                          )}
                         </TouchableOpacity>
                       ))}
                     </ScrollView>
@@ -506,6 +515,8 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
 const styles = StyleSheet.create({
   recordPhotos: { marginVertical: 10 },
   recordPhoto: { width: 132, height: 99, borderRadius: 10, marginRight: 8, backgroundColor: Colors.bgCard },
+  recordPhotoMissing: { alignItems: 'center', justifyContent: 'center', padding: 6 },
+  recordPhotoMissingText: { color: Colors.textMuted, fontSize: 11, textAlign: 'center' },
   recordText: { color: Colors.textPrimary, fontSize: 14, lineHeight: 20, marginVertical: 6, flexShrink: 1 },
   recordSubhead: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 15, marginTop: 12, marginBottom: 4 },
   damageRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },

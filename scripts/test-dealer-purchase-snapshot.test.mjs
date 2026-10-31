@@ -83,3 +83,12 @@ test("web and app show the snapshot label and only show notes when switched on",
         assert.doesNotMatch(notes, /method: ["'](PATCH|PUT|DELETE)["']/)
     }
 })
+
+test("owner photo policy: gallery photos may disappear; the record says so and shows a placeholder", () => {
+    const web = read("src/components/dealer/PurchaseVehicleRecord.tsx")
+    const app = read(APP + "screens/main/DealerPurchaseDetailScreen.tsx")
+    assert.match(web, /onError=\{\(\) => setMissing\(prev => new Set\(prev\)\.add\(i\)\)\}/)
+    assert.match(web, /Declared-damage details and photos are kept as your purchase record/)
+    assert.match(app, /onError=\{\(\) => setMissingPhotos\(prev => new Set\(prev\)\.add\(i\)\)\}/)
+    for (const src of [web, app]) assert.match(src, /Photo no longer available/)
+})

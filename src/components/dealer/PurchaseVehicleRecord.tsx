@@ -41,6 +41,9 @@ export function PurchaseVehicleRecord({ record, title, purchasedAt = null }: { r
         () => record.damage.map(d => d.imageUrl).filter((u): u is string => !!u), [record.damage])
     const [lightbox, setLightbox] = React.useState<{ images: string[]; index: number } | null>(null)
     const [show3d, setShow3d] = React.useState(false)
+    // Owner policy: gallery photos are not kept forever (only damage evidence
+    // is), so a photo may disappear once the seller's listing or account goes.
+    const [missing, setMissing] = React.useState<Set<number>>(() => new Set())
     const [selectedDamageId, setSelectedDamageId] = React.useState<string | null>(null)
     const damagePins = React.useMemo(
         () => buildBuyerDamagePins(record.damage as unknown as PublicDamageRecord[]), [record.damage])
@@ -71,12 +74,22 @@ export function PurchaseVehicleRecord({ record, title, purchasedAt = null }: { r
                             <button key={`${p.raw}-${i}`} type="button" onClick={() => setLightbox({ images: photos.map(x => x.src), index: i })}
                                 className="relative aspect-[4/3] overflow-hidden rounded-lg border border-[var(--border-default)]"
                                 aria-label={`Open photo ${i + 1} of ${photos.length}`}>
-                                <Image src={p.src} alt="" fill sizes="(max-width: 640px) 33vw, 160px" className="object-cover" loading="lazy" />
+                                {missing.has(i) ? (
+                                    <span className="absolute inset-0 flex items-center justify-center bg-[var(--bg-input)] p-1 text-center text-[10px] text-[var(--text-muted)]">Photo no longer available</span>
+                                ) : (
+                                    <Image src={p.src} alt="" fill sizes="(max-width: 640px) 33vw, 160px" className="object-cover" loading="lazy"
+                                        onError={() => setMissing(prev => new Set(prev).add(i))} />
+                                )}
                             </button>
                         ))}
                     </div>
                 </div>
             ) : <p className="text-sm text-[var(--text-muted)]">No photos are stored for this listing.</p>}
+            {photos.length > 0 && (
+                <p className="-mt-3 text-xs text-[var(--text-muted)]">
+                    Gallery photos stay available while the listing is active. Declared-damage details and photos are kept as your purchase record.
+                </p>
+            )}
 
             {record.description && (
                 <div>
