@@ -958,6 +958,14 @@ export async function sendStripePayoutSetupReminder(auctionId: string) {
   return result.data;
 }
 
+export async function requestSellerBankDetailsForBonus(auctionId: string) {
+  const result = await apiClient<{ data: {
+    requested: boolean; emailSent?: boolean; alreadyOnFile?: boolean;
+    alreadyRequested?: boolean; settingsLink: string;
+  } }>(`/admin/payouts/${auctionId}/request-bank-details`, { method: 'POST' });
+  return result.data;
+}
+
 export async function retryPayout(auctionId: string) {
   const result = await apiClient<any>(`/admin/payouts/${auctionId}/retry`, { method: 'POST' });
   return result;
