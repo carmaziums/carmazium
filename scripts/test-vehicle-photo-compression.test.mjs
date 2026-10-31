@@ -19,7 +19,7 @@ test("pre-upload preparation targets 2MB with readable detail and HEIC support",
     // Small photos must not bypass re-encoding: EXIF may carry GPS coordinates.
     assert.doesNotMatch(compressor, /return sourceFile/)
     assert.match(compressor, /EXIF headers in small JPEGs/)
-    assert.match(compressor, /decodedImage\.removeAttribute\('src'\)/)
+    assert.match(compressor, /image\.removeAttribute\('src'\)/)
     assert.match(compressor, /canvas\.width = 0/)
     assert.match(compressor, /canvas\.height = 0/)
     assert.match(compressor, /finally \{\s*\/\/ Safari may retain canvas backing stores/)
