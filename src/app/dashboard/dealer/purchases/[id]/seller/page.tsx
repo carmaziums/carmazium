@@ -65,7 +65,7 @@ export default function PurchaseSellerDetailsPage() {
                         className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
                     >
                         <ArrowLeft size={16} />
-                        Back to Purchase History
+                        Back to All Purchases
                     </Link>
 
                     <PageHeader

@@ -15,6 +15,7 @@ import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 import { useAuth } from "@/context/AuthContext"
 import { useDealerAccess } from "@/context/DealerAccessContext"
 import { apiClient } from "@/lib/apiClient"
+import { PurchaseVehicleRecord } from "@/components/dealer/PurchaseVehicleRecord"
 import { deliveryServiceEnabled } from "@/lib/featureFlags"
 import {
     type DealerPurchaseDetail, type DealerPurchaseSeller,
@@ -185,7 +186,16 @@ export default function DealerPurchaseDetailPage() {
                                 <DetailRow label="Sale channel" value={purchase.channel === "RETAIL" ? "Retail listing" : "Auction"} />
                                 <DetailRow label="Purchase stage" value={purchase.purchaseStatus.replace(/_/g, " ")} />
                                 <DetailRow label="Listed vehicle location" value={purchase.vehicle.listedLocation || "Not provided"} />
+                                {purchase.listingRecord && (
+                                    <a href="#original-listing" className="inline-flex min-h-[44px] items-center text-sm font-bold text-primary hover:underline">
+                                        View photos, description and declared damage
+                                    </a>
+                                )}
                             </section>
+
+                            {purchase.listingRecord && (
+                                <PurchaseVehicleRecord record={purchase.listingRecord} title={purchase.vehicle.title} />
+                            )}
 
                             <section className="dealer-glass-card p-5 md:p-7 space-y-3">
                                 <h2 className="flex items-center gap-2 text-lg font-black"><UserRound size={20} className="text-primary" /> Seller details</h2>
@@ -224,6 +234,12 @@ export default function DealerPurchaseDetailPage() {
                             <section className="dealer-glass-card p-5 md:p-7 space-y-3">
                                 <h2 className="flex items-center gap-2 text-lg font-black"><Wallet size={20} className="text-primary" /> Payment and fees</h2>
                                 <DetailRow label="Vehicle sale price" value={formatGBP(purchase.purchasePrice)} />
+                                {purchase.auction?.winningBid != null && (
+                                    <DetailRow label="Winning bid" value={formatGBP(purchase.auction.winningBid)} />
+                                )}
+                                {purchase.auction?.buyerFeeDeadlineAt && !purchase.buyerFee.settled && (
+                                    <DetailRow label="Buyer fee due by" value={new Date(purchase.auction.buyerFeeDeadlineAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} />
+                                )}
                                 <DetailRow label="How vehicle funds move" value="Buyer pays seller directly; CarMazium does not hold vehicle proceeds" />
                                 <DetailRow label="Seller confirms funds"
                                     value={purchase.payment.sellerFundsConfirmedAt

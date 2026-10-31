@@ -10,7 +10,7 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/ui/AsyncState
 import {
     Car, Search, PlusCircle, MoreVertical,
     Loader2, Upload, TrendingUp, Trash2, Eye, RefreshCcw, Pencil,
-    X, XCircle, CheckCircle2, ChevronRight, Gavel, Tag, MapPin
+    X, XCircle, CheckCircle2, ChevronRight, Gavel, Tag, MapPin, ChevronDown
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -41,6 +41,36 @@ const STATUS_LABELS: Record<string, string> = {
     SOLD: "Sold",
     PENDING_REVIEW: "Under Review",
     REJECTED: "Rejected",
+    // Same buckets as the app's "Sale pending" and "Other" filters.
+    OFFER_ACCEPTED: "Sale pending",
+    WITHDRAWN: "Withdrawn",
+}
+
+const INVENTORY_STATUSES = ["ALL", "ACTIVE", "PENDING_REVIEW", "REJECTED", "DRAFT", "SOLD"] as const
+// Less common lifecycle states, listed after the six main ones (the app has
+// the same two as "Sale pending" and "Other"). Previously only under ALL.
+const EXTRA_INVENTORY_STATUSES = ["OFFER_ACCEPTED", "WITHDRAWN"] as const
+const ALL_INVENTORY_STATUSES: readonly string[] = [...INVENTORY_STATUSES, ...EXTRA_INVENTORY_STATUSES]
+
+// Sorting only reorders what is already loaded; it never filters anything out.
+// Same three orders as the app's Stock screen.
+const INVENTORY_SORTS = [
+    { value: "newest", label: "Newest first" },
+    { value: "price_desc", label: "Price: high to low" },
+    { value: "price_asc", label: "Price: low to high" },
+] as const
+type InventorySort = typeof INVENTORY_SORTS[number]["value"]
+
+function sortInventory<T extends { createdAt?: string; price?: number | null }>(rows: T[], sort: InventorySort): T[] {
+    // The API orders by most offers, then newest; "Newest first" sorts by the
+    // listing date explicitly so the label is true.
+    const time = (r: T) => (r.createdAt ? Date.parse(r.createdAt) || 0 : 0)
+    const num = (v: number | null | undefined, missing: number) => (typeof v === "number" ? v : missing)
+    return [...rows].sort((a, b) => sort === "price_desc"
+        ? num(b.price, -Infinity) - num(a.price, -Infinity)
+        : sort === "price_asc"
+            ? num(a.price, Infinity) - num(b.price, Infinity)
+            : time(b) - time(a))
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -72,12 +102,13 @@ export default function DealerInventoryPage() {
     const [searchQuery,       setSearchQuery]       = React.useState("")
     const [statusFilter,      setStatusFilter]      = React.useState(() => {
         const requested = searchParams.get('status')
-        return requested && ["ALL", "ACTIVE", "PENDING_REVIEW", "REJECTED", "DRAFT", "SOLD"].includes(requested) ? requested : "ALL"
+        return requested && ALL_INVENTORY_STATUSES.includes(requested) ? requested : "ALL"
     })
     React.useEffect(() => {
         const requested = searchParams.get('status')
-        setStatusFilter(requested && ["ALL", "ACTIVE", "PENDING_REVIEW", "REJECTED", "DRAFT", "SOLD"].includes(requested) ? requested : "ALL")
+        setStatusFilter(requested && ALL_INVENTORY_STATUSES.includes(requested) ? requested : "ALL")
     }, [searchParams])
+    const [sortBy,            setSortBy]            = React.useState<InventorySort>("newest")
     const [isBulkImportOpen,  setIsBulkImportOpen]  = React.useState(false)
     const [isImportModalOpen, setIsImportModalOpen] = React.useState(false)
     const [activeDropdown,    setActiveDropdown]    = React.useState<string | null>(null)
@@ -191,43 +222,61 @@ export default function DealerInventoryPage() {
 
     const filteredListings = React.useMemo(() => {
         const q = searchQuery.trim().toLowerCase()
-        return listings.filter(listing => {
+        const rows = listings.filter(listing => {
             const matchesStatus = statusFilter === "ALL" ? true : listing.status === statusFilter
             const haystack = `${listing.title || ""} ${listing.make || ""} ${listing.model || ""} ${listing.vrm || ""}`.toLowerCase()
             const matchesSearch = !q || haystack.includes(q)
             return matchesStatus && matchesSearch
         })
-    }, [listings, searchQuery, statusFilter])
+        return sortInventory(rows, sortBy)
+    }, [listings, searchQuery, statusFilter, sortBy])
+    const statusCount = (s: string) => s === "ALL" ? listings.length : listings.filter(l => l.status === s).length
 
     return (
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
-                <main className="flex-1 space-y-6 min-w-0">
+                <main className="flex-1 space-y-4 md:space-y-6 min-w-0">
                     {/* Header */}
                     <PageHeader
                         title={DEALER_ROUTE_CONFIG[1].title}
                         subHeader={DEALER_ROUTE_CONFIG[1].subHeader}
+                        compact
                     >
                         {canManageInventory && (
                         <>
+                        {/* Phones: Add Vehicle plus one small Import menu, so the
+                            secondary imports stay reachable without taking over. */}
+                        <details className="relative sm:hidden">
+                            <summary className="flex h-11 cursor-pointer list-none items-center gap-1.5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] px-4 text-sm font-semibold text-[var(--text-secondary)] [&::-webkit-details-marker]:hidden">
+                                <Upload size={15} /> Import <ChevronDown size={14} aria-hidden />
+                            </summary>
+                            <div className="absolute left-0 z-30 mt-2 w-52 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-1.5 shadow-2xl">
+                                <button type="button" onClick={e => { (e.currentTarget.closest("details") as HTMLDetailsElement | null)?.removeAttribute("open"); setIsImportModalOpen(true) }} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold hover:bg-white/10">
+                                    <ExternalLink size={15} /> Import Listing
+                                </button>
+                                <button type="button" onClick={e => { (e.currentTarget.closest("details") as HTMLDetailsElement | null)?.removeAttribute("open"); setIsBulkImportOpen(true) }} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold hover:bg-white/10">
+                                    <Upload size={15} /> Bulk Import
+                                </button>
+                            </div>
+                        </details>
                         <Button
                             variant="outline"
-                            className="border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-white/10 gap-2 h-11 px-6 rounded-xl transition-all"
+                            className="hidden sm:inline-flex border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-white/10 gap-2 h-11 px-5 rounded-xl transition-all"
                             onClick={() => setIsImportModalOpen(true)}
                         >
                             <ExternalLink size={16} /> Import Listing
                         </Button>
                         <Button
                             variant="outline"
-                            className="border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-white/10 gap-2 h-11 px-6 rounded-xl transition-all"
+                            className="hidden sm:inline-flex border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-white/10 gap-2 h-11 px-5 rounded-xl transition-all"
                             onClick={() => setIsBulkImportOpen(true)}
                         >
                             <Upload size={16} /> Bulk Import
                         </Button>
-                        <Link href="/dashboard/dealer/add-listing">
-                            <Button className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-transform">
+                        <Link href="/dashboard/dealer/add-listing" className="flex-1 sm:flex-none">
+                            <Button className="w-full gap-2 h-11 px-5 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-transform">
                                 <PlusCircle size={18} /> Add Vehicle
                             </Button>
                         </Link>
@@ -246,21 +295,52 @@ export default function DealerInventoryPage() {
                     {/* Filters — sticky so search/filter stay reachable without scrolling
                         back to the top of a long inventory list. Add Vehicle already lives
                         in the page header above — no need to repeat it here. */}
-                    <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md pt-2 -mt-2 flex flex-col lg:flex-row lg:flex-wrap gap-4 items-center">
+                    <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md pt-2 -mt-2 flex flex-col lg:flex-row lg:flex-wrap gap-2 lg:gap-4 lg:items-center">
                         <div className="relative flex-1 w-full lg:min-w-[200px] lg:max-w-md">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={18} />
                             <Input
                                 placeholder="Search by make, model, VRM..."
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
-                                className="pl-12 bg-[var(--bg-input)] border-[var(--border-default)]  placeholder:text-[var(--text-muted)] h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
+                                className="pl-12 bg-[var(--bg-input)] border-[var(--border-default)]  placeholder:text-[var(--text-muted)] h-11 lg:h-12 rounded-xl focus:ring-1 focus:ring-primary/50"
                             />
                         </div>
-                        <div className="flex gap-2 p-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl w-full lg:w-auto overflow-x-auto shrink-0">
-                            {["ALL", "ACTIVE", "PENDING_REVIEW", "REJECTED", "DRAFT", "SOLD"].map(s => (
+                        {/* Phones and tablets: Status and Sort as two dropdowns that
+                            list every status with its count, instead of a strip
+                            that runs off the right-hand edge. */}
+                        <div className="grid grid-cols-2 gap-2 lg:hidden">
+                            <label className="block min-w-0">
+                                <span className="sr-only">Status</span>
+                                <select
+                                    value={statusFilter}
+                                    onChange={e => setStatusFilter(e.target.value)}
+                                    className="h-11 w-full min-w-0 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm font-semibold focus:border-primary focus:outline-none"
+                                >
+                                    {ALL_INVENTORY_STATUSES.map(s => (
+                                        <option key={s} value={s}>
+                                            {s === "ALL" ? "All statuses" : (STATUS_LABELS[s] || s)} ({statusCount(s)})
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label className="block min-w-0">
+                                <span className="sr-only">Sort</span>
+                                <select
+                                    value={sortBy}
+                                    onChange={e => setSortBy(e.target.value as InventorySort)}
+                                    className="h-11 w-full min-w-0 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm font-semibold focus:border-primary focus:outline-none"
+                                >
+                                    {INVENTORY_SORTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                </select>
+                            </label>
+                        </div>
+                        {/* Desktop: every status fits, so keep the one-click strip. */}
+                        <div className="hidden lg:flex lg:flex-wrap gap-2 p-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl">
+                            {ALL_INVENTORY_STATUSES.filter(s => (INVENTORY_STATUSES as readonly string[]).includes(s) || statusFilter === s || statusCount(s) > 0).map(s => (
                                 <button
                                     key={s}
                                     onClick={() => setStatusFilter(s)}
+                                    aria-pressed={statusFilter === s}
                                     className={`px-5 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                                         statusFilter === s ? 'vip-tab-active' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                     }`}
@@ -269,6 +349,16 @@ export default function DealerInventoryPage() {
                                 </button>
                             ))}
                         </div>
+                        <label className="hidden lg:block">
+                            <span className="sr-only">Sort</span>
+                            <select
+                                value={sortBy}
+                                onChange={e => setSortBy(e.target.value as InventorySort)}
+                                className="h-12 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm font-semibold focus:border-primary focus:outline-none"
+                            >
+                                {INVENTORY_SORTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                        </label>
                     </div>
 
                     {/* Table */}

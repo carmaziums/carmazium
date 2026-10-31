@@ -3,7 +3,7 @@
 import Link from "next/link"
 import type { ComponentType } from "react"
 import { usePathname } from "next/navigation"
-import { Flame, Gavel, ShoppingBag, Star, Tag, Trophy } from "lucide-react"
+import { Flame, Gavel, Star, Tag, Trophy } from "lucide-react"
 import type { DealerPermission } from "@/lib/dealerAccess"
 import { useDealerAccess } from "@/context/DealerAccessContext"
 import { bidsOffersTabHref } from "@/lib/dealerBidsOffersNavigation"
@@ -31,8 +31,14 @@ export const BUY_AND_BID_TABS: BuyAndBidTab[] = [
     { href: "/auctions/browse", label: "Live Auctions", icon: Flame, permission: "VIEW_TRADE" },
     { href: "/dashboard/dealer/auctions/shortlisted", label: "Shortlisted", icon: Star, permission: "VIEW_TRADE" },
     { href: "/dashboard/dealer/bids", label: "Bids & offers", icon: Tag, permission: "VIEW_TRADE", activePaths: ["/dashboard/dealer/my-offers"] },
-    { href: "/dashboard/dealer/auctions/won", label: "Auction Wins", icon: Trophy, permission: "VIEW_PURCHASES" },
-    { href: "/dashboard/dealer/purchases", label: "All Purchases", icon: ShoppingBag, permission: "VIEW_PURCHASES" },
+    // One Purchases tab. Auction Wins, All Purchases and Purchase History are
+    // then chosen in the PurchaseDestinations bar on those pages, so the same
+    // destinations are never listed twice on one screen (it lands on Auction
+    // Wins, as the app's Buy & Bid "Purchases" link does).
+    {
+        href: "/dashboard/dealer/auctions/won", label: "Purchases", icon: Trophy, permission: "VIEW_PURCHASES",
+        activePaths: ["/dashboard/dealer/purchases", "/dashboard/dealer/purchases/history"],
+    },
 ]
 
 export function BuyAndBidTabs({ className = "" }: { className?: string }) {

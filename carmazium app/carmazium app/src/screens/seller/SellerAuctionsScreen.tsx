@@ -45,6 +45,7 @@ import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { PurchaseDestinations } from '../../components/dealer/PurchaseDestinations';
 // ─────────────────────────── Types ───────────────────────────
 
 type AuctionStatus = 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED';
@@ -208,6 +209,12 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const [wonFetchError, setWonFetchError] = useState<string | null>(null);
   // Website Buy & Bid > Purchases opens won auctions rather than retail purchases.
   const [activeTab, setActiveTab] = useState<TabFilter>(route.params?.initialTab === 'WON' ? 'WON' : 'ALL');
+  // Returning here from All Purchases / Purchase History ("Auction Wins")
+  // reuses this screen instance, so honour a fresh initialTab as well.
+  const requestedTab = route.params?.initialTab;
+  useEffect(() => {
+    if (requestedTab === 'WON') setActiveTab('WON');
+  }, [requestedTab]);
   const [navigating, setNavigating] = useState<string | null>(null);
 
   // Stripe Connect payout readiness. A seller can otherwise complete a handover,
@@ -1429,9 +1436,16 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       <View style={[styles.card, { borderLeftColor: Colors.success }]}>
         <TouchableOpacity
           style={styles.cardRow}
-          onPress={() => handleTap(item as any)}
+          // With a recorded purchase, the card opens that vehicle's purchase
+          // record (photos, advert, damage, fee, delivery). Otherwise it keeps
+          // opening the advert as before.
+          onPress={() => purchaseId
+            ? navigation?.navigate('DealerPurchaseDetail', { saleId: purchaseId })
+            : handleTap(item as any)}
           activeOpacity={0.8}
           disabled={!!navigating}
+          accessibilityRole="button"
+          accessibilityLabel={purchaseId ? `Open purchase record for ${listingTitle}` : listingTitle}
         >
           <View style={styles.thumb}>
             {thumb ? (
@@ -1465,14 +1479,20 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           </View>
         </TouchableOpacity>
         {purchaseId && (
-          <TouchableOpacity accessibilityRole="button"
-            onPress={() => navigation?.navigate('DealerPurchaseDetail', { saleId: purchaseId })}
-            style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 14,
-              borderTopWidth: 1, borderTopColor: Colors.borderSubtle }}>
-            <Text style={{ color: Colors.accent, fontFamily: FontFamily.bold, fontSize: 13 }}>
-              Purchase details
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.wonActions}>
+            <TouchableOpacity accessibilityRole="button"
+              onPress={() => navigation?.navigate('DealerPurchaseDetail', { saleId: purchaseId })}
+              style={styles.wonAction}>
+              <Text style={styles.wonActionText}>Purchase details</Text>
+            </TouchableOpacity>
+            {/* The advert link the card used to open stays one tap away. */}
+            <TouchableOpacity accessibilityRole="button"
+              onPress={() => handleTap(item as any)}
+              disabled={!!navigating}
+              style={styles.wonAction}>
+              <Text style={styles.wonActionTextMuted}>View advert</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     );
@@ -1529,6 +1549,17 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       </ScrollView>
 
       {/* A failed API request must not appear as an empty auction portfolio. */}
+      {activeTab === 'WON' && canViewPurchases && (
+        <PurchaseDestinations
+          active="wins"
+          onSelect={(destination) => {
+            if (destination !== 'wins') {
+              navigation?.navigate('DealerPurchases', { view: destination === 'history' ? 'history' : 'all' });
+            }
+          }}
+        />
+      )}
+
       {(activeTab === 'WON' ? wonFetchError : auctionsFetchError) && (
         <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
           <ErrorBanner
@@ -2191,6 +2222,14 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 // ═══════════════════════════ STYLES ════════════════════════════════
 
 const styles = StyleSheet.create({
+  wonActions: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderSubtle,
+  },
+  wonAction: { flex: 1, minHeight: 44, justifyContent: 'center', paddingHorizontal: 14 },
+  wonActionText: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: FontSize.sm },
+  wonActionTextMuted: { color: Colors.textMuted, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm },
   container: {
     flex: 1,
     backgroundColor: Colors.bgPrimary,

@@ -11,6 +11,7 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { BuyAndBidTabs } from "@/components/dealer/BuyAndBidTabs"
+import { PurchaseDestinations } from "@/components/dealer/PurchaseDestinations"
 import { useAuth } from "@/context/AuthContext"
 import { getWonAuctions, type Auction } from "@/lib/auctionApi"
 import { BuyerFeeCountdown } from "@/components/auctions/BuyerFeeCountdown"
@@ -83,8 +84,10 @@ const STAGE_LABELS: Record<HandoverStage, { label: string; hint: string; icon: R
 // ─── Shared row shell — every section uses this same shape ───────────────────
 
 function Row({
-    image, title, meta, specs, badge, hint, rightLabel, rightValue, rightValueClass, cta,
+    image, title, meta, specs, badge, hint, rightLabel, rightValue, rightValueClass, cta, recordHref,
 }: {
+    /** The purchased vehicle record; the whole card opens it when present. */
+    recordHref?: string
     image: string
     title: string
     meta: React.ReactNode
@@ -96,17 +99,28 @@ function Row({
     rightValueClass: string
     cta: React.ReactNode
 }) {
+    // When there is a purchase record, the whole card opens it (a stretched
+    // link on the title). Links and buttons inside the card sit above that
+    // layer (relative z-10), so payment, contact and other actions keep
+    // working on their own.
     return (
-        <div className="dealer-glass-card p-4 md:p-5">
+        <div className={`dealer-glass-card relative p-4 md:p-5 ${recordHref ? "transition-colors hover:border-primary/40" : ""}`}>
             <div className="flex flex-col md:flex-row md:items-center gap-4">
                 <div className="relative w-full md:w-40 h-32 md:h-24 rounded-xl overflow-hidden shrink-0 bg-black/30">
                     <Image src={image} alt={title} fill sizes="(max-width: 768px) 100vw, 160px" className="object-cover" />
                 </div>
 
                 <div className="flex-1 min-w-0">
-                    <p className="text-lg font-black text-[var(--text-primary)] truncate">{title}</p>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--text-muted)] mt-1">{meta}</div>
-                    {specs && <div className="flex flex-wrap gap-1.5 mt-2">{specs}</div>}
+                    {recordHref ? (
+                        <Link href={recordHref} aria-label={`Open the vehicle record for ${title}`}
+                            className="block text-lg font-black text-[var(--text-primary)] truncate hover:text-primary after:absolute after:inset-0 after:rounded-[inherit] after:content-['']">
+                            {title}
+                        </Link>
+                    ) : (
+                        <p className="text-lg font-black text-[var(--text-primary)] truncate">{title}</p>
+                    )}
+                    <div className="relative z-10 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--text-muted)] mt-1">{meta}</div>
+                    {specs && <div className="relative z-10 flex flex-wrap gap-1.5 mt-2">{specs}</div>}
 
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                         <span className={`inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border ${badge.tint}`}>
@@ -116,7 +130,7 @@ function Row({
                     <p className="text-sm text-[var(--text-muted)] mt-2 max-w-xl leading-relaxed">{hint}</p>
                 </div>
 
-                <div className="flex md:flex-col items-end md:items-end justify-between md:justify-center gap-3 shrink-0 md:w-56">
+                <div className="relative z-10 flex md:flex-col items-end md:items-end justify-between md:justify-center gap-3 shrink-0 md:w-56">
                     <div className="text-right">
                         <p className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">{rightLabel}</p>
                         <p className={`text-xl font-black ${rightValueClass}`}>{rightValue}</p>
@@ -255,6 +269,7 @@ function WonAuctionRow({ auction, canPayAuctionFee, purchaseId }: { auction: Auc
 
     return (
         <Row
+            recordHref={purchaseId ? `/dashboard/dealer/purchases/${encodeURIComponent(purchaseId)}` : undefined}
             image={l.images?.[0] ?? "/assets/images/hero-bg.png"}
             title={l.title}
             meta={<>
@@ -415,15 +430,21 @@ export default function MyBidsPage() {
     React.useEffect(() => {
         if (authLoading || accessLoading || !user || !canViewPurchases || !wonAuctions?.length) return
         let alive = true
-        const ids = [...new Set(wonAuctions.map(a => a.listingId))].slice(0, 50)
-        apiClient<{ data: Array<{ id: string; listingId: string }> }>(
-            `/dealers/purchases/listing-lookup?listingIds=${encodeURIComponent(ids.join(","))}`,
-        ).then(response => {
-            if (alive) setPurchaseByListing(Object.fromEntries(
-                response.data.map(purchase => [purchase.listingId, purchase.id]),
-            ))
-        }).catch(() => {
-            if (alive) setPurchaseByListing({})
+        // The endpoint accepts up to 50 IDs, so look up every win in batches
+        // (as the app does) rather than only the first 50.
+        const ids = [...new Set(wonAuctions.map(a => a.listingId))]
+        const batches: string[][] = []
+        for (let i = 0; i < ids.length; i += 50) batches.push(ids.slice(i, i + 50))
+        Promise.allSettled(batches.map(batch => apiClient<{ data: Array<{ id: string; listingId: string }> }>(
+            `/dealers/purchases/listing-lookup?listingIds=${encodeURIComponent(batch.join(","))}`,
+        ))).then(results => {
+            if (!alive) return
+            // A failed batch only loses its own links; those cards keep the
+            // existing auction actions.
+            setPurchaseByListing(Object.fromEntries(results.flatMap(result =>
+                result.status === "fulfilled"
+                    ? result.value.data.map(purchase => [purchase.listingId, purchase.id] as const)
+                    : [])))
         })
         return () => { alive = false }
     }, [authLoading, accessLoading, user?.id, canViewPurchases, wonAuctions])
@@ -452,11 +473,13 @@ export default function MyBidsPage() {
                 <DashboardSidebar role="dealer" />
                 <main className="flex-1 space-y-8">
                     <PageHeader
-                        title="Purchased from Auction"
+                        title="Auction Wins"
                         subHeader="Every auction you're bidding on or have won, and exactly what to do next"
                     />
 
                     <BuyAndBidTabs />
+
+                    <PurchaseDestinations active="wins" />
 
                     {isLoading ? (
                         <div className="dealer-glass-card p-16 flex items-center justify-center">

@@ -1010,6 +1010,27 @@ if (
   }
 }
 
+// Purchase destinations: Auction Wins, All Purchases and Purchase History are
+// three separate places on web and app, in the same order, with the same
+// finished-stage rule for Purchase History.
+{
+  const webDest = read('src/lib/purchaseDestinations.ts');
+  const nativeDest = read('carmazium app/carmazium app/src/components/dealer/PurchaseDestinations.tsx');
+  const nativePurchases = read('carmazium app/carmazium app/src/screens/main/DealerPurchasesScreen.tsx');
+  const webLabels = [...webDest.matchAll(/label: "([^"]+)"/g)].map(m => m[1]);
+  const nativeLabels = [...nativeDest.matchAll(/label: '([^']+)'/g)].map(m => m[1]);
+  const webHistory = (webDest.match(/PURCHASE_HISTORY_STATUSES = \[([^\]]*)\]/)?.[1] || '').match(/"([a-z_]+)"/g)?.map(x => x.slice(1, -1).toUpperCase()) || [];
+  const nativeHistory = (nativePurchases.match(/HISTORY_STATUSES: PurchaseStatus\[\] = \[([^\]]*)\]/)?.[1] || '').match(/'([A-Z_]+)'/g)?.map(x => x.slice(1, -1)) || [];
+  const expected = 'Auction Wins,All Purchases,Purchase History';
+  if (webLabels.join(',') !== expected || nativeLabels.join(',') !== expected) {
+    fail(`Purchase destinations differ: web (${webLabels.join(', ')}) app (${nativeLabels.join(', ')})`);
+  } else if (webHistory.join(',') !== nativeHistory.join(',') || webHistory.length === 0) {
+    fail(`Purchase History stages differ: web (${webHistory.join(', ')}) app (${nativeHistory.join(', ')})`);
+  } else {
+    ok('Purchase destinations and Purchase History stages match on web and app');
+  }
+}
+
 // Block 9 — shared visible terminology. Internal model/API names may stay
 // technical (Lead, DealerProfile, ServiceJob), but the navigation and page
 // labels for equivalent web/native product surfaces must not drift.

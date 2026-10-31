@@ -49,7 +49,7 @@ test("duplicate accepted offers collapse to one pending vehicle, newest first", 
 })
 
 test("dealer purchase history joins offer feed and refreshes on demand", () => {
-    const page = read("../src/app/dashboard/dealer/purchases/page.tsx")
+    const page = read("../src/components/dealer/DealerPurchasesView.tsx")
     assert.match(page, /Promise\.allSettled\(\[/)
     assert.match(page, /getMyOffers\(\)/)
     assert.match(page, /pendingRetailPurchases\(acceptedOffers, purchases\.map/)
@@ -59,13 +59,14 @@ test("dealer purchase history joins offer feed and refreshes on demand", () => {
 })
 
 test("dealer navigation distinguishes auction wins from all purchases without removing either page", () => {
-    const nav = read("../src/components/dealer/BuyAndBidTabs.tsx")
+    const nav = read("../src/lib/purchaseDestinations.ts")
     assert.match(nav, /\/dashboard\/dealer\/auctions\/won", label: "Auction Wins"/)
     assert.match(nav, /\/dashboard\/dealer\/purchases", label: "All Purchases"/)
+    assert.match(nav, /\/dashboard\/dealer\/purchases\/history", label: "Purchase History"/)
 })
 
 test("recorded retail sales display SOLD, not awaiting confirmation", () => {
-    const dealerPurchases = read("../src/app/dashboard/dealer/purchases/page.tsx")
+    const dealerPurchases = read("../src/components/dealer/DealerPurchasesView.tsx")
     const row = read("../src/components/dealer/PipelineRow.tsx")
     assert.match(dealerPurchases, /item\.status === "AWAITING_CONFIRMATION" && item\.retailSold/)
     assert.match(dealerPurchases, /\? "sold"/)

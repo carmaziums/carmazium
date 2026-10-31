@@ -96,6 +96,37 @@ describe('DealersService purchased vehicle detail', () => {
         expect(result.payment.sellerFundsConfirmedAt).toBeNull();
     });
 
+    it('returns the full advert record for inspection, labelled as the current listing, without seller contact', async () => {
+        const base = sale('AUCTION', {
+            id: 'auction-1', winnerId: 'owner-1', status: 'ENDED',
+            wonAt: new Date('2026-10-30T10:00:00Z'), winningBidAmount: 7400,
+            buyerFeePaid: false, buyerFeeTransactionId: null,
+            sellerFundsConfirmedAt: null, handoverSubmittedAt: null,
+            handoverRejectedAt: null, sellerBonusReleased: false,
+        });
+        Object.assign(base.listing, {
+            images: ['https://example.test/1.jpg', 'https://example.test/2.jpg'],
+            description: 'One owner, full history', numberOfKeys: 2, owners: '1',
+            serviceHistory: 'Full Main Dealer', mechanicalIssues: 'Slight clutch judder',
+            updatedAt: new Date('2026-10-31T09:00:00Z'), deletedAt: null,
+            damageRecords: [{ id: 'd1', part: 'Front Bumper', type: 'Scratch', size: '0-5cm',
+                coords: { x: 1, y: 2, view: 'FRONT' }, imageUrl: 'https://example.test/d1.jpg' }],
+        });
+        prisma.sale.findFirst.mockResolvedValue(base);
+        const result = await service.getDealerPurchaseDetail('owner-1', 'sale-1');
+        expect(result.listingRecord.source).toBe('CURRENT_LISTING');
+        expect(result.listingRecord.images).toHaveLength(2);
+        expect(result.listingRecord.sellerDeclarations.mechanicalIssues).toBe('Slight clutch judder');
+        expect(result.listingRecord.damage[0]).toMatchObject({ part: 'Front Bumper', imageUrl: 'https://example.test/d1.jpg' });
+        expect(result.auction).toEqual({
+            wonAt: '2026-10-30T10:00:00.000Z', winningBid: 7400,
+            buyerFeeDeadlineAt: '2026-11-02T10:00:00.000Z',
+        });
+        // Unpaid fee: listing evidence is visible, seller contact never is.
+        const json = JSON.stringify(result);
+        for (const key of ['sellerEmail', 'sellerPhone', 'sellerAddress']) expect(json).not.toContain(key);
+    });
+
     it('reports confirmed auction funds and actual recorded delivery job only', async () => {
         prisma.sale.findFirst.mockResolvedValue(sale('AUCTION', {
             id: 'auction-1', winnerId: 'owner-1',
@@ -114,6 +145,52 @@ describe('DealersService purchased vehicle detail', () => {
         expect(result.payment.sellerFundsConfirmedAt).toContain('2026-10-31');
         expect(result.documents.handoverSubmittedAt).toContain('2026-10-31');
     });
+    // A Free Purchase Grant records a completed £0 commission transaction and
+    // marks the fee paid. It must read exactly like a paid £125 fee: settled,
+    // no deadline, no second checkout, seller contact unlocked.
+    it('treats a Free Purchase Grant (£0 fee transaction) as settled, with no deadline', async () => {
+        prisma.sale.findFirst.mockResolvedValue(sale('AUCTION', {
+            id: 'auction-1', winnerId: 'owner-1', status: 'ENDED',
+            wonAt: new Date('2026-10-30T10:00:00Z'), winningBidAmount: 7400,
+            buyerFeePaid: true, buyerFeeTransactionId: 'free-grant-transaction',
+            sellerFundsConfirmedAt: null, handoverSubmittedAt: null,
+            handoverRejectedAt: null, sellerBonusReleased: false,
+        }));
+        const result: any = await service.getDealerPurchaseDetail('owner-1', 'sale-1');
+        expect(result.buyerFee).toEqual({ required: true, settled: true });
+        expect(result.auction.buyerFeeDeadlineAt).toBeNull();
+    });
+
+    it('a Free Purchase Grant unlocks seller contact like a paid fee', async () => {
+        const base: any = sale('AUCTION', {
+            id: 'auction-1', winnerId: 'owner-1',
+            buyerFeePaid: true, buyerFeeTransactionId: 'free-grant-transaction',
+        });
+        base.listing.seller = undefined;
+        prisma.sale.findFirst.mockResolvedValue({
+            ...base,
+            seller: {
+                firstName: 'Sam', lastName: 'Seller', email: 'sam@example.test', phone: '07000000000',
+                isAddressVerified: false, addressVerifications: [],
+                dealerProfile: null,
+            },
+        });
+        const details: any = await service.getPurchaseSellerDetails('owner-1', 'sale-1');
+        expect(details.contactUnlocked).toBe(true);
+        expect(details.sellerEmail).toBe('sam@example.test');
+
+        // Unpaid and no grant: contact stays locked.
+        prisma.sale.findFirst.mockResolvedValue({
+            ...base,
+            listing: { ...base.listing, auction: { ...base.listing.auction, buyerFeePaid: false, buyerFeeTransactionId: null } },
+            seller: { firstName: 'Sam', lastName: 'Seller', email: 'sam@example.test', phone: '07000000000', isAddressVerified: false, addressVerifications: [], dealerProfile: null },
+        });
+        const locked: any = await service.getPurchaseSellerDetails('owner-1', 'sale-1');
+        expect(locked.contactUnlocked).toBe(false);
+        expect(locked.sellerEmail).toBeNull();
+        expect(locked.sellerPhone).toBeNull();
+    });
+
     it('lookup returns only dealer-owned purchases for validated auction listing UUIDs', async () => {
         const listingId = '11111111-2222-3333-4444-555555555555';
         prisma.sale.findMany.mockResolvedValue([{ id: 'sale-1', listingId }]);

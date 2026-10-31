@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Dimensions,
   FlatList,
@@ -7,6 +7,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -14,7 +15,7 @@ import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@/components/BrandIcon';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
@@ -24,6 +25,14 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
+import { PurchaseDestinations, type PurchaseDestination } from '../../components/dealer/PurchaseDestinations';
+import {
+  getMySaleCancellations,
+  SALE_CANCELLATION_REASON_LABELS,
+  type SaleCancellationRequest,
+} from '../../lib/saleCancellationApi';
+import { useAuthStore } from '../../store/authStore';
+import { useDealerAccess } from '../../hooks/useDealerAccess';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -72,6 +81,38 @@ const formatDate = (iso: string): string =>
 
 const formatPrice = (n: number): string => `£${n.toLocaleString('en-GB')}`;
 
+const PURCHASE_PAGE_SIZE = 100;
+const PURCHASE_MAX_PAGES = 20; // safety cap, same as web
+
+async function loadAllPurchasePages(): Promise<PurchaseItem[]> {
+  const page = (n: number) => apiClient<PurchasesResponse>(`/dealers/purchases?page=${n}&limit=${PURCHASE_PAGE_SIZE}`);
+  const first = await page(1);
+  const lastPage = Math.min(Math.max(1, Number(first?.pagination?.totalPages) || 1), PURCHASE_MAX_PAGES);
+  const rest = lastPage > 1
+    ? await Promise.all(Array.from({ length: lastPage - 1 }, (_, i) => page(i + 2)))
+    : [];
+  return [first, ...rest].flatMap(r => (r?.success && Array.isArray(r.data) ? r.data : []));
+}
+
+// Same split as web (src/lib/purchaseDestinations.ts): Purchase History holds
+// completed stages and cancelled sales; earlier stages stay in All Purchases.
+// A view filter only — it never changes a purchase's status.
+const HISTORY_STATUSES: PurchaseStatus[] = ['SOLD', 'CHECKS_COMPLETE', 'DELIVERY_REQUESTED'];
+const STATUS_FILTER_ORDER: PurchaseStatus[] = [
+  'AWAITING_CONFIRMATION', 'SOLD', 'REVIEWING_DOCS', 'CHECKS_COMPLETE', 'DELIVERY_REQUESTED',
+];
+
+const matchesSearch = (fields: (string | undefined | null)[], query: string): boolean => {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const compact = q.replace(/\s+/g, '');
+  return fields.some(field => {
+    if (!field) return false;
+    const value = field.toLowerCase();
+    return value.includes(q) || value.replace(/\s+/g, '').includes(compact);
+  });
+};
+
 // ─────────────────────── status config ────────────────────────────
 
 const STATUS_CONFIG: Record<
@@ -79,7 +120,8 @@ const STATUS_CONFIG: Record<
   { label: string; icon: string; color: string; bg: string; border: string }
 > = {
   SOLD: {
-    label: 'Sold',
+    // The dealer bought this car, so it reads "Purchased", as on web.
+    label: 'Purchased',
     icon: 'checkmark-circle-outline',
     color: Colors.success,
     bg: Colors.successAlpha12,
@@ -120,31 +162,69 @@ const STATUS_CONFIG: Record<
 export const DealerPurchasesScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
+  const route = useRoute<RouteProp<MainStackParamList, 'DealerPurchases'>>();
+  const isHistory = route.params?.view === 'history';
+  const userId = useAuthStore((s) => s.user?.id);
+  // Staff act for the dealership owner, whose id is on every Sale.
+  const { access } = useDealerAccess();
+  const dealershipBuyerId = access?.ownerUserId ?? userId;
 
   const [purchases, setPurchases] = useState<PurchaseItem[]>([]);
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | PurchaseStatus>('ALL');
+  const [cancelled, setCancelled] = useState<SaleCancellationRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
 
-  const totalSpent = purchases.reduce((sum, p) => sum + p.purchasePrice, 0);
+  // Switching destination resets the filter so a stage hidden in this view
+  // can't leave the list looking empty.
+  useEffect(() => { setStatusFilter('ALL'); }, [isHistory]);
+
+  const visible = useMemo(() => purchases.filter(p => {
+    if (isHistory && !HISTORY_STATUSES.includes(p.status)) return false;
+    if (statusFilter !== 'ALL' && p.status !== statusFilter) return false;
+    return matchesSearch([p.vehicleTitle, p.vehicleSubtitle, p.sellerName, p.id], query);
+  }), [purchases, isHistory, statusFilter, query]);
+  // Same rule as web buyerCancelledSales: the server's viewer.isBuyer is
+  // authoritative; otherwise compare with the dealership owner id.
+  const shownCancelled = useMemo(() => (isHistory ? cancelled : [])
+    .filter(c => c.status === 'APPROVED' && (typeof c.viewer?.isBuyer === 'boolean'
+      ? c.viewer.isBuyer
+      : !!dealershipBuyerId && c.buyerId === dealershipBuyerId))
+    .filter(c => matchesSearch([c.listing?.title, c.listing?.vrm, c.id], query)), [cancelled, isHistory, query, dealershipBuyerId]);
+  const statusChoices = STATUS_FILTER_ORDER.filter(s =>
+    (!isHistory || HISTORY_STATUSES.includes(s)) && (s === statusFilter || purchases.some(p => p.status === s)));
+
+  const totalSpent = visible.reduce((sum, p) => sum + p.purchasePrice, 0);
+
+  const selectDestination = useCallback((destination: PurchaseDestination) => {
+    if (destination === 'wins') navigation.navigate('SellerAuctions', { initialTab: 'WON' });
+    else navigation.setParams({ view: destination === 'history' ? 'history' : 'all' });
+  }, [navigation]);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     setFetchError(false);
     try {
-      const res = await apiClient<PurchasesResponse>('/dealers/purchases?page=1&limit=100');
-      if (res?.success) {
-        setPurchases(Array.isArray(res.data)
-          ? res.data.map(item => ({ ...item, status: item.retailSold ? 'SOLD' as const : item.status }))
-          : []);
-      }
+      const [all, cancellations] = await Promise.all([
+        // Every page (as on web), so search and history include older purchases.
+        loadAllPurchasePages(),
+        // An approved cancellation deletes the Sale, so the request is the
+        // only remaining record. Only buyer-side, approved ones are history.
+        isHistory
+          ? getMySaleCancellations('purchase-history').catch(() => [] as SaleCancellationRequest[])
+          : Promise.resolve([] as SaleCancellationRequest[]),
+      ]);
+      setCancelled(cancellations);
+      setPurchases(all.map(item => ({ ...item, status: item.retailSold ? 'SOLD' as const : item.status })));
     } catch {
       setFetchError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [isHistory]);
 
   useEffect(() => {
     fetchData();
@@ -160,15 +240,79 @@ export const DealerPurchasesScreen: React.FC = () => {
     </View>
   );
 
-  const renderEmptyState = () => (
+  const narrowed = query.trim() !== '' || statusFilter !== 'ALL';
+  const renderEmptyState = () => (shownCancelled.length > 0 ? null : (
     <View style={styles.emptyState}>
       <EmptyState
         icon="receipt-outline"
-        title="No purchases yet"
-        subtitle="Vehicles your dealership buys will show up here with their delivery status"
+        title={narrowed ? 'No purchases match' : isHistory ? 'No completed purchases yet' : 'No purchases yet'}
+        subtitle={narrowed
+          ? 'Try a different search or status.'
+          : isHistory
+            ? 'Purchased, Checks Complete and Delivery Requested purchases, plus cancelled sales, are kept here. Earlier stages are under All Purchases.'
+            : 'Vehicles your dealership buys will show up here with their delivery status'}
       />
     </View>
+  ));
+
+  const renderFilters = () => (
+    <View style={styles.filters}>
+      <View style={styles.searchBox}>
+        <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
+        <TextInput
+          style={styles.searchInput}
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search vehicle, reg, seller or reference"
+          placeholderTextColor={Colors.textMuted}
+          accessibilityLabel="Search purchases"
+          returnKeyType="search"
+          autoCorrect={false}
+        />
+      </View>
+      {statusChoices.length > 0 && (
+        // Wraps onto a second line instead of scrolling off-screen.
+        <View style={styles.statusWrap} accessibilityLabel="Status">
+          {(['ALL', ...statusChoices] as ('ALL' | PurchaseStatus)[]).map(s => {
+            const selected = statusFilter === s;
+            return (
+              <TouchableOpacity
+                key={s}
+                style={[styles.statusPill, selected && styles.statusPillActive]}
+                onPress={() => setStatusFilter(s)}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.statusPillText, selected && styles.statusPillTextActive]}>
+                  {s === 'ALL' ? (isHistory ? 'All completed' : 'All statuses') : STATUS_CONFIG[s].label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+    </View>
   );
+
+  const renderCancelled = () => (shownCancelled.length === 0 ? null : (
+    <View style={styles.cancelledSection}>
+      <Text style={styles.totalLabel}>CANCELLED SALES ({shownCancelled.length})</Text>
+      {shownCancelled.map(c => (
+        <TouchableOpacity
+          key={c.id}
+          style={styles.purchaseCard}
+          onPress={() => navigation.navigate('SaleCancellations')}
+          accessibilityRole="button"
+        >
+          <Text style={styles.vehicleTitle} numberOfLines={1}>{c.listing?.title || 'Vehicle'}</Text>
+          <Text style={styles.purchaseDate}>
+            Cancelled {formatDate(c.resolvedAt || c.createdAt)} · {SALE_CANCELLATION_REASON_LABELS[c.reason] ?? 'Cancelled'}
+            {c.buyerFeeRefunded ? ' · Buyer fee refunded' : ''}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  ));
 
   const renderTotalsBar = () => (
     <View style={styles.totalsCard}>
@@ -178,8 +322,8 @@ export const DealerPurchasesScreen: React.FC = () => {
       </View>
       <View style={styles.totalDivider} />
       <View style={styles.totalCol}>
-        <Text style={styles.totalLabel}>VEHICLES PURCHASED</Text>
-        <Text style={styles.totalValue}>{purchases.length}</Text>
+        <Text style={styles.totalLabel}>{isHistory ? 'COMPLETED' : 'VEHICLES PURCHASED'}</Text>
+        <Text style={styles.totalValue}>{visible.length}</Text>
       </View>
     </View>
   );
@@ -245,7 +389,7 @@ export const DealerPurchasesScreen: React.FC = () => {
       <View style={styles.header}>
         <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>Purchases</Text>
+        <Text style={styles.headerTitle}>{isHistory ? 'Purchase History' : 'All Purchases'}</Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           {purchases.length > 0 && (
@@ -258,6 +402,8 @@ export const DealerPurchasesScreen: React.FC = () => {
           <HamburgerButton />
         </View>
       </View>
+
+      <PurchaseDestinations active={isHistory ? 'history' : 'all'} onSelect={selectDestination} />
 
       {/* ── Content ── */}
       {fetchError ? (
@@ -274,13 +420,19 @@ export const DealerPurchasesScreen: React.FC = () => {
         // lifetime, so we only mount rows near the viewport.
         <FlatList
           style={styles.scroll}
-          data={purchases}
+          data={visible}
           keyExtractor={(item) => item.id}
           renderItem={renderPurchaseCard}
-          ListHeaderComponent={purchases.length > 0 ? renderTotalsBar : null}
+          ListHeaderComponent={
+            <>
+              {purchases.length > 0 && renderFilters()}
+              {visible.length > 0 && renderTotalsBar()}
+            </>
+          }
           ListEmptyComponent={renderEmptyState}
-          ListFooterComponent={<View style={{ height: 110 }} />}
-          contentContainerStyle={[styles.scrollContent, purchases.length === 0 && { flexGrow: 1 }]}
+          ListFooterComponent={<>{renderCancelled()}<View style={{ height: 110 }} /></>}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[styles.scrollContent, visible.length === 0 && { flexGrow: 1 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -344,6 +496,41 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: Colors.white,
   },
+
+  // ── Search + status ──
+  filters: { gap: 8, marginBottom: 4 },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    borderRadius: Radius.inline,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    backgroundColor: Colors.bgCard,
+  },
+  searchInput: {
+    flex: 1,
+    minHeight: 44,
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.sm,
+    color: Colors.white,
+  },
+  statusWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  statusPill: {
+    minHeight: 36,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    backgroundColor: Colors.bgCard,
+  },
+  statusPillActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  statusPillText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.textMuted },
+  statusPillTextActive: { color: Colors.white },
+  cancelledSection: { gap: 10, marginTop: 14 },
 
   // ── Scroll ──
   scroll: { flex: 1 },

@@ -79,8 +79,15 @@ test("pages read their own titles, not a neighbour's", () => {
 })
 
 test("Buy & Bid tabs appear on every page in that area and keep all previous tabs", () => {
-    for (const label of ["My Auctions", "Live Auctions", "Shortlisted", "Bids & offers", "Auction Wins", "All Purchases"]) {
+    for (const label of ["My Auctions", "Live Auctions", "Shortlisted", "Bids & offers", "Purchases"]) {
         assert.ok(tabs.includes(`label: "${label}"`), label)
+    }
+    // Auction Wins and All Purchases moved into the purchase bar on those
+    // pages, so they are not listed twice on one screen; both stay reachable.
+    const destinations = read("src/lib/purchaseDestinations.ts")
+    for (const label of ["Auction Wins", "All Purchases", "Purchase History"]) {
+        assert.ok(destinations.includes(`label: "${label}"`), label)
+        assert.ok(!tabs.includes(`label: "${label}"`), "not duplicated in Buy & Bid tabs: " + label)
     }
     // Purchase History became its own menu item in PR #697 and no longer repeats this bar.
     for (const page of ["auctions/page.tsx", "auctions/shortlisted/page.tsx", "bids/page.tsx", "auctions/won/page.tsx"]) {

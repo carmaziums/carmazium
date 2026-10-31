@@ -11,6 +11,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { HandoverDocumentsService } from '../auctions/handover-documents.service';
 import {
     assertDealerPermission,
+    hasDealerPermission,
     resolveDealerActor,
 } from '../dealers/dealer-access';
 import {
@@ -72,6 +73,24 @@ export class SaleCancellationsService {
             canonicalId: dealerActor?.ownerUserId ?? userId,
             dealerActor,
         };
+    }
+
+    /**
+     * Dealership staff see a cancellation only through a permission for its
+     * side: buying (VIEW_PURCHASES) or selling (VIEW_INVENTORY). Every
+     * built-in role has both, so existing staff keep access until an owner or
+     * admin changes their role or removes them; a removed member resolves to
+     * no dealership at all and sees only their own records. Owners and
+     * private users are unaffected.
+     */
+    private staffCanSee(
+        dealerActor: Awaited<ReturnType<typeof resolveDealerActor>>,
+        canonicalId: string,
+        row: { buyerId?: string | null; sellerId: string },
+    ): boolean {
+        if (!dealerActor || dealerActor.isOwner) return true;
+        return (row.buyerId === canonicalId && hasDealerPermission(dealerActor, 'VIEW_PURCHASES'))
+            || (row.sellerId === canonicalId && hasDealerPermission(dealerActor, 'VIEW_INVENTORY'));
     }
 
     private async context(listingId: string) {
@@ -319,19 +338,34 @@ export class SaleCancellationsService {
         }
     }
 
-    async mine(userId: string) {
-        const { canonicalId } = await this.actor(userId);
+    async mine(userId: string, scope?: 'purchase-history') {
+        const { canonicalId, dealerActor } = await this.actor(userId);
+        // Purchase History is a purchases view: dealership staff need the
+        // same VIEW_PURCHASES permission as /dealers/purchases. Owners and
+        // private buyers (no dealer actor) see their own records as before.
+        if (scope === 'purchase-history' && dealerActor && !dealerActor.isOwner) {
+            assertDealerPermission(dealerActor, 'VIEW_PURCHASES', 'Your dealership role cannot view purchases.');
+        }
+        // Staff only get the sides their role permits (see staffCanSee).
+        const isStaff = !!dealerActor && !dealerActor.isOwner;
+        const sides = isStaff
+            ? [
+                ...(hasDealerPermission(dealerActor!, 'VIEW_INVENTORY') ? [{ sellerId: canonicalId }] : []),
+                ...(hasDealerPermission(dealerActor!, 'VIEW_PURCHASES') ? [{ buyerId: canonicalId }] : []),
+            ]
+            : [
+                { sellerId: canonicalId },
+                { buyerId: canonicalId },
+                { requestedById: canonicalId },
+            ];
+        if (scope !== 'purchase-history' && sides.length === 0) return [];
         const rows = await this.prisma.saleCancellationRequest.findMany({
-            where: {
-                OR: [
-                    { sellerId: canonicalId },
-                    { buyerId: canonicalId },
-                    { requestedById: canonicalId },
-                ],
-            },
+            where: scope === 'purchase-history'
+                ? { buyerId: canonicalId, status: 'APPROVED' as any }
+                : { OR: sides },
             include: { evidence: true },
             orderBy: { createdAt: 'desc' },
-            take: 100,
+            take: scope === 'purchase-history' ? 500 : 100,
         });
         return Promise.all(rows.map(async (row) => {
             const hydrated = await this.hydrate(row);
@@ -340,6 +374,9 @@ export class SaleCancellationsService {
                 ...hydrated,
                 viewer: {
                     isRequester: row.requestedById === canonicalId,
+                    // Dealer staff resolve to the dealership owner, so clients
+                    // must not compare buyerId with the signed-in user's id.
+                    isBuyer: row.buyerId === canonicalId,
                     canRespond: row.status === ('PENDING_COUNTERPARTY' as any) && counterpartId === canonicalId,
                     canWithdraw: ['PENDING_COUNTERPARTY', 'PENDING_ADMIN'].includes(row.status as any)
                         && row.requestedById === canonicalId,
@@ -355,8 +392,9 @@ export class SaleCancellationsService {
         });
         if (!row) throw new NotFoundException('Cancellation request not found.');
         if (!isAdmin) {
-            const { canonicalId } = await this.actor(userId);
-            if (![row.sellerId, row.buyerId, row.requestedById].filter(Boolean).includes(canonicalId)) {
+            const { canonicalId, dealerActor } = await this.actor(userId);
+            if (![row.sellerId, row.buyerId, row.requestedById].filter(Boolean).includes(canonicalId)
+                || !this.staffCanSee(dealerActor, canonicalId, row)) {
                 throw new ForbiddenException('You cannot view this cancellation request.');
             }
         }
