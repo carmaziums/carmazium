@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
@@ -137,6 +137,10 @@ const STATUS_CONFIG: Record<
 export const DealerMyOffersScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
+  const route = useRoute<RouteProp<MainStackParamList, 'DealerMyOffers'>>();
+  // Opened from the hub's Bids & offers switch: show the same switch here so
+  // the dealer can return to Auction bids, matching the website.
+  const fromBidsOffers = route.params?.fromBidsOffers === true;
 
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -486,7 +490,7 @@ export const DealerMyOffersScreen: React.FC = () => {
       <View style={styles.header}>
         <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>My Offers</Text>
+        <Text style={styles.headerTitle}>{fromBidsOffers ? 'Bids & offers' : 'My Offers'}</Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           {counteredPending > 0 && (
@@ -499,6 +503,22 @@ export const DealerMyOffersScreen: React.FC = () => {
           <HamburgerButton />
         </View>
       </View>
+
+      {fromBidsOffers && (
+        <View style={styles.bidsSwitch} accessibilityRole="tablist">
+          <TouchableOpacity
+            style={styles.bidsSwitchItem}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: false }}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.bidsSwitchText}>Auction bids</Text>
+          </TouchableOpacity>
+          <View style={[styles.bidsSwitchItem, styles.bidsSwitchItemActive]} accessibilityRole="tab" accessibilityState={{ selected: true }}>
+            <Text style={[styles.bidsSwitchText, styles.bidsSwitchTextActive]}>Retail offers</Text>
+          </View>
+        </View>
+      )}
 
       {/* ── Content ── */}
       {loading ? (
@@ -527,6 +547,12 @@ export const DealerMyOffersScreen: React.FC = () => {
 // ═══════════════════════════ STYLES ════════════════════════════════
 
 const styles = StyleSheet.create({
+  bidsSwitch: { flexDirection: 'row', alignSelf: 'flex-start', marginHorizontal: 20, marginBottom: 10,
+    padding: 4, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCard },
+  bidsSwitchItem: { minHeight: 44, paddingHorizontal: 14, borderRadius: 9, justifyContent: 'center' },
+  bidsSwitchItemActive: { backgroundColor: Colors.accent },
+  bidsSwitchText: { fontFamily: FontFamily.bold, fontSize: 14, color: Colors.textMuted },
+  bidsSwitchTextActive: { color: '#FFFFFF' },
   container: {
     flex: 1,
     backgroundColor: Colors.bgPrimary,

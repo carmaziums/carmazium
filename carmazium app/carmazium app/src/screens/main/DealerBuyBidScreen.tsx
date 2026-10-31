@@ -62,6 +62,7 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
   const canManageInventory = !accessLoading && hasPermission('MANAGE_INVENTORY');
   const canViewPurchases = !accessLoading && hasPermission('VIEW_PURCHASES');
   const canPlaceBid = !accessLoading && hasPermission('PLACE_BID');
+  const canManageOffers = !accessLoading && hasPermission('MANAGE_OFFERS');
   const [section, setSection] = useState<Section>('mine');
   const [auctions, setAuctions] = useState<OwnedAuction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,7 +109,7 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
       active: section === 'live', allowed: true, onPress: () => setSection('live') },
     { id: 'shortlisted', label: 'Shortlisted', icon: 'star-outline',
       active: section === 'shortlisted', allowed: true, onPress: () => setSection('shortlisted') },
-    { id: 'bids', label: 'My Bids', icon: 'receipt-outline',
+    { id: 'bids', label: 'Bids & offers', icon: 'receipt-outline',
       active: section === 'bids', allowed: true, onPress: () => setSection('bids') },
     { id: 'purchases', label: 'Purchases', icon: 'trophy-outline',
       allowed: canViewPurchases, onPress: openWon },
@@ -213,7 +214,26 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
       ) : section === 'shortlisted' ? (
         <DealerAuctionShortlist navigation={navigation} />
       ) : section === 'bids' ? (
-        <DealerActiveBidPositions navigation={navigation} />
+        <>
+          {/* Bids & offers: auction bids here; retail offers keep their own
+              MANAGE_OFFERS-gated screen. Same two views as the website. */}
+          {canManageOffers && (
+            <View style={styles.bidsSwitch} accessibilityRole="tablist">
+              <View style={[styles.bidsSwitchItem, styles.bidsSwitchItemActive]} accessibilityRole="tab" accessibilityState={{ selected: true }}>
+                <Text style={[styles.bidsSwitchText, styles.bidsSwitchTextActive]}>Auction bids</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.bidsSwitchItem}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: false }}
+                onPress={() => navigation?.navigate('DealerMyOffers', { fromBidsOffers: true })}
+              >
+                <Text style={styles.bidsSwitchText}>Retail offers</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          <DealerActiveBidPositions navigation={navigation} />
+        </>
       ) : (
         <>
           {canManageInventory && needsHandover > 0 && !error && !loading && (
@@ -292,6 +312,12 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.bgPrimary },
   liveContainer: { flex: 1 },
+  bidsSwitch: { flexDirection: 'row', alignSelf: 'flex-start', marginHorizontal: 20, marginBottom: 10,
+    padding: 4, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCard },
+  bidsSwitchItem: { minHeight: 44, paddingHorizontal: 14, borderRadius: 9, justifyContent: 'center' },
+  bidsSwitchItemActive: { backgroundColor: Colors.accent },
+  bidsSwitchText: { fontFamily: FontFamily.bold, fontSize: 14, color: Colors.textMuted },
+  bidsSwitchTextActive: { color: '#FFFFFF' },
   permissionNotice: { color: Colors.textMuted, paddingHorizontal: 20, paddingBottom: 5,
     fontFamily: FontFamily.medium, fontSize: 12 },
   heading: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 9, gap: 5 },

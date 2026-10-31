@@ -16,6 +16,7 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { BuyAndBidTabs } from "@/components/dealer/BuyAndBidTabs"
+import { BidsOffersSwitch } from "@/components/dealer/BidsOffersSwitch"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
@@ -120,8 +121,8 @@ export default function DealerAuctionBidsPage() {
                 <main className="flex-1 min-w-0 space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <PageHeader
-                            title="My Auction Bids"
-                            subHeader="One live position per vehicle you're currently bidding on"
+                            title="Bids & offers"
+                            subHeader="Your live auction bids, one position per vehicle"
                         />
                         <Button
                             variant="outline"
@@ -135,6 +136,7 @@ export default function DealerAuctionBidsPage() {
                     </div>
 
                     <BuyAndBidTabs />
+                    <BidsOffersSwitch />
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <MetricCard

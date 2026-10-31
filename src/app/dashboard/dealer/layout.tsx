@@ -101,6 +101,7 @@ function DealerRoutePermissionBoundary({ children }: { children: React.ReactNode
         ["/dashboard/dealer/inventory", "VIEW_INVENTORY"],
         ["/dashboard/dealer/crm", "MANAGE_CRM"],
         ["/dashboard/dealer/offers", "MANAGE_OFFERS"],
+        ["/dashboard/dealer/my-offers", "MANAGE_OFFERS"],
         ["/dashboard/dealer/team", "MANAGE_TEAM"],
         ["/dashboard/dealer/analytics", "VIEW_ANALYTICS"],
         ["/dashboard/dealer/earnings", "VIEW_ANALYTICS"],

@@ -6,12 +6,15 @@ import { usePathname } from "next/navigation"
 import { Flame, Gavel, ShoppingBag, Star, Tag, Trophy } from "lucide-react"
 import type { DealerPermission } from "@/lib/dealerAccess"
 import { useDealerAccess } from "@/context/DealerAccessContext"
+import { bidsOffersTabHref } from "@/lib/dealerBidsOffersNavigation"
 
 type BuyAndBidTab = {
     href: string
     label: string
     icon: ComponentType<{ size?: number; className?: string }>
     permission?: DealerPermission
+    /** Other pages that belong to this tab (kept highlighted there). */
+    activePaths?: string[]
 }
 
 /**
@@ -27,7 +30,7 @@ export const BUY_AND_BID_TABS: BuyAndBidTab[] = [
     { href: "/dashboard/dealer/auctions", label: "My Auctions", icon: Gavel, permission: "VIEW_TRADE" },
     { href: "/auctions/browse", label: "Live Auctions", icon: Flame, permission: "VIEW_TRADE" },
     { href: "/dashboard/dealer/auctions/shortlisted", label: "Shortlisted", icon: Star, permission: "VIEW_TRADE" },
-    { href: "/dashboard/dealer/bids", label: "My Bids", icon: Tag, permission: "VIEW_TRADE" },
+    { href: "/dashboard/dealer/bids", label: "Bids & offers", icon: Tag, permission: "VIEW_TRADE", activePaths: ["/dashboard/dealer/my-offers"] },
     { href: "/dashboard/dealer/auctions/won", label: "Auction Wins", icon: Trophy, permission: "VIEW_PURCHASES" },
     { href: "/dashboard/dealer/purchases", label: "All Purchases", icon: ShoppingBag, permission: "VIEW_PURCHASES" },
 ]
@@ -35,7 +38,19 @@ export const BUY_AND_BID_TABS: BuyAndBidTab[] = [
 export function BuyAndBidTabs({ className = "" }: { className?: string }) {
     const pathname = usePathname()
     const { loading, hasPermission } = useDealerAccess()
-    const tabs = BUY_AND_BID_TABS.filter(tab => !tab.permission || loading || hasPermission(tab.permission))
+    // The shared tab must stay reachable to MANAGE_OFFERS-only staff, without
+    // linking them to the VIEW_TRADE-gated auction bids page.
+    const bidsOffersHref = bidsOffersTabHref(
+        !loading && hasPermission("VIEW_TRADE"),
+        !loading && hasPermission("MANAGE_OFFERS"),
+    )
+    const tabs = BUY_AND_BID_TABS
+        .filter(tab => tab.href === "/dashboard/dealer/bids"
+            ? bidsOffersHref !== null
+            : !tab.permission || (!loading && hasPermission(tab.permission)))
+        .map(tab => tab.href === "/dashboard/dealer/bids" && bidsOffersHref
+            ? { ...tab, href: bidsOffersHref }
+            : tab)
 
     return (
         <nav
@@ -44,7 +59,7 @@ export function BuyAndBidTabs({ className = "" }: { className?: string }) {
         >
             {tabs.map(tab => {
                 const Icon = tab.icon
-                const active = pathname === tab.href
+                const active = pathname === tab.href || !!tab.activePaths?.includes(pathname)
                 return active ? (
                     <span
                         key={tab.href}

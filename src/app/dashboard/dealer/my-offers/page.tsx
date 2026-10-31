@@ -10,6 +10,9 @@ import {
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
+import { BuyAndBidTabs } from "@/components/dealer/BuyAndBidTabs"
+import { BidsOffersSwitch } from "@/components/dealer/BidsOffersSwitch"
+import { useDealerAccess } from "@/context/DealerAccessContext"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { AmendOfferModal } from "@/components/offers/AmendOfferModal"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
@@ -34,6 +37,8 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; border: string; 
 
 export default function DealerMyOffersPage() {
     const { user, profile, loading: authLoading } = useAuth()
+    const { loading: accessLoading, hasPermission } = useDealerAccess()
+    const canViewTrade = !accessLoading && hasPermission("VIEW_TRADE")
     const [offers, setOffers] = React.useState<Offer[]>([])
     const [loading, setLoading] = React.useState(true)
     const [actionLoading, setActionLoading] = React.useState<Record<string, boolean>>({})
@@ -48,7 +53,7 @@ export default function DealerMyOffersPage() {
         try {
             const [data, auctionPositions] = await Promise.all([
                 getMyOffers(),
-                getMyActiveAuctionBids().catch(() => []),
+                canViewTrade ? getMyActiveAuctionBids().catch(() => []) : Promise.resolve([]),
             ])
             setOffers(data || [])
             setActiveAuctionBidCount(auctionPositions.length)
@@ -58,11 +63,11 @@ export default function DealerMyOffersPage() {
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [canViewTrade])
 
     React.useEffect(() => {
-        if (!authLoading && user) fetchOffers()
-    }, [authLoading, user, fetchOffers])
+        if (!authLoading && !accessLoading && user) fetchOffers()
+    }, [authLoading, accessLoading, user, fetchOffers])
 
     const handleWithdraw = async (offerId: string) => {
         if (!confirm("Withdraw this offer? You'll be able to submit a new one afterwards.")) return
@@ -125,9 +130,11 @@ export default function DealerMyOffersPage() {
 
                 <main className="flex-1 space-y-6 min-w-0">
                     <PageHeader
-                        title="My Offers"
-                        subHeader="Manage retail offers separately from your live auction bids"
+                        title="Bids & offers"
+                        subHeader="Retail offers you have sent on marketplace vehicles"
                     />
+                    <BuyAndBidTabs />
+                    <BidsOffersSwitch />
 
                     {amendingOffer && (
                         <AmendOfferModal
@@ -158,6 +165,7 @@ export default function DealerMyOffersPage() {
                             statusLabel="Active"
                             loading={loading}
                         />
+                        {canViewTrade && (
                         <MetricCard
                             label="Auction Bids"
                             value={activeAuctionBidCount}
@@ -169,6 +177,7 @@ export default function DealerMyOffersPage() {
                             loading={loading}
                             href="/dashboard/dealer/bids"
                         />
+                        )}
                         <MetricCard
                             label="Awaiting Response"
                             value={pendingCount}
@@ -180,7 +189,7 @@ export default function DealerMyOffersPage() {
                             loading={loading}
                         />
                         <MetricCard
-                            label="Accepted Bids"
+                            label="Accepted Offers"
                             value={acceptedCount}
                             icon={Trophy}
                             color="text-emerald-400"
