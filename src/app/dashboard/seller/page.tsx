@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import * as React from "react"
+import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import Link from "next/link"
 import Image from "next/image"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
@@ -14,7 +15,7 @@ import { apiClient } from "@/lib/apiClient"
 import { getMyListings, formatPrice, type SellerStats, type Listing } from "@/lib/listingApi"
 import { getNotifications, markNotificationRead, type AppNotification } from "@/lib/notificationsApi"
 
-export default function SellerDashboard() {
+function SellerDashboard() {
     const { user, profile, loading: authLoading } = useAuth()
     const searchParams = useSearchParams()
     const router = useRouter()
@@ -323,4 +324,13 @@ export default function SellerDashboard() {
             )}
         </div>
     )
+}
+
+/** Route legacy access via the canonical private dashboard. */
+export default function CanonicalSellerDashboard() {
+    return <React.Suspense fallback={<div className="min-h-[40vh]"/>}>
+        <LegacyDashboardRedirect target="/dashboard/user?tab=overview">
+            <SellerDashboard/>
+        </LegacyDashboardRedirect>
+    </React.Suspense>
 }

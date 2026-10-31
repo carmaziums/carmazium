@@ -99,6 +99,9 @@ import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
 import { ImportListingModal } from "@/components/features/ImportListingModal"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 import { UserAttentionPanel } from "@/components/dashboard/UserAttentionPanel"
+import { MyCarsAuctionPanel } from "@/components/dashboard/MyCarsAuctionPanel"
+import { getCompletePrivateListings } from "@/lib/privateCarsListings"
+import { PrivatePurchasesTab } from "@/components/dashboard/PrivatePurchasesTab"
 
 export default function UnifiedUserDashboard() {
     return (
@@ -113,13 +116,19 @@ function UnifiedUserDashboardContent() {
     const { rooms, refreshRooms } = useChat()
     const searchParams = useSearchParams()
     const router = useRouter()
-    const activeTab = searchParams.get("tab") || "overview"
+    const rawTab = searchParams.get("tab") || "overview"
+    const activeTab = rawTab === "inventory" ? "cars" : rawTab
     // Old deep links still resolve, but account controls have one canonical home.
     React.useEffect(() => {
+        if (rawTab === "inventory") {
+            const params = new URLSearchParams(searchParams.toString())
+            params.set("tab", "cars")
+            router.replace(`?${params.toString()}`)
+        }
         if (activeTab === "settings") {
             router.replace(`/profile?section=${searchParams.has("stripe_connect") ? "payouts" : "personal"}`)
         }
-    }, [activeTab, router, searchParams])
+    }, [activeTab, rawTab, router, searchParams])
     
     const [dashboardData, setDashboardData] = React.useState<UnifiedDashboardData | null>(null)
     const [loading, setLoading] = React.useState(true)
@@ -210,7 +219,8 @@ function UnifiedUserDashboardContent() {
                                 setTab={setTab}
                             />
                         )}
-                        {activeTab === "inventory" && <InventoryTab onRefreshStats={fetchStats} />}
+                        {activeTab === "cars" && <MyCarsTab onRefreshStats={fetchStats} />}
+                        {activeTab === "purchases" && <PrivatePurchasesTab />}
                         {activeTab === "offers" && <OffersTab onRefreshStats={fetchStats} />}
                         {activeTab === "bids" && <OutgoingOffersTab onRefreshStats={fetchStats} />}
                         {activeTab === "watchlist" && <WatchlistTab />}
@@ -522,15 +532,47 @@ function WatchlistTab() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+function MyCarsTab({ onRefreshStats }: { onRefreshStats: () => void }) {
+    const searchParams = useSearchParams()
+    const router = useRouter()
+    const view = searchParams.get("view") === "auctions" ? "auctions" : "listings"
+    const changeView = (next: "listings" | "auctions") => {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set("tab", "cars")
+        params.set("view", next)
+        router.push(`?${params.toString()}`)
+    }
+    return (
+        <div className="space-y-6">
+            <div><h2 className="text-2xl font-black">My cars</h2>
+                <p className="text-sm text-[var(--text-muted)]">Every vehicle you are selling, through retail or auction.</p></div>
+            <div className="flex gap-2" role="group" aria-label="My cars listing channel">
+                {(["listings", "auctions"] as const).map(next => (
+                    <button key={next} type="button" aria-pressed={view === next}
+                        onClick={() => changeView(next)}
+                        className={`min-h-11 rounded-xl border px-5 text-sm font-bold ${view === next
+                            ? "bg-primary text-white border-primary"
+                            : "bg-[var(--bg-card)] border-[var(--border-default)]"}`}>
+                        {next === "listings" ? "Retail and other listings" : "Auctions"}
+                    </button>
+                ))}
+            </div>
+            {view === "listings" ? <InventoryTab onRefreshStats={onRefreshStats} /> : <MyCarsAuctionPanel />}
+        </div>
+    )
+}
+
 // INVENTORY TAB
 // ─────────────────────────────────────────────────────────────────────────────
 
 function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const { profile } = useAuth()
     const [listings, setListings] = React.useState<Listing[]>([])
+    const [statusFilter, setStatusFilter] = React.useState<string>("ALL")
     const [loading, setLoading] = React.useState(true)
+    const [loadError, setLoadError] = React.useState<string | null>(null)
     const [page, setPage] = React.useState(1)
-    const [totalPages, setTotalPages] = React.useState(1)
+
     const [deleting, setDeleting] = React.useState<string | null>(null)
     const [boosting, setBoosting] = React.useState<string | null>(null)
     const [saleListing, setSaleListing] = React.useState<Listing | null>(null)
@@ -539,21 +581,27 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [showImportModal, setShowImportModal] = React.useState(false)
     const [openMenuId, setOpenMenuId] = React.useState<string | null>(null)
 
-    const auctionDashPath = profile?.role === 'DEALER' ? '/dashboard/dealer/auctions' : '/dashboard/seller/auctions'
+    const auctionDashPath = profile?.role === 'DEALER' ? '/dashboard/dealer/auctions' : '/dashboard/seller/auctions?manage=1'
+    const matchingListings = statusFilter === "ALL" ? listings : listings.filter(listing => listing.status === statusFilter)
+    const totalPages = Math.max(1, Math.ceil(matchingListings.length / 10))
+    const visibleListings = matchingListings.slice((page - 1) * 10, page * 10)
 
     const fetchListings = React.useCallback(async () => {
         try {
             setLoading(true)
-            // Phase 10: includeSold=true so SOLD listings appear in history and contribute to analytics
-            const data = await getMyListings({ page, limit: 10, includeSold: true })
-            setListings(data.data || [])
-            setTotalPages(data.pagination?.totalPages || 1)
+            // Load the complete authoritative owned inventory before status
+            // filtering, instead of hiding matching cars on later API pages.
+            const data = await getCompletePrivateListings()
+            setListings(data)
+            setLoadError(null)
         } catch (err) {
             console.error('Failed to fetch listings:', err)
+            // Never present a failed load as "no cars": say so and offer a retry.
+            setLoadError(err instanceof Error && err.message ? err.message : "We couldn't load your cars.")
         } finally {
             setLoading(false)
         }
-    }, [page])
+    }, [])
 
     React.useEffect(() => {
         fetchListings()
@@ -618,7 +666,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
             )}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                 <div>
-                    <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Listings</h2>
+                    <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Retail and other listings</h2>
                     <p className="text-sm text-[var(--text-muted)] mt-1">Cars you are selling, waiting for review, in draft or sold.</p>
                 </div>
                 <div className="flex flex-col gap-2 w-full sm:w-auto">
@@ -640,17 +688,38 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
 
             <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                 {/* ── Simple mobile cards (< sm) ── */}
-                <div className="sm:hidden divide-y divide-[var(--border-default)]">
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Filter your listing status">
+                {(["ALL", "ACTIVE", "DRAFT", "PENDING_REVIEW", "OFFER_ACCEPTED", "SOLD", "WITHDRAWN", "REJECTED"] as const).map(value => (
+                    <button type="button" key={value} onClick={() => { setStatusFilter(value); setPage(1) }}
+                        aria-pressed={statusFilter === value}
+                        className={`rounded-xl border px-3 py-2 text-xs font-bold ${statusFilter === value
+                            ? "bg-primary text-white border-primary" : "border-[var(--border-default)] text-[var(--text-secondary)]"}`}>
+                        {value === "ALL" ? "All" : value.replace(/_/g, " ").toLowerCase()}
+                    </button>
+                ))}
+            </div>
+
+            {loadError && !loading && (
+                <div role="alert" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+                    <span className="text-[var(--text-primary)]">{loadError}</span>
+                    <button type="button" onClick={() => { setLoading(true); void fetchListings() }}
+                        className="min-h-[44px] rounded-lg border border-[var(--border-default)] px-4 font-bold text-primary">
+                        Retry
+                    </button>
+                </div>
+            )}
+
+            <div className="sm:hidden divide-y divide-[var(--border-default)]">
                     {loading ? (
                         <div className="py-16 text-center">
                             <Loader2 className="h-9 w-9 animate-spin text-primary mx-auto" />
                         </div>
-                    ) : listings.length === 0 ? (
+                    ) : visibleListings.length === 0 && !loadError ? (
                         <div className="py-16 text-center text-[var(--text-muted)] italic px-6">
                             No listings found. Start selling today!
                         </div>
                     ) : (
-                        listings.map((listing) => (
+                        visibleListings.map((listing) => (
                             <div key={listing.id} className="p-4">
                                 <div className="flex gap-3">
                                     <div className="relative w-20 h-16 rounded-xl overflow-hidden border border-[var(--border-default)] shrink-0">
@@ -734,7 +803,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                     <div className="mt-1 space-y-1.5 border-t border-[var(--border-default)] pt-3">
                                         {listing.status === 'ACTIVE' && (
                                             <Link
-                                                href={`${auctionDashPath}?listingId=${listing.id}`}
+                                                href={`${auctionDashPath}${auctionDashPath.includes('?') ? '&' : '?'}listingId=${encodeURIComponent(listing.id)}`}
                                                 className="min-h-[46px] flex items-center gap-2.5 px-3 rounded-xl text-orange-400 bg-orange-500/5 font-bold text-sm"
                                             >
                                                 <Gavel size={16} /> Put to Auction
@@ -775,14 +844,14 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                         <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
                                     </td>
                                 </tr>
-                            ) : listings.length === 0 ? (
+                            ) : visibleListings.length === 0 && !loadError ? (
                                 <tr>
                                     <td colSpan={6} className="px-6 py-20 text-center text-[var(--text-muted)] italic">
                                         No listings found. Start selling today!
                                     </td>
                                 </tr>
                             ) : (
-                                listings.map((listing) => (
+                                visibleListings.map((listing) => (
                                     <tr key={listing.id} className="hover:bg-white/[0.03] transition-all">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
@@ -874,7 +943,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                             <Pencil size={14} /> Edit
                                                         </Link>
                                                         {listing.status === 'ACTIVE' && (
-                                                            <Link href={`${auctionDashPath}?listingId=${listing.id}`} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-orange-500/10 text-orange-400 w-full">
+                                                            <Link href={`${auctionDashPath}${auctionDashPath.includes('?') ? '&' : '?'}listingId=${encodeURIComponent(listing.id)}`} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-orange-500/10 text-orange-400 w-full">
                                                                 <Gavel size={14} /> Put to Auction
                                                             </Link>
                                                         )}
@@ -1069,7 +1138,7 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                     <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Offers Received</h2>
                     <p className="text-sm text-[var(--text-muted)] mt-1">Offers buyers have made on your cars. Accept, decline or counter each one.</p>
                 </div>
-                <Link href="/dashboard/seller/offers" className="inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline shrink-0">
+                <Link href="/dashboard/seller/offers?legacy=1" className="inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline shrink-0">
                     Delivery requests from buyers <ChevronRight size={14} />
                 </Link>
             </div>
@@ -1397,8 +1466,12 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
             <div>
                 <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Offers</h2>
                 <p className="text-sm text-[var(--text-muted)] mt-1">Offers you have made on other people&apos;s cars. Current offers are shown separately from your history.</p>
-                <Link href="/dashboard/buyer/offers" className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
+                <Link href="/dashboard/buyer/offers?legacy=1" className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
                     Ask a seller to arrange delivery <ChevronRight size={14} />
+                </Link>
+                <Link href="/dashboard/buyer/bids?legacy=1"
+                    className="ml-4 inline-flex min-h-10 items-center text-sm font-bold text-primary hover:underline">
+                    View auction bids and cancellation options <ChevronRight size={14}/>
                 </Link>
             </div>
 
@@ -1910,7 +1983,7 @@ function EarningsTab() {
                 <div>
                     <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Sales & Earnings</h2>
                     <p className="text-[var(--text-muted)] text-sm font-medium">Cars you have sold and what you earned.</p>
-                    <Link href="/dashboard/seller/earnings" className="mt-1 inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
+                    <Link href="/dashboard/seller/earnings?legacy=1" className="mt-1 inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
                         Payment receipts <ChevronRight size={14} />
                     </Link>
                 </div>

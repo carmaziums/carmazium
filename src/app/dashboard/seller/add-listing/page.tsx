@@ -1,11 +1,12 @@
 "use client"
 
 import * as React from "react"
+import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { ListingWizard } from "@/components/listing/ListingWizard"
 import { Loader2 } from "lucide-react"
 
-export default function DashboardAddListingPage() {
+function DashboardAddListingPage() {
     return (
         <div className="min-h-screen pt-20 relative">
              {/* Background gradient for dashboard consistency */}
@@ -25,4 +26,15 @@ export default function DashboardAddListingPage() {
             </div>
         </div>
     )
+}
+
+/** Route legacy access via the canonical private dashboard. */
+export default function CanonicalDashboardAddListingPage() {
+    return <React.Suspense fallback={<div className="min-h-[40vh]"/>}>
+        {/* Editing (editId/editSlug) and prefilled sells (sellMode, v, vrm) need
+            the dashboard editor itself; only a bare visit goes to /sell. */}
+        <LegacyDashboardRedirect target="/sell" preserveWhen={["editId", "editSlug", "sellMode", "v", "vrm"]}>
+            <DashboardAddListingPage/>
+        </LegacyDashboardRedirect>
+    </React.Suspense>
 }

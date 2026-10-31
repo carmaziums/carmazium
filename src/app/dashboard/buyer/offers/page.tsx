@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import * as React from "react"
+import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import { getMyOffers, withdrawOffer, respondToCounterOffer, type Offer } from "@/lib/listingApi"
 import { AmendOfferModal } from "@/components/offers/AmendOfferModal"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
@@ -267,7 +268,7 @@ function DeliveryRequestForm({ listing, onSuccess }: { listing: DeliveryFormList
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function BuyerOffersPage() {
+function BuyerOffersPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [offers, setOffers] = React.useState<Offer[]>([])
     const [myDeliveryRequests, setMyDeliveryRequests] = React.useState<DeliveryRequest[]>([])
@@ -703,5 +704,16 @@ export default function BuyerOffersPage() {
                 </main>
             </div>
         </div>
+    )
+}
+
+/** Private dashboard canonicalisation; ?legacy=1 preserves specialist actions. */
+export default function CanonicalBuyerOffersPage() {
+    return (
+        <React.Suspense fallback={<div className="min-h-[40vh]" />}>
+            <LegacyDashboardRedirect target="/dashboard/user?tab=bids" preserveWhen={["listingId"]}>
+                <BuyerOffersPage />
+            </LegacyDashboardRedirect>
+        </React.Suspense>
     )
 }

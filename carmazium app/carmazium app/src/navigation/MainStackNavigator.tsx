@@ -57,6 +57,7 @@ import { SellLandingScreen } from '../screens/sell/SellLandingScreen';
 import { BuyerDashboardScreen } from '../screens/buyer/BuyerDashboardScreen';
 import { SellerDashboardScreen } from '../screens/seller/SellerDashboardScreen';
 import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScreen';
+import { MyCarsScreen } from '../screens/account/MyCarsScreen';
 import { SellerOffersScreen } from '../screens/seller/SellerOffersScreen';
 import { BuyerOffersScreen } from '../screens/buyer/BuyerOffersScreen';
 import { BuyerBidsScreen } from '../screens/buyer/BuyerBidsScreen';
@@ -185,8 +186,10 @@ export type MainStackParamList = {
     wheelplan?: string; typeApproval?: string; motHistory?: import('../data/listings').NativeMotTest[];
     officialVehicleData?: import('../data/listings').OfficialVehicleData;
   } } | undefined;
-  SellerListings: undefined;
-  SellerAuctions: { preselectListingId?: string; initialTab?: 'WON'; openCreate?: boolean; alsoRetailListingId?: string; alsoRetailPrice?: string; alsoRetailTier?: 'BASIC' | 'STANDARD' | 'PREMIUM' } | undefined;
+  /** focusListingId: open that car's action menu once loaded (from My cars). */
+  SellerListings: { focusListingId?: string } | undefined;
+  MyCars: undefined;
+  SellerAuctions: { focusListingId?: string; preselectListingId?: string; initialTab?: 'WON'; openCreate?: boolean; alsoRetailListingId?: string; alsoRetailPrice?: string; alsoRetailTier?: 'BASIC' | 'STANDARD' | 'PREMIUM' } | undefined;
   BuyerDashboard: undefined;
   SellerDashboard: undefined;
   UnifiedDashboard: undefined;
@@ -371,6 +374,7 @@ export const MainStackNavigator: React.FC = () => {
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen name="SellerListings" component={SellerListingsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="MyCars" component={MyCarsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="SellerAuctions" component={SellerAuctionsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen
         name="BuyerDashboard"

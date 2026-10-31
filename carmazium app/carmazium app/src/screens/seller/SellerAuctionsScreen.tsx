@@ -925,6 +925,21 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route.params?.openCreate, createRouteHandled, dealerAccessLoading, dealerIdentity, hasDealerPermission]);
 
+  // Opened from My cars with a specific car: show its results (ended) or its
+  // auction menu once loaded. Distinct from preselectListingId, which starts
+  // a new auction for a listing.
+  const focusListingId: string | undefined = route.params?.focusListingId;
+  const [focusHandled, setFocusHandled] = useState(false);
+  useEffect(() => {
+    if (!focusListingId || focusHandled) return;
+    const match = auctions.find(a => a.listingId === focusListingId);
+    if (!match) return;
+    setFocusHandled(true);
+    if (match.status === 'ENDED') setResultsAuction(match);
+    else handleAuctionMenu(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusListingId, focusHandled, auctions]);
+
   // Auto-open the create flow once when arriving with a preselected listing.
   useEffect(() => {
     if (preselectListingId && !preselectHandled) {

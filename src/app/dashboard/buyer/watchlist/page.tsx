@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import Link from "next/link"
 import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -9,7 +10,7 @@ import { useAuth } from "@/context/AuthContext"
 import { getWatchlist, removeFromWatchlist, formatPrice, type WatchlistItem } from "@/lib/listingApi"
 import { Loader2, Heart, Trash2, Gavel, ChevronRight } from "lucide-react"
 
-export default function SavedCarsPage() {
+function SavedCarsPage() {
     const { user, loading: authLoading } = useAuth()
     const [items, setItems] = React.useState<WatchlistItem[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -154,5 +155,16 @@ export default function SavedCarsPage() {
                 </main>
             </div>
         </div>
+    )
+}
+
+/** Private dashboard canonicalisation; ?legacy=1 preserves specialist actions. */
+export default function CanonicalSavedCarsPage() {
+    return (
+        <React.Suspense fallback={<div className="min-h-[40vh]" />}>
+            <LegacyDashboardRedirect target="/dashboard/user?tab=watchlist">
+                <SavedCarsPage />
+            </LegacyDashboardRedirect>
+        </React.Suspense>
     )
 }

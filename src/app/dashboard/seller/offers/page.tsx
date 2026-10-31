@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import * as React from "react"
+import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import { Button } from "@/components/ui/Button"
 import {
     Loader2, AlertTriangle, Tag, CheckCircle, XCircle,
@@ -460,7 +461,7 @@ function OfferRow({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function SellerOffersPage() {
+function SellerOffersPage() {
     const [listings, setListings] = React.useState<Listing[]>([])
     const [offers, setOffers] = React.useState<Record<string, Offer[]>>({})
     const [receivedDeliveryRequests, setReceivedDeliveryRequests] = React.useState<DeliveryRequest[]>([])
@@ -826,4 +827,13 @@ export default function SellerOffersPage() {
             </div>
         </div>
     )
+}
+
+/** Route legacy access via the canonical private dashboard. */
+export default function CanonicalSellerOffersPage() {
+    return <React.Suspense fallback={<div className="min-h-[40vh]"/>}>
+        <LegacyDashboardRedirect target="/dashboard/user?tab=offers" preserveWhen={["listingId"]}>
+            <SellerOffersPage/>
+        </LegacyDashboardRedirect>
+    </React.Suspense>
 }

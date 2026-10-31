@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import * as React from "react"
+import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import Link from "next/link"
 import Image from "next/image"
 import {
@@ -25,7 +26,7 @@ import { ReceiptsTab } from "@/components/dashboard/ReceiptsTab"
 import { useAuth } from "@/context/AuthContext"
 import { getEarnings, exportEarningsCsv, formatPrice, type SaleRecord, type EarningsResponse } from "@/lib/listingApi"
 
-export default function EarningsPage() {
+function EarningsPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [data, setData] = React.useState<EarningsResponse | null>(null)
     const [loading, setLoading] = React.useState(true)
@@ -379,4 +380,13 @@ export default function EarningsPage() {
             </div>
         </div>
     )
+}
+
+/** Route legacy access via the canonical private dashboard. */
+export default function CanonicalEarningsPage() {
+    return <React.Suspense fallback={<div className="min-h-[40vh]"/>}>
+        <LegacyDashboardRedirect target="/dashboard/user?tab=earnings">
+            <EarningsPage/>
+        </LegacyDashboardRedirect>
+    </React.Suspense>
 }

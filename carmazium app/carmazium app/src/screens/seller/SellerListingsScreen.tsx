@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
 import {
   ActivityIndicator,
   Alert,
@@ -227,6 +227,15 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('ALL');
   const [actionMenuListing, setActionMenuListing] = useState<ApiListing | null>(null);
+  // Opened from My cars with a specific car: show that car's actions once.
+  const route = useRoute<any>();
+  const focusListingId: string | undefined = route.params?.focusListingId;
+  const [focusHandled, setFocusHandled] = useState(false);
+  useEffect(() => {
+    if (!focusListingId || focusHandled) return;
+    const match = listings.find(l => l.id === focusListingId);
+    if (match) { setFocusHandled(true); setActionMenuListing(match); }
+  }, [focusListingId, focusHandled, listings]);
   const [sellPriceModal, setSellPriceModal] = useState<ApiListing | null>(null);
   const [soldPriceInput, setSoldPriceInput] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
