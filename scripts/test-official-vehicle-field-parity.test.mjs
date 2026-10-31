@@ -105,10 +105,13 @@ test('all seller-uploaded media remains buyer-accessible across retail and aucti
     assert.match(nativeRetail, /images\.map/);
 });
 
-test('buyer fields exclude private commercial data, VIN, seller contact and relationship free text', () => {
+test('buyer fields exclude private commercial data, VIN, seller contact and estate relationship free text', () => {
+    // notOwnerRelationship is deliberately shown to buyers when the seller is
+    // not the registered keeper (owner decision, 31 Oct 2026); see
+    // scripts/test-buyer-official-vehicle-facts.test.mjs.
     for (const panel of [buyerNative, buyerWeb]) {
         for (const unsafe of ['priceMin', 'priceMax', 'auctionReservePrice', 'partnerDistributionAccepted',
-            'notOwnerRelationship', 'departedRelationship', 'stripeCustomerId']) {
+            'departedRelationship', 'stripeCustomerId']) {
             assert.ok(!panel.includes(unsafe), 'private field unexpectedly in public buyer panel: ' + unsafe);
         }
         assert.ok(!/\bdata\.vin\b|\blisting\.vin\b/.test(panel), 'VIN should not be revealed in buyer panel');

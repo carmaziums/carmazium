@@ -149,9 +149,10 @@ const mapBodyType = (body?: DtoBodyType): BodyType | null => {
 /**
  * Listing columns that only the seller (and their dealership) may read on the
  * public detail endpoint. Public search strips the same fields (#723/#724).
+ * notOwnerRelationship is NOT here: it is the seller's disclosure to buyers
+ * of why they are not the registered keeper (owner decision, 31 Oct 2026).
  */
 export const PUBLIC_DETAIL_PRIVATE_FIELDS = [
-    'notOwnerRelationship',
     'rejectionReason',
     'partnerDistributionAcceptedAt',
     'deletedAt',
@@ -2298,14 +2299,13 @@ export class ListingsService {
         // under the staff member's personal name — see admin-seller-branding.ts.
         // priceMin/priceMax are seller-private negotiation controls and must
         // never be exposed by public marketplace search responses.
-        // The same applies to seller declaration free text, moderation notes and
-        // internal timestamps: no public card or search consumer reads them, and
-        // owners edit through GET /listings/:id, not search (issue #723).
+        // The same applies to moderation notes and internal timestamps. The
+        // seller's keeper-relationship disclosure stays: it is for buyers.
+        // Owners edit through GET /listings/:id, not search (issue #723).
         const publicData = data.map((row: any) => {
             const {
                 priceMin: _priceMin,
                 priceMax: _priceMax,
-                notOwnerRelationship: _notOwnerRelationship,
                 rejectionReason: _rejectionReason,
                 partnerDistributionAcceptedAt: _partnerDistributionAcceptedAt,
                 deletedAt: _deletedAt,
@@ -2574,11 +2574,11 @@ export class ListingsService {
             delete listingWithCount.priceMax;
         }
 
-        // Seller-private declaration text, moderation notes and internal
-        // timestamps stay with the seller and their own dealership team (who
-        // edit through this endpoint). Official DVLA/MOT facts, V5C date and
-        // VIN are buyer information and are deliberately left in (owner
-        // decision, 31 Oct 2026, #724).
+        // Moderation notes and internal timestamps stay with the seller and
+        // their own dealership team (who edit through this endpoint). Official
+        // DVLA/MOT facts, V5C date, VIN and the seller's keeper-relationship
+        // disclosure are buyer information and are deliberately left in
+        // (owner decisions, 31 Oct 2026, #724).
         if (!(await this.viewerManagesListing(viewerId, listing.sellerId))) {
             for (const field of PUBLIC_DETAIL_PRIVATE_FIELDS) delete listingWithCount[field];
         }
