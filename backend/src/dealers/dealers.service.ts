@@ -1898,6 +1898,25 @@ export class DealersService {
     }
 
     /**
+     * Map the dealer's won-auction listing IDs to recorded Sale IDs so the
+     * Auction Wins page can link directly to one purchase detail. Unrecorded
+     * wins stay in the existing auction flow. Never return other buyers' data.
+     */
+    async getDealerPurchaseLookup(userId: string, listingIds: string[]) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        assertDealerPermission(actor, 'VIEW_PURCHASES');
+        const ids = [...new Set(listingIds.map(id => id.trim()).filter(Boolean))];
+        if (!ids.length || ids.length > 50
+            || ids.some(id => !/^[a-f\\d-]{36}$/i.test(id))) {
+            throw new BadRequestException('Provide 1 to 50 valid listing IDs');
+        }
+        return this.prisma.sale.findMany({
+            where: { buyerId: actor.ownerUserId, listingId: { in: ids } },
+            select: { id: true, listingId: true },
+        });
+    }
+
+    /**
      * Per-purchase detail, scoped to the purchasing dealership and the same
      * VIEW_PURCHASES permission as the history and seller-contact endpoints.
      * Never expose seller contact data here: /:id/seller enforces the channel,
