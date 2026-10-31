@@ -13,7 +13,9 @@ permissions:
 
 jobs:
   public-visual-baseline:
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to Ubuntu 26, where Playwright 1.56.1
+    # cannot install Chromium, so the capture step never ran.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
