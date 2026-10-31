@@ -145,6 +145,18 @@ const mapBodyType = (body?: DtoBodyType): BodyType | null => {
     return map[body] ?? null;
 };
 
+
+/**
+ * Listing columns that only the seller (and their dealership) may read on the
+ * public detail endpoint. Public search strips the same fields (#723/#724).
+ */
+export const PUBLIC_DETAIL_PRIVATE_FIELDS = [
+    'notOwnerRelationship',
+    'rejectionReason',
+    'partnerDistributionAcceptedAt',
+    'deletedAt',
+] as const;
+
 @Injectable()
 export class ListingsService {
     private readonly logger = new Logger(ListingsService.name);
@@ -2562,7 +2574,28 @@ export class ListingsService {
             delete listingWithCount.priceMax;
         }
 
+        // Seller-private declaration text, moderation notes and internal
+        // timestamps stay with the seller and their own dealership team (who
+        // edit through this endpoint). Official DVLA/MOT facts, V5C date and
+        // VIN are buyer information and are deliberately left in (owner
+        // decision, 31 Oct 2026, #724).
+        if (!(await this.viewerManagesListing(viewerId, listing.sellerId))) {
+            for (const field of PUBLIC_DETAIL_PRIVATE_FIELDS) delete listingWithCount[field];
+        }
+
         return listingWithCount as any;
+    }
+
+    /** Seller, or any member of the seller's dealership. Never throws. */
+    private async viewerManagesListing(viewerId: string | undefined, sellerId: string | null | undefined): Promise<boolean> {
+        if (!viewerId || !sellerId) return false;
+        if (viewerId === sellerId) return true;
+        try {
+            const actor = await resolveDealerActor(this.prisma, viewerId);
+            return !!actor && actor.ownerUserId === sellerId;
+        } catch {
+            return false;
+        }
     }
 
     /**

@@ -2563,6 +2563,52 @@ describe('ListingsService', () => {
         });
     });
 
+    describe('public detail keeps buyer vehicle facts and hides seller-private data (#724)', () => {
+        const officialRow = () => ({
+            id: 'retail-9', slug: 'ford-focus-2017-ab12', type: 'CLASSIFIED', status: 'ACTIVE',
+            sellerId: 'seller-1', price: 7000, priceMin: 6000, priceMax: 8000, badgeTier: 'BASIC',
+            vin: 'WF0XXXGCDXHA12345', dateOfLastV5CIssued: new Date('2024-05-01'),
+            motHistory: [{ testDate: '2026-01-01', result: 'PASSED', odometer: 61000 }],
+            officialVehicleData: { source: 'DVLA', retrievedAt: '2026-10-01' },
+            motExpiryDate: new Date('2027-01-01'), taxStatus: 'Taxed',
+            notOwnerRelationship: 'Selling for my aunt', rejectionReason: 'Old moderation note',
+            partnerDistributionAcceptedAt: new Date('2026-09-01'), deletedAt: null,
+            seller: { id: 'seller-1', role: 'USER', firstName: 'Sam', lastName: 'Seller', phone: null, _count: { listings: 1 } },
+            auction: null, linkedListing: null,
+        });
+        const load = async (viewerId?: string) => {
+            prisma.listing.findFirst = jest.fn().mockResolvedValue(officialRow());
+            prisma.listing.update.mockResolvedValue({});
+            jest.spyOn(service as any, 'backfillRetailMotOnView').mockImplementation(() => undefined);
+            return await service.findBySlug('ford-focus-2017-ab12', viewerId) as any;
+        };
+        const PRIVATE = ['notOwnerRelationship', 'rejectionReason', 'partnerDistributionAcceptedAt', 'deletedAt'];
+        const OFFICIAL = ['vin', 'dateOfLastV5CIssued', 'motHistory', 'officialVehicleData', 'motExpiryDate', 'taxStatus'];
+
+        it.each([['anonymous visitor', undefined], ['signed-in buyer', 'buyer-1']])('%s sees official DVLA/MOT facts but no private seller data', async (_label, viewer) => {
+            const listing = await load(viewer as string | undefined);
+            for (const field of OFFICIAL) expect(listing[field]).toEqual(officialRow()[field as keyof ReturnType<typeof officialRow>]);
+            for (const field of [...PRIVATE, 'priceMin', 'priceMax']) expect(listing).not.toHaveProperty(field);
+        });
+
+        it('the seller keeps their declarations and price boundaries for editing', async () => {
+            const listing = await load('seller-1');
+            expect(listing.notOwnerRelationship).toBe('Selling for my aunt');
+            expect(listing.priceMin).toBe(6000);
+            expect(listing.vin).toBe('WF0XXXGCDXHA12345');
+        });
+
+        it('staff of the seller dealership keep declarations; staff of another dealership do not', async () => {
+            prisma.dealerStaff.findFirst.mockImplementation(async ({ where }: any) => (
+                where.userId === 'staff-own' ? { role: 'SALES_AGENT', dealerProfile: { id: 'dp-1', userId: 'seller-1', isVerified: true } }
+                    : where.userId === 'staff-other' ? { role: 'ADMIN', dealerProfile: { id: 'dp-2', userId: 'other-dealer', isVerified: true } }
+                        : null
+            ));
+            expect((await load('staff-own')).notOwnerRelationship).toBe('Selling for my aunt');
+            expect(await load('staff-other')).not.toHaveProperty('notOwnerRelationship');
+        });
+    });
+
     describe('featured retail listing privacy', () => {
         it('brands admin-created featured cars as CarMazium and strips private seller price boundaries', async () => {
             prisma.listing.findMany.mockResolvedValue([{
