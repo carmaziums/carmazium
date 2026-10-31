@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -18,6 +18,10 @@ import {
     resolveDealerActor,
 } from './dealer-access';
 import { buyerFeeDeadlineAt } from '../auctions/buyer-fee-deadline';
+import {
+    buildListingRecordData, LISTING_RECORD_SELECT, purchaseSnapshotsEnabled,
+} from './purchase-listing-record';
+import type { CreateInspectionNoteDto } from './dto/create-inspection-note.dto';
 
 @Injectable()
 export class DealersService {
@@ -1917,6 +1921,64 @@ export class DealersService {
         });
     }
 
+    /** Sale owned by this dealership, under VIEW_PURCHASES; 404 otherwise. */
+    private async ownedPurchase(userId: string, saleId: string) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        assertDealerPermission(actor, 'VIEW_PURCHASES');
+        const buyerId = actor.ownerUserId;
+        const sale = await this.prisma.sale.findFirst({
+            where: { id: saleId, buyerId },
+            select: { id: true, listingId: true },
+        });
+        if (!sale) throw new NotFoundException('Purchase not found');
+        return { actor, buyerId, sale };
+    }
+
+    /**
+     * The dealership's inspection notes for one purchase, oldest first.
+     * Read-only record; it never alters the Sale.
+     */
+    async getPurchaseInspectionNotes(userId: string, saleId: string) {
+        const { buyerId, sale } = await this.ownedPurchase(userId, saleId);
+        if (!purchaseSnapshotsEnabled()) return { enabled: false, notes: [] };
+        const notes = await this.prisma.purchaseInspectionNote.findMany({
+            where: { listingId: sale.listingId, buyerId },
+            orderBy: { createdAt: 'asc' },
+            select: { id: true, kind: true, part: true, description: true, createdAt: true, authorId: true },
+        });
+        return {
+            enabled: true,
+            notes: notes.map(n => ({
+                id: n.id, kind: n.kind, part: n.part, description: n.description,
+                createdAt: n.createdAt.toISOString(),
+                byYou: n.authorId === userId,
+            })),
+        };
+    }
+
+    /**
+     * Append an inspection finding (e.g. damage not in the advert). Append
+     * only: there is no edit or delete, and the Sale's agreed price and
+     * status are deliberately untouched. Price changes still go through the
+     * existing adjustments/cancellation process.
+     */
+    async addPurchaseInspectionNote(userId: string, saleId: string, dto: CreateInspectionNoteDto) {
+        const { buyerId, sale } = await this.ownedPurchase(userId, saleId);
+        if (!purchaseSnapshotsEnabled()) {
+            throw new ServiceUnavailableException('Inspection notes are not switched on yet');
+        }
+        const note = await this.prisma.purchaseInspectionNote.create({
+            data: {
+                listingId: sale.listingId, buyerId, saleId: sale.id, authorId: userId,
+                kind: dto.kind,
+                part: dto.part?.trim() || null,
+                description: dto.description.trim(),
+            },
+            select: { id: true, kind: true, part: true, description: true, createdAt: true },
+        });
+        return { ...note, createdAt: note.createdAt.toISOString(), byYou: true };
+    }
+
     /**
      * Per-purchase detail, scoped to the purchasing dealership and the same
      * VIEW_PURCHASES permission as the history and seller-contact endpoints.
@@ -1935,26 +1997,10 @@ export class DealersService {
                 createdAt: true, purchaseStatus: true,
                 listing: {
                     select: {
-                        id: true, slug: true, type: true, status: true,
-                        title: true, images: true, year: true, make: true,
-                        model: true, mileage: true, vrm: true, location: true,
+                        id: true, slug: true, type: true, status: true, location: true,
                         // Full advert record for inspection. Listing evidence
                         // only; seller contact stays behind /:id/seller.
-                        description: true, variant: true, fuelType: true,
-                        transmission: true, color: true, doors: true, seats: true,
-                        engineSize: true, bhp: true, bodyType: true, driveType: true,
-                        features: true, vin: true, condition: true,
-                        monthOfFirstRegistration: true, motStatus: true,
-                        motExpiryDate: true, motHistory: true, serviceHistory: true,
-                        numberOfKeys: true, owners: true, exteriorGrade: true,
-                        writeOffCategory: true, mechanicalIssues: true,
-                        electricalIssues: true, hasOutstandingFinance: true,
-                        stolenRecovered: true, isLegalRegisteredKeeper: true,
-                        updatedAt: true, deletedAt: true,
-                        damageRecords: {
-                            select: { id: true, part: true, type: true, size: true, coords: true, imageUrl: true, createdAt: true },
-                            orderBy: { createdAt: 'asc' },
-                        },
+                        ...LISTING_RECORD_SELECT,
                         auction: {
                             select: {
                                 id: true, winnerId: true, buyerFeePaid: true,
@@ -1969,6 +2015,16 @@ export class DealersService {
             },
         });
         if (!sale) throw new NotFoundException('Purchase not found');
+
+        // The advert as saved when this sale was recorded, when snapshots are
+        // switched on and one exists. Older purchases have none and fall back
+        // to the current listing, labelled as such; nothing is back-filled.
+        const snapshot = purchaseSnapshotsEnabled()
+            ? await this.prisma.purchaseListingSnapshot.findUnique({
+                where: { listingId_buyerId: { listingId: sale.listingId, buyerId } },
+                select: { capturedAt: true, data: true },
+            }).catch(() => null)
+            : null;
 
         const listing = sale.listing;
         const auction = listing.auction;
@@ -2029,37 +2085,25 @@ export class DealersService {
                 // 72 hours from the recorded win (buyer-fee-deadline.ts); null once paid.
                 buyerFeeDeadlineAt: auction.winnerId === buyerId ? buyerFeeDeadlineAt(auction) : null,
             } : null,
-            // Seller-supplied advert as currently stored. CarMazium does not yet
-            // keep a snapshot taken at purchase, so this is labelled as the
-            // current record; never presented as the original advert.
-            listingRecord: {
+            // Seller-supplied advert: the purchase-time snapshot when one
+            // exists, otherwise the current listing, always labelled with
+            // which one it is. Never presented as original when it is not.
+            listingRecord: snapshot ? {
+                ...(snapshot.data as Record<string, unknown>),
+                source: 'PURCHASE_SNAPSHOT' as const,
+                capturedAt: snapshot.capturedAt.toISOString(),
+                lastUpdatedAt: snapshot.capturedAt.toISOString(),
+                // Whether the live advert has been removed since; the
+                // snapshot itself is unaffected.
+                removedFromSaleAt: listing.deletedAt?.toISOString() ?? null,
+            } : {
+                ...buildListingRecordData(listing),
                 source: 'CURRENT_LISTING' as const,
+                capturedAt: null,
                 lastUpdatedAt: listing.updatedAt?.toISOString() ?? null,
                 removedFromSaleAt: listing.deletedAt?.toISOString() ?? null,
-                images: listing.images ?? [],
-                description: listing.description,
-                variant: listing.variant, fuelType: listing.fuelType,
-                transmission: listing.transmission, color: listing.color,
-                doors: listing.doors, seats: listing.seats, engineSize: listing.engineSize,
-                bhp: listing.bhp, bodyType: listing.bodyType, driveType: listing.driveType,
-                features: listing.features, vin: listing.vin, condition: listing.condition,
-                firstRegistered: listing.monthOfFirstRegistration,
-                motStatus: listing.motStatus, motExpiryDate: listing.motExpiryDate,
-                motHistory: listing.motHistory, serviceHistory: listing.serviceHistory,
-                numberOfKeys: listing.numberOfKeys, owners: listing.owners,
-                exteriorGrade: listing.exteriorGrade, writeOffCategory: listing.writeOffCategory,
-                sellerDeclarations: {
-                    mechanicalIssues: listing.mechanicalIssues,
-                    electricalIssues: listing.electricalIssues,
-                    hasOutstandingFinance: listing.hasOutstandingFinance,
-                    stolenRecovered: listing.stolenRecovered,
-                    isLegalRegisteredKeeper: listing.isLegalRegisteredKeeper,
-                },
-                damage: (listing.damageRecords ?? []).map(d => ({
-                    id: d.id, part: d.part, type: d.type, size: d.size,
-                    coords: d.coords, imageUrl: d.imageUrl,
-                })),
             },
+            inspectionNotesEnabled: purchaseSnapshotsEnabled(),
             delivery: delivery ? {
                 jobId: delivery.id, status: delivery.status,
                 createdAt: delivery.createdAt.toISOString(),

@@ -47,6 +47,10 @@ on:
       - "scripts/test-dealer-purchase-destinations.test.mjs"
       - "scripts/test-dealer-inventory-mobile.test.mjs"
       - "src/components/dashboard/PageHeader.tsx"
+      - "scripts/test-dealer-purchase-snapshot.test.mjs"
+      - "src/components/dealer/PurchaseInspectionNotes.tsx"
+      - "backend/src/dealers/**"
+      - "backend/prisma/migrations/20261031120000_purchase_snapshots_inspection_notes/**"
       - "src/components/dealer/BuyAndBidTabs.tsx"
       - "src/lib/pendingRetailPurchases.ts"
       - "scripts/test-dealer-pending-retail-purchases.test.mjs"
@@ -132,6 +136,9 @@ jobs:
 
       - name: Verify dealer Stock status, sort and import controls fit on phones (web and app)
         run: node --test scripts/test-dealer-inventory-mobile.test.mjs
+
+      - name: Verify purchase snapshots ship switched off and inspection notes never change a sale
+        run: node --test scripts/test-dealer-purchase-snapshot.test.mjs
 
       - name: Verify accepted retail purchases appear without premature completed-sale records
         run: node --test scripts/test-dealer-pending-retail-purchases.test.mjs

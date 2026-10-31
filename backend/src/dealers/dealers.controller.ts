@@ -32,6 +32,7 @@ import { UpdateLeadDto } from './dto/update-lead.dto';
 import { TrackDealerCallDto } from './dto/track-dealer-call.dto';
 import { InviteStaffDto } from './dto/invite-staff.dto';
 import { CreateKycDto } from './dto/create-kyc.dto';
+import { CreateInspectionNoteDto } from './dto/create-inspection-note.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
@@ -214,6 +215,27 @@ export class DealersController {
         @Param('id') id: string,
     ): Promise<StandardResponse<any>> {
         return new StandardResponse(await this.dealersService.getDealerPurchaseDetail(user.id, id));
+    }
+
+    @Get('purchases/:id/inspection-notes')
+    @ApiOperation({ summary: 'This dealership\'s inspection notes for a purchased vehicle' })
+    @ApiParam({ name: 'id', description: 'Sale ID — only the buyer and its VIEW_PURCHASES staff' })
+    async getPurchaseInspectionNotes(
+        @CurrentUser() user: any,
+        @Param('id') id: string,
+    ): Promise<StandardResponse<any>> {
+        return new StandardResponse(await this.dealersService.getPurchaseInspectionNotes(user.id, id));
+    }
+
+    @Post('purchases/:id/inspection-notes')
+    @ApiOperation({ summary: 'Record an inspection finding; never changes the agreed price or status' })
+    @ApiParam({ name: 'id', description: 'Sale ID — only the buyer and its VIEW_PURCHASES staff' })
+    async addPurchaseInspectionNote(
+        @CurrentUser() user: any,
+        @Param('id') id: string,
+        @Body() dto: CreateInspectionNoteDto,
+    ): Promise<StandardResponse<any>> {
+        return new StandardResponse(await this.dealersService.addPurchaseInspectionNote(user.id, id, dto));
     }
 
     @Get('purchases/:id/seller')

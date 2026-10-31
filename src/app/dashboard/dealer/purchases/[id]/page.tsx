@@ -16,6 +16,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useDealerAccess } from "@/context/DealerAccessContext"
 import { apiClient } from "@/lib/apiClient"
 import { PurchaseVehicleRecord } from "@/components/dealer/PurchaseVehicleRecord"
+import { PurchaseInspectionNotes } from "@/components/dealer/PurchaseInspectionNotes"
 import { deliveryServiceEnabled } from "@/lib/featureFlags"
 import {
     type DealerPurchaseDetail, type DealerPurchaseSeller,
@@ -191,11 +192,18 @@ export default function DealerPurchaseDetailPage() {
                                         View photos, description and declared damage
                                     </a>
                                 )}
+                                {purchase.inspectionNotesEnabled && (
+                                    <a href="#inspection-notes" className="ml-4 inline-flex min-h-[44px] items-center text-sm font-bold text-primary hover:underline">
+                                        Inspection notes
+                                    </a>
+                                )}
                             </section>
 
                             {purchase.listingRecord && (
                                 <PurchaseVehicleRecord record={purchase.listingRecord} title={purchase.vehicle.title} />
                             )}
+
+                            {purchase.inspectionNotesEnabled && <PurchaseInspectionNotes saleId={purchase.id} />}
 
                             <section className="dealer-glass-card p-5 md:p-7 space-y-3">
                                 <h2 className="flex items-center gap-2 text-lg font-black"><UserRound size={20} className="text-primary" /> Seller details</h2>

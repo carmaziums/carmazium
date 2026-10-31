@@ -1,3 +1,4 @@
+import { capturePurchaseSnapshot } from '../dealers/purchase-listing-record';
 import {
     Injectable,
     NotFoundException,
@@ -1417,6 +1418,8 @@ export class AuctionsService {
                 winningAmount,
             };
         });
+        // Post-commit and best-effort: keep the advert the buyer committed to.
+        void capturePurchaseSnapshot(this.prisma, { listingId: lookup.listingId, buyerId: accepted.winnerId });
 
         // The existing reserveMet=true payload is also the successful-sale
         // signal consumed by the web/native end banners. Here the seller has
@@ -2148,6 +2151,7 @@ export class AuctionsService {
                 activeBidCount,
             };
         });
+        void capturePurchaseSnapshot(this.prisma, { listingId: lookup.listingId, buyerId: dealerId });
 
         const endPayload: AuctionEndPayload = {
             auctionId,
@@ -3447,6 +3451,7 @@ export class AuctionsService {
                 activeBidCount,
             };
         });
+        void capturePurchaseSnapshot(this.prisma, { listingId: lookup.listingId, buyerId: confirmed.pendingBuyerId });
 
         this.trackAuctionEvent('auction_outcome', {
             auction_id: auctionId,

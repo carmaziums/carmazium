@@ -11,6 +11,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { BottomSheet } from '../../components/BottomSheet';
 import { ImageLightbox } from '../../components/ImageLightbox';
 import { BuyerDamageViewer } from '../../components/damage/BuyerDamageViewer';
+import { PurchaseInspectionNotes } from '../../components/dealer/PurchaseInspectionNotes';
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 import { apiClient } from '../../lib/apiClient';
 import { getServiceSettings } from '../../lib/servicesApi';
@@ -44,9 +45,12 @@ interface PurchaseDetail {
     sellerBonusReleased: boolean;
   };
   auction?: { wonAt: string | null; winningBid: number | null; buyerFeeDeadlineAt: string | null } | null;
-  /** Seller-supplied advert as currently stored; no purchase-time snapshot yet. */
+  /** True once the backend has snapshots and inspection notes switched on. */
+  inspectionNotesEnabled?: boolean;
+  /** Seller-supplied advert: purchase-time snapshot when one exists, else the current listing. */
   listingRecord?: {
     source: 'CURRENT_LISTING' | 'PURCHASE_SNAPSHOT';
+    capturedAt?: string | null;
     lastUpdatedAt: string | null; removedFromSaleAt: string | null;
     images: string[]; description: string | null;
     variant: string | null; fuelType: string | null; transmission: string | null;
@@ -260,9 +264,11 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
               const damagePhotos = r.damage.map(x => x.imageUrl).filter((u): u is string => !!u);
               return (
                 <DetailSection title="Listing record" icon="clipboard-outline">
-                  {/* Honest provenance: no purchase-time snapshot exists yet. */}
-                  <Text style={styles.warning}>
-                    {r.source === 'PURCHASE_SNAPSHOT' ? 'Saved when you bought this vehicle.'
+                  {/* Honest provenance: the purchase-time snapshot, or the
+                      current advert for purchases made before snapshots. */}
+                  <Text style={r.source === 'PURCHASE_SNAPSHOT' ? styles.snapshotNote : styles.warning}>
+                    {r.source === 'PURCHASE_SNAPSHOT'
+                      ? `Saved when you bought this vehicle${r.capturedAt ? `, ${date(r.capturedAt)}` : ''}. Later changes by the seller don't affect it.${r.removedFromSaleAt ? ` The live advert was removed ${date(r.removedFromSaleAt)}.` : ''}`
                       : `Current listing${r.lastUpdatedAt ? `, last updated ${date(r.lastUpdatedAt)}` : ''}. The seller may have changed it since you bought the vehicle.${r.removedFromSaleAt ? ` Removed from sale ${date(r.removedFromSaleAt)}.` : ''}`}
                   </Text>
                   {photos.length > 0 ? (
@@ -320,6 +326,8 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
                 </DetailSection>
               );
             })()}
+
+            {detail.inspectionNotesEnabled && <PurchaseInspectionNotes saleId={detail.id} />}
 
             <DetailSection title="Seller details" icon="person-outline">
               {sellerError && <Text style={styles.warning}>Seller details could not be loaded.</Text>}
@@ -495,6 +503,7 @@ const styles = StyleSheet.create({
   recordText: { color: Colors.textPrimary, fontSize: 14, lineHeight: 20, marginVertical: 6, flexShrink: 1 },
   recordSubhead: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 15, marginTop: 12, marginBottom: 4 },
   damageRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  snapshotNote: { color: Colors.success, fontFamily: FontFamily.medium, fontSize: 13, lineHeight: 19 },
   show3dButton: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, alignSelf: 'flex-start' },
   show3dText: { fontFamily: FontFamily.bold, fontSize: 14, color: Colors.accent },
   damagePhoto: { width: 72, height: 54, borderRadius: 8, backgroundColor: Colors.bgCard },
