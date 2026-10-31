@@ -262,7 +262,7 @@ function AdminMessagesContent() {
                                         </div>
                                     </div>
 
-                                    <div className={`flex min-h-0 min-w-0 flex-1 ${!selectedRoom ? "hidden lg:flex lg:items-center lg:justify-center" : ""}`}>
+                                    <div className={`min-h-0 min-w-0 flex-1 ${selectedRoom ? "flex" : "hidden lg:flex lg:items-center lg:justify-center"}`}>
                                         {selectedRoom ? (
                                             <div className="flex h-full min-h-0 min-w-0 flex-1">
                                                 <div className="min-h-0 min-w-0 flex-1">
