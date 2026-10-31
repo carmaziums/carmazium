@@ -99,6 +99,8 @@ import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
 import { ImportListingModal } from "@/components/features/ImportListingModal"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 import { UserAttentionPanel } from "@/components/dashboard/UserAttentionPanel"
+import { MyCarsAuctionPanel } from "@/components/dashboard/MyCarsAuctionPanel"
+import { PrivatePurchasesTab } from "@/components/dashboard/PrivatePurchasesTab"
 
 export default function UnifiedUserDashboard() {
     return (
@@ -113,13 +115,19 @@ function UnifiedUserDashboardContent() {
     const { rooms, refreshRooms } = useChat()
     const searchParams = useSearchParams()
     const router = useRouter()
-    const activeTab = searchParams.get("tab") || "overview"
+    const rawTab = searchParams.get("tab") || "overview"
+    const activeTab = rawTab === "inventory" ? "cars" : rawTab
     // Old deep links still resolve, but account controls have one canonical home.
     React.useEffect(() => {
+        if (rawTab === "inventory") {
+            const params = new URLSearchParams(searchParams.toString())
+            params.set("tab", "cars")
+            router.replace(`?${params.toString()}`)
+        }
         if (activeTab === "settings") {
             router.replace(`/profile?section=${searchParams.has("stripe_connect") ? "payouts" : "personal"}`)
         }
-    }, [activeTab, router, searchParams])
+    }, [activeTab, rawTab, router, searchParams])
     
     const [dashboardData, setDashboardData] = React.useState<UnifiedDashboardData | null>(null)
     const [loading, setLoading] = React.useState(true)
@@ -210,7 +218,8 @@ function UnifiedUserDashboardContent() {
                                 setTab={setTab}
                             />
                         )}
-                        {activeTab === "inventory" && <InventoryTab onRefreshStats={fetchStats} />}
+                        {activeTab === "cars" && <MyCarsTab onRefreshStats={fetchStats} />}
+                        {activeTab === "purchases" && <PrivatePurchasesTab />}
                         {activeTab === "offers" && <OffersTab onRefreshStats={fetchStats} />}
                         {activeTab === "bids" && <OutgoingOffersTab onRefreshStats={fetchStats} />}
                         {activeTab === "watchlist" && <WatchlistTab />}
@@ -522,12 +531,43 @@ function WatchlistTab() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+function MyCarsTab({ onRefreshStats }: { onRefreshStats: () => void }) {
+    const searchParams = useSearchParams()
+    const router = useRouter()
+    const view = searchParams.get("view") === "auctions" ? "auctions" : "listings"
+    const changeView = (next: "listings" | "auctions") => {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set("tab", "cars")
+        params.set("view", next)
+        router.push(`?${params.toString()}`)
+    }
+    return (
+        <div className="space-y-6">
+            <div><h2 className="text-2xl font-black">My cars</h2>
+                <p className="text-sm text-[var(--text-muted)]">Every vehicle you are selling, through retail or auction.</p></div>
+            <div className="flex gap-2" role="group" aria-label="My cars listing channel">
+                {(["listings", "auctions"] as const).map(next => (
+                    <button key={next} type="button" aria-pressed={view === next}
+                        onClick={() => changeView(next)}
+                        className={`min-h-11 rounded-xl border px-5 text-sm font-bold ${view === next
+                            ? "bg-primary text-white border-primary"
+                            : "bg-[var(--bg-card)] border-[var(--border-default)]"}`}>
+                        {next === "listings" ? "Retail and other listings" : "Auctions"}
+                    </button>
+                ))}
+            </div>
+            {view === "listings" ? <InventoryTab onRefreshStats={onRefreshStats} /> : <MyCarsAuctionPanel />}
+        </div>
+    )
+}
+
 // INVENTORY TAB
 // ─────────────────────────────────────────────────────────────────────────────
 
 function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const { profile } = useAuth()
     const [listings, setListings] = React.useState<Listing[]>([])
+    const [statusFilter, setStatusFilter] = React.useState<string>("ALL")
     const [loading, setLoading] = React.useState(true)
     const [page, setPage] = React.useState(1)
     const [totalPages, setTotalPages] = React.useState(1)
@@ -539,7 +579,8 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [showImportModal, setShowImportModal] = React.useState(false)
     const [openMenuId, setOpenMenuId] = React.useState<string | null>(null)
 
-    const auctionDashPath = profile?.role === 'DEALER' ? '/dashboard/dealer/auctions' : '/dashboard/seller/auctions'
+    const auctionDashPath = profile?.role === 'DEALER' ? '/dashboard/dealer/auctions' : '/dashboard/seller/auctions?manage=1'
+    const visibleListings = statusFilter === "ALL" ? listings : listings.filter(listing => listing.status === statusFilter)
 
     const fetchListings = React.useCallback(async () => {
         try {
@@ -618,7 +659,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
             )}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                 <div>
-                    <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Listings</h2>
+                    <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Retail and other listings</h2>
                     <p className="text-sm text-[var(--text-muted)] mt-1">Cars you are selling, waiting for review, in draft or sold.</p>
                 </div>
                 <div className="flex flex-col gap-2 w-full sm:w-auto">
@@ -640,17 +681,28 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
 
             <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                 {/* ── Simple mobile cards (< sm) ── */}
-                <div className="sm:hidden divide-y divide-[var(--border-default)]">
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Filter your listing status">
+                {(["ALL", "ACTIVE", "DRAFT", "PENDING_REVIEW", "OFFER_ACCEPTED", "SOLD", "WITHDRAWN", "REJECTED"] as const).map(value => (
+                    <button type="button" key={value} onClick={() => setStatusFilter(value)}
+                        aria-pressed={statusFilter === value}
+                        className={`rounded-xl border px-3 py-2 text-xs font-bold ${statusFilter === value
+                            ? "bg-primary text-white border-primary" : "border-[var(--border-default)] text-[var(--text-secondary)]"}`}>
+                        {value === "ALL" ? "All" : value.replace(/_/g, " ").toLowerCase()}
+                    </button>
+                ))}
+            </div>
+
+            <div className="sm:hidden divide-y divide-[var(--border-default)]">
                     {loading ? (
                         <div className="py-16 text-center">
                             <Loader2 className="h-9 w-9 animate-spin text-primary mx-auto" />
                         </div>
-                    ) : listings.length === 0 ? (
+                    ) : visibleListings.length === 0 ? (
                         <div className="py-16 text-center text-[var(--text-muted)] italic px-6">
                             No listings found. Start selling today!
                         </div>
                     ) : (
-                        listings.map((listing) => (
+                        visibleListings.map((listing) => (
                             <div key={listing.id} className="p-4">
                                 <div className="flex gap-3">
                                     <div className="relative w-20 h-16 rounded-xl overflow-hidden border border-[var(--border-default)] shrink-0">
@@ -775,14 +827,14 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                         <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
                                     </td>
                                 </tr>
-                            ) : listings.length === 0 ? (
+                            ) : visibleListings.length === 0 ? (
                                 <tr>
                                     <td colSpan={6} className="px-6 py-20 text-center text-[var(--text-muted)] italic">
                                         No listings found. Start selling today!
                                     </td>
                                 </tr>
                             ) : (
-                                listings.map((listing) => (
+                                visibleListings.map((listing) => (
                                     <tr key={listing.id} className="hover:bg-white/[0.03] transition-all">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
