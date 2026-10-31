@@ -563,7 +563,11 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
   const { hasPermission } = useDealerAccess(true);
   const canManageInventory = hasPermission('MANAGE_INVENTORY');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
-  const [showExtraStatuses, setShowExtraStatuses] = useState(false);
+  // One panel at a time below the header: every status, the sort orders, or
+  // the two import actions. Replaces the sideways-scrolling status strip
+  // whose later statuses were hidden off the right-hand edge.
+  const [openPanel, setOpenPanel] = useState<'status' | 'sort' | 'import' | null>(null);
+  const togglePanel = (panel: 'status' | 'sort' | 'import') => setOpenPanel(prev => (prev === panel ? null : panel));
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -687,7 +691,13 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
     .sort((a, b) => sortOrder === 'price-low'
       ? a.rawPrice - b.rawPrice
       : sortOrder === 'price-high' ? b.rawPrice - a.rawPrice
-        : 0);
+        : a.daysListed - b.daysListed);
+  const SORTS: { value: typeof sortOrder; label: string }[] = [
+    { value: 'newest', label: 'Newest first' },
+    { value: 'price-high', label: 'Price: high to low' },
+    { value: 'price-low', label: 'Price: low to high' },
+  ];
+  const activeFilterInfo = FILTERS.find(f => f.label === activeFilter) ?? FILTERS[0];
 
   return (
     <View style={styles.container}>
@@ -702,10 +712,10 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       <WebsiteTopBar />
       {/* The same global web header stays visible while the stock-specific
           view picker and inventory count remain below it. */}
-      <View style={[styles.listHeader, { paddingTop: 12 }]}>
+      <View style={[styles.listHeader, { paddingTop: 8 }]}>
         <View style={styles.listHeaderCenter}>
           <Text style={styles.listHeaderTitle}>Inventory</Text>
-          <Text style={styles.listHeaderSub}>Manage live, draft and sold stock</Text>
+          <Text style={styles.listHeaderSub} numberOfLines={1}>Manage live, draft and sold stock</Text>
         </View>
         <IconButton
           style={styles.backBtn}
@@ -723,15 +733,29 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
             <Ionicons name="add-circle-outline" size={18} color={Colors.white} />
             <Text style={styles.stockAddActionText}>Add Vehicle</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.stockSecondaryAction} onPress={() => setShowImportModal(true)}
+          {/* Import Listing and Bulk Import stay one tap away, behind a
+              small secondary button so they don't crowd the header. */}
+          <TouchableOpacity style={[styles.stockSecondaryAction, openPanel === 'import' && styles.stockSecondaryActionOpen]}
+            onPress={() => togglePanel('import')}
+            accessibilityRole="button" accessibilityLabel="Import options"
+            accessibilityState={{ expanded: openPanel === 'import' }}>
+            <Ionicons name="cloud-upload-outline" size={16} color={Colors.textSecondary} />
+            <Text style={styles.stockSecondaryActionText}>Import</Text>
+            <Ionicons name={openPanel === 'import' ? 'chevron-up' : 'chevron-down'} size={14} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      )}
+      {canManageInventory && openPanel === 'import' && (
+        <View style={styles.panel}>
+          <TouchableOpacity style={styles.panelRow} onPress={() => { setOpenPanel(null); setShowImportModal(true); }}
             accessibilityRole="button" accessibilityLabel="Import Listing">
             <Ionicons name="link-outline" size={16} color={Colors.textSecondary} />
-            <Text style={styles.stockSecondaryActionText}>Import Listing</Text>
+            <Text style={styles.panelRowText}>Import Listing</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.stockSecondaryAction} onPress={() => setShowBulkImportModal(true)}
+          <TouchableOpacity style={styles.panelRow} onPress={() => { setOpenPanel(null); setShowBulkImportModal(true); }}
             accessibilityRole="button" accessibilityLabel="Bulk Import">
             <Ionicons name="cloud-upload-outline" size={16} color={Colors.textSecondary} />
-            <Text style={styles.stockSecondaryActionText}>Bulk Import</Text>
+            <Text style={styles.panelRowText}>Bulk Import</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -756,62 +780,73 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         )}
       </View>
 
-      {/* ── Filter tabs ──────────────────────────────────────────────────── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterScroll}
-        style={styles.filterBar}
-      >
-        {FILTERS.filter((f, index) => index < 6 || showExtraStatuses || activeFilter === f.label).map((f) => (
-          <TouchableOpacity
-            key={f.label}
-            style={[
-              styles.filterTab,
-              activeFilter === f.label && styles.filterTabActive,
-            ]}
-            onPress={() => setActiveFilter(f.label)}
-            activeOpacity={0.75}
-          >
-            <Text style={[
-              styles.filterTabText,
-              activeFilter === f.label && styles.filterTabTextActive,
-            ]}>
-              {f.label}
-            </Text>
-            <Text style={[
-              styles.filterTabCount,
-              activeFilter === f.label && styles.filterTabCountActive,
-            ]}>
-              {' '}{f.count}
-            </Text>
-          </TouchableOpacity>
-        ))}
-        <TouchableOpacity style={styles.filterTab}
-          onPress={() => {
-            if (showExtraStatuses && (activeFilter === 'Sale pending' || activeFilter === 'Other')) setActiveFilter('All');
-            setShowExtraStatuses(previous => !previous);
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={showExtraStatuses ? 'Hide additional statuses' : 'Show additional statuses'}
-          accessibilityState={{ expanded: showExtraStatuses }}
-        >
-          <Text style={styles.filterTabText}>{showExtraStatuses ? 'Fewer' : 'More'}</Text>
-        </TouchableOpacity>
-      </ScrollView>
-
-      {/* ── Sort row ─────────────────────────────────────────────────────── */}
-      <View style={styles.sortRow}>
-        <Text style={styles.sortLabel}>{filtered.length} {filtered.length === 1 ? 'vehicle' : 'vehicles'} shown</Text>
+      {/* ── Status and Sort ─────────────────────────────────────────────── */}
+      <View style={styles.controlRow}>
         <TouchableOpacity
-          style={styles.sortAction}
+          style={[styles.controlButton, openPanel === 'status' && styles.controlButtonOpen]}
+          onPress={() => togglePanel('status')}
+          accessibilityRole="button"
+          accessibilityLabel={`Status: ${activeFilterInfo.label}, ${activeFilterInfo.count}. Show all statuses`}
+          accessibilityState={{ expanded: openPanel === 'status' }}
+        >
+          <Ionicons name="filter-outline" size={16} color={Colors.textSecondary} />
+          <Text style={styles.controlButtonText} numberOfLines={1}>
+            {activeFilter === 'All' ? 'All statuses' : activeFilterInfo.label} ({activeFilterInfo.count})
+          </Text>
+          <Ionicons name={openPanel === 'status' ? 'chevron-up' : 'chevron-down'} size={14} color={Colors.textSecondary} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.controlButton, openPanel === 'sort' && styles.controlButtonOpen]}
+          onPress={() => togglePanel('sort')}
           accessibilityRole="button"
           accessibilityLabel="Change inventory sorting"
-          onPress={() => setSortOrder(prev => prev === 'newest' ? 'price-high' : prev === 'price-high' ? 'price-low' : 'newest')}
+          accessibilityState={{ expanded: openPanel === 'sort' }}
         >
-          <Ionicons name="swap-vertical-outline" size={17} color={Colors.accent} />
-          <Text style={styles.sortActionText}>{sortOrder === 'newest' ? 'Newest' : sortOrder === 'price-high' ? 'Price: high to low' : 'Price: low to high'}</Text>
+          <Ionicons name="swap-vertical-outline" size={16} color={Colors.textSecondary} />
+          <Text style={styles.controlButtonText} numberOfLines={1}>
+            {SORTS.find(o => o.value === sortOrder)?.label}
+          </Text>
+          <Ionicons name={openPanel === 'sort' ? 'chevron-up' : 'chevron-down'} size={14} color={Colors.textSecondary} />
         </TouchableOpacity>
+      </View>
+
+      {/* Every status, including Sale pending and Other, with its count,
+          wrapping onto more lines: nothing hidden off-screen. */}
+      {openPanel === 'status' && (
+        <View style={[styles.panel, styles.statusPanel]} accessibilityLabel="Status">
+          {FILTERS.map((f) => {
+            const selected = activeFilter === f.label;
+            return (
+              <TouchableOpacity
+                key={f.label}
+                style={[styles.filterTab, selected && styles.filterTabActive]}
+                onPress={() => { setActiveFilter(f.label); setOpenPanel(null); }}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.filterTabText, selected && styles.filterTabTextActive]}>{f.label}</Text>
+                <Text style={[styles.filterTabCount, selected && styles.filterTabCountActive]}>{' '}{f.count}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+      {openPanel === 'sort' && (
+        <View style={styles.panel}>
+          {SORTS.map(o => (
+            <TouchableOpacity key={o.value} style={styles.panelRow}
+              onPress={() => { setSortOrder(o.value); setOpenPanel(null); }}
+              accessibilityRole="button" accessibilityState={{ selected: sortOrder === o.value }}>
+              <Text style={[styles.panelRowText, sortOrder === o.value && styles.panelRowTextActive]}>{o.label}</Text>
+              {sortOrder === o.value && <Ionicons name="checkmark" size={16} color={Colors.accent} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      <View style={styles.sortRow}>
+        <Text style={styles.sortLabel}>{filtered.length} {filtered.length === 1 ? 'vehicle' : 'vehicles'} shown</Text>
       </View>
 
       {/* ── Listing cards ─────────────────────────────────────────────────── */}
@@ -893,26 +928,52 @@ const styles = StyleSheet.create({
   // Website mobile PageHeader keeps the main listing CTA and imports in the
   // page header rather than a bottom fixed overlay.
   stockHeaderActions: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    paddingHorizontal: 20, marginBottom: 16, gap: 8,
+    flexDirection: 'row',
+    paddingHorizontal: 20, marginBottom: 10, gap: 8,
   },
   stockAddAction: {
+    flex: 1, justifyContent: 'center',
     flexDirection: 'row', alignItems: 'center', gap: 7,
     backgroundColor: Colors.accent, borderRadius: 12,
     minHeight: 46, paddingHorizontal: 16,
   },
   stockAddActionText: {
-    fontFamily: FontFamily.bold, fontSize: 12, color: Colors.white,
+    fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white,
   },
   stockSecondaryAction: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     borderWidth: 1, borderColor: Colors.borderSubtle,
     backgroundColor: Colors.bgCard, borderRadius: 12,
-    minHeight: 46, paddingHorizontal: 11,
+    minHeight: 46, paddingHorizontal: 12,
   },
+  stockSecondaryActionOpen: { borderColor: Colors.accent },
   stockSecondaryActionText: {
-    fontFamily: FontFamily.bold, color: Colors.textSecondary, fontSize: 11,
+    fontFamily: FontFamily.bold, color: Colors.textSecondary, fontSize: FontSize.sm,
   },
+  controlRow: { flexDirection: 'row', gap: 8, marginHorizontal: 20 },
+  controlButton: {
+    flex: 1, minWidth: 0, minHeight: 44,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 12, borderRadius: Radius.inline,
+    borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCard,
+  },
+  controlButtonOpen: { borderColor: Colors.accent },
+  controlButtonText: {
+    flex: 1, minWidth: 0,
+    fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textPrimary,
+  },
+  panel: {
+    marginHorizontal: 20, marginTop: 8, padding: 6,
+    borderRadius: Radius.inline, borderWidth: 1,
+    borderColor: Colors.borderSubtle, backgroundColor: Colors.bgElevated,
+  },
+  statusPanel: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 10 },
+  panelRow: {
+    minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 10, borderRadius: Radius.chip,
+  },
+  panelRowText: { flex: 1, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.textSecondary },
+  panelRowTextActive: { fontFamily: FontFamily.bold, color: Colors.textPrimary },
   stockListContent: {
     paddingTop: 4, paddingBottom: 92,
   },
@@ -999,30 +1060,20 @@ const styles = StyleSheet.create({
   },
   listHeaderTitle: {
     fontFamily: FontFamily.extraBold,
-    fontSize: FontSize.size26,
+    // Compact on purpose so the first stock cards appear sooner.
+    fontSize: FontSize.xl,
     color: Colors.white,
-    letterSpacing: -0.8,
+    letterSpacing: -0.4,
     textTransform: 'uppercase',
   },
 
   inventorySearchWrap: { marginHorizontal: 20, marginBottom: 12, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgSecondary },
   inventorySearchInput: { flex: 1, paddingVertical: 12, fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
-  sortAction: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, minHeight: 40 },
-  sortActionText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent },
-  // Filter tabs
-  filterBar: {
-    marginBottom: 0,
-    maxHeight: 44,
-  },
-  filterScroll: {
-    paddingHorizontal: 20,
-    gap: 8,
-    alignItems: 'center',
-  },
+  // Status options (inside the Status panel)
   filterTab: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 34,
+    minHeight: 40,
     paddingHorizontal: 14,
     borderRadius: Radius.card,
     backgroundColor: Colors.whiteAlpha04,
@@ -1056,8 +1107,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    marginTop: 16,
-    marginBottom: 10,
+    marginTop: 10,
+    marginBottom: 6,
   },
   sortLabel: {
     fontFamily: FontFamily.bold,

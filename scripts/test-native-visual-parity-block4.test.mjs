@@ -45,8 +45,11 @@ test('six canonical website statuses are first and optional lifecycle statuses a
     "label: 'Other', value: 'OTHER'",
   ]) assert.ok(native.includes(entry), entry);
   assert.ok(native.includes("l.status === 'OFFER_ACCEPTED' ? 'SALE_PENDING'"), 'provisional sale cannot be SOLD');
-  assert.ok(native.includes('showExtraStatuses'), 'optional statuses accessible');
-  assert.ok(native.includes('accessibilityState={{ expanded: showExtraStatuses }}'));
+  // Optional statuses stay reachable: the Status panel lists every FILTERS
+  // entry (no index cut-off), replacing the old More/Fewer strip toggle.
+  assert.ok(native.includes("openPanel === 'status'"), 'status panel');
+  assert.ok(native.includes("accessibilityState={{ expanded: openPanel === 'status' }}"));
+  assert.ok(native.includes('{FILTERS.map((f) => {'), 'every status listed');
   assert.ok(native.includes('listing.status === \'REJECTED\''));
 });
 

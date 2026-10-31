@@ -56,6 +56,7 @@ const ICON_MAP: Record<string, string> = {
   'briefcase-sharp': 'Briefcase',
   'business-sharp': 'Briefcase',
   'swap-horizontal-outline': 'ArrowLeftRight',
+  'swap-vertical-outline': 'ArrowUpDown',
   'wallet-outline': 'Wallet',
   'wallet': 'Wallet',
   'receipt-outline': 'Receipt',

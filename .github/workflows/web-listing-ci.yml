@@ -46,6 +46,7 @@ on:
       - "carmazium app/carmazium app/src/screens/main/DealerInventoryScreen.tsx"
       - "scripts/test-dealer-purchase-destinations.test.mjs"
       - "scripts/test-dealer-inventory-mobile.test.mjs"
+      - "src/components/dashboard/PageHeader.tsx"
       - "src/components/dealer/BuyAndBidTabs.tsx"
       - "src/lib/pendingRetailPurchases.ts"
       - "scripts/test-dealer-pending-retail-purchases.test.mjs"
@@ -128,6 +129,9 @@ jobs:
 
       - name: Verify Auction Wins, All Purchases and Purchase History are separate on web and app
         run: node --test scripts/test-dealer-purchase-destinations.test.mjs
+
+      - name: Verify dealer Stock status, sort and import controls fit on phones (web and app)
+        run: node --test scripts/test-dealer-inventory-mobile.test.mjs
 
       - name: Verify accepted retail purchases appear without premature completed-sale records
         run: node --test scripts/test-dealer-pending-retail-purchases.test.mjs
