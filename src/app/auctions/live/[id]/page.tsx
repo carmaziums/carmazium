@@ -128,6 +128,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const [copied, setCopied] = React.useState(false)
     const [connectingChat, setConnectingChat] = React.useState(false)
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
+    // A failed load must not read as "No damage reported" to a bidding dealer.
+    const [damageLoadFailed, setDamageLoadFailed] = React.useState(false)
+    // Until the request settles, an empty list means "not known yet", not "no damage".
+    const [damageLoading, setDamageLoading] = React.useState(true)
     const [selectedDamageId, setSelectedDamageId] = React.useState<string | null>(null)
     const [showHpiModal, setShowHpiModal] = React.useState(false)
 
@@ -314,7 +318,15 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     // Fetch damage records when auction (and its listingId) is available
     React.useEffect(() => {
         if (!auction?.listingId) return
-        getDamageRecords(auction.listingId).then(setDamageRecords).catch(() => {})
+        let cancelled = false
+        setDamageRecords([])
+        setDamageLoadFailed(false)
+        setDamageLoading(true)
+        getDamageRecords(auction.listingId)
+            .then(records => { if (!cancelled) setDamageRecords(records) })
+            .catch(() => { if (!cancelled) setDamageLoadFailed(true) })
+            .finally(() => { if (!cancelled) setDamageLoading(false) })
+        return () => { cancelled = true }
     }, [auction?.listingId])
 
     // ── Socket ────────────────────────────────────────────────────────────────
@@ -781,7 +793,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const reserveMet = !!(topBidAmount !== null && topBidAmount >= Number(auction.reservePrice))
     // BIN card visibility: live + buyer + BIN price set + reserve not met + no pending BIN
     const showBin = isBiddingOpen && !isSeller && canPlaceBid && !!auction.buyItNowPrice && !reserveMet && !binPending
-    const images = auction.listing.images?.length ? auction.listing.images : ["/assets/images/hero-bg.png"]
+    const images = auction.listing.images?.length ? auction.listing.images : ["/assets/images/featured-sports.webp"]
     const bidCount = bidHistory.length
     const provisionalOfferAgeMs = auction.provisionalOfferedAt
         ? Date.now() - new Date(auction.provisionalOfferedAt).getTime() : 0;
@@ -1554,24 +1566,31 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             // damage zones. Same value shown as a chip on cards + the /vehicle
                                             // and /buy-cars detail pages, so grade only appears in one place per
                                             // page (this pill) rather than duplicated in the spec grid too.
-                                            const grade = auction.listing.exteriorGrade ?? 1
-                                            const gradeLabel = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Average'][grade]
-                                            const gradeColor = ['', 'text-emerald-400', 'text-green-400', 'text-yellow-400', 'text-orange-400', 'text-red-400'][grade]
-                                            const gradeBg = ['', 'bg-emerald-500/10 border-emerald-500/20', 'bg-green-500/10 border-green-500/20', 'bg-yellow-500/10 border-yellow-500/20', 'bg-orange-500/10 border-orange-500/20', 'bg-red-500/10 border-red-500/20'][grade]
+                                            // No grade on record must not be shown as "Grade 1 — Excellent".
+                                            const grade = typeof auction.listing.exteriorGrade === 'number' ? auction.listing.exteriorGrade : null
+                                            const gradeLabel = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Average'][grade ?? 0]
+                                            const gradeColor = ['', 'text-emerald-400', 'text-green-400', 'text-yellow-400', 'text-orange-400', 'text-red-400'][grade ?? 0]
+                                            const gradeBg = ['', 'bg-emerald-500/10 border-emerald-500/20', 'bg-green-500/10 border-green-500/20', 'bg-yellow-500/10 border-yellow-500/20', 'bg-orange-500/10 border-orange-500/20', 'bg-red-500/10 border-red-500/20'][grade ?? 0]
                                             return (
                                         <div className="rounded-xl border border-amber-500/20 bg-[var(--bg-input)] p-4">
                                             <div className="flex items-start justify-between gap-3 mb-1">
                                                 <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider border-l-2 border-amber-500 pl-2.5">
                                                     Condition &amp; Damage
                                                 </h4>
-                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold shrink-0 ${gradeBg} ${gradeColor}`}>
-                                                    Grade {grade} — {gradeLabel}
-                                                </span>
+                                                {grade !== null && (
+                                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold shrink-0 ${gradeBg} ${gradeColor}`}>
+                                                        Grade {grade} — {gradeLabel}
+                                                    </span>
+                                                )}
                                             </div>
                                             <p className="text-[10px] text-[var(--text-muted)] mb-4 pl-3">
                                                 {damageRecords.length > 0
                                                     ? `${damageRecords.length} damage report${damageRecords.length !== 1 ? "s" : ""} · ${buyerDamagePins.length} 3D marker${buyerDamagePins.length !== 1 ? "s" : ""} — select a number or detail below`
-                                                    : "No damage reported by the seller"}
+                                                    : damageLoading
+                                                        ? "Loading the seller's damage details…"
+                                                    : damageLoadFailed
+                                                        ? "Damage details could not be loaded. Refresh the page before bidding."
+                                                        : "No damage reported by the seller"}
                                             </p>
                                             <ThreeDErrorBoundary
                                                 fallback={
@@ -2236,7 +2255,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     {!isCancelled && !isSeller && (
                         <div className="flex items-start gap-2.5 px-3 py-2.5 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl text-xs text-[var(--text-muted)]">
                             <ShieldCheck size={13} className="shrink-0 mt-0.5 text-emerald-500" />
-                            All deals are arranged directly between buyer and seller via Carmazium secure chat.
+                            All deals are arranged directly between buyer and seller via CarMazium secure chat.
                         </div>
                     )}
 

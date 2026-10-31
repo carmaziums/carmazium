@@ -209,7 +209,7 @@ export default function OnboardingPage() {
 
     return (
         <main className="min-h-screen bg-slate-900 pt-24 pb-12 px-5 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-1/2 h-full bg-[url('/assets/images/hero-bg.png')] bg-cover opacity-20" />
+            <div className="absolute top-0 right-0 w-1/2 h-full bg-[url('/assets/images/live-auction-hero.webp')] bg-cover opacity-20" />
 
             <div className="relative z-10 mx-auto w-full max-w-2xl">
                 <div className="mb-7 text-center">

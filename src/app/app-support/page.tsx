@@ -3,8 +3,9 @@ import Link from "next/link"
 import { Mail, MapPin, Phone, ShieldCheck, Trash2 } from "lucide-react"
 
 export const metadata: Metadata = {
-  title: "CarMazium App Support",
+  title: { absolute: "CarMazium App Support" },
   description: "Support, privacy and account-help information for the CarMazium iPhone and Android apps.",
+  alternates: { canonical: "/app-support" },
 }
 
 export default function AppSupportPage() {

@@ -16,7 +16,7 @@ import {
 const SITE_URL = "https://www.carmazium.com"
 
 export const metadata: Metadata = {
-    title: "CarMazium Reviews & Customer Feedback",
+    title: { absolute: "CarMazium Reviews & Customer Feedback" },
     description: "Learn how to share feedback about CarMazium and what to check when buying a used car. We do not publish unverified testimonials or unsupported review scores.",
     alternates: { canonical: SITE_URL + "/reviews" },
     openGraph: {

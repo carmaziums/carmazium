@@ -23,13 +23,14 @@ import {
 
 
 // ─── How It Works content (moved from the standalone /auctions/how-it-works page,
-// which now just redirects here — approved copy, do not paraphrase) ───────────
+// which now just redirects here — approved copy, do not paraphrase. 31 Oct 2026:
+// two factual corrections in seller steps 1 and 5, pending owner approval in #719) ──
 
 const SELLER_STEPS = [
     {
         icon: FileText,
         title: "List for free.",
-        desc: "Add your car's details (DVLA-assisted), photos, and mark any known damage — Carmazium automatically grades your vehicle's condition from what you report, so there's nothing to fill in manually.",
+        desc: "Add your car's details (DVLA-assisted), photos, and mark any known damage — CarMazium automatically grades your vehicle's condition from what you report, so you don't need to grade it yourself.",
     },
     {
         icon: Lock,
@@ -49,7 +50,7 @@ const SELLER_STEPS = [
     {
         icon: Gavel,
         title: "Auction ends.",
-        desc: "If your reserve is met, you're automatically connected with the winning bidder through an in-app chat.",
+        desc: "If your reserve is met, the winning dealer is notified. In-app chat with them opens once they've paid the £125 buyer fee, or straight away if a fee waiver applies.",
     },
     {
         icon: Handshake,
@@ -59,7 +60,7 @@ const SELLER_STEPS = [
     {
         icon: Banknote,
         title: "Get paid — plus £100.",
-        desc: "Once your handover proof is approved, Carmazium pays your £100 seller bonus directly to your account.",
+        desc: "Once your handover proof is approved, CarMazium pays your £100 seller bonus directly to your account.",
     },
 ]
 
@@ -91,8 +92,8 @@ const BUYER_STEPS = [
     },
     {
         icon: CreditCard,
-        title: "Pay the £125 buyer fee.",
-        desc: "A one-off £125 fee unlocks direct in-app chat with the seller so you can arrange handover — this is Carmazium's fee for the connection, not part of the vehicle price.",
+        title: "Pay the buyer fee, if applicable.",
+        desc: "After winning, pay the one-off £125 buyer fee unless your account has an approved fee waiver. Paying the fee, or an eligible waiver, unlocks in-app chat with the seller to arrange handover. The fee is separate from the vehicle price.",
     },
     {
         icon: Users,
@@ -107,8 +108,8 @@ const RULES = [
     { icon: Lock, term: "Reserve Price", def: "Set privately by the seller. If it isn't met, there's no sale and nothing is owed by anyone." },
     { icon: Trophy, term: "Buy It Now", def: "Optional — sellers can set an instant-buy price. Buyers can request it; the seller has 24 hours to confirm or decline." },
     { icon: FileText, term: "Free to List", def: "Listing a car for auction costs nothing." },
-    { icon: Banknote, term: "£100 Seller Bonus", def: "Paid once Carmazium approves your submitted handover proof." },
-    { icon: CreditCard, term: "£125 Buyer Fee", def: "Charged only when you win an auction — unlocks direct chat with the seller to arrange handover." },
+    { icon: Banknote, term: "£100 Seller Bonus", def: "Paid once CarMazium approves your submitted handover proof." },
+    { icon: CreditCard, term: "£125 Buyer Fee", def: "Charged on auction wins unless an approved fee waiver applies. Payment or a waiver unlocks seller chat." },
     { icon: ShieldCheck, term: "Verified Bidders Only", def: "Every bidder is a KYC-verified trade dealer." },
 ]
 
@@ -129,15 +130,15 @@ const FAQS = [
     },
     {
         q: "When do I actually get my £100?",
-        a: "After you submit proof of handover and Carmazium's team approves it.",
+        a: "After you submit proof of handover and CarMazium's team approves it.",
     },
     {
         q: "What's the £125 buyer fee for?",
-        a: "It's charged once you win an auction, and it's what unlocks direct in-app chat with the seller so you can arrange handover. It's a connection fee, not part of the price you pay for the car — that's negotiated and settled directly with the seller.",
+        a: "The standard fee is £125 after an auction win, unless your account has an approved waiver. Paying it, or having an eligible waiver, unlocks in-app chat with the seller for handover. The vehicle price is settled directly between buyer and seller.",
     },
     {
-        q: "Does Carmazium handle payment for the car itself?",
-        a: "No. The vehicle sale is agreed and completed directly between you and the buyer — Carmazium isn't a party to that payment. Carmazium's role covers the auction, verification, the seller bonus, and the buyer connection fee.",
+        q: "Does CarMazium handle payment for the car itself?",
+        a: "No. The vehicle sale is agreed and completed directly between you and the buyer — CarMazium isn't a party to that payment. CarMazium's role covers the auction, verification, the seller bonus, and the buyer connection fee.",
     },
 ]
 
@@ -188,7 +189,7 @@ export function HowAuctionsWork() {
                     {/* Intro */}
                     <div className="text-center mb-12">
                         <p className="text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-3">How It Works</p>
-                        <h2 className="text-3xl md:text-4xl font-black text-[var(--text-primary)] font-heading">How Carmazium Auctions Work</h2>
+                        <h2 className="text-3xl md:text-4xl font-black text-[var(--text-primary)] font-heading">How CarMazium Auctions Work</h2>
                         <p className="text-[var(--text-muted)] text-sm mt-3 max-w-md mx-auto">Two audiences, two tracks — pick the one that&apos;s you, then see exactly what happens next.</p>
                     </div>
 
@@ -225,7 +226,7 @@ export function HowAuctionsWork() {
                                 <>
                                     <StepTimeline steps={SELLER_STEPS} />
                                     <div className="mt-2 rounded-xl border-l-[3px] border-primary bg-[var(--bg-card)] px-5 py-4 text-sm text-[var(--text-muted)] leading-relaxed">
-                                        <strong className="text-[var(--text-primary)]">Note:</strong> Carmazium isn&apos;t a party to the vehicle sale itself — that&apos;s agreed directly between you and the buyer. The £100 bonus is Carmazium&apos;s reward for selling through the platform.
+                                        <strong className="text-[var(--text-primary)]">Note:</strong> CarMazium isn&apos;t a party to the vehicle sale itself — that&apos;s agreed directly between you and the buyer. The £100 bonus is CarMazium&apos;s reward for selling through the platform.
                                     </div>
                                 </>
                             ) : (
@@ -235,7 +236,7 @@ export function HowAuctionsWork() {
                                     </p>
                                     <StepTimeline steps={BUYER_STEPS} />
                                     <div className="mt-2 rounded-xl border-l-[3px] border-primary bg-[var(--bg-card)] px-5 py-4 text-sm text-[var(--text-muted)] leading-relaxed">
-                                        <strong className="text-[var(--text-primary)]">Note:</strong> The £125 fee is charged only once you&apos;ve won an auction — there&apos;s nothing to pay just for bidding or browsing.
+                                        <strong className="text-[var(--text-primary)]">Note:</strong> The standard £125 fee is payable only after an auction win, unless an approved waiver applies — there&apos;s nothing to pay just for bidding or browsing.
                                     </div>
                                 </>
                             )}

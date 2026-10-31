@@ -199,7 +199,7 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
         : 0
     const antiSnipe = isAntiSnipeActive(auction)
     const isActive = auction.status === "ACTIVE"
-    const image = auction.listing.images?.[0] ?? "/assets/images/hero-bg.png"
+    const image = auction.listing.images?.[0] ?? "/assets/images/featured-sports.webp"
     const vehicle = `${auction.listing.year ?? ""} ${auction.listing.make ?? ""} ${auction.listing.model ?? ""}`.trim()
     const l = auction.listing
     const hasSpecs = l.year || l.mileage != null || l.fuelType || l.transmission || l.bodyType || l.location || l.deliveryAvailable
@@ -707,7 +707,7 @@ export default function AuctionsBrowsePage() {
             <section className="relative overflow-hidden text-white" style={{ marginTop: '-80px', paddingTop: '80px' }}>
                 {/* Hero image */}
                 <Image
-                    src="/assets/images/live-auction-hero.jpg"
+                    src="/assets/images/live-auction-hero.webp"
                     alt="Live car auction"
                     fill
                     priority
@@ -728,7 +728,7 @@ export default function AuctionsBrowsePage() {
                         >
                             <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
                             <span className="text-xs font-bold text-red-400 uppercase tracking-widest">
-                                {visibleLiveAuctions.length > 0 ? `${visibleLiveAuctions.length} Auction${visibleLiveAuctions.length !== 1 ? "s" : ""} Live Now` : "Carmazium Live Auctions"}
+                                {visibleLiveAuctions.length > 0 ? `${visibleLiveAuctions.length} Auction${visibleLiveAuctions.length !== 1 ? "s" : ""} Live Now` : "CarMazium Live Auctions"}
                             </span>
                         </motion.div>
 

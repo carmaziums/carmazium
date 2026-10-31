@@ -23,7 +23,7 @@ export function Footer() {
                             className="inline-block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                         >
                             <Image
-                                src="/assets/images/logo.png"
+                                src="/assets/images/logo.webp"
                                 alt="CarMazium"
                                 width={400}
                                 height={100}
@@ -73,7 +73,7 @@ export function Footer() {
                                 <MapPin size={17} className="mt-1 shrink-0 text-red-300" />
                                 <span>181-187 Hunters Rd, Lozells,<br />Birmingham, B19 1ES,<br />United Kingdom</span>
                             </li>
-                            <li className="pl-7 text-xs text-slate-400">Mon – Fri, 9am – 6pm GMT</li>
+                            <li className="pl-7 text-xs text-slate-400">Mon – Fri, 9am – 6pm UK time</li>
                         </ul>
                     </div>
 

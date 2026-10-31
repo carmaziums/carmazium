@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { FUEL_TYPE_LABELS, TRANSMISSION_LABELS } from "@/lib/vehicleLabels"
 import { PageJsonLd, SEO_SITE } from "@/components/seo/PageJsonLd"
 import Image from "next/image"
 import Link from "next/link"
@@ -27,7 +28,7 @@ const BODY_TYPES = [
     {
         key: "HATCHBACK",
         name: "Hatchbacks",
-        image: "/assets/images/body-hatchback.png",
+        image: "/assets/images/body-hatchback.webp",
         description: "Compact outside and flexible inside, hatchbacks are popular for commuting, town parking and everyday errands. A lift-up tailgate usually makes loading luggage straightforward.",
         check: "Check boot access, rear-seat space, clutch or automatic gearbox behaviour, and how the car fits your regular journeys.",
         accent: "from-sky-500/20 to-blue-500/5",
@@ -35,7 +36,7 @@ const BODY_TYPES = [
     {
         key: "SUV",
         name: "SUVs",
-        image: "/assets/images/body-suv.png",
+        image: "/assets/images/body-suv.webp",
         description: "SUVs often offer a higher driving position and useful family room, but actual cabin space and running costs vary considerably from model to model.",
         check: "Compare tyre prices, visibility, parking dimensions, fuel consumption and whether all-wheel drive is genuinely needed.",
         accent: "from-emerald-500/20 to-teal-500/5",
@@ -43,7 +44,7 @@ const BODY_TYPES = [
     {
         key: "ESTATE",
         name: "Estate cars",
-        image: "/assets/images/body-estate.png",
+        image: "/assets/images/body-estate.webp",
         description: "Estates combine a familiar car driving position with an extended load area, making them worth considering for family trips, hobbies and regular luggage.",
         check: "Inspect the tailgate, load-floor condition, rear-seat folding mechanism and the car's full service history.",
         accent: "from-purple-500/20 to-violet-500/5",
@@ -51,7 +52,7 @@ const BODY_TYPES = [
     {
         key: "SEDAN",
         name: "Saloons",
-        image: "/assets/images/body-saloon.png",
+        image: "/assets/images/body-saloon.webp",
         description: "A saloon generally has a separate boot and a traditional three-box body. Many suit longer trips, although the boot opening may be smaller than an equivalent hatchback.",
         check: "Consider rear headroom, the size of the boot opening, tyre wear and the cost of routine maintenance.",
         accent: "from-amber-500/20 to-orange-500/5",
@@ -59,7 +60,7 @@ const BODY_TYPES = [
     {
         key: "COUPE",
         name: "Coupés",
-        image: "/assets/images/body-coupe.png",
+        image: "/assets/images/body-coupe.webp",
         description: "Coupés put style and driving character first. Some have only two seats, while others have a smaller rear row, so their everyday practicality deserves a careful look.",
         check: "Test access to the rear seats, door clearance in tight parking spaces, insurance costs and previous modifications.",
         accent: "from-rose-500/20 to-red-500/5",
@@ -67,7 +68,7 @@ const BODY_TYPES = [
     {
         key: "CONVERTIBLE",
         name: "Convertibles",
-        image: "/assets/images/body-convertible.png",
+        image: "/assets/images/body-convertible.webp",
         description: "Convertibles add open-air driving to a used-car purchase. Their folding roofs can be great fun, but they introduce extra seals and mechanisms to inspect.",
         check: "Operate the roof several times, look for water ingress and worn seals, and check boot space with the roof stored.",
         accent: "from-pink-500/20 to-fuchsia-500/5",
@@ -75,7 +76,7 @@ const BODY_TYPES = [
     {
         key: "MPV",
         name: "MPVs and people carriers",
-        image: "/assets/images/body-mpv.png",
+        image: "/assets/images/body-mpv.webp",
         description: "MPVs are designed around passenger versatility. Some offer seven seats or movable rows, while smaller versions focus on easy access and flexible family transport.",
         check: "Check every seatbelt, child-seat mounting point, sliding door, folding seat and air-conditioning control.",
         accent: "from-cyan-500/20 to-sky-500/5",
@@ -83,7 +84,7 @@ const BODY_TYPES = [
     {
         key: "PICKUP_TRUCK",
         name: "Pickup trucks",
-        image: "/assets/images/body-pickup.png",
+        image: "/assets/images/body-pickup.webp",
         description: "Pickups mix a passenger cabin with an open or covered load bed. They suit some work and leisure needs, but their ride, dimensions and tax treatment can differ from cars.",
         check: "Inspect the load bed, chassis, underbody corrosion, tow equipment and the vehicle's actual permitted weights.",
         accent: "from-lime-500/20 to-green-500/5",
@@ -178,7 +179,7 @@ export default async function UsedCarTypesPage() {
                                         <strong className="text-[var(--text-primary)]">What to check: </strong>{body.check}
                                     </p>
                                     <Link href={"/search?bodyType=" + body.key} className="mt-6 inline-flex min-h-11 items-center gap-2 self-start text-sm font-black text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                                        Browse used {body.name.toLowerCase()} <ArrowRight size={17} aria-hidden="true" />
+                                        Browse used {/^[A-Z]{2}/.test(body.name) ? body.name : body.name.toLowerCase()} <ArrowRight size={17} aria-hidden="true" />
                                     </Link>
                                 </div>
                             </article>
@@ -203,7 +204,12 @@ export default async function UsedCarTypesPage() {
                                     <div>
                                         <h3 className="line-clamp-2 text-base font-black text-[var(--text-primary)] group-hover:text-primary">{car.title}</h3>
                                         <p className="mt-3 text-xs leading-6 text-[var(--text-muted)]">
-                                            {[car.year, car.fuelType, car.transmission].filter(Boolean).join(" · ")}
+                                            {[
+                                                // The title already carries the year.
+                                                car.title.includes(String(car.year)) ? null : car.year,
+                                                car.fuelType ? FUEL_TYPE_LABELS[car.fuelType] ?? car.fuelType : null,
+                                                car.transmission ? TRANSMISSION_LABELS[car.transmission] ?? car.transmission : null,
+                                            ].filter(Boolean).join(" · ")}
                                         </p>
                                     </div>
                                     <p className="mt-5 text-lg font-black text-primary">{formatPrice(car.price)}</p>

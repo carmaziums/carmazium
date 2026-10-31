@@ -1373,7 +1373,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     }
 
     const handleAcceptCounter = async (offerId: string) => {
-        if (!confirm("Accept the seller's counter offer? You can then message the seller to finalize the purchase.")) return
+        if (!confirm("Accept the seller's counter offer? You can then message the seller to finalise the purchase.")) return
         try {
             setAccepting(offerId)
             await respondToCounterOffer(offerId, 'ACCEPTED')
@@ -1511,7 +1511,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                             <div className="py-16 text-center text-[var(--text-secondary)] italic px-6">{outgoingOfferEmptyMessage(viewMode)}</div>
                         ) : (
                             displayedOffers.map(offer => {
-                                const thumb = offer.listing?.images?.[0] || '/assets/images/featured-sports.png'
+                                const thumb = offer.listing?.images?.[0] || '/assets/images/featured-sports.webp'
                                 const isBuyerTurn = offer.status === 'COUNTERED' && offer.lastCounteredBy === 'SELLER'
                                 const isBuyerLocked = (offer.counterAttemptsBuyer ?? 0) >= 5
                                 const expiresAt = offer.counterExpiresAt ? new Date(offer.counterExpiresAt) : null
@@ -1648,7 +1648,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                     <tr><td colSpan={4} className="px-6 py-10 text-center text-[var(--text-secondary)] italic">{outgoingOfferEmptyMessage(viewMode)}</td></tr>
                                 ) : (
                                     displayedOffers.map(offer => {
-                                        const thumb = offer.listing?.images?.[0] || '/assets/images/featured-sports.png'
+                                        const thumb = offer.listing?.images?.[0] || '/assets/images/featured-sports.webp'
                                         const buyerRemaining = 5 - (offer.counterAttemptsBuyer ?? 0)
                                         const isBuyerLocked = (offer.counterAttemptsBuyer ?? 0) >= 5
                                         const expiresAt = offer.counterExpiresAt ? new Date(offer.counterExpiresAt) : null
@@ -2002,7 +2002,7 @@ function EarningsTab() {
                         {loading ? "—" : formatPrice(totalRevenue)}
                     </p>
                     <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest mt-2">
-                        Sourced from finalized sales
+                        Sourced from finalised sales
                     </p>
                 </div>
                 <div className="glass-card p-5 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
@@ -2453,7 +2453,7 @@ function SettingsTab({ profile, refreshProfile }: { profile: any; refreshProfile
                     <Landmark className="text-amber-400" size={24} /> Bank Account Details
                 </h3>
                 <p className="text-sm text-[var(--text-muted)] mb-6">
-                    Provide your UK bank details as a fallback. Carmazium can manually transfer your £100 bonus if Stripe Connect isn&apos;t available.
+                    Provide your UK bank details as a fallback. CarMazium can manually transfer your £100 bonus if Stripe Connect isn&apos;t available.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2 md:col-span-2">

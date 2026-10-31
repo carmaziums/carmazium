@@ -177,7 +177,7 @@ export default function AdminMarketingPopupPage() {
                                 <img src={config.imageUrl} alt="Current marketing popup" className="w-full h-auto" />
                             ) : (
                                 <Image
-                                    src="/assets/images/promo-100-auction-popup.jpeg"
+                                    src="/assets/images/promo-100-auction-popup.webp"
                                     alt="Default marketing popup"
                                     width={800}
                                     height={800}

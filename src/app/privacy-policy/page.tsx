@@ -4,6 +4,7 @@ import Link from "next/link"
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description: "How CarMazium collects, uses, shares, retains and protects personal data.",
+  alternates: { canonical: "/privacy-policy" },
 }
 
 const sections = [

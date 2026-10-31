@@ -25,6 +25,7 @@ import { MetricCard } from "@/components/dashboard/MetricCard"
 import { ReceiptsTab } from "@/components/dashboard/ReceiptsTab"
 import { useAuth } from "@/context/AuthContext"
 import { getEarnings, formatPrice, type SaleRecord, type EarningsResponse } from "@/lib/listingApi"
+import { toCsv } from "@/lib/csvExport"
 
 export default function DealerEarningsPage() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -32,16 +33,20 @@ export default function DealerEarningsPage() {
     const [loading, setLoading] = React.useState(true)
     const [searchTerm, setSearchTerm] = React.useState("")
     const [activeTab, setActiveTab] = React.useState<'sales' | 'auctions' | 'receipts'>('sales')
+    const [loadError, setLoadError] = React.useState(false)
 
     React.useEffect(() => {
         async function fetchData() {
             if (!user) return
             try {
                 setLoading(true)
+                setLoadError(false)
                 const res = await getEarnings()
                 setData(res)
             } catch (err) {
                 console.error('Failed to fetch earnings:', err)
+                // Without this a failed load looked like "no sales yet".
+                setLoadError(true)
             } finally {
                 setLoading(false)
             }
@@ -67,6 +72,32 @@ export default function DealerEarningsPage() {
         sale.listing.vrm?.toLowerCase().includes(searchTerm.toLowerCase())
     ) || []
 
+    // The "Financial Report" button used to do nothing. It now downloads only
+    // the sales registry rows currently shown (search applied) as a CSV file:
+    // no fees, costs, bonuses or cancellations, so it is labelled accordingly.
+    const downloadReport = () => {
+        const rows = [
+            ["Date", "Vehicle", "Registration", "Buyer", "Listed price (GBP)", "Sold price (GBP)"],
+            ...filteredSales.map(sale => [
+                new Date(sale.createdAt).toISOString().slice(0, 10),
+                sale.listing.title,
+                sale.listing.vrm || "",
+                sale.buyer ? `${sale.buyer.firstName} ${sale.buyer.lastName || ""}`.trim() : (sale as { buyerName?: string }).buyerName || "Direct",
+                Number(sale.listedPrice),
+                Number(sale.soldPrice),
+            ]),
+        ]
+        const blob = new Blob([toCsv(rows)], { type: "text/csv;charset=utf-8" })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement("a")
+        link.href = url
+        link.download = `carmazium-sales-${new Date().toISOString().slice(0, 10)}.csv`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(url)
+    }
+
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
 
     return (
@@ -85,8 +116,10 @@ export default function DealerEarningsPage() {
                                 <p className="text-[var(--text-muted)] mt-0.5 font-medium text-sm">Track dealership vehicle sales proceeds and CarMazium auction bonus payments.</p>
                             </div>
                         </div>
-                        <Button className="flex items-center gap-2 shadow-neon h-12" variant="outline" size="sm">
-                            <Download size={18} /> Financial Report
+                        <Button className="flex items-center gap-2 shadow-neon h-12" variant="outline" size="sm"
+                            onClick={downloadReport} disabled={loading || loadError || filteredSales.length === 0}
+                            title={loadError ? "Sales could not be loaded" : filteredSales.length === 0 ? "No sales to export yet" : "Download the sales shown below (date, vehicle, registration, buyer, listed and sold price) as a CSV file"}>
+                            <Download size={18} /> Export sales CSV
                         </Button>
                     </div>
 
@@ -161,6 +194,12 @@ export default function DealerEarningsPage() {
                     )}
 
                     {/* Sales Table */}
+                    {loadError && (
+                        <div role="alert" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+                            <span>Your earnings could not be loaded. The figures below may be incomplete.</span>
+                            <Button size="sm" variant="outline" onClick={() => window.location.reload()}>Try again</Button>
+                        </div>
+                    )}
                     {activeTab === 'sales' && <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-3xl shadow-2xl overflow-hidden">
                         <div className="p-8 border-b border-[var(--border-default)] flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-white/[0.05] to-transparent">
                             <div className="flex items-center gap-3">
@@ -340,7 +379,7 @@ export default function DealerEarningsPage() {
                                 <h2 className="text-2xl font-black font-heading text-[var(--text-primary)] uppercase tracking-tight">Auction Sales</h2>
                             </div>
                             <p className="text-xs text-[var(--text-muted)] mt-1 ml-5">
-                                Vehicles sold through auction with handover verified. The winning bid is settled directly with the buyer — the £100 bonus is what Carmazium paid you.
+                                Vehicles sold through auction with handover verified. The winning bid is settled directly with the buyer — the £100 bonus is what CarMazium paid you.
                             </p>
                         </div>
 
@@ -431,7 +470,7 @@ export default function DealerEarningsPage() {
                                             <td className="px-8 py-6 text-right">
                                                 <div className="inline-flex flex-col items-end px-4 py-2 bg-amber-500/5 rounded-2xl border border-amber-500/10">
                                                     <span className="text-amber-400 font-black text-lg leading-none">{formatPrice(a.sellerBonus)}</span>
-                                                    <span className="text-xs text-amber-500/60 font-black uppercase tracking-widest mt-1">Carmazium Bonus</span>
+                                                    <span className="text-xs text-amber-500/60 font-black uppercase tracking-widest mt-1">CarMazium Bonus</span>
                                                 </div>
                                             </td>
                                             <td className="px-8 py-6 text-center">

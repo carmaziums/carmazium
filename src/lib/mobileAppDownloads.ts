@@ -110,3 +110,20 @@ export function resolveMobileAppLinks(env: AppDownloadEnv): MobileAppLinks {
 export function getMobileAppLinks(): MobileAppLinks {
   return resolveMobileAppLinks(process.env)
 }
+
+/**
+ * Same result as getMobileAppLinks(), safe to call from client components.
+ * Next only inlines NEXT_PUBLIC_* values written as literal process.env.X
+ * reads, so passing the whole process.env object is empty in the browser.
+ */
+export function getPublicMobileAppLinks(): MobileAppLinks {
+  return resolveMobileAppLinks({
+    NEXT_PUBLIC_CARMAZIUM_IOS_APP_URL: process.env.NEXT_PUBLIC_CARMAZIUM_IOS_APP_URL,
+    NEXT_PUBLIC_CARMAZIUM_IOS_TESTFLIGHT_URL: process.env.NEXT_PUBLIC_CARMAZIUM_IOS_TESTFLIGHT_URL,
+    NEXT_PUBLIC_CARMAZIUM_ANDROID_APP_URL: process.env.NEXT_PUBLIC_CARMAZIUM_ANDROID_APP_URL,
+    NEXT_PUBLIC_CARMAZIUM_MICROSOFT_STORE_URL: process.env.NEXT_PUBLIC_CARMAZIUM_MICROSOFT_STORE_URL,
+    NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_RELEASE_APPROVED: process.env.NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_RELEASE_APPROVED,
+    NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_SHA256: process.env.NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_SHA256,
+    NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_URL: process.env.NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_URL,
+  })
+}
