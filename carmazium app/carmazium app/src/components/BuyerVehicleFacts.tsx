@@ -43,7 +43,7 @@ export function BuyerVehicleFacts({ record }: { record: object | null | undefine
   const groups: Array<{ title: string; entries: Array<[string, unknown]> }> = [
     { title: 'VEHICLE IDENTITY', entries: [
       ['Make', data.make], ['Model', data.model], ['Variant / trim', data.variant],
-      ['Registration', data.vrm], ['First registered', data.monthOfFirstRegistration],
+      ['Registration', data.vrm], ['VIN (recorded)', data.vin], ['First registered', data.monthOfFirstRegistration],
       ['First used', displayDate(data.firstUsedDate)], ['Colour', data.color ?? data.colour],
       ['First DVLA registration', official?.dvla?.monthOfFirstDvlaRegistration],
       ['MOT registration date', displayDate(official?.mot?.registrationDate)],
