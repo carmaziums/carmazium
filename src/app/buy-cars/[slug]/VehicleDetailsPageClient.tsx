@@ -290,6 +290,8 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
     // A failed load must not read as "No damage reported" to a buyer.
     const [damageLoadFailed, setDamageLoadFailed] = React.useState(false)
+    // Until the request settles, an empty list means "not known yet", not "no damage".
+    const [damageLoading, setDamageLoading] = React.useState(true)
     const [selectedDamageId, setSelectedDamageId] = React.useState<string | null>(null)
     const selectedDamageZone = damageRecords.find((r: any) => r.id === selectedDamageId)?.part ?? null
     const buyerDamagePins = buildBuyerDamagePins(damageRecords)
@@ -410,11 +412,20 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     }, [user, listing])
 
     // Fetch damage records (publicly visible — builds buyer trust)
+    // Keyed on the id, so a refetch of the same listing doesn't blank the list.
+    const damageListingId = listing?.id
     React.useEffect(() => {
-        if (!listing) return
+        if (!damageListingId) return
+        let cancelled = false
+        setDamageRecords([])
         setDamageLoadFailed(false)
-        getDamageRecords(listing.id).then(setDamageRecords).catch(() => setDamageLoadFailed(true))
-    }, [listing])
+        setDamageLoading(true)
+        getDamageRecords(damageListingId)
+            .then(records => { if (!cancelled) setDamageRecords(records) })
+            .catch(() => { if (!cancelled) setDamageLoadFailed(true) })
+            .finally(() => { if (!cancelled) setDamageLoading(false) })
+        return () => { cancelled = true }
+    }, [damageListingId])
 
     // Delivery distance check — informational only, used to show greyed out-of-radius hint
     React.useEffect(() => {
@@ -1148,21 +1159,26 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                             // exteriorGrade is computed automatically by the platform from the
                             // seller's reported damage zones (see backend DamageAnalysisService) —
                             // not seller-chosen. Same value drives the "Grade N" chip on the card.
-                            const grade = listing.exteriorGrade ?? 1
-                            const gradeLabel = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Average'][grade]
-                            const gradeColor = ['', 'text-emerald-400', 'text-green-400', 'text-yellow-400', 'text-orange-400', 'text-red-400'][grade]
-                            const gradeBg = ['', 'bg-emerald-500/10 border-emerald-500/20', 'bg-green-500/10 border-green-500/20', 'bg-yellow-500/10 border-yellow-500/20', 'bg-orange-500/10 border-orange-500/20', 'bg-red-500/10 border-red-500/20'][grade]
+                            // No grade on record must not be shown as "Grade 1 — Excellent".
+                            const grade = typeof listing.exteriorGrade === 'number' ? listing.exteriorGrade : null
+                            const gradeLabel = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Average'][grade ?? 0]
+                            const gradeColor = ['', 'text-emerald-400', 'text-green-400', 'text-yellow-400', 'text-orange-400', 'text-red-400'][grade ?? 0]
+                            const gradeBg = ['', 'bg-emerald-500/10 border-emerald-500/20', 'bg-green-500/10 border-green-500/20', 'bg-yellow-500/10 border-yellow-500/20', 'bg-orange-500/10 border-orange-500/20', 'bg-red-500/10 border-red-500/20'][grade ?? 0]
                             return (
                             <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
                                 <div className="flex items-start justify-between mb-2">
                                     <h3 className="text-xl font-bold border-l-4 border-amber-500 pl-4">Condition &amp; Damage</h3>
-                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold ${gradeBg} ${gradeColor}`}>
-                                        Grade {grade} — {gradeLabel}
-                                    </span>
+                                    {grade !== null && (
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold ${gradeBg} ${gradeColor}`}>
+                                            Grade {grade} — {gradeLabel}
+                                        </span>
+                                    )}
                                 </div>
                                 <p className="text-xs text-[var(--text-muted)] mb-4 pl-5">
                                     {damageRecords.length > 0
                                         ? `${damageRecords.length} damage${damageRecords.length !== 1 ? 's' : ''} reported by seller · ${buyerDamagePins.length} positioned on 3D — click a number or record to inspect`
+                                        : damageLoading
+                                            ? "Loading the seller's damage details…"
                                         : damageLoadFailed
                                             ? 'Damage details could not be loaded. Refresh the page to see them.'
                                             : 'No damage reported by the seller'}

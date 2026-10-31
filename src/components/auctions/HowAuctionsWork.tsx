@@ -23,13 +23,14 @@ import {
 
 
 // ─── How It Works content (moved from the standalone /auctions/how-it-works page,
-// which now just redirects here — approved copy, do not paraphrase) ───────────
+// which now just redirects here — approved copy, do not paraphrase. 31 Oct 2026:
+// two factual corrections in seller steps 1 and 5, pending owner approval in #719) ──
 
 const SELLER_STEPS = [
     {
         icon: FileText,
         title: "List for free.",
-        desc: "Add your car's details (DVLA-assisted), photos, and mark any known damage — CarMazium automatically grades your vehicle's condition from what you report, so there's nothing to fill in manually.",
+        desc: "Add your car's details (DVLA-assisted), photos, and mark any known damage — CarMazium automatically grades your vehicle's condition from what you report, so you don't need to grade it yourself.",
     },
     {
         icon: Lock,
@@ -49,7 +50,7 @@ const SELLER_STEPS = [
     {
         icon: Gavel,
         title: "Auction ends.",
-        desc: "If your reserve is met, you're automatically connected with the winning bidder through an in-app chat.",
+        desc: "If your reserve is met, the winning dealer is notified. In-app chat with them opens once they've paid the £125 buyer fee, or straight away if a fee waiver applies.",
     },
     {
         icon: Handshake,

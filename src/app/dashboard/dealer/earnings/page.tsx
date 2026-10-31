@@ -25,6 +25,7 @@ import { MetricCard } from "@/components/dashboard/MetricCard"
 import { ReceiptsTab } from "@/components/dashboard/ReceiptsTab"
 import { useAuth } from "@/context/AuthContext"
 import { getEarnings, formatPrice, type SaleRecord, type EarningsResponse } from "@/lib/listingApi"
+import { toCsv } from "@/lib/csvExport"
 
 export default function DealerEarningsPage() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -71,15 +72,10 @@ export default function DealerEarningsPage() {
         sale.listing.vrm?.toLowerCase().includes(searchTerm.toLowerCase())
     ) || []
 
-    // The "Financial Report" button used to do nothing. It now downloads the
-    // sales registry rows currently shown (search applied) as a CSV file.
+    // The "Financial Report" button used to do nothing. It now downloads only
+    // the sales registry rows currently shown (search applied) as a CSV file:
+    // no fees, costs, bonuses or cancellations, so it is labelled accordingly.
     const downloadReport = () => {
-        const cell = (value: unknown) => {
-            const text = value == null ? "" : String(value)
-            // Quote every cell; neutralise spreadsheet formula prefixes.
-            const safe = /^[=+\-@]/.test(text) ? "'" + text : text
-            return '"' + safe.replace(/"/g, '""') + '"'
-        }
         const rows = [
             ["Date", "Vehicle", "Registration", "Buyer", "Listed price (GBP)", "Sold price (GBP)"],
             ...filteredSales.map(sale => [
@@ -91,7 +87,7 @@ export default function DealerEarningsPage() {
                 Number(sale.soldPrice),
             ]),
         ]
-        const blob = new Blob([rows.map(row => row.map(cell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" })
+        const blob = new Blob([toCsv(rows)], { type: "text/csv;charset=utf-8" })
         const url = URL.createObjectURL(blob)
         const link = document.createElement("a")
         link.href = url
@@ -121,9 +117,9 @@ export default function DealerEarningsPage() {
                             </div>
                         </div>
                         <Button className="flex items-center gap-2 shadow-neon h-12" variant="outline" size="sm"
-                            onClick={downloadReport} disabled={loading || filteredSales.length === 0}
-                            title={filteredSales.length === 0 ? "No sales to export yet" : "Download the sales registry as a CSV file"}>
-                            <Download size={18} /> Financial Report
+                            onClick={downloadReport} disabled={loading || loadError || filteredSales.length === 0}
+                            title={loadError ? "Sales could not be loaded" : filteredSales.length === 0 ? "No sales to export yet" : "Download the sales shown below (date, vehicle, registration, buyer, listed and sold price) as a CSV file"}>
+                            <Download size={18} /> Export sales CSV
                         </Button>
                     </div>
 
