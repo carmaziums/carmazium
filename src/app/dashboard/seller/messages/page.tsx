@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import { MessageSquare } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { ChatRoomList } from "@/components/chat/ChatRoomList"
@@ -92,7 +93,7 @@ function MessagesContent() {
     )
 }
 
-export default function SellerMessagesPage() {
+function SellerMessagesPage() {
     return (
         <React.Suspense fallback={
             <div className="min-h-screen flex items-center justify-center">
@@ -102,4 +103,13 @@ export default function SellerMessagesPage() {
             <MessagesContent />
         </React.Suspense>
     )
+}
+
+/** Route legacy access via the canonical private dashboard. */
+export default function CanonicalSellerMessagesPage() {
+    return <React.Suspense fallback={<div className="min-h-[40vh]"/>}>
+        <LegacyDashboardRedirect target="/dashboard/user?tab=messages">
+            <SellerMessagesPage/>
+        </LegacyDashboardRedirect>
+    </React.Suspense>
 }
