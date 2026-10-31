@@ -25,6 +25,8 @@ on:
       - "src/app/HomeClient.tsx"
       - "src/app/dashboard/dealer/purchases/**"
       - "src/app/dashboard/user/page.tsx"
+      - "src/lib/outgoingOfferFilters.ts"
+      - "scripts/test-outgoing-offer-filters.test.mjs"
       - "src/app/dashboard/buyer/**"
       - "src/app/dashboard/seller/**"
       - "src/components/dashboard/PrivatePurchasesTab.tsx"
@@ -132,6 +134,9 @@ jobs:
 
       - name: Verify unified private buyer/seller dashboard and legacy compatibility
         run: node --test scripts/test-private-dashboard-consolidation.test.mjs
+
+      - name: Verify current, history, accepted, rejected and cancelled My Offers filters
+        run: node --test scripts/test-outgoing-offer-filters.test.mjs
 
       - name: Verify secure dealer purchase detail web and native parity
         run: node --test scripts/test-dealer-purchase-detail.test.mjs
