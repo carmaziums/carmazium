@@ -320,7 +320,13 @@ export class SaleCancellationsService {
     }
 
     async mine(userId: string, scope?: 'purchase-history') {
-        const { canonicalId } = await this.actor(userId);
+        const { canonicalId, dealerActor } = await this.actor(userId);
+        // Purchase History is a purchases view: dealership staff need the
+        // same VIEW_PURCHASES permission as /dealers/purchases. Owners and
+        // private buyers (no dealer actor) see their own records as before.
+        if (scope === 'purchase-history' && dealerActor && !dealerActor.isOwner) {
+            assertDealerPermission(dealerActor, 'VIEW_PURCHASES', 'Your dealership role cannot view purchases.');
+        }
         const rows = await this.prisma.saleCancellationRequest.findMany({
             where: scope === 'purchase-history'
                 ? { buyerId: canonicalId, status: 'APPROVED' as any }
