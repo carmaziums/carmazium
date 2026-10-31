@@ -11,7 +11,7 @@ import { FontFamily } from '../../constants/typography';
 type Vehicle = {
   id: string; title?: string; make?: string; model?: string; year?: number;
   status?: string; images?: string[]; type?: string;
-  listing?: { id: string; title?: string; images?: string[] };
+  listing?: { id: string; title?: string; images?: string[]; year?: number; make?: string; model?: string };
 };
 type Channel = 'Listings' | 'Auctions';
 type Filter = 'ALL' | 'ACTIVE' | 'DRAFT' | 'SCHEDULED' | 'PENDING_REVIEW' | 'OFFER_ACCEPTED' | 'SOLD' | 'ENDED' | 'CANCELLED';
