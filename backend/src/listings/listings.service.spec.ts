@@ -2545,6 +2545,7 @@ describe('ListingsService', () => {
             prisma.listing.findMany.mockResolvedValue([{
                 id: 'retail-1', type: 'CLASSIFIED', status: 'ACTIVE', price: 7000,
                 priceMin: 6000, priceMax: 8000,
+                isLegalRegisteredKeeper: false,
                 notOwnerRelationship: 'Selling for my aunt', rejectionReason: 'Old note',
                 partnerDistributionAcceptedAt: new Date(), deletedAt: null,
                 motHistory: [{ testDate: '2026-01-01' }], description: 'Clean car',
@@ -2558,6 +2559,13 @@ describe('ListingsService', () => {
             }
             // Owner decision: the seller's keeper-relationship note is for buyers.
             expect(row.notOwnerRelationship).toBe('Selling for my aunt');
+            prisma.listing.findMany.mockResolvedValue([{
+                id: 'retail-2', type: 'CLASSIFIED', status: 'ACTIVE', price: 7000,
+                isLegalRegisteredKeeper: true, notOwnerRelationship: 'Stale confidential text',
+                seller: { id: 'seller-1', role: 'USER', firstName: 'Sam', lastName: 'Seller' },
+            }]);
+            const keeperPublic = await service.findAll({} as any);
+            expect(keeperPublic.data[0]).not.toHaveProperty('notOwnerRelationship');
             // Fields public cards and the app's detail screen rely on stay.
             expect(row.motHistory).toEqual([{ testDate: '2026-01-01' }]);
             expect(row.description).toBe('Clean car');
@@ -2573,13 +2581,14 @@ describe('ListingsService', () => {
             motHistory: [{ testDate: '2026-01-01', result: 'PASSED', odometer: 61000 }],
             officialVehicleData: { source: 'DVLA', retrievedAt: '2026-10-01' },
             motExpiryDate: new Date('2027-01-01'), taxStatus: 'Taxed',
+            isLegalRegisteredKeeper: false,
             notOwnerRelationship: 'Selling for my aunt', rejectionReason: 'Old moderation note',
             partnerDistributionAcceptedAt: new Date('2026-09-01'), deletedAt: null,
             seller: { id: 'seller-1', role: 'USER', firstName: 'Sam', lastName: 'Seller', phone: null, _count: { listings: 1 } },
             auction: null, linkedListing: null,
         });
-        const load = async (viewerId?: string) => {
-            prisma.listing.findFirst = jest.fn().mockResolvedValue(officialRow());
+        const load = async (viewerId?: string, keeperStatus: boolean | null = false) => {
+            prisma.listing.findFirst = jest.fn().mockResolvedValue({ ...officialRow(), isLegalRegisteredKeeper: keeperStatus });
             prisma.listing.update.mockResolvedValue({});
             jest.spyOn(service as any, 'backfillRetailMotOnView').mockImplementation(() => undefined);
             return await service.findBySlug('ford-focus-2017-ab12', viewerId) as any;
@@ -2592,6 +2601,13 @@ describe('ListingsService', () => {
             const listing = await load(viewer as string | undefined);
             for (const field of OFFICIAL) expect(listing[field]).toEqual(officialRow()[field as keyof ReturnType<typeof officialRow>]);
             for (const field of [...PRIVATE, 'priceMin', 'priceMax']) expect(listing).not.toHaveProperty(field);
+        });
+
+        it('hides stale keeper-relationship text from public detail when seller says they are the keeper', async () => {
+            const buyer = await load('buyer-1', true);
+            expect(buyer).not.toHaveProperty('notOwnerRelationship');
+            const seller = await load('seller-1', true);
+            expect(seller.notOwnerRelationship).toBe('Selling for my aunt');
         });
 
         it('the seller keeps moderation notes and price boundaries for editing', async () => {
