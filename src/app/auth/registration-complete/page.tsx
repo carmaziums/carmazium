@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
     ArrowRight,
@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
+import { safeSellReturnPath } from "@/lib/sellPricingIntent"
 
 type GuideFeature = {
     icon: typeof Car
@@ -230,6 +231,11 @@ export default function RegistrationCompletePage() {
     const { user, profile, loading } = useAuth()
     const router = useRouter()
     const profileComplete = hasRequiredAccountDetails(profile)
+    const [sellReturn, setSellReturn] = useState<string | null>(null)
+
+    useEffect(() => {
+        setSellReturn(safeSellReturnPath(new URLSearchParams(window.location.search).get("sellReturn")))
+    }, [])
 
     useEffect(() => {
         if (loading) return
@@ -238,7 +244,10 @@ export default function RegistrationCompletePage() {
             return
         }
         if (!user.email_confirmed_at || !profileComplete) {
-            router.replace("/auth/onboarding")
+            const continuation = safeSellReturnPath(new URLSearchParams(window.location.search).get("sellReturn"))
+            router.replace(continuation
+                ? `/auth/onboarding?sellReturn=${encodeURIComponent(continuation)}`
+                : "/auth/onboarding")
         }
     }, [loading, user, profileComplete, router])
 
@@ -304,9 +313,9 @@ export default function RegistrationCompletePage() {
                         <Button
                             size="lg"
                             className="mt-8 w-full gap-2 sm:w-auto sm:min-w-64"
-                            onClick={() => router.push(guide.dashboardPath)}
+                            onClick={() => router.push(sellReturn || guide.dashboardPath)}
                         >
-                            Go to {guide.dashboardLabel}
+                            {sellReturn ? "Continue your selected listing" : `Go to ${guide.dashboardLabel}`}
                             <ArrowRight className="h-4 w-4" />
                         </Button>
                     </div>
