@@ -26,6 +26,31 @@ export interface DealerPurchaseDetail {
         handoverRejectedAt: string | null
         sellerBonusReleased: boolean
     }
+    /** Auction purchases only. */
+    auction?: { wonAt: string | null; winningBid: number | null; buyerFeeDeadlineAt: string | null } | null
+    /** Seller-supplied advert as currently stored (no purchase-time snapshot yet). */
+    listingRecord?: PurchaseListingRecord
+}
+
+export interface PurchaseListingRecord {
+    source: "CURRENT_LISTING" | "PURCHASE_SNAPSHOT"
+    lastUpdatedAt: string | null
+    removedFromSaleAt: string | null
+    images: string[]
+    description: string | null
+    variant: string | null; fuelType: string | null; transmission: string | null
+    color: string | null; doors: number | null; seats: number | null
+    engineSize: number | null; bhp: number | null; bodyType: string | null; driveType: string | null
+    features: unknown; vin: string | null; condition: string | null; firstRegistered: string | null
+    motStatus: string | null; motExpiryDate: string | null; motHistory: unknown
+    serviceHistory: string | null; numberOfKeys: number | null; owners: string | null
+    exteriorGrade: number | null; writeOffCategory: string | null
+    sellerDeclarations: {
+        mechanicalIssues: string | null; electricalIssues: string | null
+        hasOutstandingFinance: boolean | null; stolenRecovered: boolean | null
+        isLegalRegisteredKeeper: boolean | null
+    }
+    damage: { id: string; part: string; type: string; size: string; coords: unknown; imageUrl: string | null }[]
 }
 
 export interface DealerPurchaseSeller {

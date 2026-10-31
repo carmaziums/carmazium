@@ -83,8 +83,10 @@ const STAGE_LABELS: Record<HandoverStage, { label: string; hint: string; icon: R
 // ─── Shared row shell — every section uses this same shape ───────────────────
 
 function Row({
-    image, title, meta, specs, badge, hint, rightLabel, rightValue, rightValueClass, cta,
+    image, title, meta, specs, badge, hint, rightLabel, rightValue, rightValueClass, cta, recordHref,
 }: {
+    /** The purchased vehicle record; photo and title open it when present. */
+    recordHref?: string
     image: string
     title: string
     meta: React.ReactNode
@@ -99,12 +101,23 @@ function Row({
     return (
         <div className="dealer-glass-card p-4 md:p-5">
             <div className="flex flex-col md:flex-row md:items-center gap-4">
-                <div className="relative w-full md:w-40 h-32 md:h-24 rounded-xl overflow-hidden shrink-0 bg-black/30">
-                    <Image src={image} alt={title} fill sizes="(max-width: 768px) 100vw, 160px" className="object-cover" />
-                </div>
+                {recordHref ? (
+                    <Link href={recordHref} aria-label={`Open the vehicle record for ${title}`}
+                        className="relative block w-full md:w-40 h-32 md:h-24 rounded-xl overflow-hidden shrink-0 bg-black/30">
+                        <Image src={image} alt={title} fill sizes="(max-width: 768px) 100vw, 160px" className="object-cover" />
+                    </Link>
+                ) : (
+                    <div className="relative w-full md:w-40 h-32 md:h-24 rounded-xl overflow-hidden shrink-0 bg-black/30">
+                        <Image src={image} alt={title} fill sizes="(max-width: 768px) 100vw, 160px" className="object-cover" />
+                    </div>
+                )}
 
                 <div className="flex-1 min-w-0">
-                    <p className="text-lg font-black text-[var(--text-primary)] truncate">{title}</p>
+                    {recordHref ? (
+                        <Link href={recordHref} className="block text-lg font-black text-[var(--text-primary)] truncate hover:text-primary">{title}</Link>
+                    ) : (
+                        <p className="text-lg font-black text-[var(--text-primary)] truncate">{title}</p>
+                    )}
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--text-muted)] mt-1">{meta}</div>
                     {specs && <div className="flex flex-wrap gap-1.5 mt-2">{specs}</div>}
 
@@ -255,6 +268,7 @@ function WonAuctionRow({ auction, canPayAuctionFee, purchaseId }: { auction: Auc
 
     return (
         <Row
+            recordHref={purchaseId ? `/dashboard/dealer/purchases/${encodeURIComponent(purchaseId)}` : undefined}
             image={l.images?.[0] ?? "/assets/images/hero-bg.png"}
             title={l.title}
             meta={<>

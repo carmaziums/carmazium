@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@/components/BrandIcon';
 import { BottomSheet } from '../../components/BottomSheet';
+import { ImageLightbox } from '../../components/ImageLightbox';
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 import { apiClient } from '../../lib/apiClient';
 import { getServiceSettings } from '../../lib/servicesApi';
@@ -41,7 +42,28 @@ interface PurchaseDetail {
     handoverSubmittedAt: string | null; handoverRejectedAt: string | null;
     sellerBonusReleased: boolean;
   };
+  auction?: { wonAt: string | null; winningBid: number | null; buyerFeeDeadlineAt: string | null } | null;
+  /** Seller-supplied advert as currently stored; no purchase-time snapshot yet. */
+  listingRecord?: {
+    source: 'CURRENT_LISTING' | 'PURCHASE_SNAPSHOT';
+    lastUpdatedAt: string | null; removedFromSaleAt: string | null;
+    images: string[]; description: string | null;
+    variant: string | null; fuelType: string | null; transmission: string | null;
+    bodyType: string | null; engineSize: number | null; color: string | null;
+    vin: string | null; firstRegistered: string | null; owners: string | null;
+    numberOfKeys: number | null; serviceHistory: string | null;
+    motStatus: string | null; motExpiryDate: string | null; exteriorGrade: number | null;
+    sellerDeclarations: {
+      mechanicalIssues: string | null; electricalIssues: string | null;
+      hasOutstandingFinance: boolean | null; stolenRecovered: boolean | null;
+      isLegalRegisteredKeeper: boolean | null;
+    };
+    damage: { id: string; part: string; type: string; size: string; imageUrl: string | null }[];
+  };
 }
+
+const yesNo = (v: boolean | null | undefined): string => v == null ? 'Not provided' : v ? 'Yes' : 'No';
+const photoSrc = (raw: string): string => raw.split('#')[0];
 
 interface Seller {
   sellerName: string;
@@ -96,6 +118,7 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
   const [sellerError, setSellerError] = useState(false);
   const [actions, setActions] = useState(false);
   const [showSeller, setShowSeller] = useState(false);
+  const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
   // Same emergency switch as the website (NEXT_PUBLIC_FEATURE_DELIVERY),
   // read from the backend that enforces it. Viewing an existing job is
   // always allowed; only new delivery jobs are blocked.
@@ -228,6 +251,63 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
               <LabelValue label="Listed location" value={detail.vehicle.listedLocation || 'Not provided'} />
             </DetailSection>
 
+            {detail.listingRecord && (() => {
+              const r = detail.listingRecord;
+              const photos = r.images.filter(Boolean).map(photoSrc);
+              const damagePhotos = r.damage.map(x => x.imageUrl).filter((u): u is string => !!u);
+              return (
+                <DetailSection title="Listing record" icon="clipboard-outline">
+                  {/* Honest provenance: no purchase-time snapshot exists yet. */}
+                  <Text style={styles.warning}>
+                    {r.source === 'PURCHASE_SNAPSHOT' ? 'Saved when you bought this vehicle.'
+                      : `Current listing${r.lastUpdatedAt ? `, last updated ${date(r.lastUpdatedAt)}` : ''}. The seller may have changed it since you bought the vehicle.${r.removedFromSaleAt ? ` Removed from sale ${date(r.removedFromSaleAt)}.` : ''}`}
+                  </Text>
+                  {photos.length > 0 ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.recordPhotos}>
+                      {photos.map((uri, i) => (
+                        <TouchableOpacity key={uri + i} accessibilityRole="imagebutton"
+                          accessibilityLabel={`Open photo ${i + 1} of ${photos.length}`}
+                          onPress={() => setLightbox({ images: photos, index: i })}>
+                          <Image source={{ uri }} style={styles.recordPhoto} contentFit="cover" />
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  ) : <Text style={styles.fieldLabel}>No photos are stored for this listing.</Text>}
+                  {!!r.description && <Text style={styles.recordText}>{r.description}</Text>}
+                  {!!r.variant && <LabelValue label="Variant" value={r.variant} />}
+                  {!!r.firstRegistered && <LabelValue label="First registered" value={r.firstRegistered} />}
+                  {!!r.fuelType && <LabelValue label="Fuel" value={r.fuelType} />}
+                  {!!r.transmission && <LabelValue label="Transmission" value={r.transmission} />}
+                  {!!r.engineSize && <LabelValue label="Engine" value={`${r.engineSize} cc`} />}
+                  {!!r.color && <LabelValue label="Colour" value={r.color} />}
+                  {!!r.vin && <LabelValue label="VIN" value={r.vin} />}
+                  {!!r.owners && <LabelValue label="Previous owners" value={r.owners} />}
+                  {r.numberOfKeys != null && <LabelValue label="Keys" value={String(r.numberOfKeys)} />}
+                  {!!r.serviceHistory && <LabelValue label="Service history" value={r.serviceHistory} />}
+                  {!!(r.motStatus || r.motExpiryDate) && <LabelValue label="MOT"
+                    value={[r.motStatus, r.motExpiryDate ? `expires ${date(r.motExpiryDate)}` : null].filter(Boolean).join(', ')} />}
+                  {r.exteriorGrade != null && <LabelValue label="Condition grade" value={`Grade ${r.exteriorGrade}`} />}
+                  <LabelValue label="Known mechanical issues" value={r.sellerDeclarations.mechanicalIssues || 'None declared'} />
+                  <LabelValue label="Known electrical issues" value={r.sellerDeclarations.electricalIssues || 'None declared'} />
+                  <LabelValue label="Outstanding finance" value={yesNo(r.sellerDeclarations.hasOutstandingFinance)} />
+                  <LabelValue label="Stolen and recovered" value={yesNo(r.sellerDeclarations.stolenRecovered)} />
+                  <LabelValue label="Seller is registered keeper" value={yesNo(r.sellerDeclarations.isLegalRegisteredKeeper)} />
+                  <Text style={styles.recordSubhead}>Declared damage ({r.damage.length})</Text>
+                  {r.damage.length === 0 ? <Text style={styles.fieldLabel}>No damage was declared on the listing.</Text>
+                    : r.damage.map(item => (
+                      <TouchableOpacity key={item.id} style={styles.damageRow} disabled={!item.imageUrl}
+                        accessibilityRole={item.imageUrl ? 'imagebutton' : undefined}
+                        onPress={() => item.imageUrl && setLightbox({ images: damagePhotos, index: Math.max(0, damagePhotos.indexOf(item.imageUrl)) })}>
+                        {item.imageUrl
+                          ? <Image source={{ uri: item.imageUrl }} style={styles.damagePhoto} contentFit="cover" />
+                          : <View style={styles.damagePhoto} />}
+                        <Text style={styles.recordText}>{item.part} · {item.type} · {item.size}</Text>
+                      </TouchableOpacity>
+                    ))}
+                </DetailSection>
+              );
+            })()}
+
             <DetailSection title="Seller details" icon="person-outline">
               {sellerError && <Text style={styles.warning}>Seller details could not be loaded.</Text>}
               {seller && (
@@ -312,6 +392,10 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
             </DetailSection>
             <View style={{ height: 110 }} />
           </ScrollView>
+          {lightbox && (
+            <ImageLightbox visible images={lightbox.images} initialIndex={lightbox.index}
+              onClose={() => setLightbox(null)} />
+          )}
 
           <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 10) + 10 }]}>
             <TouchableOpacity accessibilityRole="button" style={styles.buttonOutline}
@@ -393,6 +477,12 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  recordPhotos: { marginVertical: 10 },
+  recordPhoto: { width: 132, height: 99, borderRadius: 10, marginRight: 8, backgroundColor: Colors.bgCard },
+  recordText: { color: Colors.textPrimary, fontSize: 14, lineHeight: 20, marginVertical: 6, flexShrink: 1 },
+  recordSubhead: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 15, marginTop: 12, marginBottom: 4 },
+  damageRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  damagePhoto: { width: 72, height: 54, borderRadius: 8, backgroundColor: Colors.bgCard },
   screen: { flex: 1, backgroundColor: Colors.bgPrimary },
   header: {
     height: 60, flexDirection: 'row', alignItems: 'center',
