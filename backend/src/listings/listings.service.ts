@@ -2572,17 +2572,12 @@ export class ListingsService {
             seller: brandAdminSeller(sellerWithCount as any),
         };
 
-        if (!viewerId || viewerId !== listing.sellerId) {
+        // Seller and their authorised dealership may view private listing
+        // management fields; an unrelated dealer or buyer cannot.
+        const managesListing = await this.viewerManagesListing(viewerId, listing.sellerId);
+        if (!managesListing) {
             delete listingWithCount.priceMin;
             delete listingWithCount.priceMax;
-        }
-
-        // Moderation notes and internal timestamps stay with the seller and
-        // their own dealership team (who edit through this endpoint). Official
-        // DVLA/MOT facts, V5C date, VIN and the seller's keeper-relationship
-        // disclosure are buyer information and are deliberately left in
-        // (owner decisions, 31 Oct 2026, #724).
-        if (!(await this.viewerManagesListing(viewerId, listing.sellerId))) {
             for (const field of PUBLIC_DETAIL_PRIVATE_FIELDS) delete listingWithCount[field];
             if (listing.isLegalRegisteredKeeper !== false) delete listingWithCount.notOwnerRelationship;
         }
