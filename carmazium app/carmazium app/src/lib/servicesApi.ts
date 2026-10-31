@@ -192,6 +192,8 @@ export interface ServiceMarketplaceSettings {
   platformFeeRate: number;
   providerShareRate: number;
   acceptedPaymentTimeoutMinutes: number;
+  /** Backend emergency switches; false means no new requests are accepted. */
+  availability?: Partial<Record<'DELIVERY' | 'INSPECTION' | 'FINANCE' | 'WARRANTY', boolean>>;
 }
 
 export interface JobVehicle {

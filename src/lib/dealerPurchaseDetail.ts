@@ -42,7 +42,9 @@ export interface DealerPurchaseSeller {
 }
 
 export function recordedPurchaseLabel(purchase: Pick<DealerPurchaseDetail, "retailSold" | "purchaseStatus" | "channel">): string {
-    if (purchase.retailSold) return "Sold"
+    // Same rule and wording as Purchase History: a recorded retail sale
+    // (listing SOLD) shows as purchased, not awaiting confirmation.
+    if (purchase.retailSold) return "Purchased"
     if (purchase.channel === "AUCTION") return "Auction won"
     return purchase.purchaseStatus.replace(/_/g, " ").toLowerCase()
 }
