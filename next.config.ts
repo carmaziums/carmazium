@@ -31,6 +31,18 @@ const nextConfig: NextConfig = {
         destination: '/',
         permanent: true,
       },
+      // Retired pages: keep old bookmarks working instead of returning 404.
+      // /dashboard/admin/* stays behind AdminAccessGate and admin-only APIs.
+      {
+        source: '/admin/analytics',
+        destination: '/dashboard/admin/analytics',
+        permanent: true,
+      },
+      {
+        source: '/auth/partners',
+        destination: '/auth/login',
+        permanent: true,
+      },
     ];
   },
   images: {
