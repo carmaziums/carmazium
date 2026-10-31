@@ -394,6 +394,30 @@ export class EmailService {
         });
     }
 
+    /**
+     * Requests bank details inside the seller's authenticated account only.
+     * Never ask for sort codes or account numbers by email, or include them
+     * in email notifications. This is not a payment confirmation.
+     */
+    async sendManualSellerBankDetailsRequestEmail(toEmail: string, firstName: string, vehicleTitle: string) {
+        const escape = (value: string) => value.replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        })[char] || char);
+        const url = `${this.frontendUrl}/profile?section=payouts`;
+        return this.sendBrandedEmail({
+            to: toEmail,
+            subject: 'Action needed: bank details for your £100 CarMazium seller reward',
+            bodyHtml: `<h1 style="color:#ffffff">Your £100 reward is awaiting payment</h1>
+                <p>Hi <strong>${escape(firstName)}</strong>, your handover for
+                <strong>${escape(vehicleTitle)}</strong> has been approved.
+                The £100 seller reward has <strong>not been paid</strong> because the automated Stripe transfer could not be completed.</p>
+                <p>Please sign in to CarMazium and enter or confirm your bank account holder name, UK sort code and account number in <strong>Account Settings → Payouts</strong>. Our team will verify the details and arrange the reward separately by bank transfer if necessary.</p>
+                <p><a href="${url}">Open secure CarMazium payout settings</a></p>
+                <p>For your security, please do not reply with bank details or send them in a chat or email.
+                We will confirm separately when payment has actually been sent.</p>`,
+        });
+    }
+
     // ─── Generic Sender ─────────────────────────────────────────────
 
     /**
