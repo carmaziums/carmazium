@@ -67,7 +67,9 @@ function ServiceMessagesContent() {
                             </div>
 
                             {/* Chat Window */}
-                            <div className={`flex-1 ${!selectedRoom ? 'hidden lg:flex lg:items-center lg:justify-center' : ''}`}>
+                            {/* min-w-0: without it a long message or header made this pane wider than
+                                the phone screen and sent messages ran off the right edge. */}
+                            <div className={`min-h-0 min-w-0 flex-1 ${selectedRoom ? 'flex' : 'hidden lg:flex lg:items-center lg:justify-center'}`}>
                                 {selectedRoom ? (
                                     <ChatWindow
                                         room={selectedRoom}

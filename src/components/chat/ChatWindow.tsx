@@ -1041,7 +1041,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                                 </div>
                                             )}
                                             {parsed.text && (
-                                                <p className="text-sm whitespace-pre-wrap break-words px-1">{parsed.text}</p>
+                                                <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere] px-1">{parsed.text}</p>
                                             )}
                                             <div className={`flex items-center gap-1.5 text-[10px] mt-1 px-1 ${isOwn ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>
                                                 <span>{formatTime(msg.createdAt)}</span>
