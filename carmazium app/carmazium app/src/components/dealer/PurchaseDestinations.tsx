@@ -5,18 +5,18 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
-export type PurchaseDestination = 'wins' | 'all' | 'history';
+export type PurchaseDestination = 'wins' | 'retail' | 'all' | 'history';
 
 /**
- * The three Buy-side purchase destinations, matching web's
- * PurchaseDestinations: Auction Wins, All Purchases and Purchase History.
+ * The four Buy-side purchase destinations, matching web's
+ * PurchaseDestinations: Auction Wins, Retail Purchases, All Purchases and Purchase History.
  *
- * Three equal columns with the icon above a label that may wrap, so every
- * destination is visible on a 360dp Samsung screen instead of being clipped
- * off the end of a horizontal strip.
+ * Two columns per row with a wrapping label, so all four destinations fit
+ * on a 360dp Samsung without horizontal scrolling.
  */
 const ITEMS: { id: PurchaseDestination; label: string; icon: string }[] = [
   { id: 'wins', label: 'Auction Wins', icon: 'trophy-outline' },
+  { id: 'retail', label: 'Retail Purchases', icon: 'car-outline' },
   { id: 'all', label: 'All Purchases', icon: 'receipt-outline' },
   { id: 'history', label: 'Purchase History', icon: 'time-outline' },
 ];
@@ -50,6 +50,7 @@ export const PurchaseDestinations: React.FC<{
 const styles = StyleSheet.create({
   wrap: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 4,
     marginHorizontal: 16,
     marginBottom: 12,
@@ -60,7 +61,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgCard,
   },
   item: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '45%',
     minHeight: 56,
     alignItems: 'center',
     justifyContent: 'center',
