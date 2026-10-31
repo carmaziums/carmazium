@@ -1,7 +1,7 @@
 /**
  * Shared client-side preparation for listing, damage and admin vehicle photos.
  * Reduces stored bytes before upload, so Supabase image resizing is not needed.
- * Original aspect ratio is preserved; already-small images are left unchanged.
+ * Original aspect ratio is preserved; every photo is re-encoded to remove EXIF/GPS metadata.
  */
 
 export const MAX_SOURCE_FILE_SIZE = 50 * 1024 * 1024 // Accept large modern phone photos up to 50MB before optimisation
@@ -26,7 +26,8 @@ function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob>
  * - accepts high-resolution phone photos (up to 50MB source files)
  * - preserves aspect ratio
  * - downsizes the longest edge to 1920px (Full HD-class)
- * - converts to JPEG and targets <= 2MB for reliable mobile uploads
+ * - re-encodes every image as JPEG (including small files) to strip EXIF/GPS data
+ * - targets <= 2MB for reliable mobile uploads
  */
 async function convertHeicToJpeg(file: File): Promise<File> {
     const extension = file.name.split('.').pop()?.toLowerCase() || ''
@@ -64,18 +65,20 @@ async function convertHeicToJpeg(file: File): Promise<File> {
  * - preserves aspect ratio
  * - downsizes the longest edge to 1920px (Full HD-class)
  * - targets <= 2MB for reliable mobile uploads
+ * - drops decoded image/canvas references promptly to conserve iOS Safari memory
  */
 export async function prepareImageForUpload(file: File): Promise<File> {
     if (file.size > MAX_SOURCE_FILE_SIZE) throw new Error(`${file.name}: Original photo must be 50MB or smaller`)
     const sourceFile = await convertHeicToJpeg(file)
-    const safeType = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(sourceFile.type)
-    const alreadyOptimised = safeType && sourceFile.size <= TARGET_UPLOAD_SIZE
-
+    // Never return an original file unchanged, even if it is already below 2MB.
+    // EXIF headers in small JPEGs can contain sensitive GPS coordinates.
     const objectUrl = URL.createObjectURL(sourceFile)
+    let decodedImage: HTMLImageElement | null = null
 
     try {
         const image = await new Promise<HTMLImageElement>((resolve, reject) => {
             const element = document.createElement('img')
+            decodedImage = element
             element.onload = () => resolve(element)
             element.onerror = () => reject(new Error(
                 `${sourceFile.name}: This photo could not be decoded after conversion. Please use JPEG, PNG or WebP.`
@@ -88,10 +91,6 @@ export async function prepareImageForUpload(file: File): Promise<File> {
 
         if (!width || !height) {
             throw new Error(`${sourceFile.name}: Could not read the photo dimensions.`)
-        }
-
-        if (alreadyOptimised && Math.max(width, height) <= MAX_IMAGE_EDGE) {
-            return sourceFile
         }
 
         // Start at the same 1920px as before. Only reduce dimensions for unusually
@@ -108,32 +107,46 @@ export async function prepareImageForUpload(file: File): Promise<File> {
             lastDimensions = dimensions
 
             const canvas = document.createElement('canvas')
-            canvas.width = targetWidth
-            canvas.height = targetHeight
-            const context = canvas.getContext('2d')
-            if (!context) throw new Error(`${sourceFile.name}: Your browser could not prepare this photo for upload.`)
-            context.fillStyle = '#ffffff'
-            context.fillRect(0, 0, targetWidth, targetHeight)
-            context.drawImage(image, 0, 0, targetWidth, targetHeight)
+            try {
+                canvas.width = targetWidth
+                canvas.height = targetHeight
+                const context = canvas.getContext('2d')
+                if (!context) throw new Error(`${sourceFile.name}: Your browser could not prepare this photo for upload.`)
+                context.fillStyle = '#ffffff'
+                context.fillRect(0, 0, targetWidth, targetHeight)
+                context.drawImage(image, 0, 0, targetWidth, targetHeight)
 
-            let quality = INITIAL_JPEG_QUALITY
-            while (true) {
-                const blob = await canvasToBlob(canvas, quality)
-                if (blob.size <= TARGET_UPLOAD_SIZE) {
-                    const baseName = sourceFile.name.replace(/\.[^.]+$/, '') || 'vehicle-photo'
-                    return new File([blob], `${baseName}.jpg`, {
-                        type: 'image/jpeg',
-                        lastModified: sourceFile.lastModified,
-                    })
+                let quality = INITIAL_JPEG_QUALITY
+                while (true) {
+                    const blob = await canvasToBlob(canvas, quality)
+                    if (blob.size <= TARGET_UPLOAD_SIZE) {
+                        const baseName = sourceFile.name.replace(/\.[^.]+$/, '') || 'vehicle-photo'
+                        return new File([blob], `${baseName}.jpg`, {
+                            type: 'image/jpeg',
+                            lastModified: sourceFile.lastModified,
+                        })
+                    }
+                    if (quality <= MIN_JPEG_QUALITY) break
+                    quality = Math.max(MIN_JPEG_QUALITY, Number((quality - 0.07).toFixed(2)))
                 }
-                if (quality <= MIN_JPEG_QUALITY) break
-                quality = Math.max(MIN_JPEG_QUALITY, Number((quality - 0.07).toFixed(2)))
+            } finally {
+                // Safari may retain canvas backing stores until garbage collection.
+                // Explicitly release the pixel buffer after EVERY attempt, even
+                // when a successful JPEG returns or encoding throws.
+                canvas.width = 0
+                canvas.height = 0
             }
         }
         // Never silently send an oversized image to storage or substitute a
         // very low-resolution damage picture just to meet a storage target.
         throw new Error(`${sourceFile.name}: The photo could not be optimised below 2MB. Please choose a smaller image.`)
     } finally {
+        if (decodedImage) {
+            // Drop decoded pixels and handlers before the next photo in a batch.
+            decodedImage.onload = null
+            decodedImage.onerror = null
+            decodedImage.removeAttribute('src')
+        }
         URL.revokeObjectURL(objectUrl)
     }
 }
