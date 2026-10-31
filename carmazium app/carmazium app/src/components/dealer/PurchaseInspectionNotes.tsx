@@ -30,6 +30,8 @@ interface InspectionNote {
 export const PurchaseInspectionNotes: React.FC<{ saleId: string }> = ({ saleId }) => {
   const base = `/dealers/purchases/${encodeURIComponent(saleId)}/inspection-notes`;
   const [enabled, setEnabled] = useState<boolean | null>(null);
+  // Adding needs a stock permission (MANAGE_INVENTORY); reading needs VIEW_PURCHASES.
+  const [canAdd, setCanAdd] = useState(false);
   const [notes, setNotes] = useState<InspectionNote[]>([]);
   const [loadError, setLoadError] = useState(false);
   const [kind, setKind] = useState('NEW_DAMAGE');
@@ -40,10 +42,11 @@ export const PurchaseInspectionNotes: React.FC<{ saleId: string }> = ({ saleId }
 
   useEffect(() => {
     let mounted = true;
-    apiClient<{ data: { enabled: boolean; notes: InspectionNote[] } }>(base)
+    apiClient<{ data: { enabled: boolean; canAdd?: boolean; notes: InspectionNote[] } }>(base)
       .then(res => {
         if (!mounted) return;
         setEnabled(res.data.enabled);
+        setCanAdd(res.data.canAdd === true);
         setNotes(res.data.notes);
       })
       .catch(() => { if (mounted) { setEnabled(true); setLoadError(true); } });
@@ -98,6 +101,9 @@ export const PurchaseInspectionNotes: React.FC<{ saleId: string }> = ({ saleId }
         </View>
       ))}
 
+      {!canAdd ? (
+        <Text style={styles.muted}>Your team role can read these notes. Ask an owner, admin or sales agent to add one.</Text>
+      ) : (<>
       <View style={styles.kinds} accessibilityLabel="Type">
         {Object.entries(KIND_LABELS).map(([value, label]) => {
           const selected = kind === value;
@@ -121,6 +127,7 @@ export const PurchaseInspectionNotes: React.FC<{ saleId: string }> = ({ saleId }
         {saving && <ActivityIndicator size="small" color={Colors.white} />}
         <Text style={styles.saveText}>Add note</Text>
       </TouchableOpacity>
+      </>)}
     </View>
   );
 };

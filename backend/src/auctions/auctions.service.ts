@@ -2837,6 +2837,11 @@ export class AuctionsService {
                 'The auction changed while it was being finalised. Refresh and try again.',
             );
         }
+        // Normal (timed or early) close that sold the car: the sale was
+        // inserted by the statement above. Post-commit and best-effort.
+        if (row.sale_completed && row.winner_id && row.listing_id) {
+            void capturePurchaseSnapshot(this.prisma, { listingId: row.listing_id, buyerId: row.winner_id });
+        }
 
         const auction = await this.prisma.auction.findUnique({
             where: { id: auctionId },

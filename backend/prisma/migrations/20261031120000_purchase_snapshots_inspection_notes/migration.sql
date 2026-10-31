@@ -10,22 +10,23 @@
 
 CREATE TABLE IF NOT EXISTS "purchase_listing_snapshots" (
   "id"         TEXT PRIMARY KEY,
+  "saleId"     TEXT NOT NULL,
   "listingId"  TEXT NOT NULL,
   "buyerId"    TEXT NOT NULL,
-  "saleId"     TEXT,
   "capturedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "data"       JSONB NOT NULL
 );
-CREATE UNIQUE INDEX IF NOT EXISTS "purchase_listing_snapshots_listingId_buyerId_key"
-  ON "purchase_listing_snapshots" ("listingId", "buyerId");
-CREATE INDEX IF NOT EXISTS "purchase_listing_snapshots_saleId_idx"
+-- One snapshot per Sale; a repeat purchase after a cancellation is a new Sale.
+CREATE UNIQUE INDEX IF NOT EXISTS "purchase_listing_snapshots_saleId_key"
   ON "purchase_listing_snapshots" ("saleId");
+CREATE INDEX IF NOT EXISTS "purchase_listing_snapshots_listingId_buyerId_idx"
+  ON "purchase_listing_snapshots" ("listingId", "buyerId");
 
 CREATE TABLE IF NOT EXISTS "purchase_inspection_notes" (
   "id"          TEXT PRIMARY KEY,
   "listingId"   TEXT NOT NULL,
   "buyerId"     TEXT NOT NULL,
-  "saleId"      TEXT,
+  "saleId"      TEXT NOT NULL,
   "authorId"    TEXT NOT NULL,
   "kind"        TEXT NOT NULL,
   "part"        TEXT,

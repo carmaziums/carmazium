@@ -1,6 +1,6 @@
-import { NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { DealersService } from './dealers.service';
-import { buildListingRecordData, capturePurchaseSnapshot } from './purchase-listing-record';
+import { buildListingRecordData, capturePurchaseSnapshot, sweepMissingPurchaseSnapshots } from './purchase-listing-record';
 
 const listingRow = (over: Record<string, unknown> = {}) => ({
     title: 'Volvo XC60 2017', images: ['https://example.test/1.jpg', 'https://example.test/2.jpg'],
@@ -46,7 +46,8 @@ describe('purchase listing snapshot', () => {
         };
         await capturePurchaseSnapshot(prisma, { listingId: 'l1', buyerId: 'b1' });
         const call = prisma.purchaseListingSnapshot.upsert.mock.calls[0][0];
-        expect(call.where).toEqual({ listingId_buyerId: { listingId: 'l1', buyerId: 'b1' } });
+        // One per Sale, so a repeat purchase after a cancellation is separate.
+        expect(call.where).toEqual({ saleId: 's1' });
         expect(call.update).toEqual({});
         expect(call.create).toMatchObject({ listingId: 'l1', buyerId: 'b1', saleId: 's1' });
         expect(call.create.data.description).toBe('One owner');
@@ -62,7 +63,7 @@ describe('purchase listing snapshot', () => {
         await capturePurchaseSnapshot(prisma, { listingId: 'l1', buyerId: 'b1' });
         expect(prisma.purchaseListingSnapshot.upsert).not.toHaveBeenCalled();
         prisma.sale.findUnique.mockRejectedValue(new Error('relation does not exist'));
-        await expect(capturePurchaseSnapshot(prisma, { listingId: 'l1', buyerId: 'b1' })).resolves.toBeUndefined();
+        await expect(capturePurchaseSnapshot(prisma, { listingId: 'l1', buyerId: 'b1' }, [])).resolves.toBeUndefined();
     });
 });
 
@@ -113,7 +114,7 @@ describe('purchase detail with snapshot, and inspection notes', () => {
         expect(result.listingRecord.capturedAt).toBe('2026-10-30T16:46:01.000Z');
         expect(result.listingRecord.removedFromSaleAt).toBe('2026-11-01T00:00:00.000Z');
         expect(prisma.purchaseListingSnapshot.findUnique).toHaveBeenCalledWith(expect.objectContaining({
-            where: { listingId_buyerId: { listingId: 'listing-1', buyerId: 'owner-1' } },
+            where: { saleId: 'sale-1' },
         }));
     });
 
@@ -140,9 +141,69 @@ describe('purchase detail with snapshot, and inspection notes', () => {
         prisma.sale.findFirst.mockResolvedValueOnce(null);
         await expect(service.getPurchaseInspectionNotes('owner-1', 'foreign')).rejects.toBeInstanceOf(NotFoundException);
         process.env.PURCHASE_SNAPSHOTS_ENABLED = 'false';
-        await expect(service.getPurchaseInspectionNotes('owner-1', 'sale-1')).resolves.toEqual({ enabled: false, notes: [] });
+        await expect(service.getPurchaseInspectionNotes('owner-1', 'sale-1')).resolves.toEqual({ enabled: false, canAdd: false, notes: [] });
         await expect(service.addPurchaseInspectionNote('owner-1', 'sale-1', { kind: 'GENERAL', description: 'abc' }))
             .rejects.toBeInstanceOf(ServiceUnavailableException);
         expect(prisma.purchaseInspectionNote.create).not.toHaveBeenCalled();
+    });
+
+    it('notes are read by Sale id and need MANAGE_INVENTORY to add (finance staff can only read)', async () => {
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'FINANCE_MANAGER', dealerProfile: { id: 'dealer-1', userId: 'owner-1', isVerified: true },
+        });
+        const read: any = await service.getPurchaseInspectionNotes('finance-1', 'sale-1');
+        expect(read.canAdd).toBe(false);
+        expect(prisma.purchaseInspectionNote.findMany).toHaveBeenCalledWith(expect.objectContaining({
+            where: { saleId: 'sale-1', buyerId: 'owner-1' },
+        }));
+        await expect(service.addPurchaseInspectionNote('finance-1', 'sale-1', { kind: 'GENERAL', description: 'abc' }))
+            .rejects.toBeInstanceOf(ForbiddenException);
+        expect(prisma.purchaseInspectionNote.create).not.toHaveBeenCalled();
+    });
+
+    it('labels a snapshot saved later by the sweep', async () => {
+        prisma.purchaseListingSnapshot.findUnique.mockResolvedValue({
+            capturedAt: new Date('2026-10-30T18:00:00Z'), data: buildListingRecordData(listingRow()),
+        });
+        const result: any = await service.getDealerPurchaseDetail('owner-1', 'sale-1');
+        expect(result.listingRecord.capturedAfterSale).toBe(true);
+    });
+});
+
+describe('purchase snapshot retries and sweep', () => {
+    const OLD = process.env.PURCHASE_SNAPSHOTS_ENABLED;
+    beforeEach(() => { process.env.PURCHASE_SNAPSHOTS_ENABLED = 'true'; });
+    afterEach(() => {
+        if (OLD === undefined) delete process.env.PURCHASE_SNAPSHOTS_ENABLED;
+        else process.env.PURCHASE_SNAPSHOTS_ENABLED = OLD;
+    });
+
+    it('retries a failed capture before giving up', async () => {
+        const prisma: any = {
+            sale: { findUnique: jest.fn()
+                .mockRejectedValueOnce(new Error('connection reset'))
+                .mockResolvedValue({ id: 's1', buyerId: 'b1' }) },
+            listing: { findUnique: jest.fn().mockResolvedValue(listingRow()) },
+            purchaseListingSnapshot: { upsert: jest.fn().mockResolvedValue({}) },
+        };
+        await capturePurchaseSnapshot(prisma, { listingId: 'l1', buyerId: 'b1' }, [0, 0]);
+        expect(prisma.sale.findUnique).toHaveBeenCalledTimes(2);
+        expect(prisma.purchaseListingSnapshot.upsert).toHaveBeenCalledTimes(1);
+    });
+
+    it('sweep captures recent sales that have no snapshot, and is off with the flag', async () => {
+        const prisma: any = {
+            $queryRaw: jest.fn().mockResolvedValue([{ listingId: 'l1', buyerId: 'b1' }]),
+            sale: { findUnique: jest.fn().mockResolvedValue({ id: 's1', buyerId: 'b1' }) },
+            listing: { findUnique: jest.fn().mockResolvedValue(listingRow()) },
+            purchaseListingSnapshot: { upsert: jest.fn().mockResolvedValue({}) },
+        };
+        await expect(sweepMissingPurchaseSnapshots(prisma)).resolves.toBe(1);
+        expect(prisma.purchaseListingSnapshot.upsert.mock.calls[0][0].update).toEqual({});
+        process.env.PURCHASE_SNAPSHOTS_ENABLED = 'false';
+        prisma.$queryRaw.mockClear();
+        await expect(sweepMissingPurchaseSnapshots(prisma)).resolves.toBe(0);
+        expect(prisma.$queryRaw).not.toHaveBeenCalled();
     });
 });

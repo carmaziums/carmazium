@@ -78,42 +78,81 @@ export function purchaseSnapshotsEnabled(): boolean {
 
 const logger = new Logger('PurchaseSnapshot');
 
+/** Delays between attempts; the sweep (PurchaseSnapshotSweepService) is the backstop. */
+const RETRY_DELAYS_MS = [1_000, 5_000];
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * One attempt. Returns true when a snapshot exists for this sale afterwards.
+ * Keyed by Sale id, so a later re-purchase of the same car (after a
+ * cancellation) gets its own snapshot and never reuses the old one.
+ */
+async function captureOnce(prisma: PrismaService, listingId: string, buyerId: string): Promise<boolean> {
+    // Only for a Sale that really exists for this buyer, so calling this
+    // after a transaction that ended without a sale is harmless.
+    const sale = await prisma.sale.findUnique({ where: { listingId }, select: { id: true, buyerId: true } });
+    if (!sale || sale.buyerId !== buyerId) return true; // nothing to capture
+    const listing = await prisma.listing.findUnique({ where: { id: listingId }, select: LISTING_RECORD_SELECT });
+    if (!listing) return true;
+    await prisma.purchaseListingSnapshot.upsert({
+        where: { saleId: sale.id },
+        create: { saleId: sale.id, listingId, buyerId, data: buildListingRecordData(listing) as any },
+        // Immutable: never refresh an existing capture.
+        update: {},
+    });
+    return true;
+}
+
 /**
  * Save the advert as it stands at the moment a Sale is recorded.
  *
- * Called after the sale transaction commits, and best-effort: a snapshot
- * failure is logged and never undoes or blocks the sale. The first capture
- * for a (listing, buyer) pair wins and is never overwritten, so a later
- * re-record of the same sale cannot replace the original evidence.
+ * Called after the sale transaction commits, and best-effort: a failure is
+ * retried twice in-process, then left to the periodic sweep, and never
+ * undoes or blocks the sale. The first capture for a sale wins.
  */
 export async function capturePurchaseSnapshot(
     prisma: PrismaService,
     input: { listingId: string; buyerId: string | null | undefined },
+    delays: readonly number[] = RETRY_DELAYS_MS,
 ): Promise<void> {
     if (!purchaseSnapshotsEnabled() || !input.buyerId) return;
-    try {
-        // Only for a Sale that really exists for this buyer, so calling this
-        // after a transaction that ended without a sale is harmless.
-        const sale = await prisma.sale.findUnique({ where: { listingId: input.listingId }, select: { id: true, buyerId: true } });
-        if (!sale || sale.buyerId !== input.buyerId) return;
-        const saleId = sale.id;
-        const listing = await prisma.listing.findUnique({
-            where: { id: input.listingId },
-            select: LISTING_RECORD_SELECT,
-        });
-        if (!listing) return;
-        await prisma.purchaseListingSnapshot.upsert({
-            where: { listingId_buyerId: { listingId: input.listingId, buyerId: input.buyerId } },
-            create: {
-                listingId: input.listingId,
-                buyerId: input.buyerId,
-                saleId,
-                data: buildListingRecordData(listing) as any,
-            },
-            // Immutable: never refresh an existing capture.
-            update: {},
-        });
-    } catch (err) {
-        logger.warn(`Snapshot not saved for listing ${input.listingId}: ${(err as Error)?.message ?? err}`);
+    for (let attempt = 0; attempt <= delays.length; attempt++) {
+        try {
+            if (await captureOnce(prisma, input.listingId, input.buyerId)) return;
+        } catch (err) {
+            const last = attempt === delays.length;
+            logger.warn(`Snapshot attempt ${attempt + 1} failed for listing ${input.listingId}${last ? '; the sweep will retry' : ''}: ${(err as Error)?.message ?? err}`);
+            if (last) return;
+        }
+        await wait(delays[attempt]);
     }
+}
+
+/**
+ * Backstop for captures lost to a crash, deploy or repeated failure: find
+ * recent sales with no snapshot and capture them. Idempotent, safe on several
+ * instances. A late capture keeps its own capturedAt, which the UI shows.
+ */
+export async function sweepMissingPurchaseSnapshots(prisma: PrismaService, limit = 200): Promise<number> {
+    if (!purchaseSnapshotsEnabled()) return 0;
+    const missing = await prisma.$queryRaw<Array<{ listingId: string; buyerId: string }>>`
+        SELECT s."listingId", s."buyerId"
+        FROM "sales" s
+        LEFT JOIN "purchase_listing_snapshots" p ON p."saleId" = s.id
+        WHERE p.id IS NULL
+          AND s."buyerId" IS NOT NULL
+          AND s."createdAt" > NOW() - INTERVAL '7 days'
+        ORDER BY s."createdAt" ASC
+        LIMIT ${limit}
+    `;
+    let captured = 0;
+    for (const row of missing) {
+        try {
+            await captureOnce(prisma, row.listingId, row.buyerId);
+            captured++;
+        } catch (err) {
+            logger.warn(`Sweep could not snapshot listing ${row.listingId}: ${(err as Error)?.message ?? err}`);
+        }
+    }
+    return captured;
 }

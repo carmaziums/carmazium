@@ -55,7 +55,9 @@ export function PurchaseVehicleRecord({ record, title }: { record: PurchaseListi
                 <p className={`mt-2 flex items-start gap-2 rounded-xl border p-3 text-xs leading-relaxed text-[var(--text-secondary)] ${record.source === "PURCHASE_SNAPSHOT" ? "border-emerald-500/30 bg-emerald-500/10" : "border-amber-500/30 bg-amber-500/10"}`}>
                     <History size={15} className={`mt-0.5 shrink-0 ${record.source === "PURCHASE_SNAPSHOT" ? "text-emerald-500" : "text-amber-500"}`} />
                     {record.source === "PURCHASE_SNAPSHOT"
-                        ? <>Saved when you bought this vehicle{record.capturedAt ? `, ${fmtDate(record.capturedAt)}` : ""}. Later changes by the seller don&apos;t affect it.{record.removedFromSaleAt ? ` The live advert was removed ${fmtDate(record.removedFromSaleAt)}.` : ""}</>
+                        ? <>{record.capturedAfterSale
+                            ? `Saved ${fmtDate(record.capturedAt ?? null)}, shortly after the sale was recorded.`
+                            : `Saved when you bought this vehicle${record.capturedAt ? `, ${fmtDate(record.capturedAt)}` : ""}.`} Later changes by the seller don&apos;t affect it.{record.removedFromSaleAt ? ` The live advert was removed ${fmtDate(record.removedFromSaleAt)}.` : ""}</>
                         : <>Current listing{record.lastUpdatedAt ? `, last updated ${fmtDate(record.lastUpdatedAt)}` : ""}. The seller may have changed it since you bought the vehicle.{record.removedFromSaleAt ? ` Removed from sale ${fmtDate(record.removedFromSaleAt)}.` : ""}</>}
                 </p>
             </div>

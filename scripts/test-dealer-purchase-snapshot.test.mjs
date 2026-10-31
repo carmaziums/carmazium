@@ -22,18 +22,30 @@ test("backend gate: off by default, capture is post-commit, first capture wins",
     const record = read("backend/src/dealers/purchase-listing-record.ts")
     assert.match(record, /process\.env\.PURCHASE_SNAPSHOTS_ENABLED === 'true'/)
     assert.match(record, /update: \{\},/)
-    assert.match(record, /sale\.buyerId !== input\.buyerId\) return/)
+    assert.match(record, /where: \{ saleId: sale\.id \}/)
+    assert.match(record, /RETRY_DELAYS_MS = \[1_000, 5_000\]/)
+    assert.match(read("backend/src/tasks/purchase-snapshot-sweep.service.ts"), /@Cron\('\*\/10 \* \* \* \*'\)/)
+    assert.match(read("backend/src/tasks/tasks.module.ts"), /PurchaseSnapshotSweepService,/)
+    const sql = read("backend/prisma/migrations/20261031120000_purchase_snapshots_inspection_notes/migration.sql")
+    assert.match(sql, /purchase_listing_snapshots_saleId_key"\s+ON "purchase_listing_snapshots" \("saleId"\)/)
+    assert.match(record, /sale\.buyerId !== buyerId\) return true/)
     for (const forbidden of ["email", "phone", "address", "payout", "stripe"]) {
         assert.ok(!new RegExp(`\\b${forbidden}\\b`, "i").test(record.split("LISTING_RECORD_SELECT")[1].split("} as const")[0]), forbidden)
     }
     const auctions = read("backend/src/auctions/auctions.service.ts")
     const listings = read("backend/src/listings/listings.service.ts")
-    assert.equal((auctions.match(/void capturePurchaseSnapshot\(this\.prisma/g) || []).length, 3)
+    // Seller-accepted offer, admin-assigned winner, Buy It Now, and the
+    // normal timed/early close (a single SQL statement that inserts the Sale).
+    assert.equal((auctions.match(/void capturePurchaseSnapshot\(this\.prisma/g) || []).length, 4)
+    assert.match(auctions, /if \(row\.sale_completed && row\.winner_id && row\.listing_id\) \{\s*void capturePurchaseSnapshot\(this\.prisma, \{ listingId: row\.listing_id, buyerId: row\.winner_id \}\)/)
+    // That capture runs after the statement and its consistency check, not inside it.
+    const close = auctions.split("sale_created AS (")[1]
+    assert.ok(close.indexOf("void capturePurchaseSnapshot") > close.indexOf("The auction changed while it was being finalised"))
     assert.equal((listings.match(/void capturePurchaseSnapshot\(this\.prisma/g) || []).length, 1)
     // Captures never run inside a sale transaction (a failure there would roll the sale back).
     for (const src of [auctions, listings]) {
-        for (const m of src.matchAll(/void capturePurchaseSnapshot/g)) {
-            const before = src.slice(Math.max(0, m.index - 400), m.index)
+        for (const m of src.matchAll(/\n        void capturePurchaseSnapshot/g)) {
+            const before = src.slice(Math.max(0, m.index - 400), m.index + 9)
             assert.match(before, /\}\);\s*(\/\/[^\n]*\n\s*)?$/, "capture follows the closed transaction")
         }
     }

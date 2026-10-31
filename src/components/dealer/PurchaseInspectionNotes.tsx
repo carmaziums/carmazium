@@ -28,6 +28,8 @@ interface InspectionNote {
 export function PurchaseInspectionNotes({ saleId }: { saleId: string }) {
     const base = `/dealers/purchases/${encodeURIComponent(saleId)}/inspection-notes`
     const [enabled, setEnabled] = React.useState<boolean | null>(null)
+    // Adding needs a stock permission (MANAGE_INVENTORY); reading needs VIEW_PURCHASES.
+    const [canAdd, setCanAdd] = React.useState(false)
     const [notes, setNotes] = React.useState<InspectionNote[]>([])
     const [loadError, setLoadError] = React.useState(false)
     const [kind, setKind] = React.useState("NEW_DAMAGE")
@@ -38,10 +40,11 @@ export function PurchaseInspectionNotes({ saleId }: { saleId: string }) {
 
     React.useEffect(() => {
         let mounted = true
-        apiClient<{ data: { enabled: boolean; notes: InspectionNote[] } }>(base, { cache: "no-store" })
+        apiClient<{ data: { enabled: boolean; canAdd?: boolean; notes: InspectionNote[] } }>(base, { cache: "no-store" })
             .then(res => {
                 if (!mounted) return
                 setEnabled(res.data.enabled)
+                setCanAdd(res.data.canAdd === true)
                 setNotes(res.data.notes)
             })
             .catch(() => { if (mounted) { setEnabled(true); setLoadError(true) } })
@@ -104,7 +107,7 @@ export function PurchaseInspectionNotes({ saleId }: { saleId: string }) {
                 <p className="text-sm text-[var(--text-muted)]">No inspection notes yet.</p>
             )}
 
-            <form onSubmit={save} className="space-y-2">
+            {canAdd ? <form onSubmit={save} className="space-y-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <label className="block">
                         <span className="text-xs font-bold text-[var(--text-muted)]">Type</span>
@@ -129,7 +132,9 @@ export function PurchaseInspectionNotes({ saleId }: { saleId: string }) {
                     className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-white disabled:opacity-50">
                     {saving && <Loader2 size={15} className="animate-spin" />} Add note
                 </button>
-            </form>
+            </form> : (
+                <p className="text-xs text-[var(--text-muted)]">Your team role can read these notes. Ask an owner, admin or sales agent to add one.</p>
+            )}
         </section>
     )
 }

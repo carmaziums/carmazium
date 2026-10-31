@@ -51,6 +51,7 @@ interface PurchaseDetail {
   listingRecord?: {
     source: 'CURRENT_LISTING' | 'PURCHASE_SNAPSHOT';
     capturedAt?: string | null;
+    capturedAfterSale?: boolean;
     lastUpdatedAt: string | null; removedFromSaleAt: string | null;
     images: string[]; description: string | null;
     variant: string | null; fuelType: string | null; transmission: string | null;
@@ -268,7 +269,9 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
                       current advert for purchases made before snapshots. */}
                   <Text style={r.source === 'PURCHASE_SNAPSHOT' ? styles.snapshotNote : styles.warning}>
                     {r.source === 'PURCHASE_SNAPSHOT'
-                      ? `Saved when you bought this vehicle${r.capturedAt ? `, ${date(r.capturedAt)}` : ''}. Later changes by the seller don't affect it.${r.removedFromSaleAt ? ` The live advert was removed ${date(r.removedFromSaleAt)}.` : ''}`
+                      ? `${r.capturedAfterSale
+                        ? `Saved ${r.capturedAt ? date(r.capturedAt) : ''}, shortly after the sale was recorded.`
+                        : `Saved when you bought this vehicle${r.capturedAt ? `, ${date(r.capturedAt)}` : ''}.`} Later changes by the seller don't affect it.${r.removedFromSaleAt ? ` The live advert was removed ${date(r.removedFromSaleAt)}.` : ''}`
                       : `Current listing${r.lastUpdatedAt ? `, last updated ${date(r.lastUpdatedAt)}` : ''}. The seller may have changed it since you bought the vehicle.${r.removedFromSaleAt ? ` Removed from sale ${date(r.removedFromSaleAt)}.` : ''}`}
                   </Text>
                   {photos.length > 0 ? (

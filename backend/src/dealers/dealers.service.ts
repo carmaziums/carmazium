@@ -24,6 +24,9 @@ import {
 } from './purchase-listing-record';
 import type { CreateInspectionNoteDto } from './dto/create-inspection-note.dto';
 
+/** Permission needed to add (not read) inspection notes. Owner to confirm. */
+const INSPECTION_NOTE_WRITE_PERMISSION = 'MANAGE_INVENTORY' as const;
+
 @Injectable()
 export class DealersService {
     constructor(
@@ -1940,15 +1943,18 @@ export class DealersService {
      * Read-only record; it never alters the Sale.
      */
     async getPurchaseInspectionNotes(userId: string, saleId: string) {
-        const { buyerId, sale } = await this.ownedPurchase(userId, saleId);
-        if (!purchaseSnapshotsEnabled()) return { enabled: false, notes: [] };
+        const { actor, buyerId, sale } = await this.ownedPurchase(userId, saleId);
+        const canAdd = hasDealerPermission(actor, INSPECTION_NOTE_WRITE_PERMISSION);
+        if (!purchaseSnapshotsEnabled()) return { enabled: false, canAdd: false, notes: [] };
+        // By Sale, so a repeat purchase of the same car keeps separate notes.
         const notes = await this.prisma.purchaseInspectionNote.findMany({
-            where: { listingId: sale.listingId, buyerId },
+            where: { saleId: sale.id, buyerId },
             orderBy: { createdAt: 'asc' },
             select: { id: true, kind: true, part: true, description: true, createdAt: true, authorId: true },
         });
         return {
             enabled: true,
+            canAdd,
             notes: notes.map(n => ({
                 id: n.id, kind: n.kind, part: n.part, description: n.description,
                 createdAt: n.createdAt.toISOString(),
@@ -1964,7 +1970,10 @@ export class DealersService {
      * existing adjustments/cancellation process.
      */
     async addPurchaseInspectionNote(userId: string, saleId: string, dto: CreateInspectionNoteDto) {
-        const { buyerId, sale } = await this.ownedPurchase(userId, saleId);
+        const { actor, buyerId, sale } = await this.ownedPurchase(userId, saleId);
+        // VIEW_PURCHASES is read-only; adding a vehicle-condition record is
+        // stock work (owners, admins and sales agents; not finance managers).
+        assertDealerPermission(actor, INSPECTION_NOTE_WRITE_PERMISSION);
         if (!purchaseSnapshotsEnabled()) {
             throw new ServiceUnavailableException('Inspection notes are not switched on yet');
         }
@@ -2022,7 +2031,7 @@ export class DealersService {
         // to the current listing, labelled as such; nothing is back-filled.
         const snapshot = purchaseSnapshotsEnabled()
             ? await this.prisma.purchaseListingSnapshot.findUnique({
-                where: { listingId_buyerId: { listingId: sale.listingId, buyerId } },
+                where: { saleId: sale.id },
                 select: { capturedAt: true, data: true },
             }).catch(() => null)
             : null;
@@ -2094,6 +2103,8 @@ export class DealersService {
                 ...(snapshot.data as unknown as ListingRecordData),
                 source: 'PURCHASE_SNAPSHOT' as const,
                 capturedAt: snapshot.capturedAt.toISOString(),
+                // Saved by the retry sweep rather than at the sale itself.
+                capturedAfterSale: snapshot.capturedAt.getTime() - sale.createdAt.getTime() > 60 * 60 * 1000,
                 lastUpdatedAt: snapshot.capturedAt.toISOString(),
                 // Whether the live advert has been removed since; the
                 // snapshot itself is unaffected.
@@ -2102,6 +2113,7 @@ export class DealersService {
                 ...buildListingRecordData(listing),
                 source: 'CURRENT_LISTING' as const,
                 capturedAt: null,
+                capturedAfterSale: false,
                 lastUpdatedAt: listing.updatedAt?.toISOString() ?? null,
                 removedFromSaleAt: listing.deletedAt?.toISOString() ?? null,
             },

@@ -38,6 +38,8 @@ export interface PurchaseListingRecord {
     source: "CURRENT_LISTING" | "PURCHASE_SNAPSHOT"
     /** When the snapshot was saved; null for the current-listing fallback. */
     capturedAt?: string | null
+    /** The snapshot was saved more than an hour after the sale (by the retry sweep). */
+    capturedAfterSale?: boolean
     lastUpdatedAt: string | null
     removedFromSaleAt: string | null
     images: string[]

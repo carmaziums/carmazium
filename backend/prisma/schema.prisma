@@ -1960,17 +1960,18 @@ model Sale {
 // evidence only (never seller contact details).
 // Applied by hand: prisma/migrations/20261031120000_purchase_snapshots_inspection_notes.
 // Reads and writes are off until PURCHASE_SNAPSHOTS_ENABLED=true.
+// One per Sale (not per listing+buyer), so a repeat purchase of the same car
+// after a cancellation gets its own snapshot and notes.
 model PurchaseListingSnapshot {
   id         String   @id @default(uuid())
+  saleId     String   @unique
   listingId  String
   buyerId    String
-  saleId     String?
   capturedAt DateTime @default(now())
   /// Output of buildListingRecordData() at capture time.
   data       Json
 
-  @@unique([listingId, buyerId])
-  @@index([saleId])
+  @@index([listingId, buyerId])
   @@map("purchase_listing_snapshots")
 }
 
@@ -1983,7 +1984,7 @@ model PurchaseInspectionNote {
   listingId   String
   /// Dealership owner user id (the Sale's buyerId), so staff notes stay with the business.
   buyerId     String
-  saleId      String?
+  saleId      String
   authorId    String
   /// NEW_DAMAGE, DIFFERS_FROM_ADVERT or GENERAL
   kind        String
