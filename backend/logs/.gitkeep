@@ -1,0 +1,2 @@
+# Keep the runtime logging directory in deployed source trees.
+# Winston generates .log files at runtime; no log content should be versioned.

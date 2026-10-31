@@ -25,6 +25,10 @@ dist/
 .DS_Store
 *.pem
 
+# generated backend diagnostics — runtime logger creates files as needed
+backend/logs/*.log
+backend/ts_check_backend.log
+
 # debug
 npm-debug.log*
 yarn-debug.log*
