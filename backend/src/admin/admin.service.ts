@@ -2243,9 +2243,8 @@ export class AdminService {
         if (!auction.sellerBonusReleased || !auction.sellerBonusReleasedAt) {
             throw new BadRequestException('The handover must be approved before requesting a manual payout.');
         }
-        if (auction.manualPayoutConfirmedAt
-            || (auction.stripePayoutTransferId && !auction.stripePayoutTransferId.startsWith('claim:seller-bonus:'))) {
-            throw new BadRequestException('The £100 bonus already has a recorded payment.');
+        if (auction.manualPayoutConfirmedAt || auction.stripePayoutTransferId) {
+            throw new ConflictException('A payout is already recorded or may still be in progress. Verify Stripe transfer state before requesting bank details.');
         }
         await this.auctionsService.assertHandoverBusinessRules(auctionId, {
             requireProof: true,
