@@ -24,8 +24,9 @@ const tradeJobActions = (href: string) => href === "/services/delivery" || href 
     ? { post: `${href}/new`, bid: "/dashboard/service/jobs" }
     : null
 
+// "Home" was removed from this list (#716): the CarMazium logo at the start of
+// the bar already links to "/" on desktop and mobile, so it was a duplicate.
 const navLinks: NavLink[] = [
-    { name: "Home", href: "/" },
     { name: "Buy Cars", kind: "buy-menu" },
     { name: "Sell Cars", kind: "sell-menu" },
     { name: "Get Valuation", href: "/sell" },
@@ -133,7 +134,7 @@ export function Header() {
 
                 {/* Logo Area */}
                 <div className="flex-1 flex items-center justify-start gap-6">
-                    <Link href="/" className="flex items-center">
+                    <Link href="/" className="flex items-center" aria-label="CarMazium home">
                         <Image
                             src="/assets/images/logo-light.webp"
                             alt="CarMazium"
