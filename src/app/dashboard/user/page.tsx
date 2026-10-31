@@ -100,6 +100,7 @@ import { ImportListingModal } from "@/components/features/ImportListingModal"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 import { UserAttentionPanel } from "@/components/dashboard/UserAttentionPanel"
 import { MyCarsAuctionPanel } from "@/components/dashboard/MyCarsAuctionPanel"
+import { getCompletePrivateListings } from "@/lib/privateCarsListings"
 import { PrivatePurchasesTab } from "@/components/dashboard/PrivatePurchasesTab"
 
 export default function UnifiedUserDashboard() {
@@ -570,7 +571,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [statusFilter, setStatusFilter] = React.useState<string>("ALL")
     const [loading, setLoading] = React.useState(true)
     const [page, setPage] = React.useState(1)
-    const [totalPages, setTotalPages] = React.useState(1)
+
     const [deleting, setDeleting] = React.useState<string | null>(null)
     const [boosting, setBoosting] = React.useState<string | null>(null)
     const [saleListing, setSaleListing] = React.useState<Listing | null>(null)
@@ -580,21 +581,23 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [openMenuId, setOpenMenuId] = React.useState<string | null>(null)
 
     const auctionDashPath = profile?.role === 'DEALER' ? '/dashboard/dealer/auctions' : '/dashboard/seller/auctions?manage=1'
-    const visibleListings = statusFilter === "ALL" ? listings : listings.filter(listing => listing.status === statusFilter)
+    const matchingListings = statusFilter === "ALL" ? listings : listings.filter(listing => listing.status === statusFilter)
+    const totalPages = Math.max(1, Math.ceil(matchingListings.length / 10))
+    const visibleListings = matchingListings.slice((page - 1) * 10, page * 10)
 
     const fetchListings = React.useCallback(async () => {
         try {
             setLoading(true)
-            // Phase 10: includeSold=true so SOLD listings appear in history and contribute to analytics
-            const data = await getMyListings({ page, limit: 10, includeSold: true })
-            setListings(data.data || [])
-            setTotalPages(data.pagination?.totalPages || 1)
+            // Load the complete authoritative owned inventory before status
+            // filtering, instead of hiding matching cars on later API pages.
+            const data = await getCompletePrivateListings()
+            setListings(data)
         } catch (err) {
             console.error('Failed to fetch listings:', err)
         } finally {
             setLoading(false)
         }
-    }, [page])
+    }, [])
 
     React.useEffect(() => {
         fetchListings()
@@ -683,7 +686,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                 {/* ── Simple mobile cards (< sm) ── */}
                 <div className="flex flex-wrap gap-2" role="group" aria-label="Filter your listing status">
                 {(["ALL", "ACTIVE", "DRAFT", "PENDING_REVIEW", "OFFER_ACCEPTED", "SOLD", "WITHDRAWN", "REJECTED"] as const).map(value => (
-                    <button type="button" key={value} onClick={() => setStatusFilter(value)}
+                    <button type="button" key={value} onClick={() => { setStatusFilter(value); setPage(1) }}
                         aria-pressed={statusFilter === value}
                         className={`rounded-xl border px-3 py-2 text-xs font-bold ${statusFilter === value
                             ? "bg-primary text-white border-primary" : "border-[var(--border-default)] text-[var(--text-secondary)]"}`}>
