@@ -8,7 +8,13 @@ const BASE_URL = "https://www.carmazium.com"
 // silently omitted newer inventory and guides as the marketplace grew.
 // Reserve headroom below Google's 50,000-URL sitemap limit for static routes.
 // Large inventories beyond these ceilings require separate indexed sitemaps.
-const PAGE_SIZE = 250
+// Next.js will not cache a single fetch response over 2 MB, and both feeds
+// return full records. Measured Oct 2026 (issue #723): a public listing is
+// ~13 KB of JSON on average and 22 KB at most, a blog post ~17 KB and 27 KB at
+// most. 250 per page was ~2.5 MB of listings and never cached. These sizes stay
+// under 2 MB even when every row on a page is the largest seen.
+const LISTING_PAGE_SIZE = 80
+const BLOG_PAGE_SIZE = 50
 const MAX_LISTING_URLS = 35_000
 const MAX_BLOG_URLS = 12_000
 
@@ -82,12 +88,13 @@ function safeLastModified(value: string | null | undefined): Date | undefined {
 async function fetchSitemapRecords(kind: "listings" | "blog", maxRecords: number): Promise<SitemapRecord[]> {
     const records: SitemapRecord[] = []
     const seen = new Set<string>()
-    const pageCap = Math.ceil(maxRecords / PAGE_SIZE)
+    const pageSize = kind === "listings" ? LISTING_PAGE_SIZE : BLOG_PAGE_SIZE
+    const pageCap = Math.ceil(maxRecords / pageSize)
 
     for (let page = 1; page <= pageCap; page++) {
         const query = new URLSearchParams({
             page: String(page),
-            limit: String(PAGE_SIZE),
+            limit: String(pageSize),
             ...(kind === "listings" ? { sortBy: "newest" } : {}),
         })
 
@@ -134,7 +141,7 @@ async function fetchSitemapRecords(kind: "listings" | "blog", maxRecords: number
             }
             const totalPages = payload.pagination?.totalPages
             if (typeof totalPages === "number" && Number.isFinite(totalPages) && page >= totalPages) break
-            if (rows.length < PAGE_SIZE) break
+            if (rows.length < pageSize) break
             if (page === pageCap) {
                 console.warn("[sitemap] page budget exhausted; add sitemap sharding", kind, pageCap)
             }

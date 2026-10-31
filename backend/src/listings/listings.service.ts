@@ -2286,8 +2286,19 @@ export class ListingsService {
         // under the staff member's personal name — see admin-seller-branding.ts.
         // priceMin/priceMax are seller-private negotiation controls and must
         // never be exposed by public marketplace search responses.
+        // The same applies to seller declaration free text, moderation notes and
+        // internal timestamps: no public card or search consumer reads them, and
+        // owners edit through GET /listings/:id, not search (issue #723).
         const publicData = data.map((row: any) => {
-            const { priceMin: _priceMin, priceMax: _priceMax, ...safe } = row;
+            const {
+                priceMin: _priceMin,
+                priceMax: _priceMax,
+                notOwnerRelationship: _notOwnerRelationship,
+                rejectionReason: _rejectionReason,
+                partnerDistributionAcceptedAt: _partnerDistributionAcceptedAt,
+                deletedAt: _deletedAt,
+                ...safe
+            } = row;
             return brandListingSeller(safe);
         });
         return { data: publicData as Listing[], total };

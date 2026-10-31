@@ -2541,6 +2541,26 @@ describe('ListingsService', () => {
             const defaultOrder = prisma.listing.findMany.mock.calls[0][0].orderBy;
             expect(defaultOrder[0]).toEqual({ isFeatured: 'desc' });
         });
+        it('never returns seller-private declaration text, moderation notes or internal timestamps from public search (#723)', async () => {
+            prisma.listing.findMany.mockResolvedValue([{
+                id: 'retail-1', type: 'CLASSIFIED', status: 'ACTIVE', price: 7000,
+                priceMin: 6000, priceMax: 8000,
+                notOwnerRelationship: 'Selling for my aunt', rejectionReason: 'Old note',
+                partnerDistributionAcceptedAt: new Date(), deletedAt: null,
+                motHistory: [{ testDate: '2026-01-01' }], description: 'Clean car',
+                seller: { id: 'seller-1', role: 'USER', firstName: 'Sam', lastName: 'Seller' },
+            }]);
+            prisma.listing.count.mockResolvedValue(1);
+            const { data } = await service.findAll({} as any);
+            const row = data[0] as any;
+            for (const field of ['priceMin', 'priceMax', 'notOwnerRelationship', 'rejectionReason', 'partnerDistributionAcceptedAt', 'deletedAt']) {
+                expect(row).not.toHaveProperty(field);
+            }
+            // Fields public cards and the app's detail screen rely on stay.
+            expect(row.motHistory).toEqual([{ testDate: '2026-01-01' }]);
+            expect(row.description).toBe('Clean car');
+            expect(row.price).toBe(7000);
+        });
     });
 
     describe('featured retail listing privacy', () => {

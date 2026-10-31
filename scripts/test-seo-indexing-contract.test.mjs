@@ -34,7 +34,10 @@ test('sitemap remains paginated, bounded, and stays on canonical www host', () =
   const sitemap = read('src/app/sitemap.ts');
   const robots = read('src/app/robots.ts');
   assert.match(sitemap, /const BASE_URL = "https:\/\/www\.carmazium\.com"/);
-  assert.match(sitemap, /const PAGE_SIZE = 250/);
+  // Pages must stay under the 2 MB Next.js data-cache limit (issue #723).
+  assert.match(sitemap, /const LISTING_PAGE_SIZE = 80/);
+  assert.match(sitemap, /const BLOG_PAGE_SIZE = 50/);
+  assert.match(sitemap, /limit: String\(pageSize\)/);
   assert.match(sitemap, /const MAX_LISTING_URLS = 35_000/);
   assert.match(sitemap, /const MAX_BLOG_URLS = 12_000/);
   assert.match(sitemap, /page:\s*String\(page\)/);
