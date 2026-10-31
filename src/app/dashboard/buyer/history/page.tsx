@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -29,7 +30,7 @@ function downloadReceipt(transactionId: string) {
     })
 }
 
-export default function BuyerHistoryPage() {
+function BuyerHistoryPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [transactions, setTransactions] = React.useState<Transaction[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -161,5 +162,16 @@ export default function BuyerHistoryPage() {
                 </main>
             </div>
         </div>
+    )
+}
+
+/** Private dashboard canonicalisation; ?legacy=1 preserves specialist actions. */
+export default function CanonicalBuyerHistoryPage() {
+    return (
+        <React.Suspense fallback={<div className="min-h-[40vh]" />}>
+            <LegacyDashboardRedirect target="/dashboard/user?tab=purchases">
+                <BuyerHistoryPage />
+            </LegacyDashboardRedirect>
+        </React.Suspense>
     )
 }
