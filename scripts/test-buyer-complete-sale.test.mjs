@@ -49,3 +49,26 @@ test("app parity: same action and confirmation on buyer and dealer offer screens
         assert.match(src, /either of you can complete the sale/, screen)
     }
 })
+
+test("app parity: All Purchases shows Sale Pending retail deals like web, with completion", () => {
+    const src = read(APP + "screens/main/DealerPurchasesScreen.tsx")
+    // Same rule as web pendingRetailPurchases(): accepted offer, listing still
+    // OFFER_ACCEPTED, no recorded Sale for it, one row per listing.
+    assert.match(src, /o\.status === 'ACCEPTED' && o\.listing\?\.status === 'OFFER_ACCEPTED' && !recordedListingIds\.has\(o\.listingId\)/)
+    assert.match(src, /'\/offers\/my'/)
+    assert.match(src, /<CompletePurchaseButton listingId=\{o\.listingId\}/)
+    // Current work only: never in Purchase History.
+    assert.match(src, /isHistory\s*\?\s*Promise\.resolve\(\[\] as PendingRetailOffer\[\]\)/)
+})
+
+test("web: buyer dashboard vehicle links use the live /buy-cars route", () => {
+    for (const page of ["src/app/dashboard/buyer/bids/page.tsx", "src/app/dashboard/buyer/page.tsx"]) {
+        assert.doesNotMatch(read(page), /href=\{`\/cars\//, page)
+    }
+})
+
+test("web: a failed payout status check is shown, not treated as not connected", () => {
+    const src = read("src/app/dashboard/user/page.tsx")
+    assert.doesNotMatch(src, /getStripeConnectStatus\(\)\.then\(setConnectStatus\)\.catch\(\(\) => \{\}\)/)
+    assert.match(src, /We couldn't check your payout status/)
+})

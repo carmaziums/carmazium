@@ -2201,9 +2201,17 @@ function SettingsTab({ profile, refreshProfile }: { profile: any; refreshProfile
         }
     }
 
-    React.useEffect(() => {
-        getStripeConnectStatus().then(setConnectStatus).catch(() => {})
+    // A failed status check must not look like "not connected": a seller who
+    // already finished onboarding would be told to connect again.
+    const loadConnectStatus = React.useCallback(() => {
+        getStripeConnectStatus()
+            .then(status => { setConnectStatus(status); setConnectError("") })
+            .catch(() => setConnectError("We couldn't check your payout status. Refresh the page before connecting a bank account."))
     }, [])
+
+    React.useEffect(() => {
+        loadConnectStatus()
+    }, [loadConnectStatus])
 
     const handleSaveBank = async () => {
         try {
@@ -2223,10 +2231,10 @@ function SettingsTab({ profile, refreshProfile }: { profile: any; refreshProfile
         if (typeof window === 'undefined') return
         const params = new URLSearchParams(window.location.search)
         if (params.get('stripe_connect')) {
-            getStripeConnectStatus().then(setConnectStatus).catch(() => {})
+            loadConnectStatus()
             window.history.replaceState({}, '', window.location.pathname)
         }
-    }, [])
+    }, [loadConnectStatus])
 
     const handleConnectStripe = async () => {
         setConnectLoading(true)

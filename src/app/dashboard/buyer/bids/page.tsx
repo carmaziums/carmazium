@@ -260,7 +260,7 @@ function MyBidsPage() {
                                                             </Link>
                                                         ) : (
                                                             <Link
-                                                                href={`/cars/${bid.listing.slug}`}
+                                                                href={`/buy-cars/${bid.listing.slug}`}
                                                                 className="text-primary dark:hover:text-white text-sm font-bold transition-colors"
                                                             >
                                                                 View
