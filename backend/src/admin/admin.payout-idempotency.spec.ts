@@ -220,7 +220,7 @@ describe('AdminService — seller bonus payout idempotency', () => {
         expect(prisma.auction.update).toHaveBeenCalledWith({
             where: { id: 'auction-1' },
             data: {
-                stripePayoutError: 'Stripe payout could not be completed. The seller bonus remains unpaid. Verify the seller\'s Stripe payout setup and try again.',
+                stripePayoutError: 'Stripe could not complete the £100 seller bonus transfer. Review the Stripe error, then retry safely or request the seller\'s bank details for manual payment. The bonus remains unpaid.',
             },
         });
     });

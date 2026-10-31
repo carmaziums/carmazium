@@ -16,6 +16,8 @@ on:
       - "src/app/dashboard/admin/listings/page.tsx"
       - "src/lib/adminVehicleReview.ts"
       - "src/lib/adminApi.ts"
+      - "src/app/dashboard/admin/handovers/page.tsx"
+      - "scripts/test-seller-bonus-manual-fallback.test.mjs"
       - "scripts/test-admin-vehicle-review.test.mjs"
       - "scripts/test-official-vehicle-field-parity.test.mjs"
       - "src/app/pricing/**"
@@ -134,6 +136,9 @@ jobs:
 
       - name: Verify unified private buyer/seller dashboard and legacy compatibility
         run: node --test scripts/test-private-dashboard-consolidation.test.mjs
+
+      - name: Verify secure manual seller bonus payout fallback
+        run: node --test scripts/test-seller-bonus-manual-fallback.test.mjs
 
       - name: Verify current, history, accepted, rejected and cancelled My Offers filters
         run: node --test scripts/test-outgoing-offer-filters.test.mjs

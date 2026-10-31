@@ -322,6 +322,14 @@ export class AdminController {
         return new StandardResponse(result);
     }
 
+    @Post('payouts/:auctionId/request-bank-details')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Ask seller to save bank details securely for manual £100 reward fallback; does not mark paid' })
+    @ApiParam({ name: 'auctionId' })
+    async requestSellerBankDetailsForBonus(@Param('auctionId') auctionId: string): Promise<StandardResponse<any>> {
+        return new StandardResponse(await this.adminService.requestSellerBankDetailsForBonus(auctionId));
+    }
+
     @Post('payouts/:auctionId/retry')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Retry the Stripe transfer for an approved-but-unpaid handover' })
