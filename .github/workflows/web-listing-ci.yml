@@ -38,6 +38,7 @@ on:
       - "src/lib/purchaseDestinations.ts"
       - "src/components/dealer/PurchaseDestinations.tsx"
       - "src/components/dealer/DealerPurchasesView.tsx"
+      - "src/components/dealer/PendingRetailPurchaseRow.tsx"
       - "src/components/dealer/PurchaseVehicleRecord.tsx"
       - "src/app/dashboard/dealer/purchases/**"
       - "src/app/dashboard/dealer/inventory/page.tsx"

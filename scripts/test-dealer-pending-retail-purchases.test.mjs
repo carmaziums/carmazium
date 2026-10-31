@@ -55,7 +55,19 @@ test("dealer purchase history joins offer feed and refreshes on demand", () => {
     assert.match(page, /pendingRetailPurchases\(acceptedOffers, purchases\.map/)
     assert.match(page, /Retail purchases — Sale Pending/)
     assert.match(page, /Refresh purchases/)
-    assert.match(page, /href="\/dashboard\/buyer\/offers"/)
+    const row = read("../src/components/dealer/PendingRetailPurchaseRow.tsx")
+    assert.ok(page.includes('<PendingRetailPurchaseRow key={offer.id} offer={offer} />'))
+    assert.ok(row.includes('const OFFER_DESTINATION = "/dashboard/buyer/offers"'))
+    assert.ok(row.includes('listing?.images?.find(Boolean)'))
+    assert.ok(row.includes('dealer-glass-card p-0 group hover:border-white/8'))
+    assert.ok(row.includes('w-16 h-16 md:w-20 md:h-16'))
+    assert.ok(row.includes('<span>Sale Pending</span>'))
+    assert.ok(row.includes('Seller: Contact through accepted offer'))
+    assert.ok(row.includes('createPortal('))
+    // An agreed retail Offer must not offer Sale cancellation, auction fee, or fake purchase-summary actions.
+    assert.ok(!row.includes('Purchase Summary'))
+    assert.ok(!row.includes('Request cancellation'))
+    assert.ok(!row.includes('buyerFeePaid'))
 })
 
 test("dealer navigation distinguishes auction wins from all purchases without removing either page", () => {
