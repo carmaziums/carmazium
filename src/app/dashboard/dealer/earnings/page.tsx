@@ -32,16 +32,20 @@ export default function DealerEarningsPage() {
     const [loading, setLoading] = React.useState(true)
     const [searchTerm, setSearchTerm] = React.useState("")
     const [activeTab, setActiveTab] = React.useState<'sales' | 'auctions' | 'receipts'>('sales')
+    const [loadError, setLoadError] = React.useState(false)
 
     React.useEffect(() => {
         async function fetchData() {
             if (!user) return
             try {
                 setLoading(true)
+                setLoadError(false)
                 const res = await getEarnings()
                 setData(res)
             } catch (err) {
                 console.error('Failed to fetch earnings:', err)
+                // Without this a failed load looked like "no sales yet".
+                setLoadError(true)
             } finally {
                 setLoading(false)
             }
@@ -67,6 +71,37 @@ export default function DealerEarningsPage() {
         sale.listing.vrm?.toLowerCase().includes(searchTerm.toLowerCase())
     ) || []
 
+    // The "Financial Report" button used to do nothing. It now downloads the
+    // sales registry rows currently shown (search applied) as a CSV file.
+    const downloadReport = () => {
+        const cell = (value: unknown) => {
+            const text = value == null ? "" : String(value)
+            // Quote every cell; neutralise spreadsheet formula prefixes.
+            const safe = /^[=+\-@]/.test(text) ? "'" + text : text
+            return '"' + safe.replace(/"/g, '""') + '"'
+        }
+        const rows = [
+            ["Date", "Vehicle", "Registration", "Buyer", "Listed price (GBP)", "Sold price (GBP)"],
+            ...filteredSales.map(sale => [
+                new Date(sale.createdAt).toISOString().slice(0, 10),
+                sale.listing.title,
+                sale.listing.vrm || "",
+                sale.buyer ? `${sale.buyer.firstName} ${sale.buyer.lastName || ""}`.trim() : (sale as { buyerName?: string }).buyerName || "Direct",
+                Number(sale.listedPrice),
+                Number(sale.soldPrice),
+            ]),
+        ]
+        const blob = new Blob([rows.map(row => row.map(cell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement("a")
+        link.href = url
+        link.download = `carmazium-sales-${new Date().toISOString().slice(0, 10)}.csv`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(url)
+    }
+
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
 
     return (
@@ -85,7 +120,9 @@ export default function DealerEarningsPage() {
                                 <p className="text-[var(--text-muted)] mt-0.5 font-medium text-sm">Track dealership vehicle sales proceeds and CarMazium auction bonus payments.</p>
                             </div>
                         </div>
-                        <Button className="flex items-center gap-2 shadow-neon h-12" variant="outline" size="sm">
+                        <Button className="flex items-center gap-2 shadow-neon h-12" variant="outline" size="sm"
+                            onClick={downloadReport} disabled={loading || filteredSales.length === 0}
+                            title={filteredSales.length === 0 ? "No sales to export yet" : "Download the sales registry as a CSV file"}>
                             <Download size={18} /> Financial Report
                         </Button>
                     </div>
@@ -161,6 +198,12 @@ export default function DealerEarningsPage() {
                     )}
 
                     {/* Sales Table */}
+                    {loadError && (
+                        <div role="alert" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+                            <span>Your earnings could not be loaded. The figures below may be incomplete.</span>
+                            <Button size="sm" variant="outline" onClick={() => window.location.reload()}>Try again</Button>
+                        </div>
+                    )}
                     {activeTab === 'sales' && <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-3xl shadow-2xl overflow-hidden">
                         <div className="p-8 border-b border-[var(--border-default)] flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-gradient-to-r from-white/[0.05] to-transparent">
                             <div className="flex items-center gap-3">

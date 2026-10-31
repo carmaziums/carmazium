@@ -1,7 +1,9 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { Calculator, HelpCircle, Minus, Plus } from "lucide-react"
+import { financeServiceEnabled } from "@/lib/featureFlags"
 
 interface FinanceCalculatorProps {
     vehiclePrice: number
@@ -141,7 +143,14 @@ export function FinanceCalculator({ vehiclePrice }: FinanceCalculatorProps) {
                     </div>
                     <p className="text-emerald-400 text-xs font-bold mb-6">Total Payable: £{Math.round(monthlyPayment * term + deposit).toLocaleString()}</p>
 
-                    <button className="w-full bg-primary hover:bg-primary/90 text-white font-bold rounded-lg py-3 transition-colors">Apply for Finance</button>
+                    {/* CarMazium isn't a lender: this opens the matched finance enquiry, and
+                        is hidden while that service is switched off. It used to be a
+                        button that did nothing. */}
+                    {financeServiceEnabled && (
+                        <Link href="/services/finance" className="block w-full bg-primary hover:bg-primary/90 text-white font-bold rounded-lg py-3 transition-colors">
+                            Send a finance enquiry
+                        </Link>
+                    )}
                 </div>
             </div>
 

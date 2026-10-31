@@ -128,6 +128,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const [copied, setCopied] = React.useState(false)
     const [connectingChat, setConnectingChat] = React.useState(false)
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
+    // A failed load must not read as "No damage reported" to a bidding dealer.
+    const [damageLoadFailed, setDamageLoadFailed] = React.useState(false)
     const [selectedDamageId, setSelectedDamageId] = React.useState<string | null>(null)
     const [showHpiModal, setShowHpiModal] = React.useState(false)
 
@@ -314,7 +316,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     // Fetch damage records when auction (and its listingId) is available
     React.useEffect(() => {
         if (!auction?.listingId) return
-        getDamageRecords(auction.listingId).then(setDamageRecords).catch(() => {})
+        setDamageLoadFailed(false)
+        getDamageRecords(auction.listingId)
+            .then(setDamageRecords)
+            .catch(() => setDamageLoadFailed(true))
     }, [auction?.listingId])
 
     // ── Socket ────────────────────────────────────────────────────────────────
@@ -1571,7 +1576,9 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             <p className="text-[10px] text-[var(--text-muted)] mb-4 pl-3">
                                                 {damageRecords.length > 0
                                                     ? `${damageRecords.length} damage report${damageRecords.length !== 1 ? "s" : ""} · ${buyerDamagePins.length} 3D marker${buyerDamagePins.length !== 1 ? "s" : ""} — select a number or detail below`
-                                                    : "No damage reported by the seller"}
+                                                    : damageLoadFailed
+                                                        ? "Damage details could not be loaded. Refresh the page before bidding."
+                                                        : "No damage reported by the seller"}
                                             </p>
                                             <ThreeDErrorBoundary
                                                 fallback={

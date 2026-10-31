@@ -15,7 +15,7 @@ import { buildBuyerDamagePins } from "@/lib/damageMarkers"
 import {
     ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon,
     MapPin, Share2, Heart, Scale, Loader2, AlertTriangle, X, Tag,
-    Clock, XCircle, MessageCircle, ThumbsUp, Lock, FileSearch, BadgeCheck, Star, Sparkles, Zap, CreditCard, Info, Globe, Wrench,
+    Clock, XCircle, MessageCircle, ThumbsUp, BadgeCheck, Star, Sparkles, Zap, CreditCard, Info, Globe, Wrench,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { SellerBadge } from "@/components/ui/SellerBadge"
@@ -1222,64 +1222,10 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
 
 
 
-                        {/* HPI Check Report */}
-                        <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8 relative overflow-hidden">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-xl font-bold border-l-4 border-primary pl-4 flex items-center gap-2">
-                                    <FileSearch className="text-primary" size={20} />
-                                    Comprehensive Vehicle Check
-                                </h3>
-                                <div className="text-xs font-semibold px-2.5 py-1 bg-white/10 text-[var(--text-secondary)] rounded-md border border-[var(--border-default)]">
-                                    Powered by CarMazium
-                                </div>
-                            </div>
-                            
-                            {/* Badges Summary */}
-                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
-                                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg">
-                                    <CheckCircle size={16} className="text-emerald-400 shrink-0" />
-                                    <span className="text-sm text-emerald-300 font-medium">Finance Clear</span>
-                                </div>
-                                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg">
-                                    <CheckCircle size={16} className="text-emerald-400 shrink-0" />
-                                    <span className="text-sm text-emerald-300 font-medium">Not Stolen</span>
-                                </div>
-                                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg">
-                                    <CheckCircle size={16} className="text-emerald-400 shrink-0" />
-                                    <span className="text-sm text-emerald-300 font-medium">Not Scrapped</span>
-                                </div>
-                                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg">
-                                    <CheckCircle size={16} className="text-emerald-400 shrink-0" />
-                                    <span className="text-sm text-emerald-300 font-medium">Mileage Checked</span>
-                                </div>
-                                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg">
-                                    <CheckCircle size={16} className="text-emerald-400 shrink-0" />
-                                    <span className="text-sm text-emerald-300 font-medium">Not Written Off</span>
-                                </div>
-                            </div>
-
-                            {/* Blurred Report Section */}
-                            <div className="relative rounded-xl border border-[var(--border-default)] overflow-hidden bg-[var(--bg-card)]">
-                                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/60 backdrop-blur-[3px] p-6 text-center">
-                                    <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center text-primary mb-4 shadow-neon">
-                                        <Lock size={28} />
-                                    </div>
-                                    <h4 className="text-xl font-bold mb-2 text-white">Detailed Report Locked</h4>
-                                    <p className="text-sm text-gray-300 max-w-sm mb-6">
-                                        Unlock the full 50+ point vehicle history check including MOT history, keeper changes, and hidden issues.
-                                    </p>
-                                    <Button className="shadow-neon px-8 hover:scale-105 transition-transform">
-                                        Unlock Full Report for £9.99
-                                    </Button>
-                                </div>
-                                <div className="h-56 relative opacity-40 pointer-events-none grayscale-[0.2]">
-                                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950">
-                                        <ShieldCheck size={96} className="text-blue-300/30" aria-hidden="true" />
-                                    </div>
-                                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-900/20 to-slate-900/50" />
-                                </div>
-                            </div>
-                        </div>
+                        {/* A static "Comprehensive Vehicle Check" used to sit here: it showed
+                            Finance Clear / Not Stolen / Not Written Off for every vehicle without
+                            any check having run, and its "Unlock" button did nothing. Real
+                            history results are shown above when a report exists. */}
 
                         {/* Finance Calculator */}
                         <FinanceCalculator vehiclePrice={Number(listing.price)} />

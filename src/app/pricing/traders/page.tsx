@@ -79,7 +79,7 @@ export default function TraderPricingPage() {
                                 <span className="text-4xl font-black tracking-tight">£{auction.buyerFee}</span>
                                 <span className="mb-1 text-xs text-[var(--text-muted)]">one-off</span>
                             </div>
-                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Paid only by the winning verified Trader</p>
+                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Paid only by the winning verified Trader, within 72 hours of the win</p>
                         </div>
                         <ul className="my-6 flex-1 space-y-3">
                             <li className={featureItemClass}><CheckCircle size={15} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" /> No auction buyer fee if you do not win</li>

@@ -288,6 +288,8 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     const [shareToast, setShareToast] = React.useState(false)
     const [showHpiModal, setShowHpiModal] = React.useState(false)
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
+    // A failed load must not read as "No damage reported" to a buyer.
+    const [damageLoadFailed, setDamageLoadFailed] = React.useState(false)
     const [selectedDamageId, setSelectedDamageId] = React.useState<string | null>(null)
     const selectedDamageZone = damageRecords.find((r: any) => r.id === selectedDamageId)?.part ?? null
     const buyerDamagePins = buildBuyerDamagePins(damageRecords)
@@ -410,7 +412,8 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     // Fetch damage records (publicly visible — builds buyer trust)
     React.useEffect(() => {
         if (!listing) return
-        getDamageRecords(listing.id).then(setDamageRecords).catch(() => { })
+        setDamageLoadFailed(false)
+        getDamageRecords(listing.id).then(setDamageRecords).catch(() => setDamageLoadFailed(true))
     }, [listing])
 
     // Delivery distance check — informational only, used to show greyed out-of-radius hint
@@ -1160,7 +1163,9 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                 <p className="text-xs text-[var(--text-muted)] mb-4 pl-5">
                                     {damageRecords.length > 0
                                         ? `${damageRecords.length} damage${damageRecords.length !== 1 ? 's' : ''} reported by seller · ${buyerDamagePins.length} positioned on 3D — click a number or record to inspect`
-                                        : 'No damage reported by the seller'}
+                                        : damageLoadFailed
+                                            ? 'Damage details could not be loaded. Refresh the page to see them.'
+                                            : 'No damage reported by the seller'}
                                 </p>
 
                                 {/* WebGL isn't guaranteed on every device (in-app
