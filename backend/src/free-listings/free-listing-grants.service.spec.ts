@@ -391,6 +391,38 @@ describe('FreeListingGrantsService', () => {
             expect(prisma.auction.update).not.toHaveBeenCalled();
         });
 
+        it('re-granted after the win: the replaced grant window still covers it', async () => {
+            // Current row is a newer grant that started after the win.
+            const current = activePurchaseGrantRow({ id: 'grant-new', createdAt: new Date('2026-09-20T00:00:00.000Z') });
+            prisma.$queryRaw
+                .mockResolvedValueOnce([current])                 // lock grant row
+                .mockResolvedValueOnce([{ id: 'auction-1' }])     // lock auction row
+                .mockResolvedValueOnce([{ present: true }])       // history table exists
+                .mockResolvedValueOnce([{ id: 'grant-old' }]);    // old window covered wonAt
+            prisma.auction.findUnique.mockResolvedValue(wonAuction('2026-09-14T12:00:00.000Z'));
+            ready();
+            expect(await service.applyPurchaseGrantToAuctionIfEligible('auction-1', 'user-1')).toBe(true);
+            expect(prisma.transaction.create).toHaveBeenCalledWith(expect.objectContaining({
+                data: expect.objectContaining({ description: 'Admin-granted free auction purchase (grant-old)' }),
+            }));
+            const sql = prisma.$executeRaw.mock.calls[0][0];
+            expect(String(sql.sql ?? (sql.strings ?? []).join(''))).toContain('admin_free_purchase_grant_history');
+            const historyQuery = prisma.$queryRaw.mock.calls[3][0];
+            expect(historyQuery.values).toEqual(expect.arrayContaining(['user-1', new Date('2026-09-14T12:00:00.000Z')]));
+        });
+
+        it('without the history table (migration not applied), a replaced window cannot be honoured', async () => {
+            const current = activePurchaseGrantRow({ id: 'grant-new', createdAt: new Date('2026-09-20T00:00:00.000Z') });
+            prisma.$queryRaw
+                .mockResolvedValueOnce([current])
+                .mockResolvedValueOnce([{ id: 'auction-1' }])
+                .mockResolvedValueOnce([{ present: false }]);
+            prisma.auction.findUnique.mockResolvedValue(wonAuction('2026-09-14T12:00:00.000Z'));
+            ready();
+            expect(await service.applyPurchaseGrantToAuctionIfEligible('auction-1', 'user-1')).toBe(false);
+            expect(prisma.transaction.create).not.toHaveBeenCalled();
+        });
+
         it('no grant: no waiver', async () => {
             prisma.$queryRaw.mockResolvedValue([]);
             expect(await service.applyPurchaseGrantToAuctionIfEligible('auction-1', 'user-1')).toBe(false);

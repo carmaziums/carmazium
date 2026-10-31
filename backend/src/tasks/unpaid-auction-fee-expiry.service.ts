@@ -47,12 +47,18 @@ export class UnpaidAuctionFeeExpiryService {
                     ? 24 : hoursRemaining > 0 && hoursRemaining <= 6 ? 6 : null;
                 if (stage === null) continue;
                 // Never ask for £125 when the win is covered by a Free
-                // Purchase Grant that was active when it was won.
+                // Purchase Grant that was active when it was won. If cover
+                // can't be confirmed, skip this run's reminder and retry; the
+                // reminder is only claimed once a check has completed.
                 if (this.grants) {
-                    const waived = await this.grants
-                        .applyPurchaseGrantToAuctionIfEligible(auction.id, auction.winnerId)
-                        .catch(() => false);
-                    if (waived) continue;
+                    let covered: boolean | 'unknown';
+                    try {
+                        covered = await this.grants.applyPurchaseGrantToAuctionIfEligible(auction.id, auction.winnerId);
+                    } catch (error: any) {
+                        this.logger.warn(`Free purchase grant check failed for auction ${auction.id}; reminder deferred: ${error?.message || error}`);
+                        covered = 'unknown';
+                    }
+                    if (covered !== false) continue;
                 }
                 const field = stage === 24 ? 'buyerFeeReminder24SentAt' : 'buyerFeeReminder6SentAt';
                 if (auction[field]) continue;
