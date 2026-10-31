@@ -1907,7 +1907,7 @@ export class DealersService {
         assertDealerPermission(actor, 'VIEW_PURCHASES');
         const ids = [...new Set(listingIds.map(id => id.trim()).filter(Boolean))];
         if (!ids.length || ids.length > 50
-            || ids.some(id => !/^[a-f\\d-]{36}$/i.test(id))) {
+            || ids.some(id => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) {
             throw new BadRequestException('Provide 1 to 50 valid listing IDs');
         }
         return this.prisma.sale.findMany({
