@@ -23,7 +23,7 @@ import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 import { PurchaseDestinations } from "@/components/dealer/PurchaseDestinations"
 import { useDealerAccess } from "@/context/DealerAccessContext"
 import {
-    buyerCancelledSales, isPurchaseHistoryStatus, loadAllPages, matchesPurchaseSearch,
+    buyerCancelledSales, isPurchaseHistoryStatus, isRetailPurchase, loadAllPages, matchesPurchaseSearch,
     PURCHASE_HISTORY_STATUSES, PURCHASE_MAX_PAGES, PURCHASE_PAGE_SIZE,
 } from "@/lib/purchaseDestinations"
 import {
@@ -61,16 +61,19 @@ type ViewMode = "list" | "kanban"
 type StatusFilter = "all" | "pending_retail" | PurchaseStatus
 
 /**
- * Shared by two separate destinations:
+ * Shared by three separate destinations:
  *  - mode "all"     → /dashboard/dealer/purchases (All Purchases): every
  *    purchase and agreed retail deal at its current stage, with search and a
  *    Status filter, list or kanban.
+ *  - mode "retail"  → /dashboard/dealer/purchases/retail (Retail Purchases):
+ *    accepted retail offers and recorded retail sales, including pending sales.
  *  - mode "history" → /dashboard/dealer/purchases/history (Purchase History):
  *    completed purchases plus cancelled sales, as a record.
  * Statuses, fees and actions are identical in both; only what is shown differs.
  */
-export function DealerPurchasesView({ mode }: { mode: "all" | "history" }) {
+export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retail" }) {
     const isHistory = mode === "history"
+    const isRetail = mode === "retail"
     const { user, profile, loading: authLoading } = useAuth()
     // Staff act for the dealership owner, whose id is on every Sale.
     const { access } = useDealerAccess()
@@ -168,15 +171,16 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" }) {
     // What this destination shows, before grouping. History keeps completed
     // stages only; search and the Status filter narrow either view.
     const visiblePurchases = React.useMemo(() => purchases.filter(p => {
+        if (isRetail && !isRetailPurchase(p)) return false
         if (isHistory && !isPurchaseHistoryStatus(p.status)) return false
         if (statusFilter !== "all" && p.status !== statusFilter) return false
         return matchesPurchaseSearch(p, query)
-    }), [purchases, isHistory, statusFilter, query])
-    const narrowed = query.trim() !== "" || statusFilter !== "all"
+    }), [purchases, isHistory, isRetail, statusFilter, query])
+    const narrowed = isRetail || query.trim() !== "" || statusFilter !== "all"
     const stageOrder: PurchaseStatus[] = isHistory
         ? STATUS_ORDER.filter(s => (PURCHASE_HISTORY_STATUSES as readonly string[]).includes(s))
         : STATUS_ORDER
-    const statusOptions = stageOrder.filter(s => statusFilter === s || purchases.some(p => p.status === s))
+    const statusOptions = stageOrder.filter(s => statusFilter === s || purchases.some(p => (!isRetail || isRetailPurchase(p)) && p.status === s))
 
     // Group by status
     const grouped = React.useMemo(() => {
@@ -198,7 +202,7 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" }) {
         () => pendingRetailPurchases(acceptedOffers, purchases.map(p => p.listingId)),
         [acceptedOffers, purchases],
     )
-    // Agreed retail deals are current work, so they belong to All Purchases only.
+    // Agreed retail deals belong to Retail Purchases and All Purchases, never History.
     const shownPendingRetail = isHistory || (statusFilter !== "all" && statusFilter !== "pending_retail")
         ? []
         : pendingRetail.filter(offer => matchesPurchaseSearch({
@@ -227,10 +231,12 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" }) {
                 <main className="flex-1 space-y-6 min-w-0">
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
                         <PageHeader
-                            title={isHistory ? "Purchase History" : "All Purchases"}
+                            title={isHistory ? "Purchase History" : isRetail ? "Retail Purchases" : "All Purchases"}
                             subHeader={isHistory
                                 ? "Completed purchases and cancelled sales, kept as a record"
-                                : "Every vehicle you have bought or agreed to buy, retail and auction, with its current status"}
+                                : isRetail
+                                    ? "Accepted retail offers and vehicles bought directly from sellers, at every stage"
+                                    : "Every vehicle you have bought or agreed to buy, retail and auction, with its current status"}
                         />
 
                         {/* View Toggle */}
@@ -260,7 +266,7 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" }) {
                         )}
                     </div>
 
-                    <PurchaseDestinations active={isHistory ? "history" : "all"} />
+                    <PurchaseDestinations active={isHistory ? "history" : isRetail ? "retail" : "all"} />
 
                     {/* Search and Status: one row on phones, nothing clipped. */}
                     <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_220px] gap-2">
@@ -297,7 +303,9 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" }) {
                         <p className="text-xs text-[var(--text-muted)]">
                             {isHistory
                                 ? "Shows Purchased, Checks Complete and Delivery Requested. A delivery may still be on its way; open the purchase to track it. Earlier stages are under All Purchases."
-                                : "Accepted retail offers appear below as sale pending until the seller completes the transaction."}
+                                : isRetail
+                                    ? "Accepted retail offers appear as Sale Pending. Recorded retail purchases stay here through confirmation and delivery."
+                                    : "Accepted retail offers appear below as sale pending until the seller completes the transaction."}
                         </p>
                         <button
                             type="button"
@@ -326,7 +334,7 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" }) {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <MetricCard
                             label="Recorded Purchases"
-                            value={purchases.length}
+                            value={isRetail ? purchases.filter(isRetailPurchase).length : purchases.length}
                             icon={Package}
                             color="text-primary"
                             bg="bg-primary/10"
@@ -392,7 +400,7 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" }) {
 
                     {nothingMatches && (
                         <div className="dealer-glass-card p-8 text-center">
-                            <p className="text-sm font-semibold">No purchases match your search or status.</p>
+                            <p className="text-sm font-semibold">{isRetail && !query.trim() && statusFilter === "all" ? "No retail purchases yet." : "No purchases match your search or status."}</p>
                             <button type="button" onClick={() => { setQuery(""); setStatusFilter("all") }} className="mt-3 min-h-11 rounded-xl border border-[var(--border-default)] px-4 text-sm font-semibold hover:border-primary/50">
                                 Clear search and filter
                             </button>
