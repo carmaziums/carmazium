@@ -33,6 +33,10 @@ on:
       - "src/app/search/page.tsx"
       - "scripts/test-retail-card-transmission.test.mjs"
       - "scripts/test-home-retail-inventory-truth.test.mjs"
+      - "scripts/test-home-card-payload.test.mjs"
+      - "src/lib/homeCardListing.ts"
+      - "src/lib/cardImageUrl.ts"
+      - "src/components/features/CardImageCarousel.tsx"
       - "src/lib/googleAds.ts"
       - "src/lib/gtm.ts"
       - "src/app/checkout/success/page.tsx"
@@ -103,6 +107,9 @@ jobs:
 
       - name: Verify homepage live inventory and honest photo/payment presentation
         run: node --test scripts/test-home-retail-inventory-truth.test.mjs
+
+      - name: Homepage card payload and photo windowing
+        run: node --test scripts/test-home-card-payload.test.mjs
 
       - name: Verify admin-only review and dual-channel official data preservation
         run: node --test scripts/test-admin-vehicle-review.test.mjs
