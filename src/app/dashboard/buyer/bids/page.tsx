@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import * as React from "react"
+import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import Link from "next/link"
 import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -12,7 +13,7 @@ import { createChatRoom } from "@/lib/chatApi"
 
 const BID_CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000
 
-export default function MyBidsPage() {
+function MyBidsPage() {
     const { user, loading: authLoading } = useAuth()
     const [bids, setBids] = React.useState<Bid[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -297,5 +298,16 @@ export default function MyBidsPage() {
                 </main>
             </div>
         </div>
+    )
+}
+
+/** Private dashboard canonicalisation; ?legacy=1 preserves specialist actions. */
+export default function CanonicalMyBidsPage() {
+    return (
+        <React.Suspense fallback={<div className="min-h-[40vh]" />}>
+            <LegacyDashboardRedirect target="/dashboard/user?tab=bids" preserveWhen={["auctionId"]}>
+                <MyBidsPage />
+            </LegacyDashboardRedirect>
+        </React.Suspense>
     )
 }
