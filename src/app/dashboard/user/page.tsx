@@ -570,6 +570,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [listings, setListings] = React.useState<Listing[]>([])
     const [statusFilter, setStatusFilter] = React.useState<string>("ALL")
     const [loading, setLoading] = React.useState(true)
+    const [loadError, setLoadError] = React.useState<string | null>(null)
     const [page, setPage] = React.useState(1)
 
     const [deleting, setDeleting] = React.useState<string | null>(null)
@@ -592,8 +593,11 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
             // filtering, instead of hiding matching cars on later API pages.
             const data = await getCompletePrivateListings()
             setListings(data)
+            setLoadError(null)
         } catch (err) {
             console.error('Failed to fetch listings:', err)
+            // Never present a failed load as "no cars": say so and offer a retry.
+            setLoadError(err instanceof Error && err.message ? err.message : "We couldn't load your cars.")
         } finally {
             setLoading(false)
         }
@@ -695,12 +699,22 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                 ))}
             </div>
 
+            {loadError && !loading && (
+                <div role="alert" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+                    <span className="text-[var(--text-primary)]">{loadError}</span>
+                    <button type="button" onClick={() => { setLoading(true); void fetchListings() }}
+                        className="min-h-[44px] rounded-lg border border-[var(--border-default)] px-4 font-bold text-primary">
+                        Retry
+                    </button>
+                </div>
+            )}
+
             <div className="sm:hidden divide-y divide-[var(--border-default)]">
                     {loading ? (
                         <div className="py-16 text-center">
                             <Loader2 className="h-9 w-9 animate-spin text-primary mx-auto" />
                         </div>
-                    ) : visibleListings.length === 0 ? (
+                    ) : visibleListings.length === 0 && !loadError ? (
                         <div className="py-16 text-center text-[var(--text-muted)] italic px-6">
                             No listings found. Start selling today!
                         </div>
@@ -789,7 +803,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                     <div className="mt-1 space-y-1.5 border-t border-[var(--border-default)] pt-3">
                                         {listing.status === 'ACTIVE' && (
                                             <Link
-                                                href={`${auctionDashPath}?listingId=${listing.id}`}
+                                                href={`${auctionDashPath}${auctionDashPath.includes('?') ? '&' : '?'}listingId=${encodeURIComponent(listing.id)}`}
                                                 className="min-h-[46px] flex items-center gap-2.5 px-3 rounded-xl text-orange-400 bg-orange-500/5 font-bold text-sm"
                                             >
                                                 <Gavel size={16} /> Put to Auction
@@ -830,7 +844,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                         <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
                                     </td>
                                 </tr>
-                            ) : visibleListings.length === 0 ? (
+                            ) : visibleListings.length === 0 && !loadError ? (
                                 <tr>
                                     <td colSpan={6} className="px-6 py-20 text-center text-[var(--text-muted)] italic">
                                         No listings found. Start selling today!
@@ -929,7 +943,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                             <Pencil size={14} /> Edit
                                                         </Link>
                                                         {listing.status === 'ACTIVE' && (
-                                                            <Link href={`${auctionDashPath}?listingId=${listing.id}`} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-orange-500/10 text-orange-400 w-full">
+                                                            <Link href={`${auctionDashPath}${auctionDashPath.includes('?') ? '&' : '?'}listingId=${encodeURIComponent(listing.id)}`} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-orange-500/10 text-orange-400 w-full">
                                                                 <Gavel size={14} /> Put to Auction
                                                             </Link>
                                                         )}

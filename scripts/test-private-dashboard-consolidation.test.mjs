@@ -67,7 +67,7 @@ test("native private dashboard groups selling and buying consistently", () => {
     assert.match(cars, /fetchAllMyAuctions/)
     assert.match(cars, /fetchAllMyListings/)
     assert.match(cars, /Filter/)
-    assert.match(cars, /navigate\(channel === 'Listings' \? 'SellerListings' : 'SellerAuctions'\)/)
+    assert.match(cars, /navigate\(channel === 'Listings' \? 'SellerListings' : 'SellerAuctions',/)
     const buyerPurchases = read("carmazium app/carmazium app/src/screens/buyer/BuyerPurchaseHistoryScreen.tsx")
     assert.match(buyerPurchases, /AGREED RETAIL PURCHASES/)
     assert.match(buyerPurchases, /o\.status === 'ACCEPTED'/)
@@ -90,4 +90,24 @@ test("private purchases do not confuse agreed offers with recorded funds or plat
     assert.match(purchases, /o\.status === "ACCEPTED"/)
     assert.match(purchases, /Vehicle sale proceeds go directly to the seller/)
     assert.match(purchases, /A platform fee receipt is not evidence/)
+})
+
+test("review fixes: editing, auction manager links, app car focus and load errors", () => {
+    const rd = p => readFileSync(new URL("../" + p, import.meta.url), "utf8")
+    // Edit links keep the dashboard editor instead of bouncing to /sell.
+    assert.match(rd("src/app/dashboard/seller/add-listing/page.tsx"),
+        /preserveWhen=\{\["editId", "editSlug", "sellMode", "v", "vrm"\]\}/)
+    // ?manage=1 links reach the auction manager; listingId is appended safely.
+    assert.match(rd("src/app/dashboard/seller/auctions/page.tsx"), /preserveWhen=\{\["listingId", "manage"\]\}/)
+    const user = rd("src/app/dashboard/user/page.tsx")
+    assert.ok(!user.includes("${auctionDashPath}?listingId="))
+    assert.ok(user.includes("auctionDashPath.includes('?') ? '&' : '?'"))
+    // A failed inventory load is shown, never presented as "no cars".
+    assert.ok(user.includes("setLoadError(err instanceof Error"))
+    assert.ok(user.includes("visibleListings.length === 0 && !loadError"))
+    // App My cars opens the selected car's own actions.
+    const app = "carmazium app/carmazium app/src/screens/"
+    assert.ok(rd(app + "account/MyCarsScreen.tsx").includes("focusListingId: channel === 'Listings' ? item.id"))
+    assert.ok(rd(app + "seller/SellerListingsScreen.tsx").includes("setActionMenuListing(match)"))
+    assert.ok(rd(app + "seller/SellerAuctionsScreen.tsx").includes("a.listingId === focusListingId"))
 })
