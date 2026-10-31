@@ -397,7 +397,7 @@ export default function DealerOffersPage() {
 
                                                             {!isPending && offer.status !== 'ACCEPTED' && (
                                                                 <span className="text-xs text-gray-600 uppercase tracking-widest font-black italic">
-                                                                    Decision Finalized
+                                                                    Decision Finalised
                                                                 </span>
                                                             )}
                                                         </div>

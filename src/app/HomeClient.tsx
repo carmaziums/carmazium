@@ -465,7 +465,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
             {liveAuctions.map((auction, i) => {
               const currentBid = getCurrentBid(auction)
               const bidCount = getBidCount(auction)
-              const image = auction.listing.images?.[0] ?? "/assets/images/hero-bg.png"
+              const image = auction.listing.images?.[0] ?? "/assets/images/featured-sports.webp"
               const vehicle = `${auction.listing.year ?? ""} ${auction.listing.make ?? ""} ${auction.listing.model ?? ""}`.trim()
               return (
                 <motion.div
@@ -527,7 +527,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
               { icon: Search, title: "Browse or List a Car", desc: "Explore verified listings or create your own car listing in minutes." },
               { icon: Handshake, title: "Connect or Bid", desc: "Buy directly, negotiate with sellers, or place bids in live auctions." },
               { icon: Shield, title: "Pay the Seller Directly", desc: "Agree a secure payment method with the seller after completing your vehicle checks." },
-              { icon: FileText, title: "Ownership Transfer", desc: "Finalize documentation and drive away with confidence." }
+              { icon: FileText, title: "Ownership Transfer", desc: "Finalise documentation and drive away with confidence." }
             ].map((step, idx) => (
               <motion.div
                 key={idx}

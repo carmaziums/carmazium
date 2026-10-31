@@ -781,7 +781,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const reserveMet = !!(topBidAmount !== null && topBidAmount >= Number(auction.reservePrice))
     // BIN card visibility: live + buyer + BIN price set + reserve not met + no pending BIN
     const showBin = isBiddingOpen && !isSeller && canPlaceBid && !!auction.buyItNowPrice && !reserveMet && !binPending
-    const images = auction.listing.images?.length ? auction.listing.images : ["/assets/images/hero-bg.png"]
+    const images = auction.listing.images?.length ? auction.listing.images : ["/assets/images/featured-sports.webp"]
     const bidCount = bidHistory.length
     const provisionalOfferAgeMs = auction.provisionalOfferedAt
         ? Date.now() - new Date(auction.provisionalOfferedAt).getTime() : 0;
@@ -2236,7 +2236,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     {!isCancelled && !isSeller && (
                         <div className="flex items-start gap-2.5 px-3 py-2.5 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl text-xs text-[var(--text-muted)]">
                             <ShieldCheck size={13} className="shrink-0 mt-0.5 text-emerald-500" />
-                            All deals are arranged directly between buyer and seller via Carmazium secure chat.
+                            All deals are arranged directly between buyer and seller via CarMazium secure chat.
                         </div>
                     )}
 

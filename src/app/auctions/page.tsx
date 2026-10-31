@@ -47,7 +47,7 @@ const PILLARS: Pillar[] = [
         description: "Sell vehicles in 24-hour auctions or bid as a verified trade dealer, with live bidding and anti-snipe protection.",
         points: ["Free auction listings", "£100 qualifying seller bonus", "£125 fee only for the winning dealer"],
         href: "/auctions/how-it-works",
-        cta: "Explore auctions",
+        cta: "How auctions work",
     },
     {
         icon: Truck,
@@ -237,7 +237,7 @@ export default function TradeXchangePage() {
             />
             <section className="relative overflow-hidden text-white" style={{ marginTop: "-80px", paddingTop: "80px" }}>
                 <Image
-                    src="/assets/images/live-auction-hero.jpg"
+                    src="/assets/images/live-auction-hero.webp"
                     alt="TradeXchange automotive marketplace"
                     fill
                     priority

@@ -422,7 +422,7 @@ export function HpiReportModal({ listingId, onClose }: Props) {
                         <div ref={printRef}>
                             {/* Print header */}
                             <div className="hidden print:block mb-6">
-                                <h1>Vehicle History Report — Carmazium</h1>
+                                <h1>Vehicle History Report — CarMazium</h1>
                                 <h2>{summary.make} {summary.model} ({summary.vrm})</h2>
                             </div>
 

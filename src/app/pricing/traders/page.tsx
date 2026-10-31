@@ -18,6 +18,14 @@ import { PageHero } from "@/components/layout/PageHero"
 export const metadata: Metadata = {
     title: "Trader & Partner Pricing",
     description: "CarMazium pricing for verified motor traders and Partner Accounts, including the auction fee paid by the winning Trader.",
+    // Without these the page inherits /pricing's canonical and is dropped from search as a duplicate.
+    alternates: { canonical: "/pricing/traders" },
+    openGraph: {
+        title: "Trader & Partner Pricing | CarMazium",
+        description: "CarMazium pricing for verified motor traders and Partner Accounts, including the auction fee paid by the winning Trader.",
+        url: "/pricing/traders",
+        type: "website",
+    },
 }
 
 const featureItemClass = "flex items-start gap-2.5 text-sm leading-5 text-[var(--text-secondary)]"
@@ -100,7 +108,7 @@ export default function TraderPricingPage() {
                             <li className={featureItemClass}><CheckCircle size={15} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" /> No CarMazium retail buyer fee</li>
                         </ul>
                         <Button asChild variant="outline" className="mt-auto w-full">
-                            <Link href="/buy-cars">Browse Retail Cars</Link>
+                            <Link href="/search">Browse Retail Cars</Link>
                         </Button>
                     </article>
                 </div>

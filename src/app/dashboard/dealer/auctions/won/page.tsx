@@ -270,7 +270,7 @@ function WonAuctionRow({ auction, canPayAuctionFee, purchaseId }: { auction: Auc
     return (
         <Row
             recordHref={purchaseId ? `/dashboard/dealer/purchases/${encodeURIComponent(purchaseId)}` : undefined}
-            image={l.images?.[0] ?? "/assets/images/hero-bg.png"}
+            image={l.images?.[0] ?? "/assets/images/featured-sports.webp"}
             title={l.title}
             meta={<>
                 <span>Sold by <span className="text-[var(--text-primary)] font-bold">{sellerName}</span></span>
@@ -361,7 +361,7 @@ function ActiveBidRow({ bid, tick, canPlaceBid }: { bid: Bid; tick: number; canP
 
     return (
         <Row
-            image={l.images?.[0] ?? "/assets/images/hero-bg.png"}
+            image={l.images?.[0] ?? "/assets/images/featured-sports.webp"}
             title={l.title}
             meta={<>
                 {l.year && <span className="font-bold">{l.year}</span>}
@@ -581,8 +581,8 @@ export default function MyBidsPage() {
                     {/* Legend / footnote */}
                     {!isEmpty && !isLoading && !loadError && (
                         <div className="dealer-glass-card p-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-[var(--text-muted)]">
-                            <span className="flex items-center gap-1.5"><Car size={13} /> The winning bid itself is paid directly to the seller, not through Carmazium.</span>
-                            <span className="flex items-center gap-1.5"><CreditCard size={13} /> The £125 buyer fee is Carmazium&apos;s fee — up to £100 of it is refunded if handover is denied.</span>
+                            <span className="flex items-center gap-1.5"><Car size={13} /> The winning bid itself is paid directly to the seller, not through CarMazium.</span>
+                            <span className="flex items-center gap-1.5"><CreditCard size={13} /> The £125 buyer fee is CarMazium&apos;s fee — up to £100 of it is refunded if handover is denied.</span>
                         </div>
                     )}
                 </main>

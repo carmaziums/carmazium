@@ -340,7 +340,7 @@ export default function DealerEarningsPage() {
                                 <h2 className="text-2xl font-black font-heading text-[var(--text-primary)] uppercase tracking-tight">Auction Sales</h2>
                             </div>
                             <p className="text-xs text-[var(--text-muted)] mt-1 ml-5">
-                                Vehicles sold through auction with handover verified. The winning bid is settled directly with the buyer — the £100 bonus is what Carmazium paid you.
+                                Vehicles sold through auction with handover verified. The winning bid is settled directly with the buyer — the £100 bonus is what CarMazium paid you.
                             </p>
                         </div>
 
@@ -431,7 +431,7 @@ export default function DealerEarningsPage() {
                                             <td className="px-8 py-6 text-right">
                                                 <div className="inline-flex flex-col items-end px-4 py-2 bg-amber-500/5 rounded-2xl border border-amber-500/10">
                                                     <span className="text-amber-400 font-black text-lg leading-none">{formatPrice(a.sellerBonus)}</span>
-                                                    <span className="text-xs text-amber-500/60 font-black uppercase tracking-widest mt-1">Carmazium Bonus</span>
+                                                    <span className="text-xs text-amber-500/60 font-black uppercase tracking-widest mt-1">CarMazium Bonus</span>
                                                 </div>
                                             </td>
                                             <td className="px-8 py-6 text-center">

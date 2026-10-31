@@ -76,7 +76,7 @@ export function RecordSaleModal({ listing, offer, onClose, onSuccess }: RecordSa
                         <DollarSign size={24} className="text-primary" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tight">Finalize Sale</h2>
+                        <h2 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tight">Finalise Sale</h2>
                         <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest">{listing.title}</p>
                     </div>
                 </div>

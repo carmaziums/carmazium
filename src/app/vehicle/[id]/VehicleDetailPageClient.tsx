@@ -652,7 +652,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
         </div>
     )
 
-    const images = listing.images?.length > 0 ? listing.images : ["/assets/images/featured-sports.png"]
+    const images = listing.images?.length > 0 ? listing.images : ["/assets/images/featured-sports.webp"]
     const SidebarContent = () => (
         <div className="flex flex-col gap-6">
             {/* Price & Actions Card */}

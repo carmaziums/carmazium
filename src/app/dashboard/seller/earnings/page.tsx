@@ -304,7 +304,7 @@ function EarningsPage() {
                                 <Gavel className="text-amber-400" size={20} /> Auction Sales
                             </h2>
                             <p className="text-xs text-[var(--text-muted)] mt-1">
-                                Vehicles sold through auction with handover verified. The winning bid is settled directly with the buyer — the £100 bonus is what Carmazium paid you.
+                                Vehicles sold through auction with handover verified. The winning bid is settled directly with the buyer — the £100 bonus is what CarMazium paid you.
                             </p>
                         </div>
 

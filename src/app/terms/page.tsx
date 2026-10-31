@@ -3,6 +3,7 @@ import { Scale, Info, AlertTriangle, ShieldAlert, Mail, Phone, MapPin } from "lu
 export const metadata = {
     title: 'Terms & Conditions',
     description: 'Terms and Conditions for using the CarMazium platform.',
+    alternates: { canonical: '/terms' },
 }
 
 // ─── Content model ──────────────────────────────────────────────────────────

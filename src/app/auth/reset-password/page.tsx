@@ -90,7 +90,7 @@ export default function ResetPasswordPage() {
     }
 
     return (
-        <div className="min-h-screen pt-24 pb-12 flex items-center justify-center bg-[url('/assets/images/signup-bg.png')] bg-cover bg-center relative">
+        <div className="min-h-screen pt-24 pb-12 flex items-center justify-center bg-[url('/assets/images/signup-bg.webp')] bg-cover bg-center relative">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
 
             <div className="relative z-10 w-full max-w-md bg-white/10 backdrop-blur-md p-8 shadow-2xl border border-white/20 rounded-2xl text-white">
