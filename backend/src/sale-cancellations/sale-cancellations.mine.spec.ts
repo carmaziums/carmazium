@@ -46,12 +46,47 @@ describe('SaleCancellationsService.mine', () => {
         expect(args.take).toBe(500);
     });
 
-    it('default scope is unchanged', async () => {
+    it('default scope: staff with both permissions see buying and selling sides, as before', async () => {
         const { prisma, service } = setup();
         await service.mine('staff-user');
         const args = prisma.saleCancellationRequest.findMany.mock.calls[0][0];
-        expect(args.where.OR).toHaveLength(3);
+        expect(args.where.OR).toEqual([{ sellerId: 'owner-1' }, { buyerId: 'owner-1' }]);
         expect(args.take).toBe(100);
+    });
+
+    it('default scope: owners keep all three conditions', async () => {
+        const { prisma, service } = setup();
+        prisma.dealerStaff.findFirst.mockResolvedValue(null);
+        prisma.dealerProfile.findUnique.mockResolvedValue({ id: 'dp', userId: 'owner-1', isVerified: true });
+        await service.mine('owner-1');
+        expect(prisma.saleCancellationRequest.findMany.mock.calls[0][0].where.OR).toHaveLength(3);
+    });
+
+    it('revoked access: staff whose role has neither permission get nothing, without a query', async () => {
+        const { prisma, service } = setup('NO_PURCHASE_ACCESS');
+        await expect(service.mine('staff-user')).resolves.toEqual([]);
+        expect(prisma.saleCancellationRequest.findMany).not.toHaveBeenCalled();
+    });
+
+    it('removed staff member: resolves to their own id, never the dealership\'s', async () => {
+        const { prisma, service } = setup();
+        prisma.dealerStaff.findFirst.mockResolvedValue(null); // isActive=false is filtered out
+        await service.mine('former-staff');
+        const where = prisma.saleCancellationRequest.findMany.mock.calls[0][0].where;
+        expect(JSON.stringify(where)).not.toContain('owner-1');
+        expect(where.OR).toEqual([{ sellerId: 'former-staff' }, { buyerId: 'former-staff' }, { requestedById: 'former-staff' }]);
+    });
+
+    it('findOne refuses staff without a permission for that side, and isolates other dealerships', async () => {
+        const { prisma, service } = setup('NO_PURCHASE_ACCESS');
+        prisma.saleCancellationRequest.findUnique = jest.fn().mockResolvedValue(row({ id: 'a' }));
+        await expect(service.findOne('a', 'staff-user')).rejects.toBeInstanceOf(ForbiddenException);
+        const allowed = setup();
+        allowed.prisma.saleCancellationRequest.findUnique = jest.fn().mockResolvedValue(row({ id: 'a' }));
+        await expect(allowed.service.findOne('a', 'staff-user')).resolves.toMatchObject({ id: 'a' });
+        allowed.prisma.saleCancellationRequest.findUnique = jest.fn().mockResolvedValue(
+            row({ id: 'x', buyerId: 'another-dealer', sellerId: 'someone', requestedById: 'someone' }));
+        await expect(allowed.service.findOne('x', 'staff-user')).rejects.toBeInstanceOf(ForbiddenException);
     });
 
     it('purchase-history scope needs VIEW_PURCHASES for staff (all built-in roles have it)', async () => {
