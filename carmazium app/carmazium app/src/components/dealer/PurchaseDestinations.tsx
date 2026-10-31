@@ -12,7 +12,7 @@ export type PurchaseDestination = 'wins' | 'retail' | 'all' | 'history';
  * PurchaseDestinations: Auction Wins, Retail Purchases, All Purchases and Purchase History.
  *
  * Two columns per row with a wrapping label, so all four destinations fit
- * on a 360dp Samsung without horizontal scrolling.
+ * on a 360dp Samsung without a clipped or sideways-scrolling tab strip.
  */
 const ITEMS: { id: PurchaseDestination; label: string; icon: string }[] = [
   { id: 'wins', label: 'Auction Wins', icon: 'trophy-outline' },
