@@ -31,7 +31,7 @@ export const MyCarsScreen: React.FC = () => {
     setBusy(true);
     setError(null);
     const [listingResult, auctionResult] = await Promise.allSettled([
-      fetchAllMyListings<Vehicle>({ includeSold: true }),
+      fetchAllMyListings<Vehicle>(),
       fetchAllMyAuctions<Vehicle>('list'),
     ]);
     if (listingResult.status === 'fulfilled') setListings(listingResult.value);
