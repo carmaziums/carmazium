@@ -7,10 +7,9 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { useAuth } from "@/context/AuthContext"
 import { updateProfile } from "@/lib/listingApi"
+import { safeSellReturnPath } from "@/lib/sellPricingIntent"
 
 const ONBOARDING_DRAFT_KEY = "carmazium_onboarding_draft"
-
-import { safeSellReturnPath } from "@/lib/sellPricingIntent"
 
 export default function OnboardingPage() {
     const { user, profile, loading, refreshProfile } = useAuth()
