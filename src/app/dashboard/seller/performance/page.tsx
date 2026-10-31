@@ -1,13 +1,14 @@
 "use client"
 
 import * as React from "react"
+import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getSellerPerformance, formatPrice, type PerformanceStats } from "@/lib/listingApi"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { Loader2, TrendingUp, Eye, BarChart3, Target, AlertCircle } from "lucide-react"
 
-export default function SellerPerformancePage() {
+function SellerPerformancePage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [performance, setPerformance] = React.useState<PerformanceStats | null>(null)
     const [loading, setLoading] = React.useState(true)
@@ -109,4 +110,13 @@ export default function SellerPerformancePage() {
             </div>
         </div>
     )
+}
+
+/** Route legacy access via the canonical private dashboard. */
+export default function CanonicalSellerPerformancePage() {
+    return <React.Suspense fallback={<div className="min-h-[40vh]"/>}>
+        <LegacyDashboardRedirect target="/dashboard/user?tab=stats">
+            <SellerPerformancePage/>
+        </LegacyDashboardRedirect>
+    </React.Suspense>
 }
