@@ -65,7 +65,9 @@ function harness(options: { linked?: boolean; fees?: any[]; patch?: Record<strin
   };
   const notifications: any = { create: jest.fn().mockResolvedValue({}) };
   const gateway: any = { broadcastAuctionEnd: jest.fn() };
-  const service = new GuardedAuctionExpiryService(prisma, notifications, gateway);
+  // Default: the grant check completes and finds no cover.
+  const grants: any = { applyPurchaseGrantToAuctionIfEligible: jest.fn().mockResolvedValue(false) };
+  const service = new GuardedAuctionExpiryService(prisma, notifications, gateway, grants);
   return { service, prisma, tx, notifications, gateway, current };
 }
 
@@ -225,6 +227,17 @@ describe('Free Purchase Grant before unpaid expiry', () => {
 
     // Next hourly run: the grant check succeeds and the win is settled.
     expect(await service.revertUnpaidWins(NOW)).toEqual({ reverted: 0 });
+    expect(h.tx.sale.deleteMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('missing grant service fails safe', () => {
+  it('defers expiry instead of cancelling when the grant service is absent', async () => {
+    const h = harness();
+    h.prisma.auction.findMany.mockResolvedValue([{ id: 'auction-1', winnerId: 'buyer-1' }]);
+    const service = new GuardedAuctionExpiryService(h.prisma, h.notifications, h.gateway, undefined as any);
+    expect(await service.revertUnpaidWins(NOW)).toEqual({ reverted: 0 });
+    expect(h.prisma.$transaction).not.toHaveBeenCalled();
     expect(h.tx.sale.deleteMany).not.toHaveBeenCalled();
   });
 });

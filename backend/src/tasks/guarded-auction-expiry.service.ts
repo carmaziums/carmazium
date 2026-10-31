@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { FreeListingGrantsService } from '../free-listings/free-listing-grants.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -21,7 +21,9 @@ export class GuardedAuctionExpiryService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly gateway: AuctionGateway,
-    @Optional() private readonly grants?: FreeListingGrantsService,
+    // Required: this job can cancel a win, so it must always be able to
+    // check grant cover. Nest fails to start rather than run without it.
+    private readonly grants: FreeListingGrantsService,
   ) {}
 
   /**
@@ -34,7 +36,12 @@ export class GuardedAuctionExpiryService {
    *                   cancel the win and retries on the next run
    */
   private async grantOutcome(auctionId: string, winnerId: string | null): Promise<'waived' | 'not-covered' | 'unknown'> {
-    if (!this.grants || !winnerId) return 'not-covered';
+    if (!winnerId) return 'not-covered';
+    // Defensive: never treat a missing grant service as "no grant".
+    if (!this.grants) {
+      this.logger.error(`Free purchase grant service unavailable; expiry of auction ${auctionId} deferred`);
+      return 'unknown';
+    }
     try {
       return (await this.grants.applyPurchaseGrantToAuctionIfEligible(auctionId, winnerId)) ? 'waived' : 'not-covered';
     } catch (error: any) {

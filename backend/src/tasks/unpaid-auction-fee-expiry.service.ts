@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { FreeListingGrantsService } from '../free-listings/free-listing-grants.service';
 import { Cron } from '@nestjs/schedule';
 import { GuardedAuctionExpiryService } from './guarded-auction-expiry.service';
@@ -15,7 +15,8 @@ export class UnpaidAuctionFeeExpiryService {
         private readonly prisma: PrismaService,
         private readonly notifications: NotificationsService,
         private readonly email: EmailService,
-        @Optional() private readonly grants?: FreeListingGrantsService,
+        // Required: never ask for £125 without checking grant cover.
+        private readonly grants: FreeListingGrantsService,
     ) {}
 
     /** Hourly, offset from the expiry job. A conditional database claim prevents
@@ -50,9 +51,10 @@ export class UnpaidAuctionFeeExpiryService {
                 // Purchase Grant that was active when it was won. If cover
                 // can't be confirmed, skip this run's reminder and retry; the
                 // reminder is only claimed once a check has completed.
-                if (this.grants) {
+                {
                     let covered: boolean | 'unknown';
                     try {
+                        if (!this.grants) throw new Error('grant service unavailable');
                         covered = await this.grants.applyPurchaseGrantToAuctionIfEligible(auction.id, auction.winnerId);
                     } catch (error: any) {
                         this.logger.warn(`Free purchase grant check failed for auction ${auction.id}; reminder deferred: ${error?.message || error}`);

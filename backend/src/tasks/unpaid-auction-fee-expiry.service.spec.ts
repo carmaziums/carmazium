@@ -25,7 +25,8 @@ function harness(sample: any = auction()) {
     };
     const email: any = { sendAuctionBuyerFeeReminderEmail: jest.fn().mockResolvedValue(undefined) };
     const auctions: any = { revertUnpaidWins: jest.fn().mockResolvedValue({ reverted: 0 }) };
-    const service = new UnpaidAuctionFeeExpiryService(auctions, prisma, notifications, email);
+    const grants: any = { applyPurchaseGrantToAuctionIfEligible: jest.fn().mockResolvedValue(false) };
+    const service = new UnpaidAuctionFeeExpiryService(auctions, prisma, notifications, email, grants);
     return { service, prisma, notifications, email, auctions };
 }
 
@@ -118,6 +119,16 @@ describe('buyer-fee reminders and Free Purchase Grants', () => {
         const h = harness();
         const grants: any = { applyPurchaseGrantToAuctionIfEligible: jest.fn().mockRejectedValue(new Error('db')) };
         const service = new UnpaidAuctionFeeExpiryService(h.auctions, h.prisma, h.notifications, h.email, grants);
+        await service.remindUnpaidWinners(new Date('2026-10-03T11:00:00.000Z'));
+        expect(h.prisma.auction.updateMany).not.toHaveBeenCalled();
+        expect(h.notifications.create).not.toHaveBeenCalled();
+    });
+});
+
+describe('missing grant service fails safe (reminders)', () => {
+    it('sends no £125 reminder when the grant service is absent', async () => {
+        const h = harness();
+        const service = new UnpaidAuctionFeeExpiryService(h.auctions, h.prisma, h.notifications, h.email, undefined as any);
         await service.remindUnpaidWinners(new Date('2026-10-03T11:00:00.000Z'));
         expect(h.prisma.auction.updateMany).not.toHaveBeenCalled();
         expect(h.notifications.create).not.toHaveBeenCalled();
