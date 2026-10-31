@@ -115,6 +115,10 @@ test("purchase record shows every photo, the advert and declared damage, labelle
     assert.match(record, /record\.images/)
     assert.match(record, /record\.damage/)
     assert.match(record, /PURCHASE_SNAPSHOT/)
+    // Declared damage can be inspected on the same 3D model and pins as the advert.
+    assert.match(record, /buildBuyerDamagePins\(record\.damage/)
+    assert.match(record, /<ThreeDVehicleViewer[\s\S]*?damagePins=\{damagePins\}/)
+    assert.match(record, /ThreeDErrorBoundary/)
     // Without a purchase-time snapshot the page must say it is the current advert.
     assert.match(record, /The seller may have changed it since you bought the vehicle/)
     assert.match(read("src/app/dashboard/dealer/purchases/[id]/page.tsx"), /<PurchaseVehicleRecord record=\{purchase\.listingRecord\}/)
@@ -141,4 +145,5 @@ test("app parity: same destinations, wins card opens the record, history and sea
     const detail = read(APP + "screens/main/DealerPurchaseDetailScreen.tsx")
     assert.match(detail, /ImageLightbox/)
     assert.match(detail, /listingRecord/)
+    assert.match(detail, /<BuyerDamageViewer records=\{r\.damage\}/)
 })

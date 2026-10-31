@@ -10,6 +10,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@/components/BrandIcon';
 import { BottomSheet } from '../../components/BottomSheet';
 import { ImageLightbox } from '../../components/ImageLightbox';
+import { BuyerDamageViewer } from '../../components/damage/BuyerDamageViewer';
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 import { apiClient } from '../../lib/apiClient';
 import { getServiceSettings } from '../../lib/servicesApi';
@@ -119,6 +120,8 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
   const [actions, setActions] = useState(false);
   const [showSeller, setShowSeller] = useState(false);
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
+  // The 3D viewer is a WebView, so it only mounts when the dealer asks for it.
+  const [show3d, setShow3d] = useState(false);
   // Same emergency switch as the website (NEXT_PUBLIC_FEATURE_DELIVERY),
   // read from the backend that enforces it. Viewing an existing job is
   // always allowed; only new delivery jobs are blocked.
@@ -293,6 +296,16 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
                   <LabelValue label="Stolen and recovered" value={yesNo(r.sellerDeclarations.stolenRecovered)} />
                   <LabelValue label="Seller is registered keeper" value={yesNo(r.sellerDeclarations.isLegalRegisteredKeeper)} />
                   <Text style={styles.recordSubhead}>Declared damage ({r.damage.length})</Text>
+                  {r.damage.length > 0 && (
+                    <TouchableOpacity style={styles.show3dButton} onPress={() => setShow3d(v => !v)}
+                      accessibilityRole="button" accessibilityState={{ expanded: show3d }}>
+                      <Ionicons name="cube-outline" size={16} color={Colors.accent} />
+                      <Text style={styles.show3dText}>{show3d ? 'Hide 3D damage markers' : 'Show damage markers in 3D'}</Text>
+                    </TouchableOpacity>
+                  )}
+                  {show3d && r.damage.length > 0 && (
+                    <BuyerDamageViewer records={r.damage} isLoading={false} bodyTypeLabel={r.bodyType ?? undefined} />
+                  )}
                   {r.damage.length === 0 ? <Text style={styles.fieldLabel}>No damage was declared on the listing.</Text>
                     : r.damage.map(item => (
                       <TouchableOpacity key={item.id} style={styles.damageRow} disabled={!item.imageUrl}
@@ -482,6 +495,8 @@ const styles = StyleSheet.create({
   recordText: { color: Colors.textPrimary, fontSize: 14, lineHeight: 20, marginVertical: 6, flexShrink: 1 },
   recordSubhead: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 15, marginTop: 12, marginBottom: 4 },
   damageRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  show3dButton: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, alignSelf: 'flex-start' },
+  show3dText: { fontFamily: FontFamily.bold, fontSize: 14, color: Colors.accent },
   damagePhoto: { width: 72, height: 54, borderRadius: 8, backgroundColor: Colors.bgCard },
   screen: { flex: 1, backgroundColor: Colors.bgPrimary },
   header: {
