@@ -179,6 +179,7 @@ const ICON_MAP: Record<string, string> = {
   'card-outline': 'CreditCard',
   'card': 'CreditCard',
   'document-text-outline': 'FileText',
+  'clipboard-outline': 'ClipboardList',
   'log-out-outline': 'LogOut',
   'settings-outline': 'Settings',
   'settings': 'Settings',
