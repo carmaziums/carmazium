@@ -1,23 +1,33 @@
 /**
- * The three Buy-side purchase destinations a dealer can move between.
+ * The four Buy-side purchase destinations a dealer can move between.
  * Kept free of React so the node tests and the web/app parity guard can
  * read it directly.
  *
  *  - Auction Wins: vehicles won through dealer auctions.
+ *  - Retail Purchases: recorded retail purchases and accepted retail deals.
  *  - All Purchases: every recorded auction and retail purchase plus agreed
  *    retail deals, at whatever stage it is, with search and a Status filter.
  *  - Purchase History: completed purchases and cancelled sales, as a record.
  *
- * All three need VIEW_PURCHASES, which the dealer layout already enforces
+ * All four need VIEW_PURCHASES, which the dealer layout already enforces
  * for every /dashboard/dealer/purchases/* and /auctions/won page.
  */
 export const PURCHASE_DESTINATIONS = [
     { id: "wins", href: "/dashboard/dealer/auctions/won", label: "Auction Wins" },
+    { id: "retail", href: "/dashboard/dealer/purchases/retail", label: "Retail Purchases" },
     { id: "all", href: "/dashboard/dealer/purchases", label: "All Purchases" },
     { id: "history", href: "/dashboard/dealer/purchases/history", label: "Purchase History" },
 ] as const
 
 export type PurchaseDestinationId = typeof PURCHASE_DESTINATIONS[number]["id"]
+
+/** Canonical server purchase channel (not an inference from a UI status). */
+export type PurchaseChannel = "AUCTION" | "RETAIL"
+
+/** Retail sales still in progress count as retail; completed-only flags don't. */
+export function isRetailPurchase(p: { purchaseChannel?: PurchaseChannel; retailSold?: boolean }): boolean {
+    return p.purchaseChannel === "RETAIL" || (p.purchaseChannel == null && p.retailSold === true)
+}
 
 /**
  * Stages where the purchase itself is complete on CarMazium's side (a
