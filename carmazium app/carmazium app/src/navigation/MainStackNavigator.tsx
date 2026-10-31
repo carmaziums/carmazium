@@ -23,6 +23,7 @@ import { DealerOnboardingScreen } from '../screens/main/DealerOnboardingScreen';
 import { DealerOffersScreen } from '../screens/main/DealerOffersScreen';
 import { DealerMyOffersScreen } from '../screens/main/DealerMyOffersScreen';
 import { DealerPurchasesScreen } from '../screens/main/DealerPurchasesScreen';
+import { DealerPurchaseDetailScreen } from '../screens/main/DealerPurchaseDetailScreen';
 import { DealerEarningsScreen } from '../screens/main/DealerEarningsScreen';
 import { DealerFinanceScreen } from '../screens/main/DealerFinanceScreen';
 import { ServicesScreen } from '../screens/main/ServicesScreen';
@@ -88,6 +89,7 @@ const GatedDealerTeamScreen = withDealerGate(DealerTeamScreen, 'MANAGE_TEAM');
 const GatedDealerOffersScreen = withDealerGate(DealerOffersScreen, 'MANAGE_OFFERS');
 const GatedDealerMyOffersScreen = withDealerGate(DealerMyOffersScreen, 'MANAGE_OFFERS');
 const GatedDealerPurchasesScreen = withDealerGate(DealerPurchasesScreen, 'VIEW_PURCHASES');
+const GatedDealerPurchaseDetailScreen = withDealerGate(DealerPurchaseDetailScreen, 'VIEW_PURCHASES');
 const GatedDealerEarningsScreen = withDealerGate(DealerEarningsScreen, 'VIEW_ANALYTICS');
 const GatedDealerFinanceScreen = withDealerGate(DealerFinanceScreen);
 
@@ -120,10 +122,14 @@ export type MainStackParamList = {
   /** fromBidsOffers: opened from the Buy & Bid hub's "Bids & offers" switch. */
   DealerMyOffers: { fromBidsOffers?: boolean } | undefined;
   DealerPurchases: undefined;
+  DealerPurchaseDetail: { saleId: string };
   DealerEarnings: undefined;
   DealerFinance: undefined;
   Services: undefined;
-  CreateServiceJob: { serviceType: 'DELIVERY' | 'INSPECTION' };
+  CreateServiceJob: { serviceType: 'DELIVERY' | 'INSPECTION'; purchase?: {
+    listingId: string; title: string; registration?: string | null;
+    make?: string | null; model?: string | null;
+  } };
   CustomerServiceJobs: undefined;
   CustomerServiceJobDetail: { jobId: string };
   PartnerDashboard: undefined;
@@ -295,6 +301,11 @@ export const MainStackNavigator: React.FC = () => {
         name="DealerPurchases"
         component={GatedDealerPurchasesScreen}
         options={{ animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen
+        name="DealerPurchaseDetail"
+        component={GatedDealerPurchaseDetailScreen}
+        options={{ animation: 'slide_from_right' }}
       />
       <Stack.Screen
         name="DealerEarnings"
