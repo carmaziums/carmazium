@@ -32,6 +32,7 @@ import {
   type SaleCancellationRequest,
 } from '../../lib/saleCancellationApi';
 import { useAuthStore } from '../../store/authStore';
+import { useDealerAccess } from '../../hooks/useDealerAccess';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -80,8 +81,21 @@ const formatDate = (iso: string): string =>
 
 const formatPrice = (n: number): string => `£${n.toLocaleString('en-GB')}`;
 
+const PURCHASE_PAGE_SIZE = 100;
+const PURCHASE_MAX_PAGES = 20; // safety cap, same as web
+
+async function loadAllPurchasePages(): Promise<PurchaseItem[]> {
+  const page = (n: number) => apiClient<PurchasesResponse>(`/dealers/purchases?page=${n}&limit=${PURCHASE_PAGE_SIZE}`);
+  const first = await page(1);
+  const lastPage = Math.min(Math.max(1, Number(first?.pagination?.totalPages) || 1), PURCHASE_MAX_PAGES);
+  const rest = lastPage > 1
+    ? await Promise.all(Array.from({ length: lastPage - 1 }, (_, i) => page(i + 2)))
+    : [];
+  return [first, ...rest].flatMap(r => (r?.success && Array.isArray(r.data) ? r.data : []));
+}
+
 // Same split as web (src/lib/purchaseDestinations.ts): Purchase History holds
-// finished stages and cancelled sales; earlier stages stay in All Purchases.
+// completed stages and cancelled sales; earlier stages stay in All Purchases.
 // A view filter only — it never changes a purchase's status.
 const HISTORY_STATUSES: PurchaseStatus[] = ['SOLD', 'CHECKS_COMPLETE', 'DELIVERY_REQUESTED'];
 const STATUS_FILTER_ORDER: PurchaseStatus[] = [
@@ -151,6 +165,9 @@ export const DealerPurchasesScreen: React.FC = () => {
   const route = useRoute<RouteProp<MainStackParamList, 'DealerPurchases'>>();
   const isHistory = route.params?.view === 'history';
   const userId = useAuthStore((s) => s.user?.id);
+  // Staff act for the dealership owner, whose id is on every Sale.
+  const { access } = useDealerAccess();
+  const dealershipBuyerId = access?.ownerUserId ?? userId;
 
   const [purchases, setPurchases] = useState<PurchaseItem[]>([]);
   const [query, setQuery] = useState('');
@@ -169,8 +186,13 @@ export const DealerPurchasesScreen: React.FC = () => {
     if (statusFilter !== 'ALL' && p.status !== statusFilter) return false;
     return matchesSearch([p.vehicleTitle, p.vehicleSubtitle, p.sellerName, p.id], query);
   }), [purchases, isHistory, statusFilter, query]);
-  const shownCancelled = useMemo(() => (isHistory ? cancelled : []).filter(c =>
-    matchesSearch([c.listing?.title, c.listing?.vrm, c.id], query)), [cancelled, isHistory, query]);
+  // Same rule as web buyerCancelledSales: the server's viewer.isBuyer is
+  // authoritative; otherwise compare with the dealership owner id.
+  const shownCancelled = useMemo(() => (isHistory ? cancelled : [])
+    .filter(c => c.status === 'APPROVED' && (typeof c.viewer?.isBuyer === 'boolean'
+      ? c.viewer.isBuyer
+      : !!dealershipBuyerId && c.buyerId === dealershipBuyerId))
+    .filter(c => matchesSearch([c.listing?.title, c.listing?.vrm, c.id], query)), [cancelled, isHistory, query, dealershipBuyerId]);
   const statusChoices = STATUS_FILTER_ORDER.filter(s =>
     (!isHistory || HISTORY_STATUSES.includes(s)) && (s === statusFilter || purchases.some(p => p.status === s)));
 
@@ -185,27 +207,24 @@ export const DealerPurchasesScreen: React.FC = () => {
     if (isRefresh) setRefreshing(true);
     setFetchError(false);
     try {
-      const [res, cancellations] = await Promise.all([
-        apiClient<PurchasesResponse>('/dealers/purchases?page=1&limit=100'),
+      const [all, cancellations] = await Promise.all([
+        // Every page (as on web), so search and history include older purchases.
+        loadAllPurchasePages(),
         // An approved cancellation deletes the Sale, so the request is the
         // only remaining record. Only buyer-side, approved ones are history.
-        isHistory ? getMySaleCancellations().catch(() => [] as SaleCancellationRequest[]) : Promise.resolve([] as SaleCancellationRequest[]),
+        isHistory
+          ? getMySaleCancellations('purchase-history').catch(() => [] as SaleCancellationRequest[])
+          : Promise.resolve([] as SaleCancellationRequest[]),
       ]);
-      setCancelled(userId
-        ? cancellations.filter(c => c.status === 'APPROVED' && c.buyerId === userId)
-        : []);
-      if (res?.success) {
-        setPurchases(Array.isArray(res.data)
-          ? res.data.map(item => ({ ...item, status: item.retailSold ? 'SOLD' as const : item.status }))
-          : []);
-      }
+      setCancelled(cancellations);
+      setPurchases(all.map(item => ({ ...item, status: item.retailSold ? 'SOLD' as const : item.status })));
     } catch {
       setFetchError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isHistory, userId]);
+  }, [isHistory]);
 
   useEffect(() => {
     fetchData();
@@ -226,11 +245,11 @@ export const DealerPurchasesScreen: React.FC = () => {
     <View style={styles.emptyState}>
       <EmptyState
         icon="receipt-outline"
-        title={narrowed ? 'No purchases match' : isHistory ? 'No finished purchases yet' : 'No purchases yet'}
+        title={narrowed ? 'No purchases match' : isHistory ? 'No completed purchases yet' : 'No purchases yet'}
         subtitle={narrowed
           ? 'Try a different search or status.'
           : isHistory
-            ? 'Finished purchases and cancelled sales will be kept here. Purchases still in progress are under All Purchases.'
+            ? 'Purchased, Checks Complete and Delivery Requested purchases, plus cancelled sales, are kept here. Earlier stages are under All Purchases.'
             : 'Vehicles your dealership buys will show up here with their delivery status'}
       />
     </View>
@@ -265,7 +284,7 @@ export const DealerPurchasesScreen: React.FC = () => {
                 accessibilityState={{ selected }}
               >
                 <Text style={[styles.statusPillText, selected && styles.statusPillTextActive]}>
-                  {s === 'ALL' ? (isHistory ? 'All finished' : 'All statuses') : STATUS_CONFIG[s].label}
+                  {s === 'ALL' ? (isHistory ? 'All completed' : 'All statuses') : STATUS_CONFIG[s].label}
                 </Text>
               </TouchableOpacity>
             );
@@ -303,7 +322,7 @@ export const DealerPurchasesScreen: React.FC = () => {
       </View>
       <View style={styles.totalDivider} />
       <View style={styles.totalCol}>
-        <Text style={styles.totalLabel}>{isHistory ? 'FINISHED' : 'VEHICLES PURCHASED'}</Text>
+        <Text style={styles.totalLabel}>{isHistory ? 'COMPLETED' : 'VEHICLES PURCHASED'}</Text>
         <Text style={styles.totalValue}>{visible.length}</Text>
       </View>
     </View>

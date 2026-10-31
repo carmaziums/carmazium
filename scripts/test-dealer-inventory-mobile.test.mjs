@@ -16,10 +16,13 @@ test("web: phones get a Status dropdown with every status and its count", () => 
     assert.match(web, /const INVENTORY_STATUSES = \["ALL", "ACTIVE", "PENDING_REVIEW", "REJECTED", "DRAFT", "SOLD"\] as const/)
     assert.match(web, /grid grid-cols-2 gap-2 lg:hidden/)
     assert.match(web, /<select\s+value=\{statusFilter\}/)
-    assert.match(web, /\{INVENTORY_STATUSES\.map\(s => \(\s*<option key=\{s\} value=\{s\}>/)
+    assert.match(web, /\{ALL_INVENTORY_STATUSES\.map\(s => \(\s*<option key=\{s\} value=\{s\}>/)
+    // Same eight buckets as the app: Sale pending and Withdrawn ("Other") too.
+    assert.match(web, /const EXTRA_INVENTORY_STATUSES = \["OFFER_ACCEPTED", "WITHDRAWN"\] as const/)
+    assert.match(web, /OFFER_ACCEPTED: "Sale pending"/)
     assert.match(web, /\(\{statusCount\(s\)\}\)/)
     // The old strip is desktop-only now and no longer scrolls sideways.
-    assert.match(web, /hidden lg:flex gap-2 p-1/)
+    assert.match(web, /hidden lg:flex lg:flex-wrap gap-2 p-1/)
     assert.doesNotMatch(web, /rounded-xl w-full lg:w-auto overflow-x-auto shrink-0/)
 })
 

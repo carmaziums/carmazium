@@ -83,6 +83,22 @@ test("cancelled sales in history are approved, buyer-side requests only", () => 
     ]
     assert.deepEqual(Array.from(dest.buyerCancelledSales(rows, "me"), r => r.id), ["a"])
     assert.equal(dest.buyerCancelledSales(rows, undefined).length, 0)
+    // Staff: the server's viewer.isBuyer (resolved to the dealership) wins
+    // over comparing with the signed-in staff member's own id.
+    const staffRows = [
+        { id: "s1", status: "APPROVED", buyerId: "owner", viewer: { isBuyer: true } },
+        { id: "s2", status: "APPROVED", buyerId: "owner", viewer: { isBuyer: false } },
+        { id: "s3", status: "APPROVED", buyerId: "owner" },
+    ]
+    assert.deepEqual(Array.from(dest.buyerCancelledSales(staffRows, "owner"), r => r.id), ["s1", "s3"])
+    assert.deepEqual(Array.from(dest.buyerCancelledSales(staffRows, "staff-member"), r => r.id), ["s1"])
+    const view = read("src/components/dealer/DealerPurchasesView.tsx")
+    assert.match(view, /const dealershipBuyerId = access\?\.ownerUserId \?\? user\?\.id/)
+    assert.match(view, /buyerCancelledSales\(cancelled, dealershipBuyerId\)/)
+    assert.match(view, /getMySaleCancellations\("purchase-history"\)/)
+    const svc = read("backend/src/sale-cancellations/sale-cancellations.service.ts")
+    assert.match(svc, /isBuyer: row\.buyerId === canonicalId/)
+    assert.match(svc, /\{ buyerId: canonicalId, status: 'APPROVED' as any \}/)
 })
 
 test("search matches vehicle, registration with or without spaces, seller and reference", () => {
@@ -106,6 +122,13 @@ test("All Purchases has search and a Status dropdown; agreed retail deals stay o
 test("an Auction Wins card links to that vehicle's purchase record on web", () => {
     const won = read("src/app/dashboard/dealer/auctions/won/page.tsx")
     assert.match(won, /recordHref=\{purchaseId \? `\/dashboard\/dealer\/purchases\/\$\{encodeURIComponent\(purchaseId\)\}` : undefined\}/)
+    // The whole card opens the record (stretched link); actions sit above it.
+    assert.match(won, /after:absolute after:inset-0/)
+    assert.match(won, /relative z-10 flex md:flex-col/)
+    assert.match(won, /relative z-10 flex flex-wrap items-center gap-x-3/)
+    // Every win is looked up, in batches of 50, not just the first 50.
+    assert.doesNotMatch(won, /\.slice\(0, 50\)/)
+    assert.match(won, /for \(let i = 0; i < ids\.length; i \+= 50\) batches\.push/)
     assert.match(won, /purchaseId=\{purchaseByListing\[a\.listingId\]\}/)
 })
 
@@ -133,7 +156,10 @@ test("app parity: same destinations, wins card opens the record, history and sea
     const screen = read(APP + "screens/main/DealerPurchasesScreen.tsx")
     assert.match(screen, /const isHistory = route\.params\?\.view === 'history'/)
     assert.match(screen, /HISTORY_STATUSES: PurchaseStatus\[\] = \['SOLD', 'CHECKS_COMPLETE', 'DELIVERY_REQUESTED'\]/)
-    assert.match(screen, /c\.status === 'APPROVED' && c\.buyerId === userId/)
+    assert.match(screen, /const dealershipBuyerId = access\?\.ownerUserId \?\? userId/)
+    assert.match(screen, /c\.viewer\.isBuyer/)
+    assert.match(screen, /getMySaleCancellations\('purchase-history'\)/)
+    assert.match(screen, /loadAllPurchasePages\(\)/)
     assert.match(screen, /<TextInput/)
     assert.match(screen, /flexWrap: 'wrap'/)
     assert.match(screen, /navigation\.navigate\('DealerPurchaseDetail', \{ saleId: item\.id \}\)/)
@@ -146,4 +172,23 @@ test("app parity: same destinations, wins card opens the record, history and sea
     assert.match(detail, /ImageLightbox/)
     assert.match(detail, /listingRecord/)
     assert.match(detail, /<BuyerDamageViewer records=\{r\.damage\}/)
+})
+
+test("purchase views load every page, not only the first 100", async () => {
+    const result = await dest.loadAllPages(async page => ({ data: [page], pagination: { totalPages: 3 } }))
+    assert.deepEqual(Array.from(result.data), [1, 2, 3])
+    assert.equal(result.truncated, false)
+    const capped = await dest.loadAllPages(async page => ({ data: [page], pagination: { totalPages: 99 } }))
+    assert.equal(capped.data.length, dest.PURCHASE_MAX_PAGES)
+    assert.equal(capped.truncated, true)
+    const view = read("src/components/dealer/DealerPurchasesView.tsx")
+    assert.match(view, /loadAllPages\(page => apiClient/)
+    assert.doesNotMatch(view, /\/dealers\/purchases\?limit=100"/)
+})
+
+test("Auction Wins does not repeat the purchase destinations in the Buy & Bid tabs", () => {
+    const tabs = read("src/components/dealer/BuyAndBidTabs.tsx")
+    assert.match(tabs, /label: "Purchases", icon: Trophy, permission: "VIEW_PURCHASES"/)
+    assert.match(tabs, /activePaths: \["\/dashboard\/dealer\/purchases", "\/dashboard\/dealer\/purchases\/history"\]/)
+    for (const label of ["Auction Wins", "All Purchases", "Purchase History"]) assert.ok(!tabs.includes(`label: "${label}"`), label)
 })

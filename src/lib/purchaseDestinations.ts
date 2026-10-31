@@ -6,7 +6,7 @@
  *  - Auction Wins: vehicles won through dealer auctions.
  *  - All Purchases: every recorded auction and retail purchase plus agreed
  *    retail deals, at whatever stage it is, with search and a Status filter.
- *  - Purchase History: finished purchases and cancelled sales, as a record.
+ *  - Purchase History: completed purchases and cancelled sales, as a record.
  *
  * All three need VIEW_PURCHASES, which the dealer layout already enforces
  * for every /dashboard/dealer/purchases/* and /auctions/won page.
@@ -20,7 +20,8 @@ export const PURCHASE_DESTINATIONS = [
 export type PurchaseDestinationId = typeof PURCHASE_DESTINATIONS[number]["id"]
 
 /**
- * Stages that mean the purchase itself is finished on CarMazium's side:
+ * Stages where the purchase itself is complete on CarMazium's side (a
+ * delivery booked afterwards may still be in progress):
  * a recorded retail sale ("Purchased"), checks complete, or delivery
  * requested. Earlier stages (awaiting confirmation, sale confirmed,
  * reviewing documents) are still being worked on and stay in All Purchases
@@ -55,15 +56,48 @@ export function matchesPurchaseSearch(item: SearchablePurchase, query: string): 
 export interface CancellationLike {
     status: string
     buyerId?: string | null
+    viewer?: { isBuyer?: boolean } | null
 }
 
 /**
- * Approved cancellations where this account was the buyer. An approved
+ * Approved cancellations where this dealership was the buyer. An approved
  * cancellation deletes the Sale row, so the cancellation request is the only
  * remaining record of that purchase. Requests where the dealer was the
  * seller, or that are still pending, declined or withdrawn, are excluded.
+ *
+ * The server's viewer.isBuyer is authoritative (it resolves staff to their
+ * dealership). Older responses without it fall back to comparing buyerId
+ * with the dealership owner id, never the signed-in staff member's own id.
  */
-export function buyerCancelledSales<T extends CancellationLike>(requests: T[], userId: string | undefined): T[] {
-    if (!userId) return []
-    return requests.filter(r => r.status === "APPROVED" && r.buyerId === userId)
+export function buyerCancelledSales<T extends CancellationLike>(requests: T[], dealershipBuyerId: string | undefined): T[] {
+    return requests.filter(r => r.status === "APPROVED" && (
+        typeof r.viewer?.isBuyer === "boolean"
+            ? r.viewer.isBuyer
+            : !!dealershipBuyerId && r.buyerId === dealershipBuyerId
+    ))
+}
+
+/** Page size used by the purchase views; the API's per-page limit. */
+export const PURCHASE_PAGE_SIZE = 100
+/** Safety cap so a runaway total can't trigger unbounded requests (2,000 purchases). */
+export const PURCHASE_MAX_PAGES = 20
+
+/**
+ * Load every page of /dealers/purchases (previously only the first 100, so
+ * search and history could miss older purchases). Pages after the first
+ * load in parallel. `truncated` is true only if the safety cap was hit.
+ */
+export async function loadAllPages<T>(
+    fetchPage: (page: number) => Promise<{ data: T[]; pagination?: { totalPages?: number } | null }>,
+): Promise<{ data: T[]; truncated: boolean }> {
+    const first = await fetchPage(1)
+    const totalPages = Math.max(1, Number(first.pagination?.totalPages) || 1)
+    const lastPage = Math.min(totalPages, PURCHASE_MAX_PAGES)
+    const rest = lastPage > 1
+        ? await Promise.all(Array.from({ length: lastPage - 1 }, (_, i) => fetchPage(i + 2)))
+        : []
+    return {
+        data: [first, ...rest].flatMap(page => page.data ?? []),
+        truncated: totalPages > PURCHASE_MAX_PAGES,
+    }
 }
