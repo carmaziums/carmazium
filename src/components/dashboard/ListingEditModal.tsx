@@ -13,6 +13,7 @@ import {
 import { getAdminListing, updateListingAsAdmin } from "@/lib/adminApi"
 import { aiGenerateDescription } from "@/lib/aiApi"
 import { uploadImage } from "@/lib/supabase"
+import { prepareImageForUpload } from "@/lib/vehiclePhotoCompression"
 import {
     encodeVehicleImagePresentation,
     parseVehicleImagePresentation,
@@ -316,7 +317,8 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
         setImageUploading(true)
         setError(null)
         try {
-            const url = await uploadImage(file, 'listings', 'admin-edit')
+            const preparedFile = await prepareImageForUpload(file)
+            const url = await uploadImage(preparedFile, 'listings', 'admin-edit')
             setEditImages(prev => [...prev, url])
         } catch (err) {
             setError(errorMessage(err, 'Image upload failed'))

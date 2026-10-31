@@ -71,3 +71,11 @@ test("seller reward image does not suggest a reward for listing without a sale",
     assert.ok(wizard.includes("£100 seller reward for qualifying completed auction sales after approved handover"))
     assert.ok(!wizard.includes("incentive to list and complete the sale"))
 })
+
+test("signing in from the wizard returns to /sell with the chosen channel and package", () => {
+    const wizard = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
+    assert.match(wizard, /router\.push\(`\/auth\/login\?redirect=\$\{sellReturnPath\(\)\}`\)/)
+    assert.doesNotMatch(wizard, /\/auth\/login\?redirect=\/sell"/)
+    assert.match(wizard, /\/\^\(basic\|standard\|premium\)\$\/i\.test\(pkg\)/)
+    assert.match(wizard, /return encodeURIComponent\(query \? `\/sell\?\$\{query\}` : '\/sell'\)/)
+})

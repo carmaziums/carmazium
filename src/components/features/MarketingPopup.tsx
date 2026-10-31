@@ -14,8 +14,8 @@ const SESSION_KEY = "cz_marketing_popup_seen"
 const SHOW_DELAY_MS = 1500
 // Fallback shown only if the admin hasn't configured an image yet (config
 // row exists with imageUrl: null) — keeps the popup working out of the box.
-const DEFAULT_IMAGE = "/assets/images/promo-100-auction-popup.jpeg"
-const DEFAULT_ALT = "We pay you £100 — auction your car now with Carmazium"
+const DEFAULT_IMAGE = "/assets/images/promo-100-auction-popup.webp"
+const DEFAULT_ALT = "We pay you £100 — auction your car now with CarMazium"
 
 /**
  * One-time-per-session marketing promo for non-logged-in visitors, shown a
@@ -133,7 +133,7 @@ export function MarketingPopup() {
             onClick={() => setOpen(false)}
             role="dialog"
             aria-modal="true"
-            aria-label="Carmazium promotion — auction your car and earn £100"
+            aria-label="CarMazium promotion — auction your car and earn £100"
         >
             <div
                 onClick={(e) => e.stopPropagation()}

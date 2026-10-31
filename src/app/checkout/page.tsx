@@ -13,7 +13,7 @@ import { useAuth } from "@/context/AuthContext"
 
 const AUCTION_BUYER_FEE = 125 // £125 total: £100 seller bonus + £25 platform
 const AUCTION_SELLER_BONUS = 100 // released to seller after handover proof
-const AUCTION_PLATFORM_FEE = 25 // non-refundable Carmazium fee
+const AUCTION_PLATFORM_FEE = 25 // non-refundable CarMazium fee
 
 export default function CheckoutPage() {
     return (
@@ -84,7 +84,7 @@ function CheckoutContent() {
             const valid = l.images.find(img => !img.includes('example.com'))
             if (valid) return valid
         }
-        return "/assets/images/featured-sports.png"
+        return "/assets/images/featured-sports.webp"
     }
 
     if (isLoading || authLoading) {

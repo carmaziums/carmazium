@@ -23,7 +23,8 @@ test('website edit form opens immediately below 3D model and supports camera, ga
 });
 test('each damage report preserves independent UUID, accurate 3D point, type and durable photo', () => {
   for (const match of [/id: edited\?\.id \?\? crypto\.randomUUID\(\)/, /surfacePoint\?: SurfacePoint/, /photoUrl: pendingPhoto/, /type: pendingType/, /records\.map\(item => item\.id === edited\.id \? rec : item\)/]) assert.match(mapper,match);
-  assert.match(mapper, /await uploadImage\(file, "listings", "damage"\)/);
+  assert.match(mapper, /const preparedFile = await prepareImageForUpload\(file\)/);
+  assert.match(mapper, /await uploadImage\(preparedFile, "listings", "damage"\)/);
   assert.match(mapper, /if \(!url\.startsWith\("https:\/\/"\)\) throw/);
   assert.match(mapper, /Continue without photo/);
   assert.doesNotMatch(mapper, /readAsDataURL|FileReader\(/);

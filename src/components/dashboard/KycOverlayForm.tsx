@@ -1005,7 +1005,7 @@ export function KycOverlayForm({
                       label: isSoleTrader ? "Trading Name" : "Company House Registered Name",
                       name: "companyHouseName",
                       value: formData.companyHouseName,
-                      placeholder: isSoleTrader ? "e.g. Carmazium Motors" : "e.g. Carmazium Dealership Ltd",
+                      placeholder: isSoleTrader ? "e.g. CarMazium Motors" : "e.g. CarMazium Dealership Ltd",
                       icon: Building2,
                     })}
                     {renderInput({
@@ -1276,7 +1276,7 @@ export function KycOverlayForm({
                 ) : alreadyPaid ? (
                   <>
                     <Check size={14} />
-                    Finalize Submission
+                    Finalise Submission
                   </>
                 ) : (
                   <>

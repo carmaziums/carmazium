@@ -229,7 +229,7 @@ export default function HowItWorksPage() {
       <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 flex flex-col items-center justify-center text-center overflow-hidden h-[70vh] min-h-[500px]">
         <div className="absolute inset-0 z-0">
           <Image
-            src="/assets/images/live-auction-hero.jpg"
+            src="/assets/images/live-auction-hero.webp"
             alt="A car on auction at sunset"
             fill
             className="object-cover scale-105"
@@ -276,7 +276,7 @@ export default function HowItWorksPage() {
         receipt={RECEIPTS.seller}
         ctaLabel="Start Selling For Free"
         ctaHref="/sell"
-        photo={{ src: "/assets/images/blog-keys.png", alt: "Car keys handover", quote: "The dealer pays you. Not us.", align: "left" }}
+        photo={{ src: "/assets/images/blog-keys.webp", alt: "Car keys handover", quote: "The dealer pays you. Not us.", align: "left" }}
       />
 
       <div className="border-t border-[var(--border-default)]" />
@@ -291,7 +291,7 @@ export default function HowItWorksPage() {
         receipt={RECEIPTS.buyer}
         ctaLabel="Learn About Dealer Auctions"
         ctaHref="/auctions/how-it-works"
-        photo={{ src: "/assets/images/featured-suv.png", alt: "Vehicle ready for collection", quote: "One fee. Nothing else moves through CarMazium.", align: "right" }}
+        photo={{ src: "/assets/images/featured-suv.webp", alt: "Vehicle ready for collection", quote: "One fee. Nothing else moves through CarMazium.", align: "right" }}
       />
 
       <section aria-label="Retail buyers" className="container mx-auto px-5 pb-4">

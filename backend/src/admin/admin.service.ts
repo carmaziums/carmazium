@@ -18,6 +18,7 @@ import { DvlaService } from '../dvla/dvla.service';
 import { motEnrichmentUpdate } from '../listings/mot-backfill';
 import { mergeOfficialVehicleData } from '../listings/official-vehicle-data';
 import { sellerBonusEmailState, SellerBonusEmailState } from './seller-bonus-email-state';
+import { sellerBonusTransferFailureMessage } from './seller-bonus-transfer-errors';
 import { classifyHistoricalAuction } from './auction-history-reconciliation';
 import {
     AUCTION_DURATION_MS,
@@ -1987,12 +1988,16 @@ export class AdminService {
                     payoutReason = 'transfer_failed';
                     await this.prisma.auction.update({
                         where: { id: auctionId },
-                        data: { stripePayoutError: errMsg },
+                        data: { stripePayoutError: sellerBonusTransferFailureMessage(err) },
                     });
                     await this.notifyAdminsPayoutNeedsAction(
                         auctionId,
                         'Payout needs retry — manual action required',
                         `The £100 seller payout for "${auction.listing.title}" could not be finalized: ${errMsg}. Use Retry via Stripe first; retries use the same Stripe idempotency key. Do not pay manually until the Stripe transfer state is verified.`,
+                    );
+                    // Failure of a notification must never reverse an approved handover.
+                    await this.requestSellerBankDetailsForBonus(auctionId).catch((notifyErr: any) =>
+                        this.logger.warn(`Could not request manual payout bank details for ${auctionId}: ${notifyErr?.message || notifyErr}`),
                     );
                 }
             } else {
@@ -2216,6 +2221,77 @@ export class AdminService {
     }
 
     /**
+     * Secure manual fallback when an approved £100 Stripe transfer fails.
+     * Sends the seller to their authenticated Payout Settings; bank details
+     * are never requested via email, chat or notification payloads.
+     *
+     * Called automatically after a failed transfer and by the admin's
+     * Request Bank Details action. This does NOT move money or mark paid.
+     */
+    async requestSellerBankDetailsForBonus(auctionId: string) {
+        const auction = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            include: { listing: { select: {
+                title: true,
+                seller: { select: {
+                    id: true, email: true, firstName: true,
+                    bankAccountName: true, bankSortCode: true, bankAccountNumber: true,
+                } },
+            } } },
+        });
+        if (!auction) throw new NotFoundException('Auction not found');
+        if (!auction.sellerBonusReleased || !auction.sellerBonusReleasedAt) {
+            throw new BadRequestException('The handover must be approved before requesting a manual payout.');
+        }
+        if (auction.manualPayoutConfirmedAt || auction.stripePayoutTransferId) {
+            throw new ConflictException('A payout is already recorded or may still be in progress. Verify Stripe transfer state before requesting bank details.');
+        }
+        await this.auctionsService.assertHandoverBusinessRules(auctionId, {
+            requireProof: true,
+            requireApproved: true,
+        });
+        const seller = auction.listing?.seller;
+        if (!seller) throw new NotFoundException('Seller not found');
+        const settingsLink = '/profile?section=payouts';
+        // If their bank details are already on file, let the admin use them;
+        // never repeatedly ask the seller or overwrite the existing details.
+        if (seller.bankAccountName && seller.bankSortCode && seller.bankAccountNumber) {
+            return { requested: false, alreadyOnFile: true, settingsLink };
+        }
+        const existing = await this.prisma.notification.findFirst({
+            where: {
+                userId: seller.id, entityType: 'AUCTION', entityId: auctionId,
+                data: { path: ['action'], equals: 'manual_bonus_bank_details_needed' },
+            },
+            select: { id: true },
+        });
+        if (existing) {
+            return { requested: false, alreadyRequested: true, settingsLink };
+        }
+        await this.notificationsService.create({
+            userId: seller.id,
+            type: 'SYSTEM',
+            title: 'Bank details needed for your £100 seller reward',
+            message: 'Your handover is approved, but the automated Stripe reward could not be sent. Please open Account Settings → Payouts and securely save your bank details so CarMazium can arrange a manual bank transfer. Your reward is not yet paid. Never send account details in chat or email.',
+            entityType: 'AUCTION',
+            entityId: auctionId,
+            link: settingsLink,
+            data: { action: 'manual_bonus_bank_details_needed' },
+        });
+        let emailSent = false;
+        if (seller.email) {
+            try {
+                emailSent = Boolean(await this.emailService.sendManualSellerBankDetailsRequestEmail(
+                    seller.email, seller.firstName || 'there', auction.listing.title,
+                ));
+            } catch (error: any) {
+                this.logger.warn(`Could not email manual bank-details request for auction ${auctionId}: ${error?.message || error}`);
+            }
+        }
+        return { requested: true, emailSent, settingsLink };
+    }
+
+    /**
      * Remind an unpaid seller to complete Stripe Connect payout onboarding.
      *
      * The admin never receives or forwards Stripe's one-time onboarding URL.
@@ -2353,11 +2429,14 @@ export class AdminService {
             const stripeMessage = err?.message || 'Unknown Stripe error';
             console.error(`[Admin] Stripe payout retry failed for auction ${auctionId}:`, stripeMessage);
 
-            const safeMessage = 'Stripe payout could not be completed. The seller bonus remains unpaid. Verify the seller\'s Stripe payout setup and try again.';
+            const safeMessage = sellerBonusTransferFailureMessage(err);
             await this.prisma.auction.update({
                 where: { id: auctionId },
                 data: { stripePayoutError: safeMessage },
             });
+            await this.requestSellerBankDetailsForBonus(auctionId).catch((notifyErr: any) =>
+                this.logger.warn(`Could not request manual payout bank details for ${auctionId}: ${notifyErr?.message || notifyErr}`),
+            );
 
             throw new BadGatewayException(safeMessage);
         }

@@ -2250,6 +2250,19 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
     // ─── Login Modal ─────────────────────────────────────────────────────────────
 
+    // Return to /sell with the chosen channel and package (from Pricing or the
+    // header) so signing in doesn't silently reset a Premium choice to Basic.
+    // Only those two known parameters are carried, encoded as one internal path.
+    const sellReturnPath = () => {
+        const keep = new URLSearchParams()
+        const mode = searchParams.get('sellMode')
+        const pkg = searchParams.get('package')
+        if (mode === 'retail' || mode === 'auction') keep.set('sellMode', mode)
+        if (mode === 'retail' && pkg && /^(basic|standard|premium)$/i.test(pkg)) keep.set('package', pkg.toLowerCase())
+        const query = keep.toString()
+        return encodeURIComponent(query ? `/sell?${query}` : '/sell')
+    }
+
     const LoginModal = () => !showLoginModal ? null : (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-5" onClick={() => setShowLoginModal(false)}>
             <div className="glass-card p-8 max-w-md w-full relative" onClick={(e) => e.stopPropagation()}>
@@ -2259,8 +2272,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 <h2 className="text-2xl font-bold font-heading mb-3 text-center">Sign In to List</h2>
                 <p className="text-[var(--text-muted)] mb-6 text-center text-sm">Create an account to add your listing safely.</p>
                 <div className="space-y-3">
-                    <Button onClick={() => { setShowLoginModal(false); router.push("/auth/login?redirect=/sell") }} className="w-full shadow-neon">Log In</Button>
-                    <Button variant="outline" className="w-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white" onClick={() => { setShowLoginModal(false); router.push("/auth/signup?redirect=/sell") }}>Create Account</Button>
+                    <Button onClick={() => { setShowLoginModal(false); router.push(`/auth/login?redirect=${sellReturnPath()}`) }} className="w-full shadow-neon">Log In</Button>
+                    <Button variant="outline" className="w-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white" onClick={() => { setShowLoginModal(false); router.push(`/auth/signup?redirect=${sellReturnPath()}`) }}>Create Account</Button>
                 </div>
             </div>
         </div>
@@ -2562,7 +2575,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {/* £100 incentive stamp — bleeds over the card's corner, so it lives
                                     outside the card's own overflow-hidden wrapper rather than inside it */}
                                 <div className="absolute -top-7 -right-7 z-20 w-28 h-28 sm:w-32 sm:h-32 rotate-[12deg] drop-shadow-xl pointer-events-none">
-                                    <Image src="/assets/images/auction-100-stamp.png" alt="£100 seller reward for qualifying completed auction sales after approved handover" fill className="object-contain" />
+                                    <Image src="/assets/images/auction-100-stamp.webp" alt="£100 seller reward for qualifying completed auction sales after approved handover" fill className="object-contain" />
                                 </div>
                                 <div className="relative dealer-glass-card p-8 transition-all duration-300 overflow-hidden rounded-2xl h-full flex flex-col border-orange-500/20 hover:border-orange-500/50 hover:shadow-[0_10px_40px_rgba(249,115,22,0.15)]">
                                     <div className="absolute top-0 right-0 w-40 h-40 bg-orange-500/10 rounded-full blur-3xl -z-10 group-hover:bg-orange-500/20 transition-colors" />

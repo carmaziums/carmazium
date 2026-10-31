@@ -13,14 +13,14 @@ import {
  * We show a generated car image plus the SVG silhouette icon as a subtle overlay.
  */
 const BODY_TYPES = [
-    { key: "COUPE", label: "Coupes", image: "/assets/images/body-coupe.png" },
-    { key: "CONVERTIBLE", label: "Convertibles", image: "/assets/images/body-convertible.png" },
-    { key: "HATCHBACK", label: "Hatchbacks", image: "/assets/images/body-hatchback.png" },
-    { key: "MPV", label: "MPVs", image: "/assets/images/body-mpv.png" },
-    { key: "PICKUP_TRUCK", label: "Pickup Trucks", image: "/assets/images/body-pickup.png" },
-    { key: "SEDAN", label: "Saloons", image: "/assets/images/body-saloon.png" },
-    { key: "SUV", label: "SUVs", image: "/assets/images/body-suv.png" },
-    { key: "ESTATE", label: "Estates", image: "/assets/images/body-estate.png" },
+    { key: "COUPE", label: "Coupes", image: "/assets/images/body-coupe.webp" },
+    { key: "CONVERTIBLE", label: "Convertibles", image: "/assets/images/body-convertible.webp" },
+    { key: "HATCHBACK", label: "Hatchbacks", image: "/assets/images/body-hatchback.webp" },
+    { key: "MPV", label: "MPVs", image: "/assets/images/body-mpv.webp" },
+    { key: "PICKUP_TRUCK", label: "Pickup Trucks", image: "/assets/images/body-pickup.webp" },
+    { key: "SEDAN", label: "Saloons", image: "/assets/images/body-saloon.webp" },
+    { key: "SUV", label: "SUVs", image: "/assets/images/body-suv.webp" },
+    { key: "ESTATE", label: "Estates", image: "/assets/images/body-estate.webp" },
 ] as const
 
 export function BrowseByBodyType() {

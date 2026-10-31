@@ -149,7 +149,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const name = [seller.user.firstName, seller.user.lastName].filter(Boolean).join(" ") || "Seller"
     return {
         title: `${name} — Seller Profile`,
-        description: `View ${name}'s listings, reliability score of ${seller.profile.reliabilityScore.toFixed(1)}/5, and ${seller.reviewCount} reviews on Carmazium.`,
+        description: `View ${name}'s listings, reliability score of ${seller.profile.reliabilityScore.toFixed(1)}/5, and ${seller.reviewCount} reviews on CarMazium.`,
+        alternates: { canonical: `/seller/${encodeURIComponent(id)}` },
     }
 }
 

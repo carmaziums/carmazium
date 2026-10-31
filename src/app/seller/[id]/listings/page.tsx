@@ -126,6 +126,7 @@ export async function generateMetadata({
     return {
         title: `${name} — Cars for Sale`,
         description: `Browse all active CarMazium listings from ${name}.`,
+        alternates: { canonical: `/seller/${encodeURIComponent(id)}/listings` },
         robots: { index: true, follow: true },
     }
 }

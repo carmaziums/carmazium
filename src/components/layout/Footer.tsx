@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { Button } from "@/components/ui/Button"
 import { Mail, Phone, MapPin } from "lucide-react"
 import { FooterAppPromo } from "./FooterAppPromo"
 import { useConsent } from "@/context/ConsentContext"
@@ -16,14 +15,14 @@ export function Footer() {
         <footer className="mt-auto border-t border-white/10 bg-gradient-to-t from-[#172033] to-[#24324f] text-white">
             <div className="container mx-auto px-5 py-12 lg:py-14">
                 <FooterAppPromo />
-                <div className="grid grid-cols-1 gap-9 md:grid-cols-2 lg:grid-cols-4 lg:gap-10">
+                <div className="grid grid-cols-1 gap-9 md:grid-cols-2 lg:grid-cols-3 lg:gap-10">
                     <div>
                         <Link
                             href="/"
                             className="inline-block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
                         >
                             <Image
-                                src="/assets/images/logo.png"
+                                src="/assets/images/logo.webp"
                                 alt="CarMazium"
                                 width={400}
                                 height={100}
@@ -73,24 +72,10 @@ export function Footer() {
                                 <MapPin size={17} className="mt-1 shrink-0 text-red-300" />
                                 <span>181-187 Hunters Rd, Lozells,<br />Birmingham, B19 1ES,<br />United Kingdom</span>
                             </li>
-                            <li className="pl-7 text-xs text-slate-400">Mon – Fri, 9am – 6pm GMT</li>
+                            <li className="pl-7 text-xs text-slate-400">Mon – Fri, 9am – 6pm UK time</li>
                         </ul>
                     </div>
 
-                    <div>
-                        <h3 className="text-xs font-black uppercase tracking-[0.16em] text-white">Newsletter</h3>
-                        <p className="mt-4 text-sm leading-6 text-slate-300">Car deals, listing alerts and useful market updates, delivered without clutter.</p>
-                        <form className="mt-4 space-y-2">
-                            <label htmlFor="footer-email" className="sr-only">Email address</label>
-                            <input
-                                id="footer-email"
-                                type="email"
-                                placeholder="Email address"
-                                className="h-11 w-full rounded-xl border border-white/15 bg-white/[0.07] px-4 text-sm text-white placeholder:text-slate-400 transition-colors hover:border-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
-                            />
-                            <Button className="w-full">Subscribe</Button>
-                        </form>
-                    </div>
                 </div>
 
                 <div className="mt-10 flex flex-col gap-4 border-t border-white/10 pt-6 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">

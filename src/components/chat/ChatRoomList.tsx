@@ -113,7 +113,7 @@ export function ChatRoomList({
                                     <div className="relative shrink-0">
                                         <div className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden relative ${support ? 'bg-[var(--bg-input)] ring-1 ring-primary/30' : 'bg-[var(--bg-card)]'}`}>
                                             {support ? (
-                                                <Image src="/assets/images/logo.png" alt="" fill sizes="48px" className="object-contain p-2.5" />
+                                                <Image src="/assets/images/logo.webp" alt="" fill sizes="48px" className="object-contain p-2.5" />
                                             ) : room.otherUser?.profileImage ? (
                                                 <Image
                                                     src={room.otherUser.profileImage}

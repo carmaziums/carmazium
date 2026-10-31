@@ -1022,7 +1022,7 @@ function DealerAuctionsPage() {
                                         </div>
                                         {/* Fee summary — only the seller's own payout, not the
                                             full £125 breakdown (what the buyer pays and what
-                                            Carmazium keeps is not the seller's business). */}
+                                            CarMazium keeps is not the seller's business). */}
                                         <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/15 p-2.5 text-center text-xs">
                                             <p className="text-[var(--text-muted)] text-xs uppercase tracking-widest mb-0.5">Your Bonus</p>
                                             <p className="text-emerald-400 font-black text-base">£100</p>

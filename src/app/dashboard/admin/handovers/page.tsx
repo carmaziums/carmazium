@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
-import { getPendingHandovers, approveHandover, denyHandover, getPendingPayouts, retryPayout, markPayoutPaidManually, sendStripePayoutSetupReminder } from "@/lib/adminApi"
+import { getPendingHandovers, approveHandover, denyHandover, getPendingPayouts, retryPayout, markPayoutPaidManually, sendStripePayoutSetupReminder, requestSellerBankDetailsForBonus } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
 
 export default function AdminHandoversPage() {
@@ -31,6 +31,8 @@ export default function AdminHandoversPage() {
     const [payoutProcessing, setPayoutProcessing] = React.useState<string | null>(null)
     const [payoutError, setPayoutError] = React.useState<string | null>(null)
     const [reminderProcessing, setReminderProcessing] = React.useState<string | null>(null)
+    const [bankRequestProcessing, setBankRequestProcessing] = React.useState<string | null>(null)
+    const [bankRequestSent, setBankRequestSent] = React.useState<Set<string>>(() => new Set())
     const [reminderSent, setReminderSent] = React.useState<Set<string>>(() => new Set())
 
     React.useEffect(() => {
@@ -96,8 +98,27 @@ export default function AdminHandoversPage() {
         }
     }
 
+    const handleRequestBankDetails = async (auctionId: string) => {
+        if (!confirm('Ask the seller to save UK bank details securely in Account Settings for their unpaid £100 reward?')) return
+        try {
+            setBankRequestProcessing(auctionId)
+            const result = await requestSellerBankDetailsForBonus(auctionId)
+            if (result.alreadyOnFile) {
+                alert('Bank details are already saved. Verify the account holder and details before making any manual transfer.')
+            } else {
+                setBankRequestSent(prev => new Set(prev).add(auctionId))
+                if (result.requested && !result.emailSent) alert('The in-app request was saved, but email delivery could not be confirmed.')
+                else if (result.alreadyRequested) alert('The seller already has an in-app request for their bank details.')
+            }
+        } catch (err: any) {
+            alert(err.message || 'Could not request bank details')
+        } finally {
+            setBankRequestProcessing(null)
+        }
+    }
+
     const handleMarkPaid = async (auctionId: string) => {
-        if (!confirm('Confirm you have paid this seller £100 manually (outside Stripe)?')) return
+        if (!confirm('Only continue if you have ALREADY transferred £100 to this seller by bank transfer, verified the payment reference and confirmed Stripe has not transferred it. Mark as paid now?')) return
         try {
             setPayoutProcessing(auctionId)
             await markPayoutPaidManually(auctionId)
@@ -185,7 +206,7 @@ export default function AdminHandoversPage() {
                                 <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400">{pendingPayouts.length}</span>
                             </div>
                             <p className="text-xs text-[var(--text-muted)] -mt-1">
-                                These handovers were approved, but the £100 seller bonus hasn&apos;t actually been paid yet — the automatic Stripe transfer either failed or the seller has no payout method connected.
+                                These handovers are approved, but the £100 seller reward has not been recorded as transferred. If CarMazium&apos;s Stripe balance is insufficient, fund the platform balance before retrying; alternatively request secure bank details and pay manually. Never mark paid before sending the bank transfer.
                             </p>
                             {payoutError && <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200"><strong>Error:</strong> {payoutError}</div>}
                             {pendingPayouts.map((p) => (
@@ -204,7 +225,7 @@ export default function AdminHandoversPage() {
                                             {p.stripePayoutError && (
                                                 <p className="text-xs text-amber-400 mt-0.5">{p.stripePayoutError}</p>
                                             )}
-                                            {!(p.listing?.seller?.stripeConnectAccountId && p.listing?.seller?.stripeConnectOnboardingComplete) && p.listing?.seller?.bankAccountNumber && (
+                                            {p.listing?.seller?.bankAccountNumber && p.listing?.seller?.bankSortCode && p.listing?.seller?.bankAccountName && (
                                                 <p className="text-xs font-mono text-blue-300 mt-1">
                                                     {p.listing.seller.bankAccountName || '—'} · {p.listing.seller.bankSortCode || '—'} · {p.listing.seller.bankAccountNumber}
                                                 </p>
@@ -240,6 +261,18 @@ export default function AdminHandoversPage() {
                                             >
                                                 {payoutProcessing === p.id ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
                                                 Retry via Stripe
+                                            </Button>
+                                        )}
+                                        {!(p.listing?.seller?.bankAccountName && p.listing?.seller?.bankSortCode && p.listing?.seller?.bankAccountNumber) && (
+                                            <Button
+                                                onClick={() => handleRequestBankDetails(p.id)}
+                                                disabled={bankRequestProcessing === p.id}
+                                                variant="outline"
+                                                size="sm"
+                                                className="flex items-center gap-2"
+                                            >
+                                                {bankRequestProcessing === p.id ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                                                {bankRequestSent.has(p.id) ? "Bank Details Requested" : "Request Bank Details"}
                                             </Button>
                                         )}
                                         <Button
@@ -323,7 +356,7 @@ export default function AdminHandoversPage() {
                                                     <span className="font-bold text-emerald-400">£100.00</span>
                                                 </div>
                                                 <div className="flex justify-between border-t border-[var(--border-default)] pt-1">
-                                                    <span className="text-[var(--text-muted)]">Carmazium keeps</span>
+                                                    <span className="text-[var(--text-muted)]">CarMazium keeps</span>
                                                     <span className="font-bold">£25.00</span>
                                                 </div>
                                             </div>
