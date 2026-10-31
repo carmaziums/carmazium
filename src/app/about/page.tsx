@@ -97,7 +97,7 @@ export default function AboutPage() {
 
                     <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-[var(--shadow-card)]">
                         <Image
-                            src="/assets/images/featured-sports.png"
+                            src="/assets/images/featured-sports.webp"
                             alt="Vehicle on the CarMazium marketplace"
                             fill
                             className="object-cover"
@@ -199,7 +199,7 @@ export default function AboutPage() {
                         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><Phone size={20} /></div>
                         <h2 className="mt-5 text-lg font-bold">Contact CarMazium</h2>
                         <a href="tel:+441218385040" className="mt-2 inline-flex rounded-sm text-sm font-bold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">0121 838 5040</a>
-                        <p className="mt-2 text-xs text-[var(--text-muted)]">Monday – Friday, 9am – 6pm GMT</p>
+                        <p className="mt-2 text-xs text-[var(--text-muted)]">Monday – Friday, 9am – 6pm UK time</p>
                     </div>
                 </div>
             </section>

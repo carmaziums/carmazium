@@ -11,7 +11,7 @@ import { getMobileAppLinks } from "@/lib/mobileAppDownloads"
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-  title: "Get the CarMazium App | iPhone, Android and Windows",
+  title: { absolute: "Get the CarMazium App | iPhone, Android and Windows" },
   description: "Explore CarMazium app installation options for iPhone, Android and Windows. Official links appear only when the corresponding release is approved.",
   alternates: { canonical: "/download-app" },
 }
@@ -129,7 +129,9 @@ export default function DownloadAppPage() {
                 </div>
                 <h3 id="android-app-title" className="text-2xl font-black">CarMazium for Android</h3>
                 <p className="mt-3 min-h-20 text-sm leading-6 text-blue-100">
-                  Get CarMazium through Google Play when published, or download an approved signed release APK from our website.
+                  {androidHref
+                    ? "Install CarMazium using the option below."
+                    : "Once released, CarMazium for Android will be available through Google Play or as an approved signed APK from this website."}
                 </p>
                 {links.android.href ? (
                   <a href={links.android.href} className={installButtonClass}

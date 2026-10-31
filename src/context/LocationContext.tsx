@@ -17,7 +17,7 @@ const LocationContext = createContext<{
     setPostcode: () => {},
 })
 
-const GEO_KEY = 'carmazium_user_location'   // same key as useUserLocation hook
+const GEO_KEY = 'carmazium_user_location'
 const PC_KEY  = 'carmazium_user_postcode'
 const CACHE_TTL = 10 * 60 * 1000
 

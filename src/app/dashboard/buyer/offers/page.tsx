@@ -339,7 +339,7 @@ function BuyerOffersPage() {
     }
 
     const handleAcceptCounter = async (offerId: string) => {
-        if (!confirm("Accept the seller's counter offer? You can then chat with the seller to finalize the purchase.")) return;
+        if (!confirm("Accept the seller's counter offer? You can then chat with the seller to finalise the purchase.")) return;
         setAccepting(offerId);
         try {
             const updated = await respondToCounterOffer(offerId, 'ACCEPTED');
@@ -497,7 +497,7 @@ function BuyerOffersPage() {
                                     ) : (
                                         displayedOffers.map((offer) => {
                                             const listing = offer.listing
-                                            const image = listing?.images?.[0] ?? "/assets/images/featured-sports.png"
+                                            const image = listing?.images?.[0] ?? "/assets/images/featured-sports.webp"
                                             const slug = listing?.slug ?? ""
 
                                             // Delivery section logic

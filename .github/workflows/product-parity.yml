@@ -51,6 +51,8 @@ jobs:
         run: node --test scripts/test-home-app-promo-compact.test.mjs
       - name: Verify retired pages redirect and the dead newsletter form is gone
         run: node --test scripts/test-retired-page-redirects.test.mjs
+      - name: Verify website audit fixes (images, SEO metadata, dead buttons, copy)
+        run: node --test scripts/test-website-audit-20261031.test.mjs
       - name: Verify administrator-only dashboard navigation and customer onboarding isolation
         run: node --test scripts/test-admin-exclusive-dashboard-routing.test.mjs
       - name: Verify admin Analytics mobile, UK dates, light/dark semantics and error labels

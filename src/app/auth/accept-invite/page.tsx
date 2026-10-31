@@ -117,7 +117,7 @@ export default function AcceptInvitePage() {
                     </div>
                     <div className="text-center">
                         <h1 className="text-2xl font-bold text-gray-900">Staff invitation</h1>
-                        <p className="text-sm text-[var(--text-muted)] mt-1">Join your dealership team on Carmazium</p>
+                        <p className="text-sm text-[var(--text-muted)] mt-1">Join your dealership team on CarMazium</p>
                     </div>
                 </div>
 

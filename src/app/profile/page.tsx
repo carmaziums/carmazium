@@ -71,6 +71,8 @@ export default function ProfilePage() {
     const [bankAccountNumber, setBankAccountNumber] = React.useState("")
     const [bankSaving, setBankSaving] = React.useState(false)
     const [stripeStatus, setStripeStatus] = React.useState<StripeConnectStatus | null>(null)
+    // A failed check must not read as "Not connected" (same rule as the dashboard).
+    const [stripeStatusFailed, setStripeStatusFailed] = React.useState(false)
     const [stripeLoading, setStripeLoading] = React.useState(false)
     // A status return never means funds were received; re-fetch provider state.
     const [oldPassword, setOldPassword] = React.useState("")
@@ -114,7 +116,9 @@ export default function ProfilePage() {
             }).catch(() => {
                 if (!cancelled) setRoleError("Some account preferences could not be loaded. Existing settings will not be overwritten.")
             })
-        getStripeConnectStatus().then((status) => { if (!cancelled) setStripeStatus(status) }).catch(() => {})
+        getStripeConnectStatus()
+            .then((status) => { if (!cancelled) { setStripeStatus(status); setStripeStatusFailed(false) } })
+            .catch(() => { if (!cancelled) setStripeStatusFailed(true) })
         return () => { cancelled = true }
     }, [profile?.id])
 
@@ -655,7 +659,7 @@ export default function ProfilePage() {
                     <div className="glass-card p-5 sm:p-7 space-y-6">
                         <p className="text-sm" style={{ color: "var(--text-muted)" }}>Vehicle buyers pay sellers directly. These details are for eligible CarMazium incentive payments, not collecting vehicle purchase money.</p>
                         <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--border-default)] p-4">
-                            <div><strong className="block">Stripe payout connection</strong><p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>{stripeStatus?.payoutsEnabled ? "Payouts enabled" : stripeStatus?.connected ? "Connection needs attention or additional onboarding" : "Not connected"}</p></div>
+                            <div><strong className="block">Stripe payout connection</strong><p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>{stripeStatus?.payoutsEnabled ? "Payouts enabled" : stripeStatus?.connected ? "Connection needs attention or additional onboarding" : stripeStatusFailed ? "We couldn't check your payout status. Refresh the page before connecting." : "Not connected"}</p></div>
                             <Button variant="outline" onClick={connectStripe} disabled={stripeLoading || !!stripeStatus?.payoutsEnabled}>{stripeLoading ? <Loader2 size={16} className="animate-spin" /> : <ExternalLink size={16} className="mr-2" />}{stripeStatus?.connected ? "Complete onboarding" : "Connect payout account"}</Button>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

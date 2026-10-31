@@ -732,7 +732,7 @@ function SellerOffersPage() {
                                 const isOpen = expanded.has(listing.id)
                                 const listingOffers = offers[listing.id] ?? []
                                 const pendingCount = listingOffers.filter(o => o.status === 'PENDING').length
-                                const image = listing.images?.[0] ?? "/assets/images/featured-sports.png"
+                                const image = listing.images?.[0] ?? "/assets/images/featured-sports.webp"
 
                                 return (
                                     <div key={listing.id} className="glass-card overflow-hidden">

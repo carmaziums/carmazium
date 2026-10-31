@@ -651,7 +651,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                 <div className="relative shrink-0">
                     {isSupportUser(room.otherUser) ? (
                         <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden relative bg-[var(--bg-card)] ring-1 ring-primary/30">
-                            <Image src="/assets/images/logo.png" alt="" fill sizes="40px" className="object-contain p-2" />
+                            <Image src="/assets/images/logo.webp" alt="" fill sizes="40px" className="object-contain p-2" />
                         </div>
                     ) : isAdminViewer ? (
                         <button

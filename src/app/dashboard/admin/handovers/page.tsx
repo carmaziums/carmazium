@@ -323,7 +323,7 @@ export default function AdminHandoversPage() {
                                                     <span className="font-bold text-emerald-400">£100.00</span>
                                                 </div>
                                                 <div className="flex justify-between border-t border-[var(--border-default)] pt-1">
-                                                    <span className="text-[var(--text-muted)]">Carmazium keeps</span>
+                                                    <span className="text-[var(--text-muted)]">CarMazium keeps</span>
                                                     <span className="font-bold">£25.00</span>
                                                 </div>
                                             </div>

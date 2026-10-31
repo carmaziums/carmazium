@@ -1,6 +1,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Apple, ArrowRight, BarChart3, CarFront, Heart, Search, Smartphone, Tag } from "lucide-react"
+import { getPublicMobileAppLinks } from "@/lib/mobileAppDownloads"
 
 const features = [
   { label: "Browse cars", detail: "Find your next car", Icon: CarFront, color: "bg-violet-600" },
@@ -40,6 +41,10 @@ function WindowsMark() {
  * store download until a verified Microsoft listing exists.
  */
 export function FooterAppPromo() {
+  const links = getPublicMobileAppLinks()
+  const iosReady = Boolean(links.ios.href || links.iosTestFlight.href)
+  const androidReady = Boolean(links.android.href || links.androidApk.href)
+  const windowsReady = Boolean(links.microsoftStore.href)
   return (
     <section
       aria-labelledby="footer-app-promo-heading"
@@ -51,7 +56,7 @@ export function FooterAppPromo() {
       <div className="relative grid items-center gap-6 px-5 pb-7 pt-7 sm:px-8 sm:pb-9 sm:pt-9 lg:grid-cols-[1.1fr_.9fr] lg:gap-4 lg:px-11 lg:py-11">
         <div className="relative z-10 min-w-0">
           <div className="mb-5 flex items-center gap-3 sm:mb-6">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-rose-400 to-red-600 text-3xl font-black shadow-[0_0_18px_rgba(255,65,65,.45)]">C</span>
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-rose-400 to-red-600 text-3xl font-black shadow-[0_0_18px_rgba(255,65,65,.45)]" aria-hidden="true">C</span>
             <span className="text-xl font-black uppercase tracking-tight sm:text-2xl">
               Car<span className="text-[#ff5765]">Mazium</span>
             </span>
@@ -69,22 +74,24 @@ export function FooterAppPromo() {
           <div className="mt-6 grid gap-3 sm:grid-cols-3 lg:mt-7">
             <Link href="/download-app#iphone-app-title" className={installLinkClass} aria-label="See official CarMazium iPhone installation options">
               <Apple className="h-8 w-8 shrink-0 fill-white" aria-hidden="true" />
-              <span className="min-w-0 flex-1"><span className="block text-[10px] font-medium text-slate-200">Get it for</span><span className="block text-sm font-black sm:text-base">iPhone</span></span>
+              <span className="min-w-0 flex-1"><span className="block text-[10px] font-medium text-slate-200">{iosReady ? "Get it for" : "Coming soon for"}</span><span className="block text-sm font-black sm:text-base">iPhone</span></span>
               <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link href="/download-app#android-app-title" className={installLinkClass} aria-label="See official CarMazium Android installation options">
               <PlayMark />
-              <span className="min-w-0 flex-1"><span className="block text-[10px] font-medium text-slate-200">Get it for</span><span className="block text-sm font-black sm:text-base">Android</span></span>
+              <span className="min-w-0 flex-1"><span className="block text-[10px] font-medium text-slate-200">{androidReady ? "Get it for" : "Coming soon for"}</span><span className="block text-sm font-black sm:text-base">Android</span></span>
               <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link href="/download-app#windows" className={installLinkClass} aria-label="See official CarMazium Microsoft Store installation options">
               <WindowsMark />
-              <span className="min-w-0 flex-1"><span className="block text-[10px] font-medium text-slate-200">Get it from</span><span className="block text-sm font-black leading-tight sm:text-base">Microsoft Store</span></span>
+              <span className="min-w-0 flex-1"><span className="block text-[10px] font-medium text-slate-200">{windowsReady ? "Get it from" : "Coming soon to"}</span><span className="block text-sm font-black leading-tight sm:text-base">Microsoft Store</span></span>
               <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" />
             </Link>
           </div>
           <p className="mt-3 text-xs leading-5 text-indigo-200">
-            Install options are shown only when verified releases are ready.
+            {iosReady || androidReady || windowsReady
+              ? "See the download page for each device's install option."
+              : "The apps are coming soon. Everything works in your browser today."}
           </p>
           <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:mt-9">
             {features.map(({ label, detail, Icon, color }) => (
@@ -127,7 +134,7 @@ export function FooterAppPromo() {
                   <span className="rounded bg-slate-100 px-1 py-1">Valuation</span>
                 </div>
                 <div className="overflow-hidden rounded-xl bg-sky-50">
-                  <Image src="/assets/images/featured-suv.png" alt="" width={420} height={240} loading="lazy" className="h-[85px] w-full object-contain sm:h-[125px]" />
+                  <Image src="/assets/images/featured-suv.webp" alt="" width={420} height={240} loading="lazy" className="h-[85px] w-full object-contain sm:h-[125px]" />
                 </div>
                 <div className="mt-2 grid grid-cols-3 gap-1.5 text-center text-[7px] font-bold text-slate-700 sm:text-[9px]">
                   <span className="rounded-lg border bg-white p-1.5">Buy</span>
@@ -146,7 +153,7 @@ export function FooterAppPromo() {
                 <p className="text-[8px] font-black sm:text-[11px]">Car<span className="text-rose-500">Mazium</span></p>
                 <p className="mt-3 text-sm font-black leading-tight sm:text-lg">Find. Buy. Sell.<br />All in one.</p>
               </div>
-              <Image src="/assets/images/featured-sports.png" alt="" width={420} height={240} loading="lazy" className="h-[85px] w-full bg-white object-contain sm:h-[105px]" />
+              <Image src="/assets/images/featured-sports.webp" alt="" width={420} height={240} loading="lazy" className="h-[85px] w-full bg-white object-contain sm:h-[105px]" />
               <div className="grid gap-2 px-2 pt-3 text-[8px] font-bold text-slate-700 sm:text-[10px]">
                 <span className="rounded-lg bg-white px-2 py-2 shadow-sm">Buy Cars →</span>
                 <span className="rounded-lg bg-white px-2 py-2 shadow-sm">Sell Cars →</span>

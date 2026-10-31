@@ -2560,7 +2560,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {/* £100 incentive stamp — bleeds over the card's corner, so it lives
                                     outside the card's own overflow-hidden wrapper rather than inside it */}
                                 <div className="absolute -top-7 -right-7 z-20 w-28 h-28 sm:w-32 sm:h-32 rotate-[12deg] drop-shadow-xl pointer-events-none">
-                                    <Image src="/assets/images/auction-100-stamp.png" alt="We pay you £100 as an incentive to list and complete the sale" fill className="object-contain" />
+                                    <Image src="/assets/images/auction-100-stamp.webp" alt="We pay you £100 as an incentive to list and complete the sale" fill className="object-contain" />
                                 </div>
                                 <div className="relative dealer-glass-card p-8 transition-all duration-300 overflow-hidden rounded-2xl h-full flex flex-col border-orange-500/20 hover:border-orange-500/50 hover:shadow-[0_10px_40px_rgba(249,115,22,0.15)]">
                                     <div className="absolute top-0 right-0 w-40 h-40 bg-orange-500/10 rounded-full blur-3xl -z-10 group-hover:bg-orange-500/20 transition-colors" />

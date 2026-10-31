@@ -15,13 +15,14 @@ import { buildBuyerDamagePins } from "@/lib/damageMarkers"
 import {
     ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon,
     MapPin, Share2, Heart, Scale, Loader2, AlertTriangle, X, Tag,
-    Clock, XCircle, MessageCircle, ThumbsUp, Lock, FileSearch, BadgeCheck, Star, Sparkles, Zap, CreditCard, Info, Globe, Wrench,
+    Clock, XCircle, MessageCircle, ThumbsUp, BadgeCheck, Star, Sparkles, Zap, CreditCard, Info, Globe, Wrench,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { BlurredPhone } from "@/components/shared/BlurredPhone"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { EnquireModal } from "@/components/listing/EnquireModal"
+import { HpiReportModal } from "@/components/hpi/HpiReportModal"
 import { getListingBySlug, makeOffer, getMyOfferForListing, respondToCounterOffer, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, formatPrice, type Listing, type LatestOffer } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { trackMetaEvent } from "@/components/analytics/MetaPixel"
@@ -456,6 +457,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
     const [showOfferModal, setShowOfferModal] = React.useState(false)
     const [showLoginModal, setShowLoginModal] = React.useState(false)
     const [showEnquireModal, setShowEnquireModal] = React.useState(false)
+    const [showHpiModal, setShowHpiModal] = React.useState(false)
     const [latestOffer, setLatestOffer] = React.useState<LatestOffer | null>(null)   // most recent offer on listing (any buyer) — public display
     const [myOffer, setMyOffer] = React.useState<LatestOffer | null>(null)            // this user's own offer — drives button state
     const [selectedDamageId, setSelectedDamageId] = React.useState<string | null>(null)
@@ -652,7 +654,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
         </div>
     )
 
-    const images = listing.images?.length > 0 ? listing.images : ["/assets/images/featured-sports.png"]
+    const images = listing.images?.length > 0 ? listing.images : ["/assets/images/featured-sports.webp"]
     const SidebarContent = () => (
         <div className="flex flex-col gap-6">
             {/* Price & Actions Card */}
@@ -881,6 +883,10 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
             <LoginModal />
 
             {/* Enquire Modal */}
+            {showHpiModal && listing && (
+                <HpiReportModal listingId={listing.id} onClose={() => setShowHpiModal(false)} />
+            )}
+
             {showEnquireModal && listing?.seller?.role === 'DEALER' && listing?.seller?.dealerProfile && (
                 <EnquireModal
                     listingId={listing.id}
@@ -1113,15 +1119,6 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                                             ))}
                                         </div>
                                     </AccordionItem>
-                                    {/* Premium marketing badges do not imply an HPI check.
-                                        Only a completed report may be described as available. */}
-                                    {listing.hpiReport?.status === 'COMPLETED' && (
-                                        <AccordionItem title="Vehicle History Report Available" icon={<ShieldCheck size={18} />}>
-                                            <p className="text-sm text-[var(--text-secondary)]">
-                                                A completed vehicle history report is available through the vehicle report section. Review its actual findings; package tier alone is not a vehicle history check.
-                                            </p>
-                                        </AccordionItem>
-                                    )}
 
                                 </div>
                             </div>
@@ -1129,17 +1126,21 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
 
                         {/* Condition & Damage — always shown (same 3D model + auto grade as the Buy Cars page), even with zero reported damage */}
                         {(() => {
-                            const damageRecords = Array.isArray((listing as any).damageRecords) ? (listing as any).damageRecords as any[] : []
+                            // The listing API includes damageRecords (an empty array when the seller
+                            // reported none). If the field is missing, say so rather than "no damage".
+                            const damageDataAvailable = Array.isArray((listing as any).damageRecords)
+                            const damageRecords = damageDataAvailable ? (listing as any).damageRecords as any[] : []
                             // Show exact seller-saved 3D points; for old/manual exterior
                             // reports, use clearly labelled approximate panel markers.
                             const positionedDamage = buildBuyerDamagePins(damageRecords)
                             // exteriorGrade is computed automatically by the platform from the
                             // seller's reported damage zones — not seller-chosen. Same value
                             // drives the "Grade N" chip on the card and the Buy Cars detail page.
-                            const grade = listing.exteriorGrade ?? 1
-                            const gradeLabel = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Average'][grade]
-                            const gradeColor = ['', 'text-emerald-400', 'text-green-400', 'text-yellow-400', 'text-orange-400', 'text-red-400'][grade]
-                            const gradeBg = ['', 'bg-emerald-500/10 border-emerald-500/20', 'bg-green-500/10 border-green-500/20', 'bg-yellow-500/10 border-yellow-500/20', 'bg-orange-500/10 border-orange-500/20', 'bg-red-500/10 border-red-500/20'][grade]
+                            // No grade on record must not be shown as "Grade 1 — Excellent".
+                            const grade = typeof listing.exteriorGrade === 'number' ? listing.exteriorGrade : null
+                            const gradeLabel = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Average'][grade ?? 0]
+                            const gradeColor = ['', 'text-emerald-400', 'text-green-400', 'text-yellow-400', 'text-orange-400', 'text-red-400'][grade ?? 0]
+                            const gradeBg = ['', 'bg-emerald-500/10 border-emerald-500/20', 'bg-green-500/10 border-green-500/20', 'bg-yellow-500/10 border-yellow-500/20', 'bg-orange-500/10 border-orange-500/20', 'bg-red-500/10 border-red-500/20'][grade ?? 0]
                             return (
                             <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
                                 <div className="flex items-start justify-between mb-2">
@@ -1147,14 +1148,18 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                                         <Wrench size={18} className="text-amber-400" />
                                         Condition &amp; Damage
                                     </h3>
-                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold ${gradeBg} ${gradeColor}`}>
-                                        Grade {grade} — {gradeLabel}
-                                    </span>
+                                    {grade !== null && (
+                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold ${gradeBg} ${gradeColor}`}>
+                                            Grade {grade} — {gradeLabel}
+                                        </span>
+                                    )}
                                 </div>
                                 <p className="text-xs text-[var(--text-muted)] mb-4 pl-5">
                                     {damageRecords.length > 0
                                         ? `${damageRecords.length} damage ${damageRecords.length === 1 ? 'report' : 'reports'} from seller · ${positionedDamage.length} positioned on 3D — select a number or the detail card below`
-                                        : 'No damage reported by the seller'}
+                                        : damageDataAvailable
+                                            ? 'No damage reported by the seller'
+                                            : 'Damage details are not available for this vehicle. Ask the seller before bidding.'}
                                 </p>
 
                                 <ThreeDErrorBoundary
@@ -1222,64 +1227,46 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
 
 
 
-                        {/* HPI Check Report */}
-                        <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8 relative overflow-hidden">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-xl font-bold border-l-4 border-primary pl-4 flex items-center gap-2">
-                                    <FileSearch className="text-primary" size={20} />
-                                    Comprehensive Vehicle Check
-                                </h3>
-                                <div className="text-xs font-semibold px-2.5 py-1 bg-white/10 text-[var(--text-secondary)] rounded-md border border-[var(--border-default)]">
-                                    Powered by CarMazium
-                                </div>
-                            </div>
-                            
-                            {/* Badges Summary */}
-                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
-                                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg">
-                                    <CheckCircle size={16} className="text-emerald-400 shrink-0" />
-                                    <span className="text-sm text-emerald-300 font-medium">Finance Clear</span>
-                                </div>
-                                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg">
-                                    <CheckCircle size={16} className="text-emerald-400 shrink-0" />
-                                    <span className="text-sm text-emerald-300 font-medium">Not Stolen</span>
-                                </div>
-                                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg">
-                                    <CheckCircle size={16} className="text-emerald-400 shrink-0" />
-                                    <span className="text-sm text-emerald-300 font-medium">Not Scrapped</span>
-                                </div>
-                                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg">
-                                    <CheckCircle size={16} className="text-emerald-400 shrink-0" />
-                                    <span className="text-sm text-emerald-300 font-medium">Mileage Checked</span>
-                                </div>
-                                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg">
-                                    <CheckCircle size={16} className="text-emerald-400 shrink-0" />
-                                    <span className="text-sm text-emerald-300 font-medium">Not Written Off</span>
-                                </div>
-                            </div>
-
-                            {/* Blurred Report Section */}
-                            <div className="relative rounded-xl border border-[var(--border-default)] overflow-hidden bg-[var(--bg-card)]">
-                                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-900/60 backdrop-blur-[3px] p-6 text-center">
-                                    <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center text-primary mb-4 shadow-neon">
-                                        <Lock size={28} />
+                        {/* A static "Comprehensive Vehicle Check" used to sit here: it showed
+                            Finance Clear / Not Stolen / Not Written Off for every vehicle without
+                            any check having run, and its "Unlock" button did nothing. Only a real
+                            report is offered now, opened in the same modal as the Buy Cars page;
+                            the modal fetches the findings and shows pending/error states. */}
+                        {listing.hpiReport && (() => {
+                            const hpiReady = listing.hpiReport?.status === 'COMPLETED'
+                            return (
+                                <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-6">
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${hpiReady
+                                                ? 'bg-emerald-500/10 border-emerald-500/20'
+                                                : 'bg-amber-500/10 border-amber-500/20'}`}>
+                                                {hpiReady
+                                                    ? <ShieldCheck size={18} className="text-emerald-400" />
+                                                    : <Clock size={18} className="text-amber-400" />}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-[var(--text-primary)] text-sm">Vehicle History Check</p>
+                                                <p className="text-xs text-[var(--text-muted)]">
+                                                    {hpiReady
+                                                        ? 'Open the report to see its actual findings'
+                                                        : 'Report requested — being prepared by our team'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowHpiModal(true)}
+                                            className={`shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg border text-xs font-bold transition-colors ${hpiReady
+                                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20'
+                                                : 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20'}`}
+                                        >
+                                            {hpiReady ? <><ShieldCheck size={13} /> View Report</> : <><Clock size={13} /> Check Status</>}
+                                        </button>
                                     </div>
-                                    <h4 className="text-xl font-bold mb-2 text-white">Detailed Report Locked</h4>
-                                    <p className="text-sm text-gray-300 max-w-sm mb-6">
-                                        Unlock the full 50+ point vehicle history check including MOT history, keeper changes, and hidden issues.
-                                    </p>
-                                    <Button className="shadow-neon px-8 hover:scale-105 transition-transform">
-                                        Unlock Full Report for £9.99
-                                    </Button>
                                 </div>
-                                <div className="h-56 relative opacity-40 pointer-events-none grayscale-[0.2]">
-                                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950">
-                                        <ShieldCheck size={96} className="text-blue-300/30" aria-hidden="true" />
-                                    </div>
-                                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-900/20 to-slate-900/50" />
-                                </div>
-                            </div>
-                        </div>
+                            )
+                        })()}
 
                         {/* Finance Calculator */}
                         <FinanceCalculator vehiclePrice={Number(listing.price)} />

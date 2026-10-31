@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { PageJsonLd } from "@/components/seo/PageJsonLd"
 
 export const metadata: Metadata = {
-    title: "About CarMazium — UK Online Car Marketplace",
+    title: { absolute: "About CarMazium — UK Online Car Marketplace" },
     description:
         "Learn about CarMazium, a UK online car marketplace built to make buying, selling and auctioning vehicles more transparent and straightforward.",
     alternates: {

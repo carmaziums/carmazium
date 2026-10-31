@@ -95,7 +95,7 @@ export default function ContactPage() {
                             <div>
                                 <h4 className="font-bold mb-1">Call Us</h4>
                                 <p className="text-[var(--text-muted)] text-sm"><a href="tel:+441218385040" className="hover:text-primary transition-colors">0121 838 5040</a></p>
-                                <p className="text-[var(--text-faint)] text-xs mt-1">Mon - Fri: 9am - 6pm</p>
+                                <p className="text-[var(--text-faint)] text-xs mt-1">Mon – Fri, 9am – 6pm UK time</p>
                             </div>
                         </div>
                         <div className="glass-card p-6 flex items-start gap-4">

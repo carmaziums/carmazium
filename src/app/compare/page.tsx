@@ -147,7 +147,7 @@ function CompareContent() {
             const valid = listing.images.find(image => !image.includes("example.com"))
             if (valid) return valid
         }
-        return "/assets/images/featured-sports.png"
+        return "/assets/images/featured-sports.webp"
     }
 
     const SectionHeader = ({ icon: Icon, label }: { icon: React.ComponentType<{ size?: number; className?: string }>; label: string }) => (

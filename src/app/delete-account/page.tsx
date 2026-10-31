@@ -5,6 +5,7 @@ import { DeleteAccountPortal } from "@/components/account/DeleteAccountPortal"
 export const metadata: Metadata = {
   title: "Delete Account",
   description: "Delete or request deletion of a CarMazium account and associated personal data.",
+  alternates: { canonical: "/delete-account" },
 }
 
 export default function DeleteAccountPage() {

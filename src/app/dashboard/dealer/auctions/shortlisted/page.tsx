@@ -213,7 +213,7 @@ export default function DealerAuctionShortlistPage() {
                                             <div className="flex flex-col sm:flex-row">
                                                 <Link href={"/auctions/live/" + a.id} className="relative block h-44 shrink-0 sm:h-auto sm:w-44">
                                                     <Image
-                                                        src={item.listing.images[0] || "/assets/images/hero-bg.png"}
+                                                        src={item.listing.images[0] || "/assets/images/featured-sports.webp"}
                                                         alt={item.listing.title}
                                                         fill
                                                         sizes="(max-width: 640px) 100vw, 176px"
