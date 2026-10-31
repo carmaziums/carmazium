@@ -150,7 +150,7 @@ export default function PricingPage() {
                             <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-rose-400" /> £{auction.sellerReward} reward after successful approved handover</li>
                         </ul>
                         <Button asChild className={redCta}>
-                            <Link href="/sell">Start Free Auction <ArrowRight size={17} /></Link>
+                            <Link href="/sell?sellMode=auction#sell-options">Start Free Auction <ArrowRight size={17} /></Link>
                         </Button>
                     </article>
 
@@ -175,7 +175,7 @@ export default function PricingPage() {
                             <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-emerald-500" /> Featured Boost available separately</li>
                         </ul>
                         <Button asChild className={redCta}>
-                            <Link href="/sell">Choose Basic <ArrowRight size={17} /></Link>
+                            <Link href="/sell?sellMode=retail&package=basic#sell-options">Choose Basic <ArrowRight size={17} /></Link>
                         </Button>
                     </article>
 
@@ -205,7 +205,7 @@ export default function PricingPage() {
                             <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-blue-500" /> Featured Boost still optional</li>
                         </ul>
                         <Button asChild className={redCta}>
-                            <Link href="/sell">Choose Standard <ArrowRight size={17} /></Link>
+                            <Link href="/sell?sellMode=retail&package=standard#sell-options">Choose Standard <ArrowRight size={17} /></Link>
                         </Button>
                     </article>
 
@@ -235,7 +235,7 @@ export default function PricingPage() {
                             <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-amber-500" /> Featured Boost included for 28 days</li>
                         </ul>
                         <Button asChild className={redCta}>
-                            <Link href="/sell">Choose Premium <ArrowRight size={17} /></Link>
+                            <Link href="/sell?sellMode=retail&package=premium#sell-options">Choose Premium <ArrowRight size={17} /></Link>
                         </Button>
                     </article>
                 </div>

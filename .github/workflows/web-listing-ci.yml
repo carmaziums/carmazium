@@ -84,6 +84,8 @@ on:
       - "scripts/test-mazium-description.test.mjs"
       - "scripts/test-buyer-mot-display.test.mjs"
       - "src/lib/pricingConfig.ts"
+      - "src/lib/sellPricingIntent.ts"
+      - "scripts/test-pricing-seller-handoff.test.mjs"
       - "src/lib/auctionApi.ts"
       - "src/lib/auctionPricing.ts"
       - ".github/workflows/web-listing-ci.yml"
@@ -134,6 +136,9 @@ jobs:
 
       - name: Verify unified private buyer/seller dashboard and legacy compatibility
         run: node --test scripts/test-private-dashboard-consolidation.test.mjs
+
+      - name: Verify pricing CTA to correct selling channel and package
+        run: node --test scripts/test-pricing-seller-handoff.test.mjs
 
       - name: Verify current, history, accepted, rejected and cancelled My Offers filters
         run: node --test scripts/test-outgoing-offer-filters.test.mjs
