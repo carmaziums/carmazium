@@ -35,6 +35,17 @@ on:
       - "src/components/dealer/PipelineRow.tsx"
       - "src/lib/dealerPurchaseDetail.ts"
       - "scripts/test-dealer-purchase-detail.test.mjs"
+      - "src/lib/purchaseDestinations.ts"
+      - "src/components/dealer/PurchaseDestinations.tsx"
+      - "src/components/dealer/DealerPurchasesView.tsx"
+      - "src/components/dealer/PurchaseVehicleRecord.tsx"
+      - "src/app/dashboard/dealer/purchases/**"
+      - "src/app/dashboard/dealer/inventory/page.tsx"
+      - "carmazium app/carmazium app/src/components/dealer/**"
+      - "carmazium app/carmazium app/src/screens/main/DealerPurchasesScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/main/DealerInventoryScreen.tsx"
+      - "scripts/test-dealer-purchase-destinations.test.mjs"
+      - "scripts/test-dealer-inventory-mobile.test.mjs"
       - "src/components/dealer/BuyAndBidTabs.tsx"
       - "src/lib/pendingRetailPurchases.ts"
       - "scripts/test-dealer-pending-retail-purchases.test.mjs"
@@ -114,6 +125,9 @@ jobs:
 
       - name: Verify secure dealer purchase detail web and native parity
         run: node --test scripts/test-dealer-purchase-detail.test.mjs
+
+      - name: Verify Auction Wins, All Purchases and Purchase History are separate on web and app
+        run: node --test scripts/test-dealer-purchase-destinations.test.mjs
 
       - name: Verify accepted retail purchases appear without premature completed-sale records
         run: node --test scripts/test-dealer-pending-retail-purchases.test.mjs

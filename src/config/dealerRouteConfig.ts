@@ -17,6 +17,7 @@ import {
     Wrench,
     ShieldCheck,
     ShoppingBag,
+    History,
     LucideIcon
 } from "lucide-react"
 
@@ -95,16 +96,28 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         href: "/dashboard/dealer/purchases",
         requiredPermission: "VIEW_PURCHASES",
         label: "Purchases",
-        title: "Purchase History",
-        subHeader: "Every vehicle you have bought, retail and auction",
+        title: "All Purchases",
+        subHeader: "Every vehicle you have bought or agreed to buy, retail and auction",
         icon: ShoppingBag,
+        section: "Buy",
+        // Purchase History and each purchase record sit under this item.
+        activePrefixes: ["/dashboard/dealer/purchases"]
+    },
+    {
+        href: "/dashboard/dealer/purchases/history",
+        requiredPermission: "VIEW_PURCHASES",
+        label: "Purchase History",
+        title: "Purchase History",
+        subHeader: "Finished purchases and cancelled sales",
+        icon: History,
+        hidden: true,
         section: "Buy"
     },
     {
         href: "/dashboard/dealer/auctions/won",
         requiredPermission: "VIEW_PURCHASES",
         label: "Purchases",
-        title: "Purchased from Auction",
+        title: "Auction Wins",
         subHeader: "Auction wins and next handover steps",
         icon: Trophy,
         hidden: true,
