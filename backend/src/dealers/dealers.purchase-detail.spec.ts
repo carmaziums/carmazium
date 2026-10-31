@@ -33,7 +33,7 @@ describe('DealersService purchased vehicle detail', () => {
                 }),
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
-            sale: { findFirst: jest.fn() },
+            sale: { findFirst: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
             serviceJob: { findFirst: jest.fn().mockResolvedValue(null) },
         };
         service = new DealersService(prisma, {} as any, {} as any, {} as any);
@@ -114,4 +114,28 @@ describe('DealersService purchased vehicle detail', () => {
         expect(result.payment.sellerFundsConfirmedAt).toContain('2026-10-31');
         expect(result.documents.handoverSubmittedAt).toContain('2026-10-31');
     });
+    it('lookup returns only dealer-owned purchases for validated auction listing UUIDs', async () => {
+        const listingId = '11111111-2222-3333-4444-555555555555';
+        prisma.sale.findMany.mockResolvedValue([{ id: 'sale-1', listingId }]);
+        const data = await service.getDealerPurchaseLookup('owner-1', [listingId]);
+        expect(data).toEqual([{ id: 'sale-1', listingId }]);
+        expect(prisma.sale.findMany).toHaveBeenCalledWith(expect.objectContaining({
+            where: {
+                buyerId: 'owner-1',
+                listingId: { in: [listingId] },
+            },
+            select: { id: true, listingId: true },
+        }));
+    });
+
+    it('purchase lookup rejects bad identifiers and foreign actors', async () => {
+        await expect(service.getDealerPurchaseLookup('owner-1', ['../someone-else']))
+            .rejects.toThrow('Provide 1 to 50 valid listing IDs');
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        await expect(service.getDealerPurchaseLookup('outsider',
+            ['11111111-2222-3333-4444-555555555555']))
+            .rejects.toBeInstanceOf(ForbiddenException);
+        expect(prisma.sale.findMany).not.toHaveBeenCalled();
+    });
+
 });
