@@ -422,7 +422,42 @@ export class AdminService {
             }),
             this.prisma.listing.count({ where }),
         ]);
-        return { data, total };
+        // Admin-only history. Query the page's known listing IDs in a
+        // single bounded request, never one query per vehicle. An auction's
+        // updatedAt/startTime is NOT evidence of a relist (ordinary edits and
+        // scheduled first runs modify those values too).
+        const relistEvents = data.length
+            ? await this.prisma.analyticsEvent.findMany({
+                where: {
+                    type: { in: ['admin_draft_auction_relist', 'seller_listing_relisted'] },
+                    OR: data.map(listing => ({
+                        payload: { path: ['listingId'], equals: listing.id },
+                    })),
+                },
+                select: { createdAt: true, payload: true },
+                orderBy: { createdAt: 'desc' },
+            })
+            : [];
+        const lastRelistedById = new Map<string, Date>();
+        for (const event of relistEvents) {
+            const payload = event.payload;
+            if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+                const id = (payload as Record<string, unknown>).listingId;
+                if (typeof id === 'string' && !lastRelistedById.has(id)) {
+                    lastRelistedById.set(id, event.createdAt);
+                }
+            }
+        }
+        return {
+            data: data.map(listing => ({
+                ...listing,
+                // CreatedAt is an immutable historical anchor; unlike updatedAt,
+                // it is unaffected by subsequent edits and relist actions.
+                firstListingRecordAt: listing.createdAt,
+                lastRelistedAt: lastRelistedById.get(listing.id) ?? null,
+            })),
+            total,
+        };
     }
 
 

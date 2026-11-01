@@ -66,3 +66,29 @@ export function getModerationListingHref(listing: ModerationListing): string {
     return (listing.type === 'AUCTION' ? '/vehicle/' : '/buy-cars/') +
         encodeURIComponent(listing.slug || listing.id || '')
 }
+
+
+/** The original record date is immutable. Historic public go-live time is
+ * not universally persisted, so do not misrepresent an updatedAt timestamp
+ * or an auction startTime as a verified first publication or relist. */
+export function getModerationListingDates(listing: {
+    firstListingRecordAt?: string | Date | null
+    createdAt?: string | Date | null
+    lastRelistedAt?: string | Date | null
+}): { firstListed: string | null; lastRelisted: string | null } {
+    const format = (value: string | Date | null | undefined): string | null => {
+        if (!value) return null
+        const date = value instanceof Date ? value : new Date(value)
+        if (!Number.isFinite(date.getTime())) return null
+        return new Intl.DateTimeFormat('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            timeZone: 'Europe/London',
+        }).format(date)
+    }
+    return {
+        firstListed: format(listing.firstListingRecordAt ?? listing.createdAt),
+        lastRelisted: format(listing.lastRelistedAt),
+    }
+}
