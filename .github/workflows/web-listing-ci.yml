@@ -59,6 +59,9 @@ on:
       - "scripts/test-dealer-purchase-destinations.test.mjs"
       - "scripts/test-dealer-inventory-mobile.test.mjs"
       - "scripts/test-buyer-complete-sale.test.mjs"
+      - "scripts/test-buyer-vehicle-collected.test.mjs"
+      - "src/components/purchases/BuyerCollectedButton.tsx"
+      - "src/components/dashboard/PrivatePurchasesTab.tsx"
       - "src/components/purchases/**"
       - "src/app/dashboard/buyer/offers/page.tsx"
       - "src/components/dashboard/PrivatePurchasesTab.tsx"
@@ -195,6 +198,9 @@ jobs:
 
       - name: Verify either party can complete an accepted retail sale (web and app)
         run: node --test scripts/test-buyer-complete-sale.test.mjs
+
+      - name: Verify physical vehicle collection and completion for buyers
+        run: node --test scripts/test-buyer-vehicle-collected.test.mjs
 
       - name: Verify accepted retail purchases appear without premature completed-sale records
         run: node --test scripts/test-dealer-pending-retail-purchases.test.mjs
