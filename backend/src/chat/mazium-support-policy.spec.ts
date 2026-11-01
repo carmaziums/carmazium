@@ -1,4 +1,4 @@
-import { canPrepareSupportDraft, classifySupportMessage } from './mazium-support-policy';
+import { canAutoReplyToSupport, canPrepareSupportDraft, classifySupportMessage } from './mazium-support-policy';
 
 describe('MaziuM support safety policy', () => {
     it.each([
@@ -38,4 +38,34 @@ describe('MaziuM support safety policy', () => {
         expect(canPrepareSupportDraft({ ...eligible, alreadyRepliedToLatestMessage: true })).toBe(false);
         expect(canPrepareSupportDraft({ ...eligible, consentToAi: false })).toBe(false);
     });
+    it('fails closed for automatic delivery unless every safeguard passes', () => {
+        const eligibleAuto = {
+            enabled: true,
+            context: 'SUPPORT',
+            roomClosed: false,
+            roomDeleted: false,
+            aiDisclosedAndConsented: true,
+            optedOut: false,
+            humanTakeover: false,
+            latestMessageFromCustomer: true,
+            latestMessageHasAttachment: false,
+            latestMessageIdMatches: true,
+            alreadyProcessed: false,
+            withinRateAndBudgetLimits: true,
+            incomingMessage: 'How do I list my car?',
+            proposedReply: 'You can create a retail listing for £1.',
+        };
+        expect(canAutoReplyToSupport(eligibleAuto)).toBe(true);
+        expect(canAutoReplyToSupport({ ...eligibleAuto, enabled: false })).toBe(false);
+        expect(canAutoReplyToSupport({ ...eligibleAuto, context: 'RETAIL' })).toBe(false);
+        expect(canAutoReplyToSupport({ ...eligibleAuto, aiDisclosedAndConsented: false })).toBe(false);
+        expect(canAutoReplyToSupport({ ...eligibleAuto, optedOut: true })).toBe(false);
+        expect(canAutoReplyToSupport({ ...eligibleAuto, humanTakeover: true })).toBe(false);
+        expect(canAutoReplyToSupport({ ...eligibleAuto, latestMessageIdMatches: false })).toBe(false);
+        expect(canAutoReplyToSupport({ ...eligibleAuto, alreadyProcessed: true })).toBe(false);
+        expect(canAutoReplyToSupport({ ...eligibleAuto, withinRateAndBudgetLimits: false })).toBe(false);
+        expect(canAutoReplyToSupport({ ...eligibleAuto, incomingMessage: 'Refund my fee' })).toBe(false);
+        expect(canAutoReplyToSupport({ ...eligibleAuto, proposedReply: 'I will refund your fee' })).toBe(false);
+    });
+
 });
