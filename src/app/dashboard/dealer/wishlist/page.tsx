@@ -1,6 +1,9 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams } from "next/navigation"
+import DealerSavedAuctionsView from "@/components/dealer/DealerSavedAuctionsView"
+import { DealerSavedTabs } from "@/components/dealer/DealerSavedTabs"
 import Link from "next/link"
 import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -10,6 +13,11 @@ import { getWatchlist, removeFromWatchlist, formatPrice, type WatchlistItem } fr
 import { Loader2, Heart, Gavel, ChevronRight } from "lucide-react"
 
 export default function DealerSavedCarsPage() {
+    const params = useSearchParams()
+    return params.get("tab") === "retail" ? <SavedRetailContent /> : <DealerSavedAuctionsView />
+}
+
+function SavedRetailContent() {
     const { user, loading: authLoading } = useAuth()
     const [items, setItems] = React.useState<WatchlistItem[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -56,23 +64,24 @@ export default function DealerSavedCarsPage() {
                 <main className="flex-1 space-y-6">
                     <div>
                         <h1 className="text-3xl font-bold font-heading flex items-center gap-3">
-                            <Heart className="text-pink-400" /> Saved Cars
+                            <Heart className="text-pink-400" /> Saved
                         </h1>
-                        <p className="text-sm text-[var(--text-muted)] mt-1">Vehicles you&apos;re tracking across the marketplace</p>
+                        <p className="text-sm text-[var(--text-muted)] mt-1">Auctions and retail cars you have saved.</p>
                     </div>
 
-                    {loading ? (
+                    <DealerSavedTabs active="retail" />
+                                        {loading ? (
                         <div className="glass-card p-12 text-center">
                             <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
                         </div>
-                    ) : items.length === 0 ? (
+                    ) : items.filter(item => item.listing.type === "CLASSIFIED").length === 0 ? (
                         <div className="glass-card p-12 text-center text-[var(--text-muted)]">
-                            Your Saved Cars list is empty. <Link href="/search" className="text-primary hover:underline">Browse cars to add some!</Link>
+                            No saved retail cars. <Link href="/search" className="inline-flex min-h-11 items-center text-primary underline">Browse retail cars</Link>
                         </div>
                     ) : (
                         <>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {items.map((item) => (
+                                {items.filter(item => item.listing.type === "CLASSIFIED").map((item) => (
                                     <div key={item.id} className="glass-card overflow-hidden group relative">
                                         <button
                                             onClick={() => handleRemove(item.listingId)}
@@ -103,7 +112,7 @@ export default function DealerSavedCarsPage() {
                                                         item.listing.status === 'SOLD' ? 'bg-blue-500/80 text-white' :
                                                             'bg-gray-500/80 text-white'
                                                     }`}>
-                                                    {item.listing.status}
+                                                    {item.listing.status === "ACTIVE" ? "Available" : "No longer available"}
                                                 </div>
                                             </div>
                                             <div className="p-4">
@@ -123,9 +132,14 @@ export default function DealerSavedCarsPage() {
                                                     <Button className="w-full gap-2"><Gavel size={14} /> Make Offer</Button>
                                                 </Link>
                                             )}
-                                            <Link href={`/buy-cars/${item.listing.slug}`}>
-                                                <Button variant="outline" className="w-full gap-2">View Listing <ChevronRight size={14} /></Button>
-                                            </Link>
+                                            {item.listing.status === "ACTIVE" ? (
+                                                <Link href={`/buy-cars/${item.listing.slug}`}>
+                                                    <Button variant="outline" className="w-full gap-2 min-h-11">View car <ChevronRight size={14} /></Button>
+                                                </Link>
+                                            ) : (
+                                                <Button variant="outline" className="w-full min-h-11" disabled={removing === item.listingId}
+                                                    onClick={() => void handleRemove(item.listingId)}>Remove</Button>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
