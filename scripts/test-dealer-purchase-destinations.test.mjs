@@ -33,68 +33,73 @@ function load(path, modules = {}) {
 const dest = load("src/lib/purchaseDestinations.ts")
 const { getDealerRoute } = load("src/config/dealerRouteConfig.ts")
 
-test("four distinct web purchase destinations, each with its own page", () => {
-    const hrefs = Array.from(dest.PURCHASE_DESTINATIONS, d => d.href)
-    assert.deepEqual(Array.from(dest.PURCHASE_DESTINATIONS, d => d.label), ["Auction Wins", "Retail Purchases", "All Purchases", "Purchase History"])
-    assert.equal(new Set(hrefs).size, 4)
-    assert.ok(existsSync(new URL("../src/app/dashboard/dealer/auctions/won/page.tsx", import.meta.url)))
-    assert.ok(existsSync(new URL("../src/app/dashboard/dealer/purchases/page.tsx", import.meta.url)))
-    assert.ok(existsSync(new URL("../src/app/dashboard/dealer/purchases/retail/page.tsx", import.meta.url)))
-    assert.ok(existsSync(new URL("../src/app/dashboard/dealer/purchases/history/page.tsx", import.meta.url)))
-    assert.match(read("src/app/dashboard/dealer/purchases/page.tsx"), /<DealerPurchasesView mode="all" \/>/)
-    assert.match(read("src/app/dashboard/dealer/purchases/retail/page.tsx"), /<DealerPurchasesView mode="retail" \/>/)
-    assert.match(read("src/app/dashboard/dealer/purchases/history/page.tsx"), /<DealerPurchasesView mode="history" \/>/)
-})
 
-test("All Purchases is titled All Purchases, not Purchase History", () => {
-    assert.equal(getDealerRoute("/dashboard/dealer/purchases").title, "All Purchases")
-    assert.equal(getDealerRoute("/dashboard/dealer/purchases/history").title, "Purchase History")
-    assert.equal(getDealerRoute("/dashboard/dealer/purchases/retail").title, "Retail Purchases")
-    assert.equal(getDealerRoute("/dashboard/dealer/purchases/retail").requiredPermission, "VIEW_PURCHASES")
-    assert.equal(getDealerRoute("/dashboard/dealer/purchases/history").requiredPermission, "VIEW_PURCHASES")
-    const view = read("src/components/dealer/DealerPurchasesView.tsx")
-    assert.match(view, /title=\{isHistory \? "Purchase History" : isRetail \? "Retail Purchases" : "All Purchases"\}/)
-    // No redirect from one destination to the other.
-    assert.doesNotMatch(read("src/app/dashboard/dealer/purchases/page.tsx"), /redirect|router\.replace/)
-})
-
-test("the four web destination tabs use a 2x2 mobile grid without scrolling", () => {
-    const bar = read("src/components/dealer/PurchaseDestinations.tsx")
-    assert.match(bar, /grid grid-cols-2 sm:grid-cols-4/)
-    assert.doesNotMatch(bar, /overflow-x-auto/)
-    assert.match(bar, /aria-current="page"/)
-    assert.match(bar, /min-h-\[56px\]/)
-    assert.match(read("src/app/dashboard/dealer/auctions/won/page.tsx"), /<PurchaseDestinations active="wins" \/>/)
-    assert.match(read("src/components/dealer/DealerPurchasesView.tsx"), /<PurchaseDestinations active=\{isHistory \? "history" : isRetail \? "retail" : "all"\} \/>/)
-})
-
-test("Retail Purchases includes pending retail deals and recorded retail sales, never auction wins", () => {
-    const eligible = [
-        { id: "retail-pending", status: "awaiting_confirmation", purchaseChannel: "RETAIL", retailSold: false },
-        { id: "retail-confirmed", status: "sold", purchaseChannel: "RETAIL", retailSold: true },
-        { id: "auction-settled", status: "sale_confirmed", purchaseChannel: "AUCTION", retailSold: false },
-        { id: "legacy-retail", status: "sold", retailSold: true },
-        { id: "legacy-unknown", status: "awaiting_confirmation", retailSold: false },
+test("one canonical Purchases page keeps old auction, retail and history deep links", () => {
+    const page = read("src/app/dashboard/dealer/purchases/page.tsx")
+    assert.match(page, /DealerPurchasesView mode="all"/)
+    assert.match(page, /params.get\("detail"\) === "wins"/)
+    assert.match(page, /DealerAuctionWinsView/)
+    const urls = [
+        ["src/app/dashboard/dealer/auctions/won/page.tsx", "detail=wins&tab=progress&channel=auction"],
+        ["src/app/dashboard/dealer/purchases/retail/page.tsx", "tab=progress&channel=retail"],
+        ["src/app/dashboard/dealer/purchases/history/page.tsx", "tab=completed&channel=all"],
     ]
-    assert.deepEqual(Array.from(eligible.filter(dest.isRetailPurchase), item => item.id),
-        ["retail-pending", "retail-confirmed", "legacy-retail"])
-    const source = read("src/components/dealer/DealerPurchasesView.tsx")
-    assert.match(source, /if \(isRetail && !isRetailPurchase\(p\)\) return false/)
-    assert.match(source, /isHistory \|\| \(statusFilter !== "all" && statusFilter !== "pending_retail"\)/)
-    assert.match(source, /<PendingRetailPurchaseRow key=\{offer\.id\} offer=\{offer\} onCompleted=/)
-    assert.match(read("backend/src/dealers/dealers.service.ts"), /purchaseChannel: isAuctionPurchase \? 'AUCTION' : 'RETAIL'/)
-    assert.match(read("src/app/dashboard/dealer/layout.tsx"), /\["\/dashboard\/dealer\/purchases", "VIEW_PURCHASES"\]/)
+    for (const [file, query] of urls) {
+        assert.match(read(file), /redirect\(/)
+        assert.ok(read(file).includes("/dashboard/dealer/purchases?" + query), file)
+    }
+    assert.equal(getDealerRoute("/dashboard/dealer/purchases").requiredPermission, "VIEW_PURCHASES")
 })
 
-test("Purchase History keeps finished stages only; it never changes a status", () => {
-    for (const s of ["sold", "checks_complete", "delivery_requested"]) assert.ok(dest.isPurchaseHistoryStatus(s), s)
-    for (const s of ["awaiting_confirmation", "sale_confirmed", "reviewing_docs"]) assert.ok(!dest.isPurchaseHistoryStatus(s), s)
+test("Purchases has a clear canonical title, but historical route permissions remain", () => {
+    assert.equal(getDealerRoute("/dashboard/dealer/purchases").title, "Purchases")
+    for (const path of ["/dashboard/dealer/purchases/retail", "/dashboard/dealer/purchases/history", "/dashboard/dealer/auctions/won"]) {
+        assert.equal(getDealerRoute(path).requiredPermission, "VIEW_PURCHASES", path)
+    }
     const view = read("src/components/dealer/DealerPurchasesView.tsx")
-    // The status mapping (and the pending-vs-recorded rule) is unchanged.
-    assert.match(view, /item\.status === "AWAITING_CONFIRMATION" && item\.retailSold/)
-    assert.match(view, /isHistory && !isPurchaseHistoryStatus\(p\.status\)/)
+    assert.match(view, /PageHeader title="Purchases"/)
+    assert.doesNotMatch(read("src/app/dashboard/dealer/purchases/page.tsx"), /redirect\(/)
 })
 
+test("Purchases uses a single accessible row of three stage tabs and compact channel chips", () => {
+    const view = read("src/components/dealer/DealerPurchasesView.tsx")
+    assert.match(view, /aria-label="Purchase stages"/)
+    assert.match(view, /grid grid-cols-3 gap-1/)
+    for (const [id, label] of [["progress", "In progress"], ["completed", "Completed"], ["cancelled", "Cancelled"]]) {
+        assert.ok(view.includes('["' + id + '","' + label + '"]'), id)
+    }
+    assert.match(view, /aria-current=\{stage === value/)
+    assert.match(view, /channel=\$\{value\}/)
+    assert.match(view, /\["all","auction","retail"\]/)
+    assert.doesNotMatch(view, /<PurchaseDestinations/)
+    assert.doesNotMatch(view, /<Columns3/)
+})
+
+test("Retail channel includes accepted retail deals and recorded retail sales but excludes auction purchases", () => {
+    const eligible = [
+        { id: "retail-pending", purchaseChannel: "RETAIL", retailSold: false },
+        { id: "retail-complete", purchaseChannel: "RETAIL", retailSold: true },
+        { id: "auction-won", purchaseChannel: "AUCTION", retailSold: false },
+        { id: "legacy-retail", retailSold: true },
+    ]
+    assert.deepEqual(Array.from(eligible.filter(dest.isRetailPurchase), x => x.id),
+        ["retail-pending", "retail-complete", "legacy-retail"])
+    const view = read("src/components/dealer/DealerPurchasesView.tsx")
+    assert.match(view, /if \(isRetail && !isRetailPurchase\(p\)\) return false/)
+    assert.match(view, /if \(channel === "auction" && isRetailPurchase\(p\)\) return false/)
+    assert.match(view, /<PendingRetailPurchaseRow key=\{offer\.id\} offer=\{offer\} onCompleted=/)
+    assert.match(read("backend/src/dealers/dealers.service.ts"), /purchaseChannel: isAuctionPurchase \? 'AUCTION' : 'RETAIL'/)
+})
+
+test("Completed and In progress stages partition recorded purchases without changing backend statuses", () => {
+    for (const status of ["sold", "checks_complete", "delivery_requested"]) assert.ok(dest.isPurchaseHistoryStatus(status))
+    for (const status of ["awaiting_confirmation", "sale_confirmed", "reviewing_docs"]) assert.ok(!dest.isPurchaseHistoryStatus(status))
+    const view = read("src/components/dealer/DealerPurchasesView.tsx")
+    assert.match(view, /item\.status === "AWAITING_CONFIRMATION" && item\.retailSold/)
+    assert.match(view, /if \(isHistory !== isPurchaseHistoryStatus\(p\.status\)\) return false/)
+    assert.match(view, /Delivery Requested remains under Completed/)
+    assert.match(view, /const isCancelled = stage === "cancelled"/)
+})
 test("cancelled sales in history are approved, buyer-side requests only", () => {
     const rows = [
         { id: "a", status: "APPROVED", buyerId: "me" },
@@ -129,31 +134,31 @@ test("search matches vehicle, registration with or without spaces, seller and re
     assert.ok(!dest.matchesPurchaseSearch(item, "ford"))
 })
 
-test("All Purchases has search and a Status dropdown; agreed retail deals stay out of history", () => {
+
+test("Purchases retains search, a status filter, accepted retail offers and all financial actions", () => {
     const view = read("src/components/dealer/DealerPurchasesView.tsx")
     assert.match(view, /type="search"/)
-    assert.match(view, /<select[\s\S]*?value=\{statusFilter\}/)
-    assert.match(view, /Sale Pending \(retail offer\)/)
-    assert.match(view, /const shownPendingRetail = isHistory/)
-    // Existing actions remain.
-    for (const action of ["onViewSummary={openPurchaseDetail}", "onViewSeller={openSellerDetails}", "onRequestCancellation={setCancelItem}", 'href="/dashboard/cancellations"', "Refresh purchases"]) {
+    assert.match(view, /value=\{statusFilter\}/)
+    assert.match(view, /const shownPendingRetail = isHistory \|\| isCancelled/)
+    assert.match(view, /getMySaleCancellations\("purchase-history"\)/)
+    assert.match(view, /buyerCancelledSales\(cancelled, dealershipBuyerId\)/)
+    for (const action of ["onViewSummary={openPurchaseDetail}", "onViewSeller={openSellerDetails}",
+        "onRequestCancellation={setCancelItem}", 'href="/dashboard/cancellations"', "Refresh purchases"]) {
         assert.ok(view.includes(action), action)
     }
 })
 
-test("an Auction Wins card links to that vehicle's purchase record on web", () => {
-    const won = read("src/app/dashboard/dealer/auctions/won/page.tsx")
-    assert.match(won, /recordHref=\{purchaseId \? `\/dashboard\/dealer\/purchases\/\$\{encodeURIComponent\(purchaseId\)\}` : undefined\}/)
-    // The whole card opens the record (stretched link); actions sit above it.
-    assert.match(won, /after:absolute after:inset-0/)
-    assert.match(won, /relative z-10 flex md:flex-col/)
-    assert.match(won, /relative z-10 flex flex-wrap items-center gap-x-3/)
-    // Every win is looked up, in batches of 50, not just the first 50.
-    assert.doesNotMatch(won, /\.slice\(0, 50\)/)
-    assert.match(won, /for \(let i = 0; i < ids\.length; i \+= 50\) batches\.push/)
-    assert.match(won, /purchaseId=\{purchaseByListing\[a\.listingId\]\}/)
+test("historical Auction Wins redirect retains the original fee and purchase-record cards", () => {
+    const redirect = read("src/app/dashboard/dealer/auctions/won/page.tsx")
+    assert.match(redirect, /detail=wins&tab=progress&channel=auction/)
+    const wins = read("src/components/dealer/DealerAuctionWinsView.tsx")
+    assert.match(wins, /recordHref=\{purchaseId \?/)
+    assert.match(wins, /after:absolute after:inset-0/)
+    assert.match(wins, /getWonAuctions/)
+    assert.match(wins, /BuyerFeeCountdown/)
+    assert.match(wins, /purchaseByListing/)
+    assert.match(wins, /for \(let i = 0; i < ids.length; i \+= 50\) batches.push/)
 })
-
 test("purchase record shows every photo, the advert and declared damage, labelled honestly", () => {
     const record = read("src/components/dealer/PurchaseVehicleRecord.tsx")
     assert.match(record, /ImageLightbox/)
@@ -171,34 +176,28 @@ test("purchase record shows every photo, the advert and declared damage, labelle
     for (const key of ["sellerEmail", "sellerPhone", "sellerAddress"]) assert.ok(!record.includes(key), key)
 })
 
-test("app parity: same destinations, wins card opens the record, history and search", () => {
+
+test("native app uses the same stage tabs while keeping the auction-win and document records", () => {
     const appBar = read(APP + "components/dealer/PurchaseDestinations.tsx")
-    for (const label of ["Auction Wins", "Retail Purchases", "All Purchases", "Purchase History"]) assert.ok(appBar.includes(`label: '${label}'`), label)
+    for (const label of ["In progress", "Completed", "Cancelled"]) assert.ok(appBar.includes("label: '" + label + "'"), label)
     assert.doesNotMatch(appBar, /<ScrollView|horizontal\b(?! strip)/)
     const screen = read(APP + "screens/main/DealerPurchasesScreen.tsx")
-    assert.match(screen, /const isHistory = route\.params\?\.view === 'history'/)
-    assert.match(screen, /const isRetail = route\.params\?\.view === 'retail'/)
-    assert.match(screen, /isRetail && !\(p\.purchaseChannel === 'RETAIL'/)
-    assert.match(screen, /active=\{isHistory \? 'history' : isRetail \? 'retail' : 'all'\}/)
-    assert.match(screen, /HISTORY_STATUSES: PurchaseStatus\[\] = \['SOLD', 'CHECKS_COMPLETE', 'DELIVERY_REQUESTED'\]/)
-    assert.match(screen, /const dealershipBuyerId = access\?\.ownerUserId \?\? userId/)
-    assert.match(screen, /c\.viewer\.isBuyer/)
-    assert.match(screen, /getMySaleCancellations\('purchase-history'\)/)
+    assert.match(screen, /const stage: PurchaseDestination/)
+    assert.match(screen, /const isHistory = stage === 'completed'/)
+    assert.match(screen, /const isCancelled = stage === 'cancelled'/)
+    assert.match(screen, /const isRetail = channel === 'retail'/)
+    assert.match(screen, /HISTORY_STATUSES/)
+    assert.match(screen, /getMySaleCancellations/)
     assert.match(screen, /loadAllPurchasePages\(\)/)
-    assert.match(screen, /<TextInput/)
-    assert.match(screen, /flexWrap: 'wrap'/)
-    assert.match(screen, /navigation\.navigate\('DealerPurchaseDetail', \{ saleId: item\.id \}\)/)
-    assert.match(read(APP + "navigation/MainStackNavigator.tsx"), /DealerPurchases: \{ view\?: 'all' \| 'retail' \| 'history' \} \| undefined/)
+    assert.match(screen, /navigation.navigate\('DealerPurchaseDetail', \{ saleId: item.id \}\)/)
+    assert.match(screen, /navigation.navigate\('SellerAuctions', \{ initialTab: 'WON' \}\)/)
     const wins = read(APP + "screens/seller/SellerAuctionsScreen.tsx")
-    assert.match(wins, /onPress=\{\(\) => purchaseId\s*\? navigation\?\.navigate\('DealerPurchaseDetail', \{ saleId: purchaseId \}\)\s*: handleTap\(item as any\)\}/)
-    assert.match(wins, /View advert/)
-    assert.match(wins, /activeTab === 'WON' && canViewPurchases && \(\s*<PurchaseDestinations/)
+    assert.match(wins, /purchaseByListing/)
     const detail = read(APP + "screens/main/DealerPurchaseDetailScreen.tsx")
     assert.match(detail, /ImageLightbox/)
     assert.match(detail, /listingRecord/)
-    assert.match(detail, /<BuyerDamageViewer records=\{r\.damage\}/)
+    assert.match(detail, /<BuyerDamageViewer records=\{r.damage\}/)
 })
-
 test("purchase views load every page, not only the first 100", async () => {
     const result = await dest.loadAllPages(async page => ({ data: [page], pagination: { totalPages: 3 } }))
     assert.deepEqual(Array.from(result.data), [1, 2, 3])
