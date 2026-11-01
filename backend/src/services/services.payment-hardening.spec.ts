@@ -20,6 +20,7 @@ describe('TradeXchange payment hardening', () => {
                 },
             },
             transfers: { create: jest.fn() },
+            paymentIntents: { retrieve: jest.fn().mockResolvedValue({ latest_charge: 'ch_test' }) },
             refunds: { create: jest.fn() },
         };
         payments = {
