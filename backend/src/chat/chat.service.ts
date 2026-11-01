@@ -2567,6 +2567,16 @@ export class ChatService {
             throw error;
         }
 
+        // Photo captions can also contain explicit opt-out instructions.
+        if (room.context === ChatContext.SUPPORT
+            && senderId !== this.supportCanonicalAdminId(room)
+            && requestsHumanSupport(content)) {
+            await this.prisma.chatRoom.update({
+                where: { id: roomId },
+                data: { supportAiOptedOutAt: new Date(), supportHumanTakeoverAt: new Date() },
+            });
+        }
+
         const routing = await this.resolveMessageRouting(room, senderId);
         // A staff photo is also a human response; pending AI replies must
         // not continue after this official support intervention.
