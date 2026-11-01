@@ -15,6 +15,7 @@ import {
 import { JobStatusBadge, RecoveryBadge, JobRoute, JobTiming, JobVehicles } from "@/components/services/JobBits"
 import { getOrCreateServiceJobRoom } from "@/lib/chatApi"
 import { refuseAuctionAfterInspection } from "@/lib/auctionApi"
+import { checkoutPaymentNotice } from "@/lib/tradeXchangeCheckoutNotice"
 
 /**
  * The customer's view of one TradeXchange service job. Quotes can be compared
@@ -34,9 +35,8 @@ function JobDetail() {
     const [reviewComment, setReviewComment] = React.useState("")
     const [flash, setFlash] = React.useState<string | null>(
         params.get("posted") ? "Job posted. It will stay open for matching verified providers to quote — we will email you as prices come in."
-            : params.get("paid") === "1" ? "Payment received. Your provider has been notified and their contact details are below."
-                : params.get("paid") === "0" ? "Checkout was cancelled. Your quote is still accepted — pay when you are ready."
-                    : null,
+            : params.get("paid") === "0" ? "Checkout was cancelled. Your quote is still accepted — pay when you are ready."
+                : null,
     )
 
     const load = React.useCallback(() => {
@@ -107,6 +107,7 @@ function JobDetail() {
     if (error && !job) return <div className="container mx-auto px-5 py-20 text-center text-red-500">{error}</div>
     if (!job) return <div className="flex justify-center py-32"><Loader2 className="animate-spin text-primary" /></div>
 
+    const checkoutNotice = checkoutPaymentNotice(params.get("paid"), job.payment?.status)
     const activeQuotes = (job.quotes ?? []).filter(q => q.status === "ACTIVE")
     const accepted = (job.quotes ?? []).find(q => q.id === job.acceptedQuoteId)
     const isPaidState = ["PAID", "IN_PROGRESS", "COMPLETED"].includes(job.status)
@@ -121,6 +122,18 @@ function JobDetail() {
                 <ArrowLeft size={14} /> My jobs
             </Link>
 
+            {checkoutNotice && (
+                <div role="status" className={`mb-6 p-4 rounded-xl border text-sm flex items-start gap-3 ${
+                    checkoutNotice.tone === "success"
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
+                        : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                }`}>
+                    {checkoutNotice.tone === "success"
+                        ? <CheckCircle size={18} className="shrink-0 mt-0.5" />
+                        : <Clock size={18} className="shrink-0 mt-0.5" />}
+                    {checkoutNotice.text}
+                </div>
+            )}
             {flash && (
                 <div className="mb-6 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 text-sm flex items-start gap-3">
                     <CheckCircle size={18} className="shrink-0 mt-0.5" /> {flash}
