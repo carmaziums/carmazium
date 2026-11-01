@@ -42,3 +42,37 @@ export function getMinimumAuctionBid(params: {
 
     return getAuctionFirstOfferFloor(startingBid, reservePrice)
 }
+
+
+/** Public, source-grounded price labels. An auction is NEVER priced using
+ * Listing.price (the separate retail/valuation field). */
+export interface AuctionDisplayFields {
+    id?: string
+    status?: string
+    startingBid?: number | string | null
+    currentBid?: number | string | null
+    hasBids?: boolean
+    reserveMet?: boolean
+    buyItNowPrice?: number | string | null
+}
+export function getListingPricePresentation(listing: {
+    type?: string | null
+    price: number | string
+    auction?: AuctionDisplayFields | null
+}): { price: string; label: string; reserveLabel: string | null; buyItNowLabel: string | null } {
+    const money = (amount: number | string) => '£' + Number(amount).toLocaleString('en-GB')
+    if (listing.type !== 'AUCTION') {
+        return { price: money(listing.price), label: 'Retail asking price', reserveLabel: null, buyItNowLabel: null }
+    }
+    const a = listing.auction
+    const value = a?.hasBids ? a?.currentBid : a?.startingBid
+    const amount = value == null ? NaN : Number(value)
+    const valid = Number.isFinite(amount) && amount > 0
+    const bin = a?.buyItNowPrice == null ? NaN : Number(a.buyItNowPrice)
+    return {
+        price: valid ? money(amount) : 'View auction',
+        label: a?.hasBids ? 'Current bid' : 'Starting bid',
+        reserveLabel: valid && a?.reserveMet != null ? (a.reserveMet ? 'Reserve met' : 'Reserve not met') : null,
+        buyItNowLabel: a?.status === 'ACTIVE' && Number.isFinite(bin) && bin > 0 ? 'Buy It Now ' + money(bin) : null,
+    }
+}
