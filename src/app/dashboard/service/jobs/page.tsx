@@ -8,6 +8,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getJobFeedPage, getAssignedJobsPage, formatPence, type ServiceJob } from "@/lib/servicesApi"
 import { JobListCard } from "@/components/services/JobBits"
+import { loadProviderJobLists } from "@/lib/tradeXchangeProviderJobLoad"
 
 /**
  * The provider marketplace: open jobs to quote on, and jobs the business has won.
@@ -22,27 +23,30 @@ export default function ContractorJobsPage() {
     const [feed, setFeed] = React.useState<ServiceJob[] | null>(null)
     const [mine, setMine] = React.useState<ServiceJob[] | null>(null)
     const [notApproved, setNotApproved] = React.useState(false)
-    const [error, setError] = React.useState<string | null>(null)
+    const [availableError, setAvailableError] = React.useState<string | null>(null)
+    const [assignedError, setAssignedError] = React.useState<string | null>(null)
     const [feedCursor, setFeedCursor] = React.useState<string | null>(null)
     const [mineCursor, setMineCursor] = React.useState<string | null>(null)
     const [loadingMore, setLoadingMore] = React.useState(false)
 
     const loadJobs = React.useCallback(async () => {
         if (authLoading || !user) return
-        setError(null)
+        setAvailableError(null)
+        setAssignedError(null)
         setNotApproved(false)
         setFeed(null)
         setMine(null)
-        try {
-            const [f, m] = await Promise.all([getJobFeedPage(), getAssignedJobsPage()])
-            setFeed(f.items); setFeedCursor(f.nextCursor)
-            setMine(m.items); setMineCursor(m.nextCursor)
-        } catch (e: any) {
-            const msg: string = e?.message || ""
-            if (/no approved services|approved service providers/i.test(msg)) setNotApproved(true)
-            else setError(msg || "Could not load jobs")
-            setFeed([]); setMine([])
-        }
+
+        // Approval gates new quotations, not the right to finish an existing
+        // paid job. A 403 on Available must never empty the My Work tab.
+        const result = await loadProviderJobLists(getJobFeedPage, getAssignedJobsPage)
+        setFeed(result.available?.items ?? [])
+        setFeedCursor(result.available?.nextCursor ?? null)
+        setMine(result.assigned?.items ?? [])
+        setMineCursor(result.assigned?.nextCursor ?? null)
+        setNotApproved(result.approvalRequired)
+        setAvailableError(result.availableError)
+        setAssignedError(result.assignedError)
     }, [authLoading, user])
 
     React.useEffect(() => {
@@ -65,7 +69,8 @@ export default function ContractorJobsPage() {
                 setMineCursor(page.nextCursor)
             }
         } catch (e: any) {
-            setError(e?.message || "Could not load more jobs")
+            if (tab === "open") setAvailableError(e?.message || "Could not load more jobs")
+            else setAssignedError(e?.message || "Could not load more jobs")
         } finally {
             setLoadingMore(false)
         }
@@ -73,6 +78,7 @@ export default function ContractorJobsPage() {
 
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}`.trim() : user?.email || "Provider"
     const list = tab === "open" ? feed : mine
+    const error = tab === "open" ? availableError : assignedError
 
     return (
         <div className="min-h-screen pt-20 pb-12">
@@ -103,20 +109,20 @@ export default function ContractorJobsPage() {
                         ))}
                     </div>
 
-                    {notApproved && (
+                    {tab === "open" && notApproved && (
                         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6 flex flex-col sm:flex-row sm:items-center gap-4">
                             <AlertCircle size={22} className="text-amber-500 shrink-0" />
                             <div className="flex-1">
-                                <p className="font-bold text-sm">No approved service areas yet</p>
-                                <p className="text-xs text-[var(--text-muted)] mt-0.5">Apply for Delivery & Recovery or Vehicle Inspection and connect Stripe. Matching jobs appear here once CarMazium approves that capability.</p>
+                                <p className="font-bold text-sm">Verification required for new jobs</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-0.5">Apply for a service, upload its verification documents and complete Stripe Connect. You can still view and finish previously accepted jobs under My Work.</p>
                             </div>
-                            <Link href="/dashboard/service/capabilities" className="text-xs font-black uppercase tracking-widest text-primary hover:underline shrink-0">Apply now →</Link>
+                            <Link href="/dashboard/service/capabilities" className="text-xs font-black uppercase tracking-widest text-primary hover:underline shrink-0">Review verification →</Link>
                         </div>
                     )}
                     {error && <ErrorState message={error} onRetry={loadJobs} />}
-                    {!list && !notApproved && !error && <LoadingState label="Loading service jobs…" />}
+                    {!list && !(tab === "open" && notApproved) && !error && <LoadingState label="Loading service jobs…" />}
 
-                    {list && list.length === 0 && !notApproved && (
+                    {list && list.length === 0 && !error && !(tab === "open" && notApproved) && (
                         <EmptyState
                             icon={tab === "open" ? Inbox : Briefcase}
                             title={tab === "open" ? "No matching jobs right now" : "No won jobs yet"}
