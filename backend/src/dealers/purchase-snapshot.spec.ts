@@ -88,6 +88,7 @@ describe('purchase detail with snapshot, and inspection notes', () => {
                     },
                 }),
             },
+            analyticsEvent: { findFirst: jest.fn().mockResolvedValue(null) },
             serviceJob: { findFirst: jest.fn().mockResolvedValue(null) },
             purchaseListingSnapshot: {
                 findUnique: jest.fn().mockResolvedValue({

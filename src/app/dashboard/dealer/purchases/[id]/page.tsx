@@ -12,6 +12,7 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
+import { BuyerCollectedButton } from "@/components/purchases/BuyerCollectedButton"
 import { useAuth } from "@/context/AuthContext"
 import { useDealerAccess } from "@/context/DealerAccessContext"
 import { apiClient } from "@/lib/apiClient"
@@ -185,7 +186,22 @@ export default function DealerPurchaseDetailPage() {
                                     </div>
                                 </div>
                                 <DetailRow label="Sale channel" value={purchase.channel === "RETAIL" ? "Retail listing" : "Auction"} />
-                                <DetailRow label="Purchase stage" value={purchase.purchaseStatus.replace(/_/g, " ")} />
+                                <DetailRow label="Purchase stage" value={purchase.buyerCollectedAt ? "Collected" : purchase.purchaseStatus.replace(/_/g, " ")} />
+                                {purchase.buyerCollectedAt && (
+                                    <DetailRow label="Buyer confirmed collection" value={formatDate(purchase.buyerCollectedAt)} />
+                                )}
+                                {!purchase.buyerCollectedAt
+                                    && ["AWAITING_CONFIRMATION", "REVIEWING_DOCS"].includes(purchase.purchaseStatus)
+                                    && (purchase.channel === "RETAIL" || purchase.buyerFee.settled) && (
+                                        <BuyerCollectedButton
+                                            saleId={purchase.id}
+                                            className="pt-2"
+                                            onCollected={() => {
+                                                window.location.assign("/dashboard/dealer/purchases?tab=completed&channel=" +
+                                                    (purchase.channel === "RETAIL" ? "retail" : "auction"))
+                                            }}
+                                        />
+                                    )}
                                 <DetailRow label="Listed vehicle location" value={purchase.vehicle.listedLocation || "Not provided"} />
                                 {purchase.listingRecord && (
                                     <a href="#original-listing" className="inline-flex min-h-[44px] items-center text-sm font-bold text-primary hover:underline">

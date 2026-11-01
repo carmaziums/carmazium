@@ -1861,6 +1861,26 @@ export class DealersService {
         });
         const auctionByListing = new Map(auctions.map((auction) => [auction.listingId, auction]));
 
+        // Buyer-collected is an independent buyer attestation, not inferred
+        // from seller handover photos or the stage label. Batch by page.
+        const collectedSales = sales.filter(s => s.purchaseStatus === 'CHECKS_COMPLETE');
+        const collectionEvents = collectedSales.length
+            ? await this.prisma.analyticsEvent.findMany({
+                where: { type: 'buyer_vehicle_collected',
+                    OR: collectedSales.map(s => ({ payload: { path: ['saleId'], equals: s.id } })) },
+                select: { createdAt: true, payload: true },
+                orderBy: { createdAt: 'desc' },
+            }) : [];
+        const collectedAtBySaleId = new Map<string, Date>();
+        for (const event of collectionEvents) {
+            const payload = event.payload;
+            if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+                const id = (payload as Record<string, unknown>).saleId;
+                if (typeof id === 'string' && !collectedAtBySaleId.has(id))
+                    collectedAtBySaleId.set(id, event.createdAt);
+            }
+        }
+
         const data = sales.map((sale) => {
             const l = sale.listing;
             const auction = auctionByListing.get(sale.listingId);
@@ -1894,6 +1914,7 @@ export class DealersService {
                 sellerEmail: contactUnlocked ? (sale.seller?.email ?? undefined) : undefined,
                 sellerPhone: contactUnlocked ? (sale.seller?.phone ?? undefined) : undefined,
                 status: sale.purchaseStatus,
+                buyerCollectedAt: collectedAtBySaleId.get(sale.id)?.toISOString() ?? null,
                 // Stable channel based on the same auction/retail fee semantics
                 // as seller contact gating. Do not infer retail purchases from
                 // retailSold: a retail sale may still be awaiting confirmation.
@@ -2050,6 +2071,16 @@ export class DealersService {
             && auction.buyerFeePaid && auction.buyerFeeTransactionId
         );
 
+        // The buyer's claim of physical collection has its own provenance.
+        // It never implies payment confirmation from the seller or completion
+        // of a linked TradeXchange delivery.
+        const collectedEvent = await this.prisma.analyticsEvent.findFirst({
+            where: { type: 'buyer_vehicle_collected',
+                payload: { path: ['saleId'], equals: sale.id } },
+            orderBy: { createdAt: 'desc' },
+            select: { createdAt: true },
+        });
+
         // Only customer-owned delivery jobs for this exact vehicle; no partner
         // addresses or quotes are exposed through the purchase record.
         const delivery = await this.prisma.serviceJob.findFirst({
@@ -2079,6 +2110,7 @@ export class DealersService {
             purchasePrice: Number(sale.soldPrice),
             purchasedAt: sale.createdAt.toISOString(),
             purchaseStatus: sale.purchaseStatus,
+            buyerCollectedAt: collectedEvent?.createdAt.toISOString() ?? null,
             retailSold: listing.type === 'CLASSIFIED' && listing.status === 'SOLD',
             channel: auctionPurchase ? 'AUCTION' : 'RETAIL',
             buyerFee: {

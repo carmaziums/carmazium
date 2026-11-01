@@ -51,7 +51,7 @@ const STATUS_LABELS: Record<PurchaseStatus, { label: string; icon: React.Compone
     sale_confirmed: { label: "Sale Confirmed", icon: CheckCircle2, color: "text-emerald-400" },
     sold: { label: "Purchased", icon: CheckCircle2, color: "text-emerald-400" },
     reviewing_docs: { label: "Reviewing Docs", icon: FileSearch, color: "text-blue-400" },
-    checks_complete: { label: "Checks Complete", icon: CheckCircle2, color: "text-emerald-400" },
+    checks_complete: { label: "Collected / Checks Complete", icon: CheckCircle2, color: "text-emerald-400" },
     delivery_requested: { label: "Delivery Requested", icon: Truck, color: "text-violet-400" },
 }
 
@@ -384,6 +384,7 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
                                                         onViewSummary={openPurchaseDetail}
                                                         onViewSeller={openSellerDetails}
                                                         onRequestCancellation={setCancelItem}
+                                                        onCollected={() => setRefreshVersion(v => v + 1)}
                                                     />
                                                 ))}
                                             </div>
