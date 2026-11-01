@@ -54,7 +54,7 @@ test("dealer purchase history joins offer feed and refreshes on demand", () => {
     assert.match(page, /getMyOffers\(\)/)
     assert.match(page, /pendingRetailPurchases\(acceptedOffers, purchases\.map/)
     assert.match(page, /Retail purchases — Sale Pending/)
-    assert.match(page, /Refresh purchases/)
+    assert.match(page, /setRefreshVersion\(n => n \+ 1\)/)
     const row = read("../src/components/dealer/PendingRetailPurchaseRow.tsx")
     // onCompleted refreshes the list after the buyer completes the sale (#713).
     assert.ok(page.includes('<PendingRetailPurchaseRow key={offer.id} offer={offer} onCompleted={() => setRefreshVersion(v => v + 1)} />'))
