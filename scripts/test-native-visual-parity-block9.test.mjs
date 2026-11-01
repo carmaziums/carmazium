@@ -72,7 +72,10 @@ test('large-type tabs wrap rather than reducing to illegible 60 percent and deal
 test('mobile CRM, Buy & Bid and settings do not clip controls at large fonts',()=>{
   assert.ok(crm.includes('getScrollableStageHeight(fontScale)'));
   assert.ok(crm.includes("width: 44, height: 44, borderRadius: 10"));
-  assert.ok(auction.includes('getScrollableStageHeight(fontScale)'));
+  assert.ok(auction.includes('bidsSwitchItem: { minHeight: 44'));
+  assert.ok(auction.includes('accessibilityRole="tablist"'));
+  assert.ok(!auction.includes('<ScrollView horizontal'));
+
   assert.ok(layout.includes('fontScale >= 1.6 ? 82 : fontScale >= 1.3 ? 68 : 54'));
   assert.ok(profile.includes('useSingleColumnSettings(viewportWidth, fontScale)'));
   assert.ok(profile.includes('singleColumnSettings && styles.fullWidthCategory'));
