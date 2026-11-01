@@ -44,9 +44,21 @@ const EVERY_DEALER_ROUTE = [
 
 test("no dealer menu destination was removed", () => {
     const hrefs = DEALER_ROUTE_CONFIG.map(r => r.href)
-    for (const href of EVERY_DEALER_ROUTE) assert.ok(hrefs.includes(href), "missing " + href)
-    // The previously unlinked purchase history page is now in the menu too.
-    assert.ok(hrefs.includes("/dashboard/dealer/purchases"))
+    // The simplified owner-approved Buy menu keeps a distinct canonical href
+    // for each destination. Some historical pages remain directly accessible
+    // as tabs/deep links rather than duplicating their menu entries.
+    for (const href of EVERY_DEALER_ROUTE) {
+        if (href === "/dashboard/dealer/my-offers") {
+            assert.match(read("src/app/dashboard/dealer/my-offers/page.tsx"), /<BidsOffersSwitch \/>/,
+                "legacy retail offers tab must remain reachable")
+            continue
+        }
+        assert.ok(hrefs.includes(href), "missing original destination " + href)
+    }
+    for (const href of ["/auctions/browse", "/dashboard/dealer/wishlist",
+        "/dashboard/dealer/bids", "/dashboard/dealer/purchases"]) {
+        assert.ok(hrefs.includes(href), "missing new canonical Buy destination " + href)
+    }
 })
 
 test("hidden routes are listed under More tools on desktop and mobile, not dropped", () => {
@@ -56,18 +68,25 @@ test("hidden routes are listed under More tools on desktop and mobile, not dropp
     assert.ok(DEALER_ROUTE_CONFIG.filter(r => r.hidden).length >= 10)
 })
 
-test("menu items stay highlighted on their related pages", () => {
-    const buy = getDealerRoute("/dashboard/dealer/auctions")
-    for (const p of ["/dashboard/dealer/auctions", "/dashboard/dealer/auctions/won", "/dashboard/dealer/auctions/shortlisted", "/dashboard/dealer/bids"]) {
-        assert.ok(dealerRouteIsActive(buy, p), p)
+test("simplified Buy destinations highlight the correct related pages", () => {
+    const mine = getDealerRoute("/dashboard/dealer/auctions")
+    const live = getDealerRoute("/auctions/browse")
+    const saved = getDealerRoute("/dashboard/dealer/wishlist")
+    const bids = getDealerRoute("/dashboard/dealer/bids")
+    const purchases = getDealerRoute("/dashboard/dealer/purchases")
+    assert.ok(dealerRouteIsActive(mine, "/dashboard/dealer/auctions"))
+    assert.ok(!dealerRouteIsActive(mine, "/dashboard/dealer/auctions/won"))
+    assert.ok(dealerRouteIsActive(live, "/auctions/browse"))
+    assert.ok(dealerRouteIsActive(saved, "/dashboard/dealer/auctions/shortlisted"))
+    assert.ok(dealerRouteIsActive(bids, "/dashboard/dealer/my-offers"))
+    for (const path of ["/dashboard/dealer/purchases",
+        "/dashboard/dealer/auctions/won", "/dashboard/cancellations"]) {
+        assert.ok(dealerRouteIsActive(purchases, path), "purchase route " + path)
     }
-    // Purchase History has been its own menu item since PR #697.
-    assert.ok(dealerRouteIsActive(getDealerRoute("/dashboard/dealer/purchases"), "/dashboard/dealer/purchases"))
     assert.ok(dealerRouteIsActive(getDealerRoute("/dashboard/dealer/crm"), "/dashboard/dealer/offers"))
     assert.ok(dealerRouteIsActive(getDealerRoute("/dashboard/dealer/inventory"), "/dashboard/dealer/add-listing"))
-    // Home must not light up for every dealer page.
     assert.ok(!dealerRouteIsActive(getDealerRoute("/dashboard/dealer"), "/dashboard/dealer/crm"))
-    assert.ok(!dealerRouteIsActive(buy, "/dashboard/dealer/auctionsx"))
+    assert.ok(!dealerRouteIsActive(live, "/auctions/browse-x"))
 })
 
 test("pages read their own titles, not a neighbour's", () => {
@@ -151,9 +170,11 @@ test("attention list respects team permissions", () => {
 test("dealer menu and bottom bar use the same names as the phone app", () => {
     assert.equal(getDealerRoute("/dashboard/dealer/inventory").label, "Stock")
     assert.equal(getDealerRoute("/dashboard/dealer/inventory").title, "Stock")
-    assert.equal(getDealerRoute("/dashboard/dealer/auctions").label, "Buy & Bid")
-    // Native Block 6 and its hub still use the established page title.
-    assert.equal(getDealerRoute("/dashboard/dealer/auctions").title, "Auctions & Buying")
+    assert.equal(getDealerRoute("/dashboard/dealer/auctions").label, "My Auctions")
+    assert.equal(getDealerRoute("/auctions/browse").label, "Live Auctions")
+    assert.equal(getDealerRoute("/dashboard/dealer/wishlist").label, "Saved")
+    assert.equal(getDealerRoute("/dashboard/dealer/bids").label, "Bids & Offers")
+    assert.equal(getDealerRoute("/dashboard/dealer/purchases").label, "Purchases")
     // Expandable phone-menu rows read the label from config, not a hard-coded copy.
     assert.ok(!sidebar.includes('font-medium">Stock<'))
     assert.ok(!sidebar.includes('font-medium">Buy &amp; Bid<'))
