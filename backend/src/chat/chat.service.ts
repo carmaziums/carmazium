@@ -2225,6 +2225,82 @@ export class ChatService {
     }
 
     /**
+     * Server-only MaziuM message persistence. Caller must supply a separately
+     * provisioned bot user ID, never the official human support account.
+     * The room row lock serialises concurrent AI attempts. A later human
+     * message or customer opt-out makes the final recheck fail closed.
+     */
+    async persistSupportAutoReply(
+        roomId: string,
+        sourceMessageId: string,
+        botUserId: string,
+        reply: string,
+    ) {
+        if (!botUserId || !reply.trim() || reply.length > 1200) {
+            throw new BadRequestException('Invalid MaziuM reply');
+        }
+        const { classifySupportMessage, supportAutoReplyClientMessageId } =
+            await import('./mazium-support-policy');
+        if (classifySupportMessage(reply).action !== 'DRAFT') {
+            throw new BadRequestException('MaziuM reply requires human review');
+        }
+        return this.prisma.$transaction(async (tx) => {
+            // A write lock on the room serialises AI retries and room state checks.
+            await tx.$queryRaw`SELECT id FROM "chat_rooms" WHERE id = ${roomId} FOR UPDATE`;
+            const room = await tx.chatRoom.findUnique({
+                where: { id: roomId },
+                include: {
+                    initiator: { select: { role: true } },
+                    participant: { select: { role: true } },
+                },
+            });
+            if (!room || room.context !== ChatContext.SUPPORT || room.deletedAt || room.supportClosedAt
+                || !room.supportAiConsentAt || room.supportAiOptedOutAt || room.supportHumanTakeoverAt) {
+                return { created: false, reason: 'SUPPORT_NOT_ELIGIBLE' } as const;
+            }
+            const adminId = room.initiator.role === UserRole.ADMIN && room.participant.role !== UserRole.ADMIN
+                ? room.initiatorId
+                : room.participant.role === UserRole.ADMIN && room.initiator.role !== UserRole.ADMIN
+                    ? room.participantId : null;
+            if (!adminId || botUserId === adminId || botUserId === room.initiatorId || botUserId === room.participantId) {
+                return { created: false, reason: 'INVALID_BOT_IDENTITY' } as const;
+            }
+            const bot = await tx.user.findUnique({ where: { id: botUserId }, select: { id: true, role: true } });
+            if (!bot || bot.role === UserRole.ADMIN) {
+                return { created: false, reason: 'INVALID_BOT_IDENTITY' } as const;
+            }
+            const customerId = adminId === room.initiatorId ? room.participantId : room.initiatorId;
+            const latest = await tx.message.findFirst({
+                where: { chatRoomId: roomId, deletedAt: null },
+                orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            });
+            if (!latest || latest.id !== sourceMessageId || latest.senderId !== customerId
+                || latest.aiGenerated || latest.attachmentPath
+                || classifySupportMessage(latest.content).action !== 'DRAFT') {
+                return { created: false, reason: 'SOURCE_CHANGED_OR_SENSITIVE' } as const;
+            }
+            const duplicate = await tx.message.findUnique({
+                where: { aiSourceMessageId: sourceMessageId },
+                select: { id: true },
+            });
+            if (duplicate) return { created: false, reason: 'ALREADY_REPLIED' } as const;
+            const message = await tx.message.create({
+                data: {
+                    chatRoomId: roomId,
+                    senderId: botUserId,
+                    clientMessageId: supportAutoReplyClientMessageId(sourceMessageId),
+                    aiGenerated: true,
+                    aiSourceMessageId: sourceMessageId,
+                    content: reply.trim(),
+                },
+                include: this.messageInclude,
+            });
+            await tx.chatRoom.update({ where: { id: roomId }, data: { updatedAt: new Date() } });
+            return { created: true, message } as const;
+        });
+    }
+
+    /**
      * Get paginated messages for a room
      */
     async getRoomMessages(
