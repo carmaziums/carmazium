@@ -126,6 +126,15 @@ export class ListingsController {
     }
 
 
+
+    @Get('my-purchase-sales')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Authenticated buyer purchases with physical collection status' })
+    async myPurchaseSales(@CurrentUser() user: any): Promise<StandardResponse<any>> {
+        return new StandardResponse(await this.listingsService.getMyRecordedPurchaseSales(user.id));
+    }
+
     /**
      * Create a new listing
      * Requires authentication
