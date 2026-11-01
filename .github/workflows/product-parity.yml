@@ -64,6 +64,8 @@ jobs:
         run: node --test scripts/test-home-hero-visibility.test.mjs
       - name: Verify search cards defer gallery photos until swipe
         run: node --test scripts/test-card-image-initial-cover-only.test.mjs
+      - name: Verify four dealer Buy destinations and legacy URLs
+        run: node --test scripts/test-dealer-buy-four-destinations-20261101.test.mjs
       - name: Verify browser vehicle media is prepared before storage upload
         run: node --test scripts/test-vehicle-photo-upload-boundary.test.mjs
       - name: Verify compact mobile cookie notice retains consent choices
