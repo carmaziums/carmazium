@@ -1180,7 +1180,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         onChange={(e) => handleMessageInput(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Type a message..."
-                        className="flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="min-w-0 flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary/50"
                         disabled={sending || uploadingAttachment}
                     />
                     <Button

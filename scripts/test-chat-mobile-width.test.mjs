@@ -20,3 +20,7 @@ test("every Messages page constrains the chat pane to the screen width", () => {
 test("long words and links in a message wrap instead of widening the bubble", () => {
     assert.match(readFileSync("src/components/chat/ChatWindow.tsx", "utf8"), /whitespace-pre-wrap break-words \[overflow-wrap:anywhere\] px-1">\{parsed\.text\}/)
 })
+
+test("the message box can shrink so the send button stays on screen", () => {
+    assert.match(readFileSync("src/components/chat/ChatWindow.tsx", "utf8"), /className="min-w-0 flex-1 bg-\[var\(--bg-input\)\] border border-\[var\(--border-default\)\] rounded-xl px-4 py-3/)
+})
