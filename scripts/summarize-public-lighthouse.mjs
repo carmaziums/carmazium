@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 
-const pages = ['home', 'pricing', 'search']
+const pages = ['home', 'pricing', 'search', 'sell']
 const lines = [
   '## CarMazium simulated mobile Lighthouse baseline (390 × 844)',
   '',
