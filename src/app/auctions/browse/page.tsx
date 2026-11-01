@@ -315,6 +315,9 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
                             <p className="text-2xl font-black text-[var(--text-primary)] font-mono mt-0.5">
                                 £{currentBid.toLocaleString()}
                             </p>
+                            <p className={`text-[10px] mt-1 font-semibold ${bidCount > 0 && currentBid >= Number(auction.reservePrice) ? "text-emerald-400" : "text-amber-400"}`}>
+                                {bidCount > 0 && currentBid >= Number(auction.reservePrice) ? "Reserve met" : "Reserve not met"}
+                            </p>
                             {isActive && bidCount === 0 && firstOfferFloor > 0 && (
                                 <p className="text-[10px] font-black text-amber-400 mt-1">
                                     First offer from £{firstOfferFloor.toLocaleString()}
