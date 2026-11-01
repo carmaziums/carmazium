@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams } from "next/navigation"
+import DealerRetailOffersView from "@/components/dealer/DealerRetailOffersView"
 import Image from "next/image"
 import Link from "next/link"
 import {
@@ -15,9 +17,7 @@ import {
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
-import { BuyAndBidTabs } from "@/components/dealer/BuyAndBidTabs"
 import { BidsOffersSwitch } from "@/components/dealer/BidsOffersSwitch"
-import { MetricCard } from "@/components/dashboard/MetricCard"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import {
@@ -50,6 +50,11 @@ function formatCancelTime(deadline: string, now: number) {
 }
 
 export default function DealerAuctionBidsPage() {
+    const params = useSearchParams()
+    return params.get("tab") === "retail" ? <DealerRetailOffersView /> : <AuctionBidsContent />
+}
+
+function AuctionBidsContent() {
     const { user, profile, loading: authLoading } = useAuth()
     const [positions, setPositions] = React.useState<ActiveAuctionBidPosition[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -135,41 +140,11 @@ export default function DealerAuctionBidsPage() {
                         </Button>
                     </div>
 
-                    <BuyAndBidTabs />
                     <BidsOffersSwitch />
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <MetricCard
-                            label="Live Auction Positions"
-                            value={positions.length}
-                            icon={Gavel}
-                            color="text-violet-400"
-                            bg="bg-violet-500/10"
-                            border="border-violet-500/20"
-                            statusLabel="Current"
-                            loading={loading}
-                        />
-                        <MetricCard
-                            label="Currently Leading"
-                            value={leadingCount}
-                            icon={Trophy}
-                            color="text-emerald-400"
-                            bg="bg-emerald-500/10"
-                            border="border-emerald-500/20"
-                            statusLabel="Winning"
-                            loading={loading}
-                        />
-                        <MetricCard
-                            label="Outbid / Action Needed"
-                            value={outbidCount}
-                            icon={AlertCircle}
-                            color="text-amber-400"
-                            bg="bg-amber-500/10"
-                            border="border-amber-500/20"
-                            statusLabel={endingSoonCount > 0 ? `${endingSoonCount} ending soon` : "Live"}
-                            loading={loading}
-                        />
-                    </div>
+                    <p className="text-sm text-[var(--text-muted)]">
+                        {positions.length} active auction bid{positions.length === 1 ? "" : "s"}.
+                    </p>
 
                     {error && (
                         <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-300 flex items-start gap-3">
