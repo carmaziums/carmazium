@@ -2113,12 +2113,18 @@ export class ServicesService {
             // available funds". With it, Stripe transfers from this charge as
             // soon as it settles.
             const sourceTransaction = await this.chargeForPaymentIntent(stripe, job.payment.stripePaymentIntentId);
+            // Do not silently fall back to the platform's general balance.
+            // A paid service job without a verifiable charge must be reviewed
+            // rather than funded with money belonging to another transaction.
+            if (!sourceTransaction) {
+                throw new BadRequestException('This service payment has no verifiable Stripe charge. Contact CarMazium support before releasing funds.');
+            }
             transfer = await stripe.transfers.create(
                 {
                     amount: job.payment.contractorPence,
                     currency: 'gbp',
                     destination: account,
-                    ...(sourceTransaction ? { source_transaction: sourceTransaction } : {}),
+                    source_transaction: sourceTransaction,
                     transfer_group: `service-job-${job.id}`,
                 },
                 { idempotencyKey: `service-job-release-${job.payment.id}` },
