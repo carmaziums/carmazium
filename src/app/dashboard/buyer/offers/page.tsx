@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import * as React from "react"
+import { CompletePurchaseButton } from "@/components/purchases/CompletePurchaseButton"
 import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import { getMyOffers, withdrawOffer, respondToCounterOffer, type Offer } from "@/lib/listingApi"
 import { AmendOfferModal } from "@/components/offers/AmendOfferModal"
@@ -616,6 +617,10 @@ function BuyerOffersPage() {
                                                                     >
                                                                         {withdrawing === offer.id ? <Loader2 size={16} className="animate-spin" /> : "Cancel Bid"}
                                                                     </button>
+                                                                )}
+                                                                {offer.status === 'ACCEPTED' && listing?.id && listing.status === 'OFFER_ACCEPTED' && (
+                                                                    // Either party can complete the sale once paid.
+                                                                    <CompletePurchaseButton listingId={listing.id} className="w-full sm:w-auto" />
                                                                 )}
                                                                 {offer.status === 'ACCEPTED' && listing?.id && (
                                                                     <button

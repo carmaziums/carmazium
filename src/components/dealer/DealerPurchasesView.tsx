@@ -419,12 +419,12 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
                                 </span>
                             </div>
                             <p className="text-sm text-[var(--text-muted)]">
-                                Your accepted offers appear here immediately. These are agreed deals, not completed sales.
-                                Contact the seller to arrange inspection, payment and collection.
+                                The seller has accepted your offer and the car is reserved for you. Arrange inspection, payment and
+                                collection with the seller. Once you have paid, either you or the seller can complete the sale.
                             </p>
                             <div className="space-y-2">
                                 {shownPendingRetail.map(offer => (
-                                    <PendingRetailPurchaseRow key={offer.id} offer={offer} />
+                                    <PendingRetailPurchaseRow key={offer.id} offer={offer} onCompleted={() => setRefreshVersion(v => v + 1)} />
                                 ))}
                             </div>
                         </section>

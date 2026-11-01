@@ -27,6 +27,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { CounterLedger } from '../../components/offers/CounterLedger';
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
+import { CompletePurchaseButton } from '../../components/purchases/CompletePurchaseButton';
 import { haptics } from '../../lib/haptics';
 import {
   getMyDeliveryRequests,
@@ -64,6 +65,7 @@ interface Offer {
     title?: string;
     price?: number;
     images?: string[];
+    status?: string;
     deliveryAvailable?: boolean;
     deliveryMaxMiles?: number | null;
   };
@@ -616,9 +618,12 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                   accepted counter amount, falling back to the original offer
                   when there was no counter. */}
               {displayedCounter != null
-                ? `Your negotiated price of ${formatPrice(displayedCounter)} was accepted! Contact the seller to complete the purchase.`
-                : `Your offer of ${formatPrice(offer.amount)} was accepted! Contact the seller to complete the purchase.`}
+                ? `Your negotiated price of ${formatPrice(displayedCounter)} was accepted! Arrange payment and collection with the seller; once paid, either of you can complete the sale.`
+                : `Your offer of ${formatPrice(offer.amount)} was accepted! Arrange payment and collection with the seller; once paid, either of you can complete the sale.`}
             </Text>
+            {offer.listing?.status === 'OFFER_ACCEPTED' && !!(offer.listing?.id || offer.listingId) && (
+              <CompletePurchaseButton listingId={(offer.listing?.id || offer.listingId)!} onCompleted={() => void fetchData(true)} />
+            )}
             <View style={styles.actionsRow}>
               <TouchableOpacity
                 style={[styles.actionBtn, styles.actionBtnMessage]}
@@ -882,6 +887,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
       </View>
     );
   }, [
+    fetchData,
     actionLoading,
     counterBackLoading,
     counterBackOfferId,

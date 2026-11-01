@@ -1,5 +1,6 @@
 "use client"
 
+import { CompletePurchaseButton } from "@/components/purchases/CompletePurchaseButton"
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
@@ -65,9 +66,18 @@ export function PrivatePurchasesTab() {
                                 <div className="min-w-0 flex-1">
                                     <p className="font-bold break-words">{offer.listing?.title || "Retail vehicle"}</p>
                                     <p className="text-sm">{money(offer.finalAmount ?? offer.counterAmount ?? offer.amount)}</p>
-                                    <p className="text-xs text-emerald-400 font-bold">
-                                        Offer accepted — confirm payment, inspection and collection with seller
-                                    </p>
+                                    {offer.listing?.status === "OFFER_ACCEPTED" ? (
+                                        <>
+                                            <p className="text-xs text-emerald-400 font-bold">
+                                                Offer accepted. Arrange payment, inspection and collection with the seller; once paid, either of you can complete the sale.
+                                            </p>
+                                            <CompletePurchaseButton listingId={offer.listingId} className="mt-2" />
+                                        </>
+                                    ) : (
+                                        <p className="text-xs text-emerald-400 font-bold">
+                                            {offer.listing?.status === "SOLD" ? "Purchase completed" : "Offer accepted"}
+                                        </p>
+                                    )}
                                 </div>
                                 <Link href="/dashboard/user?tab=bids"
                                     className="text-xs font-bold text-primary hover:underline">View offer</Link>
