@@ -131,7 +131,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
 
         <div className="relative z-10 container mx-auto px-5 max-w-5xl">
           <motion.h1
-            initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}
+            initial={false}
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="text-5xl md:text-7xl font-bold font-heading mb-6 leading-tight drop-shadow-2xl"
@@ -140,7 +140,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
           </motion.h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1, ease: "easeOut" }}
             className="text-xl md:text-2xl font-bold mb-3 drop-shadow-lg"
@@ -149,7 +149,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
           </motion.p>
 
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.15, ease: "easeOut" }}
             className="text-white/70 text-sm md:text-base max-w-2xl mx-auto mb-8"
@@ -160,7 +160,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
           </motion.p>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
           >
