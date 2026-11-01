@@ -1,12 +1,13 @@
 "use client"
 
 import { CompletePurchaseButton } from "@/components/purchases/CompletePurchaseButton"
+import { BuyerCollectedButton } from "@/components/purchases/BuyerCollectedButton"
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Loader2, Receipt, ShoppingBag } from "lucide-react"
 import { getMyOffers, getMyTransactions, type Offer, type Transaction } from "@/lib/listingApi"
-import { downloadAuthenticatedFile } from "@/lib/apiClient"
+import { apiClient, downloadAuthenticatedFile } from "@/lib/apiClient"
 
 const money = (value: string | number | null | undefined) =>
     Number(value ?? 0).toLocaleString("en-GB", { style: "currency", currency: "GBP" })
@@ -16,19 +17,35 @@ const money = (value: string | number | null | undefined) =>
  * An accepted offer is a DEAL AGREED, not evidence vehicle funds cleared.
  * Never label platform transaction totals as the vehicle purchase price.
  */
+interface PrivateRecordedSale {
+    id: string
+    title: string
+    imageUrl: string | null
+    price: number
+    purchasedAt: string
+    purchaseStatus: string
+    buyerCollectedAt: string | null
+    canConfirmCollection: boolean
+}
+
 export function PrivatePurchasesTab() {
     const [offers, setOffers] = React.useState<Offer[]>([])
     const [transactions, setTransactions] = React.useState<Transaction[]>([])
+    const [sales, setSales] = React.useState<PrivateRecordedSale[]>([])
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         let active = true
-        Promise.allSettled([getMyOffers(), getMyTransactions(1, 50)]).then(([offerRes, txRes]) => {
+        Promise.allSettled([
+            getMyOffers(), getMyTransactions(1, 50),
+            apiClient<{ data: PrivateRecordedSale[] }>('/listings/my-purchase-sales', { cache: 'no-store' }),
+        ]).then(([offerRes, txRes, saleRes]) => {
             if (!active) return
             if (offerRes.status === "fulfilled") setOffers(offerRes.value)
             if (txRes.status === "fulfilled") setTransactions(txRes.value.data || [])
-            if (offerRes.status === "rejected" || txRes.status === "rejected") {
+            if (saleRes.status === "fulfilled") setSales(saleRes.value.data ?? [])
+            if (offerRes.status === "rejected" || txRes.status === "rejected" || saleRes.status === "rejected") {
                 setError("Some purchase records could not be loaded. Refresh to retry.")
             }
         }).finally(() => { if (active) setLoading(false) })
@@ -81,6 +98,29 @@ export function PrivatePurchasesTab() {
                                 </div>
                                 <Link href="/dashboard/user?tab=bids"
                                     className="text-xs font-bold text-primary hover:underline">View offer</Link>
+                            </article>
+                        ))}
+                    </section>
+                    <section className="space-y-3">
+                        <h3 className="font-black">Recorded vehicle purchases ({sales.length})</h3>
+                        {sales.length === 0 && <p className="rounded-xl border border-[var(--border-default)] p-4 text-sm text-[var(--text-muted)]">No recorded vehicle purchases yet.</p>}
+                        {sales.map(sale => (
+                            <article key={sale.id} className="flex flex-wrap items-start gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4">
+                                {sale.imageUrl
+                                    ? <Image src={sale.imageUrl} alt="" width={80} height={64} className="h-16 w-20 shrink-0 rounded object-cover" />
+                                    : <ShoppingBag size={22} className="shrink-0 text-[var(--text-muted)]" />}
+                                <div className="min-w-0 flex-1 space-y-2">
+                                    <p className="font-bold break-words">{sale.title}</p>
+                                    <p className="text-sm">{money(sale.price)} · {new Date(sale.purchasedAt).toLocaleDateString('en-GB')}</p>
+                                    {sale.buyerCollectedAt
+                                        ? <p className="text-sm font-bold text-emerald-500">Collected · {new Date(sale.buyerCollectedAt).toLocaleDateString('en-GB')}</p>
+                                        : <p className="text-xs text-[var(--text-muted)]">Stage: {sale.purchaseStatus.replaceAll('_', ' ').toLowerCase()}</p>}
+                                    {sale.canConfirmCollection && !sale.buyerCollectedAt &&
+                                        <BuyerCollectedButton saleId={sale.id}
+                                            onCollected={() => setSales(previous => previous.map(item => item.id === sale.id
+                                                ? { ...item, purchaseStatus: 'CHECKS_COMPLETE', buyerCollectedAt: new Date().toISOString(), canConfirmCollection: false }
+                                                : item))} />}
+                                </div>
                             </article>
                         ))}
                     </section>
