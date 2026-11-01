@@ -3472,6 +3472,91 @@ export class ListingsService {
         return completed;
     }
 
+
+    /**
+     * Buyer-reported physical collection, not seller-confirmed funds or a
+     * TradeXchange job completion. Never releases bonuses or changes payouts.
+     */
+    async confirmVehicleCollectedByBuyer(saleId: string, userId: string) {
+        const sale = await this.prisma.sale.findUnique({
+            where: { id: saleId },
+            select: {
+                id: true, listingId: true, buyerId: true, purchaseStatus: true,
+                listing: { select: {
+                    status: true, type: true,
+                    auction: { select: {
+                        status: true, winnerId: true,
+                        buyerFeePaid: true, buyerFeeTransactionId: true,
+                    } },
+                } },
+            },
+        });
+        if (!sale || !sale.buyerId) throw new NotFoundException('Purchase not found');
+
+        // Directly registered buyers and authorised sales staff only.
+        if (sale.buyerId !== userId) {
+            const actor = await resolveDealerActor(this.prisma, userId);
+            if (!actor || actor.ownerUserId !== sale.buyerId)
+                throw new NotFoundException('Purchase not found');
+            assertDealerPermission(actor, 'MANAGE_OFFERS');
+        }
+        const auction = sale.listing.auction;
+        const isAuction = sale.listing.type === 'AUCTION'
+            || auction?.winnerId === sale.buyerId;
+        if (sale.listing.status !== 'SOLD')
+            throw new BadRequestException('Only a recorded sold vehicle can be confirmed collected');
+        if (isAuction && (!auction || auction.status !== 'ENDED'
+            || auction.winnerId !== sale.buyerId
+            || !auction.buyerFeePaid || !auction.buyerFeeTransactionId))
+            throw new BadRequestException('The auction win and buyer fee must be settled before collection is confirmed');
+
+        const cancellationWhere = {
+            listingId: sale.listingId,
+            status: { in: ['PENDING_COUNTERPARTY', 'PENDING_ADMIN', 'APPROVED'] as const },
+        };
+        const blocked = await this.prisma.saleCancellationRequest.findFirst({
+            where: cancellationWhere, select: { id: true },
+        });
+        if (blocked) throw new BadRequestException('A cancellation is pending or approved. Resolve it first.');
+        if (sale.purchaseStatus === 'CHECKS_COMPLETE' || sale.purchaseStatus === 'DELIVERY_REQUESTED') {
+            const recorded = await this.prisma.analyticsEvent.findFirst({
+                where: { type: 'buyer_vehicle_collected',
+                    payload: { path: ['saleId'], equals: sale.id } },
+                select: { createdAt: true },
+            });
+            if (!recorded)
+                throw new BadRequestException('Already in a completed stage, but no buyer collection is recorded');
+            return { saleId: sale.id, purchaseStatus: sale.purchaseStatus, buyerCollectedAt: recorded.createdAt };
+        }
+        if (!['AWAITING_CONFIRMATION', 'REVIEWING_DOCS'].includes(sale.purchaseStatus))
+            throw new BadRequestException('Purchase cannot be marked collected from its current stage');
+
+        return this.prisma.$transaction(async tx => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${sale.id}, 0))::text`;
+            const pending = await tx.saleCancellationRequest.findFirst({
+                where: cancellationWhere, select: { id: true },
+            });
+            if (pending) throw new ConflictException('Cancellation changed. Refresh the purchase.');
+            const updated = await tx.sale.updateMany({
+                where: { id: sale.id, buyerId: sale.buyerId,
+                    purchaseStatus: { in: ['AWAITING_CONFIRMATION', 'REVIEWING_DOCS'] } },
+                data: { purchaseStatus: 'CHECKS_COMPLETE' },
+            });
+            if (updated.count !== 1) throw new ConflictException('Purchase status changed. Refresh and retry.');
+            const audit = await tx.analyticsEvent.create({
+                data: {
+                    type: 'buyer_vehicle_collected', userId,
+                    payload: { saleId: sale.id, listingId: sale.listingId,
+                        buyerId: sale.buyerId,
+                        channel: isAuction ? 'AUCTION' : 'RETAIL',
+                        attestation: 'buyer_paid_seller_and_physically_collected',
+                    },
+                }, select: { createdAt: true },
+            });
+            return { saleId: sale.id, purchaseStatus: 'CHECKS_COMPLETE', buyerCollectedAt: audit.createdAt };
+        });
+    }
+
     /** Shared completion used by the seller (Mark as Sold) and the buyer. */
     private async completeRetailSale(
         listing: Awaited<ReturnType<ListingsService['findById']>>,
