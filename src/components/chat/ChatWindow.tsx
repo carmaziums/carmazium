@@ -542,6 +542,17 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         if (!newMessage.trim() || sending) return
 
         const content = newMessage.trim()
+        setNewMessage("")
+        await sendText(content)
+    }
+
+    const requestHumanSupport = async () => {
+        if (sending) return
+        await sendText("I'd like to speak to a human support agent, please.")
+        await refreshRooms()
+    }
+
+    const sendText = async (content: string) => {
         stopLocalTyping()
         const clientMessageId = crypto.randomUUID()
         const tempId = `temp-${clientMessageId}`
@@ -1216,6 +1227,13 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                             <input type="checkbox" checked={aiConsent} disabled={consentBusy || Boolean(room.supportHumanTakeoverAt)} onChange={(event) => void updateAiConsent(event.target.checked)} />
                             <span>{aiConsent ? 'AI assistance permitted' : 'Allow AI assistance'}</span>
                         </label>
+                        {!room.supportHumanTakeoverAt && (
+                            <button type="button" onClick={() => void requestHumanSupport()}
+                                disabled={sending}
+                                className="mt-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] disabled:opacity-50">
+                                Talk to a person instead
+                            </button>
+                        )}
                         {room.supportHumanTakeoverAt && <p className="mt-1 text-[var(--text-secondary)]">A human support agent has taken over this conversation. AI assistance cannot be re-enabled here.</p>}
                         {consentError && <p role="alert" className="mt-1 text-red-500">{consentError}</p>}
                     </div>
