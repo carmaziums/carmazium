@@ -3473,6 +3473,57 @@ export class ListingsService {
     }
 
 
+
+    /** Private registered buyers' recorded purchases; no other buyer's data. */
+    async getMyRecordedPurchaseSales(userId: string) {
+        const sales = await this.prisma.sale.findMany({
+            where: { buyerId: userId },
+            orderBy: { createdAt: 'desc' },
+            take: 100,
+            select: {
+                id: true, listingId: true, soldPrice: true, purchaseStatus: true,
+                createdAt: true,
+                listing: { select: {
+                    title: true, images: true, status: true, type: true,
+                    auction: { select: {
+                        status: true, winnerId: true,
+                        buyerFeePaid: true, buyerFeeTransactionId: true,
+                    } },
+                } },
+            },
+        });
+        const collectedIds = sales.filter(s => s.purchaseStatus === 'CHECKS_COMPLETE').map(s => s.id);
+        const events = collectedIds.length
+            ? await this.prisma.analyticsEvent.findMany({
+                where: { type: 'buyer_vehicle_collected',
+                    OR: collectedIds.map(id => ({ payload: { path: ['saleId'], equals: id } })) },
+                orderBy: { createdAt: 'desc' },
+                select: { createdAt: true, payload: true },
+            }) : [];
+        const collection = new Map<string, Date>();
+        for (const e of events) {
+            const p = e.payload;
+            if (p && typeof p === 'object' && !Array.isArray(p)) {
+                const id = (p as Record<string, unknown>).saleId;
+                if (typeof id === 'string' && !collection.has(id)) collection.set(id,e.createdAt);
+            }
+        }
+        return sales.map(s => ({
+            id:s.id, listingId:s.listingId, title:s.listing.title,
+            imageUrl:s.listing.images[0] ?? null,
+            price:Number(s.soldPrice), purchasedAt:s.createdAt.toISOString(),
+            purchaseStatus:s.purchaseStatus,
+            buyerCollectedAt:collection.get(s.id)?.toISOString() ?? null,
+            canConfirmCollection: s.listing.status === 'SOLD'
+                && ['AWAITING_CONFIRMATION','REVIEWING_DOCS'].includes(s.purchaseStatus)
+                && (s.listing.type === 'CLASSIFIED'
+                    || (s.listing.auction?.status === 'ENDED'
+                        && s.listing.auction.winnerId === userId
+                        && !!s.listing.auction.buyerFeePaid
+                        && !!s.listing.auction.buyerFeeTransactionId)),
+        }));
+    }
+
     /**
      * Buyer-reported physical collection, not seller-confirmed funds or a
      * TradeXchange job completion. Never releases bonuses or changes payouts.
