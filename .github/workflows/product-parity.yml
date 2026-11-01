@@ -13,6 +13,7 @@ on:
       - 'next.config.ts'
       - 'product-parity.json'
       - 'scripts/check-product-parity.mjs'
+      - 'scripts/test-native-delivery-fee-truth.test.mjs'
       - '.github/workflows/product-parity.yml'
 
 jobs:
@@ -53,6 +54,8 @@ jobs:
         run: node --test scripts/test-account-reregistration.test.mjs
       - name: Verify chat fits a phone screen on every Messages page
         run: node --test scripts/test-chat-mobile-width.test.mjs
+      - name: Verify native seller delivery fee information is factual
+        run: node --test scripts/test-native-delivery-fee-truth.test.mjs
       - name: Verify retired pages redirect and the dead newsletter form is gone
         run: node --test scripts/test-retired-page-redirects.test.mjs
       - name: Verify website audit fixes (images, SEO metadata, dead buttons, copy)
