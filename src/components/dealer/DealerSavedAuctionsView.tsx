@@ -5,6 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { AlertCircle, Clock3, Flame, Gavel, Loader2, RefreshCw, Star, Trash2 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { DealerSavedTabs } from "@/components/dealer/DealerSavedTabs"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { useAuth } from "@/context/AuthContext"
@@ -30,7 +31,7 @@ function timeRemaining(iso: string, now: number): string {
 
 export default function DealerSavedAuctionsView() {
     const { user, profile, loading: authLoading } = useAuth()
-    const [view, setView] = React.useState<"live" | "all">("live")
+    const [view, setView] = React.useState<"live" | "all">("all")
     const [page, setPage] = React.useState(1)
     const [items, setItems] = React.useState<ShortlistedAuction[]>([])
     const [totalPages, setTotalPages] = React.useState(1)
@@ -123,8 +124,8 @@ export default function DealerSavedAuctionsView() {
                     <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
                     <main className="flex-1 min-w-0 space-y-5">
                         <PageHeader
-                            title="Shortlisted Auctions"
-                            subHeader="Save several live vehicles and come back to bid when you are ready."
+                            title="Saved"
+                            subHeader="Auctions and retail cars you have saved."
                         >
                             <Link
                                 href="/auctions/browse"
@@ -135,37 +136,13 @@ export default function DealerSavedAuctionsView() {
                         </PageHeader>
 
 
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="inline-flex rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-1">
-                                <button
-                                    type="button"
-                                    aria-pressed={view === "live"}
-                                    onClick={() => changeView("live")}
-                                    className={view === "live" ? "min-h-11 rounded-lg bg-primary px-4 text-sm font-bold text-white" : "min-h-11 rounded-lg px-4 text-sm font-bold text-[var(--text-muted)]"}
-                                >
-                                    Live to Bid
-                                </button>
-                                <button
-                                    type="button"
-                                    aria-pressed={view === "all"}
-                                    onClick={() => changeView("all")}
-                                    className={view === "all" ? "min-h-11 rounded-lg bg-primary px-4 text-sm font-bold text-white" : "min-h-11 rounded-lg px-4 text-sm font-bold text-[var(--text-muted)]"}
-                                >
-                                    All Saved
-                                </button>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
-                                <span>{total} saved {view === "live" ? "live" : "in total"}</span>
-                                <button
-                                    type="button"
-                                    aria-label="Refresh shortlisted auctions"
-                                    onClick={() => void load(true)}
-                                    disabled={refreshing}
-                                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-[var(--border-default)] hover:text-primary disabled:opacity-60"
-                                >
-                                    <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
-                                </button>
-                            </div>
+                        <DealerSavedTabs active="auctions" />
+                        <div className="flex items-center justify-between gap-3 text-sm text-[var(--text-muted)]">
+                            <span>{total} saved auctions</span>
+                            <button type="button" aria-label="Refresh saved auctions" onClick={() => void load(true)}
+                                disabled={refreshing} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-[var(--border-default)]">
+                                <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+                            </button>
                         </div>
 
                         {error && (
