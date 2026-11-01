@@ -345,12 +345,30 @@ export class AiService {
      * eligibility and route any actual send through authenticated ChatService.
      * A model response must never directly trigger account or payment changes.
      */
+    /**
+     * Support drafts must fail closed if remote moderation is unavailable.
+     * Other MaziuM surfaces retain their existing moderation behaviour.
+     */
+    private async supportTextIsSafe(text: string): Promise<boolean> {
+        if (!text.trim() || this.localUnsafe(text)) return false;
+        try {
+            const moderation = await this.openai.moderations.create({
+                model: 'omni-moderation-latest',
+                input: text,
+            });
+            return moderation.results?.[0]?.flagged === false;
+        } catch {
+            this.logger.warn('Support moderation unavailable; withholding AI draft');
+            return false;
+        }
+    }
+
     async draftSupportReply(
         messages: { role: 'user' | 'assistant'; content: string }[],
     ): Promise<string | null> {
         if (!this.configService.get<string>('OPENAI_API_KEY')) return null;
         const latest = [...messages].reverse().find((m) => m.role === 'user');
-        if (!latest?.content.trim() || await this.isUnsafe(latest.content)) return null;
+        if (!latest?.content.trim() || !(await this.supportTextIsSafe(latest.content))) return null;
         if (messages.length > 10 || messages.some((m) => m.content.length > 4000)) return null;
         const context = messages.slice(-8).map((m) => ({
             role: m.role,
@@ -383,7 +401,7 @@ export class AiService {
                 ],
             });
             const draft = completion.choices[0]?.message?.content?.trim();
-            if (!draft || draft.length > 1200 || await this.isUnsafe(draft)) return null;
+            if (!draft || draft.length > 1200 || !(await this.supportTextIsSafe(draft))) return null;
             return draft;
         } catch (error) {
             this.logger.warn('MaziuM support draft failed; requiring human review');
