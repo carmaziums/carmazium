@@ -52,7 +52,7 @@ function StatusPill({ status }: { status: string }) {
 
 function ListingChannelPill({ type }: { type?: string | null }) {
     const isAuction = type === 'AUCTION'
-    const name = type === 'AUCTION' ? 'Auction' : type === 'CLASSIFIED' ? 'Retail' : 'Unknown type'
+    const name = getModerationChannel({ type })
     return (
         <span className={`inline-flex shrink-0 items-center rounded-md border px-2 py-1 text-[11px] font-bold ${isAuction
             ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
@@ -436,7 +436,7 @@ export default function AdminListingsPage() {
                                                     </div>
                                                 )}
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-bold text-sm truncate">{l.title}</p>
+                                                    <p className="font-bold text-sm break-words leading-snug">{l.title}</p>
                                                     <div className="mt-1"><ListingChannelPill type={l.type} /></div>
                                                     <p className="text-xs text-[var(--text-muted)] truncate">{l.seller?.firstName} {l.seller?.lastName} · {l.seller?.email}</p>
                                                 </div>
@@ -712,7 +712,7 @@ export default function AdminListingsPage() {
                             {listings.map((l) => {
                                 const isSelf = false
                                 return (
-                                    <div key={l.id} className={`flex items-center gap-3 p-4 ${l.deletedAt ? 'bg-red-500/5' : ''}`}>
+                                    <div key={l.id} className={`flex flex-wrap items-start gap-3 p-3 ${l.deletedAt ? 'bg-red-500/5' : ''}`}>
                                         {l.images?.[0] ? (
                                             <Image src={l.images[0]} alt="" width={48} height={48} className="w-12 h-12 rounded-lg object-cover shrink-0" />
                                         ) : (
@@ -750,13 +750,13 @@ export default function AdminListingsPage() {
                                                 </button>
                                             )}
                                         </div>
-                                        <div className="flex flex-col gap-1 shrink-0 ml-1">
+                                        <div className="flex w-full items-center justify-end gap-2 border-t border-[var(--border-default)] pt-2">
                                             <Link
                                                 href={getModerationListingHref(l)}
                                                 target="_blank"
                                                 aria-label="View listing"
                                                 title="View Listing"
-                                                className="p-2.5 bg-blue-500/10 rounded-lg text-blue-400 hover:bg-blue-500/20 transition-colors"
+                                                className="inline-flex min-h-11 min-w-11 items-center justify-center bg-blue-500/10 rounded-lg text-blue-400 hover:bg-blue-500/20 transition-colors"
                                             >
                                                 <Eye size={16} />
                                             </Link>
@@ -766,7 +766,7 @@ export default function AdminListingsPage() {
                                                 disabled={l.status === 'SOLD' || !!l.deletedAt}
                                                 aria-label="Edit listing"
                                                 title={l.status === 'SOLD' ? 'Cannot edit a sold listing' : 'Edit Listing'}
-                                                className="p-2.5 bg-white/5 rounded-lg text-[var(--text-muted)] hover:bg-white/10 hover:text-primary disabled:opacity-30 transition-colors"
+                                                className="inline-flex min-h-11 min-w-11 items-center justify-center bg-white/5 rounded-lg text-[var(--text-muted)] hover:bg-white/10 hover:text-primary disabled:opacity-30 transition-colors"
                                             >
                                                 <Pencil size={16} />
                                             </button>
@@ -776,7 +776,7 @@ export default function AdminListingsPage() {
                                                 disabled={deleting === l.id || !!l.deletedAt}
                                                 aria-label="Force delete listing"
                                                 title="Force Delete"
-                                                className="p-2.5 bg-red-500/10 rounded-lg text-red-400 disabled:opacity-30 hover:bg-red-500/20 transition-colors"
+                                                className="inline-flex min-h-11 min-w-11 items-center justify-center bg-red-500/10 rounded-lg text-red-400 disabled:opacity-30 hover:bg-red-500/20 transition-colors"
                                             >
                                                 {deleting === l.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                                             </button>
