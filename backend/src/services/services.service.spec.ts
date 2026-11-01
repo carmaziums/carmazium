@@ -232,6 +232,7 @@ const sessionsCreate = jest.fn();
 const sessionsRetrieve = jest.fn();
 const refundsCreate = jest.fn();
 const transfersCreate = jest.fn();
+const paymentIntentsRetrieve = jest.fn(async () => ({ latest_charge: 'ch_test_service_job' }));
 const refreshConnectAccountReadiness = jest.fn(async (accountId: string) => ({ ready: true, accountId }));
 
 const CUSTOMER = { id: 'u_cust', role: 'BUYER', email: 'cust@example.com', firstName: 'Cara', lastName: 'Customer', phone: '07000000001', postcode: null };
@@ -257,6 +258,7 @@ beforeAll(async () => {
                         checkout: { sessions: { create: sessionsCreate, retrieve: sessionsRetrieve } },
                         refunds: { create: refundsCreate },
                         transfers: { create: transfersCreate },
+                        paymentIntents: { retrieve: paymentIntentsRetrieve },
                     }),
                     refreshConnectAccountReadiness,
                 },
@@ -561,7 +563,7 @@ describe('Delivery & Recovery — end to end', () => {
         const r = await svc.confirmCompletion(CUSTOMER.id, jobId);
         expect(r).toEqual({ success: true, transferId: 'tr_1' });
         expect(transfersCreate).toHaveBeenCalledWith(
-            expect.objectContaining({ amount: 15470, currency: 'gbp', destination: 'acct_kent', transfer_group: expect.stringMatching(/^service-job-/) }),
+            expect.objectContaining({ amount: 15470, currency: 'gbp', destination: 'acct_kent', source_transaction: 'ch_test_service_job', transfer_group: expect.stringMatching(/^service-job-/) }),
             { idempotencyKey: `service-job-release-${pay.id}` },
         );
         expect(transfersCreate).toHaveBeenCalledTimes(1);
@@ -653,7 +655,7 @@ describe('Delivery & Recovery — end to end', () => {
         expect(await svc.autoConfirmCompleted()).toBe(1);
         expect(db.one('serviceJob', { id: done.id })!.status).toBe('RELEASED');
         expect(transfersCreate).toHaveBeenLastCalledWith(
-            expect.objectContaining({ amount: 7280, currency: 'gbp', destination: 'acct_kent', transfer_group: expect.stringMatching(/^service-job-/) }),
+            expect.objectContaining({ amount: 7280, currency: 'gbp', destination: 'acct_kent', source_transaction: 'ch_test_service_job', transfer_group: expect.stringMatching(/^service-job-/) }),
             { idempotencyKey: `service-job-release-${pay.id}` },
         ); // £80 less 9%
     });
@@ -793,7 +795,7 @@ describe('Vehicle Inspection — end to end', () => {
 
         expect(released).toEqual({ success: true, transferId: 'tr_inspection' });
         expect(transfersCreate).toHaveBeenLastCalledWith(
-            expect.objectContaining({ amount: 11375, currency: 'gbp', destination: 'acct_kent', transfer_group: expect.stringMatching(/^service-job-/) }),
+            expect.objectContaining({ amount: 11375, currency: 'gbp', destination: 'acct_kent', source_transaction: 'ch_test_service_job', transfer_group: expect.stringMatching(/^service-job-/) }),
             { idempotencyKey: `service-job-release-${payment.id}` },
         );
         expect(db.one('serviceJob', { id: inspectionJobId })!.status).toBe('RELEASED');
