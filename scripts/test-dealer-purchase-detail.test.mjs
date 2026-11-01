@@ -70,7 +70,7 @@ test("web purchase detail has all sections, action sheet and fixed mobile bottom
 
 test("history and won-auction pages link only to real Sale IDs", () => {
     const history = read("src/components/dealer/DealerPurchasesView.tsx")
-    const won = read("src/app/dashboard/dealer/auctions/won/page.tsx")
+    const won = read("src/components/dealer/DealerAuctionWinsView.tsx")
     assert.match(history, /onViewSummary=\{openPurchaseDetail\}/)
     assert.match(won, /purchases\/listing-lookup\?listingIds=/)
     assert.match(won, /purchaseId=\{purchaseByListing\[a\.listingId\]\}/)
