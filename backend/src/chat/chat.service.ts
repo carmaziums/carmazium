@@ -2163,12 +2163,21 @@ export class ChatService {
         }
         const now = new Date();
         const result = await this.prisma.chatRoom.updateMany({
-            where: { id: roomId, context: ChatContext.SUPPORT, deletedAt: null, supportClosedAt: null },
+            where: {
+                id: roomId,
+                context: ChatContext.SUPPORT,
+                deletedAt: null,
+                supportClosedAt: null,
+                ...(consent ? { supportHumanTakeoverAt: null } : {}),
+            },
             data: consent
                 ? { supportAiConsentAt: now, supportAiOptedOutAt: null }
                 : { supportAiConsentAt: null, supportAiOptedOutAt: now },
         });
-        if (result.count !== 1) throw new NotFoundException('Open support conversation not found');
+        if (result.count !== 1) {
+            if (consent) throw new BadRequestException('A human agent has taken over this conversation. AI assistance cannot be re-enabled here.');
+            throw new NotFoundException('Open support conversation not found');
+        }
         return { consentToAi: consent, humanTakeoverActive: Boolean(room.supportHumanTakeoverAt) };
     }
 
