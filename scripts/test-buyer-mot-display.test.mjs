@@ -29,7 +29,7 @@ test("buyer sees all persisted DVLA metadata and seller specs without invented d
     }
     assert.match(report, /facts\.filter\(f => present\(f\.value\)\)/)
     assert.match(report, /Only known fields are shown/)
-    assert.match(report, /\{ label: "VIN \\(recorded\\)", value: listing\\.vin \}/)
+    assert.match(report, /\{ label: "VIN \(recorded\)", value: listing\.vin \}/)
     assert.doesNotMatch(report, /listing\.seller\.phone|MOT_API_KEY|MOT_HISTORY_CLIENT_SECRET/)
 })
 
