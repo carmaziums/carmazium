@@ -406,6 +406,13 @@ describe('Delivery & Recovery — end to end', () => {
         expect(job.vehicles).toHaveLength(2);
         expect(job.vehicles.map((v: any) => v.registration)).toEqual(['AB12CDE', 'XY65ZZZ']);
         expect(job.expiresAt.getTime()).toBeGreaterThan(Date.now() + 6 * 86_400_000);
+        expect(notificationsTo(ADMIN.id)).toEqual(expect.arrayContaining([
+            expect.stringMatching(/^SERVICE_JOB_(POSTED|NEEDS_PROVIDER)$/),
+        ]));
+        expect(notify).toHaveBeenCalledWith(expect.objectContaining({
+            userId: ADMIN.id,
+            link: `/dashboard/admin/services/jobs/${job.id}`,
+        }));
     });
 
     // 3. Quoting ─────────────────────────────────────────────────────────
@@ -713,6 +720,11 @@ describe('Vehicle Inspection — end to end', () => {
             deliveryPostcode: null,
         });
         expect(job.vehicles[0].registration).toBe('IN66SPC');
+        expect(notify).toHaveBeenCalledWith(expect.objectContaining({
+            userId: ADMIN.id,
+            link: `/dashboard/admin/services/jobs/${job.id}`,
+            type: expect.stringMatching(/^SERVICE_JOB_(POSTED|NEEDS_PROVIDER)$/),
+        }));
     });
 
     it('shows the Inspection job only to a provider approved for Inspection and keeps the street address private', async () => {
