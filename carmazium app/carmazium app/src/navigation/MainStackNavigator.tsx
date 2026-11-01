@@ -123,7 +123,7 @@ export type MainStackParamList = {
   /** fromBidsOffers: opened from the Buy & Bid hub's "Bids & offers" switch. */
   DealerMyOffers: { fromBidsOffers?: boolean } | undefined;
   /** view: All Purchases (default), Retail Purchases or Purchase History. */
-  DealerPurchases: { view?: 'all' | 'retail' | 'history' } | undefined;
+  DealerPurchases: { view?: 'all' | 'retail' | 'history'; stage?: 'progress' | 'completed' | 'cancelled'; channel?: 'all' | 'auction' | 'retail' } | undefined;
   DealerPurchaseDetail: { saleId: string };
   DealerEarnings: undefined;
   DealerFinance: undefined;
