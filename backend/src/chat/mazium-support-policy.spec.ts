@@ -1,4 +1,4 @@
-import { canAutoReplyToSupport, canPrepareSupportDraft, classifySupportMessage } from './mazium-support-policy';
+import { canAutoReplyToSupport, canPrepareSupportDraft, classifySupportMessage, supportAutoReplyClientMessageId } from './mazium-support-policy';
 
 describe('MaziuM support safety policy', () => {
     it.each([
@@ -71,6 +71,17 @@ describe('MaziuM support safety policy', () => {
         expect(canAutoReplyToSupport({ ...eligibleAuto, withinRateAndBudgetLimits: false })).toBe(false);
         expect(canAutoReplyToSupport({ ...eligibleAuto, incomingMessage: 'Refund my fee' })).toBe(false);
         expect(canAutoReplyToSupport({ ...eligibleAuto, proposedReply: 'I will refund your fee' })).toBe(false);
+    });
+
+    it('creates a stable per-inbound-message idempotency key', () => {
+        const messageId = '123e4567-e89b-12d3-a456-426614174000';
+        expect(supportAutoReplyClientMessageId(messageId)).toBe(
+            'mazium-support-123e4567-e89b-12d3-a456-426614174000',
+        );
+        expect(supportAutoReplyClientMessageId(messageId.toUpperCase())).toBe(
+            supportAutoReplyClientMessageId(messageId),
+        );
+        expect(() => supportAutoReplyClientMessageId('../invalid')).toThrow();
     });
 
 });
