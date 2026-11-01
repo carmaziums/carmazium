@@ -56,6 +56,8 @@ jobs:
         run: node --test scripts/test-chat-mobile-width.test.mjs
       - name: Verify native seller delivery fee information is factual
         run: node --test scripts/test-native-delivery-fee-truth.test.mjs
+      - name: Verify native vehicle photo quality and upload size guards
+        run: node --test scripts/test-native-photo-compression-quality.test.mjs
       - name: Verify retired pages redirect and the dead newsletter form is gone
         run: node --test scripts/test-retired-page-redirects.test.mjs
       - name: Verify website audit fixes (images, SEO metadata, dead buttons, copy)
