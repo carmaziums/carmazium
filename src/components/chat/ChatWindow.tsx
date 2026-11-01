@@ -46,6 +46,9 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const [newMessage, setNewMessage] = React.useState("")
     const [generatingSupportDraft, setGeneratingSupportDraft] = React.useState(false)
     const [supportDraftNotice, setSupportDraftNotice] = React.useState<string | null>(null)
+    const [aiConsent, setAiConsent] = React.useState(Boolean(room.supportAiConsentAt && !room.supportAiOptedOutAt))
+    const [consentBusy, setConsentBusy] = React.useState(false)
+    const [consentError, setConsentError] = React.useState<string | null>(null)
     const [loading, setLoading] = React.useState(true)
     const [loadingOlder, setLoadingOlder] = React.useState(false)
     const [hasMore, setHasMore] = React.useState(false)
@@ -84,6 +87,28 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
 
     const isDispute = room.context === 'DISPUTE'
     const canDraftSupport = isAdminViewer && room.context === 'SUPPORT' && !room.supportClosedAt
+    React.useEffect(() => {
+        setAiConsent(Boolean(room.supportAiConsentAt && !room.supportAiOptedOutAt))
+        setConsentError(null)
+    }, [room.id, room.supportAiConsentAt, room.supportAiOptedOutAt])
+
+    const updateAiConsent = async (consent: boolean) => {
+        if (consentBusy) return
+        setConsentBusy(true)
+        setConsentError(null)
+        try {
+            await apiClient(`/chat/rooms/${encodeURIComponent(room.id)}/support-ai-consent`, {
+                method: 'PATCH',
+                body: JSON.stringify({ consent }),
+            })
+            setAiConsent(consent)
+            await refreshRooms()
+        } catch (error: any) {
+            setConsentError(error?.message || 'Could not save AI assistance preference.')
+        } finally {
+            setConsentBusy(false)
+        }
+    }
     const disputeResolved = resolvedLocally || room.disputeCase?.status === 'RESOLVED'
     const disputeAdminJoined = !!room.disputeCase?.joinedAdminId
 
@@ -1176,6 +1201,17 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                 {qr.label}
                             </button>
                         ))}
+                    </div>
+                )}
+                {!isAdminViewer && room.context === 'SUPPORT' && !room.supportClosedAt && (
+                    <div className="shrink-0 mx-4 mt-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] p-3 text-xs">
+                        <p className="font-semibold">MaziuM AI support (optional)</p>
+                        <p className="mt-1 text-[var(--text-secondary)]">With your permission, AI may help answer routine questions. You can withdraw permission at any time. Our team handles sensitive issues.</p>
+                        <label className="mt-2 flex items-center gap-2">
+                            <input type="checkbox" checked={aiConsent} disabled={consentBusy} onChange={(event) => void updateAiConsent(event.target.checked)} />
+                            <span>{aiConsent ? 'AI assistance permitted' : 'Allow AI assistance'}</span>
+                        </label>
+                        {consentError && <p role="alert" className="mt-1 text-red-500">{consentError}</p>}
                     </div>
                 )}
                 {canDraftSupport && (
