@@ -2479,6 +2479,9 @@ export class ChatService {
         dto: SendChatAttachmentDto,
     ): Promise<{ message: any; created: boolean }> {
         const room = await this.assertCanMessageRoom(roomId, senderId);
+        if (dto.clientMessageId?.startsWith('mazium-support-')) {
+            throw new BadRequestException('This message identifier is reserved for CarMazium system messages.');
+        }
         this.chatAttachmentService.validateMetadata(dto.name, dto.mime, dto.size);
         this.chatAttachmentService.assertPathOwnership(dto.path, roomId, senderId);
 
