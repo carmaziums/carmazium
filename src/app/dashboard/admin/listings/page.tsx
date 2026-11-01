@@ -14,7 +14,8 @@ import { HpiReportForm } from "@/components/admin/HpiReportForm"
 import { HpiPdfUpload } from "@/components/admin/HpiPdfUpload"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminListings, deleteListingForce, getPendingListingReviews, approveListing, rejectListing, relistAdminDraftAsAuction } from "@/lib/adminApi"
-import type { AdminListingStatus } from "@/lib/adminApi"
+import type { AdminListingStatus, AdminListingType } from "@/lib/adminApi"
+import { getModerationChannel, getModerationPrice, getModerationListingHref } from "@/lib/adminListingModeration"
 import { formatPrice } from "@/lib/listingApi"
 
 const STATUS_STYLES: Record<string, string> = {
@@ -45,6 +46,20 @@ function StatusPill({ status }: { status: string }) {
         <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold border ${STATUS_STYLES[status] || STATUS_STYLES.DRAFT}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-current" />
             {status.replace('_', ' ')}
+        </span>
+    )
+}
+
+function ListingChannelPill({ type }: { type?: string | null }) {
+    const isAuction = type === 'AUCTION'
+    const name = type === 'AUCTION' ? 'Auction' : type === 'CLASSIFIED' ? 'Retail' : 'Unknown type'
+    return (
+        <span className={`inline-flex shrink-0 items-center rounded-md border px-2 py-1 text-[11px] font-bold ${isAuction
+            ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+            : type === 'CLASSIFIED'
+                ? 'border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300'
+                : 'border-gray-400/30 bg-gray-500/10 text-[var(--text-muted)]'}`}>
+            {name}
         </span>
     )
 }
@@ -85,6 +100,7 @@ export default function AdminListingsPage() {
     // every seller's in this table.
     const [ownerFilter, setOwnerFilter] = React.useState<'ALL' | 'ADMIN'>('ALL')
     const [statusFilter, setStatusFilter] = React.useState<AdminListingStatus>('ACTIVE')
+    const [listingTypeFilter, setListingTypeFilter] = React.useState<AdminListingType>('ALL')
     const [searchInput, setSearchInput] = React.useState('')
     const [searchQuery, setSearchQuery] = React.useState('')
     const listingsRequestId = React.useRef(0)
@@ -129,6 +145,7 @@ export default function AdminListingsPage() {
                 searchQuery ? undefined : (ownerFilter === 'ADMIN' ? 'ADMIN' : undefined),
                 searchQuery ? 'ALL' : statusFilter,
                 searchQuery || undefined,
+                listingTypeFilter,
             )
             // A slow response for a previous tab must not replace the current tab.
             if (requestId !== listingsRequestId.current) return
@@ -150,7 +167,7 @@ export default function AdminListingsPage() {
             fetchListings()
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [profile, page, ownerFilter, statusFilter, searchQuery])
+    }, [profile, page, ownerFilter, statusFilter, searchQuery, listingTypeFilter])
 
     const loadPending = async () => {
         try {
@@ -171,8 +188,9 @@ export default function AdminListingsPage() {
     }, [profile])
 
     const visiblePendingListings = React.useMemo(
-        () => pendingListings.filter((listing) => matchesAdminListingSearch(listing, searchQuery)),
-        [pendingListings, searchQuery],
+        () => pendingListings.filter((listing) =>
+            (listingTypeFilter === 'ALL' || listing.type === listingTypeFilter) && matchesAdminListingSearch(listing, searchQuery)),
+        [pendingListings, searchQuery, listingTypeFilter],
     )
 
     const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -419,6 +437,7 @@ export default function AdminListingsPage() {
                                                 )}
                                                 <div className="flex-1 min-w-0">
                                                     <p className="font-bold text-sm truncate">{l.title}</p>
+                                                    <div className="mt-1"><ListingChannelPill type={l.type} /></div>
                                                     <p className="text-xs text-[var(--text-muted)] truncate">{l.seller?.firstName} {l.seller?.lastName} · {l.seller?.email}</p>
                                                 </div>
                                                 {hpiPending && (
@@ -429,7 +448,7 @@ export default function AdminListingsPage() {
                                                 <span className="text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 bg-amber-500/10 text-amber-400 border-amber-500/20">
                                                     Pending
                                                 </span>
-                                                <span className="text-sm font-bold shrink-0 hidden sm:inline">{formatPrice(l.price)}</span>
+                                                <span className="hidden text-right text-sm font-bold shrink-0 sm:inline">{getModerationPrice(l).value}<span className="block text-[10px] font-normal text-[var(--text-muted)]">{getModerationPrice(l).label}</span></span>
                                                 <ChevronDown size={18} className={`text-[var(--text-muted)] transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
                                             </button>
 
@@ -484,7 +503,7 @@ export default function AdminListingsPage() {
                                                             )}
 
                                                             <div className="flex items-center gap-4 py-2">
-                                                                <Link href={`/buy-cars/${l.slug}`} target="_blank" className="text-xs text-blue-400 hover:underline inline-flex items-center gap-1">
+                                                                <Link href={getModerationListingHref(l)} target="_blank" className="text-xs text-blue-400 hover:underline inline-flex items-center gap-1">
                                                                     <Eye size={12} /> Preview listing
                                                                 </Link>
                                                             </div>
@@ -628,6 +647,25 @@ export default function AdminListingsPage() {
                                 </button>
                             ))}
                         </div>
+                        <div role="group" aria-label="Filter by listing type" className="flex flex-wrap gap-2">
+                            {([
+                                ['ALL', 'All types'],
+                                ['AUCTION', 'Auctions'],
+                                ['CLASSIFIED', 'Retail'],
+                            ] as const).map(([value, label]) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    aria-pressed={listingTypeFilter === value}
+                                    onClick={() => { setPage(1); setListingTypeFilter(value) }}
+                                    className={`min-h-11 rounded-lg border px-4 py-2 text-xs font-bold transition-colors ${listingTypeFilter === value
+                                        ? 'border-primary bg-primary text-white'
+                                        : 'border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/40 hover:text-[var(--text-primary)]'}`}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
                         <div className="flex flex-wrap items-center gap-2">
                             {([
                                 ['ALL', 'All sellers'],
@@ -687,10 +725,12 @@ export default function AdminListingsPage() {
                                                 <p className="font-bold text-sm truncate">{l.title}</p>
                                                 <div className="shrink-0"><StatusPill status={l.deletedAt ? 'DELETED' : l.status} /></div>
                                             </div>
+                                            <div className="mt-1 flex flex-wrap items-center gap-1.5"><ListingChannelPill type={l.type} />{l.type === 'AUCTION' && l.auction?.status && <span className="text-[11px] font-medium text-[var(--text-muted)]">{l.auction.status.replaceAll('_', ' ')}</span>}</div>
                                             <div className="flex items-center justify-between mt-1">
                                                 <p className="text-xs text-[var(--text-muted)] truncate hover:text-primary transition-colors cursor-pointer" onClick={() => l.seller?.id && setSelectedUserId(l.seller.id)}>{l.seller?.firstName} {l.seller?.lastName} · {l.vrm || 'No VRM'}</p>
-                                                <p className="text-sm font-bold ml-2 shrink-0">{formatPrice(l.price)}</p>
+                                                <div className="ml-2 min-w-0 shrink-0 text-right"><p className="text-sm font-bold">{getModerationPrice(l).value}</p><p className="text-[10px] text-[var(--text-muted)]">{getModerationPrice(l).label}</p></div>
                                             </div>
+                                            {l.type === 'AUCTION' && <p className="mt-1 text-[11px] text-[var(--text-muted)]">{[getModerationPrice(l).detail, getModerationPrice(l).buyNow].filter(Boolean).join(' · ')}</p>}
                                             <AdminVehicleReviewPanel
                                                             listing={l}
                                                             onEdit={() => setEditListingId(l.id)}
@@ -712,7 +752,7 @@ export default function AdminListingsPage() {
                                         </div>
                                         <div className="flex flex-col gap-1 shrink-0 ml-1">
                                             <Link
-                                                href={`/buy-cars/${l.slug}`}
+                                                href={getModerationListingHref(l)}
                                                 target="_blank"
                                                 aria-label="View listing"
                                                 title="View Listing"
@@ -753,6 +793,7 @@ export default function AdminListingsPage() {
                                     <tr>
                                         <th className="px-6 py-4">Vehicle</th>
                                         <th className="px-6 py-4 text-center">Status</th>
+                                        <th className="px-6 py-4">Type</th>
                                         <th className="px-6 py-4 text-right">Price</th>
                                         <th className="px-6 py-4">Seller</th>
                                         <th className="px-6 py-4 text-right">Action</th>
@@ -787,8 +828,11 @@ export default function AdminListingsPage() {
                                             <td className="px-6 py-4 text-center">
                                                 <StatusPill status={l.deletedAt ? 'DELETED' : l.status} />
                                             </td>
-                                            <td className="px-6 py-4 text-right font-bold text-sm">
-                                                {formatPrice(l.price)}
+                                            <td className="px-6 py-4"><ListingChannelPill type={l.type} />{l.type === 'AUCTION' && l.auction?.status && <span className="mt-1 block text-xs text-[var(--text-muted)]">{l.auction.status.replaceAll('_', ' ')}</span>}</td>
+                                            <td className="px-6 py-4 text-right text-sm">
+                                                <span className="font-bold">{getModerationPrice(l).value}</span>
+                                                <span className="mt-0.5 block text-[11px] text-[var(--text-muted)]">{getModerationPrice(l).label}</span>
+                                                {l.type === 'AUCTION' && [getModerationPrice(l).detail, getModerationPrice(l).buyNow].filter(Boolean).map((detail: string) => <span key={detail} className="block text-[11px] text-[var(--text-muted)]">{detail}</span>)}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="text-sm cursor-pointer group" onClick={() => l.seller?.id && setSelectedUserId(l.seller.id)}>
@@ -816,7 +860,7 @@ export default function AdminListingsPage() {
                                                             Relist in Auction
                                                         </button>
                                                     )}
-                                                    <Link href={`/buy-cars/${l.slug}`} target="_blank" className="p-2.5 hover:bg-white/10 rounded-lg transition-colors text-blue-400 hover:text-primary dark:hover:" title="View Listing">
+                                                    <Link href={getModerationListingHref(l)} target="_blank" className="p-2.5 hover:bg-white/10 rounded-lg transition-colors text-blue-400 hover:text-primary dark:hover:" title="View Listing">
                                                         <Eye size={18} />
                                                     </Link>
                                                     <button
