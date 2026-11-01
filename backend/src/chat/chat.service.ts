@@ -2292,10 +2292,12 @@ export class ChatService {
                 select: { id: true },
             });
             if (duplicate) return { created: false, reason: 'ALREADY_REPLIED' } as const;
-            // Global daily hard cap and per-room cooldown are checked inside
-            // the same transaction as the insert. The room lock serialises
-            // replies within this conversation; a global cap is best-effort
-            // across rooms and must be paired with provider-side spend limits.
+            // Serialize the daily cap across different support rooms. A room
+            // lock alone does not prevent two rooms exceeding the quota.
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(186729, 1)`;
+            // Global daily cap and room cooldown are checked inside the
+            // transaction. The advisory lock serialises the global quota,
+            // but provider-side spending limits are still necessary.
             const maxDaily = Math.min(100, Math.max(1,
                 Number(process.env.MAZIUM_SUPPORT_MAX_DAILY_REPLIES || 20) || 20));
             const dayStart = new Date();
