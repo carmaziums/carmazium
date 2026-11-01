@@ -49,8 +49,8 @@ test("no dealer menu destination was removed", () => {
     // as tabs/deep links rather than duplicating their menu entries.
     for (const href of EVERY_DEALER_ROUTE) {
         if (href === "/dashboard/dealer/my-offers") {
-            assert.match(read("src/app/dashboard/dealer/my-offers/page.tsx"), /<BidsOffersSwitch \/>/,
-                "legacy retail offers tab must remain reachable")
+            assert.match(read("src/app/dashboard/dealer/my-offers/page.tsx"), /redirect\("\/dashboard\/dealer\/bids\?tab=retail"\)/,
+                "legacy retail offers must redirect to the new gated retail tab")
             continue
         }
         assert.ok(hrefs.includes(href), "missing original destination " + href)
@@ -97,21 +97,20 @@ test("pages read their own titles, not a neighbour's", () => {
     assert.throws(() => getDealerRoute("/nope"))
 })
 
-test("Buy & Bid tabs appear on every page in that area and keep all previous tabs", () => {
-    for (const label of ["My Auctions", "Live Auctions", "Shortlisted", "Bids & offers", "Purchases"]) {
-        assert.ok(tabs.includes(`label: "${label}"`), label)
+test("legacy Buy and purchase URLs redirect to their equivalent approved tabs", () => {
+    const redirects = [
+        ["src/app/dashboard/dealer/my-offers/page.tsx", "/dashboard/dealer/bids?tab=retail"],
+        ["src/app/dashboard/dealer/auctions/shortlisted/page.tsx", "/dashboard/dealer/wishlist?tab=auctions"],
+        ["src/app/dashboard/dealer/auctions/won/page.tsx", "/dashboard/dealer/purchases?detail=wins&tab=progress&channel=auction"],
+    ]
+    for (const [path, target] of redirects) {
+        const source = read(path)
+        assert.ok(source.includes('redirect("' + target + '")'), "broken legacy redirect: " + path)
     }
-    // Auction Wins and All Purchases moved into the purchase bar on those
-    // pages, so they are not listed twice on one screen; both stay reachable.
-    const destinations = read("src/lib/purchaseDestinations.ts")
-    for (const label of ["Auction Wins", "All Purchases", "Purchase History"]) {
-        assert.ok(destinations.includes(`label: "${label}"`), label)
-        assert.ok(!tabs.includes(`label: "${label}"`), "not duplicated in Buy & Bid tabs: " + label)
+    for (const label of ["Live Auctions", "Saved", "Bids & Offers", "Purchases"]) {
+        assert.ok(DEALER_ROUTE_CONFIG.some(route => route.label === label && route.section === "Buy"), "missing Buy destination " + label)
     }
-    // Purchase History became its own menu item in PR #697 and no longer repeats this bar.
-    for (const page of ["auctions/page.tsx", "auctions/shortlisted/page.tsx", "bids/page.tsx", "auctions/won/page.tsx"]) {
-        assert.match(read("src/app/dashboard/dealer/" + page), /<BuyAndBidTabs/, page)
-    }
+    assert.equal(DEALER_ROUTE_CONFIG.find(r => r.href === "/dashboard/dealer/auctions").section, "Sell")
 })
 
 test("payout link opens the Payouts section", () => {
@@ -195,63 +194,51 @@ test("dealer sidebar loads team permissions on pages outside the dealer layout",
     assert.match(sidebar, /<DealerAccessProvider>\s*<DashboardSidebarInner/)
 })
 
-test("purchase-only staff retain a link to Auction Wins even without VIEW_TRADE", () => {
-    const won = getDealerRoute("/dashboard/dealer/auctions/won")
-    const hub = getDealerRoute("/dashboard/dealer/auctions")
-    assert.equal(won.requiredPermission, "VIEW_PURCHASES")
-    assert.equal(hub.requiredPermission, "VIEW_TRADE")
-    // The Buy & Bid hub disappears without VIEW_TRADE; its hidden purchase
-    // destination must therefore stay inside More tools for purchase staff.
-    assert.match(sidebar, /!hasDealerPermission\('VIEW_TRADE'\)/)
-    assert.match(sidebar, /BUY_AND_BID_TABS\.some\(tab => tab\.href === route\.href\)/)
+test("purchase-only staff retain the Purchases menu and historical auction-win deep link", () => {
+    const purchases = getDealerRoute("/dashboard/dealer/purchases")
+    const wins = getDealerRoute("/dashboard/dealer/auctions/won")
+    assert.equal(purchases.requiredPermission, "VIEW_PURCHASES")
+    assert.equal(wins.requiredPermission, "VIEW_PURCHASES")
+    assert.ok(!purchases.hidden)
+    assert.ok(dealerRouteIsActive(purchases, "/dashboard/dealer/auctions/won"))
+    assert.match(sidebar, /dealerRouteVisible\(route\)/)
+    assert.ok(read("src/app/dashboard/dealer/auctions/won/page.tsx").includes("channel=auction"))
 })
 
-
-test("Bids & offers: one destination with auction-bid and retail-offer views on web and app", () => {
+test("Bids & offers uses separate permission-gated auction and retail tabs", () => {
     const sw = read("src/components/dealer/BidsOffersSwitch.tsx")
-    // Each view keeps its own permission; the switch only links them.
-    assert.match(sw, /href: "\/dashboard\/dealer\/bids", label: "Auction bids", icon: Gavel, permission: "VIEW_TRADE"/)
-    assert.match(sw, /href: "\/dashboard\/dealer\/my-offers", label: "Retail offers", icon: Send, permission: "MANAGE_OFFERS"/)
-    assert.match(sw, /!loading && hasPermission\(v\.permission\)/)
-    for (const page of ["bids/page.tsx", "my-offers/page.tsx"]) {
-        const src = read("src/app/dashboard/dealer/" + page)
-        assert.match(src, /<BidsOffersSwitch \/>/, page)
-        assert.match(src, /title="Bids & offers"/, page)
-    }
-    assert.ok(tabs.includes('activePaths: ["/dashboard/dealer/my-offers"]'))
+    assert.ok(sw.includes('/dashboard/dealer/bids?tab=auction'))
+    assert.ok(sw.includes('/dashboard/dealer/bids?tab=retail'))
+    assert.ok(sw.includes('permission: "VIEW_TRADE"'))
+    assert.ok(sw.includes('permission: "MANAGE_OFFERS"'))
+    assert.ok(sw.includes('!loading && hasPermission(v.permission)'))
+    const bids = read("src/app/dashboard/dealer/bids/page.tsx")
+    assert.ok(bids.includes('params.get("tab") === "retail" ? <DealerRetailOffersView /> : <AuctionBidsContent />'))
+    assert.ok(bids.includes('<BidsOffersSwitch />'))
+    const retail = read("src/components/dealer/DealerRetailOffersView.tsx")
+    assert.ok(retail.includes('<BidsOffersSwitch />'))
+    assert.ok(retail.includes('getMyOffers()'))
     const hub = read("carmazium app/carmazium app/src/screens/main/DealerBuyBidScreen.tsx")
     assert.ok(hub.includes("label: 'Bids & offers'"))
-    assert.ok(hub.includes("hasPermission('MANAGE_OFFERS')"))
     assert.ok(hub.includes("navigation?.navigate('DealerMyOffers', { fromBidsOffers: true })"))
-    // The app's retail offers screen shows the same switch back to Auction bids.
-    const offersScreen = read("carmazium app/carmazium app/src/screens/main/DealerMyOffersScreen.tsx")
-    assert.ok(offersScreen.includes("route.params?.fromBidsOffers === true"))
-    assert.ok(offersScreen.includes(">Auction bids<") && offersScreen.includes(">Retail offers<"))
 })
 
-test("Bids & offers destination respects VIEW_TRADE-only and MANAGE_OFFERS-only dealer staff", () => {
+test("trade-only and retail-only team staff retain distinct permission gates", () => {
     const { bidsOffersTabHref } = load("src/lib/dealerBidsOffersNavigation.ts")
-
     assert.equal(bidsOffersTabHref(true, true), "/dashboard/dealer/bids")
     assert.equal(bidsOffersTabHref(true, false), "/dashboard/dealer/bids")
     assert.equal(bidsOffersTabHref(false, true), "/dashboard/dealer/my-offers")
     assert.equal(bidsOffersTabHref(false, false), null)
-
-    // Both destinations remain accessible only through their own permission
-    // boundary, even if the URL is typed directly.
     const dealerLayout = read("src/app/dashboard/dealer/layout.tsx")
+    assert.ok(dealerLayout.includes('permission = pathname === "/dashboard/dealer/bids" && searchParams.get("tab") === "retail"'))
+    assert.ok(dealerLayout.includes('? "MANAGE_OFFERS" : match[1]'))
     assert.ok(dealerLayout.includes('["/dashboard/dealer/bids", "VIEW_TRADE"]'))
     assert.ok(dealerLayout.includes('["/dashboard/dealer/my-offers", "MANAGE_OFFERS"]'))
-    const tabBar = read("src/components/dealer/BuyAndBidTabs.tsx")
-    assert.match(tabBar, /bidsOffersTabHref\(/)
-    assert.match(tabBar, /bidsOffersHref !== null/)
-    assert.match(tabBar, /!loading && hasPermission\("VIEW_TRADE"\)/)
-    assert.match(tabBar, /!loading && hasPermission\("MANAGE_OFFERS"\)/)
 })
 
-test("retail-only team staff do not load auction positions via retail offers", () => {
-    const retail = read("src/app/dashboard/dealer/my-offers/page.tsx")
-    assert.match(retail, /canViewTrade \? getMyActiveAuctionBids\(\)/)
-    assert.match(retail, /\{canViewTrade && \(/)
-    assert.match(retail, /label="Accepted Offers"/)
+test("retail offers do not load auction positions for staff without VIEW_TRADE", () => {
+    const retail = read("src/components/dealer/DealerRetailOffersView.tsx")
+    assert.ok(retail.includes('const canViewTrade = !accessLoading && hasPermission("VIEW_TRADE")'))
+    assert.ok(retail.includes('canViewTrade ? getMyActiveAuctionBids().catch(() => []) : Promise.resolve([])'))
+    assert.ok(retail.includes('getMyOffers()'))
 })
