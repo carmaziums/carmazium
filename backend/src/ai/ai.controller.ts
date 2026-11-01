@@ -83,7 +83,7 @@ export class AiController {
             return { success: true, data: { status: 'HUMAN_REVIEW', reason: classification.reason } };
         }
         const draft = await this.aiService.draftSupportReply(messages.map((m: any) => ({
-            role: m.sender?.role === UserRole.ADMIN ? 'assistant' as const : 'user' as const,
+            role: m.senderId === supportAccountId || m.clientMessageId?.startsWith('mazium-support-') ? 'assistant' as const : 'user' as const,
             content: m.content,
         })));
         const outputDecision = draft ? classifySupportMessage(draft) : null;
