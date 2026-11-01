@@ -28,6 +28,7 @@ on:
       - "scripts/test-buyer-official-vehicle-facts.test.mjs"
       - "backend/src/listings/**"
       - "src/app/pricing/**"
+      - "scripts/test-trader-retail-pricing.test.mjs"
       - "src/app/dashboard/seller/auctions/**"
       - "src/app/dashboard/dealer/inventory/**"
       - "src/lib/listingApi.ts"
@@ -165,6 +166,9 @@ jobs:
 
       - name: Verify unified private buyer/seller dashboard and legacy compatibility
         run: node --test scripts/test-private-dashboard-consolidation.test.mjs
+
+      - name: Verify £1 retail listing price applies to verified dealers
+        run: node --test scripts/test-trader-retail-pricing.test.mjs
 
       - name: Verify pricing CTA to correct selling channel and package
         run: node --test scripts/test-pricing-seller-handoff.test.mjs
