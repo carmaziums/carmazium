@@ -40,7 +40,6 @@ import {
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
 import { DEALER_ROUTE_CONFIG, dealerRouteIsActive, sortBySection } from "@/config/dealerRouteConfig"
-import { BUY_AND_BID_TABS } from "@/components/dealer/BuyAndBidTabs"
 import { getPendingOffersCount, getBuyerActionCount } from "@/lib/listingApi"
 import { getOrCreateSupportRoom } from "@/lib/chatApi"
 import { DealerAccessProvider, useDealerAccess } from "@/context/DealerAccessContext"
@@ -171,15 +170,17 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
     }
 
     const dealerRouteVisible = (route: typeof DEALER_ROUTE_CONFIG[number]) =>
-        !route.requiredPermission
-        || (!dealerAccessLoading && hasDealerPermission(route.requiredPermission))
+        route.href === "/dashboard/dealer/bids"
+            ? !dealerAccessLoading && (hasDealerPermission("VIEW_TRADE") || hasDealerPermission("MANAGE_OFFERS"))
+            : !route.requiredPermission || (!dealerAccessLoading && hasDealerPermission(route.requiredPermission))
     const dealerBadgeFor = (href: string): number | undefined => {
         if (href === '/dashboard/dealer/messages') return unreadCount
         if (href === '/dashboard/dealer/crm' || href === '/dashboard/dealer/offers') return pendingOffersCount
         return undefined
     }
     const toDealerLink = (route: typeof DEALER_ROUTE_CONFIG[number]): LinkObj => ({
-        href: route.href,
+        href: route.href === "/dashboard/dealer/bids" && !hasDealerPermission("VIEW_TRADE")
+            ? "/dashboard/dealer/my-offers" : route.href,
         label: route.label,
         icon: route.icon,
         section: route.section,
@@ -191,11 +192,9 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
     const dealerMoreLinks: LinkObj[] = role === 'dealer'
         ? sortBySection(DEALER_ROUTE_CONFIG.filter(route =>
             route.hidden && dealerRouteVisible(route)
-            // Tabs are reachable through the Buy & Bid hub only when the staff
-            // member can VIEW_TRADE. VIEW_PURCHASES-only staff must still have
-            // an Auction Wins link in More tools (desktop and mobile).
-            && (!BUY_AND_BID_TABS.some(tab => tab.href === route.href)
-                || !hasDealerPermission('VIEW_TRADE'))
+            // Old purchase destinations are linked by the three Purchases tabs
+            // and deep-link redirects; never duplicate them in the menu.
+            && route.section !== "Buy"
         ).map(toDealerLink))
         : []
 
@@ -307,7 +306,7 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
         "/dashboard/dealer",
         "/dashboard/dealer/inventory",
         "/dashboard/dealer/crm",
-        "/dashboard/dealer/auctions",
+        "/auctions/browse",
     ]
 
     const primaryMobileHrefs = role === 'admin'
