@@ -1295,6 +1295,9 @@ model ChatRoom {
   supportAssignedAdminId String?
   supportTags            String[]     @default([])
   supportClosedAt        DateTime?
+  supportAiConsentAt     DateTime?
+  supportAiOptedOutAt    DateTime?
+  supportHumanTakeoverAt DateTime?
   createdAt              DateTime     @default(now())
   updatedAt              DateTime     @updatedAt
   deletedAt              DateTime?
