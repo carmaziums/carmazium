@@ -265,9 +265,13 @@ export const SearchScreen: React.FC = () => {
   const handleCardPress = useCallback((id: string) => {
     const item = listingsRef.current.find(l => l.id === id);
     if (!item) return;
-    // Public Search is the retail marketplace. Trade Exchange auctions use the
-    // verified-Trader auction screens and endpoints instead.
-    navigation.navigate('VehicleDetail', { listing: item });
+    // Auction search cards must land in the live auction room, never the
+    // retail offer/price screen. Keep the retail route unchanged.
+    if (item.listingType === 'AUCTION' && item.auction?.id) {
+      navigation.navigate('LiveAuctionDetailed', { listing: { ...item, auctionId: item.auction.id } });
+    } else {
+      navigation.navigate('VehicleDetail', { listing: item });
+    }
   }, [navigation]);
   const renderListingItem = useCallback(
     ({ item }: { item: CarListing }) => <HorizontalVehicleCard listing={item} onPress={handleCardPress} />,
