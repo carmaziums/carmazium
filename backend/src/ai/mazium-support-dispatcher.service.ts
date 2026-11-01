@@ -67,11 +67,24 @@ export class MaziumSupportDispatcher {
                 take: 5,
                 select: { id: true, chatRoomId: true },
             });
+            const testUsers = (this.config.get<string>('MAZIUM_SUPPORT_TEST_USER_IDS') || '')
+                .split(',').map((id) => id.trim()).filter(Boolean);
+            // A missing allowlist must never result in sending to every customer.
+            if (!testUsers.length) return;
             for (const message of messages) {
                 const room = await this.prisma.chatRoom.findUnique({
                     where: { id: message.chatRoomId },
                     select: { supportAiConsentAt: true },
                 });
+                const participantIds = await this.prisma.chatRoom.findUnique({
+                    where: { id: message.chatRoomId },
+                    select: { initiatorId: true, participantId: true },
+                });
+                if (!participantIds) continue;
+                const customer = await this.prisma.message.findUnique({
+                    where: { id: message.id }, select: { senderId: true },
+                });
+                if (!customer || !testUsers.includes(customer.senderId)) continue;
                 const source = await this.prisma.message.findUnique({
                     where: { id: message.id },
                     select: { createdAt: true },
