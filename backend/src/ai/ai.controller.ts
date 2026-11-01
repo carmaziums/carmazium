@@ -59,10 +59,10 @@ export class AiController {
             throw new BadRequestException('Only open official support rooms can be drafted.');
         }
         const transcript = await this.chatService.getRoomMessages(roomId, user.id, 1, 10);
+        const latest = transcript.data[transcript.data.length - 1];
         const messages = transcript.data.filter((m: any) =>
-            typeof m.content === 'string' && m.content.trim() && !m.deletedAt
+            typeof m.content === 'string' && m.content.trim() && !m.deletedAt && !m.attachmentPath
         );
-        const latest = messages[messages.length - 1];
         if (!latest || latest.sender?.role === UserRole.ADMIN || latest.attachmentPath) {
             throw new BadRequestException('No unanswered customer message to draft.');
         }
@@ -74,13 +74,17 @@ export class AiController {
             role: m.sender?.role === UserRole.ADMIN ? 'assistant' as const : 'user' as const,
             content: m.content,
         })));
+        const outputDecision = draft ? classifySupportMessage(draft) : null;
         // Do not offer a draft for a message that was answered or superseded
         // while the external model was generating its response.
         const current = await this.chatService.getRoomMessages(roomId, user.id, 1, 1);
         const latestNow = current.data[current.data.length - 1];
         const refreshedRoom = await this.chatService.getRoom(roomId, user.id);
-        if (!latestNow || latestNow.id !== latest.id || refreshedRoom.supportClosedAt) {
+        if (!latestNow || latestNow.id !== latest.id || refreshedRoom.supportClosedAt || refreshedRoom.deletedAt) {
             return { success: true, data: { status: 'HUMAN_REVIEW', reason: 'CONVERSATION_CHANGED' } };
+        }
+        if (outputDecision?.action === 'ESCALATE') {
+            return { success: true, data: { status: 'HUMAN_REVIEW', reason: 'DRAFT_REQUIRES_REVIEW' } };
         }
         return {
             success: true,
