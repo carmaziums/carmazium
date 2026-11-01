@@ -30,7 +30,7 @@ function SavedRetailContent() {
             if (!user) return
             try {
                 setLoading(true)
-                const data = await getWatchlist(page, 12)
+                const data = await getWatchlist(page, 12, 'retail')
                 setItems(data.data || [])
                 setTotalPages(data.pagination?.totalPages || 1)
             } catch (err) {
