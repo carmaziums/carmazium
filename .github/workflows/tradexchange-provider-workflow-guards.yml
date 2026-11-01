@@ -1,0 +1,31 @@
+name: TradeXchange Provider Workflow Guards
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/tradexchange-provider-workflow-guards.yml'
+      - 'scripts/test-tradexchange-provider-continuity.test.mjs'
+      - 'src/lib/tradeXchangeProviderJobLoad.ts'
+      - 'src/lib/tradeXchangeCheckoutNotice.ts'
+      - 'src/app/dashboard/service/jobs/**'
+      - 'src/app/services/jobs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provider-workflow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install source-test dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Check provider job access and honest Stripe checkout state
+        run: node --test scripts/test-tradexchange-provider-continuity.test.mjs
