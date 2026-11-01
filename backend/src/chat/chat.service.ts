@@ -2608,10 +2608,17 @@ export class ChatService {
             throw error;
         }
 
+        const supportSender = room.context === ChatContext.SUPPORT
+            ? await this.prisma.user.findUnique({
+                where: { id: senderId }, select: { role: true },
+            })
+            : null;
+        const supportSenderIsAdmin = supportSender?.role === UserRole.ADMIN;
+
         // Explicit customer requests for a person or AI opt-out are persisted
         // before any subsequent autonomous support processing can run.
         if (room.context === ChatContext.SUPPORT
-            && senderId !== this.supportCanonicalAdminId(room)
+            && !supportSenderIsAdmin
             && requestsHumanSupport(dto.content)) {
             await this.prisma.chatRoom.update({
                 where: { id: roomId },
@@ -2624,8 +2631,7 @@ export class ChatService {
         // over pending AI work. Persist this before broadcasting the response.
         // The AI delivery transaction must recheck this timestamp atomically.
         if (room.context === ChatContext.SUPPORT) {
-            const supportId = this.supportCanonicalAdminId(room);
-            if (senderId === supportId) {
+            if (supportSenderIsAdmin) {
                 await this.prisma.chatRoom.update({
                     where: { id: roomId },
                     data: { supportHumanTakeoverAt: new Date() },
@@ -2758,9 +2764,16 @@ export class ChatService {
             throw error;
         }
 
+        const supportSender = room.context === ChatContext.SUPPORT
+            ? await this.prisma.user.findUnique({
+                where: { id: senderId }, select: { role: true },
+            })
+            : null;
+        const supportSenderIsAdmin = supportSender?.role === UserRole.ADMIN;
+
         // Photo captions can also contain explicit opt-out instructions.
         if (room.context === ChatContext.SUPPORT
-            && senderId !== this.supportCanonicalAdminId(room)
+            && !supportSenderIsAdmin
             && requestsHumanSupport(content)) {
             await this.prisma.chatRoom.update({
                 where: { id: roomId },
@@ -2771,7 +2784,7 @@ export class ChatService {
         const routing = await this.resolveMessageRouting(room, senderId);
         // A staff photo is also a human response; pending AI replies must
         // not continue after this official support intervention.
-        if (room.context === ChatContext.SUPPORT && senderId === this.supportCanonicalAdminId(room)) {
+        if (room.context === ChatContext.SUPPORT && supportSenderIsAdmin) {
             await this.prisma.chatRoom.update({
                 where: { id: roomId },
                 data: { supportHumanTakeoverAt: new Date() },
