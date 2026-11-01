@@ -326,9 +326,13 @@ export class AdminService {
      * only the rows would leave the total describing a different set, and the
      * pager would offer pages that come back empty.
      */
-    async getAllListings(page = 1, limit = 20, sellerRole?: string, status?: string, search?: string) {
+    async getAllListings(page = 1, limit = 20, sellerRole?: string, status?: string, search?: string, listingType?: string) {
         const skip = (page - 1) * limit;
         const selectedStatus = status?.toUpperCase();
+        const selectedType = listingType?.toUpperCase();
+        if (selectedType && !['ALL', 'AUCTION', 'CLASSIFIED'].includes(selectedType)) {
+            throw new BadRequestException('Invalid listing type filter');
+        }
         const searchTerms = (search ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 8);
         const searchWhere: Prisma.ListingWhereInput | undefined = searchTerms.length
             ? {
@@ -374,6 +378,7 @@ export class AdminService {
             throw new BadRequestException('Invalid listing status filter');
         }
         const where: Prisma.ListingWhereInput = {
+            ...(selectedType && selectedType !== 'ALL' ? { type: selectedType as 'AUCTION' | 'CLASSIFIED' } : {}),
             ...(sellerRole ? { seller: { is: { role: sellerRole as UserRole } } } : {}),
             ...(selectedStatus === 'DELETED'
                 ? { deletedAt: { not: null } }
@@ -400,8 +405,18 @@ export class AdminService {
                             id: true,
                             status: true,
                             reservePrice: true,
+                            startingBid: true,
+                            buyItNowPrice: true,
                             deletedAt: true,
                         },
+                    },
+                    // Admin-only highest valid bid, so auction prices never
+                    // silently fall back to a retail valuation on the list.
+                    bids: {
+                        where: { deletedAt: null, cancelledAt: null, archivedAt: null },
+                        orderBy: { amount: 'desc' },
+                        take: 1,
+                        select: { amount: true },
                     },
                 },
             }),
