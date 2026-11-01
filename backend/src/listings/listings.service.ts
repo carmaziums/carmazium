@@ -3105,10 +3105,32 @@ export class ListingsService {
                         data: { status, linkedListingId: null },
                     });
                 })
-                : await this.prisma.listing.update({
-                    where: { id },
-                    data: { status },
-                });
+                : status === 'ACTIVE' && listing.status === 'WITHDRAWN'
+                    // The existing seller relist route previously reopened a
+                    // withdrawn advert without recording when it was relisted.
+                    // Persist the event in the same transaction as the change;
+                    // never log a repeat ACTIVE -> ACTIVE update as a relist.
+                    ? await this.prisma.$transaction(async tx => {
+                        const claimed = await tx.listing.updateMany({
+                            where: { id, status: 'WITHDRAWN', deletedAt: null },
+                            data: { status: 'ACTIVE' },
+                        });
+                        if (claimed.count !== 1) {
+                            throw new ConflictException('This listing changed. Refresh and try again.');
+                        }
+                        await tx.analyticsEvent.create({
+                            data: {
+                                type: 'seller_listing_relisted',
+                                userId,
+                                payload: { listingId: id, listingType: listing.type },
+                            },
+                        });
+                        return tx.listing.findUniqueOrThrow({ where: { id } });
+                    })
+                    : await this.prisma.listing.update({
+                        where: { id },
+                        data: { status },
+                    });
 
         // Phase 2: Increment listing count if status changed TO Active from something else
         if (status === 'ACTIVE' && updated.sellerId && listing.status !== 'ACTIVE') {
