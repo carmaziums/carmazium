@@ -1208,9 +1208,10 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         <p className="font-semibold">MaziuM AI support (optional)</p>
                         <p className="mt-1 text-[var(--text-secondary)]">With your permission, AI may help answer routine questions. You can withdraw permission at any time. Our team handles sensitive issues.</p>
                         <label className="mt-2 flex items-center gap-2">
-                            <input type="checkbox" checked={aiConsent} disabled={consentBusy} onChange={(event) => void updateAiConsent(event.target.checked)} />
+                            <input type="checkbox" checked={aiConsent} disabled={consentBusy || Boolean(room.supportHumanTakeoverAt)} onChange={(event) => void updateAiConsent(event.target.checked)} />
                             <span>{aiConsent ? 'AI assistance permitted' : 'Allow AI assistance'}</span>
                         </label>
+                        {room.supportHumanTakeoverAt && <p className="mt-1 text-[var(--text-secondary)]">A human support agent has taken over this conversation. AI assistance cannot be re-enabled here.</p>}
                         {consentError && <p role="alert" className="mt-1 text-red-500">{consentError}</p>}
                     </div>
                 )}
