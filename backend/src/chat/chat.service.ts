@@ -2142,6 +2142,37 @@ export class ChatService {
     }
 
     /**
+     * Customer-controlled AI consent for the official support chat only.
+     * Revocation is immediate and also marks the conversation as opted out.
+     * This never enables AI delivery by itself.
+     */
+    async setSupportAiConsent(roomId: string, userId: string, consent: boolean) {
+        const room = await this.prisma.chatRoom.findUnique({
+            where: { id: roomId },
+            include: { initiator: { select: { role: true } }, participant: { select: { role: true } } },
+        });
+        if (!room || room.deletedAt || room.supportClosedAt || room.context !== ChatContext.SUPPORT) {
+            throw new NotFoundException('Open support conversation not found');
+        }
+        const customerId = room.initiator.role === UserRole.ADMIN && room.participant.role !== UserRole.ADMIN
+            ? room.participantId
+            : room.participant.role === UserRole.ADMIN && room.initiator.role !== UserRole.ADMIN
+                ? room.initiatorId : null;
+        if (!customerId || customerId !== userId) {
+            throw new ForbiddenException('Only the support customer can change AI consent');
+        }
+        const now = new Date();
+        const result = await this.prisma.chatRoom.updateMany({
+            where: { id: roomId, context: ChatContext.SUPPORT, deletedAt: null, supportClosedAt: null },
+            data: consent
+                ? { supportAiConsentAt: now, supportAiOptedOutAt: null }
+                : { supportAiConsentAt: null, supportAiOptedOutAt: now },
+        });
+        if (result.count !== 1) throw new NotFoundException('Open support conversation not found');
+        return { consentToAi: consent, humanTakeoverActive: Boolean(room.supportHumanTakeoverAt) };
+    }
+
+    /**
      * Get paginated messages for a room
      */
     async getRoomMessages(
