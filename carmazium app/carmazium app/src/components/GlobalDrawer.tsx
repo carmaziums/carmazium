@@ -245,7 +245,6 @@ export const GlobalDrawer: React.FC = () => {
       // The main dealer tabs already provide Stock/Customers; don't bury
       // duplicate entries in More while hiding account-level actions.
       (!dealerMode || !['dealer-inventory', 'dealer-leads'].includes(item.id))
-      && (item.id !== 'dealer-live' || !dealerMode) // Live Auctions is already in the primary bottom tab.
       && (item.id !== 'dealer-offers-only' || !hasDealerPermission('VIEW_TRADE'))
       && (!item.requiredPermission
         || (!dealerAccessLoading && hasDealerPermission(item.requiredPermission))),
