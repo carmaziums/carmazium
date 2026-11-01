@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { ListingsService } from './listings.service';
 
 // Owner rule: either the seller or the buyer can complete an accepted retail
@@ -11,7 +11,7 @@ const pending = {
     type: 'CLASSIFIED', status: 'OFFER_ACCEPTED', title: 'Ford Focus 2017',
 };
 
-function setup(options: { listing?: any; offerBuyerId?: string | null; actors?: Record<string, any> } = {}) {
+function setup(options: { listing?: any; offerBuyerId?: string | null; acceptedOfferCount?: number; actors?: Record<string, any> } = {}) {
     const listing = options.listing ?? pending;
     const tx: any = {
         $queryRaw: jest.fn().mockResolvedValue([]),
@@ -21,7 +21,10 @@ function setup(options: { listing?: any; offerBuyerId?: string | null; actors?: 
             findUnique: jest.fn().mockResolvedValueOnce(listing)
                 .mockResolvedValue({ ...listing, status: 'SOLD' }),
         },
-        offer: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
+        offer: {
+            updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+            count: jest.fn().mockResolvedValue(options.acceptedOfferCount ?? 1),
+        },
         sale: { upsert: jest.fn().mockResolvedValue({}) },
     };
     const actors = options.actors ?? {};
@@ -107,6 +110,23 @@ describe('buyer completes an accepted retail purchase', () => {
         await expect(noPermission.service.completeRetailSaleAsBuyer('retail-1', 'finance'))
             .rejects.toBeInstanceOf(ForbiddenException);
         expect(noPermission.tx.sale.upsert).not.toHaveBeenCalled();
+    });
+
+    it('refuses conflicting or removed accepted offers for BOTH buyer and seller before recording a sale', async () => {
+        for (const acceptedOfferCount of [0, 2]) {
+            const buyer = setup({ acceptedOfferCount });
+            await expect(buyer.service.completeRetailSaleAsBuyer('retail-1', 'buyer-1'))
+                .rejects.toBeInstanceOf(ConflictException);
+            expect(buyer.tx.listing.updateMany).not.toHaveBeenCalled();
+            expect(buyer.tx.sale.upsert).not.toHaveBeenCalled();
+            expect(buyer.notifications.create).not.toHaveBeenCalled();
+
+            const seller = setup({ acceptedOfferCount });
+            await expect(seller.service.recordSale('retail-1', 'seller-1', { soldPrice: 1 }))
+                .rejects.toBeInstanceOf(ConflictException);
+            expect(seller.tx.listing.updateMany).not.toHaveBeenCalled();
+            expect(seller.tx.sale.upsert).not.toHaveBeenCalled();
+        }
     });
 
     it('never records the buyer as the seller when the listing has no seller', async () => {

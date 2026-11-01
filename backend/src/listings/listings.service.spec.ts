@@ -59,6 +59,7 @@ describe('ListingsService', () => {
             },
             offer: {
                 findFirst: jest.fn(),
+                count: jest.fn().mockResolvedValue(1),
                 updateMany: jest.fn().mockResolvedValue({ count: 0 }),
             },
             dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },

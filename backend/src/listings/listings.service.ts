@@ -3505,6 +3505,22 @@ export class ListingsService {
                     'An auction or provisional dealer offer is still outstanding for this vehicle. The seller must explicitly resolve the auction offer before recording a Retail sale.',
                 );
             }
+            // A legacy listing can contain two ACCEPTED offers belonging to different
+            // buyers. Never silently use the most recently updated offer as the
+            // authoritative sale: that could record the wrong buyer or agreed price.
+            // Check again *after* the advisory lock and inside the sale transaction,
+            // so neither buyer nor seller completion can bypass this ambiguity gate.
+            if (listing.status === 'OFFER_ACCEPTED') {
+                const acceptedCount = await tx.offer.count({
+                    where: { listingId: id, status: 'ACCEPTED' },
+                });
+                if (acceptedCount !== 1) {
+                    throw new ConflictException(
+                        'This sale has missing or conflicting accepted offers. Contact CarMazium support before completing the purchase.',
+                    );
+                }
+            }
+
             // Compare-and-set the listing state. Only one concurrent completion can
             // win, so double-clicks/racing requests cannot create duplicate sale
             // counters or overwrite a cancellation that committed first.
