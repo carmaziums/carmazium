@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import {
     Loader2, Package, Clock, FileSearch, CheckCircle2, Truck, LayoutList, Columns3, ChevronLeft, ChevronRight, RefreshCw,
@@ -72,8 +72,14 @@ type StatusFilter = "all" | "pending_retail" | PurchaseStatus
  * Statuses, fees and actions are identical in both; only what is shown differs.
  */
 export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retail" }) {
-    const isHistory = mode === "history"
-    const isRetail = mode === "retail"
+    const params = useSearchParams()
+    const stage = params.get("tab") === "completed" ? "completed"
+        : params.get("tab") === "cancelled" ? "cancelled" : "progress"
+    const channel = params.get("channel") === "retail" || mode === "retail" ? "retail"
+        : params.get("channel") === "auction" ? "auction" : "all"
+    const isHistory = stage === "completed"
+    const isRetail = channel === "retail"
+    const isCancelled = stage === "cancelled"
     const { user, profile, loading: authLoading } = useAuth()
     // Staff act for the dealership owner, whose id is on every Sale.
     const { access } = useDealerAccess()
@@ -117,9 +123,9 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
                 `/dealers/purchases?page=${page}&limit=${PURCHASE_PAGE_SIZE}`, { cache: "no-store" },
             )),
             getMyOffers(),
-            // Only Purchase History lists cancelled sales; an approved
-            // cancellation deletes the Sale, so this is the remaining record.
-            isHistory ? getMySaleCancellations("purchase-history") : Promise.resolve([] as SaleCancellationRequest[]),
+            // A cancellation removes the Sale row. Keep the buyer's cancellation
+            // record available in its own tab, not merely Purchase History.
+            getMySaleCancellations("purchase-history"),
         ]).then(([salesResult, offersResult, cancelledResult]) => {
             if (!mounted) return
             if (salesResult.status === "fulfilled") {
@@ -172,14 +178,16 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
     // stages only; search and the Status filter narrow either view.
     const visiblePurchases = React.useMemo(() => purchases.filter(p => {
         if (isRetail && !isRetailPurchase(p)) return false
-        if (isHistory && !isPurchaseHistoryStatus(p.status)) return false
+        if (channel === "auction" && isRetailPurchase(p)) return false
+        if (isCancelled) return false
+        if (isHistory !== isPurchaseHistoryStatus(p.status)) return false
         if (statusFilter !== "all" && p.status !== statusFilter) return false
         return matchesPurchaseSearch(p, query)
-    }), [purchases, isHistory, isRetail, statusFilter, query])
-    const narrowed = isRetail || query.trim() !== "" || statusFilter !== "all"
-    const stageOrder: PurchaseStatus[] = isHistory
-        ? STATUS_ORDER.filter(s => (PURCHASE_HISTORY_STATUSES as readonly string[]).includes(s))
-        : STATUS_ORDER
+    }), [purchases, isHistory, isRetail, isCancelled, channel, statusFilter, query])
+    const narrowed = channel !== "all" || query.trim() !== "" || statusFilter !== "all"
+    const stageOrder: PurchaseStatus[] = isCancelled ? []
+        : isHistory ? STATUS_ORDER.filter(s => (PURCHASE_HISTORY_STATUSES as readonly string[]).includes(s))
+        : STATUS_ORDER.filter(s => !(PURCHASE_HISTORY_STATUSES as readonly string[]).includes(s))
     const statusOptions = stageOrder.filter(s => statusFilter === s || purchases.some(p => (!isRetail || isRetailPurchase(p)) && p.status === s))
 
     // Group by status
@@ -203,18 +211,18 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
         [acceptedOffers, purchases],
     )
     // Agreed retail deals belong to Retail Purchases and All Purchases, never History.
-    const shownPendingRetail = isHistory || (statusFilter !== "all" && statusFilter !== "pending_retail")
+    const shownPendingRetail = isHistory || isCancelled || channel === "auction" || (statusFilter !== "all" && statusFilter !== "pending_retail")
         ? []
         : pendingRetail.filter(offer => matchesPurchaseSearch({
             id: offer.id, vehicleTitle: offer.listing?.title || "Retail vehicle",
         }, query))
-    const shownCancelled = isHistory
+    const shownCancelled = isCancelled
         ? buyerCancelledSales(cancelled, dealershipBuyerId).filter(c => matchesPurchaseSearch({
             id: c.id, vehicleTitle: c.listing?.title || "Vehicle", vehicleSubtitle: c.listing?.vrm || undefined,
         }, query))
         : []
     // The purchase-history scope returns at most 500 records.
-    const cancelledCapped = isHistory && cancelled.length >= 500
+    const cancelledCapped = isCancelled && cancelled.length >= 500
     const totalValue = visiblePurchases.reduce((sum, p) => sum + p.purchasePrice, 0)
     const stagesToShow = stageOrder.filter(s => statusFilter === "all" || s === statusFilter)
         // When searching or filtering, hide empty stages so matches are not
@@ -229,151 +237,50 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
                 <main className="flex-1 space-y-6 min-w-0">
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-3">
-                        <PageHeader
-                            title={isHistory ? "Purchase History" : isRetail ? "Retail Purchases" : "All Purchases"}
-                            subHeader={isHistory
-                                ? "Completed purchases and cancelled sales, kept as a record"
-                                : isRetail
-                                    ? "Accepted retail offers and vehicles bought directly from sellers, at every stage"
-                                    : "Every vehicle you have bought or agreed to buy, retail and auction, with its current status"}
-                        />
-
-                        {/* View Toggle */}
-                        {!isHistory && (
-                        <div className="flex items-center gap-1 p-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl shrink-0 self-start md:self-auto">
-                            <button
-                                onClick={() => setViewMode("list")}
-                                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${
-                                    viewMode === "list"
-                                        ? "bg-gradient-to-r from-primary to-red-700 text-white shadow-lg shadow-primary/20"
-                                        : "text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:bg-white/[0.04]"
-                                }`}
-                            >
-                                <LayoutList size={14} /> List
-                            </button>
-                            <button
-                                onClick={() => setViewMode("kanban")}
-                                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all ${
-                                    viewMode === "kanban"
-                                        ? "bg-gradient-to-r from-primary to-red-700 text-white shadow-lg shadow-primary/20"
-                                        : "text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:bg-white/[0.04]"
-                                }`}
-                            >
-                                <Columns3 size={14} /> Kanban
-                            </button>
-                        </div>
-                        )}
-                    </div>
-
-                    <PurchaseDestinations active={isHistory ? "history" : isRetail ? "retail" : "all"} />
-
-                    {/* Search and Status: one row on phones, nothing clipped. */}
-                    <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_220px] gap-2">
-                        <label className="relative block">
+                    <PageHeader title="Purchases" subHeader="Cars you've bought or agreed to buy." />
+                    <nav aria-label="Purchase stages" className="grid grid-cols-3 gap-1 rounded-xl border border-[var(--border-default)] p-1 bg-[var(--bg-card)]">
+                        {([["progress","In progress"],["completed","Completed"],["cancelled","Cancelled"]] as const).map(([value,label]) => (
+                            <Link key={value} href={`/dashboard/dealer/purchases?tab=${value}&channel=${channel}`}
+                                aria-current={stage === value ? "page" : undefined}
+                                className={`flex min-h-11 items-center justify-center rounded-lg px-2 text-center text-sm font-semibold ${stage === value ? "bg-primary text-white" : "text-[var(--text-secondary)] hover:bg-primary/10"}`}>
+                                {label}
+                            </Link>
+                        ))}
+                    </nav>
+                    <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                        <label className="relative flex-1 min-w-0">
                             <span className="sr-only">Search purchases</span>
-                            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" aria-hidden />
-                            <input
-                                type="search"
-                                value={query}
-                                onChange={e => setQuery(e.target.value)}
-                                placeholder="Search vehicle, reg, seller or reference"
-                                className="min-h-11 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] pl-9 pr-3 text-sm focus:border-primary focus:outline-none"
-                            />
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                            <input type="search" value={query} onChange={event => setQuery(event.target.value)}
+                                placeholder="Search vehicle, reg or reference"
+                                className="min-h-11 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] pl-9 pr-3 text-sm" />
                         </label>
-                        <label className="block">
-                            <span className="sr-only">Status</span>
-                            <select
-                                value={statusFilter}
-                                onChange={e => setStatusFilter(e.target.value as StatusFilter)}
-                                className="min-h-11 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm font-semibold focus:border-primary focus:outline-none"
-                            >
-                                <option value="all">{isHistory ? "All completed" : "All statuses"}</option>
-                                {!isHistory && (pendingRetail.length > 0 || statusFilter === "pending_retail") && (
-                                    <option value="pending_retail">Sale Pending (retail offer)</option>
-                                )}
-                                {statusOptions.map(s => (
-                                    <option key={s} value={s}>{STATUS_LABELS[s].label}</option>
-                                ))}
-                            </select>
-                        </label>
+                        <div role="group" aria-label="Purchase type" className="flex gap-1">
+                            {(["all","auction","retail"] as const).map(value => (
+                                <Link key={value} href={`/dashboard/dealer/purchases?tab=${stage}&channel=${value}`}
+                                    aria-current={channel === value ? "true" : undefined}
+                                    className={`min-h-11 flex-1 inline-flex items-center justify-center rounded-lg px-3 text-sm font-semibold border border-[var(--border-default)] ${channel === value ? "bg-primary text-white" : "bg-[var(--bg-card)] text-[var(--text-secondary)]"}`}>
+                                    {value === "all" ? "All" : value === "auction" ? "Auction" : "Retail"}
+                                </Link>
+                            ))}
+                        </div>
                     </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-3">
+                    {isHistory && <p className="text-sm text-[var(--text-muted)]">Delivery Requested remains under Completed; delivery may still be in progress.</p>}
+                    {channel !== "retail" && !isCancelled && (
+                        <Link href="/dashboard/dealer/purchases?detail=wins&channel=auction"
+                            className="inline-flex min-h-11 items-center rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] px-3 text-sm font-semibold">
+                            Auction wins, £125 fee and handover actions
+                        </Link>
+                    )}
+                    <div className="flex items-center justify-between gap-3">
                         <p className="text-xs text-[var(--text-muted)]">
-                            {isHistory
-                                ? "Shows Purchased, Checks Complete and Delivery Requested. A delivery may still be on its way; open the purchase to track it. Earlier stages are under All Purchases."
-                                : isRetail
-                                    ? "Accepted retail offers appear as Sale Pending. Recorded retail purchases stay here through confirmation and delivery."
-                                    : "Accepted retail offers appear below as sale pending until the seller completes the transaction."}
+                            {isCancelled ? "Approved cancelled purchases and their records." : isHistory ? "Completed purchases and delivery updates." : "Purchases awaiting confirmation, inspection or payment."}
                         </p>
-                        <button
-                            type="button"
-                            onClick={() => setRefreshVersion(v => v + 1)}
-                            disabled={loading}
-                            className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] px-4 py-2.5 text-sm font-semibold hover:border-primary/50 disabled:opacity-50"
-                        >
-                            <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
-                            Refresh purchases
+                        <button onClick={() => setRefreshVersion(n => n + 1)} disabled={loading}
+                            className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 border border-[var(--border-default)] text-sm">
+                            <RefreshCw size={15} /> Refresh
                         </button>
                     </div>
-
-                    <div className="flex flex-wrap items-center gap-3">
-                        <Link href="/dashboard/cancellations" className="inline-flex min-h-11 items-center rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] px-4 py-2 text-sm font-semibold hover:border-primary/50">Cancelled Sales</Link>
-                    </div>
-
-
-                    {/* Summary Cards */}
-                    {isHistory ? (
-                        <div className="grid grid-cols-3 gap-3">
-                            <MetricCard label="Completed" value={visiblePurchases.length} icon={CheckCircle2} color="text-emerald-400" bg="bg-emerald-500/10" border="border-emerald-500/20" loading={loading} />
-                            <MetricCard label="Cancelled" value={shownCancelled.length} icon={Ban} color="text-amber-400" bg="bg-amber-500/10" border="border-amber-500/20" loading={loading} />
-                            <MetricCard label="Total Value" value={`£${(totalValue / 1000).toFixed(0)}k`} icon={Package} color="text-primary" bg="bg-primary/10" border="border-primary/20" loading={loading} />
-                        </div>
-                    ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <MetricCard
-                            label="Recorded Purchases"
-                            value={isRetail ? purchases.filter(isRetailPurchase).length : purchases.length}
-                            icon={Package}
-                            color="text-primary"
-                            bg="bg-primary/10"
-                            border="border-primary/20"
-                            statusLabel="Pipeline"
-                            loading={loading}
-                        />
-                        <MetricCard
-                            label="Awaiting"
-                            value={grouped.awaiting_confirmation.length}
-                            icon={Clock}
-                            color="text-amber-400"
-                            bg="bg-amber-500/10"
-                            border="border-amber-500/20"
-                            loading={loading}
-                        />
-                        <MetricCard
-                            label="In Progress"
-                            value={grouped.reviewing_docs.length + grouped.checks_complete.length}
-                            icon={FileSearch}
-                            color="text-blue-400"
-                            bg="bg-blue-500/10"
-                            border="border-blue-500/20"
-                            loading={loading}
-                        />
-                        <MetricCard
-                            label="Pipeline Value"
-                            value={`£${(totalValue / 1000).toFixed(0)}k`}
-                            icon={Truck}
-                            color="text-emerald-400"
-                            bg="bg-emerald-500/10"
-                            border="border-emerald-500/20"
-                            statusLabel="Total"
-                            foilValue
-                            loading={loading}
-                        />
-                    </div>
-                    )}
-
                     {/* Loading skeleton */}
                     {loading && (
                         <div className="flex items-center justify-center py-24">
@@ -430,8 +337,13 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
                         </section>
                     )}
 
-                    {/* List View */}
-                    {!loading && (isHistory || viewMode === "list") && (
+                    {!loading && !isCancelled && visiblePurchases.length === 0 && shownPendingRetail.length === 0 && !loadError && (
+                        <div className="dealer-glass-card p-6 text-sm">
+                            No purchases yet. <Link href="/auctions/browse" className="font-semibold text-primary underline">Browse live auctions</Link>
+                        </div>
+                    )}
+                                        {/* List View */}
+                    {!loading && !isCancelled && (
                         <div className="space-y-8">
                             {stagesToShow.map((status) => {
                                 const items = grouped[status]
@@ -477,63 +389,9 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
                         </div>
                     )}
 
-                    {/* Visible navigation hints on mobile, in addition to touch swiping. */}
-                    {!loading && !isHistory && viewMode === "kanban" && (
-                        <div className="flex items-center justify-between gap-3 lg:hidden" aria-label="Kanban column navigation">
-                            <span className="text-xs font-semibold text-[var(--text-muted)]">Swipe left or right to see all purchase stages</span>
-                            <div className="flex shrink-0 items-center gap-2">
-                                <button type="button" aria-label="Previous purchase stage" onClick={() => scrollKanban(-1)} className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-primary)]"><ChevronLeft size={20} /></button>
-                                <button type="button" aria-label="Next purchase stage" onClick={() => scrollKanban(1)} className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-primary)]"><ChevronRight size={20} /></button>
-                            </div>
-                        </div>
-                    )}
-                    {/* Kanban View: swipeable status columns on mobile, grid on desktop. */}
-                    {!loading && !isHistory && viewMode === "kanban" && (
-                        <div ref={kanbanScrollRef} className="flex gap-4 items-start overflow-x-auto overscroll-x-contain snap-x snap-mandatory pb-4 -mx-5 px-5 lg:mx-0 lg:px-0 lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:overflow-visible" role="region" aria-label="Purchase pipeline board" tabIndex={0}>
-                            {stagesToShow.map((status) => {
-                                const items = grouped[status]
-                                const config = STATUS_LABELS[status]
-                                const Icon = config.icon
-
-                                return (
-                                    <div key={status} data-kanban-column className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl p-3 min-h-[200px] w-[min(85vw,340px)] shrink-0 snap-start lg:w-full lg:min-w-0">
-                                        {/* Column Header */}
-                                        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[var(--border-default)]">
-                                            <Icon size={14} className={config.color} />
-                                            <span className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] flex-1">
-                                                {config.label}
-                                            </span>
-                                            <span className={`min-w-[20px] h-5 flex items-center justify-center rounded-md text-xs font-black tabular-nums bg-[var(--bg-card)] text-[var(--text-muted)]`}>
-                                                {items.length}
-                                            </span>
-                                        </div>
-
-                                        {/* Cards */}
-                                        <div className="space-y-3">
-                                            {items.map((item) => (
-                                                <PipelineRow
-                                                    key={item.id}
-                                                    item={item}
-                                                    onViewSummary={openPurchaseDetail}
-                                                    onViewSeller={openSellerDetails}
-                                                    onRequestCancellation={setCancelItem}
-                                                />
-                                            ))}
-                                            {items.length === 0 && (
-                                                <div className="py-8 text-center">
-                                                    <p className="text-gray-600 text-xs font-bold uppercase tracking-widest">Empty</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    )}
-
                     {/* Cancelled sales: the Sale row is removed on approval,
                         so the cancellation request is the lasting record. */}
-                    {!loading && isHistory && (shownCancelled.length > 0 || cancelledError) && (
+                    {!loading && isCancelled && (shownCancelled.length > 0 || cancelledError) && (
                         <section aria-labelledby="cancelled-sales-heading" className="space-y-3">
                             <div className="flex items-center gap-3">
                                 <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
