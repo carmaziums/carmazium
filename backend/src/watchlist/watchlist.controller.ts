@@ -41,6 +41,7 @@ export class WatchlistController {
         @CurrentUser() user: any,
         @Query('page') page?: string,
         @Query('limit') limit?: string,
+        @Query('type') type?: string,
     ) {
         const pageNum = parseInt(page || '1');
         const limitNum = parseInt(limit || '20');
@@ -49,6 +50,7 @@ export class WatchlistController {
             user.id,
             pageNum,
             limitNum,
+            type === 'retail',
         );
         return new PaginatedResponse(data, total, pageNum, limitNum);
     }

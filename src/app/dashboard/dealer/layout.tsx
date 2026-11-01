@@ -4,7 +4,7 @@ import React from "react"
 import { useAuth } from "@/context/AuthContext"
 import { KycOverlayForm, KYC_SKIP_KEY } from "@/components/dashboard/KycOverlayForm"
 import { Loader2, Lock, ShieldCheck, ArrowRight, Phone, AlertCircle } from "lucide-react"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { apiClient } from "@/lib/apiClient"
 import { DealerAccessProvider, useDealerAccess } from "@/context/DealerAccessContext"
 import { DealerPermissionGate } from "@/components/dealer/DealerPermissionGate"
@@ -93,6 +93,7 @@ function DealerPhoneGate({ onSaved }: { onSaved: () => void }) {
 
 function DealerRoutePermissionBoundary({ children }: { children: React.ReactNode }) {
     const pathname = usePathname()
+    const searchParams = useSearchParams()
 
     const routePermissions: Array<[string, DealerPermission]> = [
         ["/dashboard/dealer/auctions/won", "VIEW_PURCHASES"],
@@ -113,8 +114,12 @@ function DealerRoutePermissionBoundary({ children }: { children: React.ReactNode
     const match = routePermissions.find(([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`))
     if (!match) return <>{children}</>
 
+    // A MANAGE_OFFERS-only staff member can access retail offers, not trade bids.
+    // The canonical Bids page renders only the retail-offers component here.
+    const permission = pathname === "/dashboard/dealer/bids" && searchParams.get("tab") === "retail"
+        ? "MANAGE_OFFERS" : match[1]
     return (
-        <DealerPermissionGate permission={match[1]}>
+        <DealerPermissionGate permission={permission}>
             {children}
         </DealerPermissionGate>
     )

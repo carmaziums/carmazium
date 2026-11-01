@@ -3,7 +3,7 @@ import {
   ActivityIndicator, FlatList, RefreshControl, ScrollView, StyleSheet, useWindowDimensions,
   Text, TouchableOpacity, View,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@/components/BrandIcon';
 import { Image } from 'expo-image';
 import { DealerActiveBidPositions, DealerAuctionShortlist } from './DealerAuctionBuyingSections';
@@ -63,7 +63,10 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
   const canViewPurchases = !accessLoading && hasPermission('VIEW_PURCHASES');
   const canPlaceBid = !accessLoading && hasPermission('PLACE_BID');
   const canManageOffers = !accessLoading && hasPermission('MANAGE_OFFERS');
-  const [section, setSection] = useState<Section>('mine');
+  const route = useRoute();
+  const initialSection = (route.params as { initialSection?: 'live' | 'bids' } | undefined)?.initialSection;
+  const [section, setSection] = useState<Section>(initialSection || 'live');
+  React.useEffect(() => { if (initialSection) setSection(initialSection); }, [initialSection]);
   const [auctions, setAuctions] = useState<OwnedAuction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -175,8 +178,8 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
     <View style={styles.screen}>
       <WebsiteTopBar />
       <View style={styles.heading}>
-        <Text style={styles.pageTitle}>Auctions & Buying</Text>
-        <Text style={styles.subtitle}>Live auctions, bids and purchases</Text>
+        <Text style={styles.pageTitle}>{section === 'bids' ? 'Bids & Offers' : section === 'mine' ? 'My Auctions' : 'Live Auctions'}</Text>
+        <Text style={styles.subtitle}>{section === 'bids' ? 'Auction bids and your retail offers.' : 'Cars available to bid on.'}</Text>
         {canManageInventory && (
           <TouchableOpacity accessibilityRole="button"
             accessibilityLabel="Create Auction"
@@ -186,22 +189,6 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
           </TouchableOpacity>
         )}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}
-        style={[styles.navScroller, { maxHeight: getScrollableStageHeight(fontScale) + 4 }]} contentContainerStyle={styles.navContent}
-        accessibilityLabel="Auction and buying navigation">
-        {auctionLinks.filter(link => link.allowed).map(link => (
-          <TouchableOpacity key={link.id} onPress={link.onPress}
-            accessibilityRole="button" accessibilityLabel={link.label}
-            accessibilityState={link.active === undefined ? undefined : { selected: link.active }}
-            style={[styles.navButton, { minHeight: Math.max(44, getScrollableStageHeight(fontScale) - 10) }, link.active && styles.navSelected]}>
-            <Ionicons name={link.icon as any} size={17}
-              color={link.active ? Colors.white : Colors.textMuted} />
-            <Text style={[styles.navText, link.active && styles.navTextActive]}>
-              {link.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
       {section === 'live' ? (
         <View style={styles.liveContainer}>
           {!accessLoading && !canPlaceBid && (

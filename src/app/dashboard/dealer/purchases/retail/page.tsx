@@ -1,8 +1,6 @@
-"use client"
+import { redirect } from "next/navigation"
 
-import { DealerPurchasesView } from "@/components/dealer/DealerPurchasesView"
-
-/** Retail Purchases: accepted retail offers and recorded retail transactions. */
-export default function DealerRetailPurchasesPage() {
-    return <DealerPurchasesView mode="retail" />
+/** Retain legacy bookmarks, notifications and external links. */
+export default function LegacyPurchasesPage() {
+    redirect("/dashboard/dealer/purchases?tab=progress&channel=retail")
 }

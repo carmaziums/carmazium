@@ -1,8 +1,6 @@
-"use client"
+import { redirect } from "next/navigation"
 
-import { DealerPurchasesView } from "@/components/dealer/DealerPurchasesView"
-
-/** Purchase History: completed purchases and cancelled sales. */
-export default function DealerPurchaseHistoryPage() {
-    return <DealerPurchasesView mode="history" />
+/** Retain legacy bookmarks, notifications and external links. */
+export default function LegacyPurchasesPage() {
+    redirect("/dashboard/dealer/purchases?tab=completed&channel=all")
 }

@@ -88,7 +88,7 @@ export type TabParamList = {
   DealerHome: undefined;
   DealerStock: undefined;
   DealerCustomers: undefined;
-  DealerBuyBid: undefined;
+  DealerBuyBid: { initialSection?: 'live' | 'bids' } | undefined;
   DealerMore: undefined;
 };
 
@@ -109,7 +109,7 @@ const TAB_CONFIG: {
   { name: 'DealerHome', icon: 'grid-outline', iconActive: 'grid', label: 'Home', iconType: 'ionicons' },
   { name: 'DealerStock', icon: 'car-outline', iconActive: 'car', label: 'Stock', iconType: 'ionicons' },
   { name: 'DealerCustomers', icon: 'people-outline', iconActive: 'people', label: 'Customers', iconType: 'ionicons' },
-  { name: 'DealerBuyBid', icon: 'gavel', iconActive: 'gavel', label: 'Buy & Bid', iconType: 'material-community' },
+  { name: 'DealerBuyBid', icon: 'gavel', iconActive: 'gavel', label: 'Auctions', iconType: 'material-community' },
   { name: 'DealerMore', icon: 'menu-outline', iconActive: 'menu', label: 'More', iconType: 'ionicons' },
 ];
 

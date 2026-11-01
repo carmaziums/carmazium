@@ -9,7 +9,7 @@ const root=resolve(fileURLToPath(new URL('..',import.meta.url)));
 const read=p=>readFileSync(resolve(root,p),'utf8');
 const base='carmazium app/carmazium app/src/';
 const app=p=>read(base+p);
-// The Buy & Bid tab bar is a shared component used on every page in that area.
+// Legacy auction sections and their permissions stay available behind simplified Buy navigation.
 const web=read('src/app/dashboard/dealer/auctions/page.tsx')+read('src/components/dealer/BuyAndBidTabs.tsx');
 const routes=read('src/config/dealerRouteConfig.ts');
 const tab=app('navigation/TabNavigator.tsx');
@@ -20,22 +20,23 @@ const seller=app('screens/seller/SellerAuctionsScreen.tsx');
 const stack=app('navigation/MainStackNavigator.tsx');
 const doc=read('docs/native/website-native-visual-parity-block6-20261010.md');
 
-test('dealer Buy & Bid opens the real website Auctions & Buying hub, not public Live',()=>{
+test('dealer Buy destinations match approved web and native roles without losing the auction hub',()=>{
+  for (const label of ['Live Auctions', 'Saved', 'Bids & Offers', 'Purchases', 'My Auctions'])
+    assert.ok(routes.includes('label: "'+label+'"'), label);
   assert.ok(routes.includes('href: "/dashboard/dealer/auctions"'));
-  assert.ok(routes.includes('title: "Auctions & Buying"'));
-  assert.ok(web.includes('Auction and buying navigation'));
+  assert.ok(routes.includes('title: "My Auctions"'));
+  assert.ok(routes.includes('section: "Sell"'));
   assert.ok(tab.includes('<Tab.Screen name="DealerBuyBid" component={GatedDealerBuyBidTab} />'));
   assert.ok(tab.includes('<Tab.Screen name="Live" component={LiveScreen} />'));
-  assert.ok(hub.includes("useState<Section>('mine')"));
-  assert.ok(hub.includes('Auctions & Buying'));
-  assert.ok(hub.includes('Live auctions, bids and purchases'));
-  for(const x of ['My Auctions','Live Auctions','Shortlisted','Bids & offers','Purchases']){
-    assert.ok(web.includes(x),'web '+x);
-    assert.ok(hub.includes(x),'native '+x);
-  }
+  assert.ok(hub.includes("initialSection || 'live'"));
+  assert.ok(hub.includes('Live Auctions'));
+  assert.ok(hub.includes('Bids & Offers'));
+  for (const label of ['My Auctions', 'Live Auctions', 'Shortlisted', 'Purchases'])
+    assert.ok(hub.includes(label), label);
+  // The original own-auction management and bidder actions remain available.
   assert.ok(hub.includes('fetchAllMyAuctions<OwnedAuction>'));
   assert.ok(hub.includes("('list')"));
-  assert.ok(hub.includes("status === 'ACTIVE'")&&hub.includes("status === 'SCHEDULED'"));
+  assert.ok(hub.includes("status === 'ACTIVE'") && hub.includes("status === 'SCHEDULED'"));
   assert.ok(hub.includes('sellerBonusReleased') && hub.includes('sellerFundsConfirmedAt'));
 });
 

@@ -794,8 +794,8 @@ export interface WatchlistResponse {
 /**
  * Get user's watchlist (authenticated)
  */
-export async function getWatchlist(page = 1, limit = 20): Promise<WatchlistResponse> {
-    return apiClient<WatchlistResponse>(`/watchlist?page=${page}&limit=${limit}`, {
+export async function getWatchlist(page = 1, limit = 20, type?: 'retail'): Promise<WatchlistResponse> {
+    return apiClient<WatchlistResponse>(`/watchlist?page=${page}&limit=${limit}${type === 'retail' ? '&type=retail' : ''}`, {
         method: 'GET',
         cache: 'no-store',
     })

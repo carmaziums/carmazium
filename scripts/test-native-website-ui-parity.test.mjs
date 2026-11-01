@@ -8,6 +8,7 @@ const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const read = p => readFileSync(resolve(root,p),'utf8');
 const app = p => read('carmazium app/carmazium app/src/'+p);
 const web = read('src/components/dashboard/DashboardSidebar.tsx');
+const dealerRoutes = read('src/config/dealerRouteConfig.ts');
 const tabs = app('navigation/TabNavigator.tsx');
 const drawer = app('components/GlobalDrawer.tsx');
 const bar = app('components/WebsiteTopBar.tsx');
@@ -18,12 +19,12 @@ test('web dealer bottom navigation and native route labels have the same informa
     '/dashboard/dealer/inventory',
     '/dashboard/dealer/crm',
     '/dashboard/dealer/auctions',
-  ]) assert.ok(web.includes(segment), segment);
+  ]) assert.ok((web + dealerRoutes).includes(segment), segment);
   for (const [route,label] of [
     ['DealerHome','Home'],
     ['DealerStock','Stock'],
     ['DealerCustomers','Customers'],
-    ['DealerBuyBid','Buy & Bid'],
+    ['DealerBuyBid','Auctions'],
     ['DealerMore','More'],
   ]) {
     assert.ok(tabs.includes("name: '"+route+"'"),route);
@@ -31,6 +32,10 @@ test('web dealer bottom navigation and native route labels have the same informa
     assert.ok(tabs.includes('<Tab.Screen name="'+route+'"'),route);
     assert.ok(drawer.includes("tabName: '"+route+"'") || route === 'DealerMore', route);
   }
+  assert.ok(dealerRoutes.includes('label: "Live Auctions"'));
+  assert.ok(dealerRoutes.includes('label: "Saved"'));
+  assert.ok(dealerRoutes.includes('label: "Bids & Offers"'));
+  assert.ok(dealerRoutes.includes('label: "Purchases"'));
   assert.ok(tabs.includes("initialRouteName={dealerMode ? 'DealerHome' : 'Home'}"));
   assert.ok(tabs.includes("openDrawer();"));
   assert.ok(drawer.includes("dealerMode ? 'DEALER WORKSPACE' : 'BUY, SELL & EXPLORE'"));

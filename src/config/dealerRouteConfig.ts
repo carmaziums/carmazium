@@ -85,23 +85,50 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     {
         href: "/dashboard/dealer/auctions",
         requiredPermission: "VIEW_TRADE",
-        label: "Buy & Bid",
-        title: "Auctions & Buying",
-        subHeader: "Live auctions, bids and purchases",
+        label: "My Auctions",
+        title: "My Auctions",
+        subHeader: "Manage auctions and handovers for your own stock.",
         icon: Gavel,
+        section: "Sell"
+    },
+    {
+        href: "/auctions/browse",
+        requiredPermission: "VIEW_TRADE",
+        label: "Live Auctions",
+        title: "Live Auctions",
+        subHeader: "Find cars available to bid on.",
+        icon: Gavel,
+        section: "Buy"
+    },
+    {
+        href: "/dashboard/dealer/wishlist",
+        label: "Saved",
+        title: "Saved",
+        subHeader: "Auctions and retail cars you've saved.",
+        icon: Heart,
         section: "Buy",
-        activePrefixes: ["/dashboard/dealer/auctions", "/dashboard/dealer/bids"]
+        activePrefixes: ["/dashboard/dealer/auctions/shortlisted"]
+    },
+    {
+        // Either VIEW_TRADE or MANAGE_OFFERS is sufficient; the sidebar
+        // resolves the permitted initial tab without granting the other role.
+        href: "/dashboard/dealer/bids",
+        label: "Bids & Offers",
+        title: "Bids & Offers",
+        subHeader: "Your auction bids and retail offers.",
+        icon: Tag,
+        section: "Buy",
+        activePrefixes: ["/dashboard/dealer/my-offers"]
     },
     {
         href: "/dashboard/dealer/purchases",
         requiredPermission: "VIEW_PURCHASES",
         label: "Purchases",
-        title: "All Purchases",
-        subHeader: "Every vehicle you have bought or agreed to buy, retail and auction",
+        title: "Purchases",
+        subHeader: "Cars you've bought or agreed to buy.",
         icon: ShoppingBag,
         section: "Buy",
-        // Purchase History and each purchase record sit under this item.
-        activePrefixes: ["/dashboard/dealer/purchases"]
+        activePrefixes: ["/dashboard/dealer/purchases", "/dashboard/dealer/auctions/won", "/dashboard/cancellations"]
     },
     {
         href: "/dashboard/dealer/purchases/retail",
@@ -203,35 +230,6 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         icon: Briefcase,
         hidden: true,
         section: "Services"
-    },
-    {
-        href: "/dashboard/dealer/my-offers",
-        requiredPermission: "MANAGE_OFFERS",
-        label: "My Retail Offers",
-        title: "My Offers",
-        subHeader: "Retail offers made on marketplace vehicles",
-        icon: Tag,
-        hidden: true,
-        section: "Buy"
-    },
-    {
-        href: "/dashboard/dealer/bids",
-        requiredPermission: "VIEW_TRADE",
-        label: "Bids & offers",
-        title: "Bids & offers",
-        subHeader: "Auctions you are currently bidding on",
-        icon: Gavel,
-        hidden: true,
-        section: "Buy"
-    },
-    {
-        href: "/dashboard/dealer/wishlist",
-        label: "Saved Cars",
-        title: "Saved Cars",
-        subHeader: "Vehicles saved for later",
-        icon: Heart,
-        hidden: true,
-        section: "Buy"
     },
     {
         href: "/dashboard/dealer/finance",

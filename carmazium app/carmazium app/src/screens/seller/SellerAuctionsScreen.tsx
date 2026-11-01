@@ -45,7 +45,6 @@ import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
-import { PurchaseDestinations } from '../../components/dealer/PurchaseDestinations';
 // ─────────────────────────── Types ───────────────────────────
 
 type AuctionStatus = 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED';
@@ -1548,16 +1547,12 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         ))}
       </ScrollView>
 
-      {/* A failed API request must not appear as an empty auction portfolio. */}
+      {/* Seller auction management remains here; purchase tabs belong to the buyer's Purchases screen. */}
       {activeTab === 'WON' && canViewPurchases && (
-        <PurchaseDestinations
-          active="wins"
-          onSelect={(destination) => {
-            if (destination !== 'wins') {
-              navigation?.navigate('DealerPurchases', { view: destination === 'history' ? 'history' : 'all' });
-            }
-          }}
-        />
+        <TouchableOpacity accessibilityRole="button" style={styles.tab}
+          onPress={() => navigation?.navigate('DealerPurchases', { stage: 'progress', channel: 'auction' })}>
+          <Text style={styles.tabText}>My purchases</Text>
+        </TouchableOpacity>
       )}
 
       {(activeTab === 'WON' ? wonFetchError : auctionsFetchError) && (

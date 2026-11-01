@@ -45,6 +45,7 @@ type ViewMode = 'grid' | 'list';
 export const SavedScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const accountRole = useAuthStore(s => s.accountRole);
+  const [savedTab, setSavedTab] = useState<'auctions' | 'retail'>('auctions');
 
   // Readable website-style list first; a two-column grid remains optional.
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -95,13 +96,15 @@ export const SavedScreen: React.FC = () => {
     [navigation, accountRole]
   );
 
-  const displayedListings = [...savedListings].sort((a, b) =>
+  const displayedListings = [...savedListings]
+    .filter(l => accountRole !== 'dealer' || (savedTab === 'auctions' ? l.listingType === 'AUCTION' : l.listingType !== 'AUCTION'))
+    .sort((a, b) =>
     sortMode === 'price-low' ? a.price - b.price :
       sortMode === 'price-high' ? b.price - a.price : 0
   );
-  const totalCount = savedListings.length;
-  const headerSub = `${totalCount} SAVED`;
-  const headerTitle = 'Saved Cars';
+  const totalCount = displayedListings.length;
+  const headerSub = `${totalCount} saved`;
+  const headerTitle = 'Saved';
   const sortLabel = sortMode === 'saved' ? 'Recently saved' : sortMode === 'price-low' ? 'Price: low to high' : 'Price: high to low';
 
   // ─── Empty State ───────────────────────────────────────────────────────────
@@ -109,8 +112,8 @@ export const SavedScreen: React.FC = () => {
   const renderEmptyState = () => (
     <EmptyState
       icon="heart-outline"
-      title="Nothing saved yet"
-      subtitle="Tap the heart on any listing to save it here."
+      title="No saved cars yet"
+      subtitle="Browse cars and save those you want to revisit."
       ctaLabel="Browse listings"
       onCtaPress={() => navigation.navigate('Search' as any)}
     />
@@ -145,7 +148,7 @@ export const SavedScreen: React.FC = () => {
       <TouchableOpacity
         style={styles.gridCard}
         activeOpacity={0.88}
-        onPress={() => handleCardPress(listing)}
+        onPress={() => listing.status === 'ACTIVE' ? handleCardPress(listing) : toggle(listing)}
       >
         <View style={styles.gridImgWrap}>
           {listing.images[0] ? (
@@ -155,7 +158,7 @@ export const SavedScreen: React.FC = () => {
           )}
           {listing.status && (
             <View style={[styles.statusBadge, { backgroundColor: STATUS_BADGE_BG[listing.status] ?? Colors.textMuted }]}>
-              <Text style={styles.statusBadgeText}>{listing.status}</Text>
+              <Text style={styles.statusBadgeText}>{listing.status === 'ACTIVE' ? 'Available' : 'No longer available'}</Text>
             </View>
           )}
           <TouchableOpacity
@@ -231,7 +234,7 @@ export const SavedScreen: React.FC = () => {
             </Text>
             {listing.status && (
               <View style={[styles.statusBadgeSmall, { backgroundColor: STATUS_BADGE_BG[listing.status] ?? Colors.textMuted }]}>
-                <Text style={styles.statusBadgeSmallText}>{listing.status}</Text>
+                <Text style={styles.statusBadgeSmallText}>{listing.status === 'ACTIVE' ? 'Available' : 'No longer available'}</Text>
               </View>
             )}
           </View>
@@ -280,15 +283,28 @@ export const SavedScreen: React.FC = () => {
           <Text style={styles.headerSub}>{headerSub}</Text>
           <Text style={styles.headerTitle}>{headerTitle}</Text>
         </View>
-        <View style={styles.headerActions}>
+        {accountRole !== "dealer" && <View style={styles.headerActions}>
           <IconButton
             icon={<Ionicons name={viewMode === 'grid' ? 'list-outline' : 'grid-outline'} size={20} color={Colors.textSecondary} />}
             accessibilityLabel={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
             onPress={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
             style={styles.iconBtn}
           />
-        </View>
+        </View>}
       </View>
+      {accountRole === 'dealer' && (
+        <View style={{ flexDirection: 'row', marginHorizontal: 24, marginBottom: 12, padding: 4, gap: 4, borderRadius: 12, backgroundColor: Colors.bgCard }} accessibilityRole="tablist">
+          {(['auctions', 'retail'] as const).map(tab => (
+            <TouchableOpacity key={tab} accessibilityRole="tab" accessibilityState={{ selected: savedTab === tab }}
+              onPress={() => setSavedTab(tab)}
+              style={{ flex: 1, minHeight: 44, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: savedTab === tab ? Colors.accent : 'transparent' }}>
+              <Text style={{ color: savedTab === tab ? Colors.white : Colors.textMuted, fontFamily: FontFamily.bold }}>
+                {tab === 'auctions' ? 'Auctions' : 'Retail cars'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {/* Content */}
       {isLoading && savedListings.length === 0 ? (

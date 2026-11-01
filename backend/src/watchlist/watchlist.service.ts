@@ -59,12 +59,15 @@ export class WatchlistService {
     /**
      * Get user's watchlist
      */
-    async findAll(userId: string, page = 1, limit = 20) {
+    async findAll(userId: string, page = 1, limit = 20, retailOnly = false) {
         const skip = (page - 1) * limit;
+        // Apply the retail filter before pagination/counting, so a mixed
+        // watchlist never produces an incorrectly empty Saved Retail page.
+        const where = retailOnly ? { userId, listing: { type: 'CLASSIFIED' as const } } : { userId };
 
         const [items, total] = await Promise.all([
             this.prisma.watchlistItem.findMany({
-                where: { userId },
+                where,
                 include: {
                     listing: {
                         select: {
@@ -88,7 +91,7 @@ export class WatchlistService {
                 skip,
                 take: limit,
             }),
-            this.prisma.watchlistItem.count({ where: { userId } }),
+            this.prisma.watchlistItem.count({ where }),
         ]);
 
         return { data: items, total };
