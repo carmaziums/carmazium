@@ -48,6 +48,7 @@ export class MaziumSupportDispatcher {
                     aiSourceMessageId: null,
                     deletedAt: null,
                     aiGenerated: false,
+                    aiSupportAttemptedAt: null,
                     attachmentPath: null,
                     sender: { role: { not: 'ADMIN' } },
                     chatRoom: {
@@ -74,6 +75,18 @@ export class MaziumSupportDispatcher {
                 });
                 if (!room?.supportAiConsentAt || !source
                     || source.createdAt < room.supportAiConsentAt) continue;
+                // Atomic claim prevents repeated OpenAI calls from parallel
+                // workers or from the next 30-second polling cycle.
+                const claim = await this.prisma.message.updateMany({
+                    where: {
+                        id: message.id,
+                        chatRoomId: message.chatRoomId,
+                        aiGenerated: false,
+                        aiSupportAttemptedAt: null,
+                    },
+                    data: { aiSupportAttemptedAt: new Date() },
+                });
+                if (claim.count !== 1) continue;
                 await this.autoReply.processCustomerMessage(message.chatRoomId, message.id);
             }
         } catch {
