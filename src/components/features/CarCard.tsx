@@ -342,7 +342,7 @@ export function CarCard({
                         shape="default"
                     >
                         <Link href={detailHref} className="block w-full text-center">
-                            {status === 'SOLD' ? 'View Sold Vehicle' : status === 'OFFER_ACCEPTED' ? 'View Sale Pending' : 'View Details'}
+                            {status === 'SOLD' ? 'View Sold Vehicle' : listingType === 'AUCTION' ? 'View auction' : status === 'OFFER_ACCEPTED' ? 'View Sale Pending' : 'View Details'}
                         </Link>
                     </Button>
                 </div>
