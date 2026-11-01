@@ -297,7 +297,11 @@ export interface Listing {
     auction?: {
         id: string
         status: 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED'
-        reservePrice: string | number
+        reservePrice?: string | number
+        startingBid?: string | number
+        currentBid?: string | number
+        hasBids?: boolean
+        reserveMet?: boolean
         startTime: string
         endTime: string
         winnerId: string | null

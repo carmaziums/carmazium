@@ -17,7 +17,7 @@ import Animated, {
   withSpring,
   FadeIn,
 } from 'react-native-reanimated';
-import { CarListing, formatPrice, formatMileage } from '../data/listings';
+import { CarListing, formatPrice, formatMileage, getNativeListingPrice } from '../data/listings';
 import { useWatchlistStore } from '../store/watchlistStore';
 import { SpecBadge } from './SpecBadge';
 import { ImageCarousel } from './ImageCarousel';
@@ -175,7 +175,8 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
 
         {/* Price tag */}
         <View style={styles.priceTag}>
-          <Text style={styles.priceText}>{formatPrice(listing.price)}</Text>
+          <Text style={styles.priceText}>{getNativeListingPrice(listing).amount}</Text>
+          <Text style={{ fontSize: 10, color: Colors.textMuted }}>{getNativeListingPrice(listing).label}</Text>
         </View>
       </View>
 

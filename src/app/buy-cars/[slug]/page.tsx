@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { notFound } from "next/navigation"
+import { notFound, permanentRedirect } from "next/navigation"
 import { VehicleDetailsPageClient } from "./VehicleDetailsPageClient"
 import { formatPrice } from "@/lib/listingApi"
 import { VehicleViewTracker } from "@/components/analytics/VehicleViewTracker"
@@ -48,7 +48,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     // The root layout's title template ("%s | CarMazium") applies automatically
     // to the <title> tag, but NOT to openGraph/twitter titles — those need the
     // brand suffix added explicitly.
-    const title = `${listing.title} — ${formatPrice(listing.price)}`
+    const title = listing.type === "AUCTION"
+        ? `${listing.title} — ${listing.auction?.startingBid != null ? `Starting bid ${formatPrice(listing.auction.startingBid)}` : "Auction listing"}`
+        : `${listing.title} — ${formatPrice(listing.price)}`
     const socialTitle = `${title} | CarMazium`
     // Canonicalise direct UUID/legacy detail links to the published listing slug.
     const url = `${SITE_URL}/buy-cars/${listing.slug || slug}`
@@ -90,6 +92,10 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     // uncached network hit before content ever appeared).
     const { listing: initialListing, missing } = await getListingBySlug(slug)
     if (missing) notFound()
+    // Canonical auction detail is the real bidding room, never a retail offer page.
+    if (initialListing?.type === "AUCTION" && initialListing.auction?.id) {
+        permanentRedirect(`/auctions/live/${initialListing.auction.id}`)
+    }
     return (
         <>
             {initialListing && (

@@ -103,6 +103,8 @@ on:
       - "src/lib/sellPricingIntent.ts"
       - "src/lib/auctionApi.ts"
       - "src/lib/auctionPricing.ts"
+      - "scripts/test-auction-price-display.test.mjs"
+      - "src/app/auctions/browse/**"
       - ".github/workflows/web-listing-ci.yml"
 
 permissions:
@@ -151,6 +153,9 @@ jobs:
 
       - name: Verify retail transmission badges and all card data paths
         run: node --test scripts/test-retail-card-transmission.test.mjs
+
+      - name: Verify true auction bidding prices across search, detail and native cards
+        run: node --test scripts/test-auction-price-display.test.mjs
 
       - name: Verify unified private buyer/seller dashboard and legacy compatibility
         run: node --test scripts/test-private-dashboard-consolidation.test.mjs

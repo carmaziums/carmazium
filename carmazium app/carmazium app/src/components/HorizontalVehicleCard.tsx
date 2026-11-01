@@ -15,7 +15,7 @@ import Animated, {
   withSpring,
   FadeIn,
 } from 'react-native-reanimated';
-import { CarListing, formatPrice, formatMileage } from '../data/listings';
+import { CarListing, formatPrice, formatMileage, getNativeListingPrice } from '../data/listings';
 import { useWatchlistStore } from '../store/watchlistStore';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
@@ -152,7 +152,10 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
         <View style={styles.bottomRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
             <View style={styles.priceWrapper}>
-              <Text style={styles.priceText}>{formatPrice(listing.price)}</Text>
+              <Text style={styles.priceText}>{getNativeListingPrice(listing).amount}</Text>
+              <Text style={{ fontSize: 11, color: Colors.textMuted }}>{getNativeListingPrice(listing).label}</Text>
+              {getNativeListingPrice(listing).reserveLabel && <Text style={{ fontSize: 10, color: Colors.warning }}>{getNativeListingPrice(listing).reserveLabel}</Text>}
+              {getNativeListingPrice(listing).buyItNowLabel && <Text style={{ fontSize: 10, color: Colors.textMuted }}>{getNativeListingPrice(listing).buyItNowLabel}</Text>}
             </View>
             <GradeChip grade={listing.exteriorGrade} />
           </View>

@@ -2286,9 +2286,19 @@ export class ListingsService {
                     // the retail detail screen, and web links every result to
                     // /buy-cars/[slug] for the same reason (BUY-017). There is no
                     // by-listing auction endpoint to look it up with either.
-                    // Scalars only, no bids, so this adds one join and no N+1.
+                    // Read just the highest *valid* bid; no bidder identity
+                    // or confidential reserve amount reaches the catalogue.
+                    bids: {
+                        where: { deletedAt: null, cancelledAt: null, archivedAt: null },
+                        orderBy: { amount: 'desc' },
+                        take: 1,
+                        select: { amount: true },
+                    },
                     auction: {
-                        select: { id: true, status: true, endTime: true },
+                        select: {
+                            id: true, status: true, startTime: true, endTime: true,
+                            startingBid: true, reservePrice: true, buyItNowPrice: true,
+                        },
                     },
                 }
             }),
@@ -2309,8 +2319,20 @@ export class ListingsService {
                 rejectionReason: _rejectionReason,
                 partnerDistributionAcceptedAt: _partnerDistributionAcceptedAt,
                 deletedAt: _deletedAt,
+                bids: validBids,
                 ...safe
             } = row;
+            if (safe.type === 'AUCTION' && safe.auction) {
+                const { reservePrice, ...auctionPublic } = safe.auction;
+                const highest = validBids?.[0]?.amount != null ? Number(validBids[0].amount) : null;
+                safe.auction = {
+                    ...auctionPublic,
+                    startingBid: Number(auctionPublic.startingBid),
+                    currentBid: highest ?? Number(auctionPublic.startingBid),
+                    hasBids: highest !== null,
+                    reserveMet: highest !== null && highest >= Number(reservePrice),
+                };
+            }
             // A stale relationship explanation is not public when the seller
             // has said they ARE the registered keeper.
             if (safe.isLegalRegisteredKeeper !== false) delete safe.notOwnerRelationship;
@@ -2494,6 +2516,12 @@ export class ListingsService {
                 // below, which is a *different* listing's auction for dual-channel cross-
                 // linking) — needed for the auction-buyer-fee checkout page (winning bid,
                 // auction reference).
+                bids: {
+                    where: { deletedAt: null, cancelledAt: null, archivedAt: null },
+                    orderBy: { amount: 'desc' },
+                    take: 1,
+                    select: { amount: true },
+                },
                 auction: {
                     select: {
                         id: true,
@@ -2572,10 +2600,28 @@ export class ListingsService {
             seller: brandAdminSeller(sellerWithCount as any),
         };
 
+        // The detail page and catalogue must use identical auction pricing.
+        // Public viewers receive a reserve-met boolean, not the confidential
+        // reserve figure or any bidder IDs. Cancelled/archived bids are excluded.
+        if (listingWithCount.type === 'AUCTION' && listingWithCount.auction) {
+            const a = listingWithCount.auction;
+            const highest = listingWithCount.bids?.[0]?.amount != null
+                ? Number(listingWithCount.bids[0].amount) : null;
+            listingWithCount.auction = {
+                ...a,
+                startingBid: Number(a.startingBid),
+                currentBid: highest ?? Number(a.startingBid),
+                hasBids: highest !== null,
+                reserveMet: highest !== null && highest >= Number(a.reservePrice),
+            };
+        }
+        delete listingWithCount.bids;
+
         // Seller and their authorised dealership may view private listing
         // management fields; an unrelated dealer or buyer cannot.
         const managesListing = await this.viewerManagesListing(viewerId, listing.sellerId);
         if (!managesListing) {
+            if (listingWithCount.auction) delete listingWithCount.auction.reservePrice;
             delete listingWithCount.priceMin;
             delete listingWithCount.priceMax;
             for (const field of PUBLIC_DETAIL_PRIVATE_FIELDS) delete listingWithCount[field];

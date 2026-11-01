@@ -153,7 +153,14 @@ export interface CarListing {
   linkedListing?: {
     id: string;
     type: string;
-    auction?: { id: string; status: string; endTime: string } | null;
+    auction?: {
+    id: string; status: string; endTime: string;
+    startingBid?: number | string | null;
+    currentBid?: number | string | null;
+    hasBids?: boolean;
+    reserveMet?: boolean;
+    buyItNowPrice?: number | string | null;
+  } | null;
   } | null;
   deliveryAvailable?: boolean;
   deliveryMaxMiles?: number | null;
@@ -189,7 +196,14 @@ export interface CarListing {
   listingType?: string | null;
   /** The listing's own auction, when it has one — not to be confused with
    *  `linkedListing.auction`, which is the *other* half of a retail/auction pair. */
-  auction?: { id: string; status: string; endTime: string } | null;
+  auction?: {
+    id: string; status: string; endTime: string;
+    startingBid?: number | string | null;
+    currentBid?: number | string | null;
+    hasBids?: boolean;
+    reserveMet?: boolean;
+    buyItNowPrice?: number | string | null;
+  } | null;
   isSellerVerified?: boolean;
   totalSales?: number | null;
   viewCount?: number;
@@ -218,3 +232,25 @@ export const formatPrice = (price: number): string =>
 
 export const formatMileage = (miles: number): string =>
   `${miles.toLocaleString('en-GB')} mi`;
+
+
+/** Auction cards must not display the separate retail/valuation listing price. */
+export function getNativeListingPrice(listing: Pick<CarListing, 'price' | 'listingType' | 'auction'>): {
+  amount: string; label: string; reserveLabel: string | null; buyItNowLabel: string | null;
+} {
+  if (listing.listingType !== 'AUCTION') {
+    return { amount: formatPrice(listing.price), label: 'Retail asking price', reserveLabel: null, buyItNowLabel: null };
+  }
+  const auction = listing.auction;
+  const raw = auction?.hasBids ? auction?.currentBid : auction?.startingBid;
+  const value = raw == null ? NaN : Number(raw);
+  const buyNow = auction?.buyItNowPrice == null ? NaN : Number(auction.buyItNowPrice);
+  return {
+    amount: Number.isFinite(value) && value > 0 ? formatPrice(value) : 'View auction',
+    label: auction?.hasBids ? 'Current bid' : 'Starting bid',
+    reserveLabel: Number.isFinite(value) && value > 0 && auction?.reserveMet != null
+      ? (auction.reserveMet ? 'Reserve met' : 'Reserve not met') : null,
+    buyItNowLabel: auction?.status === 'ACTIVE' && Number.isFinite(buyNow) && buyNow > 0
+      ? 'Buy It Now ' + formatPrice(buyNow) : null,
+  };
+}

@@ -6,6 +6,7 @@ import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { WriteOffCategoryBadge } from "@/components/ui/WriteOffCategoryBadge"
 import { CardImageCarousel } from "@/components/features/CardImageCarousel"
 import { SaveCarButton } from "@/components/features/SaveCarButton"
+import { getListingPricePresentation, type AuctionDisplayFields } from "@/lib/auctionPricing"
 import { BODY_TYPE_LABELS, FUEL_TYPE_LABELS, TRANSMISSION_LABELS } from "@/lib/vehicleLabels"
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -16,6 +17,8 @@ interface CarCardProps {
     make?: string | null
     model?: string | null
     price: string
+    listingType?: "AUCTION" | "CLASSIFIED"
+    auction?: AuctionDisplayFields | null
     image: string
     /** Full image list — enables the carousel when >1. Falls back to `image` when empty/missing. */
     images?: string[]
@@ -67,12 +70,14 @@ const BANNER_COLORS: Record<string, string> = {
 const DEFAULT_BANNER_COLOR = 'bg-primary'
 
 export function CarCard({
-    title, listingId, make, model, price, image, images, href = "#",
+    title, listingId, make, model, price, listingType, auction, image, images, href = "#",
     year, mileage, fuelType, transmission, bodyType, location, distanceMi,
     sellerId, sellerScore, isFeatured = false, badgeTier, status, bannerLabel, hasLinkedAuction,
     isDepartedSale, deliveryAvailable, exteriorGrade, writeOffCategory, isImported
 }: CarCardProps) {
     const makeModelLine = [make, model].filter(Boolean).join(" ").trim()
+    const auctionPrice = getListingPricePresentation({ type: listingType, price, auction })
+    const detailHref = listingType === "AUCTION" && auction?.id ? `/auctions/live/${auction.id}` : href
     const gradeStyle = exteriorGrade && exteriorGrade >= 1 && exteriorGrade <= 5 ? GRADE_STYLES[exteriorGrade] : null
     const gallery = (images && images.length > 0 ? images : image ? [image] : []).filter(Boolean)
     const transmissionLabel = transmission ? TRANSMISSION_LABELS[transmission] : undefined
@@ -119,7 +124,7 @@ export function CarCard({
                 {/* Save / like action — available directly from marketplace cards */}
                 {listingId && status !== 'SOLD' && (
                     <div className="absolute top-3 right-3 z-40">
-                        <SaveCarButton listingId={listingId} redirectHref={href} />
+                        <SaveCarButton listingId={listingId} redirectHref={detailHref} />
                     </div>
                 )}
 
@@ -227,9 +232,12 @@ export function CarCard({
                 {/* Price Display */}
                 <div className="mb-3">
                     <p className="text-2xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-gray-400">
-                        {price}
+                        {auctionPrice.price}
                     </p>
-                    {status === 'ACTIVE' && (
+                    <p className="text-xs font-bold text-[var(--text-muted)] mt-1">{auctionPrice.label}</p>
+                    {auctionPrice.reserveLabel && <p className="text-xs text-amber-500 mt-1">{auctionPrice.reserveLabel}</p>}
+                    {auctionPrice.buyItNowLabel && <p className="text-xs text-[var(--text-muted)] mt-1">{auctionPrice.buyItNowLabel}</p>}
+                    {listingType !== "AUCTION" && status === 'ACTIVE' && (
                         <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30 px-2 py-0.5 rounded-full">
                             Offers Welcome
                         </span>
@@ -333,8 +341,8 @@ export function CarCard({
                         size="sm"
                         shape="default"
                     >
-                        <Link href={href} className="block w-full text-center">
-                            {status === 'SOLD' ? 'View Sold Vehicle' : status === 'OFFER_ACCEPTED' ? 'View Sale Pending' : 'View Details'}
+                        <Link href={detailHref} className="block w-full text-center">
+                            {status === 'SOLD' ? 'View Sold Vehicle' : listingType === 'AUCTION' ? 'View auction' : status === 'OFFER_ACCEPTED' ? 'View Sale Pending' : 'View Details'}
                         </Link>
                     </Button>
                 </div>

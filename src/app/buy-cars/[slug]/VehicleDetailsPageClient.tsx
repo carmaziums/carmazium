@@ -494,10 +494,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     }
 
     // BIN availability for auction listings
-    const reserveMet = listing
-        ? !!(listing.auction?.reservePrice && listing.bids?.[0]?.amount &&
-              Number(listing.bids[0].amount) >= Number(listing.auction.reservePrice))
-        : false
+    const reserveMet = listing.auction?.reserveMet === true
 
     const handleBinFromDetail = async () => {
         if (!listing?.auction?.id) return

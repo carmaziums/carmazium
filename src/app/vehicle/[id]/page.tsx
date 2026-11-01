@@ -41,10 +41,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const canonicalUrl = listing.type === "CLASSIFIED"
         ? `${SITE_URL}/buy-cars/${listing.slug || id}`
         : `${SITE_URL}/vehicle/${id}`
-    const title = `${listing.title} — ${formatPrice(listing.price)}`
+    const title = listing.type === "AUCTION"
+        ? `${listing.title} — ${listing.auction?.startingBid != null ? `Starting bid ${formatPrice(listing.auction.startingBid)}` : "Auction listing"}`
+        : `${listing.title} — ${formatPrice(listing.price)}`
     const description = listing.description
         ? `${listing.description.slice(0, 155).trim()}${listing.description.length > 155 ? '…' : ''}`
-        : `${listing.title}. ${formatPrice(listing.price)} in ${listing.location || 'the UK'}. Vehicle listing on CarMazium.`
+        : listing.type === 'AUCTION'
+            ? `${listing.title}. View the auction and current bidding on CarMazium.`
+            : `${listing.title}. ${formatPrice(listing.price)} in ${listing.location || 'the UK'}. Vehicle listing on CarMazium.`
 
     return {
         title,
@@ -62,6 +66,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     // uncached network hit before content ever appeared).
     const { listing: initialListing, missing } = await getListingBySlug(id)
     if (missing) notFound()
+    // Never expose legacy simulated bids on auction vehicle pages.
+    if (initialListing?.type === "AUCTION" && initialListing.auction?.id) {
+        permanentRedirect(`${SITE_URL}/auctions/live/${initialListing.auction.id}`)
+    }
     // Trade-only auction vehicles keep their existing detail route and access logic.
     if (initialListing?.type === "CLASSIFIED") {
         permanentRedirect(`${SITE_URL}/buy-cars/${initialListing.slug || id}`)

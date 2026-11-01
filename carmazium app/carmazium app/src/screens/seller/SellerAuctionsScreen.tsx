@@ -1089,7 +1089,10 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     const listingTitle = item.listing.title
       || [item.listing.year, item.listing.make, item.listing.model].filter(Boolean).join(' ')
       || 'Untitled';
-    const price = item.listing.price ? `£${Number(item.listing.price).toLocaleString('en-GB')}` : '–';
+    const topValidBid = item.listing.bids?.[0]?.amount;
+    const hasBids = (item.listing._count?.bids ?? 0) > 0 && topValidBid != null;
+    const bidPrice = hasBids ? Number(topValidBid) : Number(item.startingBid);
+    const price = Number.isFinite(bidPrice) && bidPrice > 0 ? `£${bidPrice.toLocaleString('en-GB')}` : '–';
     const isLoadingNav = navigating === item.id;
     const isEditOpen = editingId === item.id;
     const isScheduled = item.status === 'SCHEDULED';
@@ -1118,6 +1121,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           <View style={styles.cardInfo}>
             <Text style={styles.cardTitle} numberOfLines={1}>{listingTitle}</Text>
             <Text style={styles.cardPrice}>{price}</Text>
+            <Text style={{ color: Colors.textMuted, fontSize: 11 }}>{hasBids ? 'Current bid' : 'Starting bid'}</Text>
             <Text style={styles.cardMeta}>
               {isScheduled ? `Starts ${fmtDate(item.startTime)}` : `Ends ${fmtDate(item.endTime)}`}
             </Text>
@@ -1424,7 +1428,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       || 'Untitled';
     const wonFor = item.winningBidAmount != null
       ? `£${Number(item.winningBidAmount).toLocaleString('en-GB')}`
-      : (item.listing.price ? `£${Number(item.listing.price).toLocaleString('en-GB')}` : '–');
+      : 'Winning bid unavailable';
     const sellerName = item.listing.seller?.dealerProfile?.companyName
       || [item.listing.seller?.firstName, item.listing.seller?.lastName].filter(Boolean).join(' ')
       || 'Private seller';
