@@ -34,6 +34,7 @@ describe('DealersService purchased vehicle detail', () => {
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             sale: { findFirst: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
+            analyticsEvent: { findFirst: jest.fn().mockResolvedValue(null) },
             serviceJob: { findFirst: jest.fn().mockResolvedValue(null) },
         };
         service = new DealersService(prisma, {} as any, {} as any, {} as any);
