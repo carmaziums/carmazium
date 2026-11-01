@@ -2182,6 +2182,49 @@ export class ChatService {
     }
 
     /**
+     * Backend-only final gate for a pending MaziuM response. This performs no
+     * writes and grants no permission to send: the delivery transaction must
+     * repeat these checks under a room-level lock before inserting a message.
+     */
+    async inspectSupportAutoReply(roomId: string, sourceMessageId: string) {
+        const room = await this.prisma.chatRoom.findUnique({
+            where: { id: roomId },
+            include: {
+                initiator: { select: { role: true } },
+                participant: { select: { role: true } },
+            },
+        });
+        if (!room || room.context !== ChatContext.SUPPORT || room.deletedAt || room.supportClosedAt) {
+            return { eligible: false, reason: 'NOT_OPEN_SUPPORT' } as const;
+        }
+        if (!room.supportAiConsentAt || room.supportAiOptedOutAt || room.supportHumanTakeoverAt) {
+            return { eligible: false, reason: 'NO_ACTIVE_CONSENT' } as const;
+        }
+        const supportId = room.initiator.role === UserRole.ADMIN && room.participant.role !== UserRole.ADMIN
+            ? room.initiatorId
+            : room.participant.role === UserRole.ADMIN && room.initiator.role !== UserRole.ADMIN
+                ? room.participantId : null;
+        const customerId = supportId === room.initiatorId ? room.participantId : room.initiatorId;
+        if (!supportId || !customerId || supportId === customerId) {
+            return { eligible: false, reason: 'INVALID_SUPPORT_PARTICIPANTS' } as const;
+        }
+        const latest = await this.prisma.message.findFirst({
+            where: { chatRoomId: roomId, deletedAt: null },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        });
+        if (!latest || latest.id !== sourceMessageId || latest.senderId !== customerId
+            || latest.aiGenerated || latest.attachmentPath || !latest.content?.trim()) {
+            return { eligible: false, reason: 'NOT_LATEST_CUSTOMER_TEXT' } as const;
+        }
+        const existing = await this.prisma.message.findFirst({
+            where: { aiSourceMessageId: sourceMessageId },
+            select: { id: true },
+        });
+        if (existing) return { eligible: false, reason: 'ALREADY_REPLIED' } as const;
+        return { eligible: true, reason: 'READY', customerId, supportId, content: latest.content } as const;
+    }
+
+    /**
      * Get paginated messages for a room
      */
     async getRoomMessages(
