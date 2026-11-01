@@ -308,6 +308,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             msg.deliveryStatus === 'failed' && styles.bubbleFailed,
           ]}
         >
+          {msg.aiGenerated && (
+            <Text style={styles.aiLabel} accessibilityLabel="AI-generated support message">
+              MaziuM · AI-generated response
+            </Text>
+          )}
           <Text style={styles.bubbleText}>{msg.content}</Text>
           <View style={[styles.msgFooter, isOwn ? styles.msgFooterRight : styles.msgFooterLeft]}>
             <Text style={isOwn ? styles.timeTextRightInline : styles.timeTextLeftInline}>
@@ -1354,6 +1359,13 @@ export const ChatScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  aiLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginBottom: 4,
+    opacity: 0.8,
+    color: Colors.textMuted,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.bgPrimary,
