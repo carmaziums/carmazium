@@ -146,23 +146,23 @@ function AdminMessagesContent() {
     return (
         <>
         <div className="min-h-screen pt-20 pb-24 lg:pb-12">
-            <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
+            <div className="container mx-auto px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8">
                 <DashboardSidebar role="admin" userName={userName} userType="Admin Account" />
 
                 <main className="flex-1 min-w-0">
-                    <div className="glass-card flex h-[calc(100dvh-180px)] min-h-0 flex-col overflow-hidden lg:h-[calc(100vh-180px)] lg:min-h-[620px]">
-                        <div className="shrink-0 p-4 sm:p-6 border-b border-[var(--border-default)] flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                    <div className="glass-card flex h-[calc(100dvh-165px)] min-h-0 flex-col overflow-hidden lg:h-[calc(100vh-180px)] lg:min-h-[620px]">
+                        <div className="shrink-0 p-3 sm:p-6 border-b border-[var(--border-default)] flex flex-col xl:flex-row xl:items-center justify-between gap-2 sm:gap-4">
                             <div className="flex items-center gap-3 min-w-0">
                                 <MessageSquare className="text-primary shrink-0" />
                                 <div className="min-w-0">
                                     <h2 className="text-xl font-bold font-heading">Admin Messages</h2>
-                                    <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
+                                    <p className="hidden sm:block text-xs text-[var(--text-muted)] mt-0.5 truncate">
                                         Multi-agent support, internal operations and secure broadcasts
                                     </p>
                                 </div>
                             </div>
 
-                            <div className="flex flex-wrap rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-1 shrink-0">
+                            <div className="flex max-w-full gap-1 overflow-x-auto whitespace-nowrap rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-1 shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                 <button
                                     type="button"
                                     onClick={() => setMode("inbox")}
@@ -252,13 +252,13 @@ function AdminMessagesContent() {
                             ) : (
                                 <div className="flex h-full min-h-0">
                                     <div className={`w-full lg:w-[360px] border-r border-[var(--border-default)] ${selectedRoom ? "hidden lg:flex lg:flex-col" : "flex flex-col"}`}>
-                                        <div className="flex flex-wrap gap-1.5 border-b border-[var(--border-default)] p-3">
+                                        <div className="flex gap-1.5 overflow-x-auto whitespace-nowrap border-b border-[var(--border-default)] p-2 sm:p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                             {filters.map(filter => (
                                                 <button
                                                     key={filter.value}
                                                     type="button"
                                                     onClick={() => setSupportFilter(filter.value)}
-                                                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[10px] font-black transition-colors ${supportFilter === filter.value
+                                                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-semibold transition-colors ${supportFilter === filter.value
                                                         ? "border-primary bg-primary/10 text-primary"
                                                         : "border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                                                     }`}
