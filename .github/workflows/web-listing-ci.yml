@@ -55,6 +55,10 @@ on:
       - "carmazium app/carmazium app/src/screens/main/DealerInventoryScreen.tsx"
       - "scripts/test-dealer-purchase-destinations.test.mjs"
       - "scripts/test-dealer-inventory-mobile.test.mjs"
+      - "scripts/test-buyer-complete-sale.test.mjs"
+      - "src/components/purchases/**"
+      - "src/app/dashboard/buyer/offers/page.tsx"
+      - "src/components/dashboard/PrivatePurchasesTab.tsx"
       - "src/components/dashboard/PageHeader.tsx"
       - "scripts/test-dealer-purchase-snapshot.test.mjs"
       - "src/components/dealer/PurchaseInspectionNotes.tsx"
@@ -174,6 +178,9 @@ jobs:
 
       - name: Verify purchase snapshots ship switched off and inspection notes never change a sale
         run: node --test scripts/test-dealer-purchase-snapshot.test.mjs
+
+      - name: Verify either party can complete an accepted retail sale (web and app)
+        run: node --test scripts/test-buyer-complete-sale.test.mjs
 
       - name: Verify accepted retail purchases appear without premature completed-sale records
         run: node --test scripts/test-dealer-pending-retail-purchases.test.mjs

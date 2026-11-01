@@ -6,6 +6,7 @@ import Link from "next/link"
 import { createPortal } from "react-dom"
 import { ChevronRight, Clock, FileText, MoreHorizontal, User } from "lucide-react"
 import type { Offer } from "@/lib/listingApi"
+import { CompletePurchaseButton } from "@/components/purchases/CompletePurchaseButton"
 
 const OFFER_DESTINATION = "/dashboard/buyer/offers"
 
@@ -14,7 +15,7 @@ const OFFER_DESTINATION = "/dashboard/buyer/offers"
  * layout without giving them purchase details, buyer-fee checkout, or a Sale
  * cancellation action that cannot exist until the seller records the sale.
  */
-export function PendingRetailPurchaseRow({ offer }: { offer: Offer }) {
+export function PendingRetailPurchaseRow({ offer, onCompleted }: { offer: Offer; onCompleted?: () => void }) {
     const [menuOpen, setMenuOpen] = React.useState(false)
     const menuRef = React.useRef<HTMLDivElement>(null)
     const popupRef = React.useRef<HTMLDivElement>(null)
@@ -95,6 +96,8 @@ export function PendingRetailPurchaseRow({ offer }: { offer: Offer }) {
                             Seller: Contact through accepted offer <ChevronRight size={13} aria-hidden="true" />
                         </Link>
                     </div>
+                    {/* Either party can complete the sale once paid (owner rule). */}
+                    <CompletePurchaseButton listingId={offer.listingId} onCompleted={onCompleted} className="mt-2" />
                 </div>
 
                 <div className="order-2 w-full md:order-none md:block md:w-auto text-left md:text-right shrink-0">

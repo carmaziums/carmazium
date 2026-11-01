@@ -33,6 +33,7 @@ import {
 } from '../../lib/saleCancellationApi';
 import { useAuthStore } from '../../store/authStore';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
+import { CompletePurchaseButton } from '../../components/purchases/CompletePurchaseButton';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -81,6 +82,29 @@ const formatDate = (iso: string): string =>
   });
 
 const formatPrice = (n: number): string => `£${n.toLocaleString('en-GB')}`;
+
+// An accepted retail offer reserves the car but is not a Sale until either
+// party completes it. Same rule as web pendingRetailPurchases().
+interface PendingRetailOffer {
+  id: string;
+  listingId: string;
+  status: string;
+  amount: number;
+  counterAmount?: number | null;
+  finalAmount?: number | null;
+  updatedAt: string;
+  listing?: { id?: string; title?: string; status?: string; images?: string[] } | null;
+}
+
+const pendingRetailFrom = (offers: PendingRetailOffer[], recordedListingIds: Set<string>): PendingRetailOffer[] => {
+  const seen = new Set<string>();
+  return offers
+    .map(o => ({ ...o, listingId: o.listingId || o.listing?.id || '' }))
+    .filter(o => o.listingId !== '')
+    .filter(o => o.status === 'ACCEPTED' && o.listing?.status === 'OFFER_ACCEPTED' && !recordedListingIds.has(o.listingId))
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .filter(o => (seen.has(o.listingId) ? false : (seen.add(o.listingId), true)));
+};
 
 const PURCHASE_PAGE_SIZE = 100;
 const PURCHASE_MAX_PAGES = 20; // safety cap, same as web
@@ -175,6 +199,7 @@ export const DealerPurchasesScreen: React.FC = () => {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | PurchaseStatus>('ALL');
   const [cancelled, setCancelled] = useState<SaleCancellationRequest[]>([]);
+  const [pendingRetail, setPendingRetail] = useState<PendingRetailOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
@@ -211,7 +236,7 @@ export const DealerPurchasesScreen: React.FC = () => {
     if (isRefresh) setRefreshing(true);
     setFetchError(false);
     try {
-      const [all, cancellations] = await Promise.all([
+      const [all, cancellations, offers] = await Promise.all([
         // Every page (as on web), so search and history include older purchases.
         loadAllPurchasePages(),
         // An approved cancellation deletes the Sale, so the request is the
@@ -219,8 +244,13 @@ export const DealerPurchasesScreen: React.FC = () => {
         isHistory
           ? getMySaleCancellations('purchase-history').catch(() => [] as SaleCancellationRequest[])
           : Promise.resolve([] as SaleCancellationRequest[]),
+        // Agreed retail deals (Sale Pending) belong to All Purchases only.
+        isHistory
+          ? Promise.resolve([] as PendingRetailOffer[])
+          : apiClient<{ data: PendingRetailOffer[] }>('/offers/my').then(r => r?.data ?? []).catch(() => [] as PendingRetailOffer[]),
       ]);
       setCancelled(cancellations);
+      setPendingRetail(pendingRetailFrom(offers, new Set(all.map(p => p.listingId))));
       setPurchases(all.map(item => ({ ...item, status: item.retailSold ? 'SOLD' as const : item.status })));
     } catch {
       setFetchError(true);
@@ -245,7 +275,7 @@ export const DealerPurchasesScreen: React.FC = () => {
   );
 
   const narrowed = query.trim() !== '' || statusFilter !== 'ALL';
-  const renderEmptyState = () => (shownCancelled.length > 0 ? null : (
+  const renderEmptyState = () => (shownCancelled.length > 0 || shownPendingRetail.length > 0 ? null : (
     <View style={styles.emptyState}>
       <EmptyState
         icon="receipt-outline"
@@ -299,6 +329,43 @@ export const DealerPurchasesScreen: React.FC = () => {
       )}
     </View>
   );
+
+  const shownPendingRetail = isHistory || statusFilter !== 'ALL' ? [] : pendingRetail.filter(o =>
+    matchesSearch([o.listing?.title, o.id], query));
+  const renderPendingRetail = () => (shownPendingRetail.length === 0 ? null : (
+    <View style={styles.pendingSection}>
+      <Text style={styles.totalLabel}>SALE PENDING ({shownPendingRetail.length})</Text>
+      <Text style={styles.pendingHint}>
+        The seller accepted your offer and the car is reserved for you. Once you have paid, either you or the seller can complete the sale.
+      </Text>
+      {shownPendingRetail.map(o => (
+        <View key={o.id} style={styles.purchaseCard}>
+          <View style={styles.cardTopRow}>
+            {o.listing?.images?.[0] ? (
+              <Image source={{ uri: o.listing.images[0] }} style={styles.thumb} contentFit="cover" cachePolicy="memory-disk" />
+            ) : (
+              <View style={[styles.thumb, styles.thumbPlaceholder]}>
+                <Ionicons name="car-outline" size={20} color={Colors.textMuted} />
+              </View>
+            )}
+            <View style={styles.cardCenter}>
+              <Text style={styles.vehicleTitle} numberOfLines={1}>{o.listing?.title || 'Retail vehicle'}</Text>
+              <Text style={styles.purchaseDate}>Accepted {formatDate(o.updatedAt)}</Text>
+            </View>
+            <Text style={styles.purchasePrice}>{formatPrice(Number(o.finalAmount ?? o.counterAmount ?? o.amount))}</Text>
+          </View>
+          <View style={[styles.statusChip, { backgroundColor: Colors.warningAlpha12, borderColor: Colors.warningAlpha25 }]}>
+            <Ionicons name="time-outline" size={13} color={Colors.warning} />
+            <Text style={[styles.statusChipText, { color: Colors.warning }]}>Sale Pending</Text>
+          </View>
+          <TouchableOpacity style={styles.pendingLink} onPress={() => navigation.navigate('DealerMyOffers')} accessibilityRole="button">
+            <Text style={styles.pendingLinkText}>View accepted offer and contact seller</Text>
+          </TouchableOpacity>
+          <CompletePurchaseButton listingId={o.listingId} onCompleted={() => void fetchData(true)} />
+        </View>
+      ))}
+    </View>
+  ));
 
   const renderCancelled = () => (shownCancelled.length === 0 ? null : (
     <View style={styles.cancelledSection}>
@@ -431,8 +498,9 @@ export const DealerPurchasesScreen: React.FC = () => {
           renderItem={renderPurchaseCard}
           ListHeaderComponent={
             <>
+              {renderPendingRetail()}
               {(purchases.length > 0 || isRetail) && renderFilters()}
-              {isRetail && (
+              {isRetail && shownPendingRetail.length === 0 && (
                 <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('DealerMyOffers')}
                   style={[styles.purchaseCard, { marginBottom: 12 }]}
                 >
@@ -545,6 +613,10 @@ const styles = StyleSheet.create({
   statusPillText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.textMuted },
   statusPillTextActive: { color: Colors.white },
   cancelledSection: { gap: 10, marginTop: 14 },
+  pendingSection: { gap: 10, marginBottom: 12 },
+  pendingHint: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, lineHeight: 19, color: Colors.textMuted },
+  pendingLink: { minHeight: 44, justifyContent: 'center', marginTop: 4 },
+  pendingLinkText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent },
 
   // ── Scroll ──
   scroll: { flex: 1 },

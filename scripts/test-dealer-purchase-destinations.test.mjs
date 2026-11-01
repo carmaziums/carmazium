@@ -81,7 +81,7 @@ test("Retail Purchases includes pending retail deals and recorded retail sales, 
     const source = read("src/components/dealer/DealerPurchasesView.tsx")
     assert.match(source, /if \(isRetail && !isRetailPurchase\(p\)\) return false/)
     assert.match(source, /isHistory \|\| \(statusFilter !== "all" && statusFilter !== "pending_retail"\)/)
-    assert.match(source, /<PendingRetailPurchaseRow key=\{offer\.id\} offer=\{offer\} \/>/)
+    assert.match(source, /<PendingRetailPurchaseRow key=\{offer\.id\} offer=\{offer\} onCompleted=/)
     assert.match(read("backend/src/dealers/dealers.service.ts"), /purchaseChannel: isAuctionPurchase \? 'AUCTION' : 'RETAIL'/)
     assert.match(read("src/app/dashboard/dealer/layout.tsx"), /\["\/dashboard\/dealer\/purchases", "VIEW_PURCHASES"\]/)
 })
