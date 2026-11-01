@@ -52,7 +52,8 @@ export default function ProviderVerificationPage() {
             setDetail(verification)
             setEvidenceType(current => {
                 if (current && verification.verification.requirements.some(r => r.type === current)) return current
-                const next = verification.verification.requirements.find(r => r.state !== "SATISFIED")
+                const next = verification.verification.requirements.find(r => !r.optional && r.state !== "SATISFIED")
+                    ?? verification.verification.requirements.find(r => !r.optional)
                     ?? verification.verification.requirements[0]
                 return next?.type ?? ""
             })
@@ -132,8 +133,8 @@ export default function ProviderVerificationPage() {
                 </section>
 
                 <section className="space-y-3">
-                    <div><h2 className="font-heading font-bold text-lg">Required evidence</h2><p className="text-xs text-[var(--text-muted)] mt-1">Every item must have current admin-approved evidence.</p></div>
-                    {detail.verification.requirements.map(req => <div key={req.type} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
+                    <div><h2 className="font-heading font-bold text-lg">Required evidence</h2><p className="text-xs text-[var(--text-muted)] mt-1">Only the items below must be approved before CarMazium can verify your application.</p></div>
+                    {detail.verification.requirements.filter(req => !req.optional).map(req => <div key={req.type} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                         <div className="flex items-start justify-between gap-4">
                             <div className="flex gap-3">
                                 {req.state === "SATISFIED" ? <CheckCircle size={20} className="text-emerald-500 shrink-0 mt-0.5"/> : req.state === "REJECTED" ? <XCircle size={20} className="text-red-500 shrink-0 mt-0.5"/> : <ShieldCheck size={20} className="text-amber-500 shrink-0 mt-0.5"/>}
@@ -144,13 +145,18 @@ export default function ProviderVerificationPage() {
                     </div>)}
                 </section>
 
+                {detail.verification.requirements.some(req => req.optional) && <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 space-y-2">
+                    <h2 className="font-heading font-bold">Optional experience or qualification evidence</h2>
+                    <p className="text-xs text-[var(--text-muted)] leading-relaxed">Formal certificates are not required to join as a Vehicle Inspection provider. Experienced businesses and providers using third-party mechanics may apply. You may upload references, sample reports or certificates if available; none are required for onboarding. Your business remains responsible for competent inspections and appropriate insurance, including subcontracted work.</p>
+                </section>}
+
                 <section className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
-                    <div className="flex gap-3"><ShieldCheck size={20} className="text-amber-500 shrink-0 mt-0.5"/><div><h2 className="font-bold">Business evidence only</h2><p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">Upload business, insurance, qualification or regulatory evidence for this service. Do not upload passports, driving licences, personal bank statements or unrelated identity documents.</p></div></div>
+                    <div className="flex gap-3"><ShieldCheck size={20} className="text-amber-500 shrink-0 mt-0.5"/><div><h2 className="font-bold">Business evidence only</h2><p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">Upload business, insurance or regulatory evidence for this service. Optional inspection experience or qualifications can also be provided. Do not upload passports, driving licences, personal bank statements or unrelated identity documents.</p></div></div>
                 </section>
 
                 <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 space-y-5">
                     <div><h2 className="font-heading font-bold text-lg">Upload evidence</h2><p className="text-xs text-[var(--text-muted)] mt-1">PDF, JPG, PNG or WEBP, maximum 10 MB each. Reviewed evidence is retained for audit.</p></div>
-                    <div><label className={labelCls}>Requirement</label><select className={inputCls} value={evidenceType} onChange={e => setEvidenceType(e.target.value as CapabilityEvidenceType)}>{detail.verification.requirements.map(req => <option key={req.type} value={req.type}>{req.title}</option>)}</select></div>
+                    <div><label className={labelCls}>Requirement</label><select className={inputCls} value={evidenceType} onChange={e => setEvidenceType(e.target.value as CapabilityEvidenceType)}>{detail.verification.requirements.map(req => <option key={req.type} value={req.type}>{req.title}{req.optional ? " — optional" : ""}</option>)}</select></div>
                     <div className="grid sm:grid-cols-2 gap-4">
                         <div><label className={labelCls}>Issuer / organisation</label><input className={inputCls} value={issuer} onChange={e => setIssuer(e.target.value)} placeholder="Insurer, FCA principal, awarding body..."/></div>
                         <div><label className={labelCls}>Policy / FRN / certificate reference</label><input className={inputCls} value={reference} onChange={e => setReference(e.target.value)} placeholder="Reference number"/></div>
