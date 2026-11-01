@@ -45,9 +45,9 @@ describe('ServicesLifecycleService TradeXchange unpaid acceptance timeout', () =
         prisma = {
             servicePayment: {
                 findMany: jest.fn(),
-                delete: jest.fn().mockResolvedValue({}),
+                deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
             },
-            serviceJob: { update: jest.fn().mockResolvedValue({}) },
+            serviceJob: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
             serviceQuote: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
             contractorProfile: {
                 findUnique: jest.fn().mockResolvedValue({ userId: 'provider-user' }),
@@ -56,7 +56,7 @@ describe('ServicesLifecycleService TradeXchange unpaid acceptance timeout', () =
                 findMany: jest.fn().mockResolvedValue([]),
                 updateMany: jest.fn().mockResolvedValue({ count: 1 }),
             },
-            $transaction: jest.fn().mockImplementation(async (ops: Promise<unknown>[]) => Promise.all(ops)),
+            $transaction: jest.fn().mockImplementation(async (fn: (tx: any) => Promise<unknown>) => fn(prisma)),
         };
         lifecycle = new ServicesLifecycleService(services, prisma, payments, notifications);
     });
@@ -74,8 +74,16 @@ describe('ServicesLifecycleService TradeXchange unpaid acceptance timeout', () =
 
         expect(reopened).toBe(1);
         expect(stripe.checkout.sessions.expire).toHaveBeenCalledWith('cs_1');
-        expect(prisma.serviceJob.update).toHaveBeenCalledWith(expect.objectContaining({
-            where: { id: 'job-1' },
+        expect(prisma.serviceJob.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+            where: expect.objectContaining({
+                id: 'job-1',
+                status: ServiceJobStatus.ACCEPTED,
+                payment: { is: expect.objectContaining({
+                    id: 'payment-1',
+                    status: ServicePaymentStatus.PENDING,
+                    stripeCheckoutSessionId: 'cs_1',
+                }) },
+            }),
             data: expect.objectContaining({
                 status: ServiceJobStatus.OPEN,
                 acceptedQuoteId: null,
@@ -84,7 +92,9 @@ describe('ServicesLifecycleService TradeXchange unpaid acceptance timeout', () =
             }),
         }));
         expect(prisma.serviceQuote.updateMany).toHaveBeenCalledTimes(2);
-        expect(prisma.servicePayment.delete).toHaveBeenCalledWith({ where: { id: 'payment-1' } });
+        expect(prisma.servicePayment.deleteMany).toHaveBeenCalledWith({
+            where: { id: 'payment-1', status: ServicePaymentStatus.PENDING, stripeCheckoutSessionId: 'cs_1' },
+        });
         expect(notifications.create).toHaveBeenCalledTimes(2);
     });
 
@@ -103,7 +113,7 @@ describe('ServicesLifecycleService TradeXchange unpaid acceptance timeout', () =
         expect(services.markPaid).toHaveBeenCalledWith('job-1', 'payment-1', 'pi_1');
         expect(stripe.checkout.sessions.expire).not.toHaveBeenCalled();
         expect(prisma.$transaction).not.toHaveBeenCalled();
-        expect(prisma.servicePayment.delete).not.toHaveBeenCalled();
+        expect(prisma.servicePayment.deleteMany).not.toHaveBeenCalled();
     });
 
     it('leaves the job locked when Stripe state cannot be confirmed', async () => {
@@ -114,9 +124,71 @@ describe('ServicesLifecycleService TradeXchange unpaid acceptance timeout', () =
 
         expect(reopened).toBe(0);
         expect(prisma.$transaction).not.toHaveBeenCalled();
-        expect(prisma.servicePayment.delete).not.toHaveBeenCalled();
+        expect(prisma.servicePayment.deleteMany).not.toHaveBeenCalled();
     });
 
+
+
+    it('does not reopen a completed Checkout whose payment is still processing', async () => {
+        prisma.servicePayment.findMany.mockResolvedValue([candidate()]);
+        stripe.checkout.sessions.retrieve.mockResolvedValue({
+            status: 'complete', payment_status: 'unpaid', payment_intent: 'pi_processing',
+        });
+
+        expect(await lifecycle.expireUnpaidAcceptedJobs()).toBe(0);
+        expect(services.markPaid).not.toHaveBeenCalled();
+        expect(stripe.checkout.sessions.expire).not.toHaveBeenCalled();
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('does not reopen a pending payment while Checkout session creation is still unrecorded', async () => {
+        prisma.servicePayment.findMany.mockResolvedValue([{ ...candidate(), stripeCheckoutSessionId: null }]);
+
+        expect(await lifecycle.expireUnpaidAcceptedJobs()).toBe(0);
+        expect(stripe.checkout.sessions.retrieve).not.toHaveBeenCalled();
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('refuses reopening when Stripe has not confirmed the session actually expired', async () => {
+        prisma.servicePayment.findMany.mockResolvedValue([candidate()]);
+        stripe.checkout.sessions.retrieve.mockResolvedValue({ status: 'open' });
+        stripe.checkout.sessions.expire.mockResolvedValue({ status: 'open' });
+
+        expect(await lifecycle.expireUnpaidAcceptedJobs()).toBe(0);
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('keeps the accepted job when the webhook paid it before the conditional reopen', async () => {
+        prisma.servicePayment.findMany.mockResolvedValue([candidate()]);
+        stripe.checkout.sessions.retrieve.mockResolvedValue({ status: 'expired' });
+        prisma.serviceJob.updateMany.mockResolvedValue({ count: 0 });
+
+        expect(await lifecycle.expireUnpaidAcceptedJobs()).toBe(0);
+        expect(prisma.servicePayment.deleteMany).not.toHaveBeenCalled();
+        expect(prisma.serviceQuote.updateMany).not.toHaveBeenCalled();
+        expect(notifications.create).not.toHaveBeenCalled();
+    });
+
+    it('rolls back the job and quotes if the payment becomes PAID before conditional deletion', async () => {
+        prisma.servicePayment.findMany.mockResolvedValue([candidate()]);
+        stripe.checkout.sessions.retrieve.mockResolvedValue({ status: 'expired' });
+        prisma.servicePayment.deleteMany.mockResolvedValue({ count: 0 });
+
+        expect(await lifecycle.expireUnpaidAcceptedJobs()).toBe(0);
+        expect(prisma.serviceJob.updateMany).toHaveBeenCalled();
+        expect(prisma.servicePayment.deleteMany).toHaveBeenCalledWith(expect.objectContaining({
+            where: expect.objectContaining({ status: ServicePaymentStatus.PENDING }),
+        }));
+        expect(notifications.create).not.toHaveBeenCalled();
+    });
+
+    it('does not reopen unknown Stripe states', async () => {
+        prisma.servicePayment.findMany.mockResolvedValue([candidate()]);
+        stripe.checkout.sessions.retrieve.mockResolvedValue({ status: 'processing', payment_status: 'unpaid' });
+
+        expect(await lifecycle.expireUnpaidAcceptedJobs()).toBe(0);
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
 
     it('returns an expired verified provider to pending re-verification and notifies once', async () => {
         prisma.contractorCapability.findMany.mockResolvedValue([{
