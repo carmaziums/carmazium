@@ -45,3 +45,40 @@ export function canPrepareSupportDraft(input: {
         && !input.alreadyRepliedToLatestMessage
         && input.consentToAi;
 }
+
+/**
+ * Gate for unattended delivery. A draft being available is not authorisation
+ * to send: every condition must be rechecked against fresh database state
+ * immediately before the atomic delivery operation.
+ */
+export function canAutoReplyToSupport(input: {
+    enabled: boolean;
+    context: string;
+    roomClosed: boolean;
+    roomDeleted: boolean;
+    aiDisclosedAndConsented: boolean;
+    optedOut: boolean;
+    humanTakeover: boolean;
+    latestMessageFromCustomer: boolean;
+    latestMessageHasAttachment: boolean;
+    latestMessageIdMatches: boolean;
+    alreadyProcessed: boolean;
+    withinRateAndBudgetLimits: boolean;
+    incomingMessage: string;
+    proposedReply: string;
+}): boolean {
+    return input.enabled
+        && input.context === 'SUPPORT'
+        && !input.roomClosed
+        && !input.roomDeleted
+        && input.aiDisclosedAndConsented
+        && !input.optedOut
+        && !input.humanTakeover
+        && input.latestMessageFromCustomer
+        && !input.latestMessageHasAttachment
+        && input.latestMessageIdMatches
+        && !input.alreadyProcessed
+        && input.withinRateAndBudgetLimits
+        && classifySupportMessage(input.incomingMessage).action === 'DRAFT'
+        && classifySupportMessage(input.proposedReply).action === 'DRAFT';
+}
