@@ -188,8 +188,11 @@ export const DealerPurchasesScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteProp<MainStackParamList, 'DealerPurchases'>>();
-  const isHistory = route.params?.view === 'history';
-  const isRetail = route.params?.view === 'retail';
+  const stage: PurchaseDestination = route.params?.stage ?? (route.params?.view === 'history' ? 'completed' : 'progress');
+  const channel = route.params?.channel ?? (route.params?.view === 'retail' ? 'retail' : 'all');
+  const isHistory = stage === 'completed';
+  const isCancelled = stage === 'cancelled';
+  const isRetail = channel === 'retail';
   const userId = useAuthStore((s) => s.user?.id);
   // Staff act for the dealership owner, whose id is on every Sale.
   const { access } = useDealerAccess();
@@ -206,21 +209,22 @@ export const DealerPurchasesScreen: React.FC = () => {
 
   // Switching destination resets the filter so a stage hidden in this view
   // can't leave the list looking empty.
-  useEffect(() => { setStatusFilter('ALL'); }, [isHistory, isRetail]);
+  useEffect(() => { setStatusFilter('ALL'); }, [stage, channel]);
 
   const visible = useMemo(() => purchases.filter(p => {
     if (isRetail && !(p.purchaseChannel === 'RETAIL' || (!p.purchaseChannel && p.retailSold))) return false;
-    if (isHistory && !HISTORY_STATUSES.includes(p.status)) return false;
+    if (channel === 'auction' && (p.purchaseChannel === 'RETAIL' || (!p.purchaseChannel && p.retailSold))) return false;
+    if (isCancelled || (isHistory !== HISTORY_STATUSES.includes(p.status))) return false;
     if (statusFilter !== 'ALL' && p.status !== statusFilter) return false;
     return matchesSearch([p.vehicleTitle, p.vehicleSubtitle, p.sellerName, p.id], query);
-  }), [purchases, isHistory, isRetail, statusFilter, query]);
+  }), [purchases, isHistory, isRetail, isCancelled, channel, statusFilter, query]);
   // Same rule as web buyerCancelledSales: the server's viewer.isBuyer is
   // authoritative; otherwise compare with the dealership owner id.
-  const shownCancelled = useMemo(() => (isHistory ? cancelled : [])
+  const shownCancelled = useMemo(() => (isCancelled ? cancelled : [])
     .filter(c => c.status === 'APPROVED' && (typeof c.viewer?.isBuyer === 'boolean'
       ? c.viewer.isBuyer
       : !!dealershipBuyerId && c.buyerId === dealershipBuyerId))
-    .filter(c => matchesSearch([c.listing?.title, c.listing?.vrm, c.id], query)), [cancelled, isHistory, query, dealershipBuyerId]);
+    .filter(c => matchesSearch([c.listing?.title, c.listing?.vrm, c.id], query)), [cancelled, isCancelled, query, dealershipBuyerId]);
   const statusChoices = STATUS_FILTER_ORDER.filter(s =>
     (!isHistory || HISTORY_STATUSES.includes(s)) && (s === statusFilter || purchases.some(p =>
       (!isRetail || p.purchaseChannel === 'RETAIL' || (!p.purchaseChannel && p.retailSold)) && p.status === s)));
@@ -228,8 +232,7 @@ export const DealerPurchasesScreen: React.FC = () => {
   const totalSpent = visible.reduce((sum, p) => sum + p.purchasePrice, 0);
 
   const selectDestination = useCallback((destination: PurchaseDestination) => {
-    if (destination === 'wins') navigation.navigate('SellerAuctions', { initialTab: 'WON' });
-    else navigation.setParams({ view: destination === 'history' ? 'history' : destination === 'retail' ? 'retail' : 'all' });
+    navigation.setParams({ stage: destination, view: undefined });
   }, [navigation]);
 
   const fetchData = useCallback(async (isRefresh = false) => {
@@ -241,11 +244,9 @@ export const DealerPurchasesScreen: React.FC = () => {
         loadAllPurchasePages(),
         // An approved cancellation deletes the Sale, so the request is the
         // only remaining record. Only buyer-side, approved ones are history.
-        isHistory
-          ? getMySaleCancellations('purchase-history').catch(() => [] as SaleCancellationRequest[])
-          : Promise.resolve([] as SaleCancellationRequest[]),
+        getMySaleCancellations('purchase-history').catch(() => [] as SaleCancellationRequest[]),
         // Agreed retail deals (Sale Pending) belong to All Purchases only.
-        isHistory
+        stage !== 'progress' || channel === 'auction'
           ? Promise.resolve([] as PendingRetailOffer[])
           : apiClient<{ data: PendingRetailOffer[] }>('/offers/my').then(r => r?.data ?? []).catch(() => [] as PendingRetailOffer[]),
       ]);
@@ -258,7 +259,7 @@ export const DealerPurchasesScreen: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isHistory]);
+  }, [stage, channel]);
 
   useEffect(() => {
     fetchData();
@@ -279,14 +280,11 @@ export const DealerPurchasesScreen: React.FC = () => {
     <View style={styles.emptyState}>
       <EmptyState
         icon="receipt-outline"
-        title={narrowed ? 'No purchases match' : isHistory ? 'No completed purchases yet' : isRetail ? 'No retail purchases yet' : 'No purchases yet'}
-        subtitle={narrowed
-          ? 'Try a different search or status.'
-          : isHistory
-            ? 'Purchased, Checks Complete and Delivery Requested purchases, plus cancelled sales, are kept here. Earlier stages are under All Purchases.'
-            : isRetail
-              ? 'Accepted retail offers can be viewed under My Offers. Recorded retail purchases appear here at every stage.'
-              : 'Vehicles your dealership buys will show up here with their delivery status'}
+        title={narrowed ? 'No purchases match' : isCancelled ? 'No cancelled purchases' : isHistory ? 'No completed purchases yet' : 'No purchases yet'}
+        subtitle={narrowed ? 'Try a different search or type.' :
+          isCancelled ? 'Cancelled purchase records will appear here.' :
+          isHistory ? 'Purchased, checks complete and delivery requested appear here.' :
+          'Browse live auctions to find your next vehicle.'}
       />
     </View>
   ));
@@ -306,31 +304,22 @@ export const DealerPurchasesScreen: React.FC = () => {
           autoCorrect={false}
         />
       </View>
-      {statusChoices.length > 0 && (
-        // Wraps onto a second line instead of scrolling off-screen.
-        <View style={styles.statusWrap} accessibilityLabel="Status">
-          {(['ALL', ...statusChoices] as ('ALL' | PurchaseStatus)[]).map(s => {
-            const selected = statusFilter === s;
-            return (
-              <TouchableOpacity
-                key={s}
-                style={[styles.statusPill, selected && styles.statusPillActive]}
-                onPress={() => setStatusFilter(s)}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-              >
-                <Text style={[styles.statusPillText, selected && styles.statusPillTextActive]}>
-                  {s === 'ALL' ? (isHistory ? 'All completed' : 'All statuses') : STATUS_CONFIG[s].label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
+      <View style={styles.statusWrap} accessibilityLabel="Purchase type">
+        {(['all', 'auction', 'retail'] as const).map(value => (
+          <TouchableOpacity key={value}
+            accessibilityRole="button" accessibilityState={{ selected: channel === value }}
+            style={[styles.statusPill, channel === value && styles.statusPillActive]}
+            onPress={() => navigation.setParams({ channel: value, view: undefined })}>
+            <Text style={[styles.statusPillText, channel === value && styles.statusPillTextActive]}>
+              {value === 'all' ? 'All' : value === 'auction' ? 'Auction' : 'Retail'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
     </View>
   );
 
-  const shownPendingRetail = isHistory || statusFilter !== 'ALL' ? [] : pendingRetail.filter(o =>
+  const shownPendingRetail = stage !== 'progress' || channel === 'auction' || statusFilter !== 'ALL' ? [] : pendingRetail.filter(o =>
     matchesSearch([o.listing?.title, o.id], query));
   const renderPendingRetail = () => (shownPendingRetail.length === 0 ? null : (
     <View style={styles.pendingSection}>
@@ -462,7 +451,7 @@ export const DealerPurchasesScreen: React.FC = () => {
       <View style={styles.header}>
         <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>{isHistory ? 'Purchase History' : isRetail ? 'Retail Purchases' : 'All Purchases'}</Text>
+        <Text style={styles.headerTitle}>Purchases</Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           {purchases.length > 0 && (
@@ -476,7 +465,15 @@ export const DealerPurchasesScreen: React.FC = () => {
         </View>
       </View>
 
-      <PurchaseDestinations active={isHistory ? 'history' : isRetail ? 'retail' : 'all'} onSelect={selectDestination} />
+      <PurchaseDestinations active={stage} onSelect={selectDestination} />
+      {isHistory && <Text style={styles.purchaseDate}>Delivery Requested counts as completed; delivery may still be on its way.</Text>}
+      {channel !== 'retail' && stage !== 'cancelled' && (
+        <TouchableOpacity accessibilityRole="button" style={[styles.purchaseCard, { marginHorizontal: 16, marginBottom: 10 }]}
+          onPress={() => navigation.navigate('SellerAuctions', { initialTab: 'WON' })}>
+          <Text style={styles.vehicleTitle}>Auction wins, fees & handovers</Text>
+          <Text style={styles.purchaseDate}>Pay the £125 fee and check handover steps.</Text>
+        </TouchableOpacity>
+      )}
 
       {/* ── Content ── */}
       {fetchError ? (
@@ -499,8 +496,8 @@ export const DealerPurchasesScreen: React.FC = () => {
           ListHeaderComponent={
             <>
               {renderPendingRetail()}
-              {(purchases.length > 0 || isRetail) && renderFilters()}
-              {isRetail && shownPendingRetail.length === 0 && (
+              {renderFilters()}
+              {stage === 'progress' && isRetail && shownPendingRetail.length === 0 && (
                 <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('DealerMyOffers')}
                   style={[styles.purchaseCard, { marginBottom: 12 }]}
                 >
