@@ -9,6 +9,7 @@ import { ChatAttachmentService } from './chat-attachment.service';
 import { TradeTeamService } from '../services/trade-team.service';
 import { DealersService } from '../dealers/dealers.service';
 import { ChatContentSafetyService } from './chat-content-safety.service';
+import { requestsHumanSupport } from './mazium-support-policy';
 
 /**
  * Chat service handling all chat room and message operations
@@ -2141,6 +2142,222 @@ export class ChatService {
     }
 
     /**
+     * Customer-controlled AI consent for the official support chat only.
+     * Revocation is immediate and also marks the conversation as opted out.
+     * This never enables AI delivery by itself.
+     */
+    async setSupportAiConsent(roomId: string, userId: string, consent: boolean) {
+        const room = await this.prisma.chatRoom.findUnique({
+            where: { id: roomId },
+            include: { initiator: { select: { role: true } }, participant: { select: { role: true } } },
+        });
+        if (!room || room.deletedAt || room.supportClosedAt || room.context !== ChatContext.SUPPORT) {
+            throw new NotFoundException('Open support conversation not found');
+        }
+        const customerId = room.initiator.role === UserRole.ADMIN && room.participant.role !== UserRole.ADMIN
+            ? room.participantId
+            : room.participant.role === UserRole.ADMIN && room.initiator.role !== UserRole.ADMIN
+                ? room.initiatorId : null;
+        if (!customerId || customerId !== userId) {
+            throw new ForbiddenException('Only the support customer can change AI consent');
+        }
+        const now = new Date();
+        const result = await this.prisma.chatRoom.updateMany({
+            where: {
+                id: roomId,
+                context: ChatContext.SUPPORT,
+                deletedAt: null,
+                supportClosedAt: null,
+                ...(consent ? { supportHumanTakeoverAt: null } : {}),
+            },
+            data: consent
+                ? { supportAiConsentAt: now, supportAiOptedOutAt: null }
+                : { supportAiConsentAt: null, supportAiOptedOutAt: now },
+        });
+        if (result.count !== 1) {
+            if (consent) throw new BadRequestException('A human agent has taken over this conversation. AI assistance cannot be re-enabled here.');
+            throw new NotFoundException('Open support conversation not found');
+        }
+        return { consentToAi: consent, humanTakeoverActive: Boolean(room.supportHumanTakeoverAt) };
+    }
+
+    /**
+     * Backend-only final gate for a pending MaziuM response. This performs no
+     * writes and grants no permission to send: the delivery transaction must
+     * repeat these checks under a room-level lock before inserting a message.
+     */
+    async inspectSupportAutoReply(roomId: string, sourceMessageId: string) {
+        const room = await this.prisma.chatRoom.findUnique({
+            where: { id: roomId },
+            include: {
+                initiator: { select: { role: true } },
+                participant: { select: { role: true } },
+            },
+        });
+        if (!room || room.context !== ChatContext.SUPPORT || room.deletedAt || room.supportClosedAt) {
+            return { eligible: false, reason: 'NOT_OPEN_SUPPORT' } as const;
+        }
+        if (!room.supportAiConsentAt || room.supportAiOptedOutAt || room.supportHumanTakeoverAt) {
+            return { eligible: false, reason: 'NO_ACTIVE_CONSENT' } as const;
+        }
+        const supportId = room.initiator.role === UserRole.ADMIN && room.participant.role !== UserRole.ADMIN
+            ? room.initiatorId
+            : room.participant.role === UserRole.ADMIN && room.initiator.role !== UserRole.ADMIN
+                ? room.participantId : null;
+        const customerId = supportId === room.initiatorId ? room.participantId : room.initiatorId;
+        if (!supportId || !customerId || supportId === customerId) {
+            return { eligible: false, reason: 'INVALID_SUPPORT_PARTICIPANTS' } as const;
+        }
+        const latest = await this.prisma.message.findFirst({
+            where: { chatRoomId: roomId, deletedAt: null },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        });
+        if (!latest || latest.id !== sourceMessageId || latest.senderId !== customerId
+            || latest.aiGenerated || latest.attachmentPath || !latest.content?.trim()) {
+            return { eligible: false, reason: 'NOT_LATEST_CUSTOMER_TEXT' } as const;
+        }
+        const existing = await this.prisma.message.findFirst({
+            where: { aiSourceMessageId: sourceMessageId },
+            select: { id: true },
+        });
+        if (existing) return { eligible: false, reason: 'ALREADY_REPLIED' } as const;
+        return { eligible: true, reason: 'READY', customerId, supportId, content: latest.content } as const;
+    }
+
+    /**
+     * Server-only MaziuM message persistence. Caller must supply a separately
+     * provisioned bot user ID, never the official human support account.
+     * The room row lock serialises concurrent AI attempts. A later human
+     * message or customer opt-out makes the final recheck fail closed.
+     */
+    async persistSupportAutoReply(
+        roomId: string,
+        sourceMessageId: string,
+        botUserId: string,
+        reply: string,
+    ) {
+        // A caller-supplied user ID must never be enough to impersonate a
+        // customer or staff account. The bot is explicitly configured by ops.
+        if (process.env.MAZIUM_SUPPORT_AUTO_REPLY_ENABLED !== 'true'
+            || !process.env.MAZIUM_SUPPORT_BOT_USER_ID
+            || botUserId !== process.env.MAZIUM_SUPPORT_BOT_USER_ID) {
+            throw new ForbiddenException('MaziuM automatic support replies are disabled or bot identity is invalid');
+        }
+        if (!botUserId || !reply.trim() || reply.length > 1200) {
+            throw new BadRequestException('Invalid MaziuM reply');
+        }
+        const { classifySupportMessage, supportAutoReplyClientMessageId } =
+            await import('./mazium-support-policy');
+        if (classifySupportMessage(reply).action !== 'DRAFT') {
+            throw new BadRequestException('MaziuM reply requires human review');
+        }
+        const outcome = await this.prisma.$transaction(async (tx) => {
+            // A write lock on the room serialises AI retries and room state checks.
+            await tx.$queryRaw`SELECT id FROM "chat_rooms" WHERE id = ${roomId} FOR UPDATE`;
+            const room = await tx.chatRoom.findUnique({
+                where: { id: roomId },
+                include: {
+                    initiator: { select: { role: true } },
+                    participant: { select: { role: true } },
+                },
+            });
+            if (!room || room.context !== ChatContext.SUPPORT || room.deletedAt || room.supportClosedAt
+                || !room.supportAiConsentAt || room.supportAiOptedOutAt || room.supportHumanTakeoverAt) {
+                return { created: false, reason: 'SUPPORT_NOT_ELIGIBLE' } as const;
+            }
+            const adminId = room.initiator.role === UserRole.ADMIN && room.participant.role !== UserRole.ADMIN
+                ? room.initiatorId
+                : room.participant.role === UserRole.ADMIN && room.initiator.role !== UserRole.ADMIN
+                    ? room.participantId : null;
+            if (!adminId || botUserId === adminId || botUserId === room.initiatorId || botUserId === room.participantId) {
+                return { created: false, reason: 'INVALID_BOT_IDENTITY' } as const;
+            }
+            const bot = await tx.user.findUnique({
+                where: { id: botUserId },
+                select: { id: true, role: true, deletedAt: true, lockoutUntil: true },
+            });
+            // Only a permanently locked, non-admin system identity may
+            // author autonomous support messages.
+            if (!bot || bot.role === UserRole.ADMIN || bot.deletedAt
+                || !bot.lockoutUntil || bot.lockoutUntil.getTime() <= Date.now()) {
+                return { created: false, reason: 'INVALID_BOT_IDENTITY' } as const;
+            }
+            const customerId = adminId === room.initiatorId ? room.participantId : room.initiatorId;
+            const latest = await tx.message.findFirst({
+                where: { chatRoomId: roomId, deletedAt: null },
+                orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            });
+            if (!latest || latest.id !== sourceMessageId || latest.senderId !== customerId
+                || latest.createdAt < room.supportAiConsentAt
+                || latest.aiGenerated || latest.attachmentPath
+                || classifySupportMessage(latest.content).action !== 'DRAFT') {
+                return { created: false, reason: 'SOURCE_CHANGED_OR_SENSITIVE' } as const;
+            }
+            const duplicate = await tx.message.findUnique({
+                where: { aiSourceMessageId: sourceMessageId },
+                select: { id: true },
+            });
+            if (duplicate) return { created: false, reason: 'ALREADY_REPLIED' } as const;
+            // Serialize the daily cap across different support rooms. A room
+            // lock alone does not prevent two rooms exceeding the quota.
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(186729, 1)`;
+            // Global daily cap and room cooldown are checked inside the
+            // transaction. The advisory lock serialises the global quota,
+            // but provider-side spending limits are still necessary.
+            const maxDaily = Math.min(100, Math.max(1,
+                Number(process.env.MAZIUM_SUPPORT_MAX_DAILY_REPLIES || 20) || 20));
+            const dayStart = new Date();
+            dayStart.setUTCHours(0, 0, 0, 0);
+            const sentToday = await tx.message.count({
+                where: { aiGenerated: true, createdAt: { gte: dayStart } },
+            });
+            if (sentToday >= maxDaily) {
+                return { created: false, reason: 'DAILY_LIMIT_REACHED' } as const;
+            }
+            const lastBotReply = await tx.message.findFirst({
+                where: { chatRoomId: roomId, aiGenerated: true },
+                orderBy: { createdAt: 'desc' },
+                select: { createdAt: true },
+            });
+            if (lastBotReply && Date.now() - lastBotReply.createdAt.getTime() < 60_000) {
+                return { created: false, reason: 'ROOM_COOLDOWN' } as const;
+            }
+            const message = await tx.message.create({
+                data: {
+                    chatRoomId: roomId,
+                    senderId: botUserId,
+                    clientMessageId: supportAutoReplyClientMessageId(sourceMessageId),
+                    aiGenerated: true,
+                    aiSourceMessageId: sourceMessageId,
+                    content: reply.trim(),
+                },
+                include: this.messageInclude,
+            });
+            await tx.chatRoom.update({ where: { id: roomId }, data: { updatedAt: new Date() } });
+            return { created: true, message, customerId } as const;
+        });
+        if (outcome.created) {
+            const customer = await this.prisma.user.findUnique({
+                where: { id: outcome.customerId }, select: { role: true },
+            });
+            if (customer) {
+                try {
+                    const text = outcome.message.content as string;
+                    await this.notifyMessageRecipients(
+                        [{ id: outcome.customerId, role: customer.role }], roomId,
+                        outcome.message.id, 'MaziuM AI support reply',
+                        text.substring(0, 50) + (text.length > 50 ? '...' : ''),
+                        { aiGenerated: true },
+                    );
+                } catch (error) {
+                    console.error('[MaziuM] Support reply saved but notification failed', error);
+                }
+            }
+        }
+        return outcome;
+    }
+
+    /**
      * Get paginated messages for a room
      */
     async getRoomMessages(
@@ -2365,6 +2582,9 @@ export class ChatService {
         dto: SendMessageDto,
     ): Promise<{ message: any; created: boolean }> {
         const room = await this.assertCanMessageRoom(roomId, senderId);
+        if (dto.clientMessageId?.startsWith('mazium-support-')) {
+            throw new BadRequestException('This message identifier is reserved for CarMazium system messages.');
+        }
         if (dto.content.startsWith(DISPUTE_EVENT_PREFIX)) {
             throw new BadRequestException('This message format is reserved for CarMazium dispute events.');
         }
@@ -2413,7 +2633,36 @@ export class ChatService {
             throw error;
         }
 
+        const supportSender = room.context === ChatContext.SUPPORT
+            ? await this.prisma.user.findUnique({
+                where: { id: senderId }, select: { role: true },
+            })
+            : null;
+        const supportSenderIsAdmin = supportSender?.role === UserRole.ADMIN;
+
+        // Explicit customer requests for a person or AI opt-out are persisted
+        // before any subsequent autonomous support processing can run.
+        if (room.context === ChatContext.SUPPORT
+            && !supportSenderIsAdmin
+            && requestsHumanSupport(dto.content)) {
+            await this.prisma.chatRoom.update({
+                where: { id: roomId },
+                data: { supportAiOptedOutAt: new Date(), supportHumanTakeoverAt: new Date() },
+            });
+        }
+
         const routing = await this.resolveMessageRouting(room, senderId);
+        // Any human staff response in an official support room takes precedence
+        // over pending AI work. Persist this before broadcasting the response.
+        // The AI delivery transaction must recheck this timestamp atomically.
+        if (room.context === ChatContext.SUPPORT) {
+            if (supportSenderIsAdmin) {
+                await this.prisma.chatRoom.update({
+                    where: { id: roomId },
+                    data: { supportHumanTakeoverAt: new Date() },
+                });
+            }
+        }
         await this.prisma.chatRoom.update({
             where: { id: roomId },
             data: {
@@ -2476,6 +2725,9 @@ export class ChatService {
         dto: SendChatAttachmentDto,
     ): Promise<{ message: any; created: boolean }> {
         const room = await this.assertCanMessageRoom(roomId, senderId);
+        if (dto.clientMessageId?.startsWith('mazium-support-')) {
+            throw new BadRequestException('This message identifier is reserved for CarMazium system messages.');
+        }
         this.chatAttachmentService.validateMetadata(dto.name, dto.mime, dto.size);
         this.chatAttachmentService.assertPathOwnership(dto.path, roomId, senderId);
 
@@ -2537,7 +2789,32 @@ export class ChatService {
             throw error;
         }
 
+        const supportSender = room.context === ChatContext.SUPPORT
+            ? await this.prisma.user.findUnique({
+                where: { id: senderId }, select: { role: true },
+            })
+            : null;
+        const supportSenderIsAdmin = supportSender?.role === UserRole.ADMIN;
+
+        // Photo captions can also contain explicit opt-out instructions.
+        if (room.context === ChatContext.SUPPORT
+            && !supportSenderIsAdmin
+            && requestsHumanSupport(content)) {
+            await this.prisma.chatRoom.update({
+                where: { id: roomId },
+                data: { supportAiOptedOutAt: new Date(), supportHumanTakeoverAt: new Date() },
+            });
+        }
+
         const routing = await this.resolveMessageRouting(room, senderId);
+        // A staff photo is also a human response; pending AI replies must
+        // not continue after this official support intervention.
+        if (room.context === ChatContext.SUPPORT && supportSenderIsAdmin) {
+            await this.prisma.chatRoom.update({
+                where: { id: roomId },
+                data: { supportHumanTakeoverAt: new Date() },
+            });
+        }
         await this.prisma.chatRoom.update({
             where: { id: roomId },
             data: {

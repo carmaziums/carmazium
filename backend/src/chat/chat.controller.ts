@@ -56,6 +56,19 @@ export class ChatController {
         return new StandardResponse(rooms);
     }
 
+    @Patch('rooms/:id/support-ai-consent')
+    @ApiOperation({ summary: 'Customer opts in or out of MaziuM assistance in an official support room' })
+    async setSupportAiConsent(
+        @Param('id') roomId: string,
+        @CurrentUser() user: any,
+        @Body() body: { consent?: boolean },
+    ) {
+        if (typeof body?.consent !== 'boolean') {
+            throw new BadRequestException('consent must be a boolean');
+        }
+        return new StandardResponse(await this.chatService.setSupportAiConsent(roomId, user.id, body.consent));
+    }
+
     @Get('rooms-page')
     @ApiOperation({ summary: 'Get my chat rooms with stable cursor pagination' })
     @ApiQuery({ name: 'limit', required: false, description: 'Page size, max 100' })

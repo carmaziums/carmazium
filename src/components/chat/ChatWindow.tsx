@@ -12,6 +12,7 @@ import { blockChatRoom, createChatAttachmentUpload, getChatMessages, sendChatAtt
 import { disputeEventLabel, parseChatMessageContent, parseDisputeEventContent } from "@/lib/chatMessageContent"
 import { resolveAdminDispute } from "@/lib/adminApi"
 import { supabase } from "@/lib/supabase"
+import { apiClient } from "@/lib/apiClient"
 
 interface ChatWindowProps {
     room: ChatRoom
@@ -43,6 +44,11 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const otherUserOnline = room.otherUser ? onlineUserIds.has(room.otherUser.id) : false
     const [messages, setMessages] = React.useState<ChatMessage[]>([])
     const [newMessage, setNewMessage] = React.useState("")
+    const [generatingSupportDraft, setGeneratingSupportDraft] = React.useState(false)
+    const [supportDraftNotice, setSupportDraftNotice] = React.useState<string | null>(null)
+    const [aiConsent, setAiConsent] = React.useState(Boolean(room.supportAiConsentAt && !room.supportAiOptedOutAt))
+    const [consentBusy, setConsentBusy] = React.useState(false)
+    const [consentError, setConsentError] = React.useState<string | null>(null)
     const [loading, setLoading] = React.useState(true)
     const [loadingOlder, setLoadingOlder] = React.useState(false)
     const [hasMore, setHasMore] = React.useState(false)
@@ -80,6 +86,29 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const isInitialLoad = React.useRef(true)
 
     const isDispute = room.context === 'DISPUTE'
+    const canDraftSupport = isAdminViewer && room.context === 'SUPPORT' && !room.supportClosedAt
+    React.useEffect(() => {
+        setAiConsent(Boolean(room.supportAiConsentAt && !room.supportAiOptedOutAt))
+        setConsentError(null)
+    }, [room.id, room.supportAiConsentAt, room.supportAiOptedOutAt])
+
+    const updateAiConsent = async (consent: boolean) => {
+        if (consentBusy) return
+        setConsentBusy(true)
+        setConsentError(null)
+        try {
+            await apiClient(`/chat/rooms/${encodeURIComponent(room.id)}/support-ai-consent`, {
+                method: 'PATCH',
+                body: JSON.stringify({ consent }),
+            })
+            setAiConsent(consent)
+            await refreshRooms()
+        } catch (error: any) {
+            setConsentError(error?.message || 'Could not save AI assistance preference.')
+        } finally {
+            setConsentBusy(false)
+        }
+    }
     const disputeResolved = resolvedLocally || room.disputeCase?.status === 'RESOLVED'
     const disputeAdminJoined = !!room.disputeCase?.joinedAdminId
 
@@ -482,10 +511,48 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         }
     }, [room.id, stopTyping])
 
+    const prepareSupportDraft = async () => {
+        if (!canDraftSupport || generatingSupportDraft) return
+        setGeneratingSupportDraft(true)
+        setSupportDraftNotice(null)
+        try {
+            const response = await apiClient<{ success: boolean; data: {
+                status: 'DRAFT' | 'HUMAN_REVIEW';
+                text?: string;
+                reason?: string;
+            } }>(`/ai/admin/support-draft/${encodeURIComponent(room.id)}`, {
+                method: 'POST',
+            })
+            if (response.data.status === 'DRAFT' && response.data.text) {
+                // Explicit human review: insert into composer, never auto-send.
+                setNewMessage(response.data.text)
+                setSupportDraftNotice('MaziuM draft added. Check facts and edit before sending.')
+                inputRef.current?.focus()
+            } else {
+                setSupportDraftNotice('Human review required. MaziuM did not prepare a reply.')
+            }
+        } catch (error: any) {
+            setSupportDraftNotice(error?.message || 'Could not prepare a support draft.')
+        } finally {
+            setGeneratingSupportDraft(false)
+        }
+    }
+
     const handleSend = async () => {
         if (!newMessage.trim() || sending) return
 
         const content = newMessage.trim()
+        setNewMessage("")
+        await sendText(content)
+    }
+
+    const requestHumanSupport = async () => {
+        if (sending) return
+        await sendText("I'd like to speak to a human support agent, please.")
+        await refreshRooms()
+    }
+
+    const sendText = async (content: string) => {
         stopLocalTyping()
         const clientMessageId = crypto.randomUUID()
         const tempId = `temp-${clientMessageId}`
@@ -978,6 +1045,11 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                                 : 'bg-[var(--bg-card)] text-[var(--text-primary)] rounded-bl-sm'
                                                 }`}
                                         >
+                                            {msg.aiGenerated && room.context === 'SUPPORT' && (
+                                                <p className="mb-1 text-[10px] font-bold" aria-label="AI-generated support message">
+                                                    MaziuM · AI-generated response
+                                                </p>
+                                            )}
                                             {!isOwn && isDispute && msg.sender && (
                                                 isSupportUser(msg.sender) ? (
                                                     <p className="mb-1 px-1 text-[10px] font-bold text-[var(--text-muted)]">
@@ -1146,6 +1218,41 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                             </button>
                         ))}
                     </div>
+                )}
+                {!isAdminViewer && room.context === 'SUPPORT' && !room.supportClosedAt && (
+                    <div className="shrink-0 mx-4 mt-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] p-3 text-xs">
+                        <p className="font-semibold">MaziuM AI support (optional)</p>
+                        <p className="mt-1 text-[var(--text-secondary)]">With your permission, AI may help answer routine questions. You can withdraw permission at any time. Our team handles sensitive issues.</p>
+                        <label className="mt-2 flex items-center gap-2">
+                            <input type="checkbox" checked={aiConsent} disabled={consentBusy || Boolean(room.supportHumanTakeoverAt)} onChange={(event) => void updateAiConsent(event.target.checked)} />
+                            <span>{aiConsent ? 'AI assistance permitted' : 'Allow AI assistance'}</span>
+                        </label>
+                        {!room.supportHumanTakeoverAt && (
+                            <button type="button" onClick={() => void requestHumanSupport()}
+                                disabled={sending}
+                                className="mt-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] disabled:opacity-50">
+                                Talk to a person instead
+                            </button>
+                        )}
+                        {room.supportHumanTakeoverAt && <p className="mt-1 text-[var(--text-secondary)]">A human support agent has taken over this conversation. AI assistance cannot be re-enabled here.</p>}
+                        {consentError && <p role="alert" className="mt-1 text-red-500">{consentError}</p>}
+                    </div>
+                )}
+                {canDraftSupport && (
+                    <div className="shrink-0 px-4 pt-2 flex flex-wrap items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => void prepareSupportDraft()}
+                            disabled={generatingSupportDraft || sending}
+                            className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] disabled:opacity-50"
+                        >
+                            {generatingSupportDraft ? 'Preparing MaziuM draft…' : 'Suggest MaziuM reply'}
+                        </button>
+                        <span className="text-xs text-[var(--text-muted)]">Admin review required; never sent automatically.</span>
+                    </div>
+                )}
+                {supportDraftNotice && canDraftSupport && (
+                    <div role="status" className="px-4 pt-2 text-xs text-[var(--text-muted)]">{supportDraftNotice}</div>
                 )}
                 {attachmentError && (
                     <div className="px-4 pt-3 text-xs text-red-400">{attachmentError}</div>

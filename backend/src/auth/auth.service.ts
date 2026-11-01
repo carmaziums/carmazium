@@ -26,6 +26,13 @@ const BCRYPT_ROUNDS = 12;
  */
 export const SESSION_USER_TTL_MS = 30_000;
 
+/** Bot identities can author system messages but cannot authenticate. */
+export function isNonInteractiveAccount(userId: string | null | undefined): boolean {
+    const botId = process.env.MAZIUM_SUPPORT_BOT_USER_ID?.trim();
+    return !!botId && !!userId && userId === botId;
+}
+
+
 /**
  * Drop fields that must never sit in the session store or an /auth response:
  * the password hash and the brute-force counters.
@@ -282,7 +289,7 @@ export class AuthService {
             },
         });
 
-        if (!user || user.deletedAt) {
+        if (!user || user.deletedAt || isNonInteractiveAccount(user.id)) {
             return null;
         }
 
@@ -398,6 +405,7 @@ export class AuthService {
         });
         // Unknown, banned or not-yet-verified users take the full remote path.
         if (!user || user.deletedAt || !user.isEmailVerified) return null;
+        if (isNonInteractiveAccount(user.id)) return null;
 
         const safeUser = stripSecrets(user);
         if (this.tokenUserCache.size >= 2000) {
@@ -592,6 +600,10 @@ export class AuthService {
                 return null;
             }
 
+            if (isNonInteractiveAccount(localUser.id)) {
+                this.logger.warn('Rejected system bot sign-in attempt');
+                return null;
+            }
             const safeUser = stripSecrets(localUser);
             return safeUser;
         } catch (err: any) {

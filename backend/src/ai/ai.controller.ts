@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, Param, Query, Req, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, Query, Req, UsePipes, ValidationPipe, UseGuards, BadRequestException } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { AiSearchDto, AiChatDto, AiDescriptionDto, AiReportDto, UpdateAiReportDto } from './ai.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
@@ -8,6 +8,10 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
 import { ChatRateLimitService } from '../chat/chat-rate-limit.service';
+import { ChatService } from '../chat/chat.service';
+import { ChatContext } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
+import { classifySupportMessage, isInboundCustomerSupportMessage } from '../chat/mazium-support-policy';
 
 @ApiTags('AI')
 @Controller('ai')
@@ -15,6 +19,8 @@ export class AiController {
     constructor(
         private readonly aiService: AiService,
         private readonly rateLimit: ChatRateLimitService,
+        private readonly chatService: ChatService,
+        private readonly configService: ConfigService,
     ) { }
 
     @Post('search')
@@ -29,6 +35,80 @@ export class AiController {
     async chat(@Body() dto: AiChatDto) {
         const result = await this.aiService.chatCompletion(dto.messages);
         return { success: true, data: result };
+    }
+
+    /**
+     * Admin-only preview. Does not post to chat, impersonate an administrator,
+     * or authorise any account, financial, or listing action.
+     */
+    @Post('admin/support-draft/:roomId')
+    @UseGuards(SessionAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Preview a MaziuM reply for human review (never sends)' })
+    async supportDraft(
+        @Param('roomId') roomId: string,
+        @CurrentUser() user: { id: string },
+    ) {
+        if (this.configService.get<string>('MAZIUM_SUPPORT_DRAFT_ENABLED') !== 'true') {
+            throw new BadRequestException('MaziuM support drafts are disabled.');
+        }
+        await this.rateLimit.consumeMessage(user.id);
+        const room = await this.chatService.getRoom(roomId, user.id);
+        if (room.context !== ChatContext.SUPPORT || room.supportClosedAt || room.deletedAt) {
+            throw new BadRequestException('Only open official support rooms can be drafted.');
+        }
+        const transcript = await this.chatService.getRoomMessages(roomId, user.id, 1, 10);
+        const latest = transcript.data[transcript.data.length - 1];
+        const messages = transcript.data.filter((m: any) =>
+            typeof m.content === 'string' && m.content.trim() && !m.deletedAt && !m.attachmentPath
+        );
+        const supportAccountId = room.initiator?.role === UserRole.ADMIN
+            ? room.initiatorId
+            : room.participant?.role === UserRole.ADMIN ? room.participantId : '';
+        const customerId = supportAccountId === room.initiatorId ? room.participantId : room.initiatorId;
+        const latestIsCustomer = !!latest && isInboundCustomerSupportMessage({
+            context: room.context,
+            senderId: latest.senderId,
+            initiatorId: room.initiatorId,
+            participantId: room.participantId,
+            officialSupportAccountId: supportAccountId,
+            senderIsAutomated: Boolean(latest.clientMessageId?.startsWith('mazium-support-')),
+        });
+        if (!latest || !latestIsCustomer || latest.attachmentPath || !latest.content?.trim() || room.supportAiOptedOutAt || room.supportHumanTakeoverAt) {
+            throw new BadRequestException('No unanswered customer message to draft.');
+        }
+        const classification = classifySupportMessage(latest.content);
+        if (classification.action === 'ESCALATE') {
+            return { success: true, data: { status: 'HUMAN_REVIEW', reason: classification.reason } };
+        }
+        const draft = await this.aiService.draftSupportReply(messages.map((m: any) => ({
+            role: m.senderId === supportAccountId || m.clientMessageId?.startsWith('mazium-support-') ? 'assistant' as const : 'user' as const,
+            content: m.content,
+        })));
+        const outputDecision = draft ? classifySupportMessage(draft) : null;
+        // Never offer a draft if the generation returned a human-handoff
+        // request or otherwise sensitive wording.
+        if (draft && outputDecision?.action !== 'DRAFT') {
+            return { success: true, data: { status: 'HUMAN_REVIEW', reason: 'DRAFT_REQUIRES_REVIEW' } };
+        }
+        // Do not offer a draft for a message that was answered or superseded
+        // while the external model was generating its response.
+        const current = await this.chatService.getRoomMessages(roomId, user.id, 1, 1);
+        const latestNow = current.data[current.data.length - 1];
+        const refreshedRoom = await this.chatService.getRoom(roomId, user.id);
+        if (!latestNow || latestNow.id !== latest.id || latestNow.senderId !== customerId || refreshedRoom.supportClosedAt || refreshedRoom.deletedAt || refreshedRoom.supportAiOptedOutAt || refreshedRoom.supportHumanTakeoverAt) {
+            return { success: true, data: { status: 'HUMAN_REVIEW', reason: 'CONVERSATION_CHANGED' } };
+        }
+        if (outputDecision?.action === 'ESCALATE') {
+            return { success: true, data: { status: 'HUMAN_REVIEW', reason: 'DRAFT_REQUIRES_REVIEW' } };
+        }
+        return {
+            success: true,
+            data: draft
+                ? { status: 'DRAFT', text: draft, sourceMessageId: latest.id, requiresHumanApproval: true }
+                : { status: 'HUMAN_REVIEW', reason: 'DRAFT_UNAVAILABLE' },
+        };
     }
 
     @Post('report')

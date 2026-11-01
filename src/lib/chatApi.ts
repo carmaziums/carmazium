@@ -71,6 +71,8 @@ export interface ChatMessage {
     chatRoomId: string
     senderId: string
     clientMessageId?: string | null
+    aiGenerated?: boolean
+    aiSourceMessageId?: string | null
     content: string
     attachmentPath?: string | null
     attachmentName?: string | null
@@ -101,6 +103,9 @@ export interface ChatRoom {
     } | null
     supportTags?: string[]
     supportClosedAt?: string | null
+    supportAiConsentAt?: string | null
+    supportAiOptedOutAt?: string | null
+    supportHumanTakeoverAt?: string | null
     disputeCase?: ChatDisputeCase | null
     sourceDispute?: ChatSourceDispute | null
     canOpenDispute?: boolean
