@@ -1034,6 +1034,11 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                                 : 'bg-[var(--bg-card)] text-[var(--text-primary)] rounded-bl-sm'
                                                 }`}
                                         >
+                                            {msg.aiGenerated && room.context === 'SUPPORT' && (
+                                                <p className="mb-1 text-[10px] font-bold" aria-label="AI-generated support message">
+                                                    MaziuM · AI-generated response
+                                                </p>
+                                            )}
                                             {!isOwn && isDispute && msg.sender && (
                                                 isSupportUser(msg.sender) ? (
                                                     <p className="mb-1 px-1 text-[10px] font-bold text-[var(--text-muted)]">
