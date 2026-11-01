@@ -213,8 +213,11 @@ export async function uploadImage(
     // cannot accidentally upload large PNGs or photos containing GPS EXIF.
     // Other uploads (KYC, documents, handover) remain untouched.
     const imageFolder = folder?.replace(/^\/+|\/+$/g, '').split('/')[0] || 'vehicle';
+    const isPhoto = file.type.startsWith('image/')
+        || /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name);
     const vehiclePhoto = bucket === 'listings'
-        && ['vehicle', 'exterior', 'interior', 'damage'].includes(imageFolder);
+        && ['vehicle', 'exterior', 'interior', 'damage'].includes(imageFolder)
+        && isPhoto;
     const uploadFile = vehiclePhoto
         ? await (await import('./vehiclePhotoCompression')).ensurePreparedVehiclePhoto(file)
         : file;
