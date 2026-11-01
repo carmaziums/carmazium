@@ -74,10 +74,18 @@ export class AiController {
             role: m.sender?.role === UserRole.ADMIN ? 'assistant' as const : 'user' as const,
             content: m.content,
         })));
+        // Do not offer a draft for a message that was answered or superseded
+        // while the external model was generating its response.
+        const current = await this.chatService.getRoomMessages(roomId, user.id, 1, 1);
+        const latestNow = current.data[current.data.length - 1];
+        const refreshedRoom = await this.chatService.getRoom(roomId, user.id);
+        if (!latestNow || latestNow.id !== latest.id || refreshedRoom.supportClosedAt) {
+            return { success: true, data: { status: 'HUMAN_REVIEW', reason: 'CONVERSATION_CHANGED' } };
+        }
         return {
             success: true,
             data: draft
-                ? { status: 'DRAFT', text: draft, requiresHumanApproval: true }
+                ? { status: 'DRAFT', text: draft, sourceMessageId: latest.id, requiresHumanApproval: true }
                 : { status: 'HUMAN_REVIEW', reason: 'DRAFT_UNAVAILABLE' },
         };
     }
