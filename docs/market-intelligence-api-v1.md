@@ -6,7 +6,7 @@
 
 ## Purpose and factual claims
 
-Create a free, citable CarMazium-owned UK vehicle market-statistics API, followed by an access-controlled valuation API **only after independent accuracy validation**.
+Create a free, citable CarMazium-owned UK vehicle market-statistics API **only once live stock supports meaningful privacy-safe cohorts**, followed by controlled valuations after independent accuracy validation. Milestone A begins now; public API delivery is stock-gated rather than calendar-gated.
 
 - **Retail asking price** = price currently advertised by a seller. It is not proof of what a buyer paid, even if a listing later disappears.
 - **Winning bid** = highest accepted/winning auction offer according to auction state; it is not automatically a completed trade transaction.
@@ -18,22 +18,36 @@ Create a free, citable CarMazium-owned UK vehicle market-statistics API, followe
 
 Production `public.listings`: 193 ACTIVE CLASSIFIED listing rows, 192 distinct normalised VRMs, plus 15 ACTIVE AUCTION listing rows. These are **database record counts**, not confirmed available cars, and should be remeasured before release. Production `public.auctions` has 493 ENDED rows but only two rows with `sellerFundsConfirmedAt` at the snapshot. `sales` has 56 AWAITING_CONFIRMATION and 2 CHECKS_COMPLETE; these statuses do not independently certify final payment. RLS was enabled on inspected tables.
 
-Production `public.market_price_data` holds records tagged AUTOTRADER, MOTORS, CARGURUS, GUMTREE, CARWOW and PULSECARS, but the audit did **not** establish rights to redistribute or publish their derived data. **Block all data from this table in v1 until separately cleared by evidence and legal review**. The development project had only one listing in the schema summary and must use synthetic test fixtures.
+Production `public.market_price_data` holds records tagged AUTOTRADER, MOTORS, CARGURUS, GUMTREE, CARWOW and PULSECARS, but the audit did **not** establish rights to redistribute or publish their derived data. **Block all data from this table in v1 until separately cleared by evidence and legal review**. Audit how each source was collected, contractual/scraping/data-licence rights, and whether the currently deployed valuation/quote engine already reads these rows. The owner must verify the provenance and permitted reuse of PULSECARS-labelled records; labels alone do not prove rights or accuracy. The development project had only one listing in the schema summary and must use synthetic test fixtures.
+
+## Delivery and security architecture (Claude review)
+
+**Milestone A — audit now:** Read-only review of live, truly published stock; sample distributions by make/fuel; private data source lineage and licensing; actual quote engine reads; seller/dealer visibility filters; completion and sell-through evidence. The current 192 distinct ACTIVE CLASSIFIED registrations do not establish sufficient data for reliable make × fuel cohorts.
+
+**Milestone B — implementation is gated on stock, not date:** Simulate supported cohorts on daily snapshots and require a useful, privacy-safe published dataset with at least 20 distinct eligible vehicles **per published cohort** (raise after disclosure review). Proposed acceptance: at least 70% of intended public cohort queries have sufficient non-sensitive data on two consecutive daily snapshots. If intersections are sparse, publish only aggregate totals or broad single dimensions; defer sparse combinations and thin landing pages. Owner agrees the specific coverage target before any build.
+
+**Milestone C — release after formal review:** Legal/source rights, RLS/database grants, disclosure tests across successive snapshots, production CI and manual smoke checks, rollback and owner approval.
+
+**Endpoint:** `GET /api/v1/market/stats` in a Next.js route on **Vercel**, reading only a previously approved **immutable daily JSON snapshot**, never the live database. No `service_role` credential, SQL query or user-supplied SQL filter is held/executed at Vercel/edge.
+
+**Private daily aggregation:** A scheduled job in existing **NestJS on Fly.io** reads the approved publicly visible subset using a **proposed dedicated least-privilege read-only PostgreSQL role**, scoped to vetted data with verified row restrictions/RLS. This role does not yet exist and must be provisioned/reviewed separately. A distinct narrowly scoped publisher writes only approved aggregate snapshots to versioned storage, with integrity validation, atomic promotion and rollback. No public endpoint can access private vehicles, seller/buyer identities or private bids. Do not use Supabase `service_role` for this pathway.
+
+**Privacy:** Daily precomputation is required; no per-request aggregation. Serve prevalidated whitelist cohorts only. Even median/quantiles can leak data if neighbouring snapshots overlap, so test count bands, cross-filter differencing and daily change disclosure before publication.
 
 ## Proposed public endpoint
 
 `GET /api/v1/market/stats` (HTTP GET, HTTPS, public, JSON, no mutations).
 
-Approved query dimensions **at MVP**: `make` (canonical whitelist) and `fuel` (stable enum). A region, year range or model filter is deferred until enough distinct, verified, actively published stock is available. No arbitrary SQL/query expressions, record identifiers, VRM or VIN inputs.
+Candidate query dimensions **after the stock gate**: `make` (canonical whitelist) and `fuel` (stable enum); both require precomputed sufficient cohorts, while combined make × fuel intersections are separately privacy-reviewed. A region, year range or model filter is deferred until enough distinct, verified, actively published stock is available. No arbitrary SQL/query expressions, record identifiers, VRM or VIN inputs.
 
-**Eligibility (before every aggregate):**
+**Eligibility (inside the private daily snapshot job, never on an incoming public HTTP request):**
 1. `listings.type = CLASSIFIED`, `status = ACTIVE`, `deletedAt IS NULL`, positive retail `price`, approved public publication status (confirm source-of-truth moderation state).
 2. Respect visibility, removed/hidden/embargoed listings and listing ownership permissions. Do not trust status alone before confirming moderator/public visibility checks.
 3. Deduplicate latest valid listing per normalised VRM **inside the private aggregation**, or use a privacy-safe listing identity when registration is absent. Never expose VRMs, VINs, titles, exact location, URLs, seller IDs, photos, raw bids, private transaction values or individual vehicle rows.
 4. Exclude clear bad-data prices and non-sale/test/spare listings according to a documented, tested rule, without arbitrary changes to public customer prices.
 5. Minimum **20 distinct eligible vehicles** for *each public cohort* (initial security proposal, reviewer may require a higher limit); suppress sparse cells and potentially identifying intersections. Suppress or coarsen outputs if differencing across queries/time windows could reveal individual asking prices.
-6. Prices rounded to nearest £100, counts aggregated; no precise low-sample minimum/maximum. Median and quartiles only when supported by a statistically adequate cohort; public all-UK aggregates must still state that this is *only CarMazium listings*.
-7. Return freshness and generation times in UTC, clear missing/insufficient-data results, cap request parameters, bounded response, public cache with safe max age, API monitoring and abuse controls.
+6. Publish **median, p25 and p75 only**, coarsely rounded (initial proposal £100), with disclosure-tested count bands instead of exact small-cohort counts. **Do not publish mean, sums, exact minima or maxima:** mean × count differencing can expose added/removed car prices. Test overlap and temporal differencing even for medians/quantiles; public all-UK aggregates still describe only CarMazium listings.
+7. Serve an approved **daily precomputed snapshot** with version, UTC freshness and generation time, safe no-data/insufficient-data results, bounded whitelist parameters, cache controls, API monitoring and abuse controls. Never aggregate per user query.
 
 ### Example shape — illustrative only, not observed figures
 
@@ -45,11 +59,10 @@ Approved query dimensions **at MVP**: `make` (canonical whitelist) and `fuel` (s
   "source": "CarMazium publicly advertised retail listings",
   "scope": "Platform inventory, not all UK used-car transactions",
   "generated_at": "2026-11-01T00:00:00Z",
-  "sample": { "distinct_vehicles": 100, "minimum_required": 20 },
+  "sample": { "distinct_vehicle_count_band": "100-124", "minimum_required": 20 },
   "currency": "GBP",
   "statistics": {
     "median_asking_price": 10000,
-    "mean_asking_price": 10400,
     "p25_asking_price": 7900,
     "p75_asking_price": 12500
   },
@@ -79,10 +92,10 @@ Maintain separate series for verified trade auctions and retail sales. Settlemen
 
 ## Implementation and release checklist
 
-- [ ] Claude: audit backend API location, public listing filters, RLS, settlement status semantics, third-party data rights, external valuation data origin; report evidence in #763.
-- [ ] ChatGPT: design read-only aggregation with synthetic test fixtures and response/schema contract, public docs and SEO, then review with Claude.
+- [ ] Claude: audit `market_price_data` ingestion and live valuation-engine reads; validate PULSECARS provenance with owner, public visibility, dedicated role/RLS, licensed sources and settlement semantics; report evidence in #763.
+- [ ] ChatGPT: after stock threshold Milestone B is met, implement a private daily snapshot aggregator and synthetic test fixtures; documentation and coverage simulation can begin in Milestone A. Obtain Claude review.
 - [ ] Reconcile active listing counts against actual public website, sitemap, GSC and moderators; never assume DB rows = indexed/listed stock.
-- [ ] Test 0/1/19/20/21 eligible vehicles, duplicate VRM, pending/draft/sold/rejected/unlisted vehicles, deleted stock, sparse make and fuel combinations, outliers, source outage, cached/stale response, private-field leak, enum abuse, pagination/query abuse, rate limits.
+- [ ] Test 0/1/19/20/21 eligible vehicles, duplicate VRM, pending/draft/sold/rejected/unlisted vehicles, deleted stock, sparse make/fuel intersections, day-over-day membership changes, count-band inference, outliers, source outage, cached/stale response, private-field leak, enum abuse, pagination/query abuse and rate limits.
 - [ ] Independent security and data licence sign-off, CI, preview and rollout plan; owner-visible demo.
 - [ ] No production SQL writes, schema migrations, API keys issued, real money operations, merges or deployments from this document.
 - [ ] After approved release, monitor uptime, sampling bias, external API consumption, referrals, indexation and contribution to dealers/auctions/retail sales.
