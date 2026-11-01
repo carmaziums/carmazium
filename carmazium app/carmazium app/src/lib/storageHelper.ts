@@ -3,44 +3,74 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
 
-const MAX_BYTES = 1.2 * 1024 * 1024; // 1.2 MB conservative target (actual cap is 1.5 MB)
-const MAX_ITERATIONS = 6;
+const MAX_BYTES = 2 * 1024 * 1024; // Shared browser/native vehicle-photo upload limit
+const MAX_IMAGE_EDGE = 1920; // Preserve legible damage/number-plate details
+const MIN_JPEG_QUALITY = 0.72;
+const JPEG_QUALITIES = [0.86, 0.79, MIN_JPEG_QUALITY] as const;
 
 /**
- * Convert a local image URI to JPEG and compress it until it is under 1.2 MB.
- * Returns the URI of the converted/compressed file.
+ * Convert a phone photo to a metadata-free JPEG and enforce the upload limit.
  *
- * Uses manipulateAsync (not the class-based API) for stability on Expo SDK 54.
+ * - Always re-encode (to remove GPS/EXIF from small photos too).
+ * - Try high-quality encoding before reducing dimensions.
+ * - Re-process the ORIGINAL, never repeatedly recompress the last JPEG.
+ * - Resize only if needed, preserving the aspect ratio and keeping up to 1920px.
+ * - Reject rather than silently upload an oversized or zero-byte result.
+ *
+ * Physical iOS HEIC/Android JPEG sharpness and orientation require device QA
+ * before this is included in the published APK.
  */
 export async function convertAndCompress(uri: string): Promise<string> {
-  let quality = 0.85;
-  let currentUri = uri;
+  if (!uri) throw new Error('Please select a photo before uploading.');
 
-  for (let i = 0; i < MAX_ITERATIONS; i++) {
-    const result = await ImageManipulator.manipulateAsync(
-      currentUri,
-      [], // no resize — preserve original dimensions
-      {
-        compress: quality,
-        format: ImageManipulator.SaveFormat.JPEG,
-      },
-    );
+  let originalWidth = 0;
+  let originalHeight = 0;
+  let previousSize = '';
 
-    // FileSystem.getInfoAsync returns { exists, uri, size?, ... }
-    // We cast to any because the type definition omits the size field
-    const info = await FileSystem.getInfoAsync(result.uri);
-    const size: number = (info as any).size ?? 0;
-
-    if (size <= MAX_BYTES || i === MAX_ITERATIONS - 1) {
-      return result.uri;
-    }
-
-    // Reduce quality by 15% each iteration, minimum 0.3
-    quality = Math.max(0.3, quality - 0.15);
-    currentUri = result.uri;
+  // First attempt retains the original dimensions at high JPEG quality.
+  // Capture the oriented output dimensions for aspect-ratio-safe fallback.
+  const first = await ImageManipulator.manipulateAsync(uri, [], {
+    compress: JPEG_QUALITIES[0],
+    format: ImageManipulator.SaveFormat.JPEG,
+  });
+  originalWidth = first.width;
+  originalHeight = first.height;
+  const initialInfo = await FileSystem.getInfoAsync(first.uri);
+  const initialSize = (initialInfo as { size?: number }).size;
+  if (initialInfo.exists && typeof initialSize === 'number' && initialSize > 0 && initialSize <= MAX_BYTES) {
+    return first.uri;
+  }
+  if (!originalWidth || !originalHeight) {
+    throw new Error('Could not read this photo’s dimensions. Please try a JPEG image.');
   }
 
-  return currentUri;
+  const longestEdge = Math.max(originalWidth, originalHeight);
+  for (const edgeLimit of [longestEdge, MAX_IMAGE_EDGE, 1600, 1440, 1280]) {
+    const scale = Math.min(1, edgeLimit / longestEdge);
+    const width = Math.max(1, Math.round(originalWidth * scale));
+    const height = Math.max(1, Math.round(originalHeight * scale));
+    const dimensions = `${width}x${height}`;
+    if (dimensions === previousSize) continue;
+    previousSize = dimensions;
+
+    const actions: ImageManipulator.Action[] = scale < 1
+      ? [{ resize: { width, height } }]
+      : [];
+    for (const quality of JPEG_QUALITIES) {
+      if (scale === 1 && quality === JPEG_QUALITIES[0]) continue; // Already tried above.
+      const output = await ImageManipulator.manipulateAsync(uri, actions, {
+        compress: quality,
+        format: ImageManipulator.SaveFormat.JPEG,
+      });
+      const info = await FileSystem.getInfoAsync(output.uri);
+      const size = (info as { size?: number }).size;
+      if (info.exists && typeof size === 'number' && size > 0 && size <= MAX_BYTES) {
+        return output.uri;
+      }
+    }
+  }
+
+  throw new Error('This photo could not be compressed below 2 MB while preserving useful detail. Please choose a smaller photo.');
 }
 
 /**
