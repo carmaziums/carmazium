@@ -2282,6 +2282,7 @@ export class ChatService {
                 orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
             });
             if (!latest || latest.id !== sourceMessageId || latest.senderId !== customerId
+                || latest.createdAt < room.supportAiConsentAt
                 || latest.aiGenerated || latest.attachmentPath
                 || classifySupportMessage(latest.content).action !== 'DRAFT') {
                 return { created: false, reason: 'SOURCE_CHANGED_OR_SENSITIVE' } as const;
