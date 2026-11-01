@@ -7,6 +7,8 @@ import {
 import { UserRole } from '@prisma/client';
 import { TradeTeamService } from '../trade-team.service';
 
+export const EXISTING_SERVICE_WORK_KEY = 'tradeExistingWorkDuringReverification';
+
 /**
  * Lets through an approved direct service provider, or a dealership team member
  * who has explicit TradeXchange permissions granted by the business owner.
@@ -27,7 +29,10 @@ export class ContractorGuard implements CanActivate {
         if (!user?.id) throw new ForbiddenException('Not authenticated');
         if (user.role === UserRole.ADMIN) return true;
 
-        const actor = await this.tradeTeam.requireActor(user.id);
+        // Existing accepted work must remain accessible during routine evidence
+        // re-verification; this exception never applies to NEW quotations.
+        const existingWork = Reflect.getMetadata(EXISTING_SERVICE_WORK_KEY, context.getHandler()) === true;
+        const actor = await this.tradeTeam.requireActor(user.id, existingWork);
         req.tradeActor = actor;
         req.contractorProfileId = actor.contractorProfileId;
         req.approvedServiceTypes = actor.isStaff && !actor.canView ? [] : actor.allowedServiceTypes;
