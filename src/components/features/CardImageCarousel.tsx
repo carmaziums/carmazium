@@ -58,14 +58,18 @@ export function CardImageCarousel({
 }: Props) {
     const bounded = React.useMemo(() => images.filter(Boolean).slice(0, maxImages).map(value => ({ raw: value, ...parseVehicleImagePresentation(value) })), [images, maxImages])
     const [index, setIndex] = React.useState(0)
-    // Only photos up to one past the furthest slide reached are rendered.
-    // Cards used to put every photo (often 20-30 per car) into the page, so
-    // a homepage of 10 cars carried hundreds of <img> tags. Slides already
-    // seen stay mounted so swiping back never flickers.
+    // Load only the cover on first paint. Loading a neighbouring photo for
+    // every visible card wastes megabytes on older unoptimised listings.
+    // Prepare the next slide on touch/pointer/trackpad input, before scrolling.
+    // Already revealed images stay mounted so swiping back does not flicker.
     const [maxReached, setMaxReached] = React.useState(0)
     const [lightboxOpen, setLightboxOpen] = React.useState(false)
     const trackRef = React.useRef<HTMLDivElement>(null)
     const hasMultiple = bounded.length > 1
+
+    const prepareAdjacentImage = React.useCallback(() => {
+        setMaxReached((prev) => Math.max(prev, Math.min(bounded.length - 1, index + 1)))
+    }, [bounded.length, index])
 
     const scrollToIndex = React.useCallback((i: number) => {
         const el = trackRef.current
@@ -119,6 +123,9 @@ export function CardImageCarousel({
             <div
                 ref={trackRef}
                 onScroll={handleScroll}
+                onTouchStart={prepareAdjacentImage}
+                onMouseDown={prepareAdjacentImage}
+                onWheel={prepareAdjacentImage}
                 className="absolute inset-0 flex overflow-x-auto snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 style={{ overscrollBehaviorX: "contain" }}
             >
@@ -130,7 +137,7 @@ export function CardImageCarousel({
                             below the image and clicks would land on the img element
                             (which has no handler). z-10 on the overlay guarantees
                             hit-testing reaches it. */}
-                        {i <= maxReached + 1 && (
+                        {i <= maxReached && (
                         <Image
                             src={cardImageUrl(photo.src)}
                             alt={i === 0 ? alt : `${alt} — image ${i + 1}`}
