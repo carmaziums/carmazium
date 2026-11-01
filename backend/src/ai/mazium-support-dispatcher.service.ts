@@ -42,6 +42,10 @@ export class MaziumSupportDispatcher {
                 where: { aiGenerated: true, createdAt: { gte: dayStart } },
             });
             if (sentToday >= maxDaily) return;
+            const testUsers = (this.config.get<string>('MAZIUM_SUPPORT_TEST_USER_IDS') || '')
+                .split(',').map((id) => id.trim()).filter(Boolean);
+            // A missing allowlist must never result in sending to every customer.
+            if (!testUsers.length) return;
             const messages = await this.prisma.message.findMany({
                 where: {
                     createdAt: { gte: since },
@@ -52,7 +56,7 @@ export class MaziumSupportDispatcher {
                     attachmentPath: null,
                     // Exclude all messages authored by the configured AI
                     // identity, even if older records lack AI provenance.
-                    senderId: { not: this.config.get<string>('MAZIUM_SUPPORT_BOT_USER_ID')! },
+                    senderId: { in: testUsers },
                     sender: { role: { not: 'ADMIN' } },
                     chatRoom: {
                         context: ChatContext.SUPPORT,
@@ -67,10 +71,6 @@ export class MaziumSupportDispatcher {
                 take: 5,
                 select: { id: true, chatRoomId: true },
             });
-            const testUsers = (this.config.get<string>('MAZIUM_SUPPORT_TEST_USER_IDS') || '')
-                .split(',').map((id) => id.trim()).filter(Boolean);
-            // A missing allowlist must never result in sending to every customer.
-            if (!testUsers.length) return;
             for (const message of messages) {
                 const room = await this.prisma.chatRoom.findUnique({
                     where: { id: message.chatRoomId },
