@@ -1205,7 +1205,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                 ) : (
                 <>
                 {isAdminViewer && (
-                    <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto px-4 pt-3 scrollbar-hide">
+                    <div className="hidden sm:flex shrink-0 items-center gap-1.5 overflow-x-auto px-4 pt-3 scrollbar-hide">
                         <Zap size={12} className="text-[var(--text-muted)] shrink-0" />
                         {ADMIN_QUICK_REPLIES.map((qr) => (
                             <button
@@ -1239,7 +1239,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                     </div>
                 )}
                 {canDraftSupport && (
-                    <div className="shrink-0 px-4 pt-2 flex flex-wrap items-center gap-2">
+                    <div className="shrink-0 px-3 pt-1 sm:px-4 sm:pt-2 flex flex-wrap items-center gap-1 sm:gap-2">
                         <button
                             type="button"
                             onClick={() => void prepareSupportDraft()}
@@ -1248,7 +1248,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         >
                             {generatingSupportDraft ? 'Preparing MaziuM draft…' : 'Suggest MaziuM reply'}
                         </button>
-                        <span className="text-xs text-[var(--text-muted)]">Admin review required; never sent automatically.</span>
+                        <span className="hidden sm:inline text-xs text-[var(--text-muted)]">Admin review required; never sent automatically.</span>
                     </div>
                 )}
                 {supportDraftNotice && canDraftSupport && (
