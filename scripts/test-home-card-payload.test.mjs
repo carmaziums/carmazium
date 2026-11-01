@@ -23,7 +23,10 @@ test("every field the homepage cards read is included", () => {
 
 test("card carousels render photos near the current slide, not the whole gallery", () => {
     const carousel = read("src/components/features/CardImageCarousel.tsx")
-    assert.match(carousel, /i <= maxReached \+ 1 &&/)
+    // Only the cover is initially in the DOM; touch/trackpad/arrow input
+    // mounts adjacent images before movement without paid transforms.
+    assert.match(carousel, /i <= maxReached &&/)
+    assert.match(carousel, /onTouchStart=\{prepareAdjacentImage\}/)
     assert.match(carousel, /src=\{cardImageUrl\(photo\.src\)\}/)
     // Arrow / keyboard navigation must mount the target image before scrolling.
     assert.match(carousel, /setMaxReached\(\(prev\) => Math\.max\(prev, clamped \+ 1\)\)/)
