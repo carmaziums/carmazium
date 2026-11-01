@@ -15,7 +15,7 @@ import { HpiPdfUpload } from "@/components/admin/HpiPdfUpload"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminListings, deleteListingForce, getPendingListingReviews, approveListing, rejectListing, relistAdminDraftAsAuction } from "@/lib/adminApi"
 import type { AdminListingStatus, AdminListingType } from "@/lib/adminApi"
-import { getModerationChannel, getModerationPrice, getModerationListingHref } from "@/lib/adminListingModeration"
+import { getModerationChannel, getModerationPrice, getModerationListingHref, getModerationListingDates } from "@/lib/adminListingModeration"
 import { formatPrice } from "@/lib/listingApi"
 
 const STATUS_STYLES: Record<string, string> = {
@@ -61,6 +61,25 @@ function ListingChannelPill({ type }: { type?: string | null }) {
                 : 'border-gray-400/30 bg-gray-500/10 text-[var(--text-muted)]'}`}>
             {name}
         </span>
+    )
+}
+
+function ListingHistoryDates({ listing }: { listing: any }) {
+    const { firstListed, lastRelisted } = getModerationListingDates(listing)
+    if (!firstListed && !lastRelisted) return null
+    return (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] leading-snug text-[var(--text-muted)]" aria-label="Listing history dates">
+            {firstListed && (
+                <span title="Original listing record date. Older listings may have gone live after this date.">
+                    First listed: <span className="font-semibold text-[var(--text-secondary)]">{firstListed}</span>
+                </span>
+            )}
+            {lastRelisted && (
+                <span title="Latest recorded relisting event, not the last vehicle edit.">
+                    Relisted: <span className="font-semibold text-[var(--text-secondary)]">{lastRelisted}</span>
+                </span>
+            )}
+        </div>
     )
 }
 
@@ -439,6 +458,7 @@ export default function AdminListingsPage() {
                                                     <p className="font-bold text-sm break-words leading-snug">{l.title}</p>
                                                     <div className="mt-1"><ListingChannelPill type={l.type} /></div>
                                                     <p className="text-xs text-[var(--text-muted)] truncate">{l.seller?.firstName} {l.seller?.lastName} · {l.seller?.email}</p>
+                                                    <ListingHistoryDates listing={l} />
                                                 </div>
                                                 {hpiPending && (
                                                     <span className="text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 bg-primary/10 text-primary border-primary/30 inline-flex items-center gap-1.5">
@@ -731,6 +751,7 @@ export default function AdminListingsPage() {
                                                 <div className="ml-2 min-w-0 shrink-0 text-right"><p className="text-sm font-bold">{getModerationPrice(l).value}</p><p className="text-[10px] text-[var(--text-muted)]">{getModerationPrice(l).label}</p></div>
                                             </div>
                                             {l.type === 'AUCTION' && <p className="mt-1 text-[11px] text-[var(--text-muted)]">{[getModerationPrice(l).detail, getModerationPrice(l).buyNow].filter(Boolean).join(' · ')}</p>}
+                                            <ListingHistoryDates listing={l} />
                                             <AdminVehicleReviewPanel
                                                             listing={l}
                                                             onEdit={() => setEditListingId(l.id)}
@@ -817,6 +838,7 @@ export default function AdminListingsPage() {
                                                             {l.vrm || 'No VRM'} 
                                                             {l.deletedAt && <AlertTriangle size={12} className="text-red-400 ml-1" />}
                                                         </p>
+                                                        <ListingHistoryDates listing={l} />
                                                         <AdminVehicleReviewPanel
                                                             listing={l}
                                                             onEdit={() => setEditListingId(l.id)}
