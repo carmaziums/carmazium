@@ -16,6 +16,7 @@ export interface DealerPurchaseDetail {
     purchasePrice: number
     purchasedAt: string
     purchaseStatus: string
+    buyerCollectedAt?: string | null
     retailSold: boolean
     channel: "RETAIL" | "AUCTION"
     buyerFee: { required: boolean; settled: boolean }
