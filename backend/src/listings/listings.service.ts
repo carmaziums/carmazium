@@ -3512,7 +3512,7 @@ export class ListingsService {
 
         const cancellationWhere = {
             listingId: sale.listingId,
-            status: { in: ['PENDING_COUNTERPARTY', 'PENDING_ADMIN', 'APPROVED'] as const },
+            status: { in: ['PENDING_COUNTERPARTY', 'PENDING_ADMIN', 'APPROVED'] as ('PENDING_COUNTERPARTY' | 'PENDING_ADMIN' | 'APPROVED')[] },
         };
         const blocked = await this.prisma.saleCancellationRequest.findFirst({
             where: cancellationWhere, select: { id: true },
