@@ -80,7 +80,7 @@ export default function AdminProviderReviewPage() {
             setServiceArea(next.contractor?.serviceArea || "")
             setUploadType(current => {
                 if (current && next.verification.requirements.some(req => req.type === current)) return current
-                const missing = next.verification.requirements.find(req => req.state !== "SATISFIED")
+                const missing = next.verification.requirements.find(req => !req.optional && req.state !== "SATISFIED")
                 return (missing?.type || next.verification.requirements[0]?.type || "") as CapabilityEvidenceType | ""
             })
         } catch (e: any) {
@@ -320,7 +320,7 @@ export default function AdminProviderReviewPage() {
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                             <div>
                                 <h2 className="font-heading font-bold text-lg">Verification checklist</h2>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">Every requirement must show SATISFIED before the provider can be approved.</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">Every mandatory requirement must show SATISFIED before the provider can be approved. Formal inspection qualifications are optional.</p>
                             </div>
                             <div className="text-right text-xs">
                                 <span className={`inline-flex rounded-full border px-3 py-1 font-black uppercase tracking-wider ${data.verification.ready ? "text-emerald-500 border-emerald-500/30 bg-emerald-500/5" : "text-amber-500 border-amber-500/30 bg-amber-500/5"}`}>
@@ -330,7 +330,7 @@ export default function AdminProviderReviewPage() {
                             </div>
                         </div>
                         <div className="space-y-3">
-                            {data.verification.requirements.map(req => <div key={req.type} className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4 flex items-start justify-between gap-4">
+                            {data.verification.requirements.filter(req => !req.optional).map(req => <div key={req.type} className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4 flex items-start justify-between gap-4">
                                 <div>
                                     <p className="font-bold text-sm">{req.title}</p>
                                     <p className="text-xs text-[var(--text-muted)] mt-1">{req.description}</p>
@@ -339,6 +339,7 @@ export default function AdminProviderReviewPage() {
                                 <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${req.state === "SATISFIED" ? "text-emerald-500 border-emerald-500/30 bg-emerald-500/5" : req.state === "REJECTED" ? "text-red-500 border-red-500/30 bg-red-500/5" : "text-amber-500 border-amber-500/30 bg-amber-500/5"}`}>{req.state}</span>
                             </div>)}
                         </div>
+                        {data.verification.requirements.some(req => req.optional) && <div className="rounded-xl border border-[var(--border-default)] p-4 text-xs text-[var(--text-muted)] leading-relaxed">Vehicle Inspection qualifications or experience documents are optional supporting evidence, not an approval requirement. Businesses may use competent third-party mechanics; confirm that the reviewed insurance covers their inspection arrangements. Rejecting or omitting an optional certificate must not block an otherwise eligible application.</div>}
                     </section>
 
                     <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 space-y-5">
@@ -349,7 +350,7 @@ export default function AdminProviderReviewPage() {
                         <div>
                             <label className={labelCls}>Requirement</label>
                             <select className={inputCls} value={uploadType} onChange={e => setUploadType(e.target.value as CapabilityEvidenceType)}>
-                                {data.verification.requirements.map(req => <option key={req.type} value={req.type}>{req.title}</option>)}
+                                {data.verification.requirements.map(req => <option key={req.type} value={req.type}>{req.title}{req.optional ? " — optional" : ""}</option>)}
                             </select>
                         </div>
                         <div className="grid sm:grid-cols-2 gap-4">
@@ -417,7 +418,7 @@ export default function AdminProviderReviewPage() {
                                     <div>
                                         <label className={labelCls}>Requirement</label>
                                         <select className={inputCls} value={editEvidenceType} onChange={e => setEditEvidenceType(e.target.value as CapabilityEvidenceType)}>
-                                            {data.verification.requirements.map(req => <option key={req.type} value={req.type}>{req.title}</option>)}
+                                            {data.verification.requirements.map(req => <option key={req.type} value={req.type}>{req.title}{req.optional ? " — optional" : ""}</option>)}
                                         </select>
                                     </div>
                                     <div>
