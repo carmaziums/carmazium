@@ -1329,6 +1329,7 @@ model Message {
   clientMessageId String?
   aiGenerated     Boolean   @default(false)
   aiSourceMessageId String? @unique
+  aiSupportAttemptedAt DateTime?
   content         String
   attachmentPath String?
   attachmentName String?
