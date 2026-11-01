@@ -101,6 +101,9 @@ export interface ChatRoom {
     } | null
     supportTags?: string[]
     supportClosedAt?: string | null
+    supportAiConsentAt?: string | null
+    supportAiOptedOutAt?: string | null
+    supportHumanTakeoverAt?: string | null
     disputeCase?: ChatDisputeCase | null
     sourceDispute?: ChatSourceDispute | null
     canOpenDispute?: boolean
