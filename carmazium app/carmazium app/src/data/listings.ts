@@ -196,7 +196,14 @@ export interface CarListing {
   listingType?: string | null;
   /** The listing's own auction, when it has one — not to be confused with
    *  `linkedListing.auction`, which is the *other* half of a retail/auction pair. */
-  auction?: { id: string; status: string; endTime: string } | null;
+  auction?: {
+    id: string; status: string; endTime: string;
+    startingBid?: number | string | null;
+    currentBid?: number | string | null;
+    hasBids?: boolean;
+    reserveMet?: boolean;
+    buyItNowPrice?: number | string | null;
+  } | null;
   isSellerVerified?: boolean;
   totalSales?: number | null;
   viewCount?: number;
