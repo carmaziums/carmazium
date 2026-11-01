@@ -779,11 +779,14 @@ export type AdminListingStatus =
   | 'ACTIVE' | 'PENDING_REVIEW' | 'DRAFT' | 'OFFER_ACCEPTED'
   | 'SOLD' | 'REJECTED' | 'WITHDRAWN' | 'DELETED' | 'ALL';
 
-export async function getAdminListings(page = 1, limit = 20, sellerRole?: string, status?: AdminListingStatus, search?: string) {
+export type AdminListingType = 'ALL' | 'AUCTION' | 'CLASSIFIED';
+
+export async function getAdminListings(page = 1, limit = 20, sellerRole?: string, status?: AdminListingStatus, search?: string, listingType: AdminListingType = 'ALL') {
   const query = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (sellerRole) query.set('sellerRole', sellerRole);
   if (status) query.set('status', status);
   if (search?.trim()) query.set('search', search.trim());
+  if (listingType !== 'ALL') query.set('listingType', listingType);
   const result = await apiClient<any>(`/admin/listings?${query.toString()}`);
   return result;
 }
