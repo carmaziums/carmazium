@@ -146,7 +146,7 @@ export class TradeTeamService {
      * inspector who also trades independently from accidentally quoting under
      * their personal payout account while they are working for the dealership.
      */
-    async tryResolveActor(userId: string): Promise<TradeActorContext | null> {
+    async tryResolveActor(userId: string, includeReverificationWork = false): Promise<TradeActorContext | null> {
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
             select: { email: true },
@@ -165,7 +165,14 @@ export class TradeTeamService {
                                 contractorProfile: {
                                     include: {
                                         capabilities: {
-                                            where: { status: CapabilityStatus.APPROVED },
+                                            where: {
+                                                OR: [
+                                                    { status: CapabilityStatus.APPROVED },
+                                                    ...(includeReverificationWork
+                                                        ? [{ status: CapabilityStatus.PENDING, verificationStatus: 'REVERIFICATION_REQUIRED' }]
+                                                        : []),
+                                                ],
+                                            },
                                             select: { serviceType: true },
                                         },
                                     },
@@ -222,7 +229,14 @@ export class TradeTeamService {
             where: { userId },
             include: {
                 capabilities: {
-                    where: { status: CapabilityStatus.APPROVED },
+                    where: {
+                        OR: [
+                            { status: CapabilityStatus.APPROVED },
+                            ...(includeReverificationWork
+                                ? [{ status: CapabilityStatus.PENDING, verificationStatus: 'REVERIFICATION_REQUIRED' }]
+                                : []),
+                        ],
+                    },
                     select: { serviceType: true },
                 },
                 user: { select: { id: true } },
@@ -246,8 +260,8 @@ export class TradeTeamService {
         };
     }
 
-    async requireActor(userId: string) {
-        const actor = await this.tryResolveActor(userId);
+    async requireActor(userId: string, includeReverificationWork = false) {
+        const actor = await this.tryResolveActor(userId, includeReverificationWork);
         if (!actor) {
             throw new ForbiddenException(
                 'This area is for approved service providers or authorised dealership team members.',
@@ -281,7 +295,10 @@ export class TradeTeamService {
     }
 
     async contractorProfileForJob(userId: string, jobId: string): Promise<string | null> {
-        const actor = await this.tryResolveActor(userId);
+        // A provider whose verification has expired can still view already
+        // accepted work. The job's owner and staff permissions are checked
+        // separately; new quotes remain subject to current verification.
+        const actor = await this.tryResolveActor(userId, true);
         if (!actor) return null;
         const job = await this.prisma.serviceJob.findUnique({
             where: { id: jobId },
