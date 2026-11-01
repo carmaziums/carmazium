@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { Gavel, Send } from "lucide-react"
 import { useDealerAccess } from "@/context/DealerAccessContext"
 
@@ -12,20 +12,20 @@ import { useDealerAccess } from "@/context/DealerAccessContext"
  * switch only links them, so no team member sees anything new.
  */
 const VIEWS = [
-    { href: "/dashboard/dealer/bids", label: "Auction bids", icon: Gavel, permission: "VIEW_TRADE" },
-    { href: "/dashboard/dealer/my-offers", label: "Retail offers", icon: Send, permission: "MANAGE_OFFERS" },
+    { href: "/dashboard/dealer/bids?tab=auction", label: "Auction bids", icon: Gavel, permission: "VIEW_TRADE" },
+    { href: "/dashboard/dealer/bids?tab=retail", label: "Retail offers", icon: Send, permission: "MANAGE_OFFERS" },
 ] as const
 
 export function BidsOffersSwitch() {
-    const pathname = usePathname()
+    const params = useSearchParams()
     const { loading, hasPermission } = useDealerAccess()
     const views = VIEWS.filter(v => !loading && hasPermission(v.permission))
-    if (views.length < 2) return null
+    if (views.length === 0) return null
 
     return (
         <nav aria-label="Bids and offers views" className="inline-flex rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-1">
             {views.map(({ href, label, icon: Icon }) => {
-                const active = pathname === href
+                const active = params.get("tab") === "retail" ? href.endsWith("retail") : href.endsWith("auction")
                 return (
                     <Link
                         key={href}
