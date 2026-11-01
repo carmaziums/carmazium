@@ -63,7 +63,7 @@ export class AiController {
         const messages = transcript.data.filter((m: any) =>
             typeof m.content === 'string' && m.content.trim() && !m.deletedAt && !m.attachmentPath
         );
-        if (!latest || latest.sender?.role === UserRole.ADMIN || latest.attachmentPath || !latest.content?.trim()) {
+        if (!latest || latest.sender?.role === UserRole.ADMIN || latest.attachmentPath || !latest.content?.trim() || room.supportAiOptedOutAt || room.supportHumanTakeoverAt) {
             throw new BadRequestException('No unanswered customer message to draft.');
         }
         const classification = classifySupportMessage(latest.content);
@@ -80,7 +80,7 @@ export class AiController {
         const current = await this.chatService.getRoomMessages(roomId, user.id, 1, 1);
         const latestNow = current.data[current.data.length - 1];
         const refreshedRoom = await this.chatService.getRoom(roomId, user.id);
-        if (!latestNow || latestNow.id !== latest.id || refreshedRoom.supportClosedAt || refreshedRoom.deletedAt) {
+        if (!latestNow || latestNow.id !== latest.id || refreshedRoom.supportClosedAt || refreshedRoom.deletedAt || refreshedRoom.supportAiOptedOutAt || refreshedRoom.supportHumanTakeoverAt) {
             return { success: true, data: { status: 'HUMAN_REVIEW', reason: 'CONVERSATION_CHANGED' } };
         }
         if (outputDecision?.action === 'ESCALATE') {
