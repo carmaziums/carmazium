@@ -1,4 +1,4 @@
-import { canAutoReplyToSupport, canPrepareSupportDraft, classifySupportMessage, supportAutoReplyClientMessageId } from './mazium-support-policy';
+import { canAutoReplyToSupport, canPrepareSupportDraft, classifySupportMessage, supportAutoReplyClientMessageId, requestsHumanSupport } from './mazium-support-policy';
 
 describe('MaziuM support safety policy', () => {
     it.each([
@@ -82,6 +82,20 @@ describe('MaziuM support safety policy', () => {
             supportAutoReplyClientMessageId(messageId),
         );
         expect(() => supportAutoReplyClientMessageId('../invalid')).toThrow();
+    });
+
+    it.each([
+        'I want to speak to a human',
+        'Please connect me with a live agent',
+        'Turn off your AI',
+        "I don't want to chat with a bot",
+    ])('routes human handoff requests away from automatic replies: %s', (message) => {
+        expect(requestsHumanSupport(message)).toBe(true);
+        expect(classifySupportMessage(message).action).toBe('ESCALATE');
+    });
+
+    it('does not classify ordinary listing help as an opt-out', () => {
+        expect(requestsHumanSupport('How do I create an auction listing?')).toBe(false);
     });
 
 });
