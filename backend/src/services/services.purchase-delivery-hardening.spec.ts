@@ -5,6 +5,7 @@ import { ServicesService } from './services.service';
 describe('TradeXchange purchase-to-delivery integrity', () => {
     let prisma: any;
     let service: ServicesService;
+    let notify: jest.Mock;
 
     const seller = {
         postcode: 'b1 1aa',
@@ -74,13 +75,14 @@ describe('TradeXchange purchase-to-delivery integrity', () => {
             },
             user: {
                 findUnique: jest.fn().mockResolvedValue({ role: 'BUYER' }),
-                findMany: jest.fn().mockResolvedValue([]),
+                findMany: jest.fn().mockResolvedValue([{ id: 'admin-1' }]),
             },
+            contractorCapability: { count: jest.fn().mockResolvedValue(0) },
         };
-
+        notify = jest.fn().mockResolvedValue({});
         service = new ServicesService(
             prisma,
-            { create: jest.fn().mockResolvedValue({}) } as any,
+            { create: notify } as any,
             { sendBrandedEmail: jest.fn().mockResolvedValue({}) } as any,
             { getStripeClient: jest.fn(), refreshConnectAccountReadiness: jest.fn().mockResolvedValue({ ready: true, accountId: 'acct_1' }) } as any,
             { get: jest.fn().mockReturnValue('https://www.carmazium.com') } as any,
@@ -159,6 +161,11 @@ describe('TradeXchange purchase-to-delivery integrity', () => {
         } as any);
 
         expect(result.id).toBe('job-new');
+        expect(notify).toHaveBeenCalledWith(expect.objectContaining({
+            userId: 'admin-1',
+            type: 'SERVICE_JOB_NEEDS_PROVIDER',
+            link: '/dashboard/admin/services/jobs/job-new',
+        }));
         expect(prisma.serviceJob.findFirst).toHaveBeenCalledWith({
             where: {
                 customerId: 'buyer-1',
@@ -238,6 +245,7 @@ describe('TradeXchange purchase-to-delivery integrity', () => {
 
         expect(result.id).toBe('job-existing');
         expect(prisma.serviceJob.create).not.toHaveBeenCalled();
+        expect(notify).not.toHaveBeenCalled();
     });
 
     it('allows a new workflow after the prior linked job was cancelled or expired', async () => {

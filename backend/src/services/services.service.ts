@@ -687,6 +687,59 @@ export class ServicesService {
         return updated;
     }
 
+
+    /**
+     * Notify active administrators when a paid TradeXchange job is actually
+     * created (manual, purchase delivery or post-auction inspection).
+     * Provider coverage is based on the existing verified/Stripe-ready
+     * matching rules, NOT a promise that someone is available at that time.
+     * Notification failures must never roll back or prevent a valid job post.
+     */
+    private async notifyAdminsOfNewJob(job: {
+        id: string;
+        serviceType: ServiceType;
+        title: string;
+        workPostcodeArea?: string | null;
+        pickupPostcode?: string | null;
+        deliveryPostcode?: string | null;
+        servicePostcode?: string | null;
+    }): Promise<void> {
+        try {
+            let eligibleCount: number | null = null;
+            try {
+                eligibleCount = await this.eligibleProviderCountForJob(
+                    job.serviceType, job.workPostcodeArea ?? null,
+                );
+            } catch (error: any) {
+                this.logger.warn(`Cannot check eligible providers for TradeXchange job ${job.id}: ${error?.message}`);
+            }
+
+            const needsHelp = eligibleCount === 0;
+            const location = job.serviceType === ServiceType.DELIVERY
+                ? [job.pickupPostcode, job.deliveryPostcode].filter(Boolean).join(' → ')
+                : job.servicePostcode || job.workPostcodeArea || 'Postcode not specified';
+            const link = `/dashboard/admin/services/jobs/${job.id}`;
+            const label = this.label(job.serviceType);
+            const title = needsHelp
+                ? `Provider assistance needed: ${label} job`
+                : `New TradeXchange ${label} job`;
+            const coverageMessage = needsHelp
+                ? 'No currently verified, payout-ready provider matches the configured service/postcode coverage. Please help source a provider.'
+                : eligibleCount === null
+                    ? 'Provider coverage could not be checked automatically. Please review the job.'
+                    : `${eligibleCount} verified provider${eligibleCount === 1 ? '' : 's'} currently match configured service/postcode coverage (availability not confirmed).`;
+
+            await this.notifyAdmins(
+                needsHelp ? 'SERVICE_JOB_NEEDS_PROVIDER' : 'SERVICE_JOB_POSTED',
+                title,
+                `"${job.title}" · ${location}. ${coverageMessage}`,
+                link,
+            );
+        } catch (error: any) {
+            this.logger.warn(`Admin notification failed for new TradeXchange job ${job.id}: ${error?.message}`);
+        }
+    }
+
     // ── Jobs: customer ─────────────────────────────────────────────────────
 
     async createJob(customerId: string, dto: CreateJobDto) {
@@ -738,6 +791,7 @@ export class ServicesService {
         }));
 
         this.logger.log(`Service job ${job.id} (${job.serviceType}) posted by ${customerId}`);
+        await this.notifyAdminsOfNewJob(job);
         return job;
     }
 
@@ -893,7 +947,7 @@ export class ServicesService {
         if (existing) return existing;
 
         try {
-            return await this.withActiveJobSlot(purchaseCustomerId, async (tx) => tx.serviceJob.create({
+            const job = await this.withActiveJobSlot(purchaseCustomerId, async (tx) => tx.serviceJob.create({
                 data: {
                     customerId: purchaseCustomerId,
                     serviceType: ServiceType.DELIVERY,
@@ -919,6 +973,8 @@ export class ServicesService {
                 },
                 include: { vehicles: true },
             }));
+            await this.notifyAdminsOfNewJob(job);
+            return job;
         } catch (error) {
             // The database has partial unique indexes for active purchase-linked
             // delivery jobs. If two clicks arrive concurrently, the losing
@@ -1031,7 +1087,7 @@ export class ServicesService {
             year: auction.listing.vehicle?.year ?? auction.listing.year ?? null,
         };
 
-        return this.withActiveJobSlot(customerId, async (tx) => tx.serviceJob.create({
+        const job = await this.withActiveJobSlot(customerId, async (tx) => tx.serviceJob.create({
             data: {
                 customerId,
                 serviceType: ServiceType.INSPECTION,
@@ -1055,6 +1111,8 @@ export class ServicesService {
             },
             include: { vehicles: true },
         }));
+        await this.notifyAdminsOfNewJob(job);
+        return job;
     }
 
     async myJobsPage(
