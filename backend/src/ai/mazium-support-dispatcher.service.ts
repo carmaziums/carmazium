@@ -93,16 +93,40 @@ export class MaziumSupportDispatcher {
                     || source.createdAt < room.supportAiConsentAt) continue;
                 // Atomic claim prevents repeated OpenAI calls from parallel
                 // workers or from the next 30-second polling cycle.
-                const claim = await this.prisma.message.updateMany({
-                    where: {
-                        id: message.id,
-                        chatRoomId: message.chatRoomId,
-                        aiGenerated: false,
-                        aiSupportAttemptedAt: null,
-                    },
-                    data: { aiSupportAttemptedAt: new Date() },
+                const claimed = await this.prisma.$transaction(async (tx) => {
+                    await tx.$queryRaw`SELECT pg_advisory_xact_lock(186729, 2)`;
+                    const now = new Date();
+                    const today = new Date(now);
+                    today.setUTCHours(0, 0, 0, 0);
+                    const attemptsToday = await tx.message.count({
+                        where: { aiSupportAttemptedAt: { gte: today } },
+                    });
+                    if (attemptsToday >= maxDaily) return false;
+                    const recentRoomAttempt = await tx.message.count({
+                        where: {
+                            chatRoomId: message.chatRoomId,
+                            aiSupportAttemptedAt: { gte: new Date(now.getTime() - 60_000) },
+                        },
+                    });
+                    if (recentRoomAttempt > 0) return false;
+                    const latest = await tx.message.findFirst({
+                        where: { chatRoomId: message.chatRoomId, deletedAt: null },
+                        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+                        select: { id: true },
+                    });
+                    if (latest?.id !== message.id) return false;
+                    const claim = await tx.message.updateMany({
+                        where: {
+                            id: message.id,
+                            chatRoomId: message.chatRoomId,
+                            aiGenerated: false,
+                            aiSupportAttemptedAt: null,
+                        },
+                        data: { aiSupportAttemptedAt: now },
+                    });
+                    return claim.count === 1;
                 });
-                if (claim.count !== 1) continue;
+                if (!claimed) continue;
                 await this.autoReply.processCustomerMessage(message.chatRoomId, message.id);
             }
         } catch {
