@@ -655,7 +655,8 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                                 {active.key === 'core' && (
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                         <Field label="Title" value={editForm.title} onChange={set('title')} span />
-                                        <Field label="Price (£)" value={editForm.price} onChange={set('price')} type="number" />
+                                        <Field label={editForm.listingType === 'AUCTION' ? 'Listing valuation (£) — not the bidding price' : 'Retail asking price (£)'} value={editForm.price} onChange={set('price')} type="number" />
+                                        {editForm.listingType === 'AUCTION' && <p className="col-span-full text-xs text-[var(--text-muted)]">Auction Starting Bid, Reserve and Buy It Now are separate settings in the Auction Schedule section. Editing this valuation does not change live bidding terms.</p>}
                                         <Field label="Min Offer Price (£)" value={editForm.priceMin} onChange={set('priceMin')} type="number" />
                                         <Field label="Max Offer Price (£)" value={editForm.priceMax} onChange={set('priceMax')} type="number" />
                                     </div>
