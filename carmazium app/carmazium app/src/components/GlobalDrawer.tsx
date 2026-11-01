@@ -346,11 +346,11 @@ export const GlobalDrawer: React.FC = () => {
         navigation.navigate('Main', { screen: item.stackScreen } as never);
         return;
       }
-      if (item.tabName) {
-        navigation.navigate('Main', {
-          screen: 'Tabs',
-          params: { screen: item.tabName, params: item.tabParams },
-        });
+      if (item.tabName === 'DealerBuyBid') {
+        navigation.navigate('Main', { screen: 'Tabs',
+          params: { screen: 'DealerBuyBid', params: item.tabParams } });
+      } else if (item.tabName) {
+        navigation.navigate('Main', { screen: 'Tabs', params: { screen: item.tabName } } as never);
       }
     }, 160);
   };
