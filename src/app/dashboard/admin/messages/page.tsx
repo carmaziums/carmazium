@@ -144,6 +144,7 @@ function AdminMessagesContent() {
     ]
 
     return (
+        <>
         <div className="min-h-screen pt-20 pb-24 lg:pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="admin" userName={userName} userType="Admin Account" />
@@ -318,6 +319,7 @@ function AdminMessagesContent() {
             </div>,
             document.body
         )}
+        </>
     )
 }
 
