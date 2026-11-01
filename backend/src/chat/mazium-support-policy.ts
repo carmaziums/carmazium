@@ -31,7 +31,7 @@ export function classifySupportMessage(message: string): SupportDecision {
     if (!content || content.length > 4000) {
         return { action: 'ESCALATE', reason: 'EMPTY_OR_OVERSIZED' };
     }
-    if (OWNER_APPROVAL.some((pattern) => pattern.test(content))) {
+    if (requestsHumanSupport(content) || OWNER_APPROVAL.some((pattern) => pattern.test(content))) {
         return { action: 'ESCALATE', reason: 'SENSITIVE_OR_APPROVAL_REQUIRED' };
     }
     return { action: 'DRAFT', reason: 'ROUTINE_SUPPORT' };
@@ -102,4 +102,17 @@ export function supportAutoReplyClientMessageId(incomingMessageId: string): stri
         throw new Error('Invalid incoming support message identifier');
     }
     return `mazium-support-${incomingMessageId.toLowerCase()}`;
+}
+
+/**
+ * A customer's plain-language request for a person is an opt-out signal.
+ * The caller must persist the preference and route the room to human support;
+ * this classifier does not itself mutate the room or send a message.
+ */
+export function requestsHumanSupport(message: string): boolean {
+    return [
+        /\b(human|real person|actual person|live agent|support agent|staff member|manager|supervisor)\b/i,
+        /\b(stop|disable|turn off|opt out of|no more) (?:the |your )?(?:ai|bot|automated|automatic)\b/i,
+        /\b(don't|do not|no longer) (?:want to )?(?:talk to|chat with|speak to) (?:an? )?(?:ai|bot|robot)\b/i,
+    ].some((pattern) => pattern.test(message));
 }
