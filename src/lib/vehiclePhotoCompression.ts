@@ -11,6 +11,21 @@ const INITIAL_JPEG_QUALITY = 0.86
 const MIN_JPEG_QUALITY = 0.72
 export const PHONE_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']
 
+// A trusted marker exists only on a File actually produced by this module.
+// Size/MIME alone cannot prove that an arbitrary JPEG had EXIF/GPS removed.
+const preparedVehicleFiles = new WeakSet<File>()
+
+/** The final vehicle-upload boundary uses this even if callers skip ImageUpload. */
+export async function ensurePreparedVehiclePhoto(file: File): Promise<File> {
+    if (preparedVehicleFiles.has(file)
+        && file.type === 'image/jpeg'
+        && file.size > 0
+        && file.size <= TARGET_UPLOAD_SIZE) {
+        return file // Avoid re-encoding a photo the listing wizard already prepared.
+    }
+    return prepareImageForUpload(file)
+}
+
 function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
     return new Promise((resolve, reject) => {
         canvas.toBlob(
@@ -119,10 +134,12 @@ export async function prepareImageForUpload(file: File): Promise<File> {
                     const blob = await canvasToBlob(canvas, quality)
                     if (blob.size <= TARGET_UPLOAD_SIZE) {
                         const baseName = sourceFile.name.replace(/\.[^.]+$/, '') || 'vehicle-photo'
-                        return new File([blob], `${baseName}.jpg`, {
+                        const prepared = new File([blob], `${baseName}.jpg`, {
                             type: 'image/jpeg',
                             lastModified: sourceFile.lastModified,
                         })
+                        preparedVehicleFiles.add(prepared)
+                        return prepared
                     }
                     if (quality <= MIN_JPEG_QUALITY) break
                     quality = Math.max(MIN_JPEG_QUALITY, Number((quality - 0.07).toFixed(2)))
