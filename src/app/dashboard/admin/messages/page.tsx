@@ -145,7 +145,7 @@ function AdminMessagesContent() {
 
     return (
         <>
-        <div className="min-h-screen pt-20 pb-24 lg:pb-12">
+        <div className="min-h-screen pt-3 pb-24 lg:pt-20 lg:pb-12">
             <div className="container mx-auto px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8">
                 <DashboardSidebar role="admin" userName={userName} userType="Admin Account" />
 
@@ -162,7 +162,29 @@ function AdminMessagesContent() {
                                 </div>
                             </div>
 
-                            <div className="flex max-w-full gap-1 overflow-x-auto whitespace-nowrap rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-1 shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <div className="flex w-full items-center gap-2 sm:hidden">
+                                <button type="button" onClick={() => { setMode("inbox"); setSelectedRoom(null) }}
+                                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${mode === "inbox" ? "bg-primary text-white" : "bg-[var(--bg-input)] text-[var(--text-primary)]"}`}>
+                                    Inbox
+                                </button>
+                                <button type="button" onClick={() => { setMode("new"); setSelectedRoom(null) }}
+                                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${mode === "new" ? "bg-primary text-white" : "bg-[var(--bg-input)] text-[var(--text-primary)]"}`}>
+                                    + New
+                                </button>
+                                <label className="min-w-0 flex-1">
+                                    <span className="sr-only">Other message tools</span>
+                                    <select aria-label="Other message tools" value={["broadcast","disputes","moderation","history"].includes(mode) ? mode : ""}
+                                        onChange={(event) => { const value = event.target.value as AdminMessageMode; if (value) { setMode(value); setSelectedRoom(null) } }}
+                                        className="w-full min-w-0 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-2 py-2 text-sm font-semibold text-[var(--text-primary)]">
+                                        <option value="">More tools</option>
+                                        <option value="broadcast">Broadcast</option>
+                                        <option value="disputes">Disputes</option>
+                                        <option value="moderation">Moderation</option>
+                                        <option value="history">History</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div className="hidden sm:flex max-w-full gap-1 overflow-x-auto whitespace-nowrap rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-1 shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                 <button
                                     type="button"
                                     onClick={() => setMode("inbox")}
@@ -252,7 +274,17 @@ function AdminMessagesContent() {
                             ) : (
                                 <div className="flex h-full min-h-0">
                                     <div className={`w-full lg:w-[360px] border-r border-[var(--border-default)] ${selectedRoom ? "hidden lg:flex lg:flex-col" : "flex flex-col"}`}>
-                                        <div className="flex gap-1.5 overflow-x-auto whitespace-nowrap border-b border-[var(--border-default)] p-2 sm:p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                                        <div className="border-b border-[var(--border-default)] px-3 py-2 sm:hidden">
+                                            <label className="flex items-center gap-2 text-sm font-medium text-[var(--text-muted)]">
+                                                Show
+                                                <select aria-label="Filter conversations" value={supportFilter}
+                                                    onChange={(event) => setSupportFilter(event.target.value as SupportFilter)}
+                                                    className="min-w-0 flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm font-semibold text-[var(--text-primary)]">
+                                                    {filters.map(filter => <option key={filter.value} value={filter.value}>{filter.label} ({filter.count})</option>)}
+                                                </select>
+                                            </label>
+                                        </div>
+                                        <div className="hidden sm:flex gap-1.5 overflow-x-auto whitespace-nowrap border-b border-[var(--border-default)] p-2 sm:p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                             {filters.map(filter => (
                                                 <button
                                                     key={filter.value}
