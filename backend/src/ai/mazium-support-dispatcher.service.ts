@@ -29,6 +29,8 @@ export class MaziumSupportDispatcher {
             || !this.config.get<string>('MAZIUM_SUPPORT_BOT_USER_ID')) return;
         this.running = true;
         try {
+            // Only messages arriving after the customer opted in may trigger
+            // an autonomous reply. Older messages require human handling.
             const since = new Date(Date.now() - 2 * 60 * 1000);
             // Avoid paying for model generations after the reply quota is
             // exhausted. The transactional insert independently rechecks.
@@ -43,6 +45,7 @@ export class MaziumSupportDispatcher {
             const messages = await this.prisma.message.findMany({
                 where: {
                     createdAt: { gte: since },
+                    aiSourceMessageId: null,
                     deletedAt: null,
                     aiGenerated: false,
                     attachmentPath: null,
@@ -60,6 +63,16 @@ export class MaziumSupportDispatcher {
                 select: { id: true, chatRoomId: true },
             });
             for (const message of messages) {
+                const room = await this.prisma.chatRoom.findUnique({
+                    where: { id: message.chatRoomId },
+                    select: { supportAiConsentAt: true },
+                });
+                const source = await this.prisma.message.findUnique({
+                    where: { id: message.id },
+                    select: { createdAt: true },
+                });
+                if (!room?.supportAiConsentAt || !source
+                    || source.createdAt < room.supportAiConsentAt) continue;
                 await this.autoReply.processCustomerMessage(message.chatRoomId, message.id);
             }
         } catch {
