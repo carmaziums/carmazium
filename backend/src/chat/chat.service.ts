@@ -2236,6 +2236,13 @@ export class ChatService {
         botUserId: string,
         reply: string,
     ) {
+        // A caller-supplied user ID must never be enough to impersonate a
+        // customer or staff account. The bot is explicitly configured by ops.
+        if (process.env.MAZIUM_SUPPORT_AUTO_REPLY_ENABLED !== 'true'
+            || !process.env.MAZIUM_SUPPORT_BOT_USER_ID
+            || botUserId !== process.env.MAZIUM_SUPPORT_BOT_USER_ID) {
+            throw new ForbiddenException('MaziuM automatic support replies are disabled or bot identity is invalid');
+        }
         if (!botUserId || !reply.trim() || reply.length > 1200) {
             throw new BadRequestException('Invalid MaziuM reply');
         }
