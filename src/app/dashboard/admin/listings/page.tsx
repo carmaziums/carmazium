@@ -832,7 +832,7 @@ export default function AdminListingsPage() {
                                             <td className="px-6 py-4 text-right text-sm">
                                                 <span className="font-bold">{getModerationPrice(l).value}</span>
                                                 <span className="mt-0.5 block text-[11px] text-[var(--text-muted)]">{getModerationPrice(l).label}</span>
-                                                {l.type === 'AUCTION' && [getModerationPrice(l).detail, getModerationPrice(l).buyNow].filter(Boolean).map((detail: string) => <span key={detail} className="block text-[11px] text-[var(--text-muted)]">{detail}</span>)}
+                                                {l.type === 'AUCTION' && [getModerationPrice(l).detail, getModerationPrice(l).buyNow].filter((detail): detail is string => !!detail).map((detail) => <span key={detail} className="block text-[11px] text-[var(--text-muted)]">{detail}</span>)}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="text-sm cursor-pointer group" onClick={() => l.seller?.id && setSelectedUserId(l.seller.id)}>
