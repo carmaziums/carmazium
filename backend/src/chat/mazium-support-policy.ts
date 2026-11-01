@@ -70,6 +70,8 @@ export function canAutoReplyToSupport(input: {
     latestMessageFromCustomer: boolean;
     /** Trusted server-side sender/participant check; never infer from message text. */
     senderIdentityVerified: boolean;
+    /** Reply must originate from the dedicated, server-owned AI account. */
+    dedicatedAiSenderVerified: boolean;
     latestMessageHasAttachment: boolean;
     latestMessageIdMatches: boolean;
     alreadyProcessed: boolean;
@@ -86,6 +88,7 @@ export function canAutoReplyToSupport(input: {
         && !input.humanTakeover
         && input.latestMessageFromCustomer
         && input.senderIdentityVerified
+        && input.dedicatedAiSenderVerified
         && !input.latestMessageHasAttachment
         && input.latestMessageIdMatches
         && !input.alreadyProcessed
