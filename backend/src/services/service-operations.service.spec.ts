@@ -124,6 +124,14 @@ describe('ServiceOperationsService', () => {
             expect.objectContaining({ contentType: 'application/pdf', upsert: false }),
         );
         expect(result.url).toBe('https://signed.example/private-file');
+
+        // The production DB's legacy content_check only accepts nonblank
+        // url/note. Private uploads must keep the URL NULL, and use a
+        // non-sensitive internal note so the INSERT is not rolled back.
+        const insertSql = prisma.$queryRaw.mock.calls[1][0];
+        expect(insertSql.sql).toMatch(/INSERT INTO "service_case_entries"/);
+        expect(insertSql.values).toContain('Private file attachment');
+        expect(insertSql.values).toContain(null); // URL stays NULL, never a public file link
     });
 
     it('rejects a capability evidence type that does not belong to the service', async () => {
