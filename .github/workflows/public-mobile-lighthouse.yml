@@ -1,0 +1,55 @@
+name: Public mobile Lighthouse baseline
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/public-mobile-lighthouse.yml'
+      - 'scripts/summarize-public-lighthouse.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify Chrome on runner
+        run: google-chrome --version
+      - name: Audit public routes as a simulated mobile visitor
+        run: |
+          mkdir -p lighthouse-reports
+          npx --yes lighthouse@13.6.0 https://www.carmazium.com/ \
+            --only-categories=performance --form-factor=mobile \
+            --screenEmulation.mobile=true --screenEmulation.width=390 \
+            --screenEmulation.height=844 --screenEmulation.deviceScaleFactor=3 \
+            --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
+            --output=json --output-path=lighthouse-reports/home.json --quiet
+          npx --yes lighthouse@13.6.0 https://www.carmazium.com/pricing \
+            --only-categories=performance --form-factor=mobile \
+            --screenEmulation.mobile=true --screenEmulation.width=390 \
+            --screenEmulation.height=844 --screenEmulation.deviceScaleFactor=3 \
+            --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
+            --output=json --output-path=lighthouse-reports/pricing.json --quiet
+          npx --yes lighthouse@13.6.0 https://www.carmazium.com/search \
+            --only-categories=performance --form-factor=mobile \
+            --screenEmulation.mobile=true --screenEmulation.width=390 \
+            --screenEmulation.height=844 --screenEmulation.deviceScaleFactor=3 \
+            --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
+            --output=json --output-path=lighthouse-reports/search.json --quiet
+      - name: Summarise synthetic mobile measurements
+        if: always()
+        run: node scripts/summarize-public-lighthouse.mjs
+      - name: Upload raw Lighthouse evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: carmazium-public-mobile-lighthouse
+          path: lighthouse-reports/
+          retention-days: 7
+          if-no-files-found: warn
