@@ -1,4 +1,4 @@
-import { canAutoReplyToSupport, canPrepareSupportDraft, classifySupportMessage, supportAutoReplyClientMessageId, requestsHumanSupport } from './mazium-support-policy';
+import { canAutoReplyToSupport, canPrepareSupportDraft, classifySupportMessage, supportAutoReplyClientMessageId, requestsHumanSupport, isInboundCustomerSupportMessage } from './mazium-support-policy';
 
 describe('MaziuM support safety policy', () => {
     it.each([
@@ -96,6 +96,25 @@ describe('MaziuM support safety policy', () => {
 
     it('does not classify ordinary listing help as an opt-out', () => {
         expect(requestsHumanSupport('How do I create an auction listing?')).toBe(false);
+    });
+
+    it('only triggers for customer messages, never official support or automated messages', () => {
+        const room = {
+            context: 'SUPPORT',
+            initiatorId: 'customer-1',
+            participantId: 'support-1',
+            officialSupportAccountId: 'support-1',
+            senderIsAutomated: false,
+        };
+        expect(isInboundCustomerSupportMessage({ ...room, senderId: 'customer-1' })).toBe(true);
+        expect(isInboundCustomerSupportMessage({ ...room, senderId: 'support-1' })).toBe(false);
+        expect(isInboundCustomerSupportMessage({ ...room, senderId: 'staff-2' })).toBe(false);
+        expect(isInboundCustomerSupportMessage({ ...room, senderId: 'customer-1', senderIsAutomated: true })).toBe(false);
+        expect(isInboundCustomerSupportMessage({ ...room, senderId: 'customer-1', context: 'RETAIL' })).toBe(false);
+        expect(isInboundCustomerSupportMessage({ ...room, senderId: 'customer-1', officialSupportAccountId: 'unknown' })).toBe(false);
+        expect(isInboundCustomerSupportMessage({
+            ...room, initiatorId: 'support-1', participantId: 'customer-1', senderId: 'customer-1',
+        })).toBe(true);
     });
 
 });
