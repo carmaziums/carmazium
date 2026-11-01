@@ -61,6 +61,8 @@ export interface CapabilityVerificationRequirement {
     title: string;
     description: string;
     expiryRequired: boolean;
+    /** Optional evidence can support a review but must never prevent approval. */
+    optional?: boolean;
 }
 
 const BUSINESS_IDENTITY: CapabilityVerificationRequirement = {
@@ -96,9 +98,10 @@ export const CAPABILITY_VERIFICATION_REQUIREMENTS: Record<ServiceType, Capabilit
         },
         {
             type: 'INSPECTION_QUALIFICATION',
-            title: 'Inspection qualification / competence',
-            description: 'Relevant vehicle inspection, mechanical qualification or other evidence of professional competence.',
+            title: 'Experience / qualifications (optional)',
+            description: 'Optional certificates, references, example inspection reports or experience evidence from your business or third-party mechanics. No formal qualification is required for CarMazium onboarding.',
             expiryRequired: false,
+            optional: true,
         },
     ],
     [ServiceType.FINANCE]: [
@@ -197,8 +200,9 @@ export async function getCapabilityVerificationSummary(
         };
     });
 
-    const ready = requirements.length > 0 && requirements.every((requirement) => requirement.state === 'SATISFIED');
-    const approvedExpiries = requirements
+    const mandatory = requirements.filter((requirement) => !requirement.optional);
+    const ready = mandatory.length > 0 && mandatory.every((requirement) => requirement.state === 'SATISFIED');
+    const approvedExpiries = mandatory
         .map((requirement) => requirement.evidenceExpiresAt ? new Date(requirement.evidenceExpiresAt) : null)
         .filter((value): value is Date => !!value && !Number.isNaN(value.getTime()));
     const annualReview = new Date(now.getTime() + CAPABILITY_VERIFICATION_MAX_DAYS * 86_400_000);
@@ -231,7 +235,7 @@ export async function assertCapabilityVerificationReady(
     }
     if (!summary.ready || !summary.recommendedExpiresAt) {
         const missing = summary.requirements
-            .filter((requirement) => requirement.state !== 'SATISFIED')
+            .filter((requirement) => !requirement.optional && requirement.state !== 'SATISFIED')
             .map((requirement) => requirement.title);
         throw new BadRequestException(
             `Provider verification is incomplete. Complete and approve: ${missing.join(', ') || 'required evidence'}.`,
@@ -241,15 +245,16 @@ export async function assertCapabilityVerificationReady(
 }
 
 export function pendingVerificationStatus(
-    requirements: Array<{ state: string }>,
+    requirements: Array<{ state: string; optional?: boolean }>,
 ): CapabilityVerificationStatus {
-    if (requirements.length && requirements.every((requirement) => requirement.state === 'SATISFIED')) {
+    const mandatory = requirements.filter((requirement) => !requirement.optional);
+    if (mandatory.length && mandatory.every((requirement) => requirement.state === 'SATISFIED')) {
         return 'READY';
     }
-    if (requirements.some((requirement) => requirement.state === 'PENDING' || requirement.state === 'SATISFIED')) {
+    if (mandatory.some((requirement) => requirement.state === 'PENDING' || requirement.state === 'SATISFIED')) {
         return 'IN_REVIEW';
     }
-    if (requirements.some((requirement) => requirement.state === 'REJECTED')) {
+    if (mandatory.some((requirement) => requirement.state === 'REJECTED')) {
         return 'IN_REVIEW';
     }
     return 'NOT_SUBMITTED';

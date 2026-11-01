@@ -275,7 +275,7 @@ const addVerifiedEvidence = (capabilityId: string, serviceType: 'DELIVERY' | 'IN
     const expiry = new Date(Date.now() + 180 * 86_400_000);
     const evidenceTypes = serviceType === 'DELIVERY'
         ? ['BUSINESS_IDENTITY', 'DELIVERY_BUSINESS_INSURANCE', 'DELIVERY_GOODS_IN_TRANSIT']
-        : ['BUSINESS_IDENTITY', 'INSPECTION_BUSINESS_INSURANCE', 'INSPECTION_QUALIFICATION'];
+        : ['BUSINESS_IDENTITY', 'INSPECTION_BUSINESS_INSURANCE']; // formal qualifications are voluntary
     for (const evidenceType of evidenceTypes) {
         db.tables.serviceCaseEntry.push({
             id: uid('evidence'),
@@ -685,6 +685,11 @@ describe('Vehicle Inspection — end to end', () => {
 
         expect(cap.status).toBe('PENDING');
         addVerifiedEvidence(cap.id, 'INSPECTION');
+        // The company may employ experienced inspectors or third-party
+        // mechanics. CarMazium does not require formal qualifications.
+        expect(db.tables.serviceCaseEntry.filter((entry) =>
+            entry.entityId === cap.id && entry.evidenceType === 'INSPECTION_QUALIFICATION',
+        )).toHaveLength(0);
 
         const approved = await svc.adminReviewCapability(
             ADMIN.id,
