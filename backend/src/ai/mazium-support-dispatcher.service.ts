@@ -30,6 +30,16 @@ export class MaziumSupportDispatcher {
         this.running = true;
         try {
             const since = new Date(Date.now() - 2 * 60 * 1000);
+            // Avoid paying for model generations after the reply quota is
+            // exhausted. The transactional insert independently rechecks.
+            const maxDaily = Math.min(100, Math.max(1,
+                Number(this.config.get<string>('MAZIUM_SUPPORT_MAX_DAILY_REPLIES') || 20) || 20));
+            const dayStart = new Date();
+            dayStart.setUTCHours(0, 0, 0, 0);
+            const sentToday = await this.prisma.message.count({
+                where: { aiGenerated: true, createdAt: { gte: dayStart } },
+            });
+            if (sentToday >= maxDaily) return;
             const messages = await this.prisma.message.findMany({
                 where: {
                     createdAt: { gte: since },
