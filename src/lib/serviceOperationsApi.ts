@@ -52,6 +52,8 @@ export interface CapabilityVerificationRequirement {
   title: string;
   description: string;
   expiryRequired: boolean;
+  /** Optional evidence supports a provider's application but never blocks approval. */
+  optional?: boolean;
   state: 'SATISFIED' | 'PENDING' | 'REJECTED' | 'MISSING';
   currentEvidenceId: string | null;
   approvedEvidenceId: string | null;
