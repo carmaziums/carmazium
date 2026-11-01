@@ -50,6 +50,9 @@ export class MaziumSupportDispatcher {
                     aiGenerated: false,
                     aiSupportAttemptedAt: null,
                     attachmentPath: null,
+                    // Exclude all messages authored by the configured AI
+                    // identity, even if older records lack AI provenance.
+                    senderId: { not: this.config.get<string>('MAZIUM_SUPPORT_BOT_USER_ID')! },
                     sender: { role: { not: 'ADMIN' } },
                     chatRoom: {
                         context: ChatContext.SUPPORT,
