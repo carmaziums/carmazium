@@ -22,7 +22,7 @@ for (const page of pages) {
     .filter(request => /\/assets\/videos\/hero-cinematic(?:-light)?\.mp4(?:\?|$)/.test(request.url ?? '')).length
   // Report large originals without enabling paid Vercel/Supabase image transforms.
   const oversizedVehiclePhotos = (report.audits?.['network-requests']?.details?.items ?? [])
-    .filter(request => /\\.supabase\\.co\\/storage\\/v1\\/object\\/public\\/listings\\//.test(request.url ?? '')
+    .filter(request => /\.supabase\.co\/storage\/v1\/object\/public\/listings\//.test(request.url ?? '')
       && (request.transferSize ?? 0) >= 1024 * 1024).length
   const transfer = Number.isFinite(totalBytes) ? (totalBytes / 1024 / 1024).toFixed(2) + ' MiB' : '—'
   lines.push(`| ${page} | ${score == null ? '—' : Math.round(score * 100)} | ${metric('largest-contentful-paint')} | ${metric('cumulative-layout-shift')} | ${metric('total-blocking-time')} | ${metric('first-contentful-paint')} | ${transfer} | ${videoRequests} | ${oversizedVehiclePhotos} |`)
