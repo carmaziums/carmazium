@@ -135,15 +135,15 @@ test("search matches vehicle, registration with or without spaces, seller and re
 })
 
 
-test("Purchases retains search, a status filter, accepted retail offers and all financial actions", () => {
+test("Purchases retains search, compact channel filtering, accepted retail offers and financial actions", () => {
     const view = read("src/components/dealer/DealerPurchasesView.tsx")
     assert.match(view, /type="search"/)
-    assert.match(view, /value=\{statusFilter\}/)
+    assert.match(view, /aria-label="Purchase type"/)
     assert.match(view, /const shownPendingRetail = isHistory \|\| isCancelled/)
     assert.match(view, /getMySaleCancellations\("purchase-history"\)/)
     assert.match(view, /buyerCancelledSales\(cancelled, dealershipBuyerId\)/)
     for (const action of ["onViewSummary={openPurchaseDetail}", "onViewSeller={openSellerDetails}",
-        "onRequestCancellation={setCancelItem}", 'href="/dashboard/cancellations"', "Refresh purchases"]) {
+        "onRequestCancellation={setCancelItem}", 'href="/dashboard/cancellations"', "setRefreshVersion(n => n + 1)"]) {
         assert.ok(view.includes(action), action)
     }
 })
