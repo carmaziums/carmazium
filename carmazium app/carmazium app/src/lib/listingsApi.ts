@@ -40,7 +40,14 @@ export interface ApiListing {
   /** Now included on `GET /listings` as well as the detail route
    *  (`listings.service.ts:518-525`), so a search result can be routed to its
    *  auction rather than the retail detail screen (BUY-017). */
-  auction?: { id: string; status: string; endTime: string } | null;
+  auction?: {
+    id: string; status: string; endTime: string;
+    startingBid?: number | string | null;
+    currentBid?: number | string | null;
+    hasBids?: boolean;
+    reserveMet?: boolean;
+    buyItNowPrice?: number | string | null;
+  } | null;
   seller?: {
     id: string;
     firstName?: string;
