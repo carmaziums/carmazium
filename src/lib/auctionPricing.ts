@@ -60,7 +60,11 @@ export function getListingPricePresentation(listing: {
     price: number | string
     auction?: AuctionDisplayFields | null
 }): { price: string; label: string; reserveLabel: string | null; buyItNowLabel: string | null } {
-    const money = (amount: number | string) => '£' + Number(amount).toLocaleString('en-GB')
+    const money = (amount: number | string) => {
+        if (typeof amount === 'string' && /^£[0-9,.]+$/.test(amount.trim())) return amount.trim()
+        const n = Number(amount)
+        return Number.isFinite(n) ? '£' + n.toLocaleString('en-GB') : 'Price on request'
+    }
     if (listing.type !== 'AUCTION') {
         return { price: money(listing.price), label: 'Retail asking price', reserveLabel: null, buyItNowLabel: null }
     }
