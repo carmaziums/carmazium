@@ -5,27 +5,20 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
-export type PurchaseDestination = 'wins' | 'retail' | 'all' | 'history';
+export type PurchaseDestination = 'progress' | 'completed' | 'cancelled';
 
-/**
- * The four Buy-side purchase destinations, matching web's
- * PurchaseDestinations: Auction Wins, Retail Purchases, All Purchases and Purchase History.
- *
- * Two columns per row with a wrapping label, so all four destinations fit
- * on a 360dp Samsung without a clipped or sideways-scrolling tab strip.
- */
+/** Exactly one stage tab row; auction/retail is a separate compact filter. */
 const ITEMS: { id: PurchaseDestination; label: string; icon: string }[] = [
-  { id: 'wins', label: 'Auction Wins', icon: 'trophy-outline' },
-  { id: 'retail', label: 'Retail Purchases', icon: 'car-outline' },
-  { id: 'all', label: 'All Purchases', icon: 'receipt-outline' },
-  { id: 'history', label: 'Purchase History', icon: 'time-outline' },
+  { id: 'progress', label: 'In progress', icon: 'time-outline' },
+  { id: 'completed', label: 'Completed', icon: 'checkmark-circle-outline' },
+  { id: 'cancelled', label: 'Cancelled', icon: 'close-circle-outline' },
 ];
 
 export const PurchaseDestinations: React.FC<{
   active: PurchaseDestination;
   onSelect: (destination: PurchaseDestination) => void;
 }> = ({ active, onSelect }) => (
-  <View style={styles.wrap} accessibilityRole="tablist" accessibilityLabel="Purchases">
+  <View style={styles.wrap} accessibilityRole="tablist" accessibilityLabel="Purchase stages">
     {ITEMS.map(item => {
       const selected = item.id === active;
       return (
@@ -50,7 +43,6 @@ export const PurchaseDestinations: React.FC<{
 const styles = StyleSheet.create({
   wrap: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 4,
     marginHorizontal: 16,
     marginBottom: 12,
@@ -62,8 +54,8 @@ const styles = StyleSheet.create({
   },
   item: {
     flexGrow: 1,
-    flexBasis: '45%',
-    minHeight: 56,
+    flexBasis: '30%',
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
