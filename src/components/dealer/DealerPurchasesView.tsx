@@ -102,6 +102,11 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
     const [refreshVersion, setRefreshVersion] = React.useState(0)
     const [query, setQuery] = React.useState("")
     const [statusFilter, setStatusFilter] = React.useState<StatusFilter>("all")
+    // Stage/channel links reuse this component; a filter for a hidden status
+    // must not leak into the next tab and make genuine purchases look missing.
+    React.useEffect(() => {
+        setStatusFilter("all")
+    }, [stage, channel])
     const [cancelled, setCancelled] = React.useState<SaleCancellationRequest[]>([])
     const [cancelledError, setCancelledError] = React.useState(false)
     const [truncated, setTruncated] = React.useState(false)
