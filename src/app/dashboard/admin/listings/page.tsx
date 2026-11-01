@@ -445,7 +445,7 @@ export default function AdminListingsPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => setExpandedId(isExpanded ? null : l.id)}
-                                                className="w-full flex items-center gap-3 p-4 hover:bg-[var(--bg-input)] transition-colors text-left cursor-pointer"
+                                                className="grid w-full min-w-0 grid-cols-[48px_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 p-3 text-left transition-colors hover:bg-[var(--bg-input)] sm:flex sm:items-center sm:gap-3 sm:p-4 cursor-pointer"
                                             >
                                                 {l.images?.[0] ? (
                                                     <Image src={l.images[0]} alt="" width={48} height={48} className="w-12 h-12 rounded-lg object-cover shrink-0" />
@@ -455,21 +455,26 @@ export default function AdminListingsPage() {
                                                     </div>
                                                 )}
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-bold text-sm break-words leading-snug">{l.title}</p>
+                                                    <p className="line-clamp-2 min-w-0 break-words text-sm font-bold leading-snug">{l.title}</p>
                                                     <div className="mt-1"><ListingChannelPill type={l.type} /></div>
                                                     <p className="text-xs text-[var(--text-muted)] truncate">{l.seller?.firstName} {l.seller?.lastName} · {l.seller?.email}</p>
                                                     <ListingHistoryDates listing={l} />
                                                 </div>
+                                                {/* On phone, the history-report warning takes its own full-width
+                                                    grid row instead of squeezing the vehicle name to a single letter.
+                                                    Keep the status and chevron together in the third grid column. */}
                                                 {hpiPending && (
-                                                    <span className="text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 bg-primary/10 text-primary border-primary/30 inline-flex items-center gap-1.5">
-                                                        <FileWarning size={12} /> History report outstanding
+                                                    <span className="col-span-3 row-start-2 inline-flex min-w-0 max-w-full items-center gap-1.5 justify-self-start whitespace-normal break-words rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary sm:shrink-0">
+                                                        <FileWarning size={12} className="shrink-0" /> History report outstanding
                                                     </span>
                                                 )}
-                                                <span className="text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 bg-amber-500/10 text-amber-400 border-amber-500/20">
-                                                    Pending
-                                                </span>
-                                                <span className="hidden text-right text-sm font-bold shrink-0 sm:inline">{getModerationPrice(l).value}<span className="block text-[10px] font-normal text-[var(--text-muted)]">{getModerationPrice(l).label}</span></span>
-                                                <ChevronDown size={18} className={`text-[var(--text-muted)] transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
+                                                <div className="col-start-3 row-start-1 flex shrink-0 flex-col items-end gap-2 sm:ml-auto sm:flex-row sm:items-center">
+                                                    <span className="inline-flex shrink-0 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-400">
+                                                        Pending
+                                                    </span>
+                                                    <span className="hidden text-right text-sm font-bold sm:inline">{getModerationPrice(l).value}<span className="block text-[10px] font-normal text-[var(--text-muted)]">{getModerationPrice(l).label}</span></span>
+                                                    <ChevronDown size={18} className={`shrink-0 text-[var(--text-muted)] transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                                </div>
                                             </button>
 
                                             {isExpanded && (
