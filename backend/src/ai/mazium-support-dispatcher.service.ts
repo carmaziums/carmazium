@@ -49,6 +49,7 @@ export class MaziumSupportDispatcher {
                     deletedAt: null,
                     aiGenerated: false,
                     attachmentPath: null,
+                    sender: { role: { not: 'ADMIN' } },
                     chatRoom: {
                         context: ChatContext.SUPPORT,
                         deletedAt: null,
