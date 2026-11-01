@@ -24,17 +24,23 @@ function SavedRetailContent() {
     const [removing, setRemoving] = React.useState<string | null>(null)
     const [page, setPage] = React.useState(1)
     const [totalPages, setTotalPages] = React.useState(1)
+    const [loadError, setLoadError] = React.useState<string | null>(null)
+    const [refreshKey, setRefreshKey] = React.useState(0)
 
     React.useEffect(() => {
         async function fetchWatchlist() {
             if (!user) return
             try {
                 setLoading(true)
+                setLoadError(null)
                 const data = await getWatchlist(page, 12, 'retail')
                 setItems(data.data || [])
-                setTotalPages(data.pagination?.totalPages || 1)
+                const availablePages = data.pagination?.totalPages || 1
+                setTotalPages(availablePages)
+                if (page > availablePages) setPage(availablePages)
             } catch (err) {
                 console.error('Failed to fetch saved cars:', err)
+                setLoadError('Saved retail cars could not be loaded. Please retry.')
             } finally {
                 setLoading(false)
             }
@@ -43,15 +49,17 @@ function SavedRetailContent() {
         if (!authLoading && user) {
             fetchWatchlist()
         }
-    }, [user, authLoading, page])
+    }, [user, authLoading, page, refreshKey])
 
     const handleRemove = async (listingId: string) => {
         try {
             setRemoving(listingId)
             await removeFromWatchlist(listingId)
             setItems(prev => prev.filter(item => item.listingId !== listingId))
+            setRefreshKey(n => n + 1)
         } catch (err) {
             console.error('Failed to remove:', err)
+            setLoadError('Could not remove this saved car. Please try again.')
         } finally {
             setRemoving(null)
         }
@@ -73,6 +81,12 @@ function SavedRetailContent() {
                                         {loading ? (
                         <div className="glass-card p-12 text-center">
                             <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+                        </div>
+                    ) : loadError ? (
+                        <div role="alert" className="glass-card p-6 text-sm text-[var(--text-primary)]">
+                            <p>{loadError}</p>
+                            <button type="button" className="mt-3 min-h-11 rounded-lg border border-[var(--border-default)] px-4 font-semibold"
+                                onClick={() => setRefreshKey(n => n + 1)}>Retry</button>
                         </div>
                     ) : items.filter(item => item.listing.type === "CLASSIFIED").length === 0 ? (
                         <div className="glass-card p-12 text-center text-[var(--text-muted)]">
