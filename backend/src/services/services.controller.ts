@@ -1,5 +1,5 @@
 import {
-    Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, Req, HttpCode, HttpStatus,
+    Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, SetMetadata, Req, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiCookieAuth, ApiQuery } from '@nestjs/swagger';
 import { ServiceType } from '@prisma/client';
@@ -8,7 +8,7 @@ import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
 import { ServicesService } from './services.service';
-import { ContractorGuard } from './guards/contractor.guard';
+import { ContractorGuard, EXISTING_SERVICE_WORK_KEY } from './guards/contractor.guard';
 import { TradeTeamService } from './trade-team.service';
 import { ACCEPTED_PAYMENT_TIMEOUT_MINUTES } from './services-lifecycle.service';
 import { serviceAvailabilitySnapshot } from './service-availability';
@@ -136,6 +136,7 @@ export class ServicesController {
     }
 
     @Get('jobs/assigned')
+    @SetMetadata(EXISTING_SERVICE_WORK_KEY, true)
     @UseGuards(ContractorGuard)
     @ApiOperation({ summary: 'Jobs assigned to the provider business and visible to the caller’s role' })
     async assigned(@Req() req: any, @Query() page: ServiceListQueryDto) {
@@ -182,6 +183,7 @@ export class ServicesController {
     }
 
     @Post('jobs/:id/start')
+    @SetMetadata(EXISTING_SERVICE_WORK_KEY, true)
     @UseGuards(ContractorGuard)
     @ApiOperation({ summary: 'Mark a paid job as started on behalf of the provider business' })
     async start(@Req() req: any, @Param('id') id: string) {
@@ -192,6 +194,7 @@ export class ServicesController {
     }
 
     @Post('jobs/:id/complete')
+    @SetMetadata(EXISTING_SERVICE_WORK_KEY, true)
     @UseGuards(ContractorGuard)
     @ApiOperation({ summary: 'Mark a job complete on behalf of the provider business' })
     async complete(@Req() req: any, @Param('id') id: string, @Body() dto: CompleteJobDto) {
@@ -206,7 +209,7 @@ export class ServicesController {
     @Get('jobs/:id')
     @ApiOperation({ summary: 'A job, shaped for whoever is asking' })
     async getOne(@Req() req: any, @CurrentUser() user: any, @Param('id') id: string) {
-        const actor = user.role === 'ADMIN' ? null : await this.tradeTeam.tryResolveActor(user.id);
+        const actor = user.role === 'ADMIN' ? null : await this.tradeTeam.tryResolveActor(user.id, true);
         const contractorProfileId = user.role === 'ADMIN'
             ? null
             : await this.tradeTeam.contractorProfileForJob(user.id, id);
