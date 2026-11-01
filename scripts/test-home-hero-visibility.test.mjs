@@ -13,3 +13,18 @@ test('primary homepage hero content is visible before client hydration', () => {
   assert.doesNotMatch(hero, /initial=\{\{ opacity: 0, y: (20|30)/)
   assert.match(home, /<video[\s\S]*?poster=\{heroPosterSrc\}/)
 })
+
+
+test('mobile hero never mounts autoplay video, while desktop and reduced-motion rules remain respected', () => {
+  assert.match(home, /const \[showHeroVideo, setShowHeroVideo\] = useState\(false\)/)
+  assert.match(home, /window\.matchMedia\("\(min-width: 768px\)"\)/)
+  assert.match(home, /window\.matchMedia\("\(prefers-reduced-motion: reduce\)"\)/)
+  assert.match(home, /setShowHeroVideo\(desktop\.matches && !reducedMotion\.matches\)/)
+  assert.match(home, /desktop\.removeEventListener\("change", update\)/)
+  assert.match(home, /reducedMotion\.removeEventListener\("change", update\)/)
+  const background = home.slice(home.indexOf('Mobile/reduced-motion visitors'), home.indexOf('<div className="absolute inset-0 dark:bg-gradient'))
+  assert.match(background, /<Image[\s\S]*src=\{heroPosterSrc\}[\s\S]*priority/)
+  assert.match(background, /\{showHeroVideo && \([\s\S]*<video[\s\S]*<source src=\{heroVideoSrc\}/)
+  assert.match(background, /autoPlay/)
+  assert.match(background, /preload="none"/)
+})
