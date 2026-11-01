@@ -42,6 +42,12 @@ jobs:
             --screenEmulation.height=844 --screenEmulation.deviceScaleFactor=3 \
             --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
             --output=json --output-path=lighthouse-reports/search.json --quiet
+          npx --yes lighthouse@13.6.0 https://www.carmazium.com/sell \
+            --only-categories=performance --form-factor=mobile \
+            --screenEmulation.mobile=true --screenEmulation.width=390 \
+            --screenEmulation.height=844 --screenEmulation.deviceScaleFactor=3 \
+            --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage" \
+            --output=json --output-path=lighthouse-reports/sell.json --quiet
       - name: Summarise synthetic mobile measurements
         if: always()
         run: node scripts/summarize-public-lighthouse.mjs
