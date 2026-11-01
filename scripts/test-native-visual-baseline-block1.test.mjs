@@ -33,7 +33,10 @@ test('website dealer tab URLs and merged native tab mappings remain inventoried'
     ['/dashboard/dealer/auctions', 'DealerBuyBid', 'GatedDealerBuyBidTab'],
   ];
   for (const [href, route, screen] of pairs) {
-    assert.ok(webSidebar.includes('"' + href + '"'), 'website bottom tab route ' + href);
+    // Routes are now sourced from DEALER_ROUTE_CONFIG rather than duplicated
+    // as string literals in DashboardSidebar. The canonical route inventory
+    // is the safety check; do not require obsolete hard-coded markup.
+    assert.ok(webSidebar.includes('DEALER_ROUTE_CONFIG'), 'website consumes canonical route config');
     assert.ok(routes.includes('href: "' + href + '"'), 'canonical dealer link ' + href);
     assert.ok(nativeTabs.includes('name="' + route + '" component={' + screen + '}'), 'native route ' + route);
     assert.ok(doc.includes(href) && doc.includes(route), 'documented paired route ' + route);
