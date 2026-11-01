@@ -145,6 +145,19 @@ const mapBodyType = (body?: DtoBodyType): BodyType | null => {
     return map[body] ?? null;
 };
 
+
+/**
+ * Listing columns that only the seller (and their dealership) may read on the
+ * public detail endpoint. Public search strips the same fields (#723/#724).
+ * notOwnerRelationship is NOT here: it is the seller's disclosure to buyers
+ * of why they are not the registered keeper (owner decision, 31 Oct 2026).
+ */
+export const PUBLIC_DETAIL_PRIVATE_FIELDS = [
+    'rejectionReason',
+    'partnerDistributionAcceptedAt',
+    'deletedAt',
+] as const;
+
 @Injectable()
 export class ListingsService {
     private readonly logger = new Logger(ListingsService.name);
@@ -2286,8 +2299,21 @@ export class ListingsService {
         // under the staff member's personal name — see admin-seller-branding.ts.
         // priceMin/priceMax are seller-private negotiation controls and must
         // never be exposed by public marketplace search responses.
+        // The same applies to moderation notes and internal timestamps. The
+        // seller's keeper-relationship disclosure stays: it is for buyers.
+        // Owners edit through GET /listings/:id, not search (issue #723).
         const publicData = data.map((row: any) => {
-            const { priceMin: _priceMin, priceMax: _priceMax, ...safe } = row;
+            const {
+                priceMin: _priceMin,
+                priceMax: _priceMax,
+                rejectionReason: _rejectionReason,
+                partnerDistributionAcceptedAt: _partnerDistributionAcceptedAt,
+                deletedAt: _deletedAt,
+                ...safe
+            } = row;
+            // A stale relationship explanation is not public when the seller
+            // has said they ARE the registered keeper.
+            if (safe.isLegalRegisteredKeeper !== false) delete safe.notOwnerRelationship;
             return brandListingSeller(safe);
         });
         return { data: publicData as Listing[], total };
@@ -2546,12 +2572,29 @@ export class ListingsService {
             seller: brandAdminSeller(sellerWithCount as any),
         };
 
-        if (!viewerId || viewerId !== listing.sellerId) {
+        // Seller and their authorised dealership may view private listing
+        // management fields; an unrelated dealer or buyer cannot.
+        const managesListing = await this.viewerManagesListing(viewerId, listing.sellerId);
+        if (!managesListing) {
             delete listingWithCount.priceMin;
             delete listingWithCount.priceMax;
+            for (const field of PUBLIC_DETAIL_PRIVATE_FIELDS) delete listingWithCount[field];
+            if (listing.isLegalRegisteredKeeper !== false) delete listingWithCount.notOwnerRelationship;
         }
 
         return listingWithCount as any;
+    }
+
+    /** Seller, or any member of the seller's dealership. Never throws. */
+    private async viewerManagesListing(viewerId: string | undefined, sellerId: string | null | undefined): Promise<boolean> {
+        if (!viewerId || !sellerId) return false;
+        if (viewerId === sellerId) return true;
+        try {
+            const actor = await resolveDealerActor(this.prisma, viewerId);
+            return !!actor && actor.ownerUserId === sellerId;
+        } catch {
+            return false;
+        }
     }
 
     /**

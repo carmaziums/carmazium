@@ -64,6 +64,7 @@ export function BuyerVehicleInformation({ listing }: { listing: Listing }) {
         { label: "Variant / trim", value: listing.variant },
         { label: "Year", value: listing.year },
         { label: "Registration", value: listing.vrm },
+        { label: "VIN (recorded)", value: listing.vin },
         { label: "First registered", value: listing.monthOfFirstRegistration },
         { label: "First registered with DVLA", value: official?.dvla?.monthOfFirstDvlaRegistration },
         { label: "MOT vehicle registration date", value: ukDate(official?.mot?.registrationDate) },
@@ -111,6 +112,10 @@ export function BuyerVehicleInformation({ listing }: { listing: Listing }) {
         { label: "Stolen or recovered (seller)", value: listing.stolenRecovered == null ? null : listing.stolenRecovered ? "Seller says Yes" : "Seller says No" },
         { label: "Outstanding finance (seller)", value: listing.hasOutstandingFinance == null ? null : listing.hasOutstandingFinance ? "Seller says Yes" : "Seller says No" },
         { label: "Registered keeper (seller)", value: listing.isLegalRegisteredKeeper == null ? null : listing.isLegalRegisteredKeeper ? "Seller says Yes" : "Seller says No" },
+        // Owner decision (31 Oct 2026): when the seller is not the registered
+        // keeper, buyers see the seller's own explanation of their relationship
+        // to the vehicle owner, so they can make an informed decision.
+        { label: "Seller's relationship to the owner (seller)", value: listing.isLegalRegisteredKeeper === false ? listing.notOwnerRelationship : null },
         { label: "Estate sale (seller)", value: listing.isDepartedSale === true ? "Yes" : null },
     ]
     const deliveryFacts: Fact[] = listing.deliveryAvailable === true ? [

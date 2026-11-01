@@ -43,7 +43,7 @@ export function BuyerVehicleFacts({ record }: { record: object | null | undefine
   const groups: Array<{ title: string; entries: Array<[string, unknown]> }> = [
     { title: 'VEHICLE IDENTITY', entries: [
       ['Make', data.make], ['Model', data.model], ['Variant / trim', data.variant],
-      ['Registration', data.vrm], ['First registered', data.monthOfFirstRegistration],
+      ['Registration', data.vrm], ['VIN (recorded)', data.vin], ['First registered', data.monthOfFirstRegistration],
       ['First used', displayDate(data.firstUsedDate)], ['Colour', data.color ?? data.colour],
       ['First DVLA registration', official?.dvla?.monthOfFirstDvlaRegistration],
       ['MOT registration date', displayDate(official?.mot?.registrationDate)],
@@ -95,6 +95,8 @@ export function BuyerVehicleFacts({ record }: { record: object | null | undefine
       ['Stolen / recovered (seller)', data.stolenRecovered == null ? null : data.stolenRecovered === true ? 'Seller says Yes' : 'Seller says No'],
       ['Outstanding finance (seller)', data.hasOutstandingFinance == null ? null : data.hasOutstandingFinance === true ? 'Seller says Yes' : 'Seller says No'],
       ['Registered keeper (seller)', data.isLegalRegisteredKeeper == null ? null : data.isLegalRegisteredKeeper === true ? 'Seller says Yes' : 'Seller says No'],
+      // Same as web (owner decision, 31 Oct 2026): the seller's explanation when they are not the keeper.
+      ["Seller's relationship to the owner (seller)", data.isLegalRegisteredKeeper === false ? data.notOwnerRelationship : null],
       ['Estate sale (seller)', data.isDepartedSale === true ? 'Yes' : null],
       ['Features / options', Array.isArray(data.features) ? data.features.filter((v): v is string => typeof v === 'string' && !!v.trim()).join(', ') : null],
       ['Write-off category (seller)', data.writeOffCategory && data.writeOffCategory !== 'NONE' ? data.writeOffCategory : null],
