@@ -116,3 +116,25 @@ export function requestsHumanSupport(message: string): boolean {
         /\b(don't|do not|no longer) (?:want to )?(?:talk to|chat with|speak to) (?:an? )?(?:ai|bot|robot)\b/i,
     ].some((pattern) => pattern.test(message));
 }
+
+/**
+ * Determine the sender from trusted persisted user/room IDs, never from
+ * message text, display name, role labels supplied by a client, or content.
+ * Only the non-support participant can trigger a support AI response.
+ * The official support account and every other sender fail closed.
+ */
+export function isInboundCustomerSupportMessage(input: {
+    context: string;
+    senderId: string;
+    initiatorId: string;
+    participantId: string;
+    officialSupportAccountId: string;
+    senderIsAutomated: boolean;
+}): boolean {
+    const { context, senderId, initiatorId, participantId, officialSupportAccountId, senderIsAutomated } = input;
+    if (context !== 'SUPPORT' || senderIsAutomated || !senderId || !officialSupportAccountId) return false;
+    if (initiatorId === participantId) return false;
+    if (officialSupportAccountId !== initiatorId && officialSupportAccountId !== participantId) return false;
+    const customerId = officialSupportAccountId === initiatorId ? participantId : initiatorId;
+    return senderId === customerId && senderId !== officialSupportAccountId;
+}
