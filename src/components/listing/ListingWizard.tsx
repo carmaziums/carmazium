@@ -1515,6 +1515,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             }
 
             const listingType = detail.listingType
+            const chosenPricing = parseSellPricingIntent(searchParams.get('sellMode'), searchParams.get('package'))
+            const landingBadgeTier = listingType === "AUCTION" ? "FREE"
+                : chosenPricing?.listingType === "CLASSIFIED" ? chosenPricing.badgeTier : "BASIC"
             // Explicit vehicle selection wins over a stale browser draft.
             draftRestoreAttemptedRef.current = true
             clearSellerHandoff(sessionStorage)
@@ -1539,7 +1542,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     vehicleType: nextVehicleType,
                     ...specs,
                     listingType,
-                    badgeTier: listingType === "AUCTION" ? "FREE" : "BASIC",
+                    badgeTier: landingBadgeTier,
                     status: "ACTIVE",
                 }
             })
@@ -1580,6 +1583,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         router,
         trackEvent,
         editId,
+        searchParams,
     ])
 
     // Resume only the intentionally selected vehicle in this tab after a successful
@@ -1601,6 +1605,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         if (profile?.role === "DEALER" && !isVerifiedDealer) return
 
         const vehicle = pending.vehicle as Partial<FormData>
+        const chosenPricing = parseSellPricingIntent(searchParams.get('sellMode'), searchParams.get('package'))
+        const resumeBadgeTier = pending.listingType === "AUCTION" ? "FREE"
+            : chosenPricing?.listingType === "CLASSIFIED" ? chosenPricing.badgeTier : "BASIC"
         draftRestoreAttemptedRef.current = true
         setFormData(prev => {
             const sameVehicle = !!normalizeVehicleRegistration(prev.vrm)
@@ -1620,7 +1627,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 ].filter(Boolean).join(' ').trim(),
                 vehicleType: nextVehicleType,
                 listingType: pending.listingType,
-                badgeTier: pending.listingType === "AUCTION" ? "FREE" : "BASIC",
+                badgeTier: resumeBadgeTier,
                 status: "ACTIVE",
             }
         })
@@ -1640,7 +1647,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             entry_point: "post_auth_seller_resume",
             valuation_id: pending.valuationId,
         })
-    }, [isDashboard, editId, authLoading, isAuthenticated, isEmailVerified, isVerifiedDealer, profile?.role, router, trackEvent])
+    }, [isDashboard, editId, authLoading, isAuthenticated, isEmailVerified, isVerifiedDealer, profile?.role, router, trackEvent, searchParams])
 
     // ─── Submit ──────────────────────────────────────────────────────────────────
 

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/Input"
 import { ArrowLeft, Building2, Car, Eye, EyeOff, Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { friendlyAuthError } from "@/lib/authErrors"
+import { safeSellReturnPath } from "@/lib/sellPricingIntent"
 import { trackMetaEvent } from "@/components/analytics/MetaPixel"
 import { hasTrackingConsent } from "@/lib/trackingConsent"
 
@@ -89,7 +90,12 @@ function SignupForm() {
         ? window.location.origin
         : (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
 
-    const registrationDestination = "/auth/registration-complete?next=/auth/onboarding"
+    // The chosen Pricing package must survive email verification and first-time onboarding.
+    // Only allowlisted internal /sell choices can be carried through the callback URL.
+    const sellReturn = safeSellReturnPath(searchParams.get("redirect"))
+    const continuation = sellReturn ? `&sellReturn=${encodeURIComponent(sellReturn)}` : ""
+    const registrationDestination = `/auth/registration-complete?next=/auth/onboarding${continuation}`
+    const onboardingDestination = sellReturn ? `/auth/onboarding?sellReturn=${encodeURIComponent(sellReturn)}` : "/auth/onboarding"
     const getRegistrationCallbackPath = () => {
         const role = formData.role ? `&role=${encodeURIComponent(formData.role)}` : ""
         return `/auth/callback?redirect_to=${encodeURIComponent(registrationDestination)}${role}`
@@ -130,7 +136,7 @@ function SignupForm() {
             // and is the single confirmed point that emits registration tracking.
             // In particular, do not pre-sync immediate-session signups here: doing
             // so consumes the backend's isNewUser=true signal before tracking runs.
-            router.push(authData.session ? getRegistrationCallbackPath() : "/auth/onboarding")
+            router.push(authData.session ? getRegistrationCallbackPath() : onboardingDestination)
         } catch (err: any) {
             console.error("Signup failed:", err)
             setError(friendlyAuthError(err, "An error occurred during signup. Please try again."))

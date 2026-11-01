@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { useAuth } from "@/context/AuthContext"
 import { updateProfile } from "@/lib/listingApi"
+import { safeSellReturnPath } from "@/lib/sellPricingIntent"
 
 const ONBOARDING_DRAFT_KEY = "carmazium_onboarding_draft"
 
@@ -92,6 +93,15 @@ export default function OnboardingPage() {
         if (cooldownRef.current) clearInterval(cooldownRef.current)
     }, [])
 
+    // Only a validated internal seller route can follow a first-time profile setup.
+    // Read the URL at the action point, so email verification and resends keep it.
+    const sellReturn = () => typeof window === "undefined" ? null
+        : safeSellReturnPath(new URLSearchParams(window.location.search).get("sellReturn"))
+    const onboardingDestination = () => {
+        const target = sellReturn()
+        return target ? `/auth/onboarding?sellReturn=${encodeURIComponent(target)}` : "/auth/onboarding"
+    }
+
     const getBaseUrl = () => {
         if (typeof window !== "undefined") return window.location.origin
         return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
@@ -126,7 +136,7 @@ export default function OnboardingPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     email: emailToUse,
-                    redirectTo: `${getBaseUrl()}/auth/callback?redirect_to=/auth/onboarding`,
+                    redirectTo: `${getBaseUrl()}/auth/callback?redirect_to=${encodeURIComponent(onboardingDestination())}`,
                 }),
             })
 
@@ -182,7 +192,10 @@ export default function OnboardingPage() {
             }
 
             await refreshProfile()
-            router.replace("/auth/registration-complete")
+            const target = sellReturn()
+            router.replace(target
+                ? `/auth/registration-complete?sellReturn=${encodeURIComponent(target)}`
+                : "/auth/registration-complete")
         } catch (err: any) {
             setError(err?.message || "Failed to complete your account. Please try again.")
         } finally {
