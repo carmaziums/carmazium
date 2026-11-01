@@ -835,4 +835,37 @@ describe('ServicesService TradeXchange hardening regressions', () => {
             { idempotencyKey: 'service-job-release-payment-2' },
         );
     });
+    it.each([
+        ['missing payment intent', null],
+        ['Stripe returned no charge', 'pi_orphan'],
+    ])('refuses to transfer 91%% from unrelated platform funds: %s', async (_label, paymentIntentId) => {
+        prisma.serviceJob.findUnique.mockResolvedValue({
+            id: 'job-unfunded', title: 'Vehicle inspection',
+            customerId: 'customer-1', status: ServiceJobStatus.COMPLETED,
+            startedAt: new Date(Date.now() - 120_000),
+            completedAt: new Date(Date.now() - 60_000), confirmedAt: null,
+            payment: {
+                id: 'payment-unfunded', status: ServicePaymentStatus.PAID,
+                contractorPence: 18200, stripeTransferId: null,
+                stripePaymentIntentId: paymentIntentId,
+            },
+            contractor: { user: { id: 'provider-user', email: 'p@example.com', firstName: 'Provider', stripeConnectAccountId: 'acct_provider' } },
+            customer: { id: 'customer-1', firstName: 'Customer', email: 'c@example.com' },
+        });
+        stripe.paymentIntents.retrieve.mockResolvedValue({ id: 'pi_orphan', latest_charge: null });
+
+        await expect((service as any).release('job-unfunded', 'regression test'))
+            .rejects.toThrow('no verifiable Stripe charge');
+
+        expect(stripe.transfers.create).not.toHaveBeenCalled();
+        expect(prisma.servicePayment.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+            where: expect.objectContaining({
+                id: 'payment-unfunded',
+                status: ServicePaymentStatus.PAID,
+                stripeTransferId: 'claim:release:payment-unfunded',
+            }),
+            data: { stripeTransferId: null },
+        }));
+    });
+
 });
