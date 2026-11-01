@@ -63,7 +63,7 @@ export class AiController {
         const messages = transcript.data.filter((m: any) =>
             typeof m.content === 'string' && m.content.trim() && !m.deletedAt && !m.attachmentPath
         );
-        if (!latest || latest.sender?.role === UserRole.ADMIN || latest.attachmentPath) {
+        if (!latest || latest.sender?.role === UserRole.ADMIN || latest.attachmentPath || !latest.content?.trim()) {
             throw new BadRequestException('No unanswered customer message to draft.');
         }
         const classification = classifySupportMessage(latest.content);
