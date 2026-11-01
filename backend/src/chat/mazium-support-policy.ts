@@ -21,6 +21,9 @@ const OWNER_APPROVAL = [
     /\b(gdpr|data erasure|personal data request|subject access|remove my data)\b/i,
     /\b(sue|lawsuit|litigation|small claims|trading standards|citizens advice)\b/i,
     /\b(hacked|unauthorised access|stolen account|security breach|phishing)\b/i,
+    /\b(refund(?:ing|ed)?|cancel(?:ling|ation)?|repay(?:ment)?|reverse (?:a |the )?charge)\b/i,
+    /\b(account (?:locked|suspended|deleted|compromised)|can't (?:log ?in|access my account))\b/i,
+    /\b(privacy complaint|data breach|identity theft|stolen identity)\b/i,
 ];
 
 export function classifySupportMessage(message: string): SupportDecision {
