@@ -16,6 +16,11 @@ const OWNER_APPROVAL = [
     /\b(change|waive|reduce|cancel) (?:the |my )?(?:fee|payment|invoice|price)\b/i,
     /\b(approve|reject|override|reinstate|ban|suspend)\b/i,
     /\b(api key|password|one.time code|otp|pin|cvv)\b/i,
+    /\b(refunds?|reimbursements?|chargebacks?|payouts?|withdrawals?|compensate|compensated)\b/i,
+    /\b(banking|bank transfer|account number|sort.code|payment details|sortcode)\b/i,
+    /\b(gdpr|data erasure|personal data request|subject access|remove my data)\b/i,
+    /\b(sue|lawsuit|litigation|small claims|trading standards|citizens advice)\b/i,
+    /\b(hacked|unauthorised access|stolen account|security breach|phishing)\b/i,
 ];
 
 export function classifySupportMessage(message: string): SupportDecision {
