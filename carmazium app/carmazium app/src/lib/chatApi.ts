@@ -44,6 +44,7 @@ export interface ChatMessage {
   chatRoomId: string;
   senderId: string;
   clientMessageId?: string | null;
+  aiGenerated?: boolean;
   content: string;
   attachmentPath?: string | null;
   attachmentName?: string | null;
