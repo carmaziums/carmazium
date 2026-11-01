@@ -9,6 +9,7 @@ import { ChatAttachmentService } from './chat-attachment.service';
 import { TradeTeamService } from '../services/trade-team.service';
 import { DealersService } from '../dealers/dealers.service';
 import { ChatContentSafetyService } from './chat-content-safety.service';
+import { requestsHumanSupport } from './mazium-support-policy';
 
 /**
  * Chat service handling all chat room and message operations
@@ -2414,6 +2415,17 @@ export class ChatService {
                 }
             }
             throw error;
+        }
+
+        // Explicit customer requests for a person or AI opt-out are persisted
+        // before any subsequent autonomous support processing can run.
+        if (room.context === ChatContext.SUPPORT
+            && senderId !== this.supportCanonicalAdminId(room)
+            && requestsHumanSupport(dto.content)) {
+            await this.prisma.chatRoom.update({
+                where: { id: roomId },
+                data: { supportAiOptedOutAt: new Date(), supportHumanTakeoverAt: new Date() },
+            });
         }
 
         const routing = await this.resolveMessageRouting(room, senderId);
