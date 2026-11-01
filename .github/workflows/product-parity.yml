@@ -64,6 +64,8 @@ jobs:
         run: node --test scripts/test-home-hero-visibility.test.mjs
       - name: Verify search cards defer gallery photos until swipe
         run: node --test scripts/test-card-image-initial-cover-only.test.mjs
+      - name: Verify compact mobile cookie notice retains consent choices
+        run: node --test scripts/test-mobile-cookie-consent-layout.test.mjs
       - name: Verify administrator-only dashboard navigation and customer onboarding isolation
         run: node --test scripts/test-admin-exclusive-dashboard-routing.test.mjs
       - name: Verify admin Analytics mobile, UK dates, light/dark semantics and error labels
