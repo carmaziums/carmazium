@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { createPortal } from "react-dom"
 import {
     Archive,
     Clock3,
@@ -49,6 +50,21 @@ function AdminMessagesContent() {
     )
     const [supportFilter, setSupportFilter] = React.useState<SupportFilter>("all")
     const autoSelectedRef = React.useRef(false)
+    const [mobileChat, setMobileChat] = React.useState(false)
+    React.useEffect(() => {
+        const media = window.matchMedia("(max-width: 1023px)")
+        const update = () => setMobileChat(media.matches)
+        update()
+        media.addEventListener("change", update)
+        return () => media.removeEventListener("change", update)
+    }, [])
+    React.useEffect(() => {
+        if (!mobileChat || !selectedRoom) return
+        const previous = document.body.style.overflow
+        document.body.style.overflow = "hidden"
+        return () => { document.body.style.overflow = previous }
+    }, [mobileChat, selectedRoom])
+
 
     React.useEffect(() => {
         if (loading) return
@@ -262,7 +278,7 @@ function AdminMessagesContent() {
                                         </div>
                                     </div>
 
-                                    <div className={`min-h-0 min-w-0 flex-1 ${selectedRoom ? "fixed inset-0 z-[80] flex bg-[var(--bg-card)] lg:static lg:z-auto" : "hidden lg:flex lg:items-center lg:justify-center"}`}>
+                                    <div className={`min-h-0 min-w-0 flex-1 ${selectedRoom ? "hidden lg:flex" : "hidden lg:flex lg:items-center lg:justify-center"}`}>
                                         {selectedRoom ? (
                                             <div className="flex h-full min-h-0 min-w-0 flex-1">
                                                 <div className="min-h-0 min-w-0 flex-1">
@@ -296,6 +312,12 @@ function AdminMessagesContent() {
                 </main>
             </div>
         </div>
+        {mobileChat && selectedRoom && typeof document !== "undefined" && createPortal(
+            <div className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[var(--bg-card)]" role="dialog" aria-modal="true" aria-label="Customer conversation">
+                <ChatWindow room={selectedRoom} onBack={() => setSelectedRoom(null)} />
+            </div>,
+            document.body
+        )}
     )
 }
 
