@@ -804,10 +804,32 @@ describe('ServicesService TradeXchange hardening regressions', () => {
                 amount: 9100,
                 currency: 'gbp',
                 destination: 'acct_1',
+                transfer_group: 'service-job-job-1',
             },
             { idempotencyKey: 'service-job-release-payment-1' },
         );
         expect(payments.issueSellerPayout).not.toHaveBeenCalled();
         expect(result).toEqual({ success: true, transferId: 'tr_1' });
+    });
+
+    it('funds the 91% payout from the customer\'s own charge, so quick completions do not fail on pending funds', async () => {
+        prisma.serviceJob.findUnique.mockResolvedValue({
+            id: 'job-2', title: 'Inspect vehicle', customerId: 'customer-1',
+            status: ServiceJobStatus.COMPLETED,
+            startedAt: new Date(Date.now() - 2 * 60_000), completedAt: new Date(Date.now() - 60_000), confirmedAt: null,
+            payment: { id: 'payment-2', status: ServicePaymentStatus.PAID, contractorPence: 18200, stripeTransferId: null, stripePaymentIntentId: 'pi_2' },
+            contractor: { user: { id: 'provider-user', firstName: 'P', email: 'p@example.com', stripeConnectAccountId: 'acct_2' } },
+            customer: { id: 'customer-1', firstName: 'C', email: 'c@example.com' },
+        });
+        stripe.paymentIntents = { retrieve: jest.fn().mockResolvedValue({ id: 'pi_2', latest_charge: 'ch_2' }) };
+        stripe.transfers.create.mockResolvedValue({ id: 'tr_2' });
+
+        await (service as any).release('job-2', 'regression test');
+
+        expect(stripe.paymentIntents.retrieve).toHaveBeenCalledWith('pi_2');
+        expect(stripe.transfers.create).toHaveBeenCalledWith(
+            expect.objectContaining({ amount: 18200, destination: 'acct_2', source_transaction: 'ch_2' }),
+            { idempotencyKey: 'service-job-release-payment-2' },
+        );
     });
 });
