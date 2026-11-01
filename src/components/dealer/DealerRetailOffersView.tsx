@@ -1,0 +1,454 @@
+﻿"use client"
+
+import * as React from "react"
+import Link from "next/link"
+import Image from "next/image"
+import {
+    Loader2, Gavel, Clock, CheckCircle, XCircle, RefreshCw,
+    Trophy, Tag, Car, ArrowUpRight, Search, Pencil
+} from "lucide-react"
+import { Button } from "@/components/ui/Button"
+import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { PageHeader } from "@/components/dashboard/PageHeader"
+import { BidsOffersSwitch } from "@/components/dealer/BidsOffersSwitch"
+import { useDealerAccess } from "@/context/DealerAccessContext"
+import { MetricCard } from "@/components/dashboard/MetricCard"
+import { AmendOfferModal } from "@/components/offers/AmendOfferModal"
+import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
+import { useAuth } from "@/context/AuthContext"
+import {
+    getMyOffers,
+    getMyActiveAuctionBids,
+    withdrawOffer,
+    respondToCounterOffer,
+    formatPrice,
+    type Offer,
+} from "@/lib/listingApi"
+
+const STATUS_STYLES: Record<string, { bg: string; text: string; border: string; label: string }> = {
+    PENDING: { bg: "bg-amber-500/10", text: "text-amber-400", border: "border-amber-500/20", label: "Pending" },
+    ACCEPTED: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20", label: "Accepted" },
+    REJECTED: { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/20", label: "Declined" },
+    WITHDRAWN: { bg: "bg-slate-500/10", text: "text-[var(--text-muted)]", border: "border-[var(--border-default)]", label: "Withdrawn" },
+    CANCELLED: { bg: "bg-slate-500/10", text: "text-[var(--text-muted)]", border: "border-[var(--border-default)]", label: "Cancelled" },
+    COUNTERED: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20", label: "Countered" },
+}
+
+export default function DealerMyOffersPage() {
+    const { user, profile, loading: authLoading } = useAuth()
+    const { loading: accessLoading, hasPermission } = useDealerAccess()
+    const canViewTrade = !accessLoading && hasPermission("VIEW_TRADE")
+    const [offers, setOffers] = React.useState<Offer[]>([])
+    const [loading, setLoading] = React.useState(true)
+    const [actionLoading, setActionLoading] = React.useState<Record<string, boolean>>({})
+    const [searchTerm, setSearchTerm] = React.useState("")
+    const [viewMode, setViewMode] = React.useState<'current' | 'history' | 'all'>('current')
+    const [amendingOffer, setAmendingOffer] = React.useState<Offer | null>(null)
+    const [cancelListing, setCancelListing] = React.useState<{ id: string; title: string } | null>(null)
+    const [activeAuctionBidCount, setActiveAuctionBidCount] = React.useState(0)
+
+    const fetchOffers = React.useCallback(async () => {
+        setLoading(true)
+        try {
+            const [data, auctionPositions] = await Promise.all([
+                getMyOffers(),
+                canViewTrade ? getMyActiveAuctionBids().catch(() => []) : Promise.resolve([]),
+            ])
+            setOffers(data || [])
+            setActiveAuctionBidCount(auctionPositions.length)
+        } catch (err) {
+            console.error("Failed to fetch outgoing offers:", err)
+            setOffers([])
+        } finally {
+            setLoading(false)
+        }
+    }, [canViewTrade])
+
+    React.useEffect(() => {
+        if (!authLoading && !accessLoading && user) fetchOffers()
+    }, [authLoading, accessLoading, user, fetchOffers])
+
+    const handleWithdraw = async (offerId: string) => {
+        if (!confirm("Withdraw this offer? You'll be able to submit a new one afterwards.")) return
+        setActionLoading(prev => ({ ...prev, [offerId]: true }))
+        try {
+            await withdrawOffer(offerId)
+            await fetchOffers()
+        } catch (err: any) {
+            alert(err?.message || "Failed to withdraw offer")
+        } finally {
+            setActionLoading(prev => ({ ...prev, [offerId]: false }))
+        }
+    }
+
+    const handleCounterResponse = async (offerId: string, status: 'ACCEPTED' | 'REJECTED') => {
+        setActionLoading(prev => ({ ...prev, [offerId]: true }))
+        try {
+            await respondToCounterOffer(offerId, status)
+            await fetchOffers()
+        } catch (err: any) {
+            alert(err?.message || "Failed to respond")
+        } finally {
+            setActionLoading(prev => ({ ...prev, [offerId]: false }))
+        }
+    }
+
+    const userName = profile?.firstName
+        ? `${profile.firstName} ${profile.lastName || ""}`
+        : (user?.email?.split('@')[0] || "Dealer")
+
+    const pendingCount = offers.filter(o => o.status === "PENDING").length
+    const acceptedCount = offers.filter(o => o.status === "ACCEPTED").length
+    const counteredCount = offers.filter(o => o.status === "COUNTERED").length
+    const currentCount = offers.filter(o => o.status === "PENDING" || o.status === "COUNTERED").length
+
+    const filtered = offers.filter(o => {
+        const isCurrent = o.status === 'PENDING' || o.status === 'COUNTERED'
+        if (viewMode === 'current' && !isCurrent) return false
+        if (viewMode === 'history' && isCurrent) return false
+
+        if (!searchTerm) return true
+        const needle = searchTerm.toLowerCase()
+        return (
+            o.listing?.title?.toLowerCase().includes(needle) ||
+            o.listing?.make?.toLowerCase().includes(needle) ||
+            o.listing?.model?.toLowerCase().includes(needle)
+        )
+    })
+
+    const listHeading = viewMode === 'current'
+        ? 'Current Offers'
+        : viewMode === 'history'
+            ? 'Offer History'
+            : 'All Outgoing Offers'
+
+    return (
+        <div className="min-h-screen pt-20 pb-12">
+            <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
+                <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
+
+                <main className="flex-1 space-y-6 min-w-0">
+                    <PageHeader
+                        title="Bids & Offers"
+                        subHeader="Auction bids and offers you have made on cars."
+                    />
+                    <BidsOffersSwitch />
+
+                    {amendingOffer && (
+                        <AmendOfferModal
+                            offer={amendingOffer}
+                            onClose={() => setAmendingOffer(null)}
+                            onSaved={async () => { await fetchOffers() }}
+                        />
+                    )}
+
+                    {cancelListing && (
+                        <SaleCancellationModal
+                            listingId={cancelListing.id}
+                            vehicleTitle={cancelListing.title}
+                            onClose={() => setCancelListing(null)}
+                            onCreated={() => void fetchOffers()}
+                        />
+                    )}
+
+                    <p className="text-sm text-[var(--text-muted)]">
+                        {currentCount} current retail offer{currentCount === 1 ? "" : "s"}.
+                    </p>
+
+                    {/* Sticky so search stays reachable without scrolling back up from
+                        deep inside a long offers list — kept outside the card below
+                        since a sticky child inside an overflow-hidden ancestor gets its
+                        stuck position clipped/contained by that ancestor instead of the
+                        viewport, which is what caused it to overlap the table. */}
+                    <div className="sticky top-20 z-20 pt-2 -mt-2 bg-[var(--bg-body)]/95 backdrop-blur-md">
+                        <div className="dealer-glass-card p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div className="flex flex-col gap-3">
+                                <h3 className="sr-only">{listHeading}</h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {([
+                                        ['current', 'Current'],
+                                        ['history', 'History'],
+                                        ['all', 'All'],
+                                    ] as const).map(([value, label]) => (
+                                        <button
+                                            key={value}
+                                            type="button"
+                                            onClick={() => setViewMode(value)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest border transition-colors ${viewMode === value
+                                                ? 'bg-primary text-white border-primary'
+                                                : 'bg-[var(--bg-input)] text-[var(--text-muted)] border-[var(--border-default)] hover:border-primary/40'}`}
+                                        >
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="relative w-full md:w-64">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
+                                <input
+                                    type="text"
+                                    placeholder="Search vehicle..."
+                                    className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl py-2 pl-9 pr-3 text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="dealer-glass-card overflow-hidden">
+                        {loading ? (
+                            <div className="flex items-center justify-center py-20">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            </div>
+                        ) : filtered.length === 0 ? (
+                            <div className="p-16 text-center">
+                                <Gavel className="h-12 w-12 text-gray-700 mx-auto mb-3" />
+                                <p className="text-[var(--text-muted)] font-bold">
+                                    {searchTerm
+                                        ? "No offers match your search."
+                                        : viewMode === 'current'
+                                            ? "No current offers"
+                                            : viewMode === 'history'
+                                                ? "No closed offer history yet"
+                                                : "No outgoing offers yet"}
+                                </p>
+                                <p className="text-gray-600 text-sm mt-1">
+                                    {viewMode === 'current'
+                                        ? "Retail offers you can still manage will appear here."
+                                        : "Offers you place on marketplace vehicles will appear here."}
+                                </p>
+                                {!searchTerm && (
+                                    <div className="mt-6">
+                                        <Link href="/search">
+                                            <Button variant="outline" size="sm" className="gap-2">
+                                                <ArrowUpRight size={14} /> Browse marketplace
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <>
+                            {/* ── Mobile cards (< sm) ── */}
+                            <div className="sm:hidden divide-y divide-white/[0.03]">
+                                {filtered.map(offer => {
+                                    const isActioning = !!actionLoading[offer.id]
+                                    const style = STATUS_STYLES[offer.status] ?? STATUS_STYLES.PENDING
+                                    const image = offer.listing?.images?.[0]
+                                    const slug = offer.listing?.slug || offer.listingId
+                                    return (
+                                        <div key={offer.id} className="p-4 space-y-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className="relative w-14 h-10 rounded-lg overflow-hidden border border-[var(--border-default)] shrink-0 bg-[var(--bg-input)]">
+                                                    {image ? <Image src={image} alt={offer.listing?.title || ''} fill className="object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-600"><Car size={16} /></div>}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <Link href={`/buy-cars/${slug}`} className="font-black text-[var(--text-primary)] text-sm truncate block hover:text-primary transition-colors">{offer.listing?.title || 'Listing'}</Link>
+                                                    <p className="text-xs text-[var(--text-muted)] font-bold uppercase truncate">{offer.listing?.year} {offer.listing?.make} {offer.listing?.model}</p>
+                                                </div>
+                                                <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-black tracking-widest uppercase border shrink-0 ${style.bg} ${style.text} ${style.border}`}>{style.label}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <div>
+                                                    <p className="text-base font-black text-[var(--text-primary)] tabular-nums">
+                                                        {formatPrice(offer.status === 'ACCEPTED' ? (offer.finalAmount ?? offer.counterAmount ?? offer.amount) : offer.amount)}
+                                                    </p>
+                                                    {offer.status === 'ACCEPTED' && <p className="text-xs font-black text-emerald-400">Agreed price</p>}
+                                                    {offer.status === 'COUNTERED' && offer.counterAmount && <p className="text-xs font-black text-blue-400">Counter: {formatPrice(offer.counterAmount)}</p>}
+                                                    <p className="text-xs text-[var(--text-muted)]">{new Date(offer.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2 flex-wrap justify-end">
+                                                    {offer.status === 'PENDING' && <>
+                                                        <button onClick={() => setAmendingOffer(offer)} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl disabled:opacity-50 inline-flex items-center gap-1"><Pencil size={11} /> Amend</button>
+                                                        <button onClick={() => handleWithdraw(offer.id)} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl disabled:opacity-50">{isActioning ? <Loader2 size={12} className="animate-spin" /> : 'Withdraw'}</button>
+                                                    </>}
+                                                    {offer.status === 'COUNTERED' && offer.lastCounteredBy === 'SELLER' && <>
+                                                        <button onClick={() => handleCounterResponse(offer.id, 'ACCEPTED')} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">{isActioning ? <Loader2 size={12} className="animate-spin" /> : 'Accept'}</button>
+                                                        <button onClick={() => handleCounterResponse(offer.id, 'REJECTED')} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl">Reject</button>
+                                                        <button onClick={() => handleWithdraw(offer.id)} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 border border-[var(--border-default)] text-[var(--text-muted)] rounded-xl">Cancel bid</button>
+                                                    </>}
+                                                    {offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER' && <>
+                                                        <span className="text-xs font-bold text-blue-400">Awaiting seller</span>
+                                                        <button onClick={() => handleWithdraw(offer.id)} disabled={isActioning} className="text-xs font-black uppercase tracking-widest px-3 py-1.5 border border-red-500/20 text-red-400 rounded-xl">Cancel bid</button>
+                                                    </>}
+                                                    {offer.status === 'ACCEPTED' && offer.listing?.id && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setCancelListing({ id: offer.listing!.id, title: offer.listing!.title || "Vehicle" })}
+                                                            className="text-xs font-black uppercase tracking-widest px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl"
+                                                        >
+                                                            Cancel purchase
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+
+                            {/* ── Desktop table (≥ sm) ── */}
+                            <div className="hidden sm:block overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead className="vip-table-header text-xs uppercase font-black tracking-widest text-[var(--text-muted)] border-b border-[var(--border-default)]">
+                                        <tr>
+                                            <th className="px-6 py-5">Vehicle</th>
+                                            <th className="px-6 py-5 text-right">My Offer</th>
+                                            <th className="px-6 py-5 text-right">Counter</th>
+                                            <th className="px-6 py-5 text-center">Status</th>
+                                            <th className="px-6 py-5 text-center">Placed</th>
+                                            <th className="px-6 py-5 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/[0.03]">
+                                        {filtered.map(offer => {
+                                            const isActioning = !!actionLoading[offer.id]
+                                            const style = STATUS_STYLES[offer.status] ?? STATUS_STYLES.PENDING
+                                            const image = offer.listing?.images?.[0]
+                                            const slug = offer.listing?.slug || offer.listingId
+                                            return (
+                                                <tr key={offer.id} className="group hover:bg-white/[0.02] transition-colors">
+                                                    <td className="px-6 py-5">
+                                                        <Link href={`/buy-cars/${slug}`} className="flex items-center gap-3 group/link">
+                                                            <div className="relative w-14 h-10 rounded-lg overflow-hidden border border-[var(--border-default)] shrink-0 bg-[var(--bg-input)]">
+                                                                {image ? (
+                                                                    <Image src={image} alt={offer.listing?.title || ''} fill className="object-cover" />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center text-gray-600">
+                                                                        <Car size={18} />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <p className="font-black text-[var(--text-primary)] truncate group-hover/link:text-primary transition-colors text-sm">
+                                                                    {offer.listing?.title || 'Listing'}
+                                                                </p>
+                                                                <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-wider truncate">
+                                                                    {offer.listing?.year ? `${offer.listing.year} ` : ''}
+                                                                    {offer.listing?.make || ''} {offer.listing?.model || ''}
+                                                                </p>
+                                                            </div>
+                                                        </Link>
+                                                    </td>
+                                                    <td className="px-6 py-5 text-right">
+                                                        <span className="text-base font-black text-[var(--text-primary)] tabular-nums">
+                                                            {formatPrice(offer.status === 'ACCEPTED' ? (offer.finalAmount ?? offer.counterAmount ?? offer.amount) : offer.amount)}
+                                                        </span>
+                                                        {offer.status === 'ACCEPTED' && (
+                                                            <div className="text-xs text-emerald-400 font-black uppercase tracking-widest mt-0.5">Agreed</div>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-5 text-right">
+                                                        {offer.status !== 'ACCEPTED' && offer.counterAmount ? (
+                                                            <span className="text-sm font-black text-blue-400 tabular-nums">
+                                                                {formatPrice(offer.counterAmount)}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-600 font-bold uppercase tracking-widest">—</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-5 text-center">
+                                                        <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-black tracking-widest uppercase border ${style.bg} ${style.text} ${style.border}`}>
+                                                            {style.label}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-5 text-center">
+                                                        <p className="text-xs font-bold text-[var(--text-secondary)]">
+                                                            {new Date(offer.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                                                        </p>
+                                                        <p className="text-xs text-[var(--text-muted)]">
+                                                            {new Date(offer.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                                                        </p>
+                                                    </td>
+                                                    <td className="px-6 py-5 text-right">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            {offer.status === 'PENDING' && (
+                                                                <>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    disabled={isActioning}
+                                                                    onClick={() => setAmendingOffer(offer)}
+                                                                    className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-black text-xs uppercase tracking-widest h-9 px-4 border border-blue-500/20 rounded-xl gap-1"
+                                                                >
+                                                                    <Pencil size={12} /> Amend
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    disabled={isActioning}
+                                                                    onClick={() => handleWithdraw(offer.id)}
+                                                                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-xs uppercase tracking-widest h-9 px-4 border border-red-500/20 rounded-xl"
+                                                                >
+                                                                    {isActioning ? <Loader2 size={14} className="animate-spin" /> : 'Withdraw'}
+                                                                </Button>
+                                                                </>
+                                                            )}
+                                                            {offer.status === 'COUNTERED' && offer.lastCounteredBy === 'SELLER' && (
+                                                                <>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        disabled={isActioning}
+                                                                        onClick={() => handleCounterResponse(offer.id, 'ACCEPTED')}
+                                                                        className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-black text-xs uppercase tracking-widest h-9 px-4 border border-emerald-500/20 rounded-xl"
+                                                                    >
+                                                                        {isActioning ? <Loader2 size={14} className="animate-spin" /> : 'Accept Counter'}
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        disabled={isActioning}
+                                                                        onClick={() => handleCounterResponse(offer.id, 'REJECTED')}
+                                                                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-xs uppercase tracking-widest h-9 px-4 border border-red-500/20 rounded-xl"
+                                                                    >
+                                                                        Reject
+                                                                    </Button>
+                                                                </>
+                                                            )}
+                                                            {offer.status === 'COUNTERED' && offer.lastCounteredBy === 'BUYER' && (
+                                                                <>
+                                                                    <span className="text-xs font-black uppercase tracking-widest text-blue-400">Awaiting seller</span>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        disabled={isActioning}
+                                                                        onClick={() => handleWithdraw(offer.id)}
+                                                                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black text-xs uppercase tracking-widest h-9 px-4 border border-red-500/20 rounded-xl"
+                                                                    >
+                                                                        {isActioning ? <Loader2 size={14} className="animate-spin" /> : 'Cancel Bid'}
+                                                                    </Button>
+                                                                </>
+                                                            )}
+                                                            {offer.status === 'ACCEPTED' && (
+                                                                <span className="inline-flex items-center gap-1 text-emerald-400 font-black text-xs uppercase tracking-widest">
+                                                                    <CheckCircle size={12} /> Closed
+                                                                </span>
+                                                            )}
+                                                            {offer.status === 'REJECTED' && (
+                                                                <span className="inline-flex items-center gap-1 text-red-400/80 font-black text-xs uppercase tracking-widest">
+                                                                    <XCircle size={12} /> Declined
+                                                                </span>
+                                                            )}
+                                                            {offer.status === 'WITHDRAWN' && (
+                                                                <span className="text-gray-600 font-black text-xs uppercase tracking-widest italic">
+                                                                    Withdrawn
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>{/* end hidden sm:block */}
+                            </>
+                        )}
+                    </div>
+                </main>
+            </div>
+        </div>
+    )
+}
