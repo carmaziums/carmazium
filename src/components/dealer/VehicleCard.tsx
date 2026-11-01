@@ -172,7 +172,7 @@ export function VehicleCard({ vehicle, onPlaceBid, onSetProxyBid, variant = "act
                 <div className="flex items-end justify-between gap-3">
                     <div>
                         <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-0.5">
-                            {variant === "didnt_win" ? "Your Max Bid" : "Current Bid"}
+                            {variant === "didnt_win" ? "Your Max Bid" : vehicle.bidCount === 0 ? "Starting Bid" : "Current Bid"}
                         </span>
                         <span className="text-2xl font-black tabular-nums metallic-foil">
                             £{vehicle.currentBid.toLocaleString()}
