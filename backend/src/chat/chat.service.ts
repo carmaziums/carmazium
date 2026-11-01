@@ -2272,8 +2272,14 @@ export class ChatService {
             if (!adminId || botUserId === adminId || botUserId === room.initiatorId || botUserId === room.participantId) {
                 return { created: false, reason: 'INVALID_BOT_IDENTITY' } as const;
             }
-            const bot = await tx.user.findUnique({ where: { id: botUserId }, select: { id: true, role: true } });
-            if (!bot || bot.role === UserRole.ADMIN) {
+            const bot = await tx.user.findUnique({
+                where: { id: botUserId },
+                select: { id: true, role: true, deletedAt: true, lockoutUntil: true },
+            });
+            // Only a permanently locked, non-admin system identity may
+            // author autonomous support messages.
+            if (!bot || bot.role === UserRole.ADMIN || bot.deletedAt
+                || !bot.lockoutUntil || bot.lockoutUntil.getTime() <= Date.now()) {
                 return { created: false, reason: 'INVALID_BOT_IDENTITY' } as const;
             }
             const customerId = adminId === room.initiatorId ? room.participantId : room.initiatorId;
