@@ -49,6 +49,22 @@ export default function HomeClient({ initialListings, latestRetailListings, late
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
+
+  // Mobile gets the cinematic poster without downloading megabytes of autoplay
+  // video. Keep the full video on desktop and honour reduced-motion settings.
+  const [showHeroVideo, setShowHeroVideo] = useState(false)
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 768px)")
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const update = () => setShowHeroVideo(desktop.matches && !reducedMotion.matches)
+    update()
+    desktop.addEventListener("change", update)
+    reducedMotion.addEventListener("change", update)
+    return () => {
+      desktop.removeEventListener("change", update)
+      reducedMotion.removeEventListener("change", update)
+    }
+  }, [])
   const heroVideoSrc = mounted && resolvedTheme === "light"
     ? "/assets/videos/hero-cinematic-light.mp4"
     : "/assets/videos/hero-cinematic.mp4"
@@ -111,21 +127,32 @@ export default function HomeClient({ initialListings, latestRetailListings, late
     <div className="w-full max-w-[100vw] overflow-x-hidden flex flex-col">
       {/* Cinematic Hero Section */}
       <section ref={ref} className="relative min-h-[90vh] flex items-center justify-center text-center text-white overflow-hidden" style={{ marginTop: '-100px', paddingTop: '100px' }}>
-        {/* Video Background */}
+        {/* Mobile/reduced-motion visitors get the same poster, without a large video download. */}
         <div className="absolute inset-0 w-full h-full">
-          <video
-            key={heroVideoSrc}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="none"
-            poster={heroPosterSrc}
-            className="absolute top-1/2 left-1/2 min-w-full min-h-full object-cover -translate-x-1/2 -translate-y-1/2"
-            onEnded={(e) => e.currentTarget.pause()}
-          >
-            <source src={heroVideoSrc} type="video/mp4" />
-          </video>
+          <Image
+            src={heroPosterSrc}
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
+            aria-hidden="true"
+          />
+          {showHeroVideo && (
+            <video
+              key={heroVideoSrc}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="none"
+              poster={heroPosterSrc}
+              className="absolute top-1/2 left-1/2 min-w-full min-h-full object-cover -translate-x-1/2 -translate-y-1/2"
+              onEnded={(e) => e.currentTarget.pause()}
+            >
+              <source src={heroVideoSrc} type="video/mp4" />
+            </video>
+          )}
           <div className="absolute inset-0 dark:bg-gradient-to-b dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900" />
         </div>
 
