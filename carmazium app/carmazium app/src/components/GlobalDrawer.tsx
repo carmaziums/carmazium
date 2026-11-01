@@ -47,6 +47,7 @@ interface MenuItem {
   icon: string;
   iconLib: 'ion' | 'mci';
   tabName?: keyof TabParamList;
+  tabParams?: { initialSection: 'live' | 'bids' };
   stackScreen?: keyof MainStackParamList;
   action?: 'alert';
   alertTitle?: string;
@@ -87,7 +88,7 @@ const DEALER_PRIMARY_ITEMS: MenuItem[] = [
   { id: 'dealer-home-tab', label: 'Home', icon: 'grid-outline', iconLib: 'ion', tabName: 'DealerHome' },
   { id: 'dealer-stock-tab', label: 'Stock', icon: 'car-outline', iconLib: 'ion', tabName: 'DealerStock', requiredPermission: 'VIEW_INVENTORY' },
   { id: 'dealer-customers-tab', label: 'Customers', icon: 'people-outline', iconLib: 'ion', tabName: 'DealerCustomers', requiredPermission: 'MANAGE_CRM' },
-  { id: 'dealer-auctions-tab', label: 'Buy & Bid', icon: 'gavel', iconLib: 'mci', tabName: 'DealerBuyBid', requiredPermission: 'VIEW_TRADE' },
+  { id: 'dealer-auctions-tab', label: 'Live Auctions', icon: 'gavel', iconLib: 'mci', tabName: 'DealerBuyBid', tabParams: { initialSection: 'live' }, requiredPermission: 'VIEW_TRADE' },
 ];
 
 // Web (DashboardSidebar.tsx) treats BUYER and SELLER as the same unified
@@ -187,10 +188,12 @@ const DEALER_ITEMS: MenuItem[] = [
   { id: 'dealer-inventory', section: 'Sell', label: 'Stock', icon: 'albums-outline', iconLib: 'ion', requiredPermission: 'VIEW_INVENTORY', stackScreen: 'DealerInventory' },
   { id: 'dealer-leads', section: 'Sell', label: 'Customers', icon: 'people-outline', iconLib: 'ion', requiredPermission: 'MANAGE_CRM', stackScreen: 'DealerLeads' },
   { id: 'dealer-offers', section: 'Sell', label: 'Offers', icon: 'pricetag-outline', iconLib: 'ion', requiredPermission: 'MANAGE_OFFERS', stackScreen: 'DealerOffers' },
-  { id: 'dealer-auctions', section: 'Sell', label: 'Manage Auctions', icon: 'gavel', iconLib: 'mci', requiredPermission: 'MANAGE_INVENTORY', stackScreen: 'SellerAuctions' },
+  { id: 'dealer-auctions', section: 'Sell', label: 'My Auctions', icon: 'gavel', iconLib: 'mci', requiredPermission: 'MANAGE_INVENTORY', stackScreen: 'SellerAuctions' },
+  { id: 'dealer-live', section: 'Buy', label: 'Live Auctions', icon: 'flame-outline', iconLib: 'ion', requiredPermission: 'VIEW_TRADE', tabName: 'DealerBuyBid', tabParams: { initialSection: 'live' } },
+  { id: 'dealer-wishlist', section: 'Buy', label: 'Saved', icon: 'heart-outline', iconLib: 'ion', tabName: 'Saved' },
+  { id: 'dealer-bids', section: 'Buy', label: 'Bids & Offers', icon: 'receipt-outline', iconLib: 'ion', requiredPermission: 'VIEW_TRADE', tabName: 'DealerBuyBid', tabParams: { initialSection: 'bids' } },
+  { id: 'dealer-offers-only', section: 'Buy', label: 'Bids & Offers', icon: 'send-outline', iconLib: 'ion', requiredPermission: 'MANAGE_OFFERS', stackScreen: 'DealerMyOffers' },
   { id: 'dealer-purchases', section: 'Buy', label: 'Purchases', icon: 'receipt-outline', iconLib: 'ion', requiredPermission: 'VIEW_PURCHASES', stackScreen: 'DealerPurchases' },
-  { id: 'dealer-wishlist', section: 'Buy', label: 'Saved Cars', icon: 'heart-outline', iconLib: 'ion', tabName: 'Saved' },
-  { id: 'dealer-my-offers', section: 'Buy', label: 'My Retail Offers', icon: 'send-outline', iconLib: 'ion', requiredPermission: 'MANAGE_OFFERS', stackScreen: 'DealerMyOffers' },
   { id: 'dealer-team', section: 'Business', label: 'Team', icon: 'people-outline', iconLib: 'ion', requiredPermission: 'MANAGE_TEAM', stackScreen: 'DealerTeam' },
   { id: 'dealer-analytics', section: 'Business', label: 'Analytics', icon: 'bar-chart-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerAnalytics' },
   { id: 'dealer-earnings', section: 'Business', label: 'Earnings', icon: 'wallet-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerEarnings' },
@@ -242,6 +245,8 @@ export const GlobalDrawer: React.FC = () => {
       // The main dealer tabs already provide Stock/Customers; don't bury
       // duplicate entries in More while hiding account-level actions.
       (!dealerMode || !['dealer-inventory', 'dealer-leads'].includes(item.id))
+      && (item.id !== 'dealer-live' || !dealerMode) // Live Auctions is already in the primary bottom tab.
+      && (item.id !== 'dealer-offers-only' || !hasDealerPermission('VIEW_TRADE'))
       && (!item.requiredPermission
         || (!dealerAccessLoading && hasDealerPermission(item.requiredPermission))),
   );
@@ -345,7 +350,7 @@ export const GlobalDrawer: React.FC = () => {
       if (item.tabName) {
         navigation.navigate('Main', {
           screen: 'Tabs',
-          params: { screen: item.tabName },
+          params: { screen: item.tabName, params: item.tabParams },
         });
       }
     }, 160);
