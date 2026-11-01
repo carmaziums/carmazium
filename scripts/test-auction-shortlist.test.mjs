@@ -7,18 +7,17 @@ const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8"
 // state) is the shared BuyAndBidTabs component used by every page in that area.
 const tabs = read("src/components/dealer/BuyAndBidTabs.tsx")
 const dashboard = read("src/app/dashboard/dealer/auctions/page.tsx") + tabs
-const shortlist = read("src/app/dashboard/dealer/auctions/shortlisted/page.tsx") + tabs
+const shortlist = read("src/components/dealer/DealerSavedAuctionsView.tsx")
 const browse = read("src/app/auctions/browse/page.tsx")
 const detail = read("src/app/auctions/live/[id]/page.tsx")
 const service = read("backend/src/watchlist/watchlist.service.ts")
 const controller = read("backend/src/watchlist/watchlist.controller.ts")
 const button = read("src/components/features/WishlistButton.tsx")
 
-test("dealer dashboard links to the saved auction tab", () => {
-    assert.match(dashboard, /<BuyAndBidTabs/)
-    assert.match(tabs, /href: "\/dashboard\/dealer\/auctions\/shortlisted"/)
-    assert.match(read("src/app/dashboard/dealer/auctions/shortlisted/page.tsx"), /<BuyAndBidTabs/)
-    assert.match(shortlist, /aria-current="page"/)
+test("dealer saved auction view is reachable via the canonical Saved tab", () => {
+    assert.match(read("src/app/dashboard/dealer/auctions/shortlisted/page.tsx"), /redirect\("\/dashboard\/dealer\/wishlist\?tab=auctions"\)/)
+    assert.match(read("src/app/dashboard/dealer/wishlist/page.tsx"), /DealerSavedAuctionsView/)
+    assert.match(shortlist, /DealerSavedTabs active="auctions"/)
 })
 
 test("live browsing and the auction room offer explicit shortlist controls", () => {
@@ -42,7 +41,7 @@ test("live saved auctions are filtered by authoritative deadline and publication
 })
 
 test("ended saved vehicles stay removable and never show an active bid CTA", () => {
-    assert.match(shortlist, /All Saved/)
+    assert.match(shortlist, /saved auctions/)
     assert.match(shortlist, /removeFromWatchlist\(listingId\)/)
     assert.match(shortlist, /ENDED \/ UNAVAILABLE/)
 })
