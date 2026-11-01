@@ -58,7 +58,7 @@ test("app parity: All Purchases shows Sale Pending retail deals like web, with c
     assert.match(src, /'\/offers\/my'/)
     assert.match(src, /<CompletePurchaseButton listingId=\{o\.listingId\}/)
     // Current work only: never in Purchase History.
-    assert.match(src, /isHistory\s*\?\s*Promise\.resolve\(\[\] as PendingRetailOffer\[\]\)/)
+    assert.match(src, /stage !== 'progress' \|\| channel === 'auction'/)
 })
 
 test("web: buyer dashboard vehicle links use the live /buy-cars route", () => {
