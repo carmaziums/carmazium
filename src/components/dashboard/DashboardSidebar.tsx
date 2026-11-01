@@ -91,7 +91,6 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
     const router = useRouter()
     const searchParams = useSearchParams()
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
-    const [mobileBuyBidExpanded, setMobileBuyBidExpanded] = React.useState(false)
     const [mobileStockExpanded, setMobileStockExpanded] = React.useState(false)
     const [pendingOffersCount, setPendingOffersCount] = React.useState(0)
     const [contactingSupport, setContactingSupport] = React.useState(false)
@@ -472,39 +471,6 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
                                                             className="flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-primary/5"
                                                         >{item.label}</Link>
                                                     ))}
-                                                </nav>
-                                            )}
-                                        </div>
-                                    ) : role === 'dealer' && link.href === '/dashboard/dealer/auctions' ? (
-                                        <div>
-                                            <button
-                                                type="button"
-                                                onClick={() => setMobileBuyBidExpanded(open => !open)}
-                                                aria-expanded={mobileBuyBidExpanded}
-                                                aria-controls="dealer-buy-bid-submenu"
-                                                className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all ${isActive ? "bg-primary text-white" : "hover:bg-primary/5 dark:hover:bg-[var(--bg-card)]"}`}
-                                                style={!isActive ? { color: 'var(--text-secondary)' } : undefined}
-                                            >
-                                                <span className="flex items-center gap-3"><Icon size={18} /> <span className="text-sm font-medium">{link.label}</span></span>
-                                                {mobileBuyBidExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                                            </button>
-                                            {mobileBuyBidExpanded && (
-                                                <nav id="dealer-buy-bid-submenu" aria-label="Buy and Bid pages" className="ml-5 mt-1 space-y-1 border-l border-[var(--border-default)] pl-3">
-                                                    {BUY_AND_BID_TABS.filter(tab => !tab.permission || (!dealerAccessLoading && hasDealerPermission(tab.permission))).map(tab => {
-                                                        const TabIcon = tab.icon
-                                                        const tabActive = pathname === tab.href
-                                                        return (
-                                                            <Link
-                                                                key={tab.href}
-                                                                href={tab.href}
-                                                                aria-current={tabActive ? "page" : undefined}
-                                                                onClick={() => setIsMobileMenuOpen(false)}
-                                                                className={`flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2 text-sm ${tabActive ? "bg-primary/15 text-primary font-bold" : "text-[var(--text-secondary)] hover:bg-primary/5"}`}
-                                                            >
-                                                                <TabIcon size={17} /> {tab.label}
-                                                            </Link>
-                                                        )
-                                                    })}
                                                 </nav>
                                             )}
                                         </div>
