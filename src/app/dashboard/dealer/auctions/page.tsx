@@ -11,7 +11,6 @@ import {
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
-import { BuyAndBidTabs } from "@/components/dealer/BuyAndBidTabs"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { useAuth } from "@/context/AuthContext"
@@ -391,7 +390,6 @@ function DealerAuctionsPage() {
                             </Button>
                         </PageHeader>
 
-                        <BuyAndBidTabs className="mt-3" />
                     </div>
 
                     {/* Action needed — the single most important thing on this page when it applies,
