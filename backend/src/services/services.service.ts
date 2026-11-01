@@ -2106,11 +2106,20 @@ export class ServicesService {
         const stripe = await this.payments.getStripeClient();
         let transfer: { id: string };
         try {
+            // Tie the payout to the customer's own charge. Without
+            // source_transaction Stripe pays from the platform's *available*
+            // balance, and UK card funds stay pending for several days, so a job
+            // completed and confirmed quickly would fail with "insufficient
+            // available funds". With it, Stripe transfers from this charge as
+            // soon as it settles.
+            const sourceTransaction = await this.chargeForPaymentIntent(stripe, job.payment.stripePaymentIntentId);
             transfer = await stripe.transfers.create(
                 {
                     amount: job.payment.contractorPence,
                     currency: 'gbp',
                     destination: account,
+                    ...(sourceTransaction ? { source_transaction: sourceTransaction } : {}),
+                    transfer_group: `service-job-${job.id}`,
                 },
                 { idempotencyKey: `service-job-release-${job.payment.id}` },
             );
@@ -2158,6 +2167,15 @@ export class ServicesService {
         await this.notify(job.customerId, 'SERVICE_JOB_RELEASED', 'Job complete',
             `"${job.title}" is done and your provider has been paid. Thanks for using TradeXchange.`, `/services/jobs/${jobId}`);
         return { success: true, transferId };
+    }
+
+    /** The charge behind a paid PaymentIntent, used as the payout's funding source. */
+    private async chargeForPaymentIntent(stripe: any, paymentIntentId: string | null | undefined): Promise<string | null> {
+        if (!paymentIntentId || typeof stripe?.paymentIntents?.retrieve !== 'function') return null;
+        const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+        const charge = intent?.latest_charge;
+        if (typeof charge === 'string') return charge;
+        return typeof charge?.id === 'string' ? charge.id : null;
     }
 
     private async ownJob(customerId: string, jobId: string, include?: Prisma.ServiceJobInclude) {
