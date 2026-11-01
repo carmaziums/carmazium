@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { BuyerCollectedButton } from "@/components/purchases/BuyerCollectedButton"
 import Image from "next/image"
 import { createPortal } from "react-dom"
 import {
@@ -34,6 +35,7 @@ export interface PurchaseItem {
     status: PurchaseStatus
     offerAccepted?: boolean
     buyerFeeSettled?: boolean
+    buyerCollectedAt?: string | null
     retailSold?: boolean
     estimatedDelivery?: string
     documentsReceived?: number
@@ -90,9 +92,10 @@ interface PipelineRowProps {
     onViewSummary?: (item: PurchaseItem) => void
     onViewSeller?: (item: PurchaseItem) => void
     onRequestCancellation?: (item: PurchaseItem) => void
+    onCollected?: () => void
 }
 
-export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancellation }: PipelineRowProps) {
+export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancellation, onCollected }: PipelineRowProps) {
     const [menuOpen, setMenuOpen] = React.useState(false)
     const menuRef = React.useRef<HTMLDivElement>(null)
     const popupRef = React.useRef<HTMLDivElement>(null)
@@ -185,6 +188,14 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                     ) : null}
                 </div>
 
+                {onCollected && !item.buyerCollectedAt
+                    && ["awaiting_confirmation", "sale_confirmed", "reviewing_docs", "sold"].includes(item.status)
+                    && (item.purchaseChannel === "RETAIL" || item.buyerFeeSettled) && (
+                        <div className="order-5 w-full md:order-none md:w-auto">
+                            <BuyerCollectedButton saleId={item.id} onCollected={onCollected} />
+                        </div>
+                    )}
+
                 {/* Price */}
                 <div className="order-2 w-full md:order-none md:block md:w-auto text-left md:text-right shrink-0">
                     <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block">Price</span>
@@ -222,7 +233,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                 {/* Status Badge */}
                 <div className={`order-3 md:order-none flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest border shrink-0 ${config.bg} ${config.color} ${config.border}`}>
                     <StatusIcon size={12} />
-                    <span>{config.label}</span>
+                    <span>{item.buyerCollectedAt ? "Collected" : config.label}</span>
                 </div>
 
                 {/* Context Menu */}
