@@ -2417,6 +2417,18 @@ export class ChatService {
         }
 
         const routing = await this.resolveMessageRouting(room, senderId);
+        // Any human staff response in an official support room takes precedence
+        // over pending AI work. Persist this before broadcasting the response.
+        // The AI delivery transaction must recheck this timestamp atomically.
+        if (room.context === ChatContext.SUPPORT) {
+            const supportId = this.supportCanonicalAdminId(room);
+            if (senderId === supportId) {
+                await this.prisma.chatRoom.update({
+                    where: { id: roomId },
+                    data: { supportHumanTakeoverAt: new Date() },
+                });
+            }
+        }
         await this.prisma.chatRoom.update({
             where: { id: roomId },
             data: {
