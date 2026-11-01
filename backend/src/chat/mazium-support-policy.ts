@@ -68,6 +68,8 @@ export function canAutoReplyToSupport(input: {
     optedOut: boolean;
     humanTakeover: boolean;
     latestMessageFromCustomer: boolean;
+    /** Trusted server-side sender/participant check; never infer from message text. */
+    senderIdentityVerified: boolean;
     latestMessageHasAttachment: boolean;
     latestMessageIdMatches: boolean;
     alreadyProcessed: boolean;
@@ -83,6 +85,7 @@ export function canAutoReplyToSupport(input: {
         && !input.optedOut
         && !input.humanTakeover
         && input.latestMessageFromCustomer
+        && input.senderIdentityVerified
         && !input.latestMessageHasAttachment
         && input.latestMessageIdMatches
         && !input.alreadyProcessed
