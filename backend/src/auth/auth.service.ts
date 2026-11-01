@@ -405,7 +405,7 @@ export class AuthService {
         });
         // Unknown, banned or not-yet-verified users take the full remote path.
         if (!user || user.deletedAt || !user.isEmailVerified) return null;
-        if (isNonInteractiveAccount(user.id)) return 'reject';
+        if (isNonInteractiveAccount(user.id)) return null;
 
         const safeUser = stripSecrets(user);
         if (this.tokenUserCache.size >= 2000) {
