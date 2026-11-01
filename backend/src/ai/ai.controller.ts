@@ -10,6 +10,7 @@ import { UserRole } from '@prisma/client';
 import { ChatRateLimitService } from '../chat/chat-rate-limit.service';
 import { ChatService } from '../chat/chat.service';
 import { ChatContext } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
 import { classifySupportMessage } from '../chat/mazium-support-policy';
 
 @ApiTags('AI')
@@ -19,6 +20,7 @@ export class AiController {
         private readonly aiService: AiService,
         private readonly rateLimit: ChatRateLimitService,
         private readonly chatService: ChatService,
+        private readonly configService: ConfigService,
     ) { }
 
     @Post('search')
@@ -48,6 +50,9 @@ export class AiController {
         @Param('roomId') roomId: string,
         @CurrentUser() user: { id: string },
     ) {
+        if (this.configService.get<string>('MAZIUM_SUPPORT_DRAFT_ENABLED') !== 'true') {
+            throw new BadRequestException('MaziuM support drafts are disabled.');
+        }
         await this.rateLimit.consumeMessage(user.id);
         const room = await this.chatService.getRoom(roomId, user.id);
         if (room.context !== ChatContext.SUPPORT || room.supportClosedAt || room.deletedAt) {
