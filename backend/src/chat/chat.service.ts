@@ -2365,6 +2365,9 @@ export class ChatService {
         dto: SendMessageDto,
     ): Promise<{ message: any; created: boolean }> {
         const room = await this.assertCanMessageRoom(roomId, senderId);
+        if (dto.clientMessageId?.startsWith('mazium-support-')) {
+            throw new BadRequestException('This message identifier is reserved for CarMazium system messages.');
+        }
         if (dto.content.startsWith(DISPUTE_EVENT_PREFIX)) {
             throw new BadRequestException('This message format is reserved for CarMazium dispute events.');
         }
