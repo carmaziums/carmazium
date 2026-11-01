@@ -131,7 +131,7 @@ export default function TraderPricingPage() {
                             </p>
                             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
                                 Optional Standard (£{PRICING.listing.standard.price}) and Premium (£{PRICING.listing.premium.price}) packages are also available.
-                                Each published car has its own listing fee; bulk stock upload is not currently offered on this page.
+                                Each published retail car has its own listing fee, whether added by a dealer or a private seller.
                             </p>
                         </div>
                         <Button asChild className="w-full md:w-auto">
