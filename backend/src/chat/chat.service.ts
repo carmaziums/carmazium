@@ -2291,6 +2291,28 @@ export class ChatService {
                 select: { id: true },
             });
             if (duplicate) return { created: false, reason: 'ALREADY_REPLIED' } as const;
+            // Global daily hard cap and per-room cooldown are checked inside
+            // the same transaction as the insert. The room lock serialises
+            // replies within this conversation; a global cap is best-effort
+            // across rooms and must be paired with provider-side spend limits.
+            const maxDaily = Math.min(100, Math.max(1,
+                Number(process.env.MAZIUM_SUPPORT_MAX_DAILY_REPLIES || 20) || 20));
+            const dayStart = new Date();
+            dayStart.setUTCHours(0, 0, 0, 0);
+            const sentToday = await tx.message.count({
+                where: { aiGenerated: true, createdAt: { gte: dayStart } },
+            });
+            if (sentToday >= maxDaily) {
+                return { created: false, reason: 'DAILY_LIMIT_REACHED' } as const;
+            }
+            const lastBotReply = await tx.message.findFirst({
+                where: { chatRoomId: roomId, aiGenerated: true },
+                orderBy: { createdAt: 'desc' },
+                select: { createdAt: true },
+            });
+            if (lastBotReply && Date.now() - lastBotReply.createdAt.getTime() < 60_000) {
+                return { created: false, reason: 'ROOM_COOLDOWN' } as const;
+            }
             const message = await tx.message.create({
                 data: {
                     chatRoomId: roomId,
