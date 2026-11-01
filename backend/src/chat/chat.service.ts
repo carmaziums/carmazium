@@ -2251,7 +2251,7 @@ export class ChatService {
         if (classifySupportMessage(reply).action !== 'DRAFT') {
             throw new BadRequestException('MaziuM reply requires human review');
         }
-        return this.prisma.$transaction(async (tx) => {
+        const outcome = await this.prisma.$transaction(async (tx) => {
             // A write lock on the room serialises AI retries and room state checks.
             await tx.$queryRaw`SELECT id FROM "chat_rooms" WHERE id = ${roomId} FOR UPDATE`;
             const room = await tx.chatRoom.findUnique({
@@ -2328,8 +2328,27 @@ export class ChatService {
                 include: this.messageInclude,
             });
             await tx.chatRoom.update({ where: { id: roomId }, data: { updatedAt: new Date() } });
-            return { created: true, message } as const;
+            return { created: true, message, customerId } as const;
         });
+        if (outcome.created) {
+            const customer = await this.prisma.user.findUnique({
+                where: { id: outcome.customerId }, select: { role: true },
+            });
+            if (customer) {
+                try {
+                    const text = outcome.message.content as string;
+                    await this.notifyMessageRecipients(
+                        [{ id: outcome.customerId, role: customer.role }], roomId,
+                        outcome.message.id, 'MaziuM AI support reply',
+                        text.substring(0, 50) + (text.length > 50 ? '...' : ''),
+                        { aiGenerated: true },
+                    );
+                } catch (error) {
+                    console.error('[MaziuM] Support reply saved but notification failed', error);
+                }
+            }
+        }
+        return outcome;
     }
 
     /**
