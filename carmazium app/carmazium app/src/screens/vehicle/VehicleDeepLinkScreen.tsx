@@ -31,7 +31,9 @@ export const VehicleDeepLinkScreen: React.FC<Props> = ({ navigation, route }) =>
           index: 1,
           routes: [
             { name: 'Tabs' },
-            { name: 'VehicleDetail', params: { listing } },
+            listing.listingType === 'AUCTION' && listing.auction?.id
+              ? { name: 'LiveAuctionDetailed', params: { listing: { ...listing, auctionId: listing.auction.id } } }
+              : { name: 'VehicleDetail', params: { listing } },
           ],
         });
       })
