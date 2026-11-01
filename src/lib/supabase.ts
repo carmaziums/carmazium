@@ -208,10 +208,24 @@ export async function uploadImage(
         throw new Error('Supabase is not configured. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your environment variables.');
     }
 
-    // Generate unique filename: timestamp-random.ext
+    // This shared method is also used outside ImageUpload. Enforce one-time
+    // vehicle-photo sanitisation at the final storage boundary so callers
+    // cannot accidentally upload large PNGs or photos containing GPS EXIF.
+    // Other uploads (KYC, documents, handover) remain untouched.
+    const imageFolder = folder?.replace(/^\/+|\/+$/g, '').split('/')[0] || 'vehicle';
+    const isPhoto = file.type.startsWith('image/')
+        || /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name);
+    const vehiclePhoto = bucket === 'listings'
+        && ['vehicle', 'exterior', 'interior', 'damage'].includes(imageFolder)
+        && isPhoto;
+    const uploadFile = vehiclePhoto
+        ? await (await import('./vehiclePhotoCompression')).ensurePreparedVehiclePhoto(file)
+        : file;
+
+    // Use the converted file's JPEG extension and MIME, not the original PNG.
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 15);
-    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'bin';
+    const fileExt = uploadFile.name.split('.').pop()?.toLowerCase() || 'bin';
     const baseName = `${timestamp}-${randomId}.${fileExt}`;
 
     // Vehicle listing media is owner-scoped in Storage. The first folder segment
@@ -232,7 +246,7 @@ export async function uploadImage(
 
     for (let attempt = 0; attempt < 2; attempt++) {
         try {
-            const publicUrl = await directUploadToSupabase(file, bucket, fileName);
+            const publicUrl = await directUploadToSupabase(uploadFile, bucket, fileName);
             return publicUrl;
         } catch (err) {
             lastError = err instanceof Error ? err : new Error(String(err));
