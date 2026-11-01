@@ -11,7 +11,7 @@ const read = (path) => readFileSync(resolve(root, path), "utf8")
 
 test("vehicle route issues real HTTP notFound for confirmed missing/deleted slugs", () => {
     const page = read("src/app/buy-cars/[slug]/page.tsx")
-    assert.match(page, /import \{ notFound \} from "next\/navigation"/)
+    assert.match(page, /import \{ notFound, permanentRedirect \} from "next\/navigation"/)
     assert.match(page, /if \(res\.status === 404 \|\| res\.status === 410\) return \{ listing: null, missing: true \} as const/)
     assert.match(page, /const \{ listing, missing \} = await getListingBySlug\(slug\)\s*if \(missing\) notFound\(\)/)
     assert.match(page, /const \{ listing: initialListing, missing \} = await getListingBySlug\(slug\)\s*if \(missing\) notFound\(\)/)
