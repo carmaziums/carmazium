@@ -87,6 +87,11 @@ export class AiController {
             content: m.content,
         })));
         const outputDecision = draft ? classifySupportMessage(draft) : null;
+        // Never offer a draft if the generation returned a human-handoff
+        // request or otherwise sensitive wording.
+        if (draft && outputDecision?.action !== 'DRAFT') {
+            return { success: true, data: { status: 'HUMAN_REVIEW', reason: 'DRAFT_REQUIRES_REVIEW' } };
+        }
         // Do not offer a draft for a message that was answered or superseded
         // while the external model was generating its response.
         const current = await this.chatService.getRoomMessages(roomId, user.id, 1, 1);
