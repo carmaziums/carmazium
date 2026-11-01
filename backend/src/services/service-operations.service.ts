@@ -266,7 +266,14 @@ export class ServiceOperationsService {
         if (!allowedKinds.includes(kind)) throw new BadRequestException('Unsupported case entry type.');
 
         const label = this.cleanText(input.label, 160);
-        const note = this.cleanText(input.note, 4000);
+        // Production service_case_entries_content_check was created before
+        // private storagePath-backed uploads. It still requires a nonblank
+        // note or public URL, even though a private file has storagePath and
+        // must NOT have a public URL. Supply non-sensitive internal metadata
+        // for private file entries until that schema check can be amended via
+        // a separately reviewed database migration.
+        const note = this.cleanText(input.note, 4000)
+            ?? (storagePath ? 'Private file attachment' : null);
         if (!storagePath && !note) throw new BadRequestException('Add a file or a note.');
         if ((kind === 'DOCUMENT' || kind === 'PHOTO') && !storagePath) {
             throw new BadRequestException('This entry requires an uploaded file.');
