@@ -127,14 +127,16 @@ export class AdminController {
     @ApiQuery({ name: 'page', required: false })
     @ApiQuery({ name: 'limit', required: false })
     @ApiQuery({ name: 'search', required: false, description: 'Seller name, email, phone, dealer company, vehicle registration or vehicle text' })
+    @ApiQuery({ name: 'listingType', required: false, enum: ['ALL', 'AUCTION', 'CLASSIFIED'] })
     async getAllListings(
         @Query('page') page = 1,
         @Query('limit') limit = 20,
         @Query('sellerRole') sellerRole?: string,
         @Query('status') status?: string,
         @Query('search') search?: string,
+        @Query('listingType') listingType?: string,
     ): Promise<PaginatedResponse<any>> {
-        const { data, total } = await this.adminService.getAllListings(Number(page), Number(limit), sellerRole, status, search);
+        const { data, total } = await this.adminService.getAllListings(Number(page), Number(limit), sellerRole, status, search, listingType);
         return new PaginatedResponse(data, total, Number(page), Number(limit));
     }
 
