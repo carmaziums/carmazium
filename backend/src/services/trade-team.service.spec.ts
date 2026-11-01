@@ -522,6 +522,53 @@ describe('TradeTeamService', () => {
         }));
     });
 
+
+    it('limits the re-verification exception to explicitly requested existing work', async () => {
+        prisma.user.findUnique.mockResolvedValue({ email: 'independent@example.com' });
+        prisma.dealerStaff.findMany.mockResolvedValue([]);
+        prisma.contractorProfile.findUnique.mockResolvedValue({
+            id: 'independent-provider', userId: 'independent-user',
+            capabilities: [{ serviceType: ServiceType.INSPECTION }],
+        });
+
+        await service.tryResolveActor('independent-user');
+        const normalWhere = prisma.contractorProfile.findUnique.mock.calls[0][0].include.capabilities.where;
+        expect(normalWhere.OR).toEqual([{ status: 'APPROVED' }]);
+
+        await service.tryResolveActor('independent-user', true);
+        const existingWhere = prisma.contractorProfile.findUnique.mock.calls[1][0].include.capabilities.where;
+        expect(existingWhere.OR).toEqual([
+            { status: 'APPROVED' },
+            { status: 'PENDING', verificationStatus: 'REVERIFICATION_REQUIRED' },
+        ]);
+        expect(existingWhere.OR).not.toContainEqual({ status: 'SUSPENDED' });
+        expect(existingWhere.OR).not.toContainEqual({ status: 'REJECTED' });
+    });
+
+    it('preserves active staff service permissions for accepted jobs while re-verification is needed', async () => {
+        prisma.user.findUnique.mockResolvedValue({ email: 'driver@example.com' });
+        prisma.dealerStaff.findMany.mockResolvedValue([membership]);
+        prisma.$queryRaw.mockResolvedValue([permission]);
+        const actor = await service.tryResolveActor('staff-user', true);
+
+        expect(actor).toMatchObject({
+            isStaff: true,
+            contractorProfileId: 'business-provider',
+            allowedServiceTypes: [ServiceType.DELIVERY],
+            canComplete: false,
+        });
+        const permissionQuery = prisma.dealerStaff.findMany.mock.calls[0][0]
+            .include.dealerProfile.include.user.select.contractorProfile.include.capabilities.where;
+        expect(permissionQuery.OR).toContainEqual({
+            status: 'PENDING', verificationStatus: 'REVERIFICATION_REQUIRED',
+        });
+        prisma.serviceJob.findUnique.mockResolvedValue({
+            id: 'job-1', serviceType: ServiceType.DELIVERY, customerId: 'customer-1',
+        });
+        await expect(service.assertJobPermission(actor!, 'job-1', 'complete'))
+            .rejects.toBeInstanceOf(ForbiddenException);
+    });
+
     it('preserves the existing independent provider flow when the user has no dealership TradeXchange assignment', async () => {
         prisma.user.findUnique.mockResolvedValue({ email: 'independent@example.com' });
         prisma.dealerStaff.findMany.mockResolvedValue([]);
