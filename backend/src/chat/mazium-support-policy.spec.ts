@@ -54,6 +54,7 @@ describe('MaziuM support safety policy', () => {
             humanTakeover: false,
             latestMessageFromCustomer: true,
             senderIdentityVerified: true,
+            dedicatedAiSenderVerified: true,
             latestMessageHasAttachment: false,
             latestMessageIdMatches: true,
             alreadyProcessed: false,
@@ -68,6 +69,7 @@ describe('MaziuM support safety policy', () => {
         expect(canAutoReplyToSupport({ ...eligibleAuto, optedOut: true })).toBe(false);
         expect(canAutoReplyToSupport({ ...eligibleAuto, humanTakeover: true })).toBe(false);
         expect(canAutoReplyToSupport({ ...eligibleAuto, senderIdentityVerified: false })).toBe(false);
+        expect(canAutoReplyToSupport({ ...eligibleAuto, dedicatedAiSenderVerified: false })).toBe(false);
         expect(canAutoReplyToSupport({ ...eligibleAuto, latestMessageIdMatches: false })).toBe(false);
         expect(canAutoReplyToSupport({ ...eligibleAuto, alreadyProcessed: true })).toBe(false);
         expect(canAutoReplyToSupport({ ...eligibleAuto, withinRateAndBudgetLimits: false })).toBe(false);
