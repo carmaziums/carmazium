@@ -2556,6 +2556,14 @@ export class ChatService {
         }
 
         const routing = await this.resolveMessageRouting(room, senderId);
+        // A staff photo is also a human response; pending AI replies must
+        // not continue after this official support intervention.
+        if (room.context === ChatContext.SUPPORT && senderId === this.supportCanonicalAdminId(room)) {
+            await this.prisma.chatRoom.update({
+                where: { id: roomId },
+                data: { supportHumanTakeoverAt: new Date() },
+            });
+        }
         await this.prisma.chatRoom.update({
             where: { id: roomId },
             data: {
