@@ -11,7 +11,7 @@ import { ChatRateLimitService } from '../chat/chat-rate-limit.service';
 import { ChatService } from '../chat/chat.service';
 import { ChatContext } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
-import { classifySupportMessage } from '../chat/mazium-support-policy';
+import { classifySupportMessage, isInboundCustomerSupportMessage } from '../chat/mazium-support-policy';
 
 @ApiTags('AI')
 @Controller('ai')
@@ -63,8 +63,19 @@ export class AiController {
         const messages = transcript.data.filter((m: any) =>
             typeof m.content === 'string' && m.content.trim() && !m.deletedAt && !m.attachmentPath
         );
-        const customerId = room.initiator?.role === UserRole.ADMIN ? room.participantId : room.participant?.role === UserRole.ADMIN ? room.initiatorId : null;
-        if (!latest || !customerId || latest.senderId !== customerId || latest.attachmentPath || !latest.content?.trim() || room.supportAiOptedOutAt || room.supportHumanTakeoverAt) {
+        const supportAccountId = room.initiator?.role === UserRole.ADMIN
+            ? room.initiatorId
+            : room.participant?.role === UserRole.ADMIN ? room.participantId : '';
+        const customerId = supportAccountId === room.initiatorId ? room.participantId : room.initiatorId;
+        const latestIsCustomer = !!latest && isInboundCustomerSupportMessage({
+            context: room.context,
+            senderId: latest.senderId,
+            initiatorId: room.initiatorId,
+            participantId: room.participantId,
+            officialSupportAccountId: supportAccountId,
+            senderIsAutomated: Boolean(latest.clientMessageId?.startsWith('mazium-support-')),
+        });
+        if (!latest || !latestIsCustomer || latest.attachmentPath || !latest.content?.trim() || room.supportAiOptedOutAt || room.supportHumanTakeoverAt) {
             throw new BadRequestException('No unanswered customer message to draft.');
         }
         const classification = classifySupportMessage(latest.content);
