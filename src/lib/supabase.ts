@@ -212,7 +212,7 @@ export async function uploadImage(
     // vehicle-photo sanitisation at the final storage boundary so callers
     // cannot accidentally upload large PNGs or photos containing GPS EXIF.
     // Other uploads (KYC, documents, handover) remain untouched.
-    const imageFolder = folder?.replace(/^\\/+|\\/+$/g, '').split('/')[0] || 'vehicle';
+    const imageFolder = folder?.replace(/^\/+|\/+$/g, '').split('/')[0] || 'vehicle';
     const vehiclePhoto = bucket === 'listings'
         && ['vehicle', 'exterior', 'interior', 'damage'].includes(imageFolder);
     const uploadFile = vehiclePhoto
