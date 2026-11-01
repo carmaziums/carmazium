@@ -1327,6 +1327,8 @@ model Message {
   chatRoomId      String
   senderId        String
   clientMessageId String?
+  aiGenerated     Boolean   @default(false)
+  aiSourceMessageId String? @unique
   content         String
   attachmentPath String?
   attachmentName String?
