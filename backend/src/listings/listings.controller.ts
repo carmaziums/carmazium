@@ -568,6 +568,22 @@ export class ListingsController {
         return new StandardResponse(await this.listingsService.completeRetailSaleAsBuyer(id, user.id));
     }
 
+
+    @Post('purchase-sales/:saleId/confirm-collection')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Registered buyer or authorised dealership staff confirms physical vehicle collection',
+        description: 'The purchaser personally attests they paid the seller and physically received the car. Does not alter seller payment attestations, handover approvals, incentives or TradeXchange jobs.',
+    })
+    async confirmBuyerCollection(
+        @Param('saleId') saleId: string,
+        @CurrentUser() user: any,
+    ): Promise<StandardResponse<any>> {
+        return new StandardResponse(await this.listingsService.confirmVehicleCollectedByBuyer(saleId, user.id));
+    }
+
     /**
      * Soft delete a listing
      * Requires authentication and ownership
