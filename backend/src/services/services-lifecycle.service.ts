@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { CapabilityStatus, ServiceJobStatus, ServicePaymentStatus, ServiceQuoteStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -201,67 +201,121 @@ export class ServicesLifecycleService {
         for (const payment of candidates) {
             const sessionId = payment.stripeCheckoutSessionId;
 
-            if (sessionId) {
-                try {
-                    const session = await stripe.checkout.sessions.retrieve(sessionId);
-                    if (session.status === 'complete' && session.payment_status === 'paid') {
+            // The checkout may still be creating its session. Without an ID we
+            // cannot prove the card payment has no valid Checkout link, so keep
+            // the acceptance intact rather than silently reopen a paid job.
+            if (!sessionId) {
+                this.logger.warn(`Cannot reopen service job ${payment.jobId}: Checkout session has not been recorded.`);
+                continue;
+            }
+
+            try {
+                const session = await stripe.checkout.sessions.retrieve(sessionId);
+                if (session.status === 'complete') {
+                    if (session.payment_status === 'paid') {
                         await this.services.markPaid(
                             payment.jobId,
                             payment.id,
                             typeof session.payment_intent === 'string' ? session.payment_intent : null,
                         );
-                        continue;
+                    } else {
+                        // A completed but still unpaid/processing Checkout is not
+                        // equivalent to an expired one. A delayed payment could
+                        // succeed; never delete its pending payment record.
+                        this.logger.warn(`Checkout ${sessionId} completed without confirmed payment; holding job ${payment.jobId} for reconciliation.`);
                     }
-                    if (session.status === 'open') {
-                        await stripe.checkout.sessions.expire(sessionId);
-                    }
-                } catch (e: any) {
-                    // Never reopen when Stripe state is uncertain: that could let
-                    // a second provider be selected while the first Checkout pays.
-                    this.logger.warn(
-                        `Could not safely expire unpaid Checkout ${sessionId} for service job ${payment.jobId}: ${e?.message}`,
-                    );
                     continue;
                 }
+                if (session.status === 'open') {
+                    const expiredSession = await stripe.checkout.sessions.expire(sessionId);
+                    if (expiredSession?.status !== 'expired') {
+                        this.logger.warn(`Stripe did not confirm Checkout expiry for ${sessionId}; keeping job ${payment.jobId} accepted.`);
+                        continue;
+                    }
+                } else if (session.status !== 'expired') {
+                    this.logger.warn(`Unexpected Checkout state ${session.status} for ${sessionId}; keeping job ${payment.jobId} accepted.`);
+                    continue;
+                }
+            } catch (e: any) {
+                // Never reopen when Stripe state is uncertain: that could let
+                // a second provider be selected while the first Checkout pays.
+                this.logger.warn(
+                    `Could not safely expire unpaid Checkout ${sessionId} for service job ${payment.jobId}: ${e?.message}`,
+                );
+                continue;
             }
 
             const now = new Date();
             const minimumExpiry = new Date(now.getTime() + REOPEN_MINIMUM_HOURS * 3_600_000);
             const reopenedExpiry = payment.job.expiresAt > minimumExpiry ? payment.job.expiresAt : minimumExpiry;
 
-            await this.prisma.$transaction([
-                this.prisma.serviceJob.update({
-                    where: { id: payment.jobId },
-                    data: {
-                        status: ServiceJobStatus.OPEN,
-                        acceptedQuoteId: null,
-                        contractorId: null,
-                        agreedAmountPence: null,
-                        platformFeeRate: null,
-                        platformFeePence: null,
-                        contractorAmountPence: null,
-                        acceptedAt: null,
-                        expiresAt: reopenedExpiry,
-                    },
-                }),
-                this.prisma.serviceQuote.updateMany({
-                    where: {
-                        jobId: payment.jobId,
-                        status: { in: [ServiceQuoteStatus.ACCEPTED, ServiceQuoteStatus.DECLINED] },
-                        OR: [{ validUntil: null }, { validUntil: { gt: now } }],
-                    },
-                    data: { status: ServiceQuoteStatus.ACTIVE },
-                }),
-                this.prisma.serviceQuote.updateMany({
-                    where: {
-                        jobId: payment.jobId,
-                        status: { in: [ServiceQuoteStatus.ACCEPTED, ServiceQuoteStatus.DECLINED] },
-                        validUntil: { lte: now },
-                    },
-                    data: { status: ServiceQuoteStatus.EXPIRED },
-                }),
-                this.prisma.servicePayment.delete({ where: { id: payment.id } }),
-            ]);
+            // Race-safe: a Stripe webhook may transition PENDING -> PAID
+            // between session inspection and this transaction. Conditional
+            // update + conditional delete must succeed together, or the whole
+            // reopen/quote reset is rolled back and existing work stays intact.
+            let claimed = false;
+            try {
+                claimed = await this.prisma.$transaction(async (tx) => {
+                    const jobUpdated = await tx.serviceJob.updateMany({
+                        where: {
+                            id: payment.jobId,
+                            status: ServiceJobStatus.ACCEPTED,
+                            acceptedAt: { lt: cutoff },
+                            payment: { is: {
+                                id: payment.id,
+                                status: ServicePaymentStatus.PENDING,
+                                stripeCheckoutSessionId: sessionId,
+                            } },
+                        },
+                        data: {
+                            status: ServiceJobStatus.OPEN,
+                            acceptedQuoteId: null,
+                            contractorId: null,
+                            agreedAmountPence: null,
+                            platformFeeRate: null,
+                            platformFeePence: null,
+                            contractorAmountPence: null,
+                            acceptedAt: null,
+                            expiresAt: reopenedExpiry,
+                        },
+                    });
+                    if (jobUpdated.count !== 1) return false;
+
+                    await tx.serviceQuote.updateMany({
+                        where: {
+                            jobId: payment.jobId,
+                            status: { in: [ServiceQuoteStatus.ACCEPTED, ServiceQuoteStatus.DECLINED] },
+                            OR: [{ validUntil: null }, { validUntil: { gt: now } }],
+                        },
+                        data: { status: ServiceQuoteStatus.ACTIVE },
+                    });
+                    await tx.serviceQuote.updateMany({
+                        where: {
+                            jobId: payment.jobId,
+                            status: { in: [ServiceQuoteStatus.ACCEPTED, ServiceQuoteStatus.DECLINED] },
+                            validUntil: { lte: now },
+                        },
+                        data: { status: ServiceQuoteStatus.EXPIRED },
+                    });
+
+                    const deleted = await tx.servicePayment.deleteMany({
+                        where: {
+                            id: payment.id,
+                            status: ServicePaymentStatus.PENDING,
+                            stripeCheckoutSessionId: sessionId,
+                        },
+                    });
+                    if (deleted.count !== 1) {
+                        throw new ConflictException('The service payment changed while checkout was being reopened.');
+                    }
+                    return true;
+                });
+            } catch (e: any) {
+                // The transaction rolls back all job, quote and payment changes.
+                this.logger.warn(`Skipped unsafe Checkout reopening for service job ${payment.jobId}: ${e?.message}`);
+                continue;
+            }
+            if (!claimed) continue;
 
             reopened += 1;
             await this.notifications.create({
