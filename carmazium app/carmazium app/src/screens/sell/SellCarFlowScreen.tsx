@@ -3738,7 +3738,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               </View>
 
               <View>
-                <Text style={s.sectionLabel}>PRICE PER MILE (£, ex-VAT)</Text>
+                <Text style={s.sectionLabel}>YOUR DELIVERY PRICE PER MILE (£)</Text>
                 <TextInput
                   style={s.input}
                   value={deliveryPricePerMile}
@@ -3750,27 +3750,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 />
               </View>
 
-              {/* Fee preview — shows how the tiered formula works for a 20-mile trip */}
-              {(() => {
-                const EXAMPLE_MILES = 20;
-                const ppm = parseFloat(deliveryPricePerMile) || 0;
-                // Tiered base: ≤10mi = £30, 11-30mi = £30+(d-10)×£2, >30mi = £70+(d-30)×£1.50
-                const feeExVat = EXAMPLE_MILES <= 10
-                  ? 30
-                  : EXAMPLE_MILES <= 30
-                    ? 30 + (EXAMPLE_MILES - 10) * 2
-                    : 70 + (EXAMPLE_MILES - 30) * 1.5;
-                const totalExVat = feeExVat + ppm * EXAMPLE_MILES;
-                return (
-                  <View style={s.deliveryPreview}>
-                    <Ionicons name="information-circle-outline" size={13} color={Colors.infoBlueLight} accessibilityElementsHidden importantForAccessibility="no" />
-                    <Text style={s.deliveryPreviewText}>
-                      {`Example: ${EXAMPLE_MILES}-mile delivery = £${Math.round(totalExVat)} ex-VAT`}
-                      {ppm > 0 ? ` (£${Math.round(feeExVat)} base + £${Math.round(ppm * EXAMPLE_MILES)} per-mile)` : ' (base fee only)'}
-                    </Text>
-                  </View>
-                );
-              })()}
+              {/* Delivery is agreed directly; no CarMazium base rate exists. */}
+              <View style={s.deliveryPreview}>
+                <Ionicons name="information-circle-outline" size={13} color={Colors.infoBlueLight} accessibilityElementsHidden importantForAccessibility="no" />
+                <Text style={s.deliveryPreviewText}>
+                  Set your own delivery price per mile and maximum distance. The buyer and seller agree any delivery cost directly before collection; CarMazium does not set a fixed delivery fee.
+                </Text>
+              </View>
             </View>
           )}
         </SectionBox>
