@@ -545,3 +545,46 @@ describe('TradeTeamService', () => {
         });
     });
 });
+
+describe('Partner "Add service" application notices (GDN-style onboarding)', () => {
+    const setup = (existing: any = null) => {
+        const notifications = { create: jest.fn().mockResolvedValue({}) };
+        const prisma: any = {
+            user: { findMany: jest.fn().mockResolvedValue([{ id: 'admin-1' }, { id: 'admin-2' }]) },
+            contractorProfile: { upsert: jest.fn().mockResolvedValue({ id: 'provider-1' }) },
+            contractorCapability: {
+                findUnique: jest.fn().mockResolvedValue(existing),
+                upsert: jest.fn().mockResolvedValue({ id: 'cap-1', status: 'PENDING', serviceType: ServiceType.INSPECTION }),
+            },
+        };
+        const service = new TradeTeamService(prisma, notifications as any);
+        jest.spyOn(service as any, 'ownerDealer').mockResolvedValue({ companyName: 'GDN Inspections Ltd', phone: null, businessAddress: null });
+        jest.spyOn(service as any, 'syncBusinessIdentity').mockResolvedValue(undefined);
+        return { service, notifications, prisma };
+    };
+
+    it('tells admins and points the provider to the document upload step', async () => {
+        const { service, notifications } = setup();
+        await service.applyBusinessCapability('owner-1', ServiceType.INSPECTION);
+        const calls = notifications.create.mock.calls.map((c: any[]) => c[0]);
+        expect(calls).toEqual(expect.arrayContaining([
+            expect.objectContaining({ userId: 'owner-1', link: '/dashboard/service/capabilities/cap-1/verification' }),
+            expect.objectContaining({ userId: 'admin-1', type: 'SERVICE_CAPABILITY_APPLIED', link: '/dashboard/admin/services' }),
+            expect.objectContaining({ userId: 'admin-2', type: 'SERVICE_CAPABILITY_APPLIED' }),
+        ]));
+        expect(calls.find((c: any) => c.userId === 'admin-1').message).toContain('GDN Inspections Ltd');
+    });
+
+    it('does not re-announce an application that is already pending or approved', async () => {
+        const { service, notifications } = setup({ id: 'cap-1', status: 'PENDING' });
+        await service.applyBusinessCapability('owner-1', ServiceType.INSPECTION);
+        expect(notifications.create).not.toHaveBeenCalled();
+    });
+
+    it('a notification failure never blocks the application', async () => {
+        const { service, notifications, prisma } = setup();
+        notifications.create.mockRejectedValue(new Error('down'));
+        await expect(service.applyBusinessCapability('owner-1', ServiceType.INSPECTION)).resolves.toEqual(expect.objectContaining({ id: 'cap-1' }));
+        expect(prisma.contractorCapability.upsert).toHaveBeenCalled();
+    });
+});

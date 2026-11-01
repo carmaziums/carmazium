@@ -3,6 +3,7 @@ import {
     ConflictException,
     ForbiddenException,
     Injectable,
+    Logger,
     NotFoundException,
 } from '@nestjs/common';
 import { CapabilityStatus, Prisma, ServiceType } from '@prisma/client';
@@ -43,8 +44,17 @@ type PermissionRow = {
     updatedAt: Date;
 };
 
+const SERVICE_LABELS: Partial<Record<ServiceType, string>> = {
+    [ServiceType.DELIVERY]: 'Delivery & Recovery',
+    [ServiceType.INSPECTION]: 'Vehicle Inspection',
+    [ServiceType.FINANCE]: 'Vehicle Finance',
+    [ServiceType.WARRANTY]: 'Warranty',
+};
+
 @Injectable()
 export class TradeTeamService {
+    private readonly logger = new Logger(TradeTeamService.name);
+
     constructor(
         private readonly prisma: PrismaService,
         private readonly notifications: NotificationsService,
@@ -495,7 +505,7 @@ export class TradeTeamService {
         if (existing?.status === CapabilityStatus.SUSPENDED) {
             throw new ConflictException('This business service capability is suspended. Contact CarMazium support or an administrator.');
         }
-        return this.prisma.contractorCapability.upsert({
+        const capability = await this.prisma.contractorCapability.upsert({
             where: { contractorId_serviceType: { contractorId: profile.id, serviceType } },
             create: { contractorId: profile.id, serviceType },
             update: {
@@ -506,5 +516,54 @@ export class TradeTeamService {
                 reviewNote: null,
             },
         });
+        await this.announceNewApplication(ownerUserId, dealer.companyName, serviceType, capability.id);
+        return capability;
+    }
+
+    /**
+     * The Partner Account "Add service" button is how most businesses apply
+     * (e.g. a new inspection company). It used to create the PENDING
+     * application silently: admins were never told, and the provider was
+     * not told that documents are the next step, so applications sat
+     * unreviewed with no evidence. Best effort: never blocks the application.
+     */
+    private async announceNewApplication(ownerUserId: string, businessName: string | null | undefined, serviceType: ServiceType, capabilityId: string) {
+        const label = SERVICE_LABELS[serviceType] ?? serviceType;
+        const send = async (payload: Record<string, unknown>) => {
+            try {
+                await this.notifications.create(payload as any);
+            } catch (error: any) {
+                this.logger.warn(`Could not send capability application notice ${capabilityId}: ${error?.message || error}`);
+            }
+        };
+        await send({
+            userId: ownerUserId,
+            type: 'SERVICE_CAPABILITY_APPLIED',
+            title: `Next step: upload your ${label} documents`,
+            message: `Your ${label} application is pending. Upload the required verification documents so CarMazium can review and approve it.`,
+            link: `/dashboard/service/capabilities/${capabilityId}/verification`,
+            entityType: 'SERVICE_CAPABILITY',
+            entityId: capabilityId,
+        });
+        let admins: { id: string }[] = [];
+        try {
+            admins = await this.prisma.user.findMany({
+                where: { role: 'ADMIN', deletedAt: null },
+                select: { id: true },
+            });
+        } catch (error: any) {
+            this.logger.warn(`Could not load admins for capability application ${capabilityId}: ${error?.message || error}`);
+        }
+        for (const admin of admins) {
+            await send({
+                userId: admin.id,
+                type: 'SERVICE_CAPABILITY_APPLIED',
+                title: 'New provider application',
+                message: `${businessName || 'A Partner business'} applied to provide ${label}.`,
+                link: '/dashboard/admin/services',
+                entityType: 'SERVICE_CAPABILITY',
+                entityId: capabilityId,
+            });
+        }
     }
 }
