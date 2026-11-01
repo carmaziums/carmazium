@@ -9,6 +9,11 @@ describe('MaziuM support safety policy', () => {
         'Can you waive the fee?',
         'I need a solicitor',
         'My OTP is 123456',
+        'My account was hacked',
+        'I need a chargeback',
+        'I want to request GDPR data erasure',
+        'Please send your bank transfer details',
+        'I will take this to trading standards',
     ])('escalates sensitive requests: %s', (message) => {
         expect(classifySupportMessage(message).action).toBe('ESCALATE');
     });
