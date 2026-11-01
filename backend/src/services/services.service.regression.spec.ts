@@ -92,6 +92,7 @@ describe('ServicesService TradeXchange hardening regressions', () => {
         stripe = {
             refunds: { create: jest.fn() },
             transfers: { create: jest.fn() },
+            paymentIntents: { retrieve: jest.fn().mockResolvedValue({ latest_charge: 'ch_1' }) },
             checkout: { sessions: { create: jest.fn(), retrieve: jest.fn() } },
         };
 
@@ -779,6 +780,7 @@ describe('ServicesService TradeXchange hardening regressions', () => {
                 id: 'payment-1',
                 status: ServicePaymentStatus.PAID,
                 contractorPence: 9100,
+                stripePaymentIntentId: 'pi_1',
                 stripeTransferId: null,
             },
             contractor: {
@@ -804,6 +806,7 @@ describe('ServicesService TradeXchange hardening regressions', () => {
                 amount: 9100,
                 currency: 'gbp',
                 destination: 'acct_1',
+                source_transaction: 'ch_1',
                 transfer_group: 'service-job-job-1',
             },
             { idempotencyKey: 'service-job-release-payment-1' },
