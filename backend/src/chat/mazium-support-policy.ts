@@ -87,3 +87,16 @@ export function canAutoReplyToSupport(input: {
         && classifySupportMessage(input.incomingMessage).action === 'DRAFT'
         && classifySupportMessage(input.proposedReply).action === 'DRAFT';
 }
+
+/**
+ * Stable delivery key for retries of the same inbound support message.
+ * The sender's unique clientMessageId index enforces at-most-one stored
+ * reply per incoming message; it is not sufficient on its own to prevent
+ * a human/AI race, which must be resolved in a database transaction.
+ */
+export function supportAutoReplyClientMessageId(incomingMessageId: string): string {
+    if (!/^[0-9a-f-]{36}$/i.test(incomingMessageId)) {
+        throw new Error('Invalid incoming support message identifier');
+    }
+    return `mazium-support-${incomingMessageId.toLowerCase()}`;
+}
