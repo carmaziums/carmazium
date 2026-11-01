@@ -764,7 +764,7 @@ const mobileDealerInventory = read('carmazium app/carmazium app/src/screens/main
 const mobileDealerCustomers = read('carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx');
 const mobileDealerOffers = read('carmazium app/carmazium app/src/screens/main/DealerOffersScreen.tsx');
 const webDealerLiveAuction = read('src/app/auctions/live/[id]/page.tsx');
-const webDealerWonAuctions = read('src/app/dashboard/dealer/auctions/won/page.tsx');
+const webDealerWonAuctions = read('src/components/dealer/DealerAuctionWinsView.tsx');
 const mobileDealerLiveAuction = read('carmazium app/carmazium app/src/screens/vehicle/AuctionDetailScreen.tsx');
 const webDealerKycForm = read('src/components/dashboard/KycOverlayForm.tsx');
 const webDealerApiForKyc = read('src/lib/dealerApi.ts');
@@ -1010,24 +1010,24 @@ if (
   }
 }
 
-// Purchase destinations: Auction Wins, Retail Purchases, All Purchases and
-// Purchase History are four places on web and app, in the same order, with the same
-// finished-stage rule for Purchase History.
+// Owner-approved #716: one Purchases page with three stage tabs, a channel
+// chip filter, and the original completed-stage rule on both website/app.
 {
-  const webDest = read('src/lib/purchaseDestinations.ts');
+  const webPurchases = read('src/components/dealer/DealerPurchasesView.tsx');
   const nativeDest = read('carmazium app/carmazium app/src/components/dealer/PurchaseDestinations.tsx');
   const nativePurchases = read('carmazium app/carmazium app/src/screens/main/DealerPurchasesScreen.tsx');
-  const webLabels = [...webDest.matchAll(/label: "([^"]+)"/g)].map(m => m[1]);
+  const webLabels = [...webPurchases.matchAll(/\["(?:progress|completed|cancelled)","([^"]+)"\]/g)].map(m => m[1]);
   const nativeLabels = [...nativeDest.matchAll(/label: '([^']+)'/g)].map(m => m[1]);
+  const webDest = read('src/lib/purchaseDestinations.ts');
   const webHistory = (webDest.match(/PURCHASE_HISTORY_STATUSES = \[([^\]]*)\]/)?.[1] || '').match(/"([a-z_]+)"/g)?.map(x => x.slice(1, -1).toUpperCase()) || [];
   const nativeHistory = (nativePurchases.match(/HISTORY_STATUSES: PurchaseStatus\[\] = \[([^\]]*)\]/)?.[1] || '').match(/'([A-Z_]+)'/g)?.map(x => x.slice(1, -1)) || [];
-  const expected = 'Auction Wins,Retail Purchases,All Purchases,Purchase History';
+  const expected = 'In progress,Completed,Cancelled';
   if (webLabels.join(',') !== expected || nativeLabels.join(',') !== expected) {
-    fail(`Purchase destinations differ: web (${webLabels.join(', ')}) app (${nativeLabels.join(', ')})`);
+    fail(`Purchase stage tabs differ: web (${webLabels.join(', ')}) app (${nativeLabels.join(', ')})`);
   } else if (webHistory.join(',') !== nativeHistory.join(',') || webHistory.length === 0) {
-    fail(`Purchase History stages differ: web (${webHistory.join(', ')}) app (${nativeHistory.join(', ')})`);
+    fail(`Completed purchase stages differ: web (${webHistory.join(', ')}) app (${nativeHistory.join(', ')})`);
   } else {
-    ok('Purchase destinations and Purchase History stages match on web and app');
+    ok('Three purchase stage tabs and Delivery Requested completion match on web and app');
   }
 }
 
@@ -1044,8 +1044,9 @@ if (
   !mobileDealerDrawer.includes("label: 'Stock'") ||
   !mobileDealerDrawer.includes("label: 'Customers'") ||
   !mobileDealerDrawer.includes("label: 'Offers'") ||
-  !mobileDealerDrawer.includes("label: 'My Retail Offers'") ||
-  !mobileDealerDrawer.includes("label: 'Saved Cars'") ||
+  !mobileDealerDrawer.includes("label: 'Bids & Offers'") ||
+  !mobileDealerDrawer.includes("label: 'Saved'") ||
+  !mobileDealerDrawer.includes("label: 'Live Auctions'") ||
   !mobileDealerDrawer.includes("label: 'Finance'") ||
   !mobileDealerCustomers.includes('>Customers</Text>') ||
   !mobileDealerOffers.includes('>Offers Received</Text>') ||
