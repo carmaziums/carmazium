@@ -71,7 +71,10 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   const accountRole = useAuthStore((s) => s.accountRole);
 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -83,8 +86,10 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
   const load = useCallback(async (isRefresh = false) => {
     try {
-      const data = await getNotifications(1, 60);
+      const data = await getNotifications(1, 50);
       setNotifications(data.notifications);
+      setTotal(data.total);
+      setPage(1);
       setLoadError(null);
     } catch {
       setLoadError('Could not load notifications. Check your connection and try again.');
@@ -93,6 +98,26 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
       if (isRefresh) setRefreshing(false);
     }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || notifications.length >= total) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const data = await getNotifications(nextPage, 50);
+      setNotifications(prev => {
+        const seen = new Set(prev.map(item => item.id));
+        return [...prev, ...data.notifications.filter(item => !seen.has(item.id))];
+      });
+      setTotal(data.total);
+      setPage(nextPage);
+      setLoadError(null);
+    } catch {
+      setLoadError('Could not load older notifications. Check your connection and try again.');
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, notifications.length, page, total]);
 
   useFocusEffect(useCallback(() => {
     void load();
@@ -319,7 +344,13 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
           data={groups}
           keyExtractor={(group) => group.label}
           renderItem={renderGroup}
-          ListFooterComponent={<View style={{ height: 100 }} />}
+          onEndReached={() => void loadMore()}
+          onEndReachedThreshold={0.35}
+          ListFooterComponent={
+            <View style={{ minHeight: 100, alignItems: 'center', justifyContent: 'center' }}>
+              {loadingMore && <ActivityIndicator size="small" color={Colors.accent} />}
+            </View>
+          }
         />
       )}
     </View>

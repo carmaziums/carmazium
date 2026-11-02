@@ -16,12 +16,43 @@ export interface AppNotification {
     createdAt: string
 }
 
+export interface NotificationPage {
+    notifications: AppNotification[]
+    total: number
+    page: number
+    limit: number
+    totalPages: number
+}
+
+export async function getNotificationsPage(page = 1, limit = 20): Promise<NotificationPage> {
+    const res = await apiClient<{
+        data: AppNotification[]
+        pagination?: {
+            total?: number
+            page?: number
+            limit?: number
+            totalPages?: number
+        }
+    }>(`/notifications?page=${page}&limit=${limit}`, {
+        cache: 'no-store',
+    })
+
+    const safeData = res?.data ?? []
+    const safeLimit = res?.pagination?.limit ?? limit
+    const total = res?.pagination?.total ?? safeData.length
+    return {
+        notifications: safeData,
+        total,
+        page: res?.pagination?.page ?? page,
+        limit: safeLimit,
+        totalPages: res?.pagination?.totalPages ?? Math.max(1, Math.ceil(total / Math.max(1, safeLimit))),
+    }
+}
+
 export async function getNotifications(limit = 10): Promise<AppNotification[]> {
     try {
-        const res = await apiClient<{ data: AppNotification[] }>(`/notifications?limit=${limit}`, {
-            cache: 'no-store',
-        })
-        return res?.data ?? []
+        const page = await getNotificationsPage(1, limit)
+        return page.notifications
     } catch {
         return []
     }

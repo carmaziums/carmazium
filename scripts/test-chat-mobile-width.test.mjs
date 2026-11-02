@@ -1,19 +1,33 @@
 // Owner screenshot (31 Oct 2026): on a phone, sent messages ran off the right
-// edge of dealer Messages. The chat pane is a flex item and needs min-w-0, or
-// its content can make it wider than the screen.
+// edge of Messages. Shared inboxes and legacy/admin inboxes must all constrain
+// the flex chat pane so long content cannot widen the viewport.
 import test from "node:test"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 
-const pages = ["dealer", "seller", "buyer", "service", "finance", "insurance", "admin"]
+const sharedRolePages = ["dealer", "service", "finance", "insurance"]
     .map(role => `src/app/dashboard/${role}/messages/page.tsx`)
 
-test("every Messages page constrains the chat pane to the screen width", () => {
-    for (const page of pages) {
+test("shared role message pages use the canonical inbox", () => {
+    for (const page of sharedRolePages) {
         const src = readFileSync(page, "utf8")
-        assert.match(src, /className=\{`min-h-0 min-w-0 flex-1 \$\{selectedRoom \? ["']flex["'] : ["']hidden lg:flex lg:items-center lg:justify-center["']\}`\}/, page)
-        // "flex" and "hidden" must never be applied together.
-        assert.doesNotMatch(src, /`flex min-h-0 min-w-0 flex-1 \$\{!selectedRoom/, page)
+        assert.match(src, /RoleMessagesInbox/, page)
+    }
+    assert.match(readFileSync("src/app/dashboard/user/page.tsx", "utf8"), /RoleMessagesInbox/)
+})
+
+test("the shared inbox constrains the desktop chat pane and owns the phone portal", () => {
+    const src = readFileSync("src/components/chat/RoleMessagesInbox.tsx", "utf8")
+    assert.match(src, /min-h-0 min-w-0 flex-1/)
+    assert.match(src, /fixed inset-0 z-\[9999\].*h-\[100dvh\].*w-screen/)
+    assert.match(src, /CarMazium support/)
+})
+
+test("legacy buyer, seller and admin message panes stay width-constrained", () => {
+    for (const role of ["seller", "buyer", "admin"]) {
+        const page = `src/app/dashboard/${role}/messages/page.tsx`
+        const src = readFileSync(page, "utf8")
+        assert.match(src, /min-w-0/, page)
     }
 })
 
