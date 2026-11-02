@@ -94,6 +94,21 @@ export async function apiClient<T>(
     };
     const requestUrl = `${API_URL}${endpoint}`;
 
+    // IPv6 to Fly.io is unreachable on some desktop networks. For the *one*
+    // read-only login profile check, an authenticated same-origin Vercel relay
+    // offers an IPv4 server-side route without changing cookie/session roles.
+    // Never proxy writes, payments, bids, arbitrary URLs, or unauthenticated
+    // profile lookups.
+    const canRecoverProfile = endpoint === '/users/me' && method === 'GET'
+        && typeof window !== 'undefined' && Boolean(token);
+    const readProfileFromSameOrigin = () => fetchWithRetry('/api/account-profile', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'same-origin',
+        cache: 'no-store',
+        signal: options.signal,
+    }, { timeoutMs: 16000, retries: 0 });
+
     let response: Response;
     try {
         // The DVLA lookup uses POST but only reads vehicle information.
@@ -126,12 +141,34 @@ export async function apiClient<T>(
             }
         }
     } catch (err: any) {
-        const msg = err?.message || String(err);
-        throw new Error(
-            msg.includes('aborted') || msg.includes('timed out') || err?.name === 'AbortError'
-                ? 'Request timed out — the server took too long to respond. Please try again.'
-                : msg,
-        );
+        let recovered: Response | null = null;
+        if (canRecoverProfile && !options.signal?.aborted) {
+            try {
+                recovered = await readProfileFromSameOrigin();
+            } catch {
+                // Preserve the initial network failure for diagnostics.
+            }
+        }
+        if (!recovered) {
+            const msg = err?.message || String(err);
+            throw new Error(
+                msg.includes('aborted') || msg.includes('timed out') || err?.name === 'AbortError'
+                    ? 'Request timed out — the server took too long to respond. Please try again.'
+                    : msg,
+            );
+        }
+        response = recovered;
+    }
+
+    // An upstream gateway error is also a transport outage, not a 401 or
+    // permission denial. Try the read-only alternate network path once.
+    if (canRecoverProfile && !options.signal?.aborted && [502, 503, 504].includes(response.status)) {
+        try {
+            const recovered = await readProfileFromSameOrigin();
+            if (recovered.ok) response = recovered;
+        } catch {
+            // Keep the original upstream status if the relay is also down.
+        }
     }
 
     // Admin mutations have a server-side step-up check: a session cookie is not
