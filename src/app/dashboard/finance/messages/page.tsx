@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { MessageSquare } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { ChatRoomList } from "@/components/chat/ChatRoomList"
@@ -17,6 +18,21 @@ function FinanceMessagesContent() {
     const searchParams = useSearchParams()
     const targetRoomId = searchParams.get("room")
     const [selectedRoom, setSelectedRoom] = React.useState<ChatRoom | null>(null)
+    const [mobileChat, setMobileChat] = React.useState(false)
+    React.useEffect(() => {
+        const media = window.matchMedia("(max-width: 1023px)")
+        const update = () => setMobileChat(media.matches)
+        update()
+        media.addEventListener("change", update)
+        return () => media.removeEventListener("change", update)
+    }, [])
+    React.useEffect(() => {
+        if (!mobileChat || !selectedRoom) return
+        const previous = document.body.style.overflow
+        document.body.style.overflow = "hidden"
+        return () => { document.body.style.overflow = previous }
+    }, [mobileChat, selectedRoom])
+
     const autoSelectedRef = React.useRef(false)
 
     React.useEffect(() => {
@@ -37,6 +53,7 @@ function FinanceMessagesContent() {
 
     if (loading) {
         return (
+        <>
             <div className="min-h-screen flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
             </div>
@@ -63,7 +80,7 @@ function FinanceMessagesContent() {
                             </div>
                             {/* min-w-0: without it a long message or header made this pane wider than
                                 the phone screen and sent messages ran off the right edge. */}
-                            <div className={`min-h-0 min-w-0 flex-1 ${selectedRoom ? 'flex' : 'hidden lg:flex lg:items-center lg:justify-center'}`}>
+                            <div className={`min-h-0 min-w-0 flex-1 ${selectedRoom ? 'hidden lg:flex' : 'hidden lg:flex lg:items-center lg:justify-center'}`}>
                                 {selectedRoom ? (
                                     <ChatWindow room={selectedRoom} onBack={() => setSelectedRoom(null)} />
                                 ) : (
@@ -79,6 +96,13 @@ function FinanceMessagesContent() {
                 </main>
             </div>
         </div>
+        {mobileChat && selectedRoom && typeof document !== "undefined" && createPortal(
+            <div className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[var(--bg-card)]" role="dialog" aria-modal="true" aria-label="Customer conversation">
+                <ChatWindow room={selectedRoom} onBack={() => setSelectedRoom(null)} />
+            </div>,
+            document.body
+        )}
+        </>
     )
 }
 
