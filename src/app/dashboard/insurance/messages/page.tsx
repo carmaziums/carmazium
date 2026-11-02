@@ -63,12 +63,12 @@ function InsuranceMessagesContent() {
 
     return (
         <>
-        <div className="min-h-screen pt-20 pb-12">
-            <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
+        <div className="min-h-screen pt-3 pb-24 lg:pt-20 lg:pb-12">
+            <div className="container mx-auto px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8">
                 <DashboardSidebar role="insurance" userName={userName} userType="Insurance Partner" />
 
                 <main className="flex-1">
-                    <div className="glass-card overflow-hidden h-[calc(100vh-180px)]">
+                    <div className="glass-card overflow-hidden h-[calc(100dvh-175px)] lg:h-[calc(100vh-180px)]">
                         <div className="p-6 border-b border-[var(--border-default)] flex items-center gap-3">
                             <MessageSquare className="text-primary" />
                             <h2 className="text-xl font-bold font-heading">Messages</h2>
