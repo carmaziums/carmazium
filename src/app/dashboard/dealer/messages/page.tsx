@@ -56,7 +56,6 @@ function MessagesContent() {
 
     if (loading) {
         return (
-        <>
             <div className="min-h-screen flex items-center justify-center">
                 <div className="relative">
                     <div className="h-20 w-20 rounded-full border-t-2 border-primary animate-spin opacity-50"></div>
@@ -73,6 +72,7 @@ function MessagesContent() {
         : (user?.email?.split('@')[0] || "Dealer")
 
     return (
+        <>
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
