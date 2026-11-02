@@ -29,7 +29,8 @@ describe('NotificationsService — push routing metadata', () => {
             },
         } as any;
 
-        const service = new NotificationsService(prisma, moduleRef);
+        const emailService = { sendBrandedEmail: jest.fn() } as any;
+        const service = new NotificationsService(prisma, moduleRef, emailService);
         const pushSpy = jest
             .spyOn(service as any, 'pushToExpo')
             .mockResolvedValue(undefined);
@@ -73,4 +74,23 @@ describe('NotificationsService — push routing metadata', () => {
             }),
         );
     });
+    it('clamps invalid notification history page and limit values', async () => {
+        const prisma = {
+            notification: {
+                findMany: jest.fn().mockResolvedValue([]),
+                count: jest.fn().mockResolvedValue(0),
+            },
+        } as any;
+        const moduleRef = { get: jest.fn() } as any;
+        const emailService = { sendBrandedEmail: jest.fn() } as any;
+        const service = new NotificationsService(prisma, moduleRef, emailService);
+
+        const result = await service.findAll('user-1', -10, 500);
+
+        expect(prisma.notification.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({ skip: 0, take: 50 }),
+        );
+        expect(result).toEqual({ data: [], total: 0, page: 1, limit: 50 });
+    });
+
 });
