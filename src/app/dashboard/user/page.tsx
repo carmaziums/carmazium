@@ -1,5 +1,6 @@
 "use client"
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { useSearchParams, useRouter } from "next/navigation"
 import { 
     Car, 
@@ -1886,6 +1887,21 @@ function StatsTab() {
 
 function MessagesTab({ rooms, refreshRooms }: { rooms: ChatRoom[], refreshRooms: () => void }) {
     const [selectedRoom, setSelectedRoom] = React.useState<ChatRoom | null>(null)
+    const [mobileChat, setMobileChat] = React.useState(false)
+    React.useEffect(() => {
+        const media = window.matchMedia("(max-width: 1023px)")
+        const update = () => setMobileChat(media.matches)
+        update()
+        media.addEventListener("change", update)
+        return () => media.removeEventListener("change", update)
+    }, [])
+    React.useEffect(() => {
+        if (!mobileChat || !selectedRoom) return
+        const previous = document.body.style.overflow
+        document.body.style.overflow = "hidden"
+        return () => { document.body.style.overflow = previous }
+    }, [mobileChat, selectedRoom])
+
     const searchParams = useSearchParams()
     const targetRoomId = searchParams.get("room")
 
@@ -1901,6 +1917,7 @@ function MessagesTab({ rooms, refreshRooms }: { rooms: ChatRoom[], refreshRooms:
     }, [rooms, targetRoomId])
 
     return (
+        <>
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full min-w-0">
             <div className="glass-card overflow-hidden w-full min-w-0 min-h-0 h-[min(900px,calc(100vh-200px))] min-h-[440px] flex flex-col border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                 <div className="shrink-0 px-5 py-4 md:px-6 md:py-5 border-b border-[var(--border-default)] flex items-center justify-between gap-3">
@@ -1934,7 +1951,7 @@ function MessagesTab({ rooms, refreshRooms }: { rooms: ChatRoom[], refreshRooms:
                     {/* Chat pane — grows to fill remaining main column */}
                     <div
                         className={`flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--bg-body)] ${
-                            !selectedRoom ? "hidden w-full lg:flex lg:items-center lg:justify-center" : "flex w-full"
+                            !selectedRoom ? "hidden w-full lg:flex lg:items-center lg:justify-center" : "hidden lg:flex w-full"
                         }`}
                     >
                         {selectedRoom ? (
@@ -1950,6 +1967,13 @@ function MessagesTab({ rooms, refreshRooms }: { rooms: ChatRoom[], refreshRooms:
                 </div>
             </div>
         </div>
+        {mobileChat && selectedRoom && typeof document !== "undefined" && createPortal(
+            <div className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[var(--bg-card)]" role="dialog" aria-modal="true" aria-label="Customer conversation">
+                <ChatWindow room={selectedRoom} onBack={() => setSelectedRoom(null)} />
+            </div>,
+            document.body
+        )}
+        </>
     )
 }
 
