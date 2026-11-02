@@ -486,12 +486,25 @@
     {
       "id": "notifications.tap_routing",
       "web": [
-        "src/components/layout/NotificationBell.tsx"
+        "src/components/layout/NotificationBell.tsx",
+        "src/lib/notificationNavigation.ts"
       ],
       "mobile": [
         "carmazium app/carmazium app/App.tsx",
         "carmazium app/carmazium app/src/screens/main/NotificationsScreen.tsx",
         "carmazium app/carmazium app/src/lib/notificationRouting.ts"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "notifications.history",
+      "web": [
+        "src/app/notifications/page.tsx",
+        "src/lib/notificationsApi.ts"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/NotificationsScreen.tsx",
+        "carmazium app/carmazium app/src/lib/notificationsApi.ts"
       ],
       "status": "required"
     },
