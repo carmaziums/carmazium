@@ -185,8 +185,8 @@ function UnifiedUserDashboardContent() {
     const userRole = profile?.role || "User"
 
     return (
-        <div className="min-h-screen pt-20 pb-12">
-            <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
+        <div className={`min-h-screen pb-12 ${activeTab === "messages" ? "pt-3 lg:pt-20" : "pt-20"}`}>
+            <div className="container mx-auto px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8">
                 {/* Unified Sidebar */}
                 <DashboardSidebar
                     role="seller"
@@ -1919,8 +1919,8 @@ function MessagesTab({ rooms, refreshRooms }: { rooms: ChatRoom[], refreshRooms:
     return (
         <>
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full min-w-0">
-            <div className="glass-card overflow-hidden w-full min-w-0 min-h-0 h-[min(900px,calc(100vh-200px))] min-h-[440px] flex flex-col border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
-                <div className="shrink-0 px-5 py-4 md:px-6 md:py-5 border-b border-[var(--border-default)] flex items-center justify-between gap-3">
+            <div className="glass-card overflow-hidden w-full min-w-0 min-h-0 h-[calc(100dvh-175px)] lg:h-[min(900px,calc(100vh-200px))] lg:min-h-[440px] flex flex-col border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
+                <div className="shrink-0 px-3 py-3 md:px-6 md:py-5 border-b border-[var(--border-default)] flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                         <MessageSquare className="text-primary shrink-0" size={22} />
                         <div className="min-w-0">
