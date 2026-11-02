@@ -26,6 +26,10 @@ kill_timeout = 30
   # with a real migration history — never `db push`, which treats the schema
   # file as the whole truth and everything else as garbage to collect.
 
+[env]
+  NOTIFICATION_EMAILS_ENABLED = "true"
+  NOTIFICATION_EMAIL_DAILY_CAP = "400"
+
 [http_service]
   internal_port = 8080
   force_https = true
