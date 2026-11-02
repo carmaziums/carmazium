@@ -342,25 +342,61 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
         return Number(rows[0]?.count || 0);
     }
 
-    private async conversationEmailSentRecently(
-        userId: string,
+    private async reserveConversationEmailSlot(
+        notification: any,
         roomId: string,
-        notificationId: string,
     ): Promise<boolean> {
-        const rows = await this.prisma.$queryRaw<Array<{ exists: boolean }>>(Prisma.sql`
-            SELECT EXISTS (
-                SELECT 1
-                FROM "notifications"
-                WHERE id <> ${notificationId}
-                  AND "userId" = ${userId}
-                  AND type IN ('MESSAGE_RECEIVED', 'NEW_MESSAGE')
-                  AND data ->> 'roomId' = ${roomId}
-                  AND data #>> '{_email,state}' = 'sent'
-                  AND (data #>> '{_email,sentAt}') IS NOT NULL
-                  AND (data #>> '{_email,sentAt}')::timestamptz > NOW() - INTERVAL '30 minutes'
-            ) AS exists
-        `);
-        return rows[0]?.exists === true;
+        return this.prisma.$transaction(async (tx) => {
+            // Serialize reservation decisions per conversation. This is a very
+            // short DB-only transaction; the actual email send happens after
+            // the lock is released.
+            await tx.$queryRaw(Prisma.sql`
+                SELECT id
+                FROM "chat_rooms"
+                WHERE id = ${roomId}
+                FOR UPDATE
+            `);
+
+            const rows = await tx.$queryRaw<Array<{ exists: boolean }>>(Prisma.sql`
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM "notifications"
+                    WHERE id <> ${notification.id}
+                      AND "userId" = ${notification.userId}
+                      AND type IN ('MESSAGE_RECEIVED', 'NEW_MESSAGE')
+                      AND data ->> 'roomId' = ${roomId}
+                      AND (
+                            (
+                                (data #>> '{_email,sentAt}') IS NOT NULL
+                                AND (data #>> '{_email,sentAt}')::timestamptz
+                                    > NOW() - INTERVAL '30 minutes'
+                            )
+                            OR (
+                                (data #>> '{_email,slotReservedAt}') IS NOT NULL
+                                AND (data #>> '{_email,slotReservedAt}')::timestamptz
+                                    > NOW() - INTERVAL '30 minutes'
+                            )
+                      )
+                ) AS exists
+            `);
+            if (rows[0]?.exists === true) return false;
+
+            const data = this.asRecord(notification.data);
+            const previous = this.asRecord(data._email);
+            const next = {
+                ...data,
+                _email: {
+                    ...previous,
+                    slotReservedAt: new Date().toISOString(),
+                },
+            };
+            notification.data = next;
+            await tx.notification.update({
+                where: { id: notification.id },
+                data: { data: next as Prisma.InputJsonValue },
+            });
+            return true;
+        });
     }
 
     private async updateEmailState(
@@ -440,14 +476,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
             }
 
             const roomId = typeof data.roomId === 'string' ? data.roomId : null;
-            if (
-                roomId &&
-                await this.conversationEmailSentRecently(
-                    notification.userId,
-                    roomId,
-                    notification.id,
-                )
-            ) {
+            if (roomId && !(await this.reserveConversationEmailSlot(notification, roomId))) {
                 await this.updateEmailState(notification, {
                     state: 'skipped',
                     skippedAt: new Date().toISOString(),
