@@ -53,7 +53,6 @@ function ServiceMessagesContent() {
 
     if (loading) {
         return (
-        <>
             <div className="min-h-screen flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
             </div>
@@ -63,6 +62,7 @@ function ServiceMessagesContent() {
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
 
     return (
+        <>
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="provider" userName={userName} userType={profile?.role ? `${profile.role} Account` : "Service Provider"} />
