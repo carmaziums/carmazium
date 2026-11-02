@@ -29,6 +29,9 @@ const DEDICATED_EMAIL_TYPES = new Set([
     'AUCTION_PROVISIONAL_DECLINED',
     'AUCTION_PROVISIONAL_BID',
     'AUCTION_PROVISIONAL_EMAIL_FAILURE',
+    // Both live below-reserve bids and ended provisional sales already send
+    // sendAuctionProvisionalOfferEmail to the seller.
+    'AUCTION_OFFER_RECEIVED',
 
     'HANDOVER_APPROVED',
     'HANDOVER_DENIED',
@@ -36,6 +39,12 @@ const DEDICATED_EMAIL_TYPES = new Set([
 
     'KYC_APPROVED',
     'KYC_REJECTED',
+
+    // HPI completion already sends sendHpiReportReadyAlert to the seller.
+    'HPI_REPORT_READY',
+
+    // Existing users added to a dealership already receive sendStaffAddedEmail.
+    'TEAM_INVITE',
 
     'LISTING_APPROVED',
     'LISTING_REJECTED',
