@@ -32,8 +32,11 @@ describe('notificationEmailPolicy', () => {
     it.each([
         'OFFER_ACCEPTED',
         'AUCTION_WON',
+        'AUCTION_OFFER_RECEIVED',
         'HANDOVER_APPROVED',
         'KYC_APPROVED',
+        'HPI_REPORT_READY',
+        'TEAM_INVITE',
         'LISTING_APPROVED',
     ])('skips %s because a dedicated email already exists', (type) => {
         expect(notificationEmailPolicy({ type })).toEqual({
