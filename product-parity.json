@@ -685,6 +685,16 @@
         "carmazium app/carmazium app/src/screens/main/SearchScreen.tsx"
       ],
       "status": "required"
+    },
+    {
+      "id": "notifications.full_history",
+      "web": [
+        "src/app/dashboard/notifications/page.tsx"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/NotificationsScreen.tsx"
+      ],
+      "status": "required"
     }
   ]
 }

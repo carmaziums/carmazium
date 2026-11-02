@@ -36,12 +36,12 @@ export class NotificationsController {
         @Query('page') page = 1,
         @Query('limit') limit = 20,
     ): Promise<PaginatedResponse<any>> {
-        const { data, total } = await this.notificationsService.findAll(
-            user.id,
-            Number(page),
-            Number(limit),
-        );
-        return new PaginatedResponse(data, total, Number(page), Number(limit));
+        // Bounded paging: the full history is browsable page by page, but a
+        // single request can never ask for an unbounded or invalid slice.
+        const safePage = Math.min(10_000, Math.max(1, Math.floor(Number(page)) || 1));
+        const safeLimit = Math.min(50, Math.max(1, Math.floor(Number(limit)) || 20));
+        const { data, total } = await this.notificationsService.findAll(user.id, safePage, safeLimit);
+        return new PaginatedResponse(data, total, safePage, safeLimit);
     }
 
     @Get('unread-count')

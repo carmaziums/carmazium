@@ -3,6 +3,7 @@ import { ModuleRef } from '@nestjs/core';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { Expo, ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk';
+import { EMAIL_QUEUE_KEY, shouldQueueNotificationEmail } from './notification-email-policy';
 
 // Imported only as a type to avoid the circular module-level reference that
 // caused "Cannot access NotificationsGateway before initialization" at startup.
@@ -88,7 +89,12 @@ export class NotificationsService {
     async create(dto: CreateNotificationDto) {
         // 'link' is not a Prisma column — merge it into the JSON 'data' field
         const { link, ...prismaFields } = dto;
-        const mergedData = { ...(dto.data || {}), ...(link ? { link } : {}) };
+        const mergedData: Record<string, any> = { ...(dto.data || {}), ...(link ? { link } : {}) };
+        // Queue an email copy for events that have no purpose-built email.
+        // Sending (and preference checks) happen in NotificationEmailOutboxService.
+        if (shouldQueueNotificationEmail(dto.type, mergedData)) {
+            mergedData[EMAIL_QUEUE_KEY] = 'pending';
+        }
 
         const notification = await this.prisma.notification.create({
             data: {

@@ -27,6 +27,27 @@ export async function getNotifications(limit = 10): Promise<AppNotification[]> {
     }
 }
 
+export interface NotificationPage {
+    data: AppNotification[]
+    total: number
+    page: number
+    totalPages: number
+}
+
+/** One page of the full notification history, newest first. Throws on failure. */
+export async function getNotificationPage(page = 1, limit = 30): Promise<NotificationPage> {
+    const res = await apiClient<{
+        data: AppNotification[]
+        pagination?: { total?: number; page?: number; totalPages?: number }
+    }>(`/notifications?page=${page}&limit=${limit}`, { cache: 'no-store' })
+    return {
+        data: res?.data ?? [],
+        total: res?.pagination?.total ?? 0,
+        page: res?.pagination?.page ?? page,
+        totalPages: res?.pagination?.totalPages ?? page,
+    }
+}
+
 export async function getUnreadNotificationCount(): Promise<number> {
     try {
         const res = await apiClient<{ data: { count: number } }>('/notifications/unread-count', {

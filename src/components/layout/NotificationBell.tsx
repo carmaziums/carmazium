@@ -3,79 +3,19 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { Bell, Loader2, Check } from "lucide-react"
 import {
-    Bell, Tag, CheckCircle, XCircle, RefreshCw,
-    MessageSquare, BadgeCheck, CreditCard, MinusCircle,
-    Loader2, Check, Gavel, Trophy, Timer, Zap,
-    TrendingDown, ShieldCheck, AlertCircle,
-} from "lucide-react"
-import {
-    getNotifications, markAllNotificationsRead, markNotificationRead,
+    getNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead,
     type AppNotification,
 } from "@/lib/notificationsApi"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
 import { getPendingOffersCount } from "@/lib/listingApi"
-
-// ─── Icon map ─────────────────────────────────────────────────────────────────
-
-const ICON_MAP: Record<string, React.ReactNode> = {
-    // Offers
-    OFFER_RECEIVED:        <Tag size={14} className="text-amber-400" />,
-    OFFER_ACCEPTED:        <CheckCircle size={14} className="text-emerald-400" />,
-    OFFER_REJECTED:        <XCircle size={14} className="text-red-400" />,
-    OFFER_COUNTERED:       <RefreshCw size={14} className="text-blue-400" />,
-    OFFER_WITHDRAWN:       <MinusCircle size={14} className="text-[var(--text-muted)]" />,
-    // Messages
-    NEW_MESSAGE:           <MessageSquare size={14} className="text-blue-400" />,
-    MESSAGE_RECEIVED:      <MessageSquare size={14} className="text-blue-400" />,
-    // Deals / listings
-    DEAL_CLOSED:           <CheckCircle size={14} className="text-emerald-400" />,
-    LISTING_SOLD:          <BadgeCheck size={14} className="text-emerald-400" />,
-    FINANCE_UPDATE:        <CreditCard size={14} className="text-purple-400" />,
-    // Auctions
-    AUCTION_BID:           <Gavel size={14} className="text-orange-400" />,
-    AUCTION_BID_PLACED:    <Gavel size={14} className="text-orange-400" />,
-    AUCTION_OUTBID:        <TrendingDown size={14} className="text-red-400" />,
-    AUCTION_WON:           <Trophy size={14} className="text-amber-400" />,
-    AUCTION_ENDED:         <Gavel size={14} className="text-[var(--text-muted)]" />,
-    AUCTION_ENDED_NO_SALE: <AlertCircle size={14} className="text-[var(--text-muted)]" />,
-    AUCTION_STARTED:       <Zap size={14} className="text-emerald-400" />,
-    AUCTION_ENDING_SOON:   <Timer size={14} className="text-amber-400" />,
-    AUCTION_CANCELLED:     <XCircle size={14} className="text-red-400" />,
-    AUCTION_RESERVE_MET:   <ShieldCheck size={14} className="text-emerald-400" />,
-}
-
-function getIcon(type: string) {
-    return ICON_MAP[type] ?? <Bell size={14} className="text-[var(--text-muted)]" />
-}
-
-/** Map legacy dashboard URLs to unified `/dashboard/user` tab deep-links */
-function normalizeNotificationHref(href: string): string {
-    if (!href.startsWith("/")) return href
-    if (href.startsWith("/dashboard/user")) return href
-    if (href.startsWith("/dashboard/buyer/offers")) return "/dashboard/user?tab=bids"
-    if (href.startsWith("/dashboard/seller/offers")) return "/dashboard/user?tab=offers"
-    if (href.startsWith("/dashboard/buyer/messages")) {
-        const m = href.match(/[?&]room=([^&]+)/)
-        return m ? `/dashboard/user?tab=messages&room=${decodeURIComponent(m[1])}` : "/dashboard/user?tab=messages"
-    }
-    // Legacy admin KYC notifications used a route that never existed in the
-    // Next.js app. Keep old notifications working after the backend link is fixed.
-    if (href === "/admin/kyc") return "/dashboard/admin/dealer-verification"
-    if (href === "/dashboard" || href === "/dashboard/") return "/dashboard/user?tab=overview"
-    return href
-}
-
-function timeAgo(dateStr: string) {
-    const diff = Date.now() - new Date(dateStr).getTime()
-    const m = Math.floor(diff / 60000)
-    if (m < 1) return "just now"
-    if (m < 60) return `${m}m ago`
-    const h = Math.floor(m / 60)
-    if (h < 24) return `${h}h ago`
-    return `${Math.floor(h / 24)}d ago`
-}
+import {
+    notificationIconFor as getIcon,
+    notificationTimeLabel as timeAgo,
+    resolveNotificationHref,
+} from "@/components/notifications/notificationDisplay"
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 
@@ -88,6 +28,9 @@ export function NotificationBell() {
     const [notifications, setNotifications] = React.useState<AppNotification[]>([])
     const [loading, setLoading] = React.useState(false)
     const [pendingOffers, setPendingOffers] = React.useState(0)
+    // Server-side count: the panel only loads the newest 12, so counting
+    // those alone under-reported unread notifications for busy accounts.
+    const [serverUnread, setServerUnread] = React.useState(0)
     const ref = React.useRef<HTMLDivElement>(null)
 
     // Poll pending offers every 30s
@@ -104,6 +47,7 @@ export function NotificationBell() {
         if (!user) return
         const handler = () => {
             getNotifications(12).then(setNotifications).catch(() => {})
+            getUnreadNotificationCount().then(setServerUnread).catch(() => {})
         }
         window.addEventListener("auction:refresh-notifications", handler)
         return () => window.removeEventListener("auction:refresh-notifications", handler)
@@ -122,6 +66,7 @@ export function NotificationBell() {
     React.useEffect(() => {
         if (!user) return
         getNotifications(12).then(setNotifications).catch(() => {})
+        getUnreadNotificationCount().then(setServerUnread).catch(() => {})
     }, [user])
 
     // Refresh list when panel opens (gets latest reads/new items)
@@ -129,97 +74,26 @@ export function NotificationBell() {
         if (!open || !user) return
         setLoading(true)
         getNotifications(12).then(setNotifications).finally(() => setLoading(false))
+        getUnreadNotificationCount().then(setServerUnread).catch(() => {})
     }, [open, user])
 
-    const totalUnread = notifications.filter(n => !n.isRead).length + chatUnread
-    const unreadNotifs = notifications.filter(n => !n.isRead).length
+    const unreadNotifs = Math.max(serverUnread, notifications.filter(n => !n.isRead).length)
+    const totalUnread = unreadNotifs + chatUnread
 
     async function handleMarkAll() {
         await markAllNotificationsRead()
         setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+        setServerUnread(0)
     }
 
     async function handleClickNotif(n: AppNotification) {
         if (!n.isRead) {
             markNotificationRead(n.id).catch(() => {})
             setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, isRead: true } : x))
+            setServerUnread(count => Math.max(0, count - 1))
         }
         setOpen(false)
-
-        const dataObj = (typeof n.data === "object" && n.data) ? n.data as Record<string, unknown> : {}
-        const fromDataLink = typeof dataObj.link === "string" ? dataObj.link : null
-        const fromTopLink = typeof n.link === "string" ? n.link : null
-        let href = fromDataLink || fromTopLink
-
-        if (!href && typeof dataObj.roomId === "string") {
-            href = `/dashboard/user?tab=messages&room=${dataObj.roomId}`
-        }
-
-        // Auction notification routing — navigate to the live auction room
-        if (n.type.startsWith("AUCTION_")) {
-            const auctionId = typeof dataObj.auctionId === "string" ? dataObj.auctionId : n.entityId
-            if (n.type === "AUCTION_WON" && auctionId) {
-                // Only bidding-eligible (DEALER) accounts can win, and the individual
-                // /auctions/won/[id] page immediately bounces anyone who hasn't paid
-                // the £125 fee yet back to the now-closed live auction — a dead end
-                // right when a winner clicks in. The list view always has a working
-                // "Pay the fee" action instead, regardless of payment state.
-                router.push("/dashboard/dealer/auctions/won")
-                return
-            }
-            if (auctionId && (
-                n.type === "AUCTION_BID" ||
-                n.type === "AUCTION_BID_PLACED" ||
-                n.type === "AUCTION_OUTBID" ||
-                n.type === "AUCTION_ENDED" ||
-                n.type === "AUCTION_STARTED" ||
-                n.type === "AUCTION_ENDING_SOON" ||
-                n.type === "AUCTION_RESERVE_MET"
-            )) {
-                router.push(`/auctions/live/${auctionId}`)
-                return
-            }
-            if (n.type === "AUCTION_ENDED_NO_SALE" || n.type === "AUCTION_CANCELLED") {
-                // These go to the auction's seller, who may be a plain "seller"
-                // account or a dealer selling via auction — each has its own
-                // dashboard shell, so route to whichever one they actually have.
-                router.push(profile?.role === "DEALER" ? "/dashboard/dealer/auctions" : "/dashboard/seller/auctions")
-                return
-            }
-        }
-
-        if (href) {
-            router.push(normalizeNotificationHref(href))
-            return
-        }
-
-        const eType = n.entityType ?? undefined
-        const eId = n.entityId ?? undefined
-
-        if (eType === "AUCTION" && eId) {
-            router.push(`/auctions/live/${eId}`)
-            return
-        }
-
-        if (eType === "LISTING" && eId) {
-            router.push("/dashboard/user?tab=inventory")
-            return
-        }
-
-        if (eType === "OFFER" && eId) {
-            if (n.type === "OFFER_COUNTERED") {
-                router.push("/dashboard/user?tab=bids")
-                return
-            }
-            router.push("/dashboard/user?tab=offers")
-            return
-        }
-
-        if (n.type === "DEAL_CLOSED") { router.push("/dashboard/user?tab=offers"); return }
-        if (n.type === "MESSAGE_RECEIVED" || n.type === "NEW_MESSAGE") { router.push("/dashboard/user?tab=messages"); return }
-        if (n.type.startsWith("OFFER_")) { router.push("/dashboard/user?tab=offers"); return }
-
-        router.push("/dashboard/user?tab=overview")
+        router.push(resolveNotificationHref(n, profile?.role))
     }
 
     if (!user) return null
@@ -308,11 +182,11 @@ export function NotificationBell() {
                     {/* Footer */}
                     <div className="px-4 py-3 border-t border-[var(--border-default)] bg-[var(--bg-input)]">
                         <Link
-                            href="/dashboard/user?tab=overview"
+                            href="/dashboard/notifications"
                             onClick={() => setOpen(false)}
                             className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors font-bold uppercase tracking-widest flex items-center justify-center gap-1"
                         >
-                            View Dashboard →
+                            See all notifications →
                         </Link>
                     </div>
                 </div>

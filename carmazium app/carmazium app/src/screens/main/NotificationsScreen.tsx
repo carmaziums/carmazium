@@ -63,6 +63,9 @@ function groupByDate(
   return Array.from(map.entries()).map(([label, items]) => ({ label, items }));
 }
 
+// Server caps one page at 50.
+const PAGE_SIZE = 50;
+
 // ═══════════════════════════ COMPONENT ════════════════════════════════════════
 
 export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
@@ -75,6 +78,10 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   const [refreshing, setRefreshing] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // History is paged so older notifications stay reachable (website parity).
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
   const groups = groupByDate(notifications);
@@ -83,8 +90,10 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
   const load = useCallback(async (isRefresh = false) => {
     try {
-      const data = await getNotifications(1, 60);
+      const data = await getNotifications(1, PAGE_SIZE);
       setNotifications(data.notifications);
+      setTotal(data.total);
+      setPage(1);
       setLoadError(null);
     } catch {
       setLoadError('Could not load notifications. Check your connection and try again.');
@@ -97,6 +106,27 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   useFocusEffect(useCallback(() => {
     void load();
   }, [load]));
+
+  const hasMore = notifications.length < total;
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || loading || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const next = page + 1;
+      const data = await getNotifications(next, PAGE_SIZE);
+      setNotifications((prev) => {
+        const seen = new Set(prev.map((n) => n.id));
+        return [...prev, ...data.notifications.filter((n) => !seen.has(n.id))];
+      });
+      setTotal(data.total);
+      setPage(next);
+    } catch {
+      // Leave the loaded list in place; scrolling again retries.
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, loading, hasMore, page]);
 
   // ── actions ──────────────────────────────────────────────────────────────────
 
@@ -319,7 +349,13 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
           data={groups}
           keyExtractor={(group) => group.label}
           renderItem={renderGroup}
-          ListFooterComponent={<View style={{ height: 100 }} />}
+          onEndReached={() => { void loadMore(); }}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            <View style={{ height: 100, alignItems: 'center', paddingTop: 16 }}>
+              {loadingMore ? <ActivityIndicator color={Colors.accent} /> : null}
+            </View>
+          }
         />
       )}
     </View>
