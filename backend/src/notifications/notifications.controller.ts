@@ -36,12 +36,17 @@ export class NotificationsController {
         @Query('page') page = 1,
         @Query('limit') limit = 20,
     ): Promise<PaginatedResponse<any>> {
-        const { data, total } = await this.notificationsService.findAll(
+        const result = await this.notificationsService.findAll(
             user.id,
             Number(page),
             Number(limit),
         );
-        return new PaginatedResponse(data, total, Number(page), Number(limit));
+        return new PaginatedResponse(
+            result.data,
+            result.total,
+            result.page,
+            result.limit,
+        );
     }
 
     @Get('unread-count')
