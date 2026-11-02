@@ -1,6 +1,5 @@
 "use client"
 import * as React from "react"
-import { createPortal } from "react-dom"
 import { useSearchParams, useRouter } from "next/navigation"
 import { 
     Car, 
@@ -49,6 +48,7 @@ import { useAuth } from "@/context/AuthContext"
 import { filterOutgoingOffers, outgoingOfferEmptyMessage, OUTGOING_OFFER_VIEWS, type OutgoingOfferView } from "@/lib/outgoingOfferFilters"
 import { useChat } from "@/context/ChatContext"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { RoleMessagesInbox } from "@/components/chat/RoleMessagesInbox"
 import { DeleteAccountSection } from "@/components/dashboard/DeleteAccountSection"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -57,10 +57,6 @@ import { MetricCard } from "@/components/dashboard/MetricCard"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { RecordSaleModal } from "@/components/dashboard/RecordSaleModal"
 import { AmendOfferModal } from "@/components/offers/AmendOfferModal"
-import { ChatRoomList } from "@/components/chat/ChatRoomList"
-import dynamic from "next/dynamic"
-const ChatWindow = dynamic(() => import("@/components/chat/ChatWindow").then(mod => mod.ChatWindow), { ssr: false })
-
 import Link from "next/link"
 import Image from "next/image"
 import { 
@@ -116,7 +112,7 @@ export default function UnifiedUserDashboard() {
 
 function UnifiedUserDashboardContent() {
     const { user, profile, loading: authLoading, refreshProfile } = useAuth()
-    const { rooms, refreshRooms } = useChat()
+    const { refreshRooms } = useChat()
     const searchParams = useSearchParams()
     const router = useRouter()
     const rawTab = searchParams.get("tab") || "overview"
@@ -228,7 +224,7 @@ function UnifiedUserDashboardContent() {
                         {activeTab === "bids" && <OutgoingOffersTab onRefreshStats={fetchStats} />}
                         {activeTab === "watchlist" && <WatchlistTab />}
                         {activeTab === "stats" && <StatsTab />}
-                        {activeTab === "messages" && <MessagesTab rooms={rooms} refreshRooms={refreshRooms} />}
+                        {activeTab === "messages" && <MessagesTab />}
                         {activeTab === "earnings" && <EarningsTab />}
                         {activeTab === "settings" && <SettingsTab profile={profile} refreshProfile={refreshProfile} />}
                     </div>
@@ -1885,95 +1881,14 @@ function StatsTab() {
 // MESSAGES TAB
 // ─────────────────────────────────────────────────────────────────────────────
 
-function MessagesTab({ rooms, refreshRooms }: { rooms: ChatRoom[], refreshRooms: () => void }) {
-    const [selectedRoom, setSelectedRoom] = React.useState<ChatRoom | null>(null)
-    const [mobileChat, setMobileChat] = React.useState(false)
-    React.useEffect(() => {
-        const media = window.matchMedia("(max-width: 1023px)")
-        const update = () => setMobileChat(media.matches)
-        update()
-        media.addEventListener("change", update)
-        return () => media.removeEventListener("change", update)
-    }, [])
-    React.useEffect(() => {
-        if (!mobileChat || !selectedRoom) return
-        const previous = document.body.style.overflow
-        document.body.style.overflow = "hidden"
-        return () => { document.body.style.overflow = previous }
-    }, [mobileChat, selectedRoom])
-
-    const searchParams = useSearchParams()
-    const targetRoomId = searchParams.get("room")
-
-    React.useEffect(() => {
-        if (!targetRoomId) return
-        void refreshRooms()
-    }, [targetRoomId, refreshRooms])
-
-    React.useEffect(() => {
-        if (!targetRoomId) return
-        const match = rooms.find(r => r.id === targetRoomId)
-        if (match) setSelectedRoom(match)
-    }, [rooms, targetRoomId])
-
+function MessagesTab() {
     return (
-        <>
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full min-w-0">
-            <div className="glass-card overflow-hidden w-full min-w-0 min-h-0 h-[calc(100dvh-175px)] lg:h-[min(900px,calc(100vh-200px))] lg:min-h-[440px] flex flex-col border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
-                <div className="shrink-0 px-3 py-3 md:px-6 md:py-5 border-b border-[var(--border-default)] flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                        <MessageSquare className="text-primary shrink-0" size={22} />
-                        <div className="min-w-0">
-                            <h2 className="text-lg md:text-xl font-bold font-heading text-[var(--text-primary)] tracking-tight">Messages</h2>
-                            <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">Conversations with buyers and sellers</p>
-                        </div>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={refreshRooms}
-                        className="shrink-0 p-2 rounded-lg text-[var(--text-muted)] hover:text-primary hover:bg-[var(--bg-input)] transition-colors"
-                        title="Refresh conversations"
-                    >
-                        <RefreshCw size={18} />
-                    </button>
-                </div>
-
-                <div className="flex flex-1 flex-row min-h-0 min-w-0">
-                    {/* Room list — fixed width on desktop, full width on mobile when visible */}
-                    <div
-                        className={`flex shrink-0 flex-col min-h-0 min-w-0 w-full max-w-full border-r border-[var(--border-default)] bg-[var(--bg-card)] lg:w-80 lg:max-w-[20rem] lg:shrink-0 ${
-                            selectedRoom ? "hidden lg:flex" : "flex"
-                        }`}
-                    >
-                        <ChatRoomList onSelectRoom={setSelectedRoom} selectedRoomId={selectedRoom?.id} />
-                    </div>
-
-                    {/* Chat pane — grows to fill remaining main column */}
-                    <div
-                        className={`flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--bg-body)] ${
-                            !selectedRoom ? "hidden w-full lg:flex lg:items-center lg:justify-center" : "hidden lg:flex w-full"
-                        }`}
-                    >
-                        {selectedRoom ? (
-                            <ChatWindow room={selectedRoom} onBack={() => setSelectedRoom(null)} />
-                        ) : (
-                            <div className="flex max-w-md flex-col items-center justify-center px-6 text-center">
-                                <MessageSquare className="mb-4 h-16 w-16 text-[var(--text-secondary)] opacity-40" />
-                                <p className="text-base font-semibold text-[var(--text-muted)]">Select a conversation</p>
-                                <p className="mt-1 text-sm text-[var(--text-muted)]">Choose a thread from the list to read and reply</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
+            <RoleMessagesInbox
+                title="Messages"
+                subtitle="Conversations with buyers, sellers and CarMazium support"
+            />
         </div>
-        {mobileChat && selectedRoom && typeof document !== "undefined" && createPortal(
-            <div className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[var(--bg-card)]" role="dialog" aria-modal="true" aria-label="Customer conversation">
-                <ChatWindow room={selectedRoom} onBack={() => setSelectedRoom(null)} />
-            </div>,
-            document.body
-        )}
-        </>
     )
 }
 
