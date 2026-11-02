@@ -1,7 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
+import { EmailService } from '../email/email.service';
+import { notificationEmailPolicy } from './notification-email-policy';
 import { Expo, ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk';
 
 // Imported only as a type to avoid the circular module-level reference that
@@ -9,14 +12,62 @@ import { Expo, ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk';
 import type { NotificationsGateway } from './notifications.gateway';
 
 @Injectable()
-export class NotificationsService {
+export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     private readonly expo = new Expo();
     private readonly logger = new Logger(NotificationsService.name);
+    private emailWorkerTimer: NodeJS.Timeout | null = null;
+    private emailWorkerRunning = false;
+
+    private static readonly EMAIL_BATCH_SIZE = 40;
+    private static readonly EMAIL_MAX_ATTEMPTS = 4;
+    private static readonly EMAIL_POLL_MS = 30_000;
 
     constructor(
         private readonly prisma: PrismaService,
         private readonly moduleRef: ModuleRef,
+        private readonly emailService: EmailService,
     ) { }
+
+    onModuleInit() {
+        if (!this.notificationEmailsEnabled()) return;
+        const firstRun = setTimeout(() => void this.processEmailQueue(), 5_000);
+        firstRun.unref?.();
+        this.emailWorkerTimer = setInterval(
+            () => void this.processEmailQueue(),
+            NotificationsService.EMAIL_POLL_MS,
+        );
+        this.emailWorkerTimer.unref?.();
+    }
+
+    onModuleDestroy() {
+        if (this.emailWorkerTimer) clearInterval(this.emailWorkerTimer);
+        this.emailWorkerTimer = null;
+    }
+
+    private notificationEmailsEnabled(): boolean {
+        return String(process.env.NOTIFICATION_EMAILS_ENABLED || '').toLowerCase() === 'true';
+    }
+
+    private dailyEmailCap(): number {
+        const configured = Number(process.env.NOTIFICATION_EMAIL_DAILY_CAP || 400);
+        return Number.isFinite(configured) && configured > 0 ? Math.floor(configured) : 400;
+    }
+
+    private asRecord(value: unknown): Record<string, any> {
+        return value && typeof value === 'object' && !Array.isArray(value)
+            ? value as Record<string, any>
+            : {};
+    }
+
+    private escapeHtml(value: string): string {
+        return value.replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+        }[char] || char));
+    }
 
     // Lazily resolved to break the circular import at class-definition time.
     private get gateway(): NotificationsGateway {
@@ -86,25 +137,8 @@ export class NotificationsService {
     }
 
     async create(dto: CreateNotificationDto) {
-        // 'link' is not a Prisma column — merge it into the JSON 'data' field
-        const { link, ...prismaFields } = dto;
-        const mergedData = { ...(dto.data || {}), ...(link ? { link } : {}) };
-
-        const notification = await this.prisma.notification.create({
-            data: {
-                ...prismaFields,
-                data: Object.keys(mergedData).length > 0 ? mergedData : undefined,
-            },
-        });
-
-        // Respect the recipient's saved notification preferences before doing
-        // anything interruptive — this used to only ever read expoPushToken
-        // and ignore every other saved field, so every toggle in
-        // NotificationSettingsScreen.tsx was inert (mobile-production-
-        // readiness-plan.md F23). The row above is still always created
-        // (existing callers rely on the returned object, and a muted event
-        // should still show up next time the user checks their notification
-        // list) — this only gates the two interruptive delivery paths below.
+        // Read preferences before inserting so optional generic-email queue
+        // metadata is committed with the notification row itself.
         const user = await this.prisma.user.findUnique({
             where: { id: dto.userId },
             select: { preferences: true },
@@ -112,6 +146,41 @@ export class NotificationsService {
         const prefs = user?.preferences as Record<string, any> | null;
         const notifPrefs = prefs?.notifications as Record<string, any> | undefined;
         const muted = !!notifPrefs && this.isMuted(dto.type, notifPrefs);
+
+        // 'link' is not a Prisma column — merge it into the JSON 'data' field.
+        // _email is private worker state; it is never copied into push payloads.
+        const { link, ...prismaFields } = dto;
+        const mergedData = { ...(dto.data || {}), ...(link ? { link } : {}) };
+        const emailPolicy = notificationEmailPolicy({ type: dto.type, data: mergedData });
+        const queueGenericEmail =
+            this.notificationEmailsEnabled() &&
+            emailPolicy.eligible &&
+            !muted &&
+            notifPrefs?.email !== false;
+
+        const storedData = queueGenericEmail
+            ? {
+                ...mergedData,
+                _email: {
+                    state: 'pending',
+                    attempts: 0,
+                    notBefore: new Date(Date.now() + emailPolicy.delayMs).toISOString(),
+                },
+            }
+            : mergedData;
+
+        const notification = await this.prisma.notification.create({
+            data: {
+                ...prismaFields,
+                data: Object.keys(storedData).length > 0
+                    ? storedData as Prisma.InputJsonValue
+                    : undefined,
+            },
+        });
+
+        // Respect the recipient's saved notification preferences before doing
+        // anything interruptive. The row above is still always created; muted
+        // events remain available in notification history.
 
         if (!muted) {
             // Real-time delivery (foreground — user has active socket connection)
@@ -148,17 +217,21 @@ export class NotificationsService {
     }
 
     async findAll(userId: string, page = 1, limit = 20) {
-        const skip = (page - 1) * limit;
+        const safePage = Number.isFinite(page) ? Math.max(1, Math.floor(page)) : 1;
+        const safeLimit = Number.isFinite(limit)
+            ? Math.min(50, Math.max(1, Math.floor(limit)))
+            : 20;
+        const skip = (safePage - 1) * safeLimit;
         const [data, total] = await Promise.all([
             this.prisma.notification.findMany({
                 where: { userId },
                 orderBy: { createdAt: 'desc' },
                 skip,
-                take: limit,
+                take: safeLimit,
             }),
             this.prisma.notification.count({ where: { userId } }),
         ]);
-        return { data, total };
+        return { data, total, page: safePage, limit: safeLimit };
     }
 
     async getUnreadCount(userId: string) {
@@ -197,6 +270,249 @@ export class NotificationsService {
         return this.prisma.notification.updateMany({
             where: { userId, isRead: false },
             data: { isRead: true },
+        });
+    }
+
+    // ─── Generic notification email queue ───────────────────────────────────
+
+    private async processEmailQueue(): Promise<void> {
+        if (!this.notificationEmailsEnabled() || this.emailWorkerRunning) return;
+        this.emailWorkerRunning = true;
+        try {
+            const claimed = await this.claimEmailBatch();
+            for (const notification of claimed) {
+                await this.deliverClaimedEmail(notification);
+            }
+        } catch (error: any) {
+            this.logger.error(`Notification email worker failed: ${error?.message || error}`);
+        } finally {
+            this.emailWorkerRunning = false;
+        }
+    }
+
+    private async claimEmailBatch(): Promise<any[]> {
+        return this.prisma.$queryRaw<any[]>(Prisma.sql`
+            WITH picked AS (
+                SELECT id
+                FROM "notifications"
+                WHERE (data #>> '{_email,state}') IN ('pending', 'retry', 'sending')
+                  AND COALESCE(
+                        (data #>> '{_email,notBefore}')::timestamptz,
+                        "createdAt"
+                      ) <= NOW()
+                  AND (
+                        (data #>> '{_email,state}') <> 'sending'
+                        OR COALESCE(
+                            (data #>> '{_email,claimedAt}')::timestamptz,
+                            to_timestamp(0)
+                        ) < NOW() - INTERVAL '10 minutes'
+                      )
+                ORDER BY "createdAt" ASC
+                LIMIT ${NotificationsService.EMAIL_BATCH_SIZE}
+                FOR UPDATE SKIP LOCKED
+            )
+            UPDATE "notifications" AS n
+            SET data = jsonb_set(
+                COALESCE(n.data, '{}'::jsonb),
+                '{_email}',
+                COALESCE(n.data -> '_email', '{}'::jsonb) ||
+                jsonb_build_object(
+                    'state', 'sending',
+                    'claimedAt', NOW(),
+                    'attempts', COALESCE((n.data #>> '{_email,attempts}')::int, 0) + 1
+                ),
+                true
+            )
+            FROM picked
+            WHERE n.id = picked.id
+            RETURNING n.id, n."userId", n.type, n.title, n.message, n.data,
+                      n."isRead", n."createdAt"
+        `);
+    }
+
+    private async sentTodayCount(): Promise<number> {
+        const rows = await this.prisma.$queryRaw<Array<{ count: number }>>(Prisma.sql`
+            SELECT COUNT(*)::int AS count
+            FROM "notifications"
+            WHERE data #>> '{_email,state}' = 'sent'
+              AND (data #>> '{_email,sentAt}') IS NOT NULL
+              AND (data #>> '{_email,sentAt}')::timestamptz
+                    >= date_trunc('day', NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'
+        `);
+        return Number(rows[0]?.count || 0);
+    }
+
+    private async conversationEmailSentRecently(
+        userId: string,
+        roomId: string,
+        notificationId: string,
+    ): Promise<boolean> {
+        const rows = await this.prisma.$queryRaw<Array<{ exists: boolean }>>(Prisma.sql`
+            SELECT EXISTS (
+                SELECT 1
+                FROM "notifications"
+                WHERE id <> ${notificationId}
+                  AND "userId" = ${userId}
+                  AND type IN ('MESSAGE_RECEIVED', 'NEW_MESSAGE')
+                  AND data ->> 'roomId' = ${roomId}
+                  AND data #>> '{_email,state}' = 'sent'
+                  AND (data #>> '{_email,sentAt}') IS NOT NULL
+                  AND (data #>> '{_email,sentAt}')::timestamptz > NOW() - INTERVAL '30 minutes'
+            ) AS exists
+        `);
+        return rows[0]?.exists === true;
+    }
+
+    private async updateEmailState(
+        notification: any,
+        updates: Record<string, string | number | boolean | null>,
+    ): Promise<void> {
+        const data = this.asRecord(notification.data);
+        const previous = this.asRecord(data._email);
+        const next = {
+            ...data,
+            _email: {
+                ...previous,
+                ...updates,
+            },
+        };
+        notification.data = next;
+        await this.prisma.notification.update({
+            where: { id: notification.id },
+            data: { data: next as Prisma.InputJsonValue },
+        });
+    }
+
+    private async deliverClaimedEmail(notification: any): Promise<void> {
+        const data = this.asRecord(notification.data);
+        const emailState = this.asRecord(data._email);
+        const attempts = Number(emailState.attempts || 1);
+
+        if (notification.isRead) {
+            await this.updateEmailState(notification, {
+                state: 'skipped',
+                skippedAt: new Date().toISOString(),
+                reason: 'notification-read',
+            });
+            return;
+        }
+
+        const user = await this.prisma.user.findUnique({
+            where: { id: notification.userId },
+            select: { email: true, firstName: true, deletedAt: true, preferences: true },
+        });
+        if (!user?.email || user.deletedAt) {
+            await this.updateEmailState(notification, {
+                state: 'skipped',
+                skippedAt: new Date().toISOString(),
+                reason: 'recipient-unavailable',
+            });
+            return;
+        }
+
+        const prefs = user.preferences as Record<string, any> | null;
+        const notifPrefs = prefs?.notifications as Record<string, any> | undefined;
+        if (notifPrefs?.email === false || (!!notifPrefs && this.isMuted(notification.type, notifPrefs))) {
+            await this.updateEmailState(notification, {
+                state: 'skipped',
+                skippedAt: new Date().toISOString(),
+                reason: 'email-preference-disabled',
+            });
+            return;
+        }
+
+        const isChat = notification.type === 'MESSAGE_RECEIVED' || notification.type === 'NEW_MESSAGE';
+        if (isChat) {
+            const messageId = typeof data.messageId === 'string' ? data.messageId : null;
+            if (messageId) {
+                const message = await this.prisma.message.findUnique({
+                    where: { id: messageId },
+                    select: { isRead: true, deletedAt: true },
+                });
+                if (!message || message.isRead || message.deletedAt) {
+                    await this.updateEmailState(notification, {
+                        state: 'skipped',
+                        skippedAt: new Date().toISOString(),
+                        reason: 'chat-message-already-read',
+                    });
+                    return;
+                }
+            }
+
+            const roomId = typeof data.roomId === 'string' ? data.roomId : null;
+            if (
+                roomId &&
+                await this.conversationEmailSentRecently(
+                    notification.userId,
+                    roomId,
+                    notification.id,
+                )
+            ) {
+                await this.updateEmailState(notification, {
+                    state: 'skipped',
+                    skippedAt: new Date().toISOString(),
+                    reason: 'conversation-throttled',
+                });
+                return;
+            }
+        }
+
+        if (await this.sentTodayCount() >= this.dailyEmailCap()) {
+            await this.updateEmailState(notification, {
+                state: 'retry',
+                claimedAt: null,
+                notBefore: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+                reason: 'daily-cap-reached',
+            });
+            return;
+        }
+
+        const frontend = (process.env.FRONTEND_URL || 'https://www.carmazium.com').replace(/\/$/, '');
+        const link = typeof data.link === 'string' && data.link.startsWith('/')
+            ? `${frontend}${data.link}`
+            : `${frontend}/dashboard`;
+        const safeName = this.escapeHtml(user.firstName?.trim() || 'there');
+        const safeTitle = this.escapeHtml(String(notification.title || 'CarMazium update'));
+        const safeMessage = this.escapeHtml(String(notification.message || 'You have a new CarMazium notification.'));
+        const result = await this.emailService.sendBrandedEmail({
+            to: user.email,
+            subject: `${notification.title || 'CarMazium update'} — CarMazium`,
+            bodyHtml: `
+                <p>Hi ${safeName},</p>
+                <h1>${safeTitle}</h1>
+                <p>${safeMessage}</p>
+                <p><a href="${this.escapeHtml(link)}">Open CarMazium</a></p>
+                <p>You can turn notification emails off from your CarMazium notification settings.</p>
+            `,
+        });
+
+        if (result) {
+            await this.updateEmailState(notification, {
+                state: 'sent',
+                sentAt: new Date().toISOString(),
+                providerId: result.id,
+                claimedAt: null,
+                reason: null,
+            });
+            return;
+        }
+
+        if (attempts >= NotificationsService.EMAIL_MAX_ATTEMPTS) {
+            await this.updateEmailState(notification, {
+                state: 'failed',
+                failedAt: new Date().toISOString(),
+                claimedAt: null,
+                reason: 'all-email-providers-failed',
+            });
+            return;
+        }
+
+        const backoffMinutes = Math.min(60, 5 * Math.pow(2, Math.max(0, attempts - 1)));
+        await this.updateEmailState(notification, {
+            state: 'retry',
+            claimedAt: null,
+            notBefore: new Date(Date.now() + backoffMinutes * 60 * 1000).toISOString(),
+            reason: 'send-failed-will-retry',
         });
     }
 
