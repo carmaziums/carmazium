@@ -86,6 +86,23 @@ const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
   );
 };
 
+/**
+ * Owns its own 1s tick. The screen used to hold a global `now` that
+ * re-rendered every card (and its photo carousel) once a second, which made
+ * scrolling Live Auctions visibly jerky.
+ */
+const LiveFlipTimer: React.FC<{ endsAt: Date | string }> = React.memo(({ endsAt }) => {
+  const endMs = new Date(endsAt).getTime();
+  const [secs, setSecs] = useState(() => Math.max(0, Math.floor((endMs - Date.now()) / 1000)));
+  useEffect(() => {
+    const tick = () => setSecs(Math.max(0, Math.floor((endMs - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [endMs]);
+  return <FlipTimer seconds={secs} />;
+});
+
 export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embeddedDealerHub = false }) => {
   // Clear the floating tab bar, which grows with the system font size.
   const tabBarClearance = useTabBarClearance();
@@ -114,8 +131,6 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
   const [isLoading, setIsLoading] = useState(true);
   const [auctionLoadError, setAuctionLoadError] = useState<string | null>(null);
 
-  // Global ticker reference time
-  const [now, setNow] = useState(Date.now());
 
   // Make/model search — web's /auctions page has this, mobile didn't
   // (mobile-production-readiness-plan.md F15). Filters client-side like
@@ -226,15 +241,6 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
     fetchData();
   };
 
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const getRemainingSeconds = (endsAt: Date | string) => {
-    const endMs = new Date(endsAt).getTime();
-    return Math.max(0, Math.floor((endMs - now) / 1000));
-  };
 
   const activeList = liveAuctions;
   const upcomingList = upcomingAuctions;
@@ -492,7 +498,6 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
         ) : null}
 
         {filteredActive.map((auction) => {
-          const secsLeft = getRemainingSeconds(auction.endsAt);
           // Reserve is never shown to buyers — enforced server-side (Ground
           // Rules). Show Buy It Now instead when the seller set one.
 
@@ -578,7 +583,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
                 </View>
                 <View style={styles.statsRight}>
                   <Text style={styles.statsLabel}>ENDS IN</Text>
-                  <FlipTimer seconds={secsLeft} />
+                  <LiveFlipTimer endsAt={auction.endsAt} />
                   <Text style={styles.statsBidderCount}>
                     {auction.totalBids} bidders
                   </Text>

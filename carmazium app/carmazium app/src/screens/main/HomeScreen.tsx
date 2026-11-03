@@ -57,10 +57,15 @@ function useCountdown(targetIso: string) {
   return str;
 }
 
+/** Only this text re-renders each second, not the whole card + carousel. */
+const CountdownText: React.FC<{ target: string; style?: any }> = React.memo(({ target, style }) => {
+  const value = useCountdown(target);
+  return <Text style={style}>{value}</Text>;
+});
+
 // ─── Live Auction Card ────────────────────────────────────────────────────────
 
 const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }> = ({ auction, onPress }) => {
-  const timeLeft = useCountdown(auction.endTime);
   const l = auction.listing as any;
   const images: string[] = l?.images ?? [];
   const bids = l?._count?.bids ?? l?.bids?.length ?? 0;
@@ -94,7 +99,7 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
             <Text style={s.overlayLabel}>ENDS IN</Text>
-            <Text style={[s.overlayVal, { color: Colors.warning }]}>{timeLeft}</Text>
+            <CountdownText target={auction.endTime} style={[s.overlayVal, { color: Colors.warning }]} />
           </View>
         </View>
       </View>
@@ -128,7 +133,6 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
 // ─── Upcoming Auction Card ────────────────────────────────────────────────────
 
 const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }> = ({ auction, onPress }) => {
-  const startsIn = useCountdown(auction.startTime);
   const l = auction.listing as any;
   const images: string[] = l?.images ?? [];
   const startingBid = Number(auction.startingBid ?? 0);
@@ -154,7 +158,7 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
             <Text style={s.overlayLabel}>STARTS IN</Text>
-            <Text style={[s.overlayVal, { color: Colors.infoBlueLight }]}>{startsIn}</Text>
+            <CountdownText target={auction.startTime} style={[s.overlayVal, { color: Colors.infoBlueLight }]} />
           </View>
         </View>
       </View>
