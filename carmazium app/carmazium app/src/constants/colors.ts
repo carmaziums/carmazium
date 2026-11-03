@@ -1,6 +1,8 @@
 // Carmazium – Brand Color System
-// Visual source of truth: the active website's dark-theme tokens in
-// src/app/globals.css. Native screens can retain platform-specific controls,
+// Visual source of truth: the active website's tokens in src/app/globals.css —
+// `.dark` for darkPalette, `:root` for lightPalette (bottom of this file).
+// Light is the default, as on the website; see lib/themePreference.ts.
+// Native screens can retain platform-specific controls,
 // but should share the site's navy surfaces, legible type contrast and red.
 //
 // -----------------------------------------------------------------------------
@@ -406,10 +408,10 @@ const lDisabled = '#94A3B8';
 const lBorder = '#D5E1EC';
 const lBorderHi = '#B8CADD';
 const lBorderStrong = '#8FA6BD';
-const lSuccessText = '#047857';
-const lWarningText = '#B45309';
+const lSuccessText = '#046C4E';
+const lWarningText = '#A14A06';
 const lInfoText = '#1D4ED8';
-const lErrorText = '#DC2626';
+const lErrorText = '#B91C1C';
 const navyA = (a: string) => `rgba(15, 23, 42, ${a})`;
 
 const lightPalette: Palette = {
