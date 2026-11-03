@@ -26,7 +26,12 @@ export const WebsiteTopBar: React.FC = () => {
   // Web Header.tsx renders a ~160px logo on mobile. Keep that footprint
   // except where a narrow device needs room for the theme toggle plus three
   // 44dp action targets.
-  const logoWidth = Math.min(160, Math.max(104, windowWidth - 249));
+  // Pages opened from somewhere (Notifications, Settings, Messages, Sell,
+  // dealer Stock/Customers opened from a link) get a back arrow; bottom-tab
+  // roots don't, like the website's persistent header.
+  const navState = navigation.getState?.();
+  const showBack = navState?.type !== 'tab' && navigation.canGoBack();
+  const logoWidth = Math.min(160, Math.max(showBack ? 88 : 104, windowWidth - 249 - (showBack ? 48 : 0)));
   const user = useAuthStore(s => s.user);
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
   const role = useAuthStore(s => s.accountRole);
@@ -36,6 +41,18 @@ export const WebsiteTopBar: React.FC = () => {
 
   return (
     <View style={[styles.bar, { paddingTop: insets.top + 7 }]}>
+      <View style={styles.leading}>
+      {showBack && (
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          activeOpacity={0.75}
+        >
+          <Ionicons name="chevron-back" size={22} color={Colors.textPrimary} />
+        </TouchableOpacity>
+      )}
       {/* Logo goes to the marketplace homepage, as on the website. */}
       <TouchableOpacity
         onPress={() => navigation.navigate('Main', { screen: 'Tabs', params: { screen: 'Home' } })}
@@ -45,6 +62,7 @@ export const WebsiteTopBar: React.FC = () => {
       >
         <Logo size="sm" width={logoWidth} />
       </TouchableOpacity>
+      </View>
       <View style={styles.actions}>
         <ThemeToggle />
         {/* Signed-out visitors see Login, like the website header's
@@ -106,6 +124,11 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: Colors.borderSubtle,
     backgroundColor: Colors.bgCard,
+  },
+  leading: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
+  backButton: {
+    width: 40, height: 44, marginLeft: -6,
+    alignItems: 'center', justifyContent: 'center',
   },
   loginButton: {
     height: 44, paddingHorizontal: 16,
