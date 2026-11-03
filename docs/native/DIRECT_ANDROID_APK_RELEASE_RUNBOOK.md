@@ -7,12 +7,15 @@
 The mobile source is in carmazium app/carmazium app (Expo / React Native). The production Android package is **uk.carmazium.app**, not the separate read-only **uk.carmazium.qa**. Android users can install a release-signed APK directly from carmazium.com without Google Play. The app remains connected to the CarMazium backend for marketplace operations. An APK does not run on iOS or Windows.
 
 Existing pipeline:
-- .github/workflows/carmazium-android-release-candidate.yml — manual INTERNAL_REVIEW_ONLY signed APK builder on main, checks signing key, source, package, version and checksum; uploads a 3-day private artifact.
+- .github/workflows/carmazium-android-release-candidate.yml — manual INTERNAL_REVIEW_ONLY signed APK builder on main, checks signing key, source, package, version and checksum; uploads a 3-day internal-review artifact (readable by users with repository read access).
 - scripts/android-apk-release-evidence.mjs — records exact original APK, package, release signer, version and SHA-256.
 - scripts/verify-first-party-android-apk.mjs — independently validates signed bytes served from the production CarMazium HTTPS URL.
 - src/lib/mobileAppDownloads.ts — fail-closed website download flag, URL and SHA-256. No arbitrary external installer.
 - scripts/stage-android-direct-download.mjs — prepares the exact signed candidate privately for a later approved public download; does **not** publish or approve anything.
 - The candidate workflow disables Expo OTA; later sideloaded updates require a higher Android versionCode signed with the **same** release key.
+
+
+**GitHub artifact visibility warning:** CarMazium's source repository is currently **public**. GitHub Actions artifacts can be downloaded by anyone who has read access to the repository; do NOT treat a 3-day internal artifact as confidential storage. If the owner requires pre-release binaries to remain confidential, first use a private repository or separately controlled encrypted artifact destination. Do not run a signed production candidate until this exposure is acceptable. See GitHub's official artifact download permissions.
 
 ## Owner-only action 1 — signing identity
 
@@ -39,7 +42,7 @@ Existing pipeline:
    - approval: INTERNAL_REVIEW_ONLY
    - version_code: increasing positive integer
 5. On success download the **CarMazium-Android-REVIEW-ONLY** workflow artifact ZIP before its 3-day retention expires; extract CarMazium-Android-REVIEW-ONLY.apk, release-evidence.json, SHA256SUMS.txt.
-6. Also download the separate **CarMazium-Android-STAGED-NOT-APPROVED** private artifact ZIP. It contains the **same signed APK bytes** renamed for future first-party hosting, plus SHA256SUMS.txt and staging-manifest.json; it is NOT publicly approved or uploaded to the website. Both artifact ZIPs expire after 3 days.
+6. Also download the separate **CarMazium-Android-STAGED-NOT-APPROVED** internal artifact ZIP. It contains the **same signed APK bytes** renamed for future first-party hosting, plus SHA256SUMS.txt and staging-manifest.json; it is NOT publicly approved or uploaded to the website. Both artifact ZIPs expire after 3 days.
 7. If the workflow fails, provide only the failing workflow step name and non-sensitive error message for diagnosis. Do not disclose secret values.
 
 ## Owner/device-only action 3 — real installation and feature acceptance
@@ -54,7 +57,7 @@ After passing QA, obtain explicit owner sign-off binding the **exact source SHA,
 
 ## Engineering action 4 — stage an identical versioned APK
 
-**Normally no local SDK or command is needed:** the signed candidate workflow automatically generates a separate private **CarMazium-Android-STAGED-NOT-APPROVED** artifact using this validation. This does **not** release it to customers.
+**Normally no local SDK or command is needed:** the signed candidate workflow automatically generates a separate **CarMazium-Android-STAGED-NOT-APPROVED** Actions artifact using this validation. This does **not** release it to customers.
 
 For independent re-verification or manual staging on a trusted technical computer with Node.js and Android SDK Build-Tools 36.0.0, set ANDROID_HOME and the separately owner-verified environment variable CARMAZIUM_ANDROID_RELEASE_CERT_SHA256.
 
