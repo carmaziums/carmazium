@@ -153,6 +153,38 @@ export const ProviderMessagesScreen: React.FC<Props> = ({ navigation }) => {
     );
   };
 
+  // Intro and search scroll with the conversations (list header element, so
+  // the search input keeps focus) instead of a fixed block that a larger
+  // system font size grew until the list had no room to scroll.
+  const listHeader = (
+    <View>
+        <View style={styles.hero}>
+          <Text style={styles.eyebrow}>SERVICE JOB CHAT</Text>
+          <Text style={styles.title}>Customer conversations</Text>
+          <Text style={styles.sub}>
+            Delivery, Recovery and Inspection conversations tied to your Partner jobs. Other CarMazium messages stay in the main Messages screen.
+          </Text>
+        </View>
+
+        <View style={styles.searchWrap}>
+          <Ionicons name="search-outline" size={17} color={Colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search job, customer or message"
+            placeholderTextColor={Colors.textMuted}
+            autoCapitalize="none"
+          />
+          {!!search && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={17} color={Colors.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+    </View>
+  );
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle={themeStatusBarStyle} backgroundColor={Colors.bgPrimary} />
@@ -171,39 +203,11 @@ export const ProviderMessagesScreen: React.FC<Props> = ({ navigation }) => {
         <HamburgerButton />
       </View>
 
-      <View style={styles.hero}>
-        <Text style={styles.eyebrow}>SERVICE JOB CHAT</Text>
-        <Text style={styles.title}>Customer conversations</Text>
-        <Text style={styles.sub}>
-          Delivery, Recovery and Inspection conversations tied to your Partner jobs. Other CarMazium messages stay in the main Messages screen.
-        </Text>
-      </View>
-
-      <View style={styles.searchWrap}>
-        <Ionicons name="search-outline" size={17} color={Colors.textMuted} />
-        <TextInput
-          style={styles.searchInput}
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search job, customer or message"
-          placeholderTextColor={Colors.textMuted}
-          autoCapitalize="none"
-        />
-        {!!search && (
-          <TouchableOpacity onPress={() => setSearch('')}>
-            <Ionicons name="close-circle" size={17} color={Colors.textMuted} />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {isLoading && rooms.length === 0 ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={Colors.accent} />
-          <Text style={styles.muted}>Loading service conversations…</Text>
-        </View>
-      ) : (
         <FlatList
-          data={providerRooms}
+          data={isLoading && rooms.length === 0 ? [] : providerRooms}
+          ListHeaderComponent={listHeader}
+          ListHeaderComponentStyle={styles.listHeaderBleed}
+          keyboardShouldPersistTaps="handled"
           keyExtractor={(room) => room.id}
           renderItem={renderRoom}
           contentContainerStyle={styles.list}
@@ -214,7 +218,12 @@ export const ProviderMessagesScreen: React.FC<Props> = ({ navigation }) => {
               tintColor={Colors.accent}
             />
           }
-          ListEmptyComponent={
+          ListEmptyComponent={isLoading && rooms.length === 0 ? (
+            <View style={styles.center}>
+              <ActivityIndicator color={Colors.accent} />
+              <Text style={styles.muted}>Loading service conversations…</Text>
+            </View>
+          ) : (
             <View style={styles.empty}>
               <Ionicons name="chatbubbles-outline" size={36} color={Colors.textMuted} />
               <Text style={styles.emptyTitle}>
@@ -226,9 +235,8 @@ export const ProviderMessagesScreen: React.FC<Props> = ({ navigation }) => {
                   : 'A service-job conversation appears here after an assigned paid job unlocks customer contact and chat.'}
               </Text>
             </View>
-          }
+          )}
         />
-      )}
     </View>
   );
 };
@@ -245,7 +253,9 @@ const styles = StyleSheet.create({
   sub: { fontFamily: FontFamily.regular, color: Colors.textSecondary, fontSize: FontSize.size14, lineHeight: 20, marginTop: 7 },
   searchWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 18, marginBottom: 8, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, paddingHorizontal: 12, minHeight: 44 },
   searchInput: { flex: 1, color: Colors.white, fontFamily: FontFamily.regular, fontSize: FontSize.size12 },
-  list: { padding: 18, paddingTop: 8, gap: 12, flexGrow: 1 },
+  list: { padding: 18, paddingTop: 8, paddingBottom: 48, gap: 12, flexGrow: 1 },
+  // Header rows carry their own 18pt gutters inside the padded list.
+  listHeaderBleed: { marginHorizontal: -18, marginTop: -8 },
   card: { borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.bgSecondary, borderRadius: Radius.card, padding: 15, gap: 9 },
   cardUnread: { borderColor: Colors.accentAlpha25, backgroundColor: Colors.accentAlpha04 },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
@@ -262,7 +272,7 @@ const styles = StyleSheet.create({
   statusLabel: { fontFamily: FontFamily.bold, color: Colors.accentGreen, fontSize: FontSize.size10 },
   paymentLabel: { fontFamily: FontFamily.bold, color: Colors.warning, fontSize: FontSize.size10 },
   lastMessage: { fontFamily: FontFamily.regular, color: Colors.textSecondary, fontSize: FontSize.size12, lineHeight: 18 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  center: { flex: 1, minHeight: 200, alignItems: 'center', justifyContent: 'center', gap: 10 },
   muted: { fontFamily: FontFamily.regular, color: Colors.textMuted, fontSize: FontSize.size12 },
   empty: { flex: 1, minHeight: 320, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
   emptyTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.base, marginTop: 12, textAlign: 'center' },

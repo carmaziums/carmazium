@@ -188,24 +188,10 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
     );
   };
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
-
-      <View style={styles.header}>
-        <IconButton
-          style={styles.headerButton}
-          icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
-          onPress={() => navigation.goBack()}
-          accessibilityLabel="Go back"
-        />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Service Jobs</Text>
-          <Text style={styles.headerSub}>Delivery, Recovery & Inspection</Text>
-        </View>
-        <HamburgerButton />
-      </View>
-
+  // Tabs, filters and the coverage link scroll with the list (header) so a
+  // larger system font size can't leave the list too little height.
+  const listHeader = (
+    <View>
       <View style={styles.tabs}>
         <TouchableOpacity
           style={[styles.tab, tab === 'open' && styles.tabActive]}
@@ -254,38 +240,61 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={styles.manageCoverageText}>Manage service areas & verification</Text>
         <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
       </TouchableOpacity>
+    </View>
+  );
+  // Loading / approval / load-error states render inside the list.
+  const listStatus = loading && jobs.length === 0 ? (
+      <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
+    ) : notApproved ? (
+      <View style={styles.centerCard}>
+        <Ionicons name="shield-outline" size={34} color={Colors.warning} />
+        <Text style={styles.emptyTitle}>Approved service required</Text>
+        <Text style={styles.emptyText}>
+          Apply for Delivery & Recovery or Vehicle Inspection, finish verification and connect payouts. Matching jobs appear here after approval.
+        </Text>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => navigation.navigate('ProviderCapabilities')}
+        >
+          <Text style={styles.primaryText}>MANAGE SERVICES</Text>
+        </TouchableOpacity>
+      </View>
+    ) : error && jobs.length === 0 ? (
+      <View style={styles.centerCard}>
+        <Ionicons name="alert-circle-outline" size={32} color={Colors.accent} />
+        <Text style={styles.emptyTitle}>Could not load jobs</Text>
+        <Text style={styles.emptyText}>{error}</Text>
+        <TouchableOpacity style={styles.primaryButton} onPress={() => void load('reset')}>
+          <Text style={styles.primaryText}>TRY AGAIN</Text>
+        </TouchableOpacity>
+      </View>
+  ) : null;
 
-      {loading && jobs.length === 0 ? (
-        <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
-      ) : notApproved ? (
-        <View style={styles.centerCard}>
-          <Ionicons name="shield-outline" size={34} color={Colors.warning} />
-          <Text style={styles.emptyTitle}>Approved service required</Text>
-          <Text style={styles.emptyText}>
-            Apply for Delivery & Recovery or Vehicle Inspection, finish verification and connect payouts. Matching jobs appear here after approval.
-          </Text>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => navigation.navigate('ProviderCapabilities')}
-          >
-            <Text style={styles.primaryText}>MANAGE SERVICES</Text>
-          </TouchableOpacity>
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
+
+      <View style={styles.header}>
+        <IconButton
+          style={styles.headerButton}
+          icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
+          onPress={() => navigation.goBack()}
+          accessibilityLabel="Go back"
+        />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Service Jobs</Text>
+          <Text style={styles.headerSub}>Delivery, Recovery & Inspection</Text>
         </View>
-      ) : error && jobs.length === 0 ? (
-        <View style={styles.centerCard}>
-          <Ionicons name="alert-circle-outline" size={32} color={Colors.accent} />
-          <Text style={styles.emptyTitle}>Could not load jobs</Text>
-          <Text style={styles.emptyText}>{error}</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => void load('reset')}>
-            <Text style={styles.primaryText}>TRY AGAIN</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
+        <HamburgerButton />
+      </View>
+
         <FlatList
-          data={jobs}
+          data={listStatus ? [] : jobs}
+          ListHeaderComponent={listHeader}
+          ListHeaderComponentStyle={styles.listHeaderBleed}
           keyExtractor={(item) => item.id}
           renderItem={renderJob}
-          contentContainerStyle={jobs.length ? styles.list : styles.emptyList}
+          contentContainerStyle={jobs.length && !listStatus ? styles.list : styles.emptyList}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -293,7 +302,7 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
               tintColor={Colors.accent}
             />
           }
-          ListEmptyComponent={
+          ListEmptyComponent={listStatus ?? (
             <View style={styles.centerCard}>
               <Ionicons name="briefcase-outline" size={34} color={Colors.textMuted} />
               <Text style={styles.emptyTitle}>
@@ -305,7 +314,7 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
                   : 'Quote on available jobs. Accepted and paid work stays here for your team.'}
               </Text>
             </View>
-          }
+          )}
           onEndReached={() => {
             if (nextCursor && !loadingMore) void load('more');
           }}
@@ -314,7 +323,6 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
             loadingMore ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 18 }} /> : null
           }
         />
-      )}
     </View>
   );
 };
@@ -351,7 +359,9 @@ const styles = StyleSheet.create({
   filterText: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.textMuted },
   filterTextActive: { color: Colors.accent },
   list: { padding: 18, gap: 12, paddingBottom: 36 },
-  emptyList: { flexGrow: 1, padding: 18, justifyContent: 'center' },
+  emptyList: { flexGrow: 1, padding: 18 },
+  // Header rows carry their own 18pt gutters inside the padded list.
+  listHeaderBleed: { marginHorizontal: -18, marginTop: -18, marginBottom: 6 },
   card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCardSolid, padding: 16, gap: 12 },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   typeRow: { flex: 1, flexDirection: 'row', gap: 10 },
@@ -366,8 +376,8 @@ const styles = StyleSheet.create({
   trailing: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent },
   openRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   openText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accent, letterSpacing: 0.6 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  centerCard: { alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
+  center: { flexGrow: 1, minHeight: 160, alignItems: 'center', justifyContent: 'center' },
+  centerCard: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
   emptyTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, textAlign: 'center' },
   emptyText: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textMuted, textAlign: 'center', lineHeight: 19, maxWidth: 340 },
   primaryButton: { marginTop: 5, minHeight: 44, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },

@@ -45,8 +45,10 @@ export const MyCarsScreen: React.FC = () => {
 
   const data = (channel === 'Listings' ? listings : auctions).filter(item =>
     filter === 'ALL' || item.status === filter);
-  return (
-    <View style={styles.screen}>
+  // Heading, channel switch and status filters scroll with the cars (list
+  // header) so a larger system font size can't leave the list no height.
+  const header = (
+    <View style={styles.headerBleed}>
       <View style={styles.heading}>
         <Text style={styles.title}>My cars</Text>
         <Text style={styles.muted}>Manage your retail listings and car auctions in one place.</Text>
@@ -75,10 +77,16 @@ export const MyCarsScreen: React.FC = () => {
         ))}
       </ScrollView>
       {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-      {busy ? <View style={styles.loading}><ActivityIndicator color={Colors.accent}/></View> : (
-        <FlatList style={styles.list} data={data} keyExtractor={item => item.id}
+    </View>
+  );
+  return (
+    <View style={styles.screen}>
+        <FlatList style={styles.list} data={busy ? [] : data} keyExtractor={item => item.id}
           contentContainerStyle={styles.listContent}
-          ListEmptyComponent={<Text style={styles.muted}>No {channel.toLowerCase()} matching this status.</Text>}
+          ListHeaderComponent={header}
+          ListEmptyComponent={busy
+            ? <View style={styles.loading}><ActivityIndicator color={Colors.accent}/></View>
+            : <Text style={styles.muted}>No {channel.toLowerCase()} matching this status.</Text>}
           renderItem={({ item }) => {
             const vehicle = item.listing || item;
             return (
@@ -100,7 +108,6 @@ export const MyCarsScreen: React.FC = () => {
             );
           }}
         />
-      )}
     </View>
   );
 };
@@ -129,5 +136,7 @@ const styles = StyleSheet.create({
   name: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 14 },
   manage: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: 11 },
   error: { paddingHorizontal: 20, color: Colors.warning, fontSize: 12 },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  loading: { paddingVertical: 40, alignItems: 'center', justifyContent: 'center' },
+  // Header rows carry their own 20pt gutters inside the padded list.
+  headerBleed: { marginHorizontal: -20 },
 });

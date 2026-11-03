@@ -176,24 +176,10 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
     );
   };
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
-
-      <View style={styles.header}>
-        <IconButton
-          style={styles.headerButton}
-          icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
-          onPress={() => navigation.goBack()}
-          accessibilityLabel="Go back"
-        />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Finance & Warranty Enquiries</Text>
-          <Text style={styles.headerSub}>Matched customer enquiries</Text>
-        </View>
-        <HamburgerButton />
-      </View>
-
+  // Tabs, filters and the coverage link scroll with the list (header) so a
+  // larger system font size can't leave the list too little height.
+  const listHeader = (
+    <View>
       <View style={styles.filters}>
         {FILTERS.map((item) => (
           <TouchableOpacity
@@ -221,30 +207,53 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={styles.manageCoverageText}>Manage service areas & approval</Text>
         <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
       </TouchableOpacity>
+    </View>
+  );
+  // Loading / approval / load-error states render inside the list.
+  const listStatus = loading && leads.length === 0 ? (
+      <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
+    ) : error && leads.length === 0 ? (
+      <View style={styles.centerCard}>
+        <Ionicons name="alert-circle-outline" size={34} color={Colors.accent} />
+        <Text style={styles.emptyTitle}>Could not load enquiries</Text>
+        <Text style={styles.emptyText}>{error}</Text>
+        <TouchableOpacity style={styles.primaryButton} onPress={() => void load('reset')}>
+          <Text style={styles.primaryText}>TRY AGAIN</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={() => navigation.navigate('ProviderCapabilities')}
+        >
+          <Text style={styles.secondaryText}>CHECK SERVICE APPROVAL</Text>
+        </TouchableOpacity>
+      </View>
+  ) : null;
 
-      {loading && leads.length === 0 ? (
-        <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
-      ) : error && leads.length === 0 ? (
-        <View style={styles.centerCard}>
-          <Ionicons name="alert-circle-outline" size={34} color={Colors.accent} />
-          <Text style={styles.emptyTitle}>Could not load enquiries</Text>
-          <Text style={styles.emptyText}>{error}</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => void load('reset')}>
-            <Text style={styles.primaryText}>TRY AGAIN</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => navigation.navigate('ProviderCapabilities')}
-          >
-            <Text style={styles.secondaryText}>CHECK SERVICE APPROVAL</Text>
-          </TouchableOpacity>
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
+
+      <View style={styles.header}>
+        <IconButton
+          style={styles.headerButton}
+          icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
+          onPress={() => navigation.goBack()}
+          accessibilityLabel="Go back"
+        />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Finance & Warranty Enquiries</Text>
+          <Text style={styles.headerSub}>Matched customer enquiries</Text>
         </View>
-      ) : (
+        <HamburgerButton />
+      </View>
+
         <FlatList
-          data={leads}
+          data={listStatus ? [] : leads}
+          ListHeaderComponent={listHeader}
+          ListHeaderComponentStyle={styles.listHeaderBleed}
           keyExtractor={(item) => item.id}
           renderItem={renderLead}
-          contentContainerStyle={leads.length ? styles.list : styles.emptyList}
+          contentContainerStyle={leads.length && !listStatus ? styles.list : styles.emptyList}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -252,7 +261,7 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
               tintColor={Colors.accent}
             />
           }
-          ListEmptyComponent={
+          ListEmptyComponent={listStatus ?? (
             <View style={styles.centerCard}>
               <Ionicons name="mail-unread-outline" size={34} color={Colors.textMuted} />
               <Text style={styles.emptyTitle}>No matched enquiries</Text>
@@ -266,7 +275,7 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.secondaryText}>MANAGE MATCHING</Text>
               </TouchableOpacity>
             </View>
-          }
+          )}
           onEndReached={() => {
             if (nextCursor && !loadingMore) void load('more');
           }}
@@ -275,7 +284,6 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
             loadingMore ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 18 }} /> : null
           }
         />
-      )}
     </View>
   );
 };
@@ -293,9 +301,11 @@ const styles = StyleSheet.create({
   filterActive: { borderColor: Colors.accentAlpha25, backgroundColor: Colors.accentAlpha10 },
   filterText: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.textMuted },
   filterTextActive: { color: Colors.accent },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  center: { flexGrow: 1, minHeight: 160, alignItems: 'center', justifyContent: 'center' },
   list: { padding: 18, gap: 12, paddingBottom: 36 },
-  emptyList: { flexGrow: 1, padding: 18, justifyContent: 'center' },
+  emptyList: { flexGrow: 1, padding: 18 },
+  // Header rows carry their own 18pt gutters inside the padded list.
+  listHeaderBleed: { marginHorizontal: -18, marginTop: -18, marginBottom: 6 },
   card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCardSolid, padding: 16, gap: 12 },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   typeRow: { flex: 1, flexDirection: 'row', gap: 10 },
@@ -316,7 +326,7 @@ const styles = StyleSheet.create({
   receivedText: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted },
   openRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   openText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accent, letterSpacing: 0.5 },
-  centerCard: { alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
+  centerCard: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
   emptyTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, textAlign: 'center' },
   emptyText: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textMuted, textAlign: 'center', lineHeight: 19, maxWidth: 340 },
   primaryButton: { marginTop: 5, minHeight: 44, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
