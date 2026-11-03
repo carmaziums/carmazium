@@ -12,7 +12,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { CarListing } from '../../data/listings';
 import { CAR_MAKES, getModelsForMake, getVariantsForModel } from '../../data/carData';
 import { VEHICLE_FEATURE_GROUPS } from '../../data/vehicleFeatures';
-import { searchListings } from '../../lib/listingsApi';
+import { searchListings, getMakeCounts } from '../../lib/listingsApi';
+import { ListPickerSheet } from '../../components/filters/ListPickerSheet';
 import { EXTERIOR_GRADE_OPTIONS } from '../../lib/exteriorGrade';
 import { naturalLanguageSearch } from '../../lib/aiApi';
 import { HorizontalVehicleCard } from '../../components/HorizontalVehicleCard';
@@ -35,6 +36,14 @@ import { Layout } from '../../constants/layout';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 const { width: SW } = Dimensions.get('window');
+
+// Matches the listing form's service history options (backend serviceHistories).
+const SERVICE_HISTORY_OPTS = [
+  { id: 'FULL_MAIN_DEALER', label: 'Full main dealer' },
+  { id: 'FULL_INDEPENDENT', label: 'Full independent' },
+  { id: 'PARTIAL', label: 'Partial' },
+  { id: 'NONE', label: 'None' },
+];
 
 // ─── Quick filter chips ───────────────────────────────────────────────────────
 
@@ -188,6 +197,9 @@ export const SearchScreen: React.FC = () => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedMakes, setSelectedMakes] = useState<string[]>([]);
   const [makeQuery, setMakeQuery] = useState('');
+  const [picker, setPicker] = useState<null | 'make' | 'model' | 'variant'>(null);
+  const [makeCounts, setMakeCounts] = useState<Record<string, number>>({});
+  useEffect(() => { void getMakeCounts().then(setMakeCounts); }, []);
   const [showAllMakes, setShowAllMakes] = useState(false);
   const [featureQuery, setFeatureQuery] = useState('');
   const makeQueryTrimmed = makeQuery.trim().toLowerCase();
@@ -231,6 +243,12 @@ export const SearchScreen: React.FC = () => {
   const [colorFilter, setColorFilter] = useState('');
   const [minDoors, setMinDoors] = useState('');
   const [minSeats, setMinSeats] = useState('');
+  // Saved DVLA snapshot + seller-declared history (backend: motValid,
+  // taxedOnly, serviceHistories, maxOwners).
+  const [motValid, setMotValid] = useState(false);
+  const [taxedOnly, setTaxedOnly] = useState(false);
+  const [serviceHistories, setServiceHistories] = useState<string[]>([]);
+  const [maxOwners, setMaxOwners] = useState<number | null>(null);
   const [euroStandard, setEuroStandard] = useState('');
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
   // Tri-state: '' = any, 'yes' = imported only, 'no' = explicitly hide
@@ -379,6 +397,10 @@ export const SearchScreen: React.FC = () => {
       color: colorFilter.trim() || undefined,
       minDoors: minDoors ? parseInt(minDoors) : undefined,
       minSeats: minSeats ? parseInt(minSeats) : undefined,
+      motValid: motValid || undefined,
+      taxedOnly: taxedOnly || undefined,
+      serviceHistories: serviceHistories.length ? serviceHistories : undefined,
+      maxOwners: maxOwners ?? undefined,
       euroStandard: euroStandard || undefined,
       features: selectedFeatures.length ? selectedFeatures : undefined,
       isImported: isImported === 'yes' ? true : isImported === 'no' ? false : undefined,
@@ -424,7 +446,7 @@ export const SearchScreen: React.FC = () => {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, exteriorGrades, writeOffCategories, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
+  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, exteriorGrades, writeOffCategories, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, motValid, taxedOnly, serviceHistories, maxOwners, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
 
   // The instant filter effect already loads the initial catalogue once.
   // Text query: debounce to avoid hitting the API on every keystroke.
@@ -445,7 +467,7 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => {
     fetch(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, exteriorGrades, writeOffCategories, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng]);
+  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, exteriorGrades, writeOffCategories, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, motValid, taxedOnly, serviceHistories, maxOwners, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
 
@@ -477,6 +499,10 @@ export const SearchScreen: React.FC = () => {
     !!colorFilter,
     !!minDoors,
     !!minSeats,
+    motValid,
+    taxedOnly,
+    serviceHistories.length > 0,
+    maxOwners != null,
     !!euroStandard,
     selectedFeatures.length > 0,
     !!isImported,
@@ -487,6 +513,7 @@ export const SearchScreen: React.FC = () => {
     conditions.length > 0, exteriorGrades.length > 0, writeOffCategories.length > 0, !!minBhp || !!maxBhp, !!minEngine || !!maxEngine,
     !!maxCo2, !!minCombinedMpg || !!maxZeroTo60Mph || !!driveTypeFilter,
     vehicleType !== 'CAR', !!colorFilter, !!minDoors, !!minSeats,
+    motValid, taxedOnly, serviceHistories.length > 0, maxOwners != null,
     !!euroStandard, selectedFeatures.length > 0, !!locationFilter,
     maxDistanceMi != null, !!sellerType, !!ulezCompliant,
     deliveryAvailable, !!isImported,
@@ -524,6 +551,10 @@ export const SearchScreen: React.FC = () => {
     setColorFilter('');
     setMinDoors('');
     setMinSeats('');
+    setMotValid(false);
+    setTaxedOnly(false);
+    setServiceHistories([]);
+    setMaxOwners(null);
     setEuroStandard('');
     setSelectedFeatures([]);
     setIsImported('');
@@ -897,6 +928,39 @@ export const SearchScreen: React.FC = () => {
         </View>
       </BottomSheet>
 
+      <ListPickerSheet
+        visible={picker === 'make'}
+        title="Select makes"
+        multi
+        options={CAR_MAKES}
+        counts={makeCounts}
+        selected={selectedMakes}
+        allLabel="All makes"
+        searchPlaceholder="Search makes"
+        onChange={(next) => { setSelectedMakes(next); setModelFilter(''); setVariantFilter(''); }}
+        onClose={() => setPicker(null)}
+      />
+      <ListPickerSheet
+        visible={picker === 'model'}
+        title={selectedMakes[0] ? `${selectedMakes[0]} models` : 'Models'}
+        options={selectedMakes.length === 1 ? getModelsForMake(selectedMakes[0]) : []}
+        selected={modelFilter ? [modelFilter] : []}
+        allLabel="All models"
+        searchPlaceholder="Search models"
+        onChange={(next) => { setModelFilter(next[0] ?? ''); setVariantFilter(''); }}
+        onClose={() => setPicker(null)}
+      />
+      <ListPickerSheet
+        visible={picker === 'variant'}
+        title={modelFilter ? `${modelFilter} variants` : 'Variants'}
+        options={selectedMakes.length === 1 && modelFilter ? getVariantsForModel(selectedMakes[0], modelFilter) : []}
+        selected={variantFilter ? [variantFilter] : []}
+        allLabel="All variants"
+        searchPlaceholder="Search variants"
+        onChange={(next) => setVariantFilter(next[0] ?? '')}
+        onClose={() => setPicker(null)}
+      />
+
       {/* ── Advanced Filters Modal ── */}
       <BottomSheet visible={filterOpen} onClose={() => setFilterOpen(false)} maxHeightPercent={92} avoidKeyboard>
         {/* Custom header (with Reset) kept as content — BottomSheet's own title
@@ -912,113 +976,48 @@ export const SearchScreen: React.FC = () => {
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={s.modalBody}>
           <Text style={s.filterIntro}>Choose the details that matter. More options are available below.</Text>
 
-              {/* Select several makes: all selections are now submitted to the backend. */}
-              <Text style={s.filterLabel}>MAKE</Text>
-              <View style={s.makeSearchBox}>
-                <Ionicons name="search" size={14} color={Colors.iconMuted} />
-                <TextInput
-                  style={s.makeSearchInput}
-                  placeholder="Search all makes"
-                  placeholderTextColor={Colors.iconMuted}
-                  value={makeQuery}
-                  onChangeText={setMakeQuery}
-                  autoCorrect={false}
-                  autoCapitalize="words"
-                  returnKeyType="search"
-                />
-                {makeQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setMakeQuery('')} activeOpacity={0.7} accessibilityLabel="Clear make search">
-                    <Ionicons name="close-circle" size={15} color={Colors.iconMuted} />
-                  </TouchableOpacity>
-                )}
-              </View>
-              {visibleMakes.length === 0 ? (
-                <Text style={s.makeEmptyText}>No makes match “{makeQuery.trim()}”</Text>
-              ) : (
-                <View style={s.chipGrid}>
-                  {visibleMakes.map(m => (
-                    <TouchableOpacity
-                      key={m}
-                      style={[s.filterChip, selectedMakes.includes(m) && s.filterChipActive]}
-                      onPress={() => { setSelectedMakes(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]); setModelFilter(''); setVariantFilter(''); setMakeQuery(''); }}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[s.filterChipText, selectedMakes.includes(m) && s.filterChipTextActive]}>
-                        {m}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-
-              {!makeQuery.trim() && (
-                <TouchableOpacity onPress={() => setShowAllMakes(v => !v)} activeOpacity={0.7}
-                  accessibilityRole="button" accessibilityLabel={showAllMakes ? 'Show popular makes' : 'Browse all makes'}
-                  style={{ paddingVertical: 12 }}>
-                  <Text style={[s.filterChipText, { color: Colors.accent }]}>
-                    {showAllMakes ? 'Show popular makes' : `Browse all ${CAR_MAKES.length} makes (A–Z)`}
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              <View style={s.divider} />
-
-              {/* Model/variant are single-make refinements only. */}
-              {selectedMakes.length > 1 && <Text style={s.makeEmptyText}>To search by model, select just one make.</Text>}
-              {selectedMakes.length <= 1 && <Text style={s.filterLabel}>MODEL</Text>}
-              {selectedMakes.length <= 1 && <View style={s.inputBox}>
-                <Text style={s.inputBoxLabel}>SEARCH OR ENTER MODEL</Text>
-                <TextInput style={s.inputBoxValue} value={modelFilter} onChangeText={value => { setModelFilter(value); setVariantFilter(''); }}
-                  placeholder={selectedMakes.length ? 'Search models or enter another' : 'Choose a make or type model'}
-                  placeholderTextColor={Colors.inputPlaceholder} autoCorrect={false} autoCapitalize="words" />
-              </View>}
-              {selectedMakes.length === 1 && (
-                <View style={{ marginTop: 8 }}>
-                  <Text style={s.inputBoxLabel}>{selectedMakes[0]} MODELS</Text>
-                  <View style={s.chipGrid}>
-                    <TouchableOpacity style={[s.filterChip, !modelFilter && s.filterChipActive]} onPress={() => { setModelFilter(''); setVariantFilter(''); }}>
-                      <Text style={[s.filterChipText, !modelFilter && s.filterChipTextActive]}>All models</Text>
-                    </TouchableOpacity>
-                    {getModelsForMake(selectedMakes[0])
-                      .filter(m => !modelFilter || m.toLowerCase().includes(modelFilter.toLowerCase()))
-                      .slice(0, 35)
-                      .map(m => <TouchableOpacity key={m}
-                        style={[s.filterChip, modelFilter === m && s.filterChipActive]}
-                        onPress={() => { setModelFilter(m); setVariantFilter(''); }}>
-                        <Text style={[s.filterChipText, modelFilter === m && s.filterChipTextActive]}>{m}</Text>
-                      </TouchableOpacity>)}
-                  </View>
-                  {getModelsForMake(selectedMakes[0]).length > 35 && !modelFilter &&
-                    <Text style={s.makeEmptyText}>Type a model name to search the full list.</Text>}
+              {/* Make / Model / Variant: full searchable A–Z pickers with live
+                  counts, instead of chip grids capped at 35 models. */}
+              <Text style={s.filterLabel}>MAKE, MODEL & VARIANT</Text>
+              <TouchableOpacity style={s.pickerRow} onPress={() => setPicker('make')} accessibilityRole="button" accessibilityLabel="Choose make">
+                <Text style={s.pickerRowLabel}>Make</Text>
+                <Text style={s.pickerRowValue} numberOfLines={1}>{selectedMakes.length ? selectedMakes.join(', ') : 'All'}</Text>
+                <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.pickerRow, selectedMakes.length !== 1 && s.pickerRowDisabled]}
+                disabled={selectedMakes.length !== 1}
+                onPress={() => setPicker('model')}
+                accessibilityRole="button"
+                accessibilityLabel="Choose model"
+                accessibilityHint={selectedMakes.length !== 1 ? 'Choose exactly one make first' : undefined}
+              >
+                <Text style={s.pickerRowLabel}>Model</Text>
+                <Text style={s.pickerRowValue} numberOfLines={1}>{modelFilter || (selectedMakes.length > 1 ? 'Choose one make' : 'All')}</Text>
+                <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.pickerRow, (!modelFilter || selectedMakes.length !== 1) && s.pickerRowDisabled]}
+                disabled={!modelFilter || selectedMakes.length !== 1}
+                onPress={() => setPicker('variant')}
+                accessibilityRole="button"
+                accessibilityLabel="Choose model variant"
+              >
+                <Text style={s.pickerRowLabel}>Model variant</Text>
+                <Text style={s.pickerRowValue} numberOfLines={1}>{variantFilter || 'All'}</Text>
+                <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+              {/* Free text still allowed for imports / trims not in the list. */}
+              {!!modelFilter && selectedMakes.length <= 1 && (
+                <View style={[s.inputBox, { marginTop: 10 }]}>
+                  <Text style={s.inputBoxLabel}>OR TYPE A VARIANT / TRIM</Text>
+                  <TextInput style={s.inputBoxValue} value={variantFilter}
+                    onChangeText={setVariantFilter} placeholder="e.g. M Sport, GT Line"
+                    placeholderTextColor={Colors.inputPlaceholder} autoCapitalize="words" />
                 </View>
               )}
 
               <View style={s.divider} />
-
-              {/* Exact trim is stored on listing.variant. Permit free text for imports. */}
-              {selectedMakes.length <= 1 && !!modelFilter && (
-                <View style={{ marginTop: 10 }}>
-                  <Text style={s.filterLabel}>MODEL VARIANT / TRIM</Text>
-                  <View style={s.inputBox}>
-                    <TextInput style={s.inputBoxValue} value={variantFilter}
-                      onChangeText={setVariantFilter} placeholder="e.g. M Sport, GT Line"
-                      placeholderTextColor={Colors.inputPlaceholder} autoCapitalize="words" />
-                  </View>
-                  {selectedMakes.length === 1 && getVariantsForModel(selectedMakes[0], modelFilter).length > 0 && (
-                    <View style={s.chipGrid}>
-                      <TouchableOpacity style={[s.filterChip, !variantFilter && s.filterChipActive]}
-                        onPress={() => setVariantFilter('')}>
-                        <Text style={[s.filterChipText, !variantFilter && s.filterChipTextActive]}>Any variant</Text>
-                      </TouchableOpacity>
-                      {getVariantsForModel(selectedMakes[0], modelFilter).map(v => <TouchableOpacity key={v}
-                        style={[s.filterChip, variantFilter === v && s.filterChipActive]}
-                        onPress={() => setVariantFilter(v)}>
-                        <Text style={[s.filterChipText, variantFilter === v && s.filterChipTextActive]}>{v}</Text>
-                      </TouchableOpacity>)}
-                    </View>
-                  )}
-                </View>
-              )}
 
               {/* Price */}
               <Text style={s.filterLabel}>PRICE RANGE</Text>
@@ -1427,6 +1426,64 @@ export const SearchScreen: React.FC = () => {
 
               <View style={s.divider} />
 
+              {/* History & status — saved DVLA snapshot and seller declarations */}
+              <Text style={s.filterLabel}>MOT & TAX</Text>
+              <View style={s.chipGrid}>
+                {([['motValid', 'MOT valid', motValid, setMotValid], ['taxed', 'Taxed', taxedOnly, setTaxedOnly]] as const).map(([key, label, on, set]) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[s.filterChip, on && s.filterChipActive]}
+                    onPress={() => (set as (v: boolean) => void)(!on)}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: on }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.filterChipText, on && s.filterChipTextActive]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={{ height: 16 }} />
+
+              <Text style={s.filterLabel}>SERVICE HISTORY</Text>
+              <View style={s.chipGrid}>
+                {SERVICE_HISTORY_OPTS.map(o => {
+                  const on = serviceHistories.includes(o.id);
+                  return (
+                    <TouchableOpacity
+                      key={o.id}
+                      style={[s.filterChip, on && s.filterChipActive]}
+                      onPress={() => setServiceHistories(prev => on ? prev.filter(x => x !== o.id) : [...prev, o.id])}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: on }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[s.filterChipText, on && s.filterChipTextActive]}>{o.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <View style={{ height: 16 }} />
+
+              <Text style={s.filterLabel}>PREVIOUS OWNERS (UP TO)</Text>
+              <View style={s.chipGrid}>
+                {[1, 2, 3, 4].map(n => (
+                  <TouchableOpacity
+                    key={n}
+                    style={[s.filterChip, maxOwners === n && s.filterChipActive]}
+                    onPress={() => setMaxOwners(prev => prev === n ? null : n)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: maxOwners === n }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.filterChipText, maxOwners === n && s.filterChipTextActive]}>{n === 1 ? '1 owner' : `Up to ${n}`}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={s.divider} />
+
               {/* Euro Standard */}
               <Text style={s.filterLabel}>EURO STANDARD</Text>
               <View style={s.chipGrid}>
@@ -1720,6 +1777,13 @@ const s = StyleSheet.create({
   sortOptionText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
 
   listContent: { paddingHorizontal: 24 },
+  pickerRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 52,
+    borderBottomWidth: 1, borderBottomColor: Colors.borderSubtle,
+  },
+  pickerRowDisabled: { opacity: 0.45 },
+  pickerRowLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.textPrimary },
+  pickerRowValue: { flex: 1, textAlign: 'right', fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textSecondary },
   listHeaderBleed: { marginHorizontal: -24 },
   loadMoreWrap: { alignItems: 'center', paddingVertical: 20 },
   endText: { textAlign: 'center', fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, paddingVertical: 20 },

@@ -329,6 +329,50 @@ export class ListingFilterDto {
     @IsOptional()
     includeSold?: boolean;
 
+    // ─── Door / seat maximums (pair with minDoors / minSeats) ─────────────────
+    @ApiPropertyOptional({ description: 'Maximum number of doors', example: 5 })
+    @Type(() => Number)
+    @IsInt()
+    @IsOptional()
+    @Min(2)
+    maxDoors?: number;
+
+    @ApiPropertyOptional({ description: 'Maximum number of seats', example: 7 })
+    @Type(() => Number)
+    @IsInt()
+    @IsOptional()
+    @Min(1)
+    maxSeats?: number;
+
+    // ─── Saved DVLA status snapshot ───────────────────────────────────────────
+    @ApiPropertyOptional({ description: 'Only vehicles whose saved MOT status is Valid', example: true })
+    @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+    @IsBoolean()
+    @IsOptional()
+    motValid?: boolean;
+
+    @ApiPropertyOptional({ description: 'Only vehicles whose saved tax status is Taxed', example: true })
+    @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+    @IsBoolean()
+    @IsOptional()
+    taxedOnly?: boolean;
+
+    // ─── Seller-declared history ──────────────────────────────────────────────
+    @ApiPropertyOptional({ description: 'Comma-separated service history levels: FULL_MAIN_DEALER, FULL_INDEPENDENT, PARTIAL, NONE', example: 'FULL_MAIN_DEALER,FULL_INDEPENDENT' })
+    @Transform(({ value }) => typeof value === 'string' ? value.split(',').map((v: string) => v.trim()).filter(Boolean) : value)
+    @IsArray()
+    @IsIn(['FULL_MAIN_DEALER', 'FULL_INDEPENDENT', 'PARTIAL', 'NONE'], { each: true })
+    @IsOptional()
+    serviceHistories?: string[];
+
+    @ApiPropertyOptional({ description: 'Maximum number of previous keepers (5 = 5 or more)', example: 2 })
+    @Type(() => Number)
+    @IsInt()
+    @IsOptional()
+    @Min(1)
+    @Max(5)
+    maxOwners?: number;
+
     // ─── Delivery availability ─────────────────────────────────────────────────
     @ApiPropertyOptional({ description: 'Filter by delivery availability', example: true })
     @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)

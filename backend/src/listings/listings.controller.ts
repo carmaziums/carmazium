@@ -205,6 +205,16 @@ export class ListingsController {
     }
 
     /**
+     * Live retail listing counts per make (public, aggregate only).
+     * Declared before ':slug' so the static path is not treated as a slug.
+     */
+    @Get('facets/makes')
+    @ApiOperation({ summary: 'Live retail listing counts per make' })
+    async getMakeCounts(): Promise<StandardResponse<{ make: string; count: number }[]>> {
+        return new StandardResponse(await this.listingsService.getMakeCounts());
+    }
+
+    /**
      * Get featured listings (isFeatured = true)
      * Public endpoint — used for homepage carousel and "Featured" sections
      */

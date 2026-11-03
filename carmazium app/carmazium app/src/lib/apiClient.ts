@@ -47,6 +47,7 @@ const PUBLIC_ENDPOINTS = ['/auth/supabase-session', '/users/sync', '/auth/logout
 const GUEST_READABLE_GET: RegExp[] = [
   /^\/listings(\?|$)/,
   /^\/listings\/featured(\?|$)/,
+  /^\/listings\/facets\/makes(\?|$)/,
   /^\/listings\/valuation(\?|$)/,
   // /listings/:slug — static siblings (my, stats, earnings…) are guarded and
   // excluded so a guest never fires a request that can only 401.
