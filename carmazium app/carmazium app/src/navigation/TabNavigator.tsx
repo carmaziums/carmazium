@@ -311,10 +311,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderTopWidth: 1,
     borderTopColor: Colors.tabBarBorder,
-    backgroundColor: '#243047',
+    backgroundColor: Colors.bgDropdown,
   },
   tabBarGlass: {
-    backgroundColor: '#243047',
+    backgroundColor: Colors.bgDropdown,
   },
   tabBarInner: {
     flexDirection: 'row',

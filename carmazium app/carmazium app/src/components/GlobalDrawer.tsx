@@ -779,7 +779,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     bottom: 0,
-    backgroundColor: '#243047',
+    backgroundColor: Colors.bgDropdown,
     shadowColor: Colors.black,
     shadowOpacity: 0.55,
     shadowRadius: 24,

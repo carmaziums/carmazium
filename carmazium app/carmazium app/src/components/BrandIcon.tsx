@@ -234,6 +234,10 @@ const ICON_MAP: Record<string, string> = {
   'timer-outline': 'Timer',
   'trending-up-outline': 'TrendingUp',
   'videocam-outline': 'Video',
+  // Appearance (theme switch)
+  'sunny-outline': 'Sun',
+  'moon-outline': 'Moon',
+  'phone-portrait-outline': 'Smartphone',
 };
 
 interface IconProps {

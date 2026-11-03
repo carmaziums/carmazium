@@ -70,7 +70,9 @@ test('record the real site tokens and flag geometry that needs screenshots', () 
   assert.ok(webTokens.includes('--color-primary: #ed1c24'));
   assert.ok(nativeTokens.includes("const bgBody = '#1B2538';"));
   assert.ok(nativeTokens.includes("const accent = '#ED1C24';"));
-  assert.ok(nativeHeader.includes("backgroundColor: '#1E293B'"));
+  // Header ground is the themed bgElevated token (#1E293B in the dark palette).
+  assert.ok(nativeTokens.includes("const bgElevated = '#1E293B';"));
+  assert.ok(nativeHeader.includes('backgroundColor: Colors.bgElevated'));
   assert.ok(doc.includes('360 × 800') && doc.includes('390 × 844'));
 });
 

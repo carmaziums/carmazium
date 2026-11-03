@@ -17,7 +17,8 @@ import { apiClient } from '../../lib/apiClient';
 import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
 import { startAddressVerification, confirmAddressVerification } from '../../lib/addressVerificationApi';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { Colors, themeStatusBarStyle } from '../../constants/colors';
+import { Colors, themeMode, themeStatusBarStyle } from '../../constants/colors';
+import { getThemePreference, promptThemeChange, type ThemePreference } from '../../lib/themePreference';
 
 import { IconButton } from '../../components/IconButton';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -26,6 +27,14 @@ import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { useSingleColumnSettings } from '../../lib/nativeLayoutParity';
 import { getOrCreateSupportRoom } from '../../lib/chatApi';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
+const THEME_OPTIONS: { id: ThemePreference; label: string; icon: string }[] = [
+  { id: 'light', label: 'Light', icon: 'sunny-outline' },
+  { id: 'dark', label: 'Dark', icon: 'moon-outline' },
+  { id: 'system', label: 'System', icon: 'phone-portrait-outline' },
+];
+// Fixed for the life of the bundle: a change reloads the app.
+const themePreference = getThemePreference();
+
 type SettingsCategory = 'personal' | 'business' | 'verification' | 'notifications' | 'payouts' | 'appearance' | 'security' | 'reviews' | 'account';
 const isSettingsCategory = (value: unknown): value is SettingsCategory =>
   typeof value === 'string' &&
@@ -1280,12 +1289,35 @@ export const SettingsScreen: React.FC = () => {
         {activeCategory === 'appearance' && (
           <View style={styles.accountSectionCard}>
             <SectionHeader icon="color-palette-outline" label="APPEARANCE" />
-            <Text style={styles.accountSectionTitle}>Dark appearance</Text>
+            <Text style={styles.accountSectionTitle}>Theme</Text>
             <Text style={styles.accountSectionText}>
-              The app currently uses the CarMazium website's dark colour palette.
-              A live light/dark switch is not yet supported by the native theme engine.
-              This screen does not pretend that changing the website theme changes app colours.
+              Choose light or dark, or follow your device setting. Light is the default,
+              matching carmazium.com. The app restarts to apply a new theme.
             </Text>
+            <View style={styles.themeOptions} accessibilityRole="radiogroup" accessibilityLabel="Theme">
+              {THEME_OPTIONS.map(option => {
+                const selected = themePreference === option.id;
+                return (
+                  <TouchableOpacity
+                    key={option.id}
+                    style={[styles.themeOption, selected && styles.themeOptionSelected]}
+                    onPress={() => promptThemeChange(option.id)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={`${option.label} theme`}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name={option.icon} size={18} color={selected ? Colors.onAccent : Colors.textSecondary} />
+                    <Text style={[styles.themeOptionLabel, selected && styles.themeOptionLabelSelected]}>{option.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {themePreference === 'system' && (
+              <Text style={styles.accountSectionText}>
+                Currently {themeMode}. A change to your device setting applies the next time CarMazium opens.
+              </Text>
+            )}
           </View>
         )}
 
@@ -1614,6 +1646,11 @@ const styles = StyleSheet.create({
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
   categoryButton: { flexGrow: 1, flexBasis: '46%', minHeight: 56, flexDirection: 'row', gap: 9, alignItems: 'center', backgroundColor: Colors.bgCardSolid, borderColor: Colors.borderHi, borderWidth: 1, borderRadius: Radius.inline, paddingHorizontal: 13, paddingVertical: 10 },
   categoryButtonSelected: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  themeOptions: { flexDirection: 'row', gap: 8 },
+  themeOption: { flex: 1, minHeight: 48, flexDirection: 'row', gap: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCardSolid, borderColor: Colors.borderHi, borderWidth: 1, borderRadius: Radius.inline, paddingHorizontal: 8 },
+  themeOptionSelected: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  themeOptionLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
+  themeOptionLabelSelected: { color: Colors.onAccent },
   categoryLabel: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.xs, lineHeight: 18, color: Colors.textSecondary },
   categoryLabelSelected: { color: Colors.onAccent },
   notificationShortcut: { flexDirection: 'row', alignItems: 'center', minHeight: 68, padding: 14, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgCardSolid, gap: 12, marginBottom: 6 },

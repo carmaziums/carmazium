@@ -11,9 +11,9 @@
 // Website parity: next-themes with defaultTheme="light"
 // (src/components/providers/ThemeProvider.tsx), so the default here is light.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Appearance } from 'react-native';
+import { Alert, Appearance } from 'react-native';
 import { reloadAppAsync } from 'expo';
-import { applyThemePalette, type ThemeMode } from '../constants/colors';
+import { applyThemePalette, themeMode, type ThemeMode } from '../constants/colors';
 
 export const THEME_STORAGE_KEY = 'carmazium.theme';
 export type ThemePreference = 'light' | 'dark' | 'system';
@@ -70,4 +70,27 @@ export async function setThemePreferenceAndReload(pref: ThemePreference): Promis
   }
   currentPreference = pref;
   await reloadAppAsync('theme-change');
+}
+
+const PREFERENCE_LABEL: Record<ThemePreference, string> = {
+  light: 'light mode',
+  dark: 'dark mode',
+  system: 'your device setting',
+};
+
+/**
+ * Confirm, then persist + reload. A reload drops in-progress screen state
+ * (a half-typed form, scroll position), so the user is told before it happens.
+ * No-op when the choice would not change anything.
+ */
+export function promptThemeChange(pref: ThemePreference): void {
+  if (pref === currentPreference && resolveThemeMode(pref) === themeMode) return;
+  Alert.alert(
+    pref === 'system' ? 'Match device appearance?' : `Switch to ${PREFERENCE_LABEL[pref]}?`,
+    'CarMazium will restart to apply the new appearance. Anything you have not saved on this screen will be lost.',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Restart', onPress: () => { void setThemePreferenceAndReload(pref); } },
+    ],
+  );
 }
