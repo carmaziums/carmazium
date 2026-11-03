@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import Image from "next/image"
 import {
     Loader2, Trophy, Car, MessageSquare, CreditCard, CheckCircle2, XCircle,
@@ -283,7 +284,7 @@ function WonAuctionRow({ auction, canPayAuctionFee, purchaseId }: { auction: Auc
                 )}
                 {purchaseId && (
                     <Link href={`/dashboard/dealer/purchases/${encodeURIComponent(purchaseId)}`}
-                        className="text-primary text-xs font-bold hover:underline">
+                        className={buttonVariants({ variant: "outline", size: "sm" })}>
                         Purchase details
                     </Link>
                 )}

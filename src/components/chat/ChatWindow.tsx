@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button"
 import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import Image from "next/image"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { useChat } from "@/context/ChatContext"
 import { useAuth } from "@/context/AuthContext"
 import { blockChatRoom, createChatAttachmentUpload, getChatMessages, sendChatAttachment, sendChatMessage, markMessagesAsRead, getChatDisplayName, getChatRoomDisplayName, isSupportUser, openVehicleDispute, reportChatMessage, unblockChatRoom, type ChatHistoryCursor, type ChatMessage, type ChatReportReason, type ChatRoom } from "@/lib/chatApi"
@@ -1191,7 +1192,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                 type="button"
                                 onClick={() => void unblockConversation()}
                                 disabled={blocking}
-                                className="font-black text-primary underline underline-offset-2 disabled:opacity-50"
+                                className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}
                             >
                                 Unblock
                             </button>

@@ -3,6 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { createPortal } from "react-dom"
 import { ChevronRight, Clock, FileText, MoreHorizontal, User } from "lucide-react"
 import type { Offer } from "@/lib/listingApi"
@@ -87,7 +88,7 @@ export function PendingRetailPurchaseRow({ offer, onCompleted }: { offer: Offer;
                         Accepted {new Date(offer.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
                     <Link href={OFFER_DESTINATION}
-                        className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded">
+                        className={buttonVariants({ variant: "outline", size: "sm", className: "mt-2" })}>
                         View accepted offer <ChevronRight size={13} aria-hidden="true" />
                     </Link>
                     <div>

@@ -5,6 +5,7 @@ import { BuyerCollectedButton } from "@/components/purchases/BuyerCollectedButto
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { Loader2, Receipt, ShoppingBag } from "lucide-react"
 import { getMyOffers, getMyTransactions, type Offer, type Transaction } from "@/lib/listingApi"
 import { apiClient, downloadAuthenticatedFile } from "@/lib/apiClient"
@@ -97,7 +98,7 @@ export function PrivatePurchasesTab() {
                                     )}
                                 </div>
                                 <Link href="/dashboard/user?tab=bids"
-                                    className="text-xs font-bold text-primary hover:underline">View offer</Link>
+                                    className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>View offer</Link>
                             </article>
                         ))}
                     </section>
@@ -135,7 +136,7 @@ export function PrivatePurchasesTab() {
                                     <p className="text-xs text-[var(--text-muted)]">{tx.status} · {new Date(tx.createdAt).toLocaleDateString("en-GB")}</p>
                                 </div>
                                 <span className="font-black tabular-nums">{money(tx.amount)}</span>
-                                <button type="button" onClick={() => receipt(tx.id)} className="text-xs font-bold text-primary hover:underline">PDF receipt</button>
+                                <button type="button" onClick={() => receipt(tx.id)} className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>PDF receipt</button>
                             </article>
                         ))}
                     </section>
