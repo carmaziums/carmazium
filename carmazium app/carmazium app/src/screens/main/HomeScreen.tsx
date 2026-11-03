@@ -31,6 +31,7 @@ import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/Aucti
 import { WishlistHeart } from '../../components/WishlistHeart';
 import { getAuctionFirstOfferFloor } from '../../lib/auctionPricing';
 import { Layout } from '../../constants/layout';
+import { useTabBarClearance } from '../../hooks/useTabBarClearance';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -363,6 +364,8 @@ const BODY_TYPES = [
 // ─── Home Screen ──────────────────────────────────────────────────────────────
 
 export const HomeScreen: React.FC = () => {
+  // Clear the floating tab bar, which grows with the system font size.
+  const tabBarClearance = useTabBarClearance();
   const navigation = useNavigation<NavProp>();
   const role = useAuthStore((s) => s.role);
   // Deliberately does NOT subscribe to the watchlist store — ListingCard owns
@@ -868,7 +871,7 @@ export const HomeScreen: React.FC = () => {
           );
         })()}
 
-        <View style={{ height: 110 }} />
+        <View style={{ height: Math.max(110, tabBarClearance) }} />
       </ScrollView>
     </View>
   );
