@@ -121,7 +121,8 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
         />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
           <Ionicons name="hammer-outline" size={11} color={Colors.textSecondary} />
-          <Text style={s.cardMeta}>{bids} bid{bids !== 1 ? 's' : ''}</Text>
+          {/* Bid counts are not shown on browse cards (owner decision): a fresh lot reading "0 bids" undersold the trade buyer base. */}
+          <Text style={s.cardMeta}>Bidding open</Text>
           <Text style={s.cardMeta}> · </Text>
           <Text style={[s.cardMeta, { color: Colors.warning }]}>View auction</Text>
         </View>

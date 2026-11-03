@@ -222,7 +222,6 @@ export default function DealerSavedAuctionsView() {
                                                         <div>
                                                             <div className="text-xs text-[var(--text-muted)]">{bidCount ? "Current bid" : "Starting bid"}</div>
                                                             <div className="text-lg font-black text-[var(--text-primary)]">{money(amount)}</div>
-                                                            <div className="text-xs text-[var(--text-muted)]">{bidCount} {bidCount === 1 ? "bid" : "bids"}</div>
                                                         </div>
                                                         <div className="text-right">
                                                             <div className="flex items-center justify-end gap-1 text-xs text-[var(--text-muted)]">

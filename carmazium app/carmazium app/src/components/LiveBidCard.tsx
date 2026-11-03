@@ -167,8 +167,7 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
             <Text style={styles.bidLabel}>{hasRealBids ? 'CURRENT BID' : 'STARTING BID'}</Text>
             <Text style={styles.bidAmount}>{formatPrice(displayBid)}</Text>
             <View style={styles.bidMeta}>
-              <Ionicons name="people-outline" size={11} color={Colors.textMuted} />
-              <Text style={styles.bidCount}>{auction.totalBids} bids</Text>
+              {/* Bid counts are not shown on browse cards (owner decision): a fresh lot reading "0 bids" undersold the trade buyer base. */}
               {!hasRealBids && firstOfferFloor > 0 && (
                 <Text style={[styles.bidCount, { color: Colors.warning }]}>
                   First offer {formatPrice(firstOfferFloor)}

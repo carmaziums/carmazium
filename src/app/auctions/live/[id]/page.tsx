@@ -1326,7 +1326,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                         <div className="flex border-b border-[var(--border-default)]">
                             {[
                                 { id: "details", label: "Details", icon: Info },
-                                { id: "bids", label: `Bids (${bidCount})`, icon: Timer },
+                                { id: "bids", label: "Bids", icon: Timer },
                                 { id: "seller", label: "Seller", icon: Users },
                             ].map(tab => (
                                 <button
@@ -1775,7 +1775,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                         onClick={() => setShowAllBids(true)}
                                                         className="w-full py-2 text-[10px] font-bold text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
                                                     >
-                                                        Show all {bidHistory.length} bids
+                                                        Show all bids
                                                     </button>
                                                 )}
                                             </>

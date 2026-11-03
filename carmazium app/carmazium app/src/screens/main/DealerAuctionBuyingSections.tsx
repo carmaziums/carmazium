@@ -272,7 +272,6 @@ export function DealerActiveBidPositions({ navigation, header }: { navigation?: 
           <View style={styles.bidMetrics}>
             <Text style={styles.meta}>Your highest bid: {money(item.myHighestBid)}</Text>
             <Text style={styles.meta}>Current highest: {money(item.currentHighestBid)}</Text>
-            <Text style={styles.meta}>{item.bidCount} bid{item.bidCount===1?'':'s'}</Text>
           </View>
           <TouchableOpacity style={styles.mainAction}
             accessibilityRole="button"

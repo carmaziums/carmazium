@@ -584,9 +584,6 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
                 <View style={styles.statsRight}>
                   <Text style={styles.statsLabel}>ENDS IN</Text>
                   <LiveFlipTimer endsAt={auction.endsAt} />
-                  <Text style={styles.statsBidderCount}>
-                    {auction.totalBids} bidders
-                  </Text>
                 </View>
               </View>
 
@@ -736,7 +733,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
                   <>
                     {topActiveAuction.make} {topActiveAuction.model} is currently leading at{' '}
                     {formatPrice(topActiveAuction.currentBid)}
-                    {' '}— {topActiveAuction.totalBids} bid{topActiveAuction.totalBids === 1 ? '' : 's'} so far.
+.
                   </>
                 ) : (
                   <>
