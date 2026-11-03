@@ -68,3 +68,22 @@ test('public retail search links are server-rendered and restricted to indexable
   assert.match(discovery, /limit=40&sortBy=newest/);
   assert.match(discovery, /revalidate: 300/);
 });
+
+test('an upstream outage cannot produce an HTTP 200 partial sitemap snapshot', () => {
+  const source = read('src/app/sitemap.ts');
+  const start = source.indexOf('async function fetchSitemapRecords(');
+  const end = source.indexOf('export default async function sitemap()', start);
+  assert.ok(start !== -1 && end > start);
+  const fn = source.slice(start, end);
+
+  // No partial "success" if even a later API page fails or sends invalid JSON.
+  assert.match(fn, /if \(!response\.ok\) \{\s*throw new Error\("\[sitemap\] upstream HTTP " \+ response\.status\)/);
+  assert.match(fn, /if \(!Array\.isArray\(payload\.data\)\) \{\s*throw new Error\("\[sitemap\] unexpected pagination payload"\)/);
+  assert.match(fn, /catch \{\s*\/\/ Do not turn a transient API error into a cached, shortened 200 sitemap\./);
+  assert.match(fn, /throw new Error\("\[sitemap\] could not refresh complete " \+ kind \+ " segment"\)/);
+
+  // Existing caps and published-only rules must remain in place.
+  assert.match(fn, /row\.type !== "CLASSIFIED" \|\| row\.status !== "ACTIVE"/);
+  assert.match(fn, /row\.status !== "PUBLISHED" \|\| row\.noIndex === true/);
+  assert.match(source, /export const revalidate = 3600/);
+});
