@@ -200,7 +200,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
     <View style={styles.container}>
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha06, Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -223,7 +223,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
           {user.profileImage ? (
             <Image source={{ uri: user.profileImage }} style={styles.avatarImg} contentFit="cover" cachePolicy="memory-disk" />
           ) : (
-            <LinearGradient colors={[Colors.darkBlue_2d3c63, Colors.darkBlue_1a2238]} style={styles.avatar}>
+            <LinearGradient colors={[Colors.brandSlate, Colors.brandNavy]} style={styles.avatar}>
               <Text style={styles.avatarText}>{getInitials(user)}</Text>
             </LinearGradient>
           )}

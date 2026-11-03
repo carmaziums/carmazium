@@ -243,7 +243,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
       {/* Subtle gradient */}
       <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha04, Colors.groundClear, Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.5 }}

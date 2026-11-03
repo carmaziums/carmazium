@@ -636,7 +636,7 @@ export const SearchScreen: React.FC = () => {
     <View style={s.container}>
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha04, Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.4 }}
         style={StyleSheet.absoluteFillObject}
       />

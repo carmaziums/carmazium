@@ -256,7 +256,7 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <View style={st.container}>
         <LinearGradient
-          colors={[Colors.warningAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+          colors={[Colors.warningAlpha05, Colors.groundClear, Colors.bgPrimary]}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0, y: 0.4 }}
           style={StyleSheet.absoluteFillObject}

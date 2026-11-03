@@ -439,7 +439,7 @@ export const DealerPurchasesScreen: React.FC = () => {
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       <LinearGradient
-        colors={['rgba(167,139,250,0.05)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={['rgba(167,139,250,0.05)', Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}

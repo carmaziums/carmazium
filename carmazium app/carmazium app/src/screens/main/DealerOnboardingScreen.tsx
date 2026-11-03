@@ -162,7 +162,7 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
     <KeyboardStickyView style={styles.container} behavior="padding">
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha03, Colors.groundClear, Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -536,6 +536,6 @@ const styles = StyleSheet.create({
 
   bottomCTA: {
      position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 24, paddingTop: 16,
-     backgroundColor: 'rgba(10,10,12,0.95)', borderTopWidth: 1, borderTopColor: Colors.whiteAlpha05
+     backgroundColor: Colors.bgElevated, borderTopWidth: 1, borderTopColor: Colors.whiteAlpha05
   },
 });

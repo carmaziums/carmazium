@@ -166,7 +166,7 @@ const StaffCard: React.FC<StaffCardProps> = React.memo(({ member, removing, onRe
     <View style={styles.staffCard}>
       {/* Avatar */}
       <LinearGradient
-        colors={[Colors.darkBlue_2d3c63, Colors.darkBlue_1a2238]}
+        colors={[Colors.brandSlate, Colors.brandNavy]}
         style={styles.avatar}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -536,7 +536,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
 
       {/* Background gradient */}
       <LinearGradient
-        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha03, Colors.groundClear, Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}

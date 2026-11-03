@@ -482,7 +482,7 @@ export const DealerMyOffersScreen: React.FC = () => {
       )}
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha06, Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
   bidsSwitchItem: { minHeight: 44, paddingHorizontal: 14, borderRadius: 9, justifyContent: 'center' },
   bidsSwitchItemActive: { backgroundColor: Colors.accent },
   bidsSwitchText: { fontFamily: FontFamily.bold, fontSize: 14, color: Colors.textMuted },
-  bidsSwitchTextActive: { color: '#FFFFFF' },
+  bidsSwitchTextActive: { color: Colors.onAccent },
   container: {
     flex: 1,
     backgroundColor: Colors.bgPrimary,

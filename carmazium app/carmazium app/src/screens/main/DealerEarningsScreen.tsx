@@ -249,7 +249,7 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     <View style={styles.container}>
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(34,197,94,0.05)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={['rgba(34,197,94,0.05)', Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: 'rgba(20,26,42,0.70)',
+    backgroundColor: Colors.bgCard,
     borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,

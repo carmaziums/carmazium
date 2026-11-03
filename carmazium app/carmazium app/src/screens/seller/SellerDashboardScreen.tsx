@@ -868,11 +868,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   statCardViews: {
-    backgroundColor: 'rgba(20,26,42,0.60)',
+    backgroundColor: Colors.bgCard,
     borderColor: Colors.whiteAlpha06,
   },
   statCardSaves: {
-    backgroundColor: 'rgba(20,26,42,0.60)',
+    backgroundColor: Colors.bgCard,
     borderColor: Colors.whiteAlpha06,
   },
   statCardOffers: {
@@ -952,7 +952,7 @@ const styles = StyleSheet.create({
 
   // ── offers empty ──
   offersEmpty: {
-    backgroundColor: 'rgba(20,26,42,0.55)',
+    backgroundColor: Colors.bgCard,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha05,
     borderRadius: Radius.card,
@@ -980,7 +980,7 @@ const styles = StyleSheet.create({
   },
   quickTile: {
     width: '47.5%',
-    backgroundColor: 'rgba(20,26,42,0.55)',
+    backgroundColor: Colors.bgCard,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     borderRadius: Radius.card,

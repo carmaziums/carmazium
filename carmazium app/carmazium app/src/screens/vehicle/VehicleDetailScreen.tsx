@@ -1903,7 +1903,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           the page instead of bolted to the bottom of it. */}
       <View style={[styles.stickyCTAOuter, { paddingBottom: insets.bottom + 12 }]} pointerEvents="box-none">
         <LinearGradient
-          colors={['rgba(10,13,20,0)', Colors.bgPrimary, Colors.bgPrimary]}
+          colors={[Colors.groundClear, Colors.bgPrimary, Colors.bgPrimary]}
           locations={[0, 0.45, 1]}
           style={StyleSheet.absoluteFillObject}
           pointerEvents="none"

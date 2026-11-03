@@ -23,7 +23,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { apiClient } from '../../lib/apiClient';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
-import { Colors, themeStatusBarStyle } from '../../constants/colors';
+import { Colors, themeMode, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -790,7 +790,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     <View style={styles.container}>
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha04, Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -952,7 +952,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                     display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                     onChange={onAuctionDateChange}
                     minimumDate={new Date(Date.now() + 60_000)}
-                    themeVariant="dark"
+                    themeVariant={themeMode}
                     style={Platform.OS === 'ios' ? { marginVertical: 4 } : undefined}
                   />
                 )}
@@ -1331,7 +1331,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(17,17,22,0.95)',
+    backgroundColor: Colors.bgElevated,
     borderWidth: 1,
     borderColor: Colors.warningAlpha30,
     borderRadius: 999,

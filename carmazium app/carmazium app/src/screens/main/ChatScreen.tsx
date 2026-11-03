@@ -2068,7 +2068,7 @@ const styles = StyleSheet.create({
   // Blocking Overlay
   blockingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(10, 10, 12, 0.96)',
+    backgroundColor: Colors.bgPrimary,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,

@@ -240,7 +240,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <View style={st.container}>
         <LinearGradient
-          colors={[Colors.infoBlueAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+          colors={[Colors.infoBlueAlpha06, Colors.groundClear, Colors.bgPrimary]}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0, y: 0.5 }}
           style={StyleSheet.absoluteFillObject}

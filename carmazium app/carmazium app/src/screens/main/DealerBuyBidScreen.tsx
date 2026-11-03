@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   bidsSwitchItem: { minHeight: 44, paddingHorizontal: 14, borderRadius: 9, justifyContent: 'center' },
   bidsSwitchItemActive: { backgroundColor: Colors.accent },
   bidsSwitchText: { fontFamily: FontFamily.bold, fontSize: 14, color: Colors.textMuted },
-  bidsSwitchTextActive: { color: '#FFFFFF' },
+  bidsSwitchTextActive: { color: Colors.onAccent },
   permissionNotice: { color: Colors.textMuted, paddingHorizontal: 20, paddingBottom: 5,
     fontFamily: FontFamily.medium, fontSize: 12 },
   heading: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 9, gap: 5 },

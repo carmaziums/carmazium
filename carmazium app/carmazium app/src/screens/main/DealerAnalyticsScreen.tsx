@@ -471,7 +471,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
           {/* Revenue BarChart card */}
           <Animated.View style={[styles.revenueCard, { opacity: fadeAnim }]}>
             <LinearGradient
-              colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)']}
+              colors={[Colors.accentAlpha04, Colors.groundClear]}
               style={StyleSheet.absoluteFillObject}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}

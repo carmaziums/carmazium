@@ -91,7 +91,7 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
       )}
       {field('Additional details', description, setDescription, 'Condition, availability and special instructions', true)}
       <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={() => void submit()} style={[styles.submit, saving && { opacity: 0.6 }]}>
-        {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Post a Job</Text>}
+        {saving ? <ActivityIndicator color={Colors.onAccent} /> : <Text style={styles.submitText}>Post a Job</Text>}
       </TouchableOpacity>
     </ScrollView>
   );
@@ -106,5 +106,5 @@ const styles = StyleSheet.create({
   input: { borderColor: Colors.borderSubtle, borderWidth: 1, borderRadius: 12, color: Colors.white, backgroundColor: Colors.bgCardSolid, padding: 14, minHeight: 50 },
   toggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   submit: { borderRadius: 12, backgroundColor: Colors.accent, padding: 17, alignItems: 'center' },
-  submitText: { color: '#fff', fontWeight: '700' },
+  submitText: { color: Colors.onAccent, fontWeight: '700' },
 });

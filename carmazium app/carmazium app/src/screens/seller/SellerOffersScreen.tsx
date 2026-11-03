@@ -423,7 +423,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
         <View style={styles.cardTopRow}>
           {/* Buyer avatar */}
           <LinearGradient
-            colors={[Colors.darkBlue_2d3c63, Colors.darkBlue_1a2238]}
+            colors={[Colors.brandSlate, Colors.brandNavy]}
             style={styles.buyerAvatar}
           >
             <Text style={styles.buyerInitials}>{initials}</Text>
@@ -620,7 +620,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
       )}
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.warningAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.warningAlpha05, Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}

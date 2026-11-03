@@ -208,7 +208,7 @@ const ListingDetail: React.FC<{
     <View style={styles.container}>
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha05, Colors.groundClear, Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -703,7 +703,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
     <View style={styles.container}>
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha04, Colors.groundClear, Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -1297,7 +1297,7 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 24,
     paddingTop: 12,
-    backgroundColor: 'rgba(10,10,12,0.92)',
+    backgroundColor: Colors.bgElevated,
     borderTopWidth: 1,
     borderTopColor: Colors.whiteAlpha05,
     flexDirection: 'row',
@@ -1625,7 +1625,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 14,
     gap: 10,
-    backgroundColor: 'rgba(10,10,12,0.95)',
+    backgroundColor: Colors.bgElevated,
     borderTopWidth: 1,
     borderTopColor: Colors.whiteAlpha05,
   },

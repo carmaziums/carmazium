@@ -25,7 +25,7 @@ import { convertAndCompress } from '../../lib/storageHelper';
 import { haptics } from '../../lib/haptics';
 import { BottomSheet } from '../../components/BottomSheet';
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
-import { Colors, themeStatusBarStyle } from '../../constants/colors';
+import { Colors, themeMode, themeStatusBarStyle } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -2086,7 +2086,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                     display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                     onChange={onDateChange}
                     minimumDate={new Date(Date.now() + 60_000)}
-                    themeVariant="dark"
+                    themeVariant={themeMode}
                     style={Platform.OS === 'ios' ? styles.iosDatePicker : undefined}
                   />
                 )}

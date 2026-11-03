@@ -436,7 +436,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
     <View style={styles.container}>
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha03, Colors.groundClear, Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -785,7 +785,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(17,17,22,0.95)',
+    backgroundColor: Colors.bgElevated,
     borderWidth: 1,
     borderColor: Colors.warningAlpha30,
     borderRadius: 999,
