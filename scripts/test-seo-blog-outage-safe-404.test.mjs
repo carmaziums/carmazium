@@ -41,3 +41,18 @@ test("existing editorial indexing and blog structured-data behaviour is preserve
   assert.match(page, /"@type": "BlogPosting"/)
   assert.match(sitemap, /row\.status !== "PUBLISHED" \|\| row\.noIndex === true/)
 })
+
+test("public blog and tag archives never render empty 200 pages on upstream outage", () => {
+  for (const file of ["src/app/blog/page.tsx", "src/app/blog/tag/[tag]/page.tsx"]) {
+    const page = read(file)
+    const renderStart = page.indexOf("export default async function ")
+    assert.ok(renderStart >= 0, file + " is a server-rendered route")
+    const render = page.slice(renderStart)
+    assert.match(render, /if \(!loaded\) throw new Error\("\[blog\] (?:Archive|Tag archive) feed temporarily unavailable"\)/)
+    assert.match(page, /if \(!res\.ok\) return \{ data: \[\], total: 0, totalPages: 1, loaded: false \}/)
+    assert.match(page, /loaded: true/)
+    const unavailable = render.indexOf("if (!loaded) throw new Error(")
+    const confirmedMissing = render.indexOf("notFound()")
+    assert.ok(unavailable >= 0 && confirmedMissing > unavailable, file + " checks transport failure before missing pagination")
+  }
+})
