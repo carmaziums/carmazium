@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { ScreenBackBar } from '../../components/ScreenBackBar';
 import {
   View,
   Text,
@@ -229,6 +230,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   return (
     <View style={styles.container}>
+      <ScreenBackBar />
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha06, Colors.groundClear, Colors.bgPrimary]}

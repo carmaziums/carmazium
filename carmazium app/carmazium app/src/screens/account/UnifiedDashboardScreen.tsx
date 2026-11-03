@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { ScreenBackBar } from '../../components/ScreenBackBar';
 import {
   Alert,
   Animated,
@@ -200,6 +201,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
 
   return (
     <View style={styles.container}>
+      <ScreenBackBar />
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha06, Colors.infoBlueAlpha03, Colors.bgPrimary]}

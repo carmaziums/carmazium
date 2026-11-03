@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ScreenBackBar } from '../../components/ScreenBackBar';
 import {
   View,
   Text,
@@ -18,7 +19,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { apiClient } from '../../lib/apiClient';
+import { apiClient } from '../../lib/apiClient';
+
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -285,6 +287,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
 
   return (
     <View style={styles.container}>
+      <ScreenBackBar />
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={['rgba(59,130,246,0.05)', Colors.accentAlpha03, Colors.bgPrimary]}

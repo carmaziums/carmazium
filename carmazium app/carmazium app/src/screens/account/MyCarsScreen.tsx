@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { ScreenBackBar } from '../../components/ScreenBackBar';
 import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Image } from 'expo-image';
@@ -81,6 +82,7 @@ export const MyCarsScreen: React.FC = () => {
   );
   return (
     <View style={styles.screen}>
+      <ScreenBackBar title="My Cars" forceSafeArea />
         <FlatList style={styles.list} data={busy ? [] : data} keyExtractor={item => item.id}
           contentContainerStyle={styles.listContent}
           ListHeaderComponent={header}

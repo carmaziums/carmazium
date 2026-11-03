@@ -67,7 +67,7 @@ function ErrorText({ message, onRetry }: { message: string; onRetry: () => void 
   </View>;
 }
 
-export function DealerAuctionShortlist({ navigation }: { navigation?: Nav }) {
+export function DealerAuctionShortlist({ navigation, header }: { navigation?: Nav; header?: React.ReactNode }) {
   const [view, setView] = useState<'live' | 'all'>('live');
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<SavedAuction[]>([]);
@@ -110,8 +110,11 @@ export function DealerAuctionShortlist({ navigation }: { navigation?: Nav }) {
     setPage(1);
     setView(next);
   };
-  return (
-    <View style={styles.root}>
+  // Page heading (from DealerBuyBid), intro and filters scroll with the saved
+  // list so a tall header can never leave the list without room.
+  const shortlistHeader = (
+    <View style={styles.bidsHeaderBleed}>
+      {header}
       <Text style={styles.title}>Shortlisted Auctions</Text>
       <Text style={styles.subtitle}>
         Save live vehicles and return to bid when you are ready.
@@ -132,7 +135,12 @@ export function DealerAuctionShortlist({ navigation }: { navigation?: Nav }) {
         )}
       </View>
       {error && <ErrorText message={error} onRetry={() => void fetchSaved(true)} />}
+    </View>
+  );
+  return (
+    <View style={styles.root}>
       <FlatList
+        ListHeaderComponent={shortlistHeader}
         data={error && !items.length ? [] : items}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
@@ -189,7 +197,7 @@ export function DealerAuctionShortlist({ navigation }: { navigation?: Nav }) {
   );
 }
 
-export function DealerActiveBidPositions({ navigation }: { navigation?: Nav }) {
+export function DealerActiveBidPositions({ navigation, header }: { navigation?: Nav; header?: React.ReactNode }) {
   const [positions, setPositions] = useState<AuctionPosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -224,6 +232,7 @@ export function DealerActiveBidPositions({ navigation }: { navigation?: Nav }) {
   // Title and totals scroll with the bids (list header) so a tall header on
   // a small phone or large font size never leaves only a sliver for the list.
   const bidsHeader = <View style={styles.bidsHeaderBleed}>
+    {header}
     <Text style={styles.title}>My Auction Bids</Text>
     <Text style={styles.subtitle}>One live position per vehicle you're currently bidding on</Text>
     {error && <ErrorText message={error} onRetry={() => void fetchBids(true)} />}

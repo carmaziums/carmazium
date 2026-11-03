@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ScreenBackBar } from '../../components/ScreenBackBar';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -70,6 +71,8 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
     }
   };
   return (
+    <View style={styles.container}>
+    <ScreenBackBar title="TradeXchange" forceSafeArea />
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>{delivery ? 'Post Delivery & Recovery Job' : 'Post Vehicle Inspection Job'}</Text>
       <Text style={styles.subtitle}>Approved providers can quote for your request. No provider is booked until you accept a quote.</Text>
@@ -94,6 +97,7 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
         {saving ? <ActivityIndicator color={Colors.onAccent} /> : <Text style={styles.submitText}>Post a Job</Text>}
       </TouchableOpacity>
     </ScrollView>
+    </View>
   );
 };
 const styles = StyleSheet.create({

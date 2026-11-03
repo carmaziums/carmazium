@@ -197,7 +197,7 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
   return (
     <View style={styles.screen}>
       <WebsiteTopBar />
-      {section !== 'mine' && pageHeading}
+      {section === 'live' && pageHeading}
       {section === 'live' ? (
         <View style={styles.liveContainer}>
           {!accessLoading && !canPlaceBid && (
@@ -208,27 +208,32 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
           <LiveScreen embeddedDealerHub />
         </View>
       ) : section === 'shortlisted' ? (
-        <DealerAuctionShortlist navigation={navigation} />
+        <DealerAuctionShortlist navigation={navigation} header={pageHeading} />
       ) : section === 'bids' ? (
         <>
           {/* Bids & offers: auction bids here; retail offers keep their own
               MANAGE_OFFERS-gated screen. Same two views as the website. */}
+          <DealerActiveBidPositions
+            navigation={navigation}
+            header={<>
+              {pageHeading}
           {canManageOffers && (
-            <View style={styles.bidsSwitch} accessibilityRole="tablist">
-              <View style={[styles.bidsSwitchItem, styles.bidsSwitchItemActive]} accessibilityRole="tab" accessibilityState={{ selected: true }}>
-                <Text style={[styles.bidsSwitchText, styles.bidsSwitchTextActive]}>Auction bids</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.bidsSwitchItem}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: false }}
-                onPress={() => navigation?.navigate('DealerMyOffers', { fromBidsOffers: true })}
-              >
-                <Text style={styles.bidsSwitchText}>Retail offers</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          <DealerActiveBidPositions navigation={navigation} />
+                <View style={styles.bidsSwitch} accessibilityRole="tablist">
+                  <View style={[styles.bidsSwitchItem, styles.bidsSwitchItemActive]} accessibilityRole="tab" accessibilityState={{ selected: true }}>
+                    <Text style={[styles.bidsSwitchText, styles.bidsSwitchTextActive]}>Auction bids</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.bidsSwitchItem}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: false }}
+                    onPress={() => navigation?.navigate('DealerMyOffers', { fromBidsOffers: true })}
+                  >
+                    <Text style={styles.bidsSwitchText}>Retail offers</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>}
+          />
         </>
       ) : (
         <>
