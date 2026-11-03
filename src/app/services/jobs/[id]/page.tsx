@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import {
     Loader2, ArrowLeft, Star, CheckCircle, AlertCircle, ShieldCheck, Phone, Mail, XCircle, Clock, Banknote, MessageSquare,
@@ -320,7 +321,7 @@ function JobDetail() {
                         {isPaidState && (
                             <button type="button" disabled={busy === "dispute"}
                                 onClick={() => { const r = prompt("What went wrong? This freezes the job for CarMazium to review."); if (r !== null) run("dispute", () => disputeJob(job.id, r || undefined), "Dispute raised. CarMazium will be in touch.") }}
-                                className="w-full text-xs font-bold text-red-500 hover:underline">
+                                className={buttonVariants({ variant: "outline", size: "sm", className: "w-full" })}>
                                 Something is wrong — raise a dispute
                             </button>
                         )}

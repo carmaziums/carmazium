@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { useRouter } from "next/navigation"
 import { Truck, Plus, Trash2, Loader2, AlertCircle, ArrowRight, CheckCircle } from "lucide-react"
 import { RequireAuth } from "@/components/auth/RequireAuth"
@@ -201,7 +202,7 @@ function NewDeliveryJobForm() {
                     <legend className={labelCls}>Vehicles ({vehicles.length})</legend>
                     {vehicles.length < 12 && (
                         <button type="button" onClick={() => setVehicles(vs => [...vs, { ...EMPTY_VEHICLE }])}
-                            className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">
+                            className={buttonVariants({ variant: "outline", size: "sm" })}>
                             <Plus size={14} /> Add another vehicle
                         </button>
                     )}

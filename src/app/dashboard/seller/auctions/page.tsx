@@ -3,6 +3,7 @@
 import * as React from "react"
 import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -776,7 +777,7 @@ function SellerAuctionsPage() {
                                     <p className="font-bold">No auctions yet.</p>
                                     <button
                                         onClick={openForm}
-                                        className="mt-3 inline-flex items-center gap-1.5 text-primary hover:underline text-sm font-bold"
+                                        className={buttonVariants({ size: "sm", className: "mt-3" })}
                                     >
                                         <PlusCircle size={14} /> Create your first auction
                                     </button>
@@ -946,7 +947,7 @@ function SellerAuctionsPage() {
                                                 <p className="font-bold">No auctions yet.</p>
                                                 <button
                                                     onClick={openForm}
-                                                    className="mt-3 inline-flex items-center gap-1.5 text-primary hover:underline text-sm font-bold"
+                                                    className={buttonVariants({ size: "sm", className: "mt-3" })}
                                                 >
                                                     <PlusCircle size={14} /> Create your first auction
                                                 </button>

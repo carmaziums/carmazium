@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { useParams } from "next/navigation"
 import { AlertCircle, ArrowLeft, CheckCircle, FileText, Loader2, ShieldCheck, Trash2, Upload, XCircle } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -175,7 +176,7 @@ export default function ProviderVerificationPage() {
                             <div className="min-w-0 flex gap-3"><div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"><FileText size={18} className="text-primary"/></div><div className="min-w-0"><p className="font-bold text-sm">{entry.label || "Verification evidence"}</p><p className="text-xs text-[var(--text-muted)] mt-1">{entry.evidenceIssuer || "Issuer not supplied"}{entry.evidenceReference ? " · " + entry.evidenceReference : ""}</p><p className="text-xs text-[var(--text-muted)] mt-1">Uploaded {new Date(entry.createdAt).toLocaleDateString("en-GB")}{entry.evidenceExpiresAt ? " · Expires " + new Date(entry.evidenceExpiresAt).toLocaleDateString("en-GB") : ""}</p>{entry.evidenceReviewNote && <p className="text-xs mt-2">{entry.evidenceReviewNote}</p>}</div></div>
                             <div className="flex items-center gap-2 shrink-0"><span className={"rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider " + stateClass(entry.evidenceStatus || "PENDING")}>{entry.evidenceStatus || "PENDING"}</span>{entry.evidenceStatus === "PENDING" && <button type="button" onClick={() => remove(entry)} disabled={busy} className="p-2 rounded-lg border border-[var(--border-default)] hover:border-red-500/40 hover:text-red-500" aria-label="Delete pending evidence"><Trash2 size={14}/></button>}</div>
                         </div>
-                        {entry.url && <a href={entry.url} target="_blank" rel="noopener noreferrer" className="inline-flex mt-3 text-xs font-bold text-primary hover:underline">Open evidence</a>}
+                        {entry.url && <a href={entry.url} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "outline", size: "sm", className: "mt-3" })}>Open evidence</a>}
                     </div>)}
                 </section>
             </>}

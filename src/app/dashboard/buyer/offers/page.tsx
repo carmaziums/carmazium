@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation"
 import { Loader2, AlertTriangle, Tag, Clock, CheckCircle, XCircle, Eye, Truck, Pencil, Gavel } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 
@@ -181,7 +182,7 @@ function DeliveryRequestForm({ listing, onSuccess }: { listing: DeliveryFormList
         return (
             <button
                 onClick={() => setShowForm(true)}
-                className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors font-bold"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
             >
                 <Truck size={12} /> Add delivery request
             </button>
@@ -669,7 +670,7 @@ function BuyerOffersPage() {
                                                                         {deliveryReq.status === 'PENDING' && (
                                                                             <button
                                                                                 onClick={() => handleCancelDelivery(deliveryReq.id)}
-                                                                                className="text-xs text-[var(--text-muted)] dark:hover:text-white transition-colors underline"
+                                                                                className={buttonVariants({ variant: "outline", size: "sm" })}
                                                                             >
                                                                                 Cancel request
                                                                             </button>
@@ -677,7 +678,7 @@ function BuyerOffersPage() {
                                                                         {deliveryReq.status === 'ACCEPTED' && (
                                                                             <button
                                                                                 onClick={() => handleCompleteDelivery(deliveryReq.id)}
-                                                                                className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors underline"
+                                                                                className={buttonVariants({ size: "sm" })}
                                                                             >
                                                                                 Mark as received
                                                                             </button>

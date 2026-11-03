@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import {
     ArrowRight,
     BadgeCheck,
@@ -154,7 +155,7 @@ export default function ReviewsPage() {
                         <p className="mt-3 text-sm leading-7 text-[var(--text-secondary)]">
                             CarMazium does not require buyers to purchase a vehicle history report, but you can choose independent checks to suit your circumstances.
                         </p>
-                        <Link href="/used-car-types" className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-bold text-primary hover:underline">
+                        <Link href="/used-car-types" className={buttonVariants({ variant: "outline", className: "mt-5" })}>
                             Compare used-car body types <ArrowRight size={16} aria-hidden="true" />
                         </Link>
                     </div>

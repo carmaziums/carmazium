@@ -3,6 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import dynamic from "next/dynamic"
 import { io, Socket } from "socket.io-client"
 import { motion, AnimatePresence } from "framer-motion"
@@ -1030,7 +1031,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     <WishlistButton listingId={auction.listing.id} variant="shortlist" />
                     <Link
                         href="/dashboard/dealer/auctions/shortlisted"
-                        className="min-h-11 inline-flex items-center text-xs font-bold text-primary hover:underline"
+                        className={buttonVariants({ variant: "outline", size: "sm" })}
                     >
                         View my shortlist →
                     </Link>
@@ -1046,7 +1047,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             <p className="text-red-400 font-bold text-sm">This auction has been cancelled</p>
                             <p className="text-[var(--text-muted)] text-xs">The seller has cancelled this auction before it started.</p>
                         </div>
-                        <Link href="/auctions/browse" className="ml-auto text-xs font-bold text-primary hover:text-red-400 transition-colors shrink-0">
+                        <Link href="/auctions/browse" className={buttonVariants({ variant: "outline", size: "sm", className: "ml-auto shrink-0" })}>
                             Browse Auctions →
                         </Link>
                     </div>
@@ -1062,7 +1063,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             <strong>This is your auction.</strong>{" "}
                             {isLive ? "Your auction is live — bids appear in real time." : isScheduled ? "Your auction is scheduled and will start automatically." : "Your auction has ended."}
                         </p>
-                        <Link href="/dashboard/seller/auctions" className="ml-auto text-xs font-bold text-blue-400 hover:text-blue-300 shrink-0 transition-colors">
+                        <Link href="/dashboard/seller/auctions" className={buttonVariants({ variant: "outline", size: "sm", className: "ml-auto shrink-0" })}>
                             Manage →
                         </Link>
                     </div>

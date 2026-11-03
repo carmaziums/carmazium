@@ -3,6 +3,7 @@ import { FUEL_TYPE_LABELS, TRANSMISSION_LABELS } from "@/lib/vehicleLabels"
 import { PageJsonLd, SEO_SITE } from "@/components/seo/PageJsonLd"
 import Image from "next/image"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { ArrowRight, BookOpen, Search, ShieldCheck } from "lucide-react"
 import type { Listing } from "@/lib/listingApi"
 import { formatPrice } from "@/lib/listingApi"
@@ -178,7 +179,7 @@ export default async function UsedCarTypesPage() {
                                     <p className="mt-4 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)]/70 p-4 text-sm leading-7 text-[var(--text-secondary)]">
                                         <strong className="text-[var(--text-primary)]">What to check: </strong>{body.check}
                                     </p>
-                                    <Link href={"/search?bodyType=" + body.key} className="mt-6 inline-flex min-h-11 items-center gap-2 self-start text-sm font-black text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                                    <Link href={"/search?bodyType=" + body.key} className={buttonVariants({ variant: "outline", className: "mt-6 self-start" })}>
                                         Browse used {/^[A-Z]{2}/.test(body.name) ? body.name : body.name.toLowerCase()} <ArrowRight size={17} aria-hidden="true" />
                                     </Link>
                                 </div>
@@ -194,7 +195,7 @@ export default async function UsedCarTypesPage() {
                                 <p className="text-xs font-black uppercase tracking-[0.16em] text-primary">Explore the marketplace</p>
                                 <h2 id="latest-used-cars" className="mt-2 text-2xl font-black text-[var(--text-primary)] md:text-3xl">Recently listed used cars</h2>
                             </div>
-                            <Link href="/search" className="inline-flex min-h-11 items-center gap-2 font-bold text-primary hover:underline">
+                            <Link href="/search" className={buttonVariants({ variant: "outline" })}>
                                 All listings <ArrowRight size={17} aria-hidden="true" />
                             </Link>
                         </div>
@@ -232,10 +233,10 @@ export default async function UsedCarTypesPage() {
                     <p className="mt-4 text-sm leading-7 text-[var(--text-secondary)]">
                         CarMazium is a marketplace: buyers pay sellers directly for vehicles. Its seller auction listing is free and the basic retail listing costs £1; these are seller options, not extra retail buyer fees.
                     </p>
-                    <div className="mt-6 flex flex-wrap gap-5">
-                        <Link href="/how-it-works" className="font-bold text-primary hover:underline">How CarMazium works</Link>
-                        <Link href="/pricing" className="font-bold text-primary hover:underline">Marketplace fees</Link>
-                        <Link href="/search" className="font-bold text-primary hover:underline">Search used cars</Link>
+                    <div className="mt-6 flex flex-wrap gap-3">
+                        <Link href="/how-it-works" className={buttonVariants({ variant: "outline" })}>How CarMazium works</Link>
+                        <Link href="/pricing" className={buttonVariants({ variant: "outline" })}>Marketplace fees</Link>
+                        <Link href="/search" className={buttonVariants()}>Search used cars</Link>
                     </div>
                 </section>
             </div>

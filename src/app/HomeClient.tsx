@@ -2,6 +2,8 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
+import { cn } from "@/lib/utils"
 import dynamic from "next/dynamic"
 import { Search, ArrowRight, ShieldCheck, UserCheck, FileText, CheckCircle, Handshake, Shield, Lightbulb, Star, Sparkles, Loader2, Gavel, Flame, Users, Clock, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
@@ -358,7 +360,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
               </h2>
               <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Featured retail cars — see more active cars below</p>
             </div>
-            <Link href="/search" className="text-sm text-amber-400 hover:text-amber-300 flex items-center gap-1 font-medium">
+            <Link href="/search" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>
               View All <ArrowRight size={14} />
             </Link>
           </div>
@@ -483,7 +485,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
               </h2>
               <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Real-time bidding — place your bid before the gavel drops</p>
             </div>
-            <Link href="/auctions/browse" className="text-sm text-red-500 hover:text-red-400 flex items-center gap-1 font-medium">
+            <Link href="/auctions/browse" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>
               View All <ArrowRight size={14} />
             </Link>
           </div>
@@ -666,7 +668,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
         <section className="container mx-auto px-5 mb-24">
           <div className="flex items-center justify-between mb-12">
             <h2 className="text-3xl font-bold font-heading">Automotive Insights & Market Updates</h2>
-            <Link href="/blog" className="hidden sm:inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:translate-x-1 transition-transform">
+            <Link href="/blog" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "hidden sm:inline-flex")}>
               View All <ArrowRight className="h-4 w-4" />
             </Link>
           </div>

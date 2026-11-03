@@ -4,6 +4,7 @@ import * as React from "react"
 import { Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { CarCard } from "@/components/features/CarCard"
@@ -616,7 +617,7 @@ function SearchPageContent() {
                         <h3 className="font-heading font-bold text-xl">Filters</h3>
                         <div className="flex items-center gap-4">
                             {activeFilterCount > 0 && (
-                                <button onClick={handleResetFilters} className="text-xs text-primary font-normal cursor-pointer hover:underline flex items-center gap-1">
+                                <button onClick={handleResetFilters} className={buttonVariants({ variant: "outline", size: "sm" })}>
                                     <RotateCcw size={12} /> Reset All
                                 </button>
                             )}

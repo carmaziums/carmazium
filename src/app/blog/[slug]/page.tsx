@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
+import { cn } from "@/lib/utils"
 import Image from "next/image"
 import { notFound } from "next/navigation"
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, Clock, Gavel, Search, User } from "lucide-react"
@@ -404,7 +406,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                                     <p className="text-primary text-[10px] font-black uppercase tracking-[0.16em]">Keep reading</p>
                                     <h2 className="mt-1 text-2xl font-black font-heading text-[var(--text-primary)]">Related automotive guides</h2>
                                 </div>
-                                <Link href="/blog" className="hidden sm:inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">All articles <ArrowRight size={14} /></Link>
+                                <Link href="/blog" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "hidden sm:inline-flex")}>All articles <ArrowRight size={14} /></Link>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 {relatedPosts.slice(0, 3).map((related) => (

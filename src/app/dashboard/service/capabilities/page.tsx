@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { AlertCircle, ArrowRight, CheckCircle, Clock, CreditCard, FileText, Landmark, Loader2, ShieldCheck, Truck, Wrench, XCircle } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -113,7 +114,7 @@ export default function CapabilitiesPage() {
                     <div>
                         <div className="flex items-center justify-between gap-4 flex-wrap">
                             <div><h1 className="text-3xl font-bold font-heading mb-1">Service add-ons</h1><p className="text-sm text-[var(--text-muted)]">Add services to the same Partner Account. Adding one never replaces another.</p></div>
-                            {isPartner && <Link href="/dashboard/partner" className="text-sm font-bold text-primary hover:underline">Partner Dashboard →</Link>}
+                            {isPartner && <Link href="/dashboard/partner" className={buttonVariants({ variant: "outline", size: "sm" })}>Partner Dashboard →</Link>}
                         </div>
                     </div>
 
@@ -163,15 +164,15 @@ export default function CapabilitiesPage() {
                                             {payout && !data.stripeConnect.complete && <p className="text-[11px] text-amber-500 mt-2">Stripe Connect must be completed before admin can approve this paid-job service.</p>}
                                             {cap?.reviewNote && (cap.status === "REJECTED" || cap.status === "SUSPENDED") && <p className="text-xs text-red-500 mt-2">{cap.reviewNote}</p>}
                                             {cap && <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2">
-                                                <Link href={`/dashboard/service/capabilities/${cap.id}/verification`} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"><FileText size={13} /> Verification documents</Link>
-                                                <Link href={`/dashboard/service/capabilities/${cap.id}/matching`} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">Matching settings</Link>
+                                                <Link href={`/dashboard/service/capabilities/${cap.id}/verification`} className={buttonVariants({ variant: "outline", size: "sm" })}><FileText size={13} /> Verification documents</Link>
+                                                <Link href={`/dashboard/service/capabilities/${cap.id}/matching`} className={buttonVariants({ variant: "outline", size: "sm" })}>Matching settings</Link>
                                             </div>}
                                             {cap && (type === "FINANCE" || type === "WARRANTY") && !cap.leadNationwide && cap.leadPostcodeAreas.length === 0 && <p className="text-[11px] text-amber-500 mt-2">Configure matching coverage before this service can receive enquiries.</p>}
                                             {cap && (type === "DELIVERY" || type === "INSPECTION") && !cap.jobNationwide && cap.jobPostcodeAreas.length === 0 && <p className="text-[11px] text-amber-500 mt-2">Configure job coverage before this service can see or quote open work.</p>}
                                         </div>
                                         {canApply
                                             ? <Button size="sm" variant="outline" disabled={busy === type} onClick={() => apply(type)} className="shrink-0">{busy === type ? <Loader2 className="animate-spin" size={14} /> : <>{cap ? "Apply again" : "Add service"} <ArrowRight size={14} className="ml-1" /></>}</Button>
-                                            : cap?.status === "APPROVED" ? <Link href={payout ? "/dashboard/service/jobs" : "/dashboard/service/leads"} className="text-xs font-bold text-primary hover:underline shrink-0">{payout ? "See jobs" : "Open inbox"} →</Link> : null}
+                                            : cap?.status === "APPROVED" ? <Link href={payout ? "/dashboard/service/jobs" : "/dashboard/service/leads"} className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>{payout ? "See jobs" : "Open inbox"} →</Link> : null}
                                     </div>
                                 })}
                             </div>
