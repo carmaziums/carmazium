@@ -73,7 +73,8 @@ test('auction shortlist is dealer-specific not retail Saved, with exact API and 
   assert.ok(other.includes("useState<'live' | 'all'>('live')"));
   assert.ok(other.includes('setTotalPages'));
   assert.ok(other.includes('AuctionDeepLink'));
-  assert.ok(hub.includes('<DealerAuctionShortlist navigation={navigation} />'));
+  // The page heading is passed in so it scrolls with the shortlist.
+  assert.ok(hub.includes('<DealerAuctionShortlist navigation={navigation} header={pageHeading} />'));
   assert.ok(!hub.includes("navigation?.navigate('Saved')"),'dealer auction shortlist must not become retail Saved Cars');
 });
 
