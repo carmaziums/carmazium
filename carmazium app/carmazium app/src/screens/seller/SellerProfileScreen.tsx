@@ -17,7 +17,7 @@ import { apiClient } from '../../lib/apiClient';
 import { mapApiListingToCarListing, ApiListing, BackendPaginatedResponse } from '../../lib/listingsApi';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 
 import { IconButton } from '../../components/IconButton';
 import { Layout } from '../../constants/layout';
@@ -348,11 +348,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontSize: FontSize.base,
@@ -429,12 +431,13 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '47%',
-    backgroundColor: Colors.glassBg,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
     borderRadius: Radius.inline,
     paddingVertical: 16,
     alignItems: 'center',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   statValue: {
     fontSize: FontSize.xl,
@@ -471,9 +474,10 @@ const styles = StyleSheet.create({
     width: 180,
     borderRadius: Radius.inline,
     overflow: 'hidden',
-    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   listingImg: {
     width: '100%',
@@ -493,12 +497,13 @@ const styles = StyleSheet.create({
   },
 
   reviewCard: {
-    backgroundColor: Colors.glassBg,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
     borderRadius: Radius.inline,
     padding: 14,
     marginBottom: 10,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   reviewTopRow: { flexDirection: 'row', alignItems: 'center' },
   reviewAvatar: {

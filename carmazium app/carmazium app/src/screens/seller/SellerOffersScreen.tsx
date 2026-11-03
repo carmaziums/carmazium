@@ -22,7 +22,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { CounterLedger } from '../../components/offers/CounterLedger';
@@ -846,11 +846,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
@@ -906,13 +908,14 @@ const styles = StyleSheet.create({
 
   // ── Offer card ──
   offerCard: {
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
     padding: 16,
     gap: 10,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -1039,31 +1042,37 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     flex: 1,
-    height: 36,
     borderRadius: Radius.inline,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+    minHeight: 36,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderHi,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   actionBtnDecline: {
-    backgroundColor: 'transparent',
     borderColor: Colors.accent,
+    backgroundColor: Colors.bgCard,
   },
   actionBtnCounter: {
-    backgroundColor: 'transparent',
     borderColor: Colors.warning,
+    backgroundColor: Colors.bgCard,
   },
   actionBtnAccept: {
     backgroundColor: Colors.success,
     borderColor: Colors.success,
+    borderBottomColor: Colors.blackAlpha45,
   },
   actionBtnMessage: {
-    backgroundColor: 'transparent',
     borderColor: Colors.infoBlue,
+    backgroundColor: Colors.bgCard,
   },
   actionBtnMarkSold: {
     backgroundColor: Colors.success,
     borderColor: Colors.success,
+    borderBottomColor: Colors.blackAlpha45,
   },
   actionBtnText: {
     fontFamily: FontFamily.bold,
@@ -1104,21 +1113,28 @@ const styles = StyleSheet.create({
   },
   modalBtn: {
     flex: 1,
-    height: 48,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 48,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.borderHi,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   modalBtnCancel: {
-    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha10,
+    backgroundColor: Colors.bgCard,
   },
   modalBtnConfirm: {
     backgroundColor: Colors.warning,
+    borderBottomColor: Colors.blackAlpha45,
   },
   modalBtnConfirmSale: {
     backgroundColor: Colors.success,
+    borderBottomColor: Colors.blackAlpha45,
   },
   modalBtnConfirmSaleText: {
     fontFamily: FontFamily.bold,
