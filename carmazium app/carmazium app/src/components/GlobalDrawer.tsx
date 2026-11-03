@@ -284,7 +284,11 @@ export const GlobalDrawer: React.FC = () => {
   const backdropStyle = useAnimatedStyle(() => ({ opacity: backdropOpacity.value }));
   const panelStyle = useAnimatedStyle(() => (dealerMode
     ? { transform: [{ translateY: translateY.value }], opacity: panelOpacity.value }
-    : { transform: [{ translateX: translateX.value }] }));
+    // Always set opacity: a Reanimated prop that was animated to 0 while in
+    // dealer mode (closed sheet) otherwise stays 0 after switching to the
+    // buyer side drawer, which then opened as an invisible panel behind a
+    // dark backdrop.
+    : { transform: [{ translateX: translateX.value }], opacity: 1 }));
 
   // Determine which tab is active
   const getActiveTab = (): string => {

@@ -88,15 +88,19 @@ const KpiCard: React.FC<{
   fullWidth?: boolean;
 }> = ({ label, icon, tone, value, sublabel, loading, fullWidth }) => (
   <View style={[styles.kpiCard, fullWidth && styles.kpiCardFull]}>
-    <View style={[styles.kpiGlow, { backgroundColor: tone }]} />
+    {/* Tinted icon chip, like the website stat cards. The old "glow" was a
+        solid 70pt circle (no blur on native) that sat on top of the label. */}
     <View style={styles.kpiTopRow}>
       <Text style={styles.kpiEyebrow}>{label}</Text>
-      <Ionicons name={icon as any} size={14} color={tone} />
+      <View style={styles.kpiIconChip}>
+        <View style={[StyleSheet.absoluteFillObject, styles.kpiIconTint, { backgroundColor: tone }]} />
+        <Ionicons name={icon as any} size={14} color={tone} />
+      </View>
     </View>
     {loading ? (
       <Skeleton w={80} h={28} r={6} />
     ) : (
-      <Text style={styles.kpiValue}>{value}</Text>
+      <Text style={styles.kpiValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{value}</Text>
     )}
     {loading ? (
       <Skeleton w={56} h={10} r={4} />
@@ -361,7 +365,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
             label="TOTAL SPENT"
             icon="cash-outline"
             tone={Colors.success}
-            value={loading ? '–' : formatPrice(totalSpent)}
+            value={loading ? '–' : formatPrice(Math.round(totalSpent))}
             sublabel={period === '7d' ? 'last 7 days' : 'last 30 days'}
             loading={loading}
             fullWidth
@@ -484,7 +488,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <View style={[styles.quickIcon, { backgroundColor: Colors.successAlpha12 }]}>
                 <Ionicons name="hammer-outline" size={18} color={Colors.success} />
               </View>
-              <Text style={styles.quickLabel}>My Bids</Text>
+              <Text style={styles.quickLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>My Bids</Text>
               {activeBids > 0 && (
                 <View style={styles.quickBadge}>
                   <Text style={styles.quickBadgeText}>{activeBids}</Text>
@@ -500,7 +504,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <View style={[styles.quickIcon, { backgroundColor: Colors.warningAlpha12 }]}>
                 <Ionicons name="document-text-outline" size={18} color={Colors.warning} />
               </View>
-              <Text style={styles.quickLabel}>My Offers</Text>
+              <Text style={styles.quickLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>My Offers</Text>
               {activeOffers > 0 && (
                 <View style={[styles.quickBadge, { backgroundColor: Colors.warning }]}>
                   <Text style={styles.quickBadgeText}>{activeOffers}</Text>
@@ -516,7 +520,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <View style={[styles.quickIcon, { backgroundColor: Colors.accentAlpha12 }]}>
                 <Ionicons name="heart" size={18} color={Colors.accent} />
               </View>
-              <Text style={styles.quickLabel}>Watchlist</Text>
+              <Text style={styles.quickLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Watchlist</Text>
               {watchlistCount > 0 && (
                 <View style={[styles.quickBadge, { backgroundColor: Colors.accent }]}>
                   <Text style={styles.quickBadgeText}>{watchlistCount}</Text>
@@ -532,7 +536,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <View style={[styles.quickIcon, { backgroundColor: Colors.infoBlueAlpha12 }]}>
                 <Ionicons name="receipt-outline" size={18} color={Colors.infoBlue} />
               </View>
-              <Text style={styles.quickLabel}>History</Text>
+              <Text style={styles.quickLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>History</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -543,7 +547,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <View style={[styles.quickIcon, { backgroundColor: Colors.accentGreenAlpha12 }]}>
                 <Ionicons name="car-outline" size={18} color={Colors.accentGreen} />
               </View>
-              <Text style={styles.quickLabel}>Delivery</Text>
+              <Text style={styles.quickLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Delivery</Text>
             </TouchableOpacity>
           </View>
           <TouchableOpacity
@@ -627,7 +631,8 @@ const styles = StyleSheet.create({
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingHorizontal: 24, marginBottom: 28 },
   kpiCard: { width: '47.5%', backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: CARD_BORDER, padding: 18, overflow: 'hidden', position: 'relative' },
   kpiCardFull: { width: '100%' },
-  kpiGlow: { position: 'absolute', top: -10, right: -10, width: 70, height: 70, borderRadius: 35, opacity: 0.18 },
+  kpiIconChip: { width: 30, height: 30, borderRadius: Radius.chip, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  kpiIconTint: { opacity: 0.14 },
   kpiTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   kpiEyebrow: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.textMuted, letterSpacing: 1, textTransform: 'uppercase', flex: 1, marginRight: 4 },
   kpiValue: { fontFamily: FontFamily.mono, fontSize: FontSize['3xl'], color: Colors.white, letterSpacing: -0.56, marginBottom: 4 },
@@ -667,10 +672,12 @@ const styles = StyleSheet.create({
 
   // Quick actions
   quickActionsSection: { paddingHorizontal: 24, marginBottom: 28, gap: 14 },
-  quickRow: { flexDirection: 'row', gap: 12 },
-  quickTile: { flex: 1, backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: CARD_BORDER, padding: 18, alignItems: 'center', gap: 8, position: 'relative' },
+  // 3-column grid: five tiles squeezed into one row broke every label one
+  // letter per line on phones with a larger font size.
+  quickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  quickTile: { flexBasis: '30%', flexGrow: 1, minWidth: 96, backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: CARD_BORDER, paddingVertical: 16, paddingHorizontal: 8, alignItems: 'center', gap: 8, position: 'relative' },
   quickIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  quickLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.white, letterSpacing: 0.3, textAlign: 'center' },
+  quickLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 0.2, textAlign: 'center' },
   quickBadge: { position: 'absolute', top: 8, right: 8, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   quickBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.onAccent },
 
