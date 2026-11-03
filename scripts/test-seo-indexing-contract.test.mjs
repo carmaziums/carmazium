@@ -44,3 +44,27 @@ test('sitemap remains paginated, bounded, and stays on canonical www host', () =
   assert.match(sitemap, /payload\.pagination\?\.totalPages/);
   assert.match(robots, /sitemap: \x60\$\{SITE_URL\}\/sitemap\.xml\x60/);
 });
+
+test('public retail search links are server-rendered and restricted to indexable stock', () => {
+  const layout = read('src/app/search/layout.tsx');
+  const discovery = read('src/components/seo/PublicRetailLinks.tsx');
+  const search = read('src/app/search/page.tsx');
+
+  // Keep the existing interactive filters and canonical search landing.
+  assert.match(layout, /canonical:\s*["']\/search["']/);
+  assert.match(search, /function SearchPageContent\(\)/);
+  assert.match(layout, /<Suspense fallback=\{null\}><PublicRetailLinks \/><\/Suspense>/);
+
+  // The server HTML must contain real anchors, without a client-side fetch.
+  assert.doesNotMatch(discovery, /^\s*["']use client["']/m);
+  assert.match(discovery, /export async function PublicRetailLinks\(\)/);
+  assert.match(discovery, /serverBackendFetch\(/);
+  assert.match(discovery, /href=\{"\/buy-cars\/" \+ listing\.slug\}/);
+
+  // Only currently ACTIVE, retail, non-test, well-formed vehicle links.
+  assert.match(discovery, /indexableRetail\(listing\)/);
+  assert.match(discovery, /\^\[a-z0-9\]/);
+  assert.match(discovery, /const MAX_DISCOVERY_LINKS = 24/);
+  assert.match(discovery, /limit=40&sortBy=newest/);
+  assert.match(discovery, /revalidate: 300/);
+});
