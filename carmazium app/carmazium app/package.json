@@ -7,6 +7,7 @@
     "android": "expo run:android",
     "android:dev": "expo run:android",
     "android:release": "node scripts/release-android.mjs",
+    "android:release:apk": "node scripts/release-android.mjs --apk",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "typescript": "tsc --noEmit",
