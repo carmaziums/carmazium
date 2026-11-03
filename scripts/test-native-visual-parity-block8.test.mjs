@@ -66,8 +66,13 @@ test('website reputation endpoints used for genuine received/given reviews and u
   assert.ok(!settings.includes('5.0 based on 100'), 'do not fabricate reviews');
 });
 
-test('account type is non-mutating and appearance reports fixed native theme truthfully', () => {
-  assert.ok(settings.includes('Explore Partner Account'));
+test('account type changes like the website (confirmed, /users/elevate) and appearance is truthful', () => {
+  // Owner request (2026-11): same Switch to Personal / Create Partner Account
+  // actions as web profile/page.tsx, each behind a confirmation alert.
+  assert.ok(settings.includes('Create Partner Account'));
+  assert.ok(settings.includes('Switch to Personal Account'));
+  assert.ok(settings.includes("apiClient('/users/elevate'"));
+  assert.ok(settings.includes('Alert.alert('));
   assert.ok(settings.includes("navigation.navigate('PartnerDashboard')"));
   assert.ok(settings.includes('Changing your dashboard view does not change your verified account permissions.'));
   assert.ok(settings.includes("selectCategory('verification')"));
