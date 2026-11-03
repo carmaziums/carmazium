@@ -12,7 +12,8 @@ import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
 import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
-import { getScrollableStageHeight } from '../../lib/nativeLayoutParity';
+import { getBottomTabBarHeight, getScrollableStageHeight } from '../../lib/nativeLayoutParity';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LiveScreen } from './LiveScreen';
 
 // Website reference: src/app/dashboard/dealer/auctions/page.tsx.
@@ -59,6 +60,7 @@ const formatDate = (raw?: string | null): string => {
 export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation }) => {
   const { loading: accessLoading, hasPermission } = useDealerAccess(true);
   const { fontScale } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const canManageInventory = !accessLoading && hasPermission('MANAGE_INVENTORY');
   const canViewPurchases = !accessLoading && hasPermission('VIEW_PURCHASES');
   const canPlaceBid = !accessLoading && hasPermission('PLACE_BID');
@@ -174,21 +176,28 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
     </TouchableOpacity>
   );
 
+  // On My Auctions the heading, warning and totals scroll with the list (list
+  // header): fixed above it they could leave the list no height with a
+  // larger system font size. Other sections keep it above their own view.
+  const pageHeading = (
+    <View style={styles.heading}>
+      <Text style={styles.pageTitle}>{section === 'bids' ? 'Bids & Offers' : section === 'mine' ? 'My Auctions' : 'Live Auctions'}</Text>
+      <Text style={styles.subtitle}>{section === 'bids' ? 'Auction bids and your retail offers.' : 'Cars available to bid on.'}</Text>
+      {canManageInventory && (
+        <TouchableOpacity accessibilityRole="button"
+          accessibilityLabel="Create Auction"
+          onPress={openCreate} style={styles.createButton}>
+          <Ionicons name="add-circle-outline" size={19} color={Colors.onAccent} />
+          <Text style={styles.createText}>Create Auction</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+
   return (
     <View style={styles.screen}>
       <WebsiteTopBar />
-      <View style={styles.heading}>
-        <Text style={styles.pageTitle}>{section === 'bids' ? 'Bids & Offers' : section === 'mine' ? 'My Auctions' : 'Live Auctions'}</Text>
-        <Text style={styles.subtitle}>{section === 'bids' ? 'Auction bids and your retail offers.' : 'Cars available to bid on.'}</Text>
-        {canManageInventory && (
-          <TouchableOpacity accessibilityRole="button"
-            accessibilityLabel="Create Auction"
-            onPress={openCreate} style={styles.createButton}>
-            <Ionicons name="add-circle-outline" size={19} color={Colors.onAccent} />
-            <Text style={styles.createText}>Create Auction</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      {section !== 'mine' && pageHeading}
       {section === 'live' ? (
         <View style={styles.liveContainer}>
           {!accessLoading && !canPlaceBid && (
@@ -223,43 +232,10 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
         </>
       ) : (
         <>
-          {canManageInventory && needsHandover > 0 && !error && !loading && (
-            <TouchableOpacity style={styles.warning} onPress={openManager}
-              accessibilityRole="button"
-              accessibilityLabel={`${needsHandover} auctions may need next handover steps`}>
-              <Ionicons name="alert-circle-outline" size={19} color={Colors.warning} />
-              <Text style={styles.warningText}>
-                {needsHandover} auction{needsHandover === 1 ? '' : 's'} may need a next step.
-                Open My Auctions to review funds confirmation, inspection and handover.
-              </Text>
-            </TouchableOpacity>
-          )}
-          {error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity accessibilityRole="button" onPress={() => { void fetchOwned(true); }}>
-                <Text style={styles.retryText}>Retry</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          {!loading && !error && (
-            <View style={styles.metrics}>
-              {[
-                { label: 'My Auctions', count: auctions.length },
-                { label: 'Live', count: active },
-                { label: 'Scheduled', count: scheduled },
-                { label: 'Ended', count: ended },
-              ].map(value => (
-                <View key={value.label} style={styles.metric}>
-                  <Text style={styles.metricCount}>{value.count}</Text>
-                  <Text style={styles.metricLabel}>{value.label}</Text>
-                </View>
-              ))}
-            </View>
-          )}
           <FlatList
             style={styles.list}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[styles.listContent,
+              { paddingBottom: getBottomTabBarHeight(fontScale, insets.bottom) + 24 }]}
             data={error && auctions.length === 0 ? [] : auctions}
             keyExtractor={a => a.id}
             renderItem={renderCard}
@@ -267,14 +243,53 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
               refreshing={refreshing} onRefresh={() => { void fetchOwned(true); }}
               tintColor={Colors.accent} />}
             ListHeaderComponent={
-              <View style={styles.sectionHeading}>
-                <Text style={styles.sectionTitle}>My Auctions</Text>
-                {canManageInventory && (
-                  <TouchableOpacity accessibilityRole="button" onPress={openManager}>
-                    <Text style={styles.manageLink}>Manage Auctions</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+              <>
+                <View style={styles.listHeaderBleed}>
+                  {pageHeading}
+                  {canManageInventory && needsHandover > 0 && !error && !loading && (
+                    <TouchableOpacity style={styles.warning} onPress={openManager}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${needsHandover} auctions may need next handover steps`}>
+                      <Ionicons name="alert-circle-outline" size={19} color={Colors.warning} />
+                      <Text style={styles.warningText}>
+                        {needsHandover} auction{needsHandover === 1 ? '' : 's'} may need a next step.
+                        Open My Auctions to review funds confirmation, inspection and handover.
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {error && (
+                    <View style={styles.errorBox}>
+                      <Text style={styles.errorText}>{error}</Text>
+                      <TouchableOpacity accessibilityRole="button" onPress={() => { void fetchOwned(true); }}>
+                        <Text style={styles.retryText}>Retry</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  {!loading && !error && (
+                    <View style={styles.metrics}>
+                      {[
+                        { label: 'My Auctions', count: auctions.length },
+                        { label: 'Live', count: active },
+                        { label: 'Scheduled', count: scheduled },
+                        { label: 'Ended', count: ended },
+                      ].map(value => (
+                        <View key={value.label} style={styles.metric}>
+                          <Text style={styles.metricCount}>{value.count}</Text>
+                          <Text style={styles.metricLabel}>{value.label}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+                <View style={styles.sectionHeading}>
+                  <Text style={styles.sectionTitle}>My Auctions</Text>
+                  {canManageInventory && (
+                    <TouchableOpacity accessibilityRole="button" onPress={openManager}>
+                      <Text style={styles.manageLink}>Manage Auctions</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </>
             }
             ListEmptyComponent={
               loading ? <View style={styles.emptyState}>
@@ -343,6 +358,8 @@ const styles = StyleSheet.create({
   metricLabel: { color: Colors.textMuted, fontFamily: FontFamily.bold, fontSize: 11 },
   list: { flex: 1 },
   listContent: { paddingHorizontal: 20, paddingBottom: 110 },
+  // Header rows carry their own 20pt gutters inside the padded list.
+  listHeaderBleed: { marginHorizontal: -20 },
   sectionHeading: { flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between', paddingVertical: 12 },
   sectionTitle: { color: Colors.textPrimary, fontSize: 16,

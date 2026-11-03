@@ -244,30 +244,30 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
   );
   // Loading / approval / load-error states render inside the list.
   const listStatus = loading && jobs.length === 0 ? (
-      <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
-    ) : notApproved ? (
-      <View style={styles.centerCard}>
-        <Ionicons name="shield-outline" size={34} color={Colors.warning} />
-        <Text style={styles.emptyTitle}>Approved service required</Text>
-        <Text style={styles.emptyText}>
-          Apply for Delivery & Recovery or Vehicle Inspection, finish verification and connect payouts. Matching jobs appear here after approval.
-        </Text>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('ProviderCapabilities')}
-        >
-          <Text style={styles.primaryText}>MANAGE SERVICES</Text>
-        </TouchableOpacity>
-      </View>
-    ) : error && jobs.length === 0 ? (
-      <View style={styles.centerCard}>
-        <Ionicons name="alert-circle-outline" size={32} color={Colors.accent} />
-        <Text style={styles.emptyTitle}>Could not load jobs</Text>
-        <Text style={styles.emptyText}>{error}</Text>
-        <TouchableOpacity style={styles.primaryButton} onPress={() => void load('reset')}>
-          <Text style={styles.primaryText}>TRY AGAIN</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
+  ) : notApproved ? (
+    <View style={styles.centerCard}>
+      <Ionicons name="shield-outline" size={34} color={Colors.warning} />
+      <Text style={styles.emptyTitle}>Approved service required</Text>
+      <Text style={styles.emptyText}>
+        Apply for Delivery & Recovery or Vehicle Inspection, finish verification and connect payouts. Matching jobs appear here after approval.
+      </Text>
+      <TouchableOpacity
+        style={styles.primaryButton}
+        onPress={() => navigation.navigate('ProviderCapabilities')}
+      >
+        <Text style={styles.primaryText}>MANAGE SERVICES</Text>
+      </TouchableOpacity>
+    </View>
+  ) : error && jobs.length === 0 ? (
+    <View style={styles.centerCard}>
+      <Ionicons name="alert-circle-outline" size={32} color={Colors.accent} />
+      <Text style={styles.emptyTitle}>Could not load jobs</Text>
+      <Text style={styles.emptyText}>{error}</Text>
+      <TouchableOpacity style={styles.primaryButton} onPress={() => void load('reset')}>
+        <Text style={styles.primaryText}>TRY AGAIN</Text>
+      </TouchableOpacity>
+    </View>
   ) : null;
 
   return (

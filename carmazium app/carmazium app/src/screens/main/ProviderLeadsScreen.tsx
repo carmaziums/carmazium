@@ -211,22 +211,22 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
   );
   // Loading / approval / load-error states render inside the list.
   const listStatus = loading && leads.length === 0 ? (
-      <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
-    ) : error && leads.length === 0 ? (
-      <View style={styles.centerCard}>
-        <Ionicons name="alert-circle-outline" size={34} color={Colors.accent} />
-        <Text style={styles.emptyTitle}>Could not load enquiries</Text>
-        <Text style={styles.emptyText}>{error}</Text>
-        <TouchableOpacity style={styles.primaryButton} onPress={() => void load('reset')}>
-          <Text style={styles.primaryText}>TRY AGAIN</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={() => navigation.navigate('ProviderCapabilities')}
-        >
-          <Text style={styles.secondaryText}>CHECK SERVICE APPROVAL</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
+  ) : error && leads.length === 0 ? (
+    <View style={styles.centerCard}>
+      <Ionicons name="alert-circle-outline" size={34} color={Colors.accent} />
+      <Text style={styles.emptyTitle}>Could not load enquiries</Text>
+      <Text style={styles.emptyText}>{error}</Text>
+      <TouchableOpacity style={styles.primaryButton} onPress={() => void load('reset')}>
+        <Text style={styles.primaryText}>TRY AGAIN</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={() => navigation.navigate('ProviderCapabilities')}
+      >
+        <Text style={styles.secondaryText}>CHECK SERVICE APPROVAL</Text>
+      </TouchableOpacity>
+    </View>
   ) : null;
 
   return (
