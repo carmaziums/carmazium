@@ -101,11 +101,11 @@ const TAB_CONFIG: {
   label: string;
   iconType: 'ionicons' | 'material-community';
 }[] = [
-  { name: 'Home', icon: 'home-outline', iconActive: 'home', label: 'HOME', iconType: 'ionicons' },
-  { name: 'Search', icon: 'car-outline', iconActive: 'car', label: 'BUY CARS', iconType: 'ionicons' },
-  { name: 'Live', icon: 'gavel', iconActive: 'gavel', label: 'AUCTIONS', iconType: 'material-community' },
-  { name: 'Saved', icon: 'heart-outline', iconActive: 'heart', label: 'SAVED', iconType: 'ionicons' },
-  { name: 'Profile', icon: 'grid-outline', iconActive: 'grid', label: 'DASHBOARD', iconType: 'ionicons' },
+  { name: 'Home', icon: 'home-outline', iconActive: 'home', label: 'Home', iconType: 'ionicons' },
+  { name: 'Search', icon: 'car-outline', iconActive: 'car', label: 'Buy Cars', iconType: 'ionicons' },
+  { name: 'Live', icon: 'gavel', iconActive: 'gavel', label: 'Auctions', iconType: 'material-community' },
+  { name: 'Saved', icon: 'heart-outline', iconActive: 'heart', label: 'Saved', iconType: 'ionicons' },
+  { name: 'Profile', icon: 'grid-outline', iconActive: 'grid', label: 'Dashboard', iconType: 'ionicons' },
   { name: 'DealerHome', icon: 'grid-outline', iconActive: 'grid', label: 'Home', iconType: 'ionicons' },
   { name: 'DealerStock', icon: 'car-outline', iconActive: 'car', label: 'Stock', iconType: 'ionicons' },
   { name: 'DealerCustomers', icon: 'people-outline', iconActive: 'people', label: 'Customers', iconType: 'ionicons' },
@@ -346,6 +346,9 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     ...TextPresets.tabLabel,
+    // Title Case like the website's mobile bottom bar, not all caps.
+    textTransform: 'none',
+    letterSpacing: 0.2,
     textAlign: 'center',
     flexShrink: 1,
   },

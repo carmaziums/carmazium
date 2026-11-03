@@ -49,35 +49,58 @@ interface MenuItem {
   tabName?: keyof TabParamList;
   tabParams?: { initialSection: 'live' | 'bids' };
   stackScreen?: keyof MainStackParamList;
+  /** Params for `stackScreen` (e.g. CreateServiceJob's serviceType). */
+  stackParams?: Record<string, unknown>;
   action?: 'alert';
   alertTitle?: string;
   alertMsg?: string;
   requiredPermission?: DealerPermission;
-  /** Dealer menu group. Same groups and order as the website sidebar. */
-  section?: 'Sell' | 'Buy' | 'Business';
+  /**
+   * Menu group heading. Public items use the website header's dropdown
+   * groups (Buy Cars / Sell Cars / TradeXchange); account items use the
+   * website DashboardSidebar sections, in the same order.
+   */
+  section?: string;
 }
 
+// Same top-level structure, wording and order as the website header
+// (src/components/layout/Header.tsx NAV + its Buy/Sell/TradeXchange
+// dropdowns) and footer, so the app and carmazium.com read as one product.
 const ITEMS: MenuItem[] = [
   { id: 'home',     label: 'Home',       icon: 'home-outline',              iconLib: 'ion', tabName: 'Home'   },
-  { id: 'buy',      label: 'Buy Cars',   icon: 'car-outline',               iconLib: 'ion', tabName: 'Search' },
-  { id: 'sell',     label: 'Sell a Car', icon: 'storefront-outline',        iconLib: 'ion', stackScreen: 'SellLanding' },
-  { id: 'auctions', label: 'Auctions',   icon: 'gavel',                     iconLib: 'mci', tabName: 'Live'   },
-  { id: 'compare',  label: 'Compare',    icon: 'git-compare-outline',       iconLib: 'ion', stackScreen: 'Compare' },
-  { id: 'pricing',  label: 'Pricing',    icon: 'pricetag-outline',          iconLib: 'ion', stackScreen: 'Pricing' },
+  { id: 'buy',      section: 'Buy Cars', label: 'Retail Listings', icon: 'car-outline', iconLib: 'ion', tabName: 'Search' },
+  { id: 'auctions', section: 'Buy Cars', label: 'Live Auctions',   icon: 'gavel',       iconLib: 'mci', tabName: 'Live'   },
+  { id: 'sell',     section: 'Sell Cars', label: 'Get Valuation & Sell', icon: 'storefront-outline', iconLib: 'ion', stackScreen: 'SellLanding' },
+  { id: 'services', section: 'TradeXchange', label: 'TradeXchange Overview', icon: 'construct-outline', iconLib: 'ion', stackScreen: 'Services' },
+  { id: 'post-delivery', section: 'TradeXchange', label: 'Delivery & Recovery', icon: 'car-sport-outline', iconLib: 'ion', stackScreen: 'CreateServiceJob', stackParams: { serviceType: 'DELIVERY' } },
+  { id: 'post-inspection', section: 'TradeXchange', label: 'Vehicle Inspection', icon: 'search-outline', iconLib: 'ion', stackScreen: 'CreateServiceJob', stackParams: { serviceType: 'INSPECTION' } },
   // No mobile equivalent existed at all — not even a stub (mobile-production-
   // readiness-plan.md F14). See ReviewsScreen.tsx/FinanceScreen.tsx for why
   // these deliberately don't port web's fabricated testimonials/fake lenders.
-  { id: 'reviews',  label: 'Trust & Reviews', icon: 'star-outline',         iconLib: 'ion', stackScreen: 'Reviews' },
-  { id: 'finance',  label: 'Vehicle Finance', icon: 'card-outline',         iconLib: 'ion', stackScreen: 'Finance' },
-  { id: 'about',    label: 'About',      icon: 'information-circle-outline', iconLib: 'ion', stackScreen: 'About' },
-  { id: 'how-it-works', label: 'How It Works', icon: 'compass-outline',     iconLib: 'ion', stackScreen: 'HowItWorks' },
-  { id: 'services', label: 'Services',   icon: 'construct-outline',         iconLib: 'ion', stackScreen: 'Services' },
-  { id: 'partner',  label: 'Partner Account', icon: 'business-outline',       iconLib: 'ion', stackScreen: 'PartnerDashboard' },
-  { id: 'contact',  label: 'Contact',    icon: 'call-outline',              iconLib: 'ion', stackScreen: 'Contact' },
+  { id: 'finance',  section: 'TradeXchange', label: 'Vehicle Finance', icon: 'card-outline', iconLib: 'ion', stackScreen: 'Finance' },
+  { id: 'partner',  section: 'TradeXchange', label: 'Partner Account', icon: 'business-outline', iconLib: 'ion', stackScreen: 'PartnerDashboard' },
+  { id: 'compare',  section: 'Explore', label: 'Compare',    icon: 'git-compare-outline',       iconLib: 'ion', stackScreen: 'Compare' },
+  { id: 'pricing',  section: 'Explore', label: 'Pricing',    icon: 'pricetag-outline',          iconLib: 'ion', stackScreen: 'Pricing' },
+  { id: 'about',    section: 'Explore', label: 'About',      icon: 'information-circle-outline', iconLib: 'ion', stackScreen: 'About' },
+  { id: 'how-it-works', section: 'Explore', label: 'How It Works', icon: 'compass-outline',     iconLib: 'ion', stackScreen: 'HowItWorks' },
+  { id: 'reviews',  section: 'Explore', label: 'Feedback & Reviews', icon: 'star-outline',      iconLib: 'ion', stackScreen: 'Reviews' },
+  { id: 'contact',  section: 'Help & Legal', label: 'Contact',    icon: 'call-outline',          iconLib: 'ion', stackScreen: 'Contact' },
   // Built but previously unreachable from anywhere in the app — no nav entry
   // existed at all (mobile-production-readiness-plan.md F13).
-  { id: 'terms',    label: 'Terms of Service', icon: 'document-text-outline', iconLib: 'ion', stackScreen: 'Terms' },
-  { id: 'privacy',  label: 'Privacy Policy', icon: 'shield-checkmark-outline', iconLib: 'ion', stackScreen: 'PrivacyPolicy' },
+  { id: 'terms',    section: 'Help & Legal', label: 'Terms & Conditions', icon: 'document-text-outline', iconLib: 'ion', stackScreen: 'Terms' },
+  { id: 'privacy',  section: 'Help & Legal', label: 'Privacy Policy', icon: 'shield-checkmark-outline', iconLib: 'ion', stackScreen: 'PrivacyPolicy' },
+];
+
+/** Website header groups shown before "More pages & information". */
+const PRIMARY_PUBLIC_SECTIONS = new Set([undefined, 'Buy Cars', 'Sell Cars', 'TradeXchange']);
+
+// Website provider sidebar (DashboardSidebar.tsx `provider` links).
+const PROVIDER_ITEMS: MenuItem[] = [
+  { id: 'provider-home', section: 'Business', label: 'Partner Home', icon: 'business-outline', iconLib: 'ion', stackScreen: 'PartnerDashboard' },
+  { id: 'provider-overview', section: 'Services', label: 'Service Overview', icon: 'grid-outline', iconLib: 'ion', stackScreen: 'ProviderCapabilities' },
+  { id: 'provider-jobs', section: 'Services', label: 'Available Jobs', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'ProviderJobs' },
+  { id: 'provider-leads', section: 'Services', label: 'Finance & Warranty Enquiries', icon: 'clipboard-outline', iconLib: 'ion', stackScreen: 'ProviderLeads' },
+  { id: 'provider-messages', section: 'Account', label: 'Messages', icon: 'chatbubbles-outline', iconLib: 'ion', stackScreen: 'ProviderMessages' },
 ];
 
 // The website's dealer mobile navigation has four primary destinations
@@ -100,84 +123,25 @@ const DEALER_PRIMARY_ITEMS: MenuItem[] = [
 // whether that's zero or many, SellerOffersScreen shows incoming offers on
 // the caller's listings, etc.).
 const USER_ITEMS: MenuItem[] = [
-  {
-    id: 'user-dashboard',
-    label: 'Dashboard',
-    icon: 'speedometer-outline',
-    iconLib: 'ion',
-    tabName: 'Profile',
-  },
-  {
-    id: 'user-cars',
-    label: 'My cars',
-    icon: 'car-outline',
-    iconLib: 'ion',
-    stackScreen: 'MyCars',
-  },
-  {
-    id: 'user-sent-offers',
-    label: 'My sent offers',
-    icon: 'send-outline',
-    iconLib: 'ion',
-    stackScreen: 'BuyerOffers',
-  },
-  {
-    id: 'user-incoming-offers',
-    label: 'Incoming offers',
-    icon: 'pricetag-outline',
-    iconLib: 'ion',
-    stackScreen: 'SellerOffers',
-  },
-  // The next three screens were fully built and registered in
-  // MainStackNavigator but had no drawer entry, so nothing in the app
-  // navigated to them — a buyer could place bids, buy a car and request
-  // delivery, then have no way back to any of it. Web exposes all three
-  // (/dashboard/buyer/bids, /history, and the delivery requests view).
-  {
-    id: 'user-bids',
-    label: 'My bids',
-    icon: 'hammer-outline',
-    iconLib: 'ion',
-    stackScreen: 'BuyerBids',
-  },
-  {
-    id: 'user-purchases',
-    label: 'Purchases',
-    icon: 'receipt-outline',
-    iconLib: 'ion',
-    stackScreen: 'BuyerPurchaseHistory',
-  },
-  {
-    id: 'user-deliveries',
-    label: 'Delivery requests',
-    icon: 'cube-outline',
-    iconLib: 'ion',
-    stackScreen: 'BuyerDeliveryRequests',
-  },
-  {
-    id: 'user-watchlist',
-    label: 'Watchlist',
-    icon: 'heart-outline',
-    iconLib: 'ion',
-    // Points at the Saved tab, not the deleted WatchlistScreen. Saved is the
-    // live implementation over the same store — grid/list toggle, status
-    // badges — and WatchlistScreen was a second, thinner copy of it (BUY-021).
-    tabName: 'Saved',
-  },
-  {
-    id: 'user-earnings',
-    label: 'Earnings',
-    icon: 'wallet-outline',
-    iconLib: 'ion',
-    stackScreen: 'Earnings',
-  },
-  {
-    id: 'user-performance',
-    label: 'Performance analytics',
-    icon: 'bar-chart-outline',
-    iconLib: 'ion',
-    stackScreen: 'SellerPerformance',
-  },
+  // Same sections, labels and order as the website DashboardSidebar
+  // `unifiedLinks` (Dashboard › Selling › Buying › Services › Account).
+  // "My Bids" and "Delivery Requests" are app extras with no separate web
+  // sidebar entry; they stay because buyers otherwise lose their way back.
+  { id: 'user-dashboard', section: 'Dashboard', label: 'Home', icon: 'speedometer-outline', iconLib: 'ion', tabName: 'Profile' },
+  { id: 'user-cars', section: 'Selling', label: 'My Cars', icon: 'car-outline', iconLib: 'ion', stackScreen: 'MyCars' },
+  { id: 'user-incoming-offers', section: 'Selling', label: 'Offers Received', icon: 'pricetag-outline', iconLib: 'ion', stackScreen: 'SellerOffers' },
+  { id: 'user-earnings', section: 'Selling', label: 'Sales & Earnings', icon: 'wallet-outline', iconLib: 'ion', stackScreen: 'Earnings' },
+  { id: 'user-performance', section: 'Selling', label: 'Listing Performance', icon: 'bar-chart-outline', iconLib: 'ion', stackScreen: 'SellerPerformance' },
+  { id: 'user-sent-offers', section: 'Buying', label: 'My Offers', icon: 'send-outline', iconLib: 'ion', stackScreen: 'BuyerOffers' },
+  { id: 'user-bids', section: 'Buying', label: 'My Bids', icon: 'hammer-outline', iconLib: 'ion', stackScreen: 'BuyerBids' },
+  // Points at the Saved tab, not the deleted WatchlistScreen (BUY-021).
+  { id: 'user-watchlist', section: 'Buying', label: 'Saved Cars', icon: 'heart-outline', iconLib: 'ion', tabName: 'Saved' },
+  { id: 'user-purchases', section: 'Buying', label: 'Purchases', icon: 'receipt-outline', iconLib: 'ion', stackScreen: 'BuyerPurchaseHistory' },
+  { id: 'user-service-jobs', section: 'Services', label: 'Delivery & Inspections', icon: 'construct-outline', iconLib: 'ion', stackScreen: 'CustomerServiceJobs' },
+  { id: 'user-deliveries', section: 'Services', label: 'Delivery Requests', icon: 'cube-outline', iconLib: 'ion', stackScreen: 'BuyerDeliveryRequests' },
+  { id: 'user-cancellations', section: 'Account', label: 'Sale Cancellations', icon: 'close-circle-outline', iconLib: 'ion', stackScreen: 'SaleCancellations' },
+  { id: 'user-messages', section: 'Account', label: 'Messages', icon: 'chatbubbles-outline', iconLib: 'ion', stackScreen: 'Messages' },
+  { id: 'user-settings', section: 'Account', label: 'Account Settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings' },
 ];
 
 // Grouped Sell, Buy, Business: the same groups and order as the website
@@ -194,12 +158,19 @@ const DEALER_ITEMS: MenuItem[] = [
   { id: 'dealer-bids', section: 'Buy', label: 'Bids & Offers', icon: 'receipt-outline', iconLib: 'ion', requiredPermission: 'VIEW_TRADE', tabName: 'DealerBuyBid', tabParams: { initialSection: 'bids' } },
   { id: 'dealer-offers-only', section: 'Buy', label: 'Bids & Offers', icon: 'send-outline', iconLib: 'ion', requiredPermission: 'MANAGE_OFFERS', stackScreen: 'DealerMyOffers' },
   { id: 'dealer-purchases', section: 'Buy', label: 'Purchases', icon: 'receipt-outline', iconLib: 'ion', requiredPermission: 'VIEW_PURCHASES', stackScreen: 'DealerPurchases' },
+  { id: 'dealer-messages', section: 'Business', label: 'Messages', icon: 'chatbubbles-outline', iconLib: 'ion', stackScreen: 'Messages' },
   { id: 'dealer-team', section: 'Business', label: 'Team', icon: 'people-outline', iconLib: 'ion', requiredPermission: 'MANAGE_TEAM', stackScreen: 'DealerTeam' },
   { id: 'dealer-analytics', section: 'Business', label: 'Analytics', icon: 'bar-chart-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerAnalytics' },
   { id: 'dealer-earnings', section: 'Business', label: 'Earnings', icon: 'wallet-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerEarnings' },
-  { id: 'dealer-finance', section: 'Business', label: 'Finance', icon: 'calculator-outline', iconLib: 'ion', stackScreen: 'DealerFinance' },
+  { id: 'dealer-finance', section: 'Business', label: 'Finance Applications', icon: 'calculator-outline', iconLib: 'ion', stackScreen: 'DealerFinance' },
   { id: 'dealer-kyc', section: 'Business', label: 'Business verification', icon: 'shield-checkmark-outline', iconLib: 'ion', requiredPermission: 'MANAGE_KYC', stackScreen: 'DealerKYC' },
   { id: 'dealer-onboarding', section: 'Business', label: 'Dealer onboarding', icon: 'trail-sign-outline', iconLib: 'ion', requiredPermission: 'MANAGE_KYC', stackScreen: 'DealerOnboarding' },
+  { id: 'dealer-settings', section: 'Business', label: 'Account Settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings', stackParams: { section: 'business' } },
+  // Website dealer "Services" group (dealerRouteConfig.ts).
+  { id: 'dealer-partner', section: 'Services', label: 'Partner Account', icon: 'business-outline', iconLib: 'ion', stackScreen: 'PartnerDashboard' },
+  { id: 'dealer-service-addons', section: 'Services', label: 'Service Add-ons', icon: 'add-circle-outline', iconLib: 'ion', stackScreen: 'ProviderCapabilities' },
+  { id: 'dealer-service-jobs', section: 'Services', label: 'Service Jobs', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'ProviderJobs' },
+  { id: 'dealer-service-leads', section: 'Services', label: 'Service Enquiries', icon: 'clipboard-outline', iconLib: 'ion', stackScreen: 'ProviderLeads' },
 ];
 
 export const GlobalDrawer: React.FC = () => {
@@ -208,7 +179,6 @@ export const GlobalDrawer: React.FC = () => {
   const logout       = useAuthStore((s) => s.logout);
   const [supportLoading, setSupportLoading] = useState(false);
   const [showMorePages, setShowMorePages] = useState(false);
-  const [showAllAccountTools, setShowAllAccountTools] = useState(false);
   const [showAllDealerTools, setShowAllDealerTools] = useState(false);
 
   const handleContactSupport = async () => {
@@ -255,7 +225,9 @@ export const GlobalDrawer: React.FC = () => {
   );
   const primaryDrawerItems = dealerMode
     ? (showMorePages ? [...visiblePrimaryDealerItems, ...ITEMS] : visiblePrimaryDealerItems)
-    : ITEMS.slice(0, showMorePages ? ITEMS.length : 4);
+    : ITEMS.filter(item => showMorePages || PRIMARY_PUBLIC_SECTIONS.has(item.section));
+  // Service providers (CONTRACTOR accounts) get the website provider sidebar.
+  const isProvider = accountRole === 'contractor';
   const [switchingDealer, setSwitchingDealer] = React.useState(false);
   const insets = useSafeAreaInsets();
   const { height: windowHeight, fontScale } = useWindowDimensions();
@@ -343,7 +315,7 @@ export const GlobalDrawer: React.FC = () => {
       if (item.stackScreen) {
         // `stackScreen` is a dynamic union of route names — React Navigation's
         // recommended pattern for variable screen names is `as never`.
-        navigation.navigate('Main', { screen: item.stackScreen } as never);
+        navigation.navigate('Main', { screen: item.stackScreen, params: item.stackParams } as never);
         return;
       }
       if (item.tabName === 'DealerBuyBid') {
@@ -499,11 +471,14 @@ export const GlobalDrawer: React.FC = () => {
         >
           <Text style={styles.groupLabel}>{dealerMode ? 'DEALER WORKSPACE' : 'BUY, SELL & EXPLORE'}</Text>
 
-          {primaryDrawerItems.map((item) => {
+          {primaryDrawerItems.map((item, index, shown) => {
             const active = item.tabName === activeTab;
             return (
+              <React.Fragment key={item.id}>
+              {item.section && item.section !== shown[index - 1]?.section && (
+                <Text style={styles.dealerSectionLabel} accessibilityRole="header">{item.section.toUpperCase()}</Text>
+              )}
               <TouchableOpacity
-                key={item.id}
                 style={[styles.row, active && styles.rowActive]}
                 onPress={() => handleItem(item)}
                 activeOpacity={0.7}
@@ -528,6 +503,7 @@ export const GlobalDrawer: React.FC = () => {
                   </View>
                 )}
               </TouchableOpacity>
+              </React.Fragment>
             );
           })}
           <TouchableOpacity
@@ -547,10 +523,13 @@ export const GlobalDrawer: React.FC = () => {
           {(role === 'buyer' || role === 'seller') && (
             <>
               <View style={styles.divider} />
-              <Text style={[styles.groupLabel, styles.groupLabelSeller]}>MY DASHBOARD</Text>
-              {USER_ITEMS.slice(0, showAllAccountTools ? USER_ITEMS.length : 7).map((item) => (
+              <Text style={[styles.groupLabel, styles.groupLabelSeller]}>{isProvider ? 'PARTNER DASHBOARD' : 'MY DASHBOARD'}</Text>
+              {(isProvider ? PROVIDER_ITEMS : USER_ITEMS).map((item, index, shown) => (
+                <React.Fragment key={item.id}>
+                {item.section && item.section !== shown[index - 1]?.section && (
+                  <Text style={styles.dealerSectionLabel} accessibilityRole="header">{item.section.toUpperCase()}</Text>
+                )}
                 <TouchableOpacity
-                  key={item.id}
                   style={styles.row}
                   onPress={() => handleItem(item)}
                   activeOpacity={0.7}
@@ -564,11 +543,8 @@ export const GlobalDrawer: React.FC = () => {
                   </Text>
                   <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
+                </React.Fragment>
               ))}
-              <TouchableOpacity style={styles.moreToggle} onPress={() => setShowAllAccountTools(v => !v)} accessibilityRole="button" accessibilityState={{ expanded: showAllAccountTools }} activeOpacity={0.8}>
-                <Text style={styles.moreToggleText}>{showAllAccountTools ? 'Fewer account tools' : 'All account tools'}</Text>
-                <Ionicons name={showAllAccountTools ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textSecondary} />
-              </TouchableOpacity>
             </>
           )}
 
