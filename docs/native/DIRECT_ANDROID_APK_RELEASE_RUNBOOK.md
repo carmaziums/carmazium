@@ -39,7 +39,8 @@ Existing pipeline:
    - approval: INTERNAL_REVIEW_ONLY
    - version_code: increasing positive integer
 5. On success download the **CarMazium-Android-REVIEW-ONLY** workflow artifact ZIP before its 3-day retention expires; extract CarMazium-Android-REVIEW-ONLY.apk, release-evidence.json, SHA256SUMS.txt.
-6. If it fails, provide only the failing workflow step name and non-sensitive error message for diagnosis. Do not disclose secret values.
+6. Also download the separate **CarMazium-Android-STAGED-NOT-APPROVED** private artifact ZIP. It contains the **same signed APK bytes** renamed for future first-party hosting, plus SHA256SUMS.txt and staging-manifest.json; it is NOT publicly approved or uploaded to the website. Both artifact ZIPs expire after 3 days.
+7. If the workflow fails, provide only the failing workflow step name and non-sensitive error message for diagnosis. Do not disclose secret values.
 
 ## Owner/device-only action 3 — real installation and feature acceptance
 
@@ -53,9 +54,11 @@ After passing QA, obtain explicit owner sign-off binding the **exact source SHA,
 
 ## Engineering action 4 — stage an identical versioned APK
 
-On a trusted computer with Node.js, Android SDK Build-Tools 36.0.0 and ANDROID_HOME set, set environment variable CARMAZIUM_ANDROID_RELEASE_CERT_SHA256 to the independently verified pinned certificate.
+**Normally no local SDK or command is needed:** the signed candidate workflow automatically generates a separate private **CarMazium-Android-STAGED-NOT-APPROVED** artifact using this validation. This does **not** release it to customers.
 
-From repo root run:
+For independent re-verification or manual staging on a trusted technical computer with Node.js and Android SDK Build-Tools 36.0.0, set ANDROID_HOME and the separately owner-verified environment variable CARMAZIUM_ANDROID_RELEASE_CERT_SHA256.
+
+From the repo root, optionally run:
 
     node scripts/stage-android-direct-download.mjs /path/CarMazium-Android-REVIEW-ONLY.apk /path/release-evidence.json /path/new-private-stage
 
