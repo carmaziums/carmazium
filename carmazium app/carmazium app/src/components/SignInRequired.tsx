@@ -6,7 +6,8 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@/components/BrandIcon';
 import { useAuthStore } from '../store/authStore';
 import { Colors, themeStatusBarStyle } from '../constants/colors';
-import { Radius } from '../constants/spacing';
+import { Elevation, Radius } from '../constants/spacing';
+import { Button } from './Button';
 import { FontFamily, FontSize } from '../constants/typography';
 
 /**
@@ -73,26 +74,29 @@ export const SignInRequired: React.FC<{
     <View style={styles.container}>
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 48 }]}>
+        <View style={styles.panel}>
         <View style={styles.orb}>
           <Ionicons name="lock-closed-outline" size={30} color={Colors.accent} />
         </View>
         <Text style={styles.title} accessibilityRole="header">{title}</Text>
         <Text style={styles.message}>{message}</Text>
 
-        <TouchableOpacity
-          style={styles.primaryBtn}
+        <Button
+          label="Sign In"
           onPress={() => openSignIn(navigation, 'Login', returnTo)}
-          accessibilityRole="button"
-        >
-          <Text style={styles.primaryText}>Sign In</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.secondaryBtn}
+          variant="primary"
+          size="lg"
+          fullWidth
+        />
+        <Button
+          label="Create Free Account"
           onPress={() => openSignIn(navigation, 'Signup', returnTo)}
-          accessibilityRole="button"
-        >
-          <Text style={styles.secondaryText}>Create Free Account</Text>
-        </TouchableOpacity>
+          variant="outline"
+          size="lg"
+          fullWidth
+          style={styles.secondaryBtn}
+        />
+        </View>
         {showBack && navigation.canGoBack() && (
           <TouchableOpacity
             style={styles.linkBtn}
@@ -136,24 +140,20 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 28,
   },
-  primaryBtn: {
+  panel: {
     alignSelf: 'stretch',
-    backgroundColor: Colors.accent,
-    borderRadius: Radius.inline,
-    paddingVertical: 15,
     alignItems: 'center',
-  },
-  primaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.onAccent },
-  secondaryBtn: {
-    alignSelf: 'stretch',
-    marginTop: 12,
-    borderRadius: Radius.inline,
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.borderHi,
-    paddingVertical: 15,
-    alignItems: 'center',
+    borderColor: Colors.border,
+    paddingHorizontal: 20,
+    paddingVertical: 28,
+    ...Elevation.cardHi,
   },
-  secondaryText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.base, color: Colors.textPrimary },
+  secondaryBtn: {
+    marginTop: 12,
+  },
   linkBtn: { marginTop: 18, padding: 8 },
   linkText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.textMuted },
 });
