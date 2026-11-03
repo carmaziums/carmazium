@@ -18,7 +18,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Spacing, Radius } from '../../constants/spacing';
+import { Elevation, Spacing, Radius } from '../../constants/spacing';
 import {
   AppNotification,
   getNotifications,
@@ -33,6 +33,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
+import { Button } from '../../components/Button';
 // ─────────────────────────── helpers ──────────────────────────────────────────
 
 function groupByDate(
@@ -296,9 +297,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
         <View style={styles.retryBanner}>
           <Ionicons name="alert-circle-outline" size={20} color={Colors.warning} />
           <Text style={styles.retryText}>{loadError}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => void load()} accessibilityRole="button" accessibilityLabel="Retry loading notifications">
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
+          <Button label="Retry" onPress={() => void load()} variant="outline" size="sm" accessibilityLabel="Retry loading notifications" />
         </View>
       )}
 
@@ -365,7 +364,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgPrimary,
   },
 
-  retryBanner: { marginHorizontal: 20, marginBottom: 10, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.inline, backgroundColor: Colors.bgCardSolid, minHeight: 64, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  retryBanner: { marginHorizontal: 20, marginBottom: 10, borderWidth: 1, borderRadius: Radius.inline, minHeight: 64, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.bgCard, borderColor: Colors.warning, ...Elevation.card },
   retryText: { flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 18 },
   retryButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 },
   retryButtonText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent },
@@ -381,11 +380,13 @@ const styles = StyleSheet.create({
     width: Spacing.iconBtn,
     height: Spacing.iconBtn,
     borderRadius: Spacing.iconBtn / 2,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerCenter: {
     flex: 1,
@@ -416,12 +417,14 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 12,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.whiteAlpha05,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 76,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   markAllBtnDisabled: {
     opacity: 0.7,
@@ -447,12 +450,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     padding: 14,
     marginBottom: Spacing.itemGap,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
   },
   skeletonContent: {
     flex: 1,
@@ -478,11 +481,12 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   groupCard: {
-    backgroundColor: Colors.bgCardSolid,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
     overflow: 'hidden',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
 
   // ── Notification row ──

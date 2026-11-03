@@ -7,6 +7,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
 import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
 import { Colors } from '../../constants/colors';
+import { Elevation, Radius } from '../../constants/spacing';
 import { FontFamily } from '../../constants/typography';
 import { Layout } from '../../constants/layout';
 
@@ -73,7 +74,7 @@ export const MyCarsScreen: React.FC = () => {
             accessibilityState={{ selected: filter === status }}
             onPress={() => setFilter(status)}
             style={[styles.filter, filter === status && styles.filterSelected]}>
-            <Text style={styles.filterText}>{status === 'ALL' ? 'All' : status.replace(/_/g, ' ')}</Text>
+            <Text style={[styles.filterText, filter === status && styles.selectedText]}>{status === 'ALL' ? 'All' : status.replace(/_/g, ' ')}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -120,23 +121,23 @@ const styles = StyleSheet.create({
   title: { fontSize: 25, color: Colors.textPrimary, fontFamily: FontFamily.extraBold },
   muted: { fontSize: 12, color: Colors.textMuted, fontFamily: FontFamily.medium },
   channelRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20 },
-  channel: { minHeight: 44, flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: Colors.borderSubtle },
-  selected: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  channel: { minHeight: 44, flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, backgroundColor: Colors.bgCard, borderColor: Colors.borderHi, borderBottomWidth: 3, ...Elevation.card },
+  selected: { backgroundColor: Colors.accent, borderColor: Colors.accent, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   selectedText: { color: Colors.onAccent },
   channelText: { color: Colors.textSecondary, fontFamily: FontFamily.bold },
-  filters: { flexGrow: 0, marginVertical: 12, maxHeight: 48 },
+  filters: { flexGrow: 0, marginVertical: 12, maxHeight: 52 },
   filterContent: { gap: 8, paddingHorizontal: 20, alignItems: 'center' },
-  filter: { minHeight: 38, borderWidth: 1, borderRadius: 10, borderColor: Colors.borderSubtle, justifyContent: 'center', paddingHorizontal: 11 },
-  filterSelected: { borderColor: Colors.accent },
+  filter: { minHeight: 38, borderWidth: 1, borderRadius: 10, justifyContent: 'center', paddingHorizontal: 11, backgroundColor: Colors.bgCard, borderColor: Colors.borderHi, borderBottomWidth: 2 },
+  filterSelected: { backgroundColor: Colors.accent, borderColor: Colors.accent, borderBottomColor: Colors.accentDark },
   filterText: { color: Colors.textSecondary, fontSize: 11, fontFamily: FontFamily.bold },
   list: { flex: 1 },
   listContent: { paddingHorizontal: 20, paddingBottom: 110, gap: 10 },
-  card: { flexDirection: 'row', gap: 12, alignItems: 'center', borderRadius: 13, backgroundColor: Colors.bgCard, padding: 13, borderWidth: 1, borderColor: Colors.borderSubtle },
+  card: { flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: Colors.bgCard, padding: 13, borderWidth: 1, borderRadius: Radius.card, borderColor: Colors.border, ...Elevation.card },
   image: { width: 76, height: 67, borderRadius: 9 },
   thumb: { width: 76, height: 67, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgElevated },
   details: { flex: 1, gap: 5 },
   name: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 14 },
-  manage: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: 11 },
+  manage: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: 11, alignSelf: 'flex-start', marginTop: 2, paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.chip, borderWidth: 1, borderColor: Colors.accent, backgroundColor: Colors.bgSurface, overflow: 'hidden' },
   error: { paddingHorizontal: 20, color: Colors.warning, fontSize: 12 },
   loading: { paddingVertical: 40, alignItems: 'center', justifyContent: 'center' },
   // Header rows carry their own 20pt gutters inside the padded list.

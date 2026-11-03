@@ -20,7 +20,7 @@ import { ChatRoom, ChatUser } from '../../lib/chatApi';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -426,15 +426,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     minHeight: 44,
     borderRadius: 18,
-    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha05,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
   },
   tabPillActive: {
     backgroundColor: Colors.accent,
     borderColor: Colors.accent,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   tabPillContent: {
     flexDirection: 'row',
@@ -466,11 +469,12 @@ const styles = StyleSheet.create({
   threadCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.bgCardSolid,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
     borderRadius: Radius.card,
     padding: 16,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   threadCardUnread: {
     borderColor: Colors.accentAlpha25,
