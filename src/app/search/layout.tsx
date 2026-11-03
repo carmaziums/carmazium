@@ -1,4 +1,6 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
+import { PublicRetailLinks } from "@/components/seo/PublicRetailLinks"
 import { PageJsonLd } from "@/components/seo/PageJsonLd"
 
 export const metadata: Metadata = {
@@ -26,5 +28,5 @@ export const metadata: Metadata = {
 }
 
 export default function SearchLayout({ children }: { children: React.ReactNode }) {
-    return <><PageJsonLd path="/search" title="Used Cars for Sale Across the UK | CarMazium" type="CollectionPage" description={metadata.description as string} />{children}</>
+    return <><PageJsonLd path="/search" title="Used Cars for Sale Across the UK | CarMazium" type="CollectionPage" description={metadata.description as string} />{children}<Suspense fallback={null}><PublicRetailLinks /></Suspense></>
 }
