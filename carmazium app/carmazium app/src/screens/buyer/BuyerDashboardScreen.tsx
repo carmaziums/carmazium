@@ -18,7 +18,7 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { getFeaturedListings } from '../../lib/listingsApi';
 import type { CarListing } from '../../data/listings';
 import { getUnreadCount } from '../../lib/notificationsApi';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Logo } from '../../components/Logo';
@@ -226,9 +226,9 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha06, Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.6, y: 0.4 }}
         style={StyleSheet.absoluteFillObject}
@@ -303,8 +303,8 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
             accessibilityLabel="Browse cars for sale"
             activeOpacity={0.8}
           >
-            <Ionicons name="car-outline" size={20} color={Colors.white} />
-            <Text style={styles.buyerJourneyLabel}>Browse Cars</Text>
+            <Ionicons name="car-outline" size={20} color={Colors.onAccent} />
+            <Text style={[styles.buyerJourneyLabel, styles.onAccentText]}>Browse Cars</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.buyerJourneySaved}
@@ -588,7 +588,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const CARD_BG = 'rgba(20,26,42,0.70)';
+const CARD_BG = Colors.bgCard;
 const CARD_BORDER = Colors.whiteAlpha06;
 
 const styles = StyleSheet.create({
@@ -610,12 +610,13 @@ const styles = StyleSheet.create({
   buyerJourneyRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 24, marginBottom: 22 },
   buyerJourneyBuy: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.accent, borderRadius: Radius.inline, paddingHorizontal: 10 },
   buyerJourneySaved: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.inline, paddingHorizontal: 10 },
+  onAccentText: { color: Colors.onAccent },
   buyerJourneyLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
   periodPillRow: { flexDirection: 'row', gap: 6, backgroundColor: Colors.whiteAlpha04, borderRadius: 10, padding: 3 },
   periodPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   periodPillActive: { backgroundColor: Colors.accent },
   periodPillText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.iconMuted, letterSpacing: 0.4 },
-  periodPillTextActive: { color: Colors.white },
+  periodPillTextActive: { color: Colors.onAccent },
 
   // KPI Grid
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingHorizontal: 24, marginBottom: 28 },
@@ -639,7 +640,7 @@ const styles = StyleSheet.create({
   hotDealPriceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   hotDealPrice: { fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.white, letterSpacing: -0.32 },
   hotDealCta: { backgroundColor: Colors.accent, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
-  hotDealCtaText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 0.3 },
+  hotDealCtaText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent, letterSpacing: 0.3 },
 
   // Section headers
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
@@ -666,12 +667,12 @@ const styles = StyleSheet.create({
   quickIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   quickLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.white, letterSpacing: 0.3, textAlign: 'center' },
   quickBadge: { position: 'absolute', top: 8, right: 8, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
-  quickBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white },
+  quickBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.onAccent },
 
   // Profile Card
   profileCard: { marginHorizontal: 24, marginTop: 8, flexDirection: 'row', alignItems: 'center', backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: CARD_BORDER, padding: 20, gap: 16 },
   profileAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  profileAvatarText: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
+  profileAvatarText: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.onAccent },
   profileInfo: { flex: 1 },
   profileName: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, marginBottom: 2 },
   profileEmail: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textSecondary, marginBottom: 6 },

@@ -71,7 +71,10 @@ test('account type is non-mutating and appearance reports fixed native theme tru
   assert.ok(settings.includes("navigation.navigate('PartnerDashboard')"));
   assert.ok(settings.includes('Changing your dashboard view does not change your verified account permissions.'));
   assert.ok(settings.includes("selectCategory('verification')"));
-  assert.ok(settings.includes('live light/dark switch is not yet supported'));
+  // Appearance now offers a real Light / Dark / System switch (persisted,
+  // applied on restart), replacing the earlier "not yet supported" copy.
+  assert.ok(settings.includes('promptThemeChange(option.id)'));
+  assert.ok(settings.includes("{ id: 'system', label: 'System'"));
   assert.ok(!settings.includes('setDarkMode('), 'never give a fake toggle');
   assert.ok(settings.includes("'/users/me'"));
   assert.ok(settings.includes('handleDeleteAccount'));

@@ -444,7 +444,7 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
                 !detail.delivery && ((detail.buyerFee.required && !detail.buyerFee.settled) || !deliveryAvailable)
                   && styles.buttonDisabled]}
               onPress={bookDelivery}>
-              <Ionicons name="car-sport-outline" color={Colors.white} size={17} />
+              <Ionicons name="car-sport-outline" color={Colors.onAccent} size={17} />
               <Text style={styles.buttonPrimaryText}>{detail.delivery ? 'View delivery' : 'Book delivery'}</Text>
             </TouchableOpacity>
           </View>
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 8,
   },
   buttonDisabled: { opacity: 0.55 },
-  buttonPrimaryText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: 12 },
+  buttonPrimaryText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: 12 },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 14, padding: 24 },
   actionItem: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   actionText: { fontFamily: FontFamily.bold, color: Colors.textPrimary, fontSize: 14 },

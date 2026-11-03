@@ -19,7 +19,7 @@ import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { haptics } from '../../lib/haptics';
@@ -104,13 +104,13 @@ const mapApiListing = (l: any): Listing => ({
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 const STATUS_STYLE: Record<StatusTag, { bg: string; color: string; label: string }> = {
-  LIVE:         { bg: Colors.success, color: Colors.white, label: 'Live' },
-  DRAFT:        { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'Draft' },
-  REVIEW:       { bg: Colors.warning, color: Colors.white, label: 'Under Review' },
-  SALE_PENDING: { bg: Colors.warning, color: Colors.white, label: 'SALE PENDING' },
-  REJECTED:     { bg: Colors.error, color: Colors.white, label: 'Rejected' },
-  SOLD:         { bg: Colors.infoBlue, color: Colors.white, label: 'Sold' },
-  OTHER:        { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'Not Live' },
+  LIVE:         { bg: Colors.success, color: Colors.onAccent, label: 'Live' },
+  DRAFT:        { bg: Colors.midBlue_6b7280, color: Colors.onAccent, label: 'Draft' },
+  REVIEW:       { bg: Colors.warning, color: Colors.onAccent, label: 'Under Review' },
+  SALE_PENDING: { bg: Colors.warning, color: Colors.onAccent, label: 'SALE PENDING' },
+  REJECTED:     { bg: Colors.error, color: Colors.onAccent, label: 'Rejected' },
+  SOLD:         { bg: Colors.infoBlue, color: Colors.onAccent, label: 'Sold' },
+  OTHER:        { bg: Colors.midBlue_6b7280, color: Colors.onAccent, label: 'Not Live' },
 };
 
 // ─── LISTING DETAIL SUBSCREEN ────────────────────────────────────────────────
@@ -206,9 +206,9 @@ const ListingDetail: React.FC<{
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha05, Colors.groundClear, Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -332,7 +332,7 @@ const ListingDetail: React.FC<{
             activeOpacity={0.85}
             onPress={() => navigation?.navigate('SellerAuctions', { preselectListingId: listing.id })}
           >
-            <MaterialCommunityIcons name="gavel" size={16} color={Colors.white} style={{ marginRight: 6 }} />
+            <MaterialCommunityIcons name="gavel" size={16} color={Colors.onAccent} style={{ marginRight: 6 }} />
             <Text style={styles.putOnAuctionBtnText}>PUT ON AUCTION</Text>
           </TouchableOpacity>
         )}
@@ -359,7 +359,7 @@ const ListingDetail: React.FC<{
           activeOpacity={0.85}
           onPress={listing.status === 'LIVE' ? openMarkSold : undefined}
         >
-          <Ionicons name="checkmark-circle-outline" size={16} color={Colors.white} style={{ marginRight: 6 }} />
+          <Ionicons name="checkmark-circle-outline" size={16} color={Colors.onAccent} style={{ marginRight: 6 }} />
           <Text style={styles.markSoldBtnText}>
             {listing.status === 'LIVE' ? 'MARK SOLD' : STATUS_STYLE[listing.status].label}
           </Text>
@@ -378,7 +378,7 @@ const ListingDetail: React.FC<{
       />
       {boostToast && (
         <View style={styles.boostToast} pointerEvents="none">
-          <Ionicons name="checkmark-circle" size={16} color={Colors.white} />
+          <Ionicons name="checkmark-circle" size={16} color={Colors.onAccent} />
           <Text style={styles.boostToastText}>{boostToast}</Text>
         </View>
       )}
@@ -413,7 +413,7 @@ const ListingDetail: React.FC<{
             disabled={markSoldSubmitting}
           >
             {markSoldSubmitting ? (
-              <ActivityIndicator color={Colors.white} />
+              <ActivityIndicator color={Colors.onAccent} />
             ) : (
               <Text style={styles.markSoldConfirmBtnText}>Confirm Sold</Text>
             )}
@@ -701,9 +701,9 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha04, Colors.groundClear, Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -730,7 +730,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         <View style={styles.stockHeaderActions}>
           <TouchableOpacity style={styles.stockAddAction} onPress={() => navigation?.navigate('SellCarFlow')}
             accessibilityRole="button" accessibilityLabel="Add Vehicle">
-            <Ionicons name="add-circle-outline" size={18} color={Colors.white} />
+            <Ionicons name="add-circle-outline" size={18} color={Colors.onAccent} />
             <Text style={styles.stockAddActionText}>Add Vehicle</Text>
           </TouchableOpacity>
           {/* Import Listing and Bulk Import stay one tap away, behind a
@@ -938,7 +938,7 @@ const styles = StyleSheet.create({
     minHeight: 46, paddingHorizontal: 16,
   },
   stockAddActionText: {
-    fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white,
+    fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent,
   },
   stockSecondaryAction: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -1090,7 +1090,7 @@ const styles = StyleSheet.create({
     color: Colors.iconMuted,
   },
   filterTabTextActive: {
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   filterTabCount: {
     fontFamily: FontFamily.bold,
@@ -1156,7 +1156,7 @@ const styles = StyleSheet.create({
   statusBadgeText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size8,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.5,
   },
   listingInfo: {
@@ -1297,7 +1297,7 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 24,
     paddingTop: 12,
-    backgroundColor: 'rgba(10,10,12,0.92)',
+    backgroundColor: Colors.bgElevated,
     borderTopWidth: 1,
     borderTopColor: Colors.whiteAlpha05,
     flexDirection: 'row',
@@ -1544,7 +1544,7 @@ const styles = StyleSheet.create({
   heroBadgeText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size8,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.5,
   },
 
@@ -1625,7 +1625,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 14,
     gap: 10,
-    backgroundColor: 'rgba(10,10,12,0.95)',
+    backgroundColor: Colors.bgElevated,
     borderTopWidth: 1,
     borderTopColor: Colors.whiteAlpha05,
   },
@@ -1644,7 +1644,7 @@ const styles = StyleSheet.create({
   putOnAuctionBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.5,
   },
   boostBtn: {
@@ -1686,7 +1686,7 @@ const styles = StyleSheet.create({
   markSoldBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1,
   },
 
@@ -1706,7 +1706,7 @@ const styles = StyleSheet.create({
   boostToastText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // ── Mark Sold modal ──
@@ -1758,6 +1758,6 @@ const styles = StyleSheet.create({
   markSoldConfirmBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 });

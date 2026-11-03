@@ -16,7 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -296,7 +296,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       <View style={styles.header}>
         <IconButton
@@ -431,7 +431,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
               onPress={() => void sendQuote()}
             >
               {busy === 'quote'
-                ? <ActivityIndicator color={Colors.white} />
+                ? <ActivityIndicator color={Colors.onAccent} />
                 : <Text style={styles.primaryText}>
                     {myQuote?.status === 'ACTIVE' ? 'UPDATE QUOTE' : 'SEND QUOTE'}
                   </Text>}
@@ -523,7 +523,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
                   onPress={start}
                 >
                   {busy === 'start'
-                    ? <ActivityIndicator color={Colors.white} />
+                    ? <ActivityIndicator color={Colors.onAccent} />
                     : <Text style={styles.primaryText}>START JOB</Text>}
                 </TouchableOpacity>
               </>
@@ -606,7 +606,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
                   onPress={complete}
                 >
                   {busy === 'complete'
-                    ? <ActivityIndicator color={Colors.white} />
+                    ? <ActivityIndicator color={Colors.onAccent} />
                     : <Text style={styles.primaryText}>MARK COMPLETE</Text>}
                 </TouchableOpacity>
               </>
@@ -710,7 +710,7 @@ const styles = StyleSheet.create({
   contactRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 36 },
   contactText: { fontFamily: FontFamily.medium, color: Colors.accent, fontSize: FontSize.size12 },
   primaryButton: { minHeight: 46, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  primaryText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.xs, letterSpacing: 0.7 },
+  primaryText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: FontSize.xs, letterSpacing: 0.7 },
   secondaryButton: { minHeight: 44, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 16 },
   secondaryText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.xs },
   dangerButton: { minHeight: 42, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha25, alignItems: 'center', justifyContent: 'center' },

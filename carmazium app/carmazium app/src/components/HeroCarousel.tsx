@@ -65,7 +65,7 @@ const HeroSlide: React.FC<{ item: CarListing; onPress: (listing: CarListing) => 
         <Text style={styles.price}>{formatPrice(item.price)}</Text>
         <View style={styles.cta}>
           <Text style={styles.ctaText}>View</Text>
-          <Ionicons name="arrow-forward" size={12} color={Colors.white} />
+          <Ionicons name="arrow-forward" size={12} color={Colors.onAccent} />
         </View>
       </View>
       <View style={styles.quickSpecs}>
@@ -223,12 +223,12 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.onAccent,
   },
   featuredLabel: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size9,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1.2,
   },
   categoryPill: {
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   categoryText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size9,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1,
   },
   info: {
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
   modelLabel: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.lg,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: -0.3,
     marginBottom: 8,
   },
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   price: {
     fontFamily: FontFamily.extraBold,
     fontSize: FontSize.xl,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: -0.3,
   },
   cta: {
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   ctaText: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   quickSpecs: {
     flexDirection: 'row',

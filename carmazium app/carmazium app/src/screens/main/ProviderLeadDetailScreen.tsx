@@ -15,7 +15,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -205,7 +205,7 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       <View style={styles.header}>
         <IconButton
@@ -414,7 +414,7 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
             onPress={() => void send()}
           >
             {busy
-              ? <ActivityIndicator color={Colors.white} />
+              ? <ActivityIndicator color={Colors.onAccent} />
               : <Text style={styles.primaryText}>
                   {lead.recipientStatus === 'RESPONDED' ? 'UPDATE RESPONSE' : 'SEND RESPONSE'}
                 </Text>}
@@ -472,6 +472,6 @@ const styles = StyleSheet.create({
   successCard: { flexDirection: 'row', gap: 8, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.successAlpha25, backgroundColor: Colors.successAlpha10, padding: 12 },
   successText: { flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.accentGreen },
   primaryButton: { minHeight: 46, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  primaryText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.xs, letterSpacing: 0.7 },
+  primaryText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: FontSize.xs, letterSpacing: 0.7 },
   disabled: { opacity: 0.55 },
 });

@@ -25,7 +25,7 @@ import { convertAndCompress } from '../../lib/storageHelper';
 import { haptics } from '../../lib/haptics';
 import { BottomSheet } from '../../components/BottomSheet';
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
-import { Colors } from '../../constants/colors';
+import { Colors, themeMode, themeStatusBarStyle } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -1246,7 +1246,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 activeOpacity={0.8}
               >
                 {editSaving ? (
-                  <ActivityIndicator size="small" color={Colors.white} />
+                  <ActivityIndicator size="small" color={Colors.onAccent} />
                 ) : (
                   <Text style={styles.editSaveBtnText}>Save Changes</Text>
                 )}
@@ -1349,7 +1349,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   activeOpacity={0.8}
                 >
                   {fundsConfirming[item.id]
-                    ? <ActivityIndicator color={Colors.white} />
+                    ? <ActivityIndicator color={Colors.onAccent} />
                     : <Text style={styles.handoverButtonText}>Confirm Vehicle Funds Received</Text>}
                 </TouchableOpacity>
               </View>
@@ -1366,7 +1366,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 activeOpacity={0.8}
               >
                 {handoverUploading[item.id] ? (
-                  <ActivityIndicator color={Colors.white} />
+                  <ActivityIndicator color={Colors.onAccent} />
                 ) : (
                   <Text style={styles.handoverButtonText}>{stage === 'CORRECT_PROOF' ? 'Upload Corrected Handover Proof' : 'Upload Handover Proof'}</Text>
                 )}
@@ -1512,7 +1512,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           onCreated={() => void fetchAuctions(true)}
         />
       )}
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha04, Colors.infoBlueAlpha03, Colors.bgPrimary]}
         start={{ x: 0, y: 0 }}
@@ -1631,7 +1631,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 onPress={() => openCreateModal()}
                 activeOpacity={0.85}
               >
-                <MaterialCommunityIcons name="gavel" size={18} color={Colors.white} />
+                <MaterialCommunityIcons name="gavel" size={18} color={Colors.onAccent} />
                 <Text style={styles.createAuctionText}>CREATE AUCTION</Text>
               </TouchableOpacity>
               <View style={{ height: 110 }} />
@@ -1707,7 +1707,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           disabled={retailSubmitting}
           activeOpacity={0.85}
         >
-          {retailSubmitting ? <ActivityIndicator color={Colors.white} size="small" /> : (
+          {retailSubmitting ? <ActivityIndicator color={Colors.onAccent} size="small" /> : (
             <Text style={styles.retailSubmitText}>Create & Pay</Text>
           )}
         </TouchableOpacity>
@@ -1748,7 +1748,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             disabled={digestTags.length >= 10}
             activeOpacity={0.8}
           >
-            <Ionicons name="add" size={18} color={Colors.white} />
+            <Ionicons name="add" size={18} color={Colors.onAccent} />
           </TouchableOpacity>
         </View>
         {digestTags.length > 0 && (
@@ -1791,7 +1791,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           disabled={digestSaving}
           activeOpacity={0.85}
         >
-          {digestSaving ? <ActivityIndicator color={Colors.white} size="small" /> : (
+          {digestSaving ? <ActivityIndicator color={Colors.onAccent} size="small" /> : (
             <Text style={styles.retailSubmitText}>Save Digest</Text>
           )}
         </TouchableOpacity>
@@ -1911,9 +1911,9 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   onPress={() => handleConnectWithWinner(resultsAuction)}
                   disabled={connectingChat}
                 >
-                  {connectingChat ? <ActivityIndicator size="small" color={Colors.white} /> : (
+                  {connectingChat ? <ActivityIndicator size="small" color={Colors.onAccent} /> : (
                     <>
-                      <Ionicons name="chatbubble-ellipses-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
+                      <Ionicons name="chatbubble-ellipses-outline" size={14} color={Colors.onAccent} style={{ marginRight: 6 }} />
                       <Text style={styles.resultsPrimaryBtnText}>Connect with Winner</Text>
                     </>
                   )}
@@ -1966,7 +1966,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                     openCreateModal(relistId);
                   }}
                 >
-                  <MaterialCommunityIcons name="gavel" size={14} color={Colors.white} style={{ marginRight: 6 }} />
+                  <MaterialCommunityIcons name="gavel" size={14} color={Colors.onAccent} style={{ marginRight: 6 }} />
                   <Text style={styles.resultsPrimaryBtnText}>Re-auction</Text>
                 </TouchableOpacity>
               )}
@@ -2086,7 +2086,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                     display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                     onChange={onDateChange}
                     minimumDate={new Date(Date.now() + 60_000)}
-                    themeVariant="dark"
+                    themeVariant={themeMode}
                     style={Platform.OS === 'ios' ? styles.iosDatePicker : undefined}
                   />
                 )}
@@ -2202,10 +2202,10 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 activeOpacity={0.85}
               >
                 {createSubmitting ? (
-                  <ActivityIndicator color={Colors.white} size="small" />
+                  <ActivityIndicator color={Colors.onAccent} size="small" />
                 ) : (
                   <>
-                    <MaterialCommunityIcons name="gavel" size={16} color={Colors.white} />
+                    <MaterialCommunityIcons name="gavel" size={16} color={Colors.onAccent} />
                     <Text style={styles.createSubmitBtnText}>Schedule Auction</Text>
                   </>
                 )}
@@ -2278,7 +2278,7 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   tabTextActive: {
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   list: {
     paddingHorizontal: 20,
@@ -2490,7 +2490,7 @@ const styles = StyleSheet.create({
   editSaveBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   editDiscard: {
     fontFamily: FontFamily.medium,
@@ -2600,7 +2600,7 @@ const styles = StyleSheet.create({
   resultsPrimaryBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // ── Handover section ──
@@ -2644,7 +2644,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   handoverButtonText: {
-    color: Colors.white,
+    color: Colors.onAccent,
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.size14,
   },
@@ -2718,7 +2718,7 @@ const styles = StyleSheet.create({
   createAuctionText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.5,
   },
 
@@ -2735,7 +2735,7 @@ const styles = StyleSheet.create({
   retailErrorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: Colors.errorAlpha08, borderWidth: 1, borderColor: Colors.errorAlpha20, borderRadius: Radius.inline, padding: 10, marginTop: 12 },
   retailErrorText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.error, flex: 1, lineHeight: 17 },
   retailSubmitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 50, borderRadius: Radius.inline, backgroundColor: Colors.infoBlue, marginTop: 16, marginBottom: 4 },
-  retailSubmitText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, letterSpacing: 0.3 },
+  retailSubmitText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.onAccent, letterSpacing: 0.3 },
 
   // ── Digest modal ──
   fieldHintSmall: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, marginBottom: 8, lineHeight: 15 },
@@ -2998,7 +2998,7 @@ const styles = StyleSheet.create({
   createSubmitBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.3,
   },
 });

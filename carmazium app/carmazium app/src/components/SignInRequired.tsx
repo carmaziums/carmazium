@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { Ionicons } from '@/components/BrandIcon';
 import { useAuthStore } from '../store/authStore';
-import { Colors } from '../constants/colors';
+import { Colors, themeStatusBarStyle } from '../constants/colors';
 import { Radius } from '../constants/spacing';
 import { FontFamily, FontSize } from '../constants/typography';
 
@@ -71,7 +71,7 @@ export const SignInRequired: React.FC<{
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 48 }]}>
         <View style={styles.orb}>
           <Ionicons name="lock-closed-outline" size={30} color={Colors.accent} />
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: 'center',
   },
-  primaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
+  primaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.onAccent },
   secondaryBtn: {
     alignSelf: 'stretch',
     marginTop: 12,

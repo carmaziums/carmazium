@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../lib/apiClient';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { BottomSheet } from '../../components/BottomSheet';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import {
@@ -166,7 +166,7 @@ const StaffCard: React.FC<StaffCardProps> = React.memo(({ member, removing, onRe
     <View style={styles.staffCard}>
       {/* Avatar */}
       <LinearGradient
-        colors={[Colors.darkBlue_2d3c63, Colors.darkBlue_1a2238]}
+        colors={[Colors.brandSlate, Colors.brandNavy]}
         style={styles.avatar}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -424,7 +424,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
           disabled={disabled}
           onValueChange={(value) => setTradeFlag(email, field, value)}
           trackColor={{ false: Colors.borderMuted, true: Colors.accent }}
-          thumbColor={Colors.white}
+          thumbColor={Colors.onAccent}
         />
       </View>
     );
@@ -532,11 +532,11 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {/* Background gradient */}
       <LinearGradient
-        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha03, Colors.groundClear, Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -792,7 +792,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   staffInfo: {
     flex: 1,

@@ -17,7 +17,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { formatPrice, AuctionListing } from '../../data/listings';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { AuctionFilterSheet } from '../../components/filters/AuctionFilterSheet';
 import {
   AUCTION_SORT_OPTIONS,
@@ -278,7 +278,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
     const isUnverifiedDealer = accountRole === 'dealer';
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
         {dealerMode && !embeddedDealerHub && <WebsiteTopBar />}
         <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: dealerMode ? 12 : insets.top + 16 }]}>
           <View style={styles.header}>
@@ -326,7 +326,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {dealerMode && !embeddedDealerHub && <WebsiteTopBar />}
       <ScrollView
@@ -513,7 +513,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
                   <Text style={styles.liveBadgeText}>LIVE</Text>
                 </View>
                 <View style={styles.viewerBadge} pointerEvents="none">
-                  <Ionicons name="eye-outline" size={10} color={Colors.textSecondary} />
+                  <Ionicons name="eye-outline" size={10} color={Colors.onAccentMuted} />
                   <Text style={styles.viewerCount}>{auction.viewers}</Text>
                 </View>
                 <WishlistHeart listing={auction} />
@@ -596,9 +596,9 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
                       navigation.navigate('LiveAuctionDetailed', { listing: auction })
                     }
                   >
-                    <MaterialCommunityIcons name={isOwnAuction ? 'eye-outline' : 'gavel'} size={16} color={Colors.white} style={styles.bidBtnIcon} />
+                    <MaterialCommunityIcons name={isOwnAuction ? 'eye-outline' : 'gavel'} size={16} color={Colors.onAccent} style={styles.bidBtnIcon} />
                     <Text style={styles.bidNowBtnText}>{isOwnAuction ? 'YOUR AUCTION' : 'BID NOW'}</Text>
-                    <Ionicons name="arrow-forward" size={15} color={Colors.white} style={styles.bidBtnArrow} />
+                    <Ionicons name="arrow-forward" size={15} color={Colors.onAccent} style={styles.bidBtnArrow} />
                   </TouchableOpacity>
                 );
               })()}
@@ -811,7 +811,7 @@ const styles = StyleSheet.create({
   filterCountText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size9,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   sortLabel: {
     flex: 1,
@@ -1023,12 +1023,12 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.onAccent,
   },
   liveBadgeText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size9,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.5,
   },
   viewerBadge: {
@@ -1048,7 +1048,7 @@ const styles = StyleSheet.create({
   viewerCount: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size10,
-    color: Colors.textSecondary,
+    color: Colors.onAccentMuted,
   },
 
   // Car name overlay on image
@@ -1175,7 +1175,7 @@ const styles = StyleSheet.create({
   bidNowBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.6,
   },
   bidBtnArrow: {

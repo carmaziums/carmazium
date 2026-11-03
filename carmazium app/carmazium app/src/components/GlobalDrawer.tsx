@@ -765,7 +765,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
   },
-  guestPrimaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
+  guestPrimaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.onAccent },
   guestSecondaryBtn: {
     marginTop: 8,
     borderRadius: Radius.inline,
@@ -793,7 +793,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     bottom: 0,
-    backgroundColor: '#243047',
+    backgroundColor: Colors.bgDropdown,
     shadowColor: Colors.black,
     shadowOpacity: 0.55,
     shadowRadius: 24,
@@ -869,7 +869,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: FontSize.xl,
     fontFamily: FontFamily.bold,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   userMeta: {
     flex: 1,
@@ -1033,7 +1033,7 @@ const styles = StyleSheet.create({
   activePillText: {
     fontSize: FontSize.size8,
     fontFamily: FontFamily.bold,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.5,
   },
 

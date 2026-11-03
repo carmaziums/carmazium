@@ -11,7 +11,7 @@ import {
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '../constants/colors';
+import { Colors, themeStatusBarStyle } from '../constants/colors';
 import {FontFamily, FontSize } from '../constants/typography';
 
 import { IconButton } from './IconButton';
@@ -68,7 +68,7 @@ export const StripeCheckoutModal: React.FC<StripeCheckoutModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
         <View style={{ height: insets.top }} />
         <View style={styles.header}>
           <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={onClose} accessibilityLabel="Close" />
@@ -138,11 +138,11 @@ const styles = StyleSheet.create({
   },
   webviewWrap: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.onAccent,
   },
   webview: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.onAccent,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,

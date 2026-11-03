@@ -17,7 +17,8 @@ import { apiClient } from '../../lib/apiClient';
 import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
 import { startAddressVerification, confirmAddressVerification } from '../../lib/addressVerificationApi';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { Colors } from '../../constants/colors';
+import { Colors, themeMode, themeStatusBarStyle } from '../../constants/colors';
+import { getThemePreference, promptThemeChange, type ThemePreference } from '../../lib/themePreference';
 
 import { IconButton } from '../../components/IconButton';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -26,6 +27,14 @@ import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { useSingleColumnSettings } from '../../lib/nativeLayoutParity';
 import { getOrCreateSupportRoom } from '../../lib/chatApi';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
+const THEME_OPTIONS: { id: ThemePreference; label: string; icon: string }[] = [
+  { id: 'light', label: 'Light', icon: 'sunny-outline' },
+  { id: 'dark', label: 'Dark', icon: 'moon-outline' },
+  { id: 'system', label: 'System', icon: 'phone-portrait-outline' },
+];
+// Fixed for the life of the bundle: a change reloads the app.
+const themePreference = getThemePreference();
+
 type SettingsCategory = 'personal' | 'business' | 'verification' | 'notifications' | 'payouts' | 'appearance' | 'security' | 'reviews' | 'account';
 const isSettingsCategory = (value: unknown): value is SettingsCategory =>
   typeof value === 'string' &&
@@ -594,9 +603,9 @@ export const SettingsScreen: React.FC = () => {
   };
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha04, Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
       />
@@ -670,7 +679,7 @@ export const SettingsScreen: React.FC = () => {
                 <Ionicons
                   name={category.icon as any}
                   size={19}
-                  color={selected ? Colors.white : Colors.textSecondary}
+                  color={selected ? Colors.onAccent : Colors.textSecondary}
                 />
                 <Text style={[styles.categoryLabel, selected && styles.categoryLabelSelected]}>
                   {category.label}
@@ -757,7 +766,7 @@ export const SettingsScreen: React.FC = () => {
             disabled={profileSaving}
           >
             {profileSaving
-              ? <ActivityIndicator size="small" color={Colors.white} />
+              ? <ActivityIndicator size="small" color={Colors.onAccent} />
               : <Text style={styles.saveBtnText}>SAVE PROFILE</Text>}
           </TouchableOpacity>
         </View>
@@ -800,7 +809,7 @@ export const SettingsScreen: React.FC = () => {
               disabled={!preferencesLoaded}
               accessibilityLabel="Email me when a listing is sold"
               trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }}
-              thumbColor={Colors.white}
+              thumbColor={Colors.onAccent}
               ios_backgroundColor={Colors.whiteAlpha10}
             />
           </View>
@@ -814,7 +823,7 @@ export const SettingsScreen: React.FC = () => {
               disabled={!preferencesLoaded}
               accessibilityLabel="Show my profile publicly"
               trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }}
-              thumbColor={Colors.white}
+              thumbColor={Colors.onAccent}
               ios_backgroundColor={Colors.whiteAlpha10}
             />
           </View>
@@ -828,7 +837,7 @@ export const SettingsScreen: React.FC = () => {
                 accessibilityLabel="Save notification and privacy preferences"
               >
                 {preferencesSaving
-                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  ? <ActivityIndicator size="small" color={Colors.onAccent} />
                   : <Text style={styles.saveBtnText}>SAVE PREFERENCES</Text>}
               </TouchableOpacity>
             </View>
@@ -993,7 +1002,7 @@ export const SettingsScreen: React.FC = () => {
                 disabled={dealerSaving}
               >
                 {dealerSaving
-                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  ? <ActivityIndicator size="small" color={Colors.onAccent} />
                   : <Text style={styles.saveBtnText}>SAVE DEALERSHIP PROFILE</Text>}
               </TouchableOpacity>
             </View>
@@ -1143,7 +1152,7 @@ export const SettingsScreen: React.FC = () => {
           >
             {pwdSaving
               ? <ActivityIndicator size="small" color={Colors.white} />
-              : <Text style={styles.saveBtnText}>UPDATE PASSWORD</Text>}
+              : <Text style={[styles.saveBtnText, styles.saveBtnTextOnGround]}>UPDATE PASSWORD</Text>}
           </TouchableOpacity>
         </View>
           </>
@@ -1182,9 +1191,9 @@ export const SettingsScreen: React.FC = () => {
                 disabled={stripeConnecting}
               >
                 {stripeConnecting
-                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  ? <ActivityIndicator size="small" color={Colors.onAccent} />
                   : <>
-                      <Ionicons name="arrow-redo-outline" size={16} color={Colors.white} />
+                      <Ionicons name="arrow-redo-outline" size={16} color={Colors.onAccent} />
                       <Text style={styles.stripeBtnText}>{stripePartial ? 'REVIEW PAYOUT ONBOARDING' : 'CONNECT PAYOUT ACCOUNT'}</Text>
                     </>}
               </TouchableOpacity>
@@ -1247,7 +1256,7 @@ export const SettingsScreen: React.FC = () => {
             disabled={bankSaving}
           >
             {bankSaving
-              ? <ActivityIndicator size="small" color={Colors.white} />
+              ? <ActivityIndicator size="small" color={Colors.onAccent} />
               : <Text style={styles.saveBtnText}>SAVE BANK DETAILS</Text>}
           </TouchableOpacity>
         </View>
@@ -1280,12 +1289,35 @@ export const SettingsScreen: React.FC = () => {
         {activeCategory === 'appearance' && (
           <View style={styles.accountSectionCard}>
             <SectionHeader icon="color-palette-outline" label="APPEARANCE" />
-            <Text style={styles.accountSectionTitle}>Dark appearance</Text>
+            <Text style={styles.accountSectionTitle}>Theme</Text>
             <Text style={styles.accountSectionText}>
-              The app currently uses the CarMazium website's dark colour palette.
-              A live light/dark switch is not yet supported by the native theme engine.
-              This screen does not pretend that changing the website theme changes app colours.
+              Choose light or dark, or follow your device setting. Light is the default,
+              matching carmazium.com. The app restarts to apply a new theme.
             </Text>
+            <View style={styles.themeOptions} accessibilityRole="radiogroup" accessibilityLabel="Theme">
+              {THEME_OPTIONS.map(option => {
+                const selected = themePreference === option.id;
+                return (
+                  <TouchableOpacity
+                    key={option.id}
+                    style={[styles.themeOption, selected && styles.themeOptionSelected]}
+                    onPress={() => promptThemeChange(option.id)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={`${option.label} theme`}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name={option.icon} size={18} color={selected ? Colors.onAccent : Colors.textSecondary} />
+                    <Text style={[styles.themeOptionLabel, selected && styles.themeOptionLabelSelected]}>{option.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {themePreference === 'system' && (
+              <Text style={styles.accountSectionText}>
+                Currently {themeMode}. A change to your device setting applies the next time CarMazium opens.
+              </Text>
+            )}
           </View>
         )}
 
@@ -1362,14 +1394,14 @@ export const SettingsScreen: React.FC = () => {
                 accessibilityRole="button" accessibilityLabel="Review business verification"
                 onPress={() => selectCategory('verification')}>
                 <Text style={styles.accountActionText}>Review business verification</Text>
-                <Ionicons name="chevron-forward" size={17} color={Colors.white} />
+                <Ionicons name="chevron-forward" size={17} color={Colors.onAccent} />
               </TouchableOpacity>
             ) : !isDealerStaff ? (
               <TouchableOpacity style={styles.accountAction}
                 accessibilityRole="button" accessibilityLabel="Explore Partner Account"
                 onPress={() => navigation.navigate('PartnerDashboard')}>
                 <Text style={styles.accountActionText}>Explore Partner Account</Text>
-                <Ionicons name="chevron-forward" size={17} color={Colors.white} />
+                <Ionicons name="chevron-forward" size={17} color={Colors.onAccent} />
               </TouchableOpacity>
             ) : (
               <Text style={styles.accountSectionText}>
@@ -1421,7 +1453,7 @@ export const SettingsScreen: React.FC = () => {
             accessibilityLabel="Permanently delete my account"
           >
             {deleting
-              ? <ActivityIndicator size="small" color={Colors.white} />
+              ? <ActivityIndicator size="small" color={Colors.onAccent} />
               : <Text style={styles.deleteConfirmBtnText}>DELETE MY ACCOUNT</Text>}
           </TouchableOpacity>
           <TouchableOpacity
@@ -1468,7 +1500,7 @@ export const SettingsScreen: React.FC = () => {
                 disabled={verifySending}
               >
                 {verifySending
-                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  ? <ActivityIndicator size="small" color={Colors.onAccent} />
                   : <Text style={styles.stripeBtnText}>SEND VERIFICATION CODE</Text>}
               </TouchableOpacity>
             </View>
@@ -1494,7 +1526,7 @@ export const SettingsScreen: React.FC = () => {
                 disabled={verifyConfirming}
               >
                 {verifyConfirming
-                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  ? <ActivityIndicator size="small" color={Colors.onAccent} />
                   : <Text style={styles.stripeBtnText}>CONFIRM & VERIFY</Text>}
               </TouchableOpacity>
               <TouchableOpacity style={{ alignItems: 'center', marginTop: 14 }} onPress={() => { setVerifyStage('address'); setVerifyError(null); }}>
@@ -1550,7 +1582,7 @@ const styles = StyleSheet.create({
   accountAction: { backgroundColor: Colors.accent, borderRadius: 11, minHeight: 46,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 13 },
-  accountActionText: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: 12 },
+  accountActionText: { color: Colors.onAccent, fontFamily: FontFamily.bold, fontSize: 12 },
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   dangerCard: {
     backgroundColor: Colors.errorAlpha08,
@@ -1596,7 +1628,7 @@ const styles = StyleSheet.create({
   deleteConfirmBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1.1,
   },
   header: {
@@ -1614,8 +1646,13 @@ const styles = StyleSheet.create({
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
   categoryButton: { flexGrow: 1, flexBasis: '46%', minHeight: 56, flexDirection: 'row', gap: 9, alignItems: 'center', backgroundColor: Colors.bgCardSolid, borderColor: Colors.borderHi, borderWidth: 1, borderRadius: Radius.inline, paddingHorizontal: 13, paddingVertical: 10 },
   categoryButtonSelected: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  themeOptions: { flexDirection: 'row', gap: 8 },
+  themeOption: { flex: 1, minHeight: 48, flexDirection: 'row', gap: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCardSolid, borderColor: Colors.borderHi, borderWidth: 1, borderRadius: Radius.inline, paddingHorizontal: 8 },
+  themeOptionSelected: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  themeOptionLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
+  themeOptionLabelSelected: { color: Colors.onAccent },
   categoryLabel: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.xs, lineHeight: 18, color: Colors.textSecondary },
-  categoryLabelSelected: { color: Colors.white },
+  categoryLabelSelected: { color: Colors.onAccent },
   notificationShortcut: { flexDirection: 'row', alignItems: 'center', minHeight: 68, padding: 14, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgCardSolid, gap: 12, marginBottom: 6 },
   notificationShortcutIcon: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: Colors.accentAlpha10 },
   notificationShortcutTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 3 },
@@ -1702,7 +1739,8 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: Colors.accent,
   },
-  saveBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.5 },
+  saveBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent, letterSpacing: 0.5 },
+  saveBtnTextOnGround: { color: Colors.textPrimary },
 
   // Stripe
   payoutDesc: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 18 },
@@ -1718,7 +1756,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent, borderRadius: Radius.inline, height: 44,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
-  stripeBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.5 },
+  stripeBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent, letterSpacing: 0.5 },
   stripeNote: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted, textAlign: 'center', marginTop: -4 },
 
   // Bank details

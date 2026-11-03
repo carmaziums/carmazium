@@ -184,7 +184,7 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
           <TouchableOpacity accessibilityRole="button"
             accessibilityLabel="Create Auction"
             onPress={openCreate} style={styles.createButton}>
-            <Ionicons name="add-circle-outline" size={19} color={Colors.white} />
+            <Ionicons name="add-circle-outline" size={19} color={Colors.onAccent} />
             <Text style={styles.createText}>Create Auction</Text>
           </TouchableOpacity>
         )}
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   bidsSwitchItem: { minHeight: 44, paddingHorizontal: 14, borderRadius: 9, justifyContent: 'center' },
   bidsSwitchItemActive: { backgroundColor: Colors.accent },
   bidsSwitchText: { fontFamily: FontFamily.bold, fontSize: 14, color: Colors.textMuted },
-  bidsSwitchTextActive: { color: '#FFFFFF' },
+  bidsSwitchTextActive: { color: Colors.onAccent },
   permissionNotice: { color: Colors.textMuted, paddingHorizontal: 20, paddingBottom: 5,
     fontFamily: FontFamily.medium, fontSize: 12 },
   heading: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 9, gap: 5 },
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   createButton: { flexDirection: 'row', gap: 7, alignItems: 'center',
     backgroundColor: Colors.accent, borderRadius: 12,
     minHeight: 44, paddingHorizontal: 15, alignSelf: 'flex-start', marginTop: 10 },
-  createText: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: 13 },
+  createText: { color: Colors.onAccent, fontFamily: FontFamily.bold, fontSize: 13 },
   navScroller: { flexGrow: 0, marginBottom: 9, maxHeight: 58 },
   navContent: { gap: 4, padding: 5, marginHorizontal: 20, alignItems: 'center',
     borderRadius: 14, borderWidth: 1, borderColor: Colors.borderSubtle,

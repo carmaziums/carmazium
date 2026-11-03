@@ -171,7 +171,7 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
         </View>
 
         {/* Save button */}
-        <IconButton style={styles.saveBtn} icon={<Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={18} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
+        <IconButton style={styles.saveBtn} icon={<Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={18} color={saved ? Colors.accent : Colors.onAccent} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
 
         {/* Price tag */}
         <View style={styles.priceTag}>
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   featuredText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size9,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.8,
   },
   importedBadge: {
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
   newText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size9,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.8,
   },
   bannerBadge: {
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   priceText: {
     fontFamily: FontFamily.mono,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.3,
   },
   body: {

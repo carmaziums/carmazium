@@ -1,6 +1,8 @@
 // Carmazium – Brand Color System
-// Visual source of truth: the active website's dark-theme tokens in
-// src/app/globals.css. Native screens can retain platform-specific controls,
+// Visual source of truth: the active website's tokens in src/app/globals.css —
+// `.dark` for darkPalette, `:root` for lightPalette (bottom of this file).
+// Light is the default, as on the website; see lib/themePreference.ts.
+// Native screens can retain platform-specific controls,
 // but should share the site's navy surfaces, legible type contrast and red.
 //
 // -----------------------------------------------------------------------------
@@ -50,7 +52,7 @@ const infoLight = '#60A5FA';
 const error = '#EF4444';
 const errorLight = '#F87171';
 
-export const Colors = {
+const darkPalette = {
   // ═══ Ground ════════════════════════════════════════════════════════════════
   bgBody,
   bgElevated,
@@ -126,9 +128,29 @@ export const Colors = {
   infoBlueLight: infoLight,
 
   // ═══ Utility ═══════════════════════════════════════════════════════════════
+  /**
+   * THEME-FOLLOWING. Historically "white" meant "text on the dark ground", and
+   * ~900 of its call sites still mean exactly that, so in the light palette it
+   * resolves to text-primary navy. For a label/icon/dot sitting on a red,
+   * semantic, scrim or photo fill — anywhere it must stay white in both themes
+   * — use `onAccent`.
+   */
   white: '#FFFFFF',
+  /** Fixed white: text/icons on accent, semantic, scrim or photo fills. */
+  onAccent: '#FFFFFF',
+  /** Fixed: secondary text/meta on accent, scrim or photo fills. */
+  onAccentMuted: 'rgba(255, 255, 255, 0.72)',
+  /** Fixed black: text on yellow/amber fills, and shadow colour. */
   black: '#000000',
   iconMuted: '#A3B1C4',
+  /** Website --bg-dropdown: menus, the drawer and the bottom tab bar. */
+  bgDropdown: '#243047',
+  /** Website --color-secondary navy. Fixed in both themes (avatar gradients). */
+  brandNavy: '#1E293B',
+  /** UK number-plate / featured-badge yellow. Fixed in both themes. */
+  plateYellow: '#FBBF24',
+  /** bgBody at alpha 0 — gradient stop that fades into the page ground. */
+  groundClear: 'rgba(27, 37, 56, 0)',
 
   // Stripe's native Payment Sheet `appearance.colors.*` requires hex
   // (#RRGGBB/#RRGGBBAA), not rgba() strings — passing an rgba token there throws
@@ -361,4 +383,202 @@ export const Colors = {
   midPink: accentDark,
 } as const;
 
-export type ColorKey = keyof typeof Colors;
+export type ColorKey = keyof typeof darkPalette;
+export type Palette = { [K in ColorKey]: string };
+
+// ═════════════════════════════════════════════════════════════════════════════
+// LIGHT PALETTE — website :root tokens (src/app/globals.css).
+// ═════════════════════════════════════════════════════════════════════════════
+// Same keys as darkPalette (the Palette type enforces it). Mapping rules:
+//   grounds → light surfaces (body #EEF5FB, cards #FFFFFF, input #E5EEF7)
+//   text ramp → navy/slate (#0F172A / #334155 / muted)
+//   white-alpha borders & fills → navy-alpha (rgba(15, 23, 42, a))
+//   brand red, semantic bases, overlays/scrims, accent/semantic alphas → same
+//   *Light semantic variants (used as text on dark) → darker text-safe shades
+//   `white` → text-primary navy (see the note on darkPalette.white)
+const lBody = '#EEF5FB';
+const lCard = '#FFFFFF';
+const lCardHover = '#F7FBFF';
+const lInput = '#E5EEF7';
+const lSurfaceHi = '#D5E1EC';
+const lText = '#0F172A';
+const lText2 = '#334155';
+const lMuted = '#56667C';
+const lDisabled = '#94A3B8';
+const lBorder = '#D5E1EC';
+const lBorderHi = '#B8CADD';
+const lBorderStrong = '#8FA6BD';
+const lSuccessText = '#046C4E';
+const lWarningText = '#A14A06';
+const lInfoText = '#1D4ED8';
+const lErrorText = '#B91C1C';
+const navyA = (a: string) => `rgba(15, 23, 42, ${a})`;
+
+const lightPalette: Palette = {
+  ...darkPalette,
+  // Ground
+  bgBody: lBody,
+  bgElevated: lCard,
+  bgCardSolid: lCard,
+  bgSurface: lInput,
+  bgSurfaceHi: lSurfaceHi,
+  bgCard: lCard,
+  bgCardHi: lCardHover,
+  bgPrimary: lBody,
+  bgSecondary: lCard,
+  bgTertiary: lInput,
+  // Brand
+  accentGlow: accentHot,
+  // Text
+  textPrimary: lText,
+  textSecondary: lText2,
+  textMuted: lMuted,
+  textFaint: lMuted,
+  textDisabled: lDisabled,
+  // Borders
+  border: lBorder,
+  borderHi: lBorderHi,
+  borderStrong: lBorderStrong,
+  borderSubtle: lBorder,
+  borderMuted: lBorderHi,
+  glassBg: navyA('0.04'),
+  glassBorder: lBorder,
+  glassBorderStrong: lBorderHi,
+  // Semantic: bases unchanged; the "Light" variants exist to read on navy, so
+  // on a light ground they become the darker, text-safe shade of the same hue.
+  successLight: lSuccessText,
+  warningLight: lWarningText,
+  infoLight: lInfoText,
+  errorLight: lErrorText,
+  infoBlueLight: lInfoText,
+  // Utility
+  white: lText,
+  onAccent: '#FFFFFF',
+  onAccentMuted: 'rgba(255, 255, 255, 0.72)',
+  black: '#000000',
+  iconMuted: lMuted,
+  bgDropdown: lCard,
+  brandNavy: '#1E293B',
+  plateYellow: '#FBBF24',
+  groundClear: 'rgba(238, 245, 251, 0)',
+  whiteAlpha08Hex: '#0F172A14',
+  whiteAlpha06Hex: '#0F172A0F',
+  // Tab bar / input
+  tabBarBg: 'rgba(255, 255, 255, 0.94)',
+  tabBarBorder: lBorder,
+  tabInactive: lMuted,
+  inputBg: lInput,
+  inputBorder: lBorder,
+  inputPlaceholder: lDisabled,
+  // White-alpha scale → navy-alpha scale
+  whiteAlpha02: navyA('0.02'),
+  whiteAlpha03: navyA('0.03'),
+  whiteAlpha04: navyA('0.04'),
+  whiteAlpha05: navyA('0.05'),
+  whiteAlpha06: navyA('0.06'),
+  whiteAlpha07: navyA('0.07'),
+  whiteAlpha08: navyA('0.08'),
+  whiteAlpha09: navyA('0.09'),
+  whiteAlpha10: navyA('0.10'),
+  whiteAlpha12: navyA('0.12'),
+  whiteAlpha15: navyA('0.15'),
+  whiteAlpha20: navyA('0.20'),
+  whiteAlpha50: navyA('0.50'),
+  textSecondaryAlpha20: 'rgba(51, 65, 85, 0.20)',
+
+  // Deprecated aliases — ground ramp
+  deepBlue_050507: lBody,
+  deepBlue_0d0d11: lBody,
+  deepBlue_0d0d12: lBody,
+  deepBlue_0f0f14: lBody,
+  deepBlue_11131e: lBody,
+  deepBlue_13131a: lBody,
+  deepBlue_15151b: lBody,
+  deepBlue_15192a: lCard,
+  deepBlue_16161c: lBody,
+  deepNearBlack: lBody,
+  deepBlue_18181f: lCard,
+  deepBlue_1a1a22: lCard,
+  deepBlue_1a1a24: lCard,
+  deepBlue_1b1d26: lCard,
+  deepBlue_1c1c22: lCard,
+  deepBlue_1c1c24: lCard,
+  deepBlue_1c1d26: lCard,
+  deepBlue_1e1e24: lCard,
+  deepBlue_1e1e26: lCard,
+  deepBlue_1e1e28: lCard,
+  darkBlue_1a2238: lCard,
+  darkBlue_1c2033: lCard,
+  darkBlue_1d2030: lCard,
+  darkBlue_1e293b: lCard,
+  darkBlue_222636: lCard,
+  darkBlue_26262e: lInput,
+  darkBlue_2a2a35: lInput,
+  darkBlue_2a2a36: lInput,
+  darkBlue_2a2e3d: lInput,
+  darkBlue_2a3047: lSurfaceHi,
+  darkBlue_2b3252: lSurfaceHi,
+  bgSecondaryAlt: lCard,
+  darkGrey: lInput,
+  deepPurple: lCard,
+  darkPurple: lInput,
+  // Deprecated aliases — text ramp
+  midBlue_505060: lDisabled,
+  midBlue_6b7280: lMuted,
+  lightBlue_9ca3af: lMuted,
+  lightBlue_a0a0b0: lMuted,
+  lightGrey: lText2,
+  paleBlue_c0c0cb: lText2,
+  paleBlue_d0d0da: lText2,
+  paleBlue_e2e2ea: lText2,
+  paleGrey_c0c0c8: lText2,
+  paleGrey_cccccc: lText2,
+  paleNearWhite_e0e0e0: lText,
+  paleNearWhite_e4e4e7: lText,
+  brandSilver: lMuted,
+  // Deprecated aliases — light semantic tints are text on dark; darken them.
+  lightGreen_34d399: lSuccessText,
+  lightGreen_4ade80: lSuccessText,
+  lightGreen_6ee7b7: lSuccessText,
+  lightTeal_22d3ee: lInfoText,
+  lightTeal_38bdf8: lInfoText,
+  lightOrange_fb923c: lWarningText,
+  lightOrange_fbbc05: lWarningText,
+  lightOrange_fbbf24: lWarningText,
+  lightYellow: lWarningText,
+  midOrange_d4a017: lWarningText,
+  paleRed_f87171: lErrorText,
+  paleRed_fca5a5: lErrorText,
+  lightBlue_4fa8ff: lInfoText,
+  paleBlue_818cf8: lInfoText,
+  paleBlue_93c5fd: lInfoText,
+  palePurple_a78bfa: lInfoText,
+  palePurple_c084fc: lInfoText,
+};
+
+export type ThemeMode = 'light' | 'dark';
+
+/**
+ * The live palette. A single mutable object, populated by applyThemePalette()
+ * from index.js BEFORE App (and therefore any screen module) is required, so
+ * every module-level StyleSheet.create() captures the chosen theme. Switching
+ * theme persists the preference and reloads the JS bundle — styles are never
+ * swapped under a mounted tree.
+ */
+export const Colors: Palette = { ...lightPalette };
+
+/** The resolved theme the palette was populated from. Light by default (web parity). */
+export let themeMode: ThemeMode = 'light';
+/** StatusBar `barStyle` that reads on the current ground. */
+export let themeStatusBarStyle: 'light-content' | 'dark-content' = 'dark-content';
+/** expo-status-bar `style` for the current ground. */
+export let themeStatusBarExpoStyle: 'light' | 'dark' = 'dark';
+
+export function applyThemePalette(mode: ThemeMode): void {
+  Object.assign(Colors, mode === 'dark' ? darkPalette : lightPalette);
+  themeMode = mode;
+  themeStatusBarStyle = mode === 'dark' ? 'light-content' : 'dark-content';
+  themeStatusBarExpoStyle = mode === 'dark' ? 'light' : 'dark';
+}
+
+export const palettes: Record<ThemeMode, Palette> = { dark: darkPalette, light: lightPalette };

@@ -18,7 +18,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { IconButton } from '../../components/IconButton';
 import { CarListing, formatPrice } from '../../data/listings';
@@ -172,7 +172,7 @@ export const SavedScreen: React.FC = () => {
             <Ionicons
               name={saved ? 'heart' : 'heart-outline'}
               size={16}
-              color={saved ? Colors.accent : Colors.white}
+              color={saved ? Colors.accent : Colors.onAccent}
             />
           </TouchableOpacity>
         </View>
@@ -268,9 +268,9 @@ export const SavedScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha03, Colors.groundClear, Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.4 }}
@@ -298,7 +298,7 @@ export const SavedScreen: React.FC = () => {
             <TouchableOpacity key={tab} accessibilityRole="tab" accessibilityState={{ selected: savedTab === tab }}
               onPress={() => setSavedTab(tab)}
               style={{ flex: 1, minHeight: 44, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: savedTab === tab ? Colors.accent : 'transparent' }}>
-              <Text style={{ color: savedTab === tab ? Colors.white : Colors.textMuted, fontFamily: FontFamily.bold }}>
+              <Text style={{ color: savedTab === tab ? Colors.onAccent : Colors.textMuted, fontFamily: FontFamily.bold }}>
                 {tab === 'auctions' ? 'Auctions' : 'Retail cars'}
               </Text>
             </TouchableOpacity>

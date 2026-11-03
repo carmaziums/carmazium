@@ -15,7 +15,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -274,11 +274,11 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
                 disabled={isActioning}
               >
                 {isActioning ? (
-                  <ActivityIndicator size="small" color={Colors.white} />
+                  <ActivityIndicator size="small" color={Colors.onAccent} />
                 ) : (
                   <>
-                    <Ionicons name="checkmark" size={14} color={Colors.white} />
-                    <Text style={[styles.actionBtnText, { color: Colors.white }]}>
+                    <Ionicons name="checkmark" size={14} color={Colors.onAccent} />
+                    <Text style={[styles.actionBtnText, { color: Colors.onAccent }]}>
                       Mark complete
                     </Text>
                   </>
@@ -293,9 +293,9 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.infoBlueAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.infoBlueAlpha06, Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}

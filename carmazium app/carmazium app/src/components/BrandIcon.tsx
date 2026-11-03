@@ -266,6 +266,10 @@ const ICON_MAP: Record<string, string> = {
   'sort': 'ArrowUpDown',
   'numeric': 'Hash',
   'finance': 'Landmark',
+  // Appearance (theme switch)
+  'sunny-outline': 'Sun',
+  'moon-outline': 'Moon',
+  'phone-portrait-outline': 'Smartphone',
 };
 
 const toPascal = (n: string) =>

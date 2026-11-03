@@ -15,7 +15,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -169,7 +169,7 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <View style={styles.header}>
         <IconButton style={styles.headerButton} icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.headerTitle}>Matching settings</Text>
@@ -194,7 +194,7 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
                     value={nationwide}
                     onValueChange={setNationwide}
                     trackColor={{ false: Colors.borderMuted, true: Colors.accent }}
-                    thumbColor={Colors.white}
+                    thumbColor={Colors.onAccent}
                   />
                 </View>
                 {!nationwide ? (
@@ -242,7 +242,7 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
               ) : null}
 
               <TouchableOpacity style={[styles.primaryButton, busy && { opacity: 0.6 }]} onPress={save} disabled={busy}>
-                {busy ? <ActivityIndicator color={Colors.white} /> : <><Ionicons name="checkmark-circle-outline" size={17} color={Colors.white} /><Text style={styles.primaryText}>SAVE MATCHING SETTINGS</Text></>}
+                {busy ? <ActivityIndicator color={Colors.onAccent} /> : <><Ionicons name="checkmark-circle-outline" size={17} color={Colors.onAccent} /><Text style={styles.primaryText}>SAVE MATCHING SETTINGS</Text></>}
               </TouchableOpacity>
             </>
           ) : null}
@@ -271,6 +271,6 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.bgTertiary, borderRadius: Radius.inline, color: Colors.white, paddingHorizontal: 13, paddingVertical: 11, fontFamily: FontFamily.regular, fontSize: FontSize.sm },
   hint: { fontFamily: FontFamily.regular, color: Colors.textMuted, fontSize: FontSize.size10 },
   primaryButton: { minHeight: 48, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
-  primaryText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.xs },
+  primaryText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: FontSize.xs },
   error: { fontFamily: FontFamily.regular, color: Colors.paleRed_fca5a5, fontSize: FontSize.size12 },
 });

@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { mapApiListingToCarListing, ApiListing, BackendPaginatedResponse } from '../../lib/listingsApi';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
@@ -174,7 +174,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
   if (loading) {
     return (
       <View style={[styles.container, styles.centerFill]}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
         <ActivityIndicator color={Colors.accent} />
       </View>
     );
@@ -183,7 +183,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
   if (notFound || !profile) {
     return (
       <View style={[styles.container, styles.centerFill]}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
         <View style={{ height: insets.top }} />
         <IconButton style={[styles.backBtn, { position: 'absolute', top: insets.top + 10, left: 16 }]} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
         <Ionicons name="person-circle-outline" size={48} color={Colors.textMuted} />
@@ -198,9 +198,9 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha06, Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -223,7 +223,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
           {user.profileImage ? (
             <Image source={{ uri: user.profileImage }} style={styles.avatarImg} contentFit="cover" cachePolicy="memory-disk" />
           ) : (
-            <LinearGradient colors={[Colors.darkBlue_2d3c63, Colors.darkBlue_1a2238]} style={styles.avatar}>
+            <LinearGradient colors={[Colors.brandSlate, Colors.brandNavy]} style={styles.avatar}>
               <Text style={styles.avatarText}>{getInitials(user)}</Text>
             </LinearGradient>
           )}
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: FontSize.size26,
     fontFamily: FontFamily.bold,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   heroNameRow: { flexDirection: 'row', alignItems: 'center' },
   heroName: {

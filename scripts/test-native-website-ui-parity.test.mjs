@@ -59,7 +59,8 @@ test('native shared header follows actual website logo, notification, account an
   assert.ok(bar.includes("navigation.navigate('Notifications')"));
   assert.ok(bar.includes("navigation.navigate('Settings')"));
   assert.ok(bar.includes('<HamburgerButton websiteStyle />'));
-  assert.ok(bar.includes("backgroundColor: '#1E293B'"));
+  // Themed: bgElevated is #1E293B in the dark palette, white in light.
+  assert.ok(bar.includes('backgroundColor: Colors.bgElevated'));
   assert.ok(!bar.includes("setRole("));
   for (const screen of [
     'DealerProfileScreen.tsx',
@@ -76,7 +77,10 @@ test('website and native match dark navy body + red brand, with a full width bot
   assert.ok(css.includes('--bg-dropdown: #243047'));
   assert.ok(colors.includes("const bgBody = '#1B2538';"));
   assert.ok(colors.includes("const accent = '#ED1C24';"));
-  assert.ok(tabs.includes("backgroundColor: '#243047'"));
+  // Tab bar uses the website --bg-dropdown token, which is #243047 in dark and
+  // white in light (light/dark switch, 2026-11).
+  assert.ok(colors.includes("bgDropdown: '#243047'"));
+  assert.ok(tabs.includes('backgroundColor: Colors.bgDropdown'));
   assert.ok(tabs.includes("left: 0,"));
   assert.ok(tabs.includes("right: 0,"));
   assert.ok(tabs.includes("paddingBottom: insets.bottom"));

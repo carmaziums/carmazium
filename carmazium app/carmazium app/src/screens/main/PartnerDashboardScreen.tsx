@@ -17,7 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { useAuthStore } from '../../store/authStore';
@@ -175,7 +175,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <View style={styles.header}>
         <IconButton
           style={styles.headerButton}
@@ -213,7 +213,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 Your existing CarMazium login is kept. This changes the business shell so multiple trade services can live under one account.
               </Text>
               <TouchableOpacity style={styles.primaryButton} onPress={createPartner} disabled={busy === 'partner'}>
-                {busy === 'partner' ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.primaryText}>CREATE PARTNER ACCOUNT</Text>}
+                {busy === 'partner' ? <ActivityIndicator color={Colors.onAccent} /> : <Text style={styles.primaryText}>CREATE PARTNER ACCOUNT</Text>}
               </TouchableOpacity>
             </View>
           ) : !profile?.dealerProfile ? (
@@ -224,7 +224,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
               <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Business phone" placeholderTextColor={Colors.textMuted} keyboardType="phone-pad" />
               <TextInput style={styles.input} value={businessAddress} onChangeText={setBusinessAddress} placeholder="Business address / service area" placeholderTextColor={Colors.textMuted} multiline />
               <TouchableOpacity style={styles.primaryButton} onPress={saveBusiness} disabled={busy === 'business'}>
-                {busy === 'business' ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.primaryText}>SAVE PARTNER BUSINESS</Text>}
+                {busy === 'business' ? <ActivityIndicator color={Colors.onAccent} /> : <Text style={styles.primaryText}>SAVE PARTNER BUSINESS</Text>}
               </TouchableOpacity>
             </View>
           ) : (
@@ -296,7 +296,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                     </View>
                     {!cap || cap.status === 'REJECTED' ? (
                       <TouchableOpacity style={styles.smallButton} onPress={() => applyService(type)} disabled={busy === type}>
-                        {busy === type ? <ActivityIndicator size="small" color={Colors.white} /> : <Text style={styles.smallButtonText}>{cap ? 'REAPPLY' : 'ADD'}</Text>}
+                        {busy === type ? <ActivityIndicator size="small" color={Colors.onAccent} /> : <Text style={styles.smallButtonText}>{cap ? 'REAPPLY' : 'ADD'}</Text>}
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity style={styles.smallOutline} onPress={() => navigation.navigate('ProviderCapabilities')}>
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
   cardText: { fontFamily: FontFamily.regular, color: Colors.textSecondary, fontSize: FontSize.size12, lineHeight: 19 },
   input: { borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.bgTertiary, borderRadius: Radius.inline, paddingHorizontal: 13, paddingVertical: 12, color: Colors.white, fontFamily: FontFamily.regular, fontSize: FontSize.sm },
   primaryButton: { minHeight: 46, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  primaryText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size12, letterSpacing: 0.7 },
+  primaryText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: FontSize.size12, letterSpacing: 0.7 },
   secondaryButton: { minHeight: 46, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, flexDirection: 'row', gap: 8 },
   secondaryText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size12 },
   sectionHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 8 },
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
   serviceStatus: { fontFamily: FontFamily.medium, color: Colors.textMuted, fontSize: FontSize.xs, marginTop: 3 },
   reviewNote: { fontFamily: FontFamily.regular, color: Colors.paleRed_fca5a5, fontSize: FontSize.size10, marginTop: 3 },
   smallButton: { minWidth: 72, minHeight: 44, borderRadius: 10, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
-  smallButtonText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size10 },
+  smallButtonText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: FontSize.size10 },
   smallOutline: { minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: Colors.borderHi, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
   smallOutlineText: { fontFamily: FontFamily.bold, color: Colors.textSecondary, fontSize: FontSize.size10 },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },

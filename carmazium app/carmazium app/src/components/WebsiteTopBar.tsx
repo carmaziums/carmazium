@@ -8,6 +8,7 @@ import { FontFamily } from '../constants/typography';
 import { useAuthStore } from '../store/authStore';
 import { HamburgerButton } from './HamburgerButton';
 import { Logo } from './Logo';
+import { ThemeToggle } from './ThemeToggle';
 
 /**
  * Single native counterpart of website src/components/layout/Header.tsx.
@@ -21,8 +22,9 @@ export const WebsiteTopBar: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   // Web Header.tsx renders a ~160px logo on mobile. Keep that footprint
-  // except where a narrow device needs room for three 44dp action targets.
-  const logoWidth = Math.min(160, Math.max(110, windowWidth - 202));
+  // except where a narrow device needs room for the theme toggle plus three
+  // 44dp action targets.
+  const logoWidth = Math.min(160, Math.max(104, windowWidth - 249));
   const user = useAuthStore(s => s.user);
   const role = useAuthStore(s => s.accountRole);
   const initial = (user?.firstName?.trim()?.charAt(0)
@@ -33,6 +35,7 @@ export const WebsiteTopBar: React.FC = () => {
     <View style={[styles.bar, { paddingTop: insets.top + 7 }]}>
       <Logo size="sm" width={logoWidth} />
       <View style={styles.actions}>
+        <ThemeToggle />
         <TouchableOpacity
           style={styles.notificationButton}
           onPress={() => navigation.navigate('Notifications')}
@@ -68,7 +71,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: Colors.bgElevated,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderSubtle,
   },
@@ -77,18 +80,18 @@ const styles = StyleSheet.create({
     width: 44, height: 44, borderRadius: 11,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: Colors.borderSubtle,
-    backgroundColor: 'rgba(51, 65, 85, 0.58)',
+    backgroundColor: Colors.bgCard,
   },
   accountButton: {
     minWidth: 65, height: 44, paddingHorizontal: 6,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 7, borderRadius: 11,
     borderWidth: 1, borderColor: Colors.borderSubtle,
-    backgroundColor: 'rgba(51, 65, 85, 0.58)',
+    backgroundColor: Colors.bgCard,
   },
   avatar: {
     width: 31, height: 31, borderRadius: 16,
-    backgroundColor: 'rgba(237, 28, 36, 0.14)',
+    backgroundColor: Colors.accentAlpha14,
     alignItems: 'center', justifyContent: 'center',
   },
   avatarLetter: { fontFamily: FontFamily.bold, fontSize: 15, color: Colors.accent },

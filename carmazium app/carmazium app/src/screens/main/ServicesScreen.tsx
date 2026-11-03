@@ -14,7 +14,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@/components/BrandIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -108,7 +108,7 @@ export const ServicesScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha06, Colors.bgPrimary, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -144,12 +144,12 @@ export const ServicesScreen: React.FC = () => {
           accessibilityLabel="Post a service job on the CarMazium website"
           accessibilityHint="Opens the CarMazium website to complete the request"
         >
-          <Ionicons name="add-circle-outline" size={22} color={Colors.white} />
+          <Ionicons name="add-circle-outline" size={22} color={Colors.onAccent} />
           <View style={{ flex: 1 }}>
             <Text style={styles.postJobTitle}>Post a delivery or inspection job</Text>
             <Text style={styles.postJobHint}>Open native posting form</Text>
           </View>
-          <Ionicons name="arrow-forward" size={20} color={Colors.white} />
+          <Ionicons name="arrow-forward" size={20} color={Colors.onAccent} />
         </TouchableOpacity>
 
         <View style={{ height: 8 }} />
@@ -301,8 +301,8 @@ const styles = StyleSheet.create({
   eyebrow: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent, letterSpacing: 1.2, marginBottom: -7 },
   sectionHeading: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white, marginTop: 10 },
   postJobButton: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, minHeight: 75, backgroundColor: Colors.accent, borderRadius: Radius.card, marginBottom: 3 },
-  postJobTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
-  postJobHint: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.white, opacity: 0.9, marginTop: 4 },
+  postJobTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent },
+  postJobHint: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.onAccent, opacity: 0.9, marginTop: 4 },
   introTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xl,

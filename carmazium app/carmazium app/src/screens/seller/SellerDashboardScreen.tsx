@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { CarListing } from '../../data/listings';
@@ -285,7 +285,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={['rgba(59,130,246,0.05)', Colors.accentAlpha03, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -365,7 +365,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
               </View>
 
               {/* Edit pill */}
-              <IconButton style={styles.heroEditBtn} icon={<Ionicons name="pencil-outline" size={15} color={Colors.white} />} onPress={() => navigation?.navigate('SellCarFlow')} accessibilityLabel="Edit" />
+              <IconButton style={styles.heroEditBtn} icon={<Ionicons name="pencil-outline" size={15} color={Colors.onAccent} />} onPress={() => navigation?.navigate('SellCarFlow')} accessibilityLabel="Edit" />
 
               {/* Days listed pill */}
               <View style={styles.heroDaysPill}>
@@ -492,7 +492,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
           activeOpacity={0.85}
           onPress={() => navigation?.navigate('SellCarFlow')}
         >
-          <Ionicons name="add" size={20} color={Colors.white} />
+          <Ionicons name="add" size={20} color={Colors.onAccent} />
           <Text style={styles.ctaButtonText}>CREATE NEW LISTING</Text>
         </TouchableOpacity>
 
@@ -687,7 +687,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
 
 // ═══════════════════════════ STYLES ════════════════════════════════
 
-const CARD_BG = 'rgba(20,26,42,0.65)';
+const CARD_BG = Colors.bgCard;
 const CARD_BORDER = Colors.whiteAlpha08;
 
 const styles = StyleSheet.create({
@@ -753,7 +753,7 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   periodToggleTextActive: {
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   bellBtn: {
     width: 36,
@@ -824,7 +824,7 @@ const styles = StyleSheet.create({
   heroDaysPillText: {
     fontFamily: FontFamily.mono,
     fontSize: FontSize.size10,
-    color: Colors.textSecondary,
+    color: Colors.onAccentMuted,
   },
   heroBody: {
     flexDirection: 'row',
@@ -868,11 +868,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   statCardViews: {
-    backgroundColor: 'rgba(20,26,42,0.60)',
+    backgroundColor: Colors.bgCard,
     borderColor: Colors.whiteAlpha06,
   },
   statCardSaves: {
-    backgroundColor: 'rgba(20,26,42,0.60)',
+    backgroundColor: Colors.bgCard,
     borderColor: Colors.whiteAlpha06,
   },
   statCardOffers: {
@@ -917,7 +917,7 @@ const styles = StyleSheet.create({
   ctaButtonText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.6,
   },
 
@@ -952,7 +952,7 @@ const styles = StyleSheet.create({
 
   // ── offers empty ──
   offersEmpty: {
-    backgroundColor: 'rgba(20,26,42,0.55)',
+    backgroundColor: Colors.bgCard,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha05,
     borderRadius: Radius.card,
@@ -980,7 +980,7 @@ const styles = StyleSheet.create({
   },
   quickTile: {
     width: '47.5%',
-    backgroundColor: 'rgba(20,26,42,0.55)',
+    backgroundColor: Colors.bgCard,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
     borderRadius: Radius.card,
@@ -1108,7 +1108,7 @@ const styles = StyleSheet.create({
   emptyCtaBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // ── recent offers card ──

@@ -16,7 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -277,7 +277,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       <View style={styles.header}>
         <IconButton
@@ -395,8 +395,8 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
                 disabled={busy === 'refuse'}
               >
                 {busy === 'refuse'
-                  ? <ActivityIndicator size="small" color={Colors.white} />
-                  : <Ionicons name="close-circle-outline" size={17} color={Colors.white} />}
+                  ? <ActivityIndicator size="small" color={Colors.onAccent} />
+                  : <Ionicons name="close-circle-outline" size={17} color={Colors.onAccent} />}
                 <Text style={styles.dangerText}>REFUSE VEHICLE & REFUND £125</Text>
               </TouchableOpacity>
             ) : null}
@@ -434,7 +434,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
                     disabled={busy === quote.id}
                   >
                     {busy === quote.id
-                      ? <ActivityIndicator size="small" color={Colors.white} />
+                      ? <ActivityIndicator size="small" color={Colors.onAccent} />
                       : <Text style={styles.primaryText}>ACCEPT & PAY</Text>}
                   </TouchableOpacity>
                 </View>
@@ -457,7 +457,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
               disabled={busy === accepted.id}
             >
               {busy === accepted.id
-                ? <ActivityIndicator size="small" color={Colors.white} />
+                ? <ActivityIndicator size="small" color={Colors.onAccent} />
                 : <Text style={styles.primaryText}>PAY SECURELY</Text>}
             </TouchableOpacity>
           </View>
@@ -529,7 +529,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
               onPress={confirmJob}
             >
               {busy === 'confirm'
-                ? <ActivityIndicator size="small" color={Colors.white} />
+                ? <ActivityIndicator size="small" color={Colors.onAccent} />
                 : <Text style={styles.primaryText}>CONFIRM COMPLETION</Text>}
             </TouchableOpacity>
             <TouchableOpacity
@@ -640,7 +640,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center',
     flexDirection: 'row', gap: 7,
   },
-  primaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white },
+  primaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent },
   secondaryButton: {
     minHeight: 42, borderRadius: 11, paddingHorizontal: 14, paddingVertical: 10,
     borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.whiteAlpha04,
@@ -652,7 +652,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', gap: 8,
   },
-  dangerText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white },
+  dangerText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent },
   disabled: { opacity: 0.6 },
   actionRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   cancelButton: { alignSelf: 'center', flexDirection: 'row', gap: 7, alignItems: 'center', padding: 12 },

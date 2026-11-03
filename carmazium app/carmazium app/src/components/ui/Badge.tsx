@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: Radius.pill,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.onAccent,
   },
 });
 

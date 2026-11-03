@@ -124,7 +124,7 @@ export const PurchaseInspectionNotes: React.FC<{ saleId: string }> = ({ saleId }
       {saveError && <Text style={styles.error}>{saveError}</Text>}
       <TouchableOpacity style={[styles.save, saving && styles.saveDisabled]} onPress={save} disabled={saving}
         accessibilityRole="button">
-        {saving && <ActivityIndicator size="small" color={Colors.white} />}
+        {saving && <ActivityIndicator size="small" color={Colors.onAccent} />}
         <Text style={styles.saveText}>Add note</Text>
       </TouchableOpacity>
       </>)}
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   },
   kindActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   kindText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.textMuted },
-  kindTextActive: { color: Colors.white },
+  kindTextActive: { color: Colors.onAccent },
   input: {
     minHeight: 44, paddingHorizontal: 12, borderRadius: Radius.inline, borderWidth: 1,
     borderColor: Colors.borderSubtle, backgroundColor: Colors.bgElevated,
@@ -164,5 +164,5 @@ const styles = StyleSheet.create({
     minHeight: 44, paddingHorizontal: 18, borderRadius: Radius.inline, backgroundColor: Colors.accent,
   },
   saveDisabled: { opacity: 0.5 },
-  saveText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
+  saveText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent },
 });

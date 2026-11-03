@@ -30,7 +30,7 @@ export const PurchaseDestinations: React.FC<{
           onPress={() => { if (!selected) onSelect(item.id); }}
           activeOpacity={0.8}
         >
-          <Ionicons name={item.icon} size={18} color={selected ? Colors.white : Colors.textMuted} />
+          <Ionicons name={item.icon} size={18} color={selected ? Colors.onAccent : Colors.textMuted} />
           <Text style={[styles.label, selected && styles.labelActive]} numberOfLines={2}>
             {item.label}
           </Text>
@@ -71,5 +71,5 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
   },
-  labelActive: { color: Colors.white },
+  labelActive: { color: Colors.onAccent },
 });

@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   featuredText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size8,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.5,
   },
   importedBadge: {

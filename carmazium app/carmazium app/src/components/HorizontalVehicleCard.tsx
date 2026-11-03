@@ -127,7 +127,7 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
           </View>
         )}
         <View style={styles.saveButtonOverlay}>
-          <IconButton style={styles.bookmarkBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={22} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
+          <IconButton style={styles.bookmarkBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={22} color={saved ? Colors.accent : Colors.onAccent} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
         </View>
       </View>
 

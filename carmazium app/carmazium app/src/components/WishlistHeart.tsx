@@ -32,7 +32,7 @@ export const WishlistHeart: React.FC<WishlistHeartProps> = ({ listing, style }) 
   return (
     <IconButton
       style={[styles.btn, style]}
-      icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={16} color={saved ? Colors.accent : Colors.white} />}
+      icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={16} color={saved ? Colors.accent : Colors.onAccent} />}
       onPress={() => toggle(listing)}
       accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'}
     />

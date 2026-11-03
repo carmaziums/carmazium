@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart, LineChart } from 'react-native-gifted-charts';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -471,7 +471,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
           {/* Revenue BarChart card */}
           <Animated.View style={[styles.revenueCard, { opacity: fadeAnim }]}>
             <LinearGradient
-              colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)']}
+              colors={[Colors.accentAlpha04, Colors.groundClear]}
               style={StyleSheet.absoluteFillObject}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -719,7 +719,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {/* Background */}
       <LinearGradient
@@ -812,7 +812,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   pillTextActive: {
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // ── Revenue card ─────────────────────────────────────────────────────────

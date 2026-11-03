@@ -17,7 +17,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { useChat } from '../../context/ChatContext';
 import { ChatRoom } from '../../lib/chatApi';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { IconButton } from '../../components/IconButton';
@@ -155,7 +155,7 @@ export const ProviderMessagesScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.bgPrimary} />
+      <StatusBar barStyle={themeStatusBarStyle} backgroundColor={Colors.bgPrimary} />
 
       <View style={styles.header}>
         <IconButton
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   jobTitle: { fontFamily: FontFamily.regular, color: Colors.textMuted, fontSize: FontSize.size12, marginTop: 2 },
   unreadText: { fontFamily: FontFamily.bold, color: Colors.white },
   unreadBadge: { minWidth: 24, height: 24, borderRadius: 12, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  unreadBadgeText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size10 },
+  unreadBadgeText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: FontSize.size10 },
   statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   statusLabel: { fontFamily: FontFamily.bold, color: Colors.accentGreen, fontSize: FontSize.size10 },
   paymentLabel: { fontFamily: FontFamily.bold, color: Colors.warning, fontSize: FontSize.size10 },

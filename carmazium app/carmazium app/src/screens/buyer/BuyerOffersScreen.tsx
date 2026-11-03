@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { apiClient } from '../../lib/apiClient';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -631,8 +631,8 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 onPress={() => handleMessageSeller(offer)}
                 disabled={isActioning}
               >
-                <Ionicons name="chatbubble-ellipses-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
-                <Text style={[styles.actionBtnText, { color: Colors.white }]}>
+                <Ionicons name="chatbubble-ellipses-outline" size={14} color={Colors.onAccent} style={{ marginRight: 6 }} />
+                <Text style={[styles.actionBtnText, { color: Colors.onAccent }]}>
                   Message Seller
                 </Text>
               </TouchableOpacity>
@@ -702,7 +702,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 onPress={() => handleCounterRespond(offer, 'ACCEPTED')}
                 disabled={isActioning || counterBackLoading}
               >
-                <Text style={[styles.actionBtnText, { color: Colors.white }]}>
+                <Text style={[styles.actionBtnText, { color: Colors.onAccent }]}>
                   Accept
                 </Text>
               </TouchableOpacity>
@@ -754,9 +754,9 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                     activeOpacity={0.8}
                   >
                     {counterBackLoading ? (
-                      <ActivityIndicator size="small" color={Colors.white} />
+                      <ActivityIndicator size="small" color={Colors.onAccent} />
                     ) : (
-                      <Text style={[styles.actionBtnText, { color: Colors.white }]}>Submit</Text>
+                      <Text style={[styles.actionBtnText, { color: Colors.onAccent }]}>Submit</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -868,9 +868,9 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                     activeOpacity={0.8}
                   >
                     {deliverySubmitting ? (
-                      <ActivityIndicator size="small" color={Colors.white} />
+                      <ActivityIndicator size="small" color={Colors.onAccent} />
                     ) : (
-                      <Text style={[styles.actionBtnText, { color: Colors.white }]}>Request Delivery</Text>
+                      <Text style={[styles.actionBtnText, { color: Colors.onAccent }]}>Request Delivery</Text>
                     )}
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -921,9 +921,9 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
           onCreated={() => void fetchData(true)}
         />
       )}
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha06, Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -1051,7 +1051,7 @@ const styles = StyleSheet.create({
   counterBadgeText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // ── Scroll ──
@@ -1096,7 +1096,7 @@ const styles = StyleSheet.create({
   emptyCtaBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // ── Offer card ──

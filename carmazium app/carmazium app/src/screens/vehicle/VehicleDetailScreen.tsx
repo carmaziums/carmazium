@@ -33,7 +33,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { formatPrice, formatMileage, CarListing } from '../../data/listings';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
 import { useWatchlistStore } from '../../store/watchlistStore';
@@ -805,7 +805,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {/* Main Scrollable Content */}
       <ScrollView
@@ -861,12 +861,12 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Floating Header Actions */}
           <View style={[styles.floatingHeader, { top: insets.top + 8 }]}>
-            <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+            <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.onAccent} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
             <View style={styles.headerRightActions}>
-              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="git-compare-outline" size={18} color={Colors.white} />} onPress={() => navigation.navigate('Compare', { initialListing: listing })} accessibilityLabel="Compare this car" />
-              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="share-social-outline" size={18} color={Colors.white} />} onPress={() => Share.share({ message: `Check out this ${listing.year} ${listing.make} ${listing.model} on Carmazium!` })} accessibilityLabel="Share this listing" />
-              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggleSaved} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
+              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="git-compare-outline" size={18} color={Colors.onAccent} />} onPress={() => navigation.navigate('Compare', { initialListing: listing })} accessibilityLabel="Compare this car" />
+              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="share-social-outline" size={18} color={Colors.onAccent} />} onPress={() => Share.share({ message: `Check out this ${listing.year} ${listing.make} ${listing.model} on Carmazium!` })} accessibilityLabel="Share this listing" />
+              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? Colors.accent : Colors.onAccent} />} onPress={handleToggleSaved} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
             </View>
           </View>
 
@@ -1696,7 +1696,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     accessibilityRole="button"
                     accessibilityLabel="Decrease APR"
                   >
-                    <Ionicons name="remove" size={16} color={Colors.white} />
+                    <Ionicons name="remove" size={16} color={Colors.textPrimary} />
                   </TouchableOpacity>
                   <Text style={styles.calcValue}>{aprPct}%</Text>
                   <TouchableOpacity
@@ -1706,7 +1706,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     accessibilityRole="button"
                     accessibilityLabel="Increase APR"
                   >
-                    <Ionicons name="add" size={16} color={Colors.white} />
+                    <Ionicons name="add" size={16} color={Colors.textPrimary} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1868,7 +1868,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   onPress={() => setDeliveryModalVisible(true)}
                   activeOpacity={0.85}
                 >
-                  <Ionicons name="car-outline" size={15} color={Colors.white} />
+                  <Ionicons name="car-outline" size={15} color={Colors.onAccent} />
                   <Text style={styles.deliveryRequestBtnText}>Request Delivery</Text>
                 </TouchableOpacity>
               )}
@@ -1954,7 +1954,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           activeOpacity={0.85}
         >
           {deliverySubmitting ? (
-            <ActivityIndicator color={Colors.white} size="small" />
+            <ActivityIndicator color={Colors.onAccent} size="small" />
           ) : (
             <Text style={styles.deliveryModalSubmitText}>Confirm Delivery Request</Text>
           )}
@@ -1967,7 +1967,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           the page instead of bolted to the bottom of it. */}
       <View style={[styles.stickyCTAOuter, { paddingBottom: insets.bottom + 12 }]} pointerEvents="box-none">
         <LinearGradient
-          colors={['rgba(10,13,20,0)', Colors.bgPrimary, Colors.bgPrimary]}
+          colors={[Colors.groundClear, Colors.bgPrimary, Colors.bgPrimary]}
           locations={[0, 0.45, 1]}
           style={StyleSheet.absoluteFillObject}
           pointerEvents="none"
@@ -2021,7 +2021,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     ? 'MANAGE COUNTER'
                     : 'MAKE A PRIVATE OFFER'}
               </Text>
-              <Ionicons name="arrow-forward" size={18} color={Colors.white} style={styles.offerArrow} />
+              <Ionicons name="arrow-forward" size={18} color={Colors.onAccent} style={styles.offerArrow} />
             </TouchableOpacity>
           ) : (
             <View style={[styles.makeOfferButton, styles.makeOfferButtonDisabled]}>
@@ -2121,7 +2121,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               disabled={isSubmittingOffer}
             >
               {isSubmittingOffer ? (
-                <ActivityIndicator size="small" color={Colors.white} />
+                <ActivityIndicator size="small" color={Colors.onAccent} />
               ) : (
                 <Text style={styles.submitOfferText}>{myOffer?.status === 'PENDING' ? 'Update Offer' : 'Submit Private Offer'}</Text>
               )}
@@ -2130,7 +2130,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         ) : (
           <View style={styles.successContainer}>
             <View style={styles.successIconWrapper}>
-              <Ionicons name="checkmark" size={32} color={Colors.white} />
+              <Ionicons name="checkmark" size={32} color={Colors.onAccent} />
             </View>
             <Text style={styles.successTitle}>{myOffer?.status === 'PENDING' ? 'Offer Updated!' : 'Offer Sent!'}</Text>
             <Text style={styles.successSubtitle}>
@@ -2477,7 +2477,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.35)',
   },
   pageDotActive: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.onAccent,
     width: 18,
     borderRadius: 3,
   },
@@ -2494,7 +2494,7 @@ const styles = StyleSheet.create({
   photoCounterText: {
     fontFamily: FontFamily.mono,
     fontSize: FontSize.size12,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   floatingHeader: {
     position: 'absolute',
@@ -2539,7 +2539,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   thumbnailActive: {
-    borderColor: Colors.white,
+    borderColor: Colors.onAccent,
   },
   thumbnailImage: {
     width: '100%',
@@ -2554,7 +2554,7 @@ const styles = StyleSheet.create({
   thumbnailOverlayText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size12,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   // Details Block
   detailsBlock: {
@@ -3194,7 +3194,7 @@ const styles = StyleSheet.create({
   deliveryRequestBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   deliverySuccessRow: {
     flexDirection: 'row',
@@ -3301,7 +3301,7 @@ const styles = StyleSheet.create({
   deliveryModalSubmitText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // Bottom Sticky Actions Bar
@@ -3402,7 +3402,7 @@ const styles = StyleSheet.create({
   makeOfferText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1,
   },
   offerArrow: {
@@ -3543,7 +3543,7 @@ const styles = StyleSheet.create({
   submitOfferText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   successContainer: {
     alignItems: 'center',
@@ -3746,7 +3746,7 @@ const styles = StyleSheet.create({
   },
   depositStepActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   depositStepText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
-  depositStepTextActive: { color: Colors.white },
+  depositStepTextActive: { color: Colors.onAccent },
   calcResult: {
     marginTop: 16, backgroundColor: Colors.whiteAlpha03, borderRadius: Radius.inline,
     borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 16, alignItems: 'center',
@@ -3793,7 +3793,7 @@ const styles = StyleSheet.create({
   },
   financeResultValue: {
     ...TextPresets.monoPrice,
-    color: Colors.white,
+    color: Colors.textPrimary,
   },
   financeResultTotal: {
     fontFamily: FontFamily.bold,
@@ -3811,7 +3811,7 @@ const styles = StyleSheet.create({
   financeEnquiryText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   financeCalcDisclaimer: {
     fontFamily: FontFamily.regular,
@@ -3852,7 +3852,7 @@ const styles = StyleSheet.create({
   fullscreenCounterText: {
     fontFamily: FontFamily.mono,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   fullscreenImageWrap: {
     width: SCREEN_WIDTH,

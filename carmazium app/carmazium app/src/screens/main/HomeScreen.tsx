@@ -19,7 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
@@ -138,7 +138,7 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
           ? <ImageCarousel images={images} width={282} height={150} onPress={onPress} showIndicator={false} />
           : <View style={s.cardImgEmpty} />}
         <View style={[s.livePill, { backgroundColor: 'rgba(59,130,246,0.9)' }]} pointerEvents="none">
-          <Ionicons name="calendar-outline" size={9} color={Colors.white} />
+          <Ionicons name="calendar-outline" size={9} color={Colors.onAccent} />
           <Text style={s.livePillText}>UPCOMING</Text>
         </View>
         <View style={{ position: 'absolute', top: 34, left: 10, right: 10 }} pointerEvents="none">
@@ -228,7 +228,7 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
           accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'}
           accessibilityRole="button"
         >
-          <Ionicons name={saved ? 'heart' : 'heart-outline'} size={15} color={saved ? Colors.accent : Colors.white} />
+          <Ionicons name={saved ? 'heart' : 'heart-outline'} size={15} color={saved ? Colors.accent : Colors.onAccent} />
         </TouchableOpacity>
       </View>
       <View style={s.cardBody}>
@@ -522,7 +522,7 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <View style={s.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <View style={s.topGlow} />
       <WebsiteTopBar />
 
@@ -571,9 +571,9 @@ export const HomeScreen: React.FC = () => {
             accessibilityRole="button"
             accessibilityLabel="Start selling your car"
           >
-            <Ionicons name="pricetag-outline" size={20} color={Colors.white} />
+            <Ionicons name="pricetag-outline" size={20} color={Colors.onAccent} />
             <Text style={s.sellJourneyText}>Sell a Car</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.white} />
+            <Ionicons name="chevron-forward" size={16} color={Colors.onAccent} />
           </TouchableOpacity>
         </View>
 
@@ -619,9 +619,9 @@ export const HomeScreen: React.FC = () => {
           <TouchableOpacity style={s.aiChip} onPress={handleAiSearch} disabled={aiLoading}
             accessibilityRole="button" accessibilityLabel="AI Search" activeOpacity={0.8}>
             {aiLoading
-              ? <ActivityIndicator size="small" color={Colors.white} />
+              ? <ActivityIndicator size="small" color={Colors.onAccent} />
               : <>
-                  <Ionicons name="sparkles" size={10} color={Colors.white} />
+                  <Ionicons name="sparkles" size={10} color={Colors.onAccent} />
                   <Text style={s.aiChipText}>AI</Text>
                 </>}
           </TouchableOpacity>
@@ -643,7 +643,7 @@ export const HomeScreen: React.FC = () => {
             {Object.keys(aiResult.filterCard?.params ?? {}).length > 0 && (
               <TouchableOpacity style={s.aiResultBtn} onPress={viewAiResults} activeOpacity={0.85}>
                 <Text style={s.aiResultBtnText}>VIEW MATCHING CARS</Text>
-                <Ionicons name="arrow-forward" size={14} color={Colors.white} />
+                <Ionicons name="arrow-forward" size={14} color={Colors.onAccent} />
               </TouchableOpacity>
             )}
           </View>
@@ -812,7 +812,7 @@ export const HomeScreen: React.FC = () => {
           <Text style={s.sellCtaHint}>List in minutes · Get offers from buyers</Text>
           <View style={s.sellCtaBtn}>
             <Text style={s.sellCtaBtnText}>Start listing</Text>
-            <Ionicons name="arrow-forward" size={14} color={Colors.white} />
+            <Ionicons name="arrow-forward" size={14} color={Colors.onAccent} />
           </View>
         </TouchableOpacity>
 
@@ -903,7 +903,7 @@ const s = StyleSheet.create({
   searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, marginBottom: 12, paddingHorizontal: 16, height: 52, borderRadius: Radius.inline, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.borderSubtle, gap: 10 },
   searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size14, color: Colors.white },
   aiChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accent, paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.inline, minWidth: 40, justifyContent: 'center' },
-  aiChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.white },
+  aiChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.onAccent },
 
   // Inline AI search result
   aiResultCard: {
@@ -924,7 +924,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     height: 42, borderRadius: Radius.inline, backgroundColor: Colors.accent,
   },
-  aiResultBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.5 },
+  aiResultBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent, letterSpacing: 0.5 },
 
   // Quick chips
   quickChipsRow: { paddingHorizontal: 24, paddingBottom: 4, gap: 8, marginBottom: 36 },
@@ -936,7 +936,7 @@ const s = StyleSheet.create({
   buyJourneyBtn: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 10, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgSecondary },
   sellJourneyBtn: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 10, borderRadius: Radius.inline, backgroundColor: Colors.accent },
   buyJourneyText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
-  sellJourneyText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
+  sellJourneyText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent },
   // Section
   section: { marginBottom: 36 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, marginBottom: 18 },
@@ -944,7 +944,7 @@ const s = StyleSheet.create({
   // bold-small-caps pair per screen.
   sectionTitle: { ...TextPresets.eyebrow, color: Colors.white },
   sectionBadge: { backgroundColor: Colors.accent, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
-  sectionBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white, letterSpacing: 0.5 },
+  sectionBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.onAccent, letterSpacing: 0.5 },
   seeAll: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.accent },
 
   // Horizontal scroll
@@ -972,10 +972,10 @@ const s = StyleSheet.create({
 
   // Auction overlays
   livePill: { position: 'absolute', top: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.accent, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 },
-  livePillText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white, letterSpacing: 1 },
+  livePillText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.onAccent, letterSpacing: 1 },
   bidOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', backgroundColor: 'rgba(10,10,12,0.78)', borderTopWidth: 1, borderTopColor: Colors.whiteAlpha07, paddingVertical: 9, paddingHorizontal: 14 },
-  overlayLabel: { fontFamily: FontFamily.medium, fontSize: FontSize.size8, color: Colors.textSecondary, letterSpacing: 1, marginBottom: 2 },
-  overlayVal: { ...TextPresets.monoFigure, fontSize: FontSize.size14, color: Colors.white },
+  overlayLabel: { fontFamily: FontFamily.medium, fontSize: FontSize.size8, color: Colors.onAccentMuted, letterSpacing: 1, marginBottom: 2 },
+  overlayVal: { ...TextPresets.monoFigure, fontSize: FontSize.size14, color: Colors.onAccent },
 
   // Listing badges
   featuredBadge: { position: 'absolute', top: 10, left: 10, backgroundColor: Colors.warning, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 5 },
@@ -1010,7 +1010,7 @@ const s = StyleSheet.create({
   sellCtaTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.xl, color: Colors.white, marginBottom: 4 },
   sellCtaHint: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: 16 },
   sellCtaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, alignSelf: 'flex-start', backgroundColor: Colors.accent, paddingHorizontal: 20, paddingVertical: 12, borderRadius: Radius.inline },
-  sellCtaBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.3 },
+  sellCtaBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent, letterSpacing: 0.3 },
 
   // Secondary utility rows (live auctions / dealer signup) — deliberately
   // quiet compact rows, not competing hero cards, so the sell CTA above is

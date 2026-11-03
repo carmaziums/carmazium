@@ -17,7 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { useChat } from '../../context/ChatContext';
 import { ChatRoom, ChatUser } from '../../lib/chatApi';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -238,7 +238,7 @@ export const MessagesScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {/* Top red-blue glow backdrop */}
       <LinearGradient
@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   tabLabelActive: {
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   tabCount: {
     fontFamily: FontFamily.regular,
@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.md,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   metaContainer: {
     flex: 1,
@@ -570,7 +570,7 @@ const styles = StyleSheet.create({
   unreadBadgeText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size10,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   // Skeleton
   skeletonList: {

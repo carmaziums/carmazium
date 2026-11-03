@@ -48,7 +48,9 @@ test('website-styled header uses the real asset, adapts logo to viewport and tog
   const header = web('src/components/layout/Header.tsx');
   assert.ok(header.includes('width={160}'));
   assert.ok(top.includes('useWindowDimensions()'));
-  assert.ok(top.includes('Math.min(160, Math.max(110, windowWidth - 202))'));
+  // Narrower floor since the header also carries the website's theme toggle.
+  assert.ok(top.includes('Math.min(160, Math.max(104, windowWidth - 249))'));
+  assert.ok(top.includes('<ThemeToggle />'));
   assert.ok(top.includes('<Logo size="sm" width={logoWidth} />'));
   assert.ok(logo.includes("const LOGO_SOURCE = require('../../assets/images/logo.png')"));
   assert.ok(logo.includes("const width = overrideWidth ??"));

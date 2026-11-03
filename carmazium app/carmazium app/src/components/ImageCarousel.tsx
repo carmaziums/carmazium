@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
   },
   dotActive: {
     width: 12,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.onAccent,
   },
   counterBadge: {
     position: 'absolute',
@@ -153,6 +153,6 @@ const styles = StyleSheet.create({
   counterText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size9,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 });

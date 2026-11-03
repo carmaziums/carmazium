@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@/components/BrandIcon';
-import { Colors } from '../../constants/colors';
+import { Colors, themeMode } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { apiClient } from '../../lib/apiClient';
 import { createChatRoom } from '../../lib/chatApi';
@@ -259,7 +259,7 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                 minimumDate={new Date()}
                 onChange={onDateChange}
-                themeVariant="dark"
+                themeVariant={themeMode}
                 style={Platform.OS === 'ios' ? styles.iosDatePicker : undefined}
               />
             )}

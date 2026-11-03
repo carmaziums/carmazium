@@ -181,7 +181,7 @@ export const ProfileCompletionPromptSheet: React.FC = () => {
           activeOpacity={0.85}
         >
           {saving
-            ? <ActivityIndicator size="small" color={Colors.white} />
+            ? <ActivityIndicator size="small" color={Colors.onAccent} />
             : <Text style={styles.saveBtnText}>SAVE</Text>}
         </TouchableOpacity>
 
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   saveBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1.1,
   },
   laterBtn: { alignItems: 'center', marginTop: 14 },
