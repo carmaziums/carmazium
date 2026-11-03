@@ -428,13 +428,11 @@ const lightPalette: Palette = {
   bgSecondary: lCard,
   bgTertiary: lInput,
   // Brand
-  accentGlow: accentHot,
   // Text
   textPrimary: lText,
   textSecondary: lText2,
   textMuted: lMuted,
   textFaint: lMuted,
-  textDisabled: lDisabled,
   // Borders
   border: lBorder,
   borderHi: lBorderHi,
@@ -455,6 +453,19 @@ const lightPalette: Palette = {
   // and at #10B981/#F59E0B they read ~2:1 on white. On a light ground use
   // the deeper shade of the same hue; white-on-fill badges get more contrast
   // too. Their *Alpha tint scales are unchanged.
+  // Text-safe light-mode shades for colours that are also used as text
+  // (links, statuses, captions). Contrast audit: each >= 4.5:1 on body/card.
+  infoBlue: lInfoText,
+  lightPurple: lInfoText,
+  lightBlue_0084ff: lInfoText,
+  lightBlue_6366f1: lInfoText,
+  error: lErrorText,
+  accentGlow: accentDeep,
+  inputPlaceholder: '#64748B',
+  textDisabled: '#7A8799',
+  midBlue_505060: '#64748B',
+  midTeal_14b8a6: lSuccessText,
+  midOrange_a0783a: lWarningText,
   success: '#047857',
   accentGreen: '#047857',
   midGreen_00d28e: '#047857',
@@ -477,7 +488,6 @@ const lightPalette: Palette = {
   tabInactive: lMuted,
   inputBg: lInput,
   inputBorder: lBorder,
-  inputPlaceholder: lDisabled,
   // White-alpha scale → navy-alpha scale
   whiteAlpha02: navyA('0.02'),
   whiteAlpha03: navyA('0.03'),
@@ -531,7 +541,6 @@ const lightPalette: Palette = {
   deepPurple: lCard,
   darkPurple: lInput,
   // Deprecated aliases — text ramp
-  midBlue_505060: lDisabled,
   midBlue_6b7280: lMuted,
   lightBlue_9ca3af: lMuted,
   lightBlue_a0a0b0: lMuted,
@@ -573,14 +582,14 @@ export type ThemeMode = 'light' | 'dark';
  * theme persists the preference and reloads the JS bundle — styles are never
  * swapped under a mounted tree.
  */
-export const Colors: Palette = { ...lightPalette };
+export const Colors: Palette = { ...darkPalette };
 
 /** The resolved theme the palette was populated from. Light by default (web parity). */
-export let themeMode: ThemeMode = 'light';
+export let themeMode: ThemeMode = 'dark';
 /** StatusBar `barStyle` that reads on the current ground. */
-export let themeStatusBarStyle: 'light-content' | 'dark-content' = 'dark-content';
+export let themeStatusBarStyle: 'light-content' | 'dark-content' = 'light-content';
 /** expo-status-bar `style` for the current ground. */
-export let themeStatusBarExpoStyle: 'light' | 'dark' = 'dark';
+export let themeStatusBarExpoStyle: 'light' | 'dark' = 'light';
 
 export function applyThemePalette(mode: ThemeMode): void {
   Object.assign(Colors, mode === 'dark' ? darkPalette : lightPalette);

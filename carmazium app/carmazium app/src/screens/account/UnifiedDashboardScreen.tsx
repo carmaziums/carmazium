@@ -105,7 +105,7 @@ const Tile: React.FC<TileProps> = ({ label, icon, iconLib = 'ion', accentColor, 
         {sublabel ? <Text style={styles.tileSublabel} numberOfLines={1}>{sublabel}</Text> : null}
       </>
     )}
-    {wide && <Ionicons name="chevron-forward" size={16} color={Colors.borderMuted} accessibilityElementsHidden importantForAccessibility="no" />}
+    {wide && <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />}
   </TouchableOpacity>
 );
 

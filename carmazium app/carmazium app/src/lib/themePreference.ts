@@ -17,7 +17,9 @@ import { applyThemePalette, themeMode, type ThemeMode } from '../constants/color
 
 export const THEME_STORAGE_KEY = 'carmazium.theme';
 export type ThemePreference = 'light' | 'dark' | 'system';
-export const DEFAULT_THEME_PREFERENCE: ThemePreference = 'light';
+// Dark is the app's default (owner decision); Light and System stay available
+// in Settings → Appearance and the top-bar toggle.
+export const DEFAULT_THEME_PREFERENCE: ThemePreference = 'dark';
 
 let currentPreference: ThemePreference = DEFAULT_THEME_PREFERENCE;
 

@@ -38,6 +38,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { Layout } from '../../constants/layout';
 // ─────────────────────────── types ────────────────────────────────
 
 interface ApiListing {
@@ -817,7 +818,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.tabsContent}
-        style={styles.tabsRow}
+        style={[styles.tabsRow, Layout.hScroll]}
       >
         {TABS.map(tab => {
           const isActive = tab === activeTab;

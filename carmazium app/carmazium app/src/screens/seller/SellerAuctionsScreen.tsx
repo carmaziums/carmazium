@@ -45,6 +45,7 @@ import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { Layout } from '../../constants/layout';
 // ─────────────────────────── Types ───────────────────────────
 
 type AuctionStatus = 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED';
@@ -1534,6 +1535,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       {/* Status tabs */}
       <ScrollView
         horizontal
+        style={Layout.hScroll}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.tabsContent}
       >
@@ -2904,7 +2906,7 @@ const styles = StyleSheet.create({
   formHint: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs,
-    color: Colors.borderMuted,
+    color: Colors.textMuted,
     lineHeight: 15,
     marginBottom: 2,
   },

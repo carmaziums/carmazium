@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useScrollLocked } from '../../lib/scrollLock';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   StatusBar, TextInput, ActivityIndicator, Alert,
@@ -43,6 +44,7 @@ import { getAuctionOpeningBid, getAuctionReserveGuide } from '../../lib/auctionP
 import { getVehicleValuation, type VehicleValuation } from '../../lib/valuationApi';
 import { computeExteriorGradeFromDefectCount, EXTERIOR_GRADE_OPTIONS } from '../../lib/exteriorGrade';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Layout } from '../../constants/layout';
 import {
   encodeVehicleImageCategory,
   parseVehicleImageMetadata,
@@ -278,7 +280,7 @@ function FieldInput({
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor={Colors.borderMuted}
+        placeholderTextColor={Colors.inputPlaceholder}
         keyboardType={keyboardType}
         multiline={multiline}
         autoCorrect={false}
@@ -345,7 +347,7 @@ function PickerField({
           value={query}
           onChangeText={setQuery}
           placeholder={options.length ? 'Search or type your own…' : 'Type it in…'}
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={Colors.inputPlaceholder}
           autoCorrect={false}
           autoFocus
         />
@@ -380,7 +382,8 @@ function PillRow<T extends string>({
   return (
     <View style={{ marginBottom: 16 }}>
       <SL label={label} required={required} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+      <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
         {options.map(o => (
           <TouchableOpacity
             key={o.v}
@@ -565,7 +568,8 @@ function Damage3DMapper({
         <View style={s.dmgForm}>
           <Text style={s.dmgFormTitle}>Mark damage: <Text style={{ color: Colors.accent }}>{addingZone}</Text></Text>
           <SL label="DAMAGE TYPE" />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 12 }}>
+          <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 12 }}>
             {DAMAGE_TYPES.map(t => (
               <TouchableOpacity
                 key={t}
@@ -583,7 +587,7 @@ function Damage3DMapper({
             value={dmgDesc}
             onChangeText={setDmgDesc}
             placeholder="e.g. Small scratch on lower section"
-            placeholderTextColor={Colors.borderMuted}
+            placeholderTextColor={Colors.inputPlaceholder}
           />
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <TouchableOpacity style={[s.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12 }]} onPress={() => setAddingZone(null)} activeOpacity={0.8}>
@@ -622,6 +626,8 @@ function Damage3DMapper({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({ navigation, route }) => {
+  // Paused while a finger is on the 3D damage viewer (lib/scrollLock.ts).
+  const scrollLocked = useScrollLocked();
   const insets = useSafeAreaInsets();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [step, setStep] = useState<Step>(1);
@@ -2626,7 +2632,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   function renderStep1() {
     return (
-      <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+      <ScrollView ref={stepScrollRef} scrollEnabled={!scrollLocked} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
         {renderStepGuidance()}
 
         {!editMode && (
@@ -2919,7 +2925,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 onChangeText={v => { setMileage(v); if (touched.mileage) setTouched(prev => ({ ...prev, mileage: true })); }}
                 onBlur={fieldTouched('mileage')}
                 placeholder="e.g. 45000"
-                placeholderTextColor={Colors.borderMuted}
+                placeholderTextColor={Colors.inputPlaceholder}
                 keyboardType="number-pad"
                 autoCorrect={false}
               />
@@ -2974,7 +2980,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               onChangeText={v => { setTitle(v); if (touched.title) setTouched(prev => ({ ...prev, title: true })); }}
               onBlur={fieldTouched('title')}
               placeholder="e.g. BMW M4 Competition 2021"
-              placeholderTextColor={Colors.borderMuted}
+              placeholderTextColor={Colors.inputPlaceholder}
               autoCorrect={false}
             />
             {fieldError('title') ? <Text style={s.inlineError}>{fieldError('title')}</Text> : null}
@@ -3002,7 +3008,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               value={description}
               onChangeText={setDescription}
               placeholder="Describe your vehicle for potential buyers..."
-              placeholderTextColor={Colors.borderMuted}
+              placeholderTextColor={Colors.inputPlaceholder}
               multiline
             />
             <Text style={s.fieldHint}>Dealers: MaziuM also adds your saved business introduction, general location and any warranty or finance terms. To add missing details, open Settings → Business profile. Save your listing draft before leaving this form. Please review all generated descriptions before publishing.</Text>
@@ -3065,7 +3071,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <TextInput
             style={[s.input, { marginBottom: 12 }]}
             placeholder="Search vehicle equipment"
-            placeholderTextColor={Colors.borderMuted}
+            placeholderTextColor={Colors.inputPlaceholder}
             value={featureSearch}
             onChangeText={setFeatureSearch}
             autoCorrect={false}
@@ -3093,7 +3099,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <TextInput
             style={[s.input, { marginTop: 12 }]}
             placeholder="Additional features (comma separated)"
-            placeholderTextColor={Colors.borderMuted}
+            placeholderTextColor={Colors.inputPlaceholder}
             onSubmitEditing={e => {
               const extras = e.nativeEvent.text.split(',').map(x => x.trim()).filter(Boolean);
               setFeatures(p => [...new Set([...p, ...extras])]);
@@ -3157,7 +3163,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           {isDepartedSale && (
             <View style={{ marginTop: 12 }}>
               <SL label="RELATIONSHIP TO OWNER" required />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                 {RELATIONSHIP_OPTIONS.map(opt => (
                   <TouchableOpacity
                     key={opt}
@@ -3179,7 +3186,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   value={departedRelOther}
                   onChangeText={v => { setDepartedRelOther(v); setTouched(prev => ({ ...prev, departedRelationship: true })); }}
                   placeholder="Please specify your relationship"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={Colors.inputPlaceholder}
                 />
               )}
               {fieldError('departedRelationship') ? <Text style={s.inlineError}>{fieldError('departedRelationship')}</Text> : null}
@@ -3237,7 +3244,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             {isLegalKeeper === false && (
               <View style={{ marginTop: 12 }}>
                 <SL label="RELATIONSHIP TO THE REGISTERED KEEPER" required />
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                   {NOT_OWNER_RELATIONSHIP_OPTIONS.map(opt => (
                     <TouchableOpacity
                       key={opt}
@@ -3259,7 +3267,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                     value={notOwnerRelOther}
                     onChangeText={v => { setNotOwnerRelOther(v); setTouched(prev => ({ ...prev, notOwnerRelationship: true })); }}
                     placeholder="Describe your relationship"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={Colors.inputPlaceholder}
                     autoCorrect={false}
                   />
                 )}
@@ -3469,7 +3477,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               onChangeText={setVideoInput}
               onSubmitEditing={handleAddVideoUrl}
               placeholder="Paste a YouTube, Instagram or Facebook URL"
-              placeholderTextColor={Colors.borderMuted}
+              placeholderTextColor={Colors.inputPlaceholder}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
@@ -3619,7 +3627,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                     onChangeText={v => { setPriceMin(v); if (touched.priceMin) setTouched(prev => ({ ...prev, priceMin: true })); }}
                     onBlur={fieldTouched('priceMin')}
                     placeholder="0"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -3639,7 +3647,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   onChangeText={v => { setPriceAsking(v); if (touched.priceAsking) setTouched(prev => ({ ...prev, priceAsking: true })); }}
                   onBlur={fieldTouched('priceAsking')}
                   placeholder="0"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={Colors.inputPlaceholder}
                   keyboardType="number-pad"
                 />
               </View>
@@ -3676,7 +3684,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <View style={{ marginTop: 20 }}>
             <Text style={s.sectionLabel}>LISTING RIBBON LABEL (optional)</Text>
             <Text style={s.fieldHint}>Appears as a coloured tag on your listing card</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 8 }}>
+            <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 8 }}>
               {BANNER_LABELS.map(label => (
                 <TouchableOpacity
                   key={label}
@@ -3698,7 +3707,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               value={BANNER_LABELS.includes(bannerLabel) ? '' : bannerLabel}
               onChangeText={setBannerLabel}
               placeholder="Or type your own label…"
-              placeholderTextColor={Colors.borderMuted}
+              placeholderTextColor={Colors.inputPlaceholder}
               maxLength={40}
               autoCorrect={false}
             />
@@ -3731,7 +3740,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   value={deliveryMaxMiles}
                   onChangeText={setDeliveryMaxMiles}
                   placeholder="e.g. 50"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={Colors.inputPlaceholder}
                   keyboardType="number-pad"
                   autoCorrect={false}
                 />
@@ -3744,7 +3753,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   value={deliveryPricePerMile}
                   onChangeText={setDeliveryPricePerMile}
                   placeholder="e.g. 2.00"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={Colors.inputPlaceholder}
                   keyboardType="decimal-pad"
                   autoCorrect={false}
                 />
@@ -3816,8 +3825,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                     ))}
                     {badge.negative.map(f => (
                       <View key={f} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Ionicons name="close" size={12} color={Colors.borderMuted} />
-                        <Text style={[s.badgeFeatureText, { color: Colors.borderMuted }]}>{f}</Text>
+                        <Ionicons name="close" size={12} color={Colors.textMuted} />
+                        <Text style={[s.badgeFeatureText, { color: Colors.textMuted }]}>{f}</Text>
                       </View>
                     ))}
                   </View>
@@ -4009,7 +4018,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </TouchableOpacity>
         }>
           {allImages.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
               {allImages.map((uri, i) => (
                 <ExpoImage
                   key={i}
@@ -4427,7 +4437,7 @@ const s = StyleSheet.create({
   // PickerField (Make/Model search-or-type sheet — F26)
   pickerFieldInput: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pickerFieldValue: { fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.white, flex: 1 },
-  pickerFieldPlaceholder: { fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.borderMuted, flex: 1 },
+  pickerFieldPlaceholder: { fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.textMuted, flex: 1 },
   pickerSearchInput: { backgroundColor: Colors.deepBlue_1a1a22, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 14, paddingVertical: 12, fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.white, marginBottom: 10 },
   pickerOptionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha06 },
   pickerOptionText: { fontFamily: FontFamily.medium, fontSize: FontSize.size14, color: Colors.white, flex: 1 },
@@ -4505,7 +4515,7 @@ const s = StyleSheet.create({
   uploadZone: { borderWidth: 1, borderColor: Colors.whiteAlpha10, borderStyle: 'dashed', borderRadius: Radius.inline, alignItems: 'center', justifyContent: 'center', paddingVertical: 36, gap: 8 },
   uploadZoneTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
   uploadZoneHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.iconMuted },
-  uploadZoneFormats: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.borderMuted },
+  uploadZoneFormats: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   photoThumb: { width: (SW - 32 - 24) / 4, aspectRatio: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: Colors.deepBlue_1a1a22 },
   photoThumbImg: { width: '100%', height: '100%' },

@@ -21,6 +21,7 @@ import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
 
 import { IconButton } from '../../components/IconButton';
+import { Layout } from '../../constants/layout';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // ─────────────────────────── interfaces ───────────────────────────
@@ -220,7 +221,7 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.filterRow}
-        style={{ flexGrow: 0 }}
+        style={[{ flexGrow: 0 }, Layout.hScroll]}
       >
         {FILTERS.map((f) => (
           <TouchableOpacity

@@ -31,6 +31,7 @@ import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { Layout } from '../../constants/layout';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 const { width: SW } = Dimensions.get('window');
@@ -632,16 +633,10 @@ export const SearchScreen: React.FC = () => {
     }
   };
 
-  return (
-    <View style={s.container}>
-      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
-      <LinearGradient
-        colors={[Colors.accentAlpha04, Colors.groundClear, Colors.bgPrimary]}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.4 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      <WebsiteTopBar />
+  // Everything above the results scrolls away with the list. Kept as an
+  // element (not a component) so the search TextInput keeps focus.
+  const listHeader = (
+    <>
       {/* Match website Search title; result counts belong beside sorting,
           not as a changing page title that jumps between 0 and a number. */}
       <View style={[s.header, { paddingTop: 12 }]}>
@@ -673,7 +668,7 @@ export const SearchScreen: React.FC = () => {
             value={query}
             onChangeText={setQuery}
             placeholder="Make, model, or keyword..."
-            placeholderTextColor={Colors.borderMuted}
+            placeholderTextColor={Colors.inputPlaceholder}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
@@ -705,7 +700,7 @@ export const SearchScreen: React.FC = () => {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={s.quickScroll}
+        style={[s.quickScroll, Layout.hScroll]}
         contentContainerStyle={s.quickRow}
       >
         {QUICK_FILTERS.map(f => (
@@ -754,9 +749,10 @@ export const SearchScreen: React.FC = () => {
           <Text style={s.clearBelowText}>Clear {filterCount} {filterCount === 1 ? 'filter' : 'filters'}</Text>
         </TouchableOpacity>
       )}
-
-      {/* ── Results ── */}
-      {loading && listings.length === 0 ? (
+    </>
+  );
+  const showResults = !(loading && listings.length === 0) && !(searchError && listings.length === 0) && listings.length > 0;
+  const listEmpty = (loading && listings.length === 0 ? (
         <View style={s.skeletonList}>
           {Array.from({ length: 4 }).map((_, i) => (
             <View key={`sk-${i}`} style={s.skeletonCard}>
@@ -791,9 +787,27 @@ export const SearchScreen: React.FC = () => {
           ctaLabel="Clear filters"
           onCtaPress={resetFilters}
         />
-      ) : (
+      ) : null);
+
+  return (
+    <View style={s.container}>
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
+      <LinearGradient
+        colors={[Colors.accentAlpha04, Colors.groundClear, Colors.bgPrimary]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.4 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+
+      <WebsiteTopBar />
+      {/* ── Results ── header scrolls with the list (like the website page)
+           instead of a fixed block eating half the screen. */}
         <FlatList
-          data={listings}
+          data={showResults ? listings : []}
+          ListHeaderComponent={listHeader}
+          // Header sections carry their own 24pt gutters.
+          ListHeaderComponentStyle={s.listHeaderBleed}
+          ListEmptyComponent={<View style={s.listHeaderBleed}>{listEmpty}</View>}
+          keyboardShouldPersistTaps="handled"
           keyExtractor={item => item.id}
           contentContainerStyle={[s.listContent, { paddingBottom: insets.bottom + 110 }]}
           showsVerticalScrollIndicator={false}
@@ -804,7 +818,7 @@ export const SearchScreen: React.FC = () => {
           ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
           onEndReached={() => { if (hasMore && !loadingMore) fetch(false); }}
           onEndReachedThreshold={0.4}
-          ListFooterComponent={
+          ListFooterComponent={!showResults ? null : 
             searchError ? (
               <TouchableOpacity onPress={() => fetch(false)} style={s.loadMoreWrap} accessibilityRole="button">
                 <Text style={s.endText}>Loading failed — tap to retry</Text>
@@ -818,7 +832,6 @@ export const SearchScreen: React.FC = () => {
             ) : null
           }
         />
-      )}
 
       {/* Sort choices live in a native sheet instead of a narrow overlay. */}
       <BottomSheet visible={showSortMenu} onClose={() => setShowSortMenu(false)} title="Sort cars" maxHeightPercent={65}>
@@ -859,7 +872,7 @@ export const SearchScreen: React.FC = () => {
             value={aiQuery}
             onChangeText={setAiQuery}
             placeholder="Describe the car you're looking for…"
-            placeholderTextColor={Colors.borderMuted}
+            placeholderTextColor={Colors.inputPlaceholder}
             multiline
             numberOfLines={3}
             onSubmitEditing={handleAiSearch}
@@ -957,7 +970,7 @@ export const SearchScreen: React.FC = () => {
                 <Text style={s.inputBoxLabel}>SEARCH OR ENTER MODEL</Text>
                 <TextInput style={s.inputBoxValue} value={modelFilter} onChangeText={value => { setModelFilter(value); setVariantFilter(''); }}
                   placeholder={selectedMakes.length ? 'Search models or enter another' : 'Choose a make or type model'}
-                  placeholderTextColor={Colors.borderMuted} autoCorrect={false} autoCapitalize="words" />
+                  placeholderTextColor={Colors.inputPlaceholder} autoCorrect={false} autoCapitalize="words" />
               </View>}
               {selectedMakes.length === 1 && (
                 <View style={{ marginTop: 8 }}>
@@ -989,7 +1002,7 @@ export const SearchScreen: React.FC = () => {
                   <View style={s.inputBox}>
                     <TextInput style={s.inputBoxValue} value={variantFilter}
                       onChangeText={setVariantFilter} placeholder="e.g. M Sport, GT Line"
-                      placeholderTextColor={Colors.borderMuted} autoCapitalize="words" />
+                      placeholderTextColor={Colors.inputPlaceholder} autoCapitalize="words" />
                   </View>
                   {selectedMakes.length === 1 && getVariantsForModel(selectedMakes[0], modelFilter).length > 0 && (
                     <View style={s.chipGrid}>
@@ -1017,7 +1030,7 @@ export const SearchScreen: React.FC = () => {
                     value={minPrice > 0 ? `£${minPrice.toLocaleString()}` : ''}
                     onChangeText={t => setMinPrice(parseInt(t.replace(/[^0-9]/g, '') || '0'))}
                     placeholder="£ 0"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1028,7 +1041,7 @@ export const SearchScreen: React.FC = () => {
                     value={maxPrice < 150000 ? `£${maxPrice.toLocaleString()}` : ''}
                     onChangeText={t => setMaxPrice(parseInt(t.replace(/[^0-9]/g, '') || '150000'))}
                     placeholder="£ Any"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1080,19 +1093,20 @@ export const SearchScreen: React.FC = () => {
                   <Text style={s.inputBoxLabel}>FROM YEAR</Text>
                   <TextInput style={s.inputBoxValue} value={minYear === 'Any' ? '' : minYear}
                     onChangeText={v => setMinYear(v ? v.replace(/[^0-9]/g, '').slice(0, 4) : 'Any')}
-                    placeholder="Any" placeholderTextColor={Colors.borderMuted}
+                    placeholder="Any" placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad" maxLength={4} />
                 </View>
                 <View style={[s.inputBox, { flex: 1 }]}>
                   <Text style={s.inputBoxLabel}>TO YEAR</Text>
                   <TextInput style={s.inputBoxValue} value={maxYear === 'Any' ? '' : maxYear}
                     onChangeText={v => setMaxYear(v ? v.replace(/[^0-9]/g, '').slice(0, 4) : 'Any')}
-                    placeholder={String(CURRENT_YEAR)} placeholderTextColor={Colors.borderMuted}
+                    placeholder={String(CURRENT_YEAR)} placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad" maxLength={4} />
                 </View>
               </View>
               <Text style={[s.inputBoxLabel, { marginTop: 12 }]}>QUICK YEAR CHOICES (FROM)</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false}>
                 <View style={{ flexDirection: 'row', gap: 6 }}>
                   {YEAR_OPTS.map(y => <TouchableOpacity key={y}
                     style={[s.miniChip, minYear === y && s.filterChipActive]} onPress={() => setMinYear(y)}>
@@ -1101,7 +1115,8 @@ export const SearchScreen: React.FC = () => {
                 </View>
               </ScrollView>
               <Text style={[s.inputBoxLabel, { marginTop: 12 }]}>QUICK YEAR CHOICES (TO)</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false}>
                 <View style={{ flexDirection: 'row', gap: 6 }}>
                   {YEAR_OPTS_MAX.map(y => <TouchableOpacity key={y}
                     style={[s.miniChip, maxYear === y && s.filterChipActive]} onPress={() => setMaxYear(y)}>
@@ -1115,7 +1130,8 @@ export const SearchScreen: React.FC = () => {
               <Text style={s.filterLabel}>MILEAGE RANGE</Text>
               <View style={s.inputBox}>
                 <Text style={s.inputBoxLabel}>MIN MILES</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false}>
                   <View style={{ flexDirection: 'row', gap: 6 }}>
                     {MILES_OPTS_MIN.map(m => (
                       <TouchableOpacity key={m} style={[s.miniChip, minMiles === m && s.filterChipActive]} onPress={() => setMinMiles(m)} activeOpacity={0.7}>
@@ -1128,7 +1144,8 @@ export const SearchScreen: React.FC = () => {
               <View style={{ marginTop: 10 }}>
                 <View style={s.inputBox}>
                   <Text style={s.inputBoxLabel}>MAX MILES</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false}>
                     <View style={{ flexDirection: 'row', gap: 6 }}>
                       {MILES_OPTS.map(m => (
                         <TouchableOpacity key={m} style={[s.miniChip, maxMiles === m && s.filterChipActive]} onPress={() => setMaxMiles(m)} activeOpacity={0.7}>
@@ -1237,7 +1254,7 @@ export const SearchScreen: React.FC = () => {
                     value={minBhp}
                     onChangeText={setMinBhp}
                     placeholder="0"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1248,7 +1265,7 @@ export const SearchScreen: React.FC = () => {
                     value={maxBhp}
                     onChangeText={setMaxBhp}
                     placeholder="Any"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1266,7 +1283,7 @@ export const SearchScreen: React.FC = () => {
                     value={minEngine}
                     onChangeText={setMinEngine}
                     placeholder="0"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1277,7 +1294,7 @@ export const SearchScreen: React.FC = () => {
                     value={maxEngine}
                     onChangeText={setMaxEngine}
                     placeholder="Any"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1294,7 +1311,7 @@ export const SearchScreen: React.FC = () => {
                   value={maxCo2}
                   onChangeText={setMaxCo2}
                   placeholder="Any"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={Colors.inputPlaceholder}
                   keyboardType="number-pad"
                 />
               </View>
@@ -1319,7 +1336,7 @@ export const SearchScreen: React.FC = () => {
                 <Text style={s.inputBoxLabel}>MINIMUM MPG (REPORTED)</Text>
                 <TextInput style={s.inputBoxValue} value={minCombinedMpg}
                   onChangeText={setMinCombinedMpg} placeholder="Any"
-                  placeholderTextColor={Colors.borderMuted} keyboardType="decimal-pad" />
+                  placeholderTextColor={Colors.inputPlaceholder} keyboardType="decimal-pad" />
               </View>
               <View style={s.divider} />
               <Text style={s.filterLabel}>ACCELERATION (0–60 MPH)</Text>
@@ -1327,7 +1344,7 @@ export const SearchScreen: React.FC = () => {
                 <Text style={s.inputBoxLabel}>MAXIMUM SECONDS</Text>
                 <TextInput style={s.inputBoxValue} value={maxZeroTo60Mph}
                   onChangeText={setMaxZeroTo60Mph} placeholder="Any"
-                  placeholderTextColor={Colors.borderMuted} keyboardType="decimal-pad" />
+                  placeholderTextColor={Colors.inputPlaceholder} keyboardType="decimal-pad" />
               </View>
               <View style={s.divider} />
               <Text style={s.filterLabel}>DRIVETRAIN</Text>
@@ -1370,7 +1387,7 @@ export const SearchScreen: React.FC = () => {
                   value={colorFilter}
                   onChangeText={setColorFilter}
                   placeholder="Any colour"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={Colors.inputPlaceholder}
                   autoCapitalize="words"
                 />
               </View>
@@ -1468,7 +1485,7 @@ export const SearchScreen: React.FC = () => {
                   value={locationFilter}
                   onChangeText={setLocationFilter}
                   placeholder="e.g. London"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={Colors.inputPlaceholder}
                   autoCapitalize="words"
                 />
               </View>
@@ -1508,7 +1525,7 @@ export const SearchScreen: React.FC = () => {
                     value={postcodeInput}
                     onChangeText={setPostcodeInput}
                     placeholder="e.g. SW1X 7LY"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={Colors.inputPlaceholder}
                     autoCapitalize="characters"
                     autoCorrect={false}
                   />
@@ -1663,7 +1680,7 @@ const s = StyleSheet.create({
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center' },
 
   searchWrap: { paddingHorizontal: 24, marginBottom: 8 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderSubtle, paddingHorizontal: 16, height: 52, gap: 10 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderSubtle, paddingHorizontal: 16, minHeight: 52, gap: 10 },
   searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.white },
 
   // A horizontal ScrollView's cross-axis size is NOT auto-grown by its
@@ -1677,11 +1694,13 @@ const s = StyleSheet.create({
   // (18px padding + up to ~20px line height at a large accessibility font
   // scale + 2px border), so 64 leaves real headroom instead of the 48 that
   // was already marginal at default scale.
-  quickScroll: { height: 64, marginBottom: 4 },
-  quickRow: { paddingHorizontal: 24, gap: 10, alignItems: 'center', flexDirection: 'row' },
+  // Inside the list header the row sizes to its chips (flexGrow: 0), so a
+  // larger system font grows the row instead of clipping the labels.
+  quickScroll: { flexGrow: 0, marginBottom: 4 },
+  quickRow: { paddingHorizontal: 24, paddingVertical: 10, gap: 10, alignItems: 'center', flexDirection: 'row' },
   quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: Radius.card, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
   quickChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, lineHeight: 16, color: Colors.paleGrey_cccccc },
+  quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.paleGrey_cccccc },
   quickChipTextActive: { color: Colors.onAccent },
 
   sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 8, marginTop: 4, position: 'relative', zIndex: 10 },
@@ -1701,8 +1720,9 @@ const s = StyleSheet.create({
   sortOptionText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
 
   listContent: { paddingHorizontal: 24 },
+  listHeaderBleed: { marginHorizontal: -24 },
   loadMoreWrap: { alignItems: 'center', paddingVertical: 20 },
-  endText: { textAlign: 'center', fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.borderMuted, paddingVertical: 20 },
+  endText: { textAlign: 'center', fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, paddingVertical: 20 },
   skeletonList: { paddingHorizontal: 24, gap: 14 },
   skeletonCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 14 },
   skeletonInfo: { flex: 1, gap: 6 },

@@ -244,23 +244,31 @@ export const GlobalDrawer: React.FC = () => {
   const navigation = useNavigation<NavProp>();
 
   const translateX = useSharedValue(DRAWER_WIDTH);
-  const translateY = useSharedValue(sheetHeight);
+  // Closed position must clear the tab bar too: the sheet is anchored at
+  // `bottom: dealerTabBarHeight`, so moving it down by only its own height
+  // left its top strip (handle, close button, business name) parked over the
+  // tab bar on every screen.
+  const sheetHiddenY = sheetHeight + dealerTabBarHeight + 48;
+  const translateY = useSharedValue(sheetHiddenY);
+  const panelOpacity = useSharedValue(0);
   const backdropOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (isOpen) {
       if (dealerMode) {
         translateY.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 });
+        panelOpacity.value = withTiming(1, { duration: 120 });
       } else {
         translateX.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 });
       }
       backdropOpacity.value = withTiming(1, { duration: 220 });
     } else {
       translateX.value = withTiming(DRAWER_WIDTH, { duration: 200 });
-      translateY.value = withTiming(sheetHeight, { duration: 200 });
+      translateY.value = withTiming(sheetHiddenY, { duration: 200 });
+      panelOpacity.value = withTiming(0, { duration: 200 });
       backdropOpacity.value = withTiming(0, { duration: 180 });
     }
-  }, [isOpen, dealerMode, sheetHeight, translateX, translateY, backdropOpacity]);
+  }, [isOpen, dealerMode, sheetHiddenY, translateX, translateY, panelOpacity, backdropOpacity]);
 
   // Dealer overlay is inline so the original bottom tab bar stays visible and
   // tappable. A Modal would intercept taps on More even with transparent pixels.
@@ -274,11 +282,9 @@ export const GlobalDrawer: React.FC = () => {
   }, [dealerMode, isOpen, closeDrawer]);
 
   const backdropStyle = useAnimatedStyle(() => ({ opacity: backdropOpacity.value }));
-  const panelStyle = useAnimatedStyle(() => ({
-    transform: dealerMode
-      ? [{ translateY: translateY.value }]
-      : [{ translateX: translateX.value }],
-  }));
+  const panelStyle = useAnimatedStyle(() => (dealerMode
+    ? { transform: [{ translateY: translateY.value }], opacity: panelOpacity.value }
+    : { transform: [{ translateX: translateX.value }] }));
 
   // Determine which tab is active
   const getActiveTab = (): string => {

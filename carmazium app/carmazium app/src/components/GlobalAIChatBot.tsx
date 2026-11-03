@@ -18,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IconButton } from './IconButton';
 import { useReduceMotionPreference } from '../hooks/useReduceMotionPreference';
 import { getBottomTabBarHeight } from '../lib/nativeLayoutParity';
+import { Layout } from '../constants/layout';
 
 // Bundle the exact approved transparent mascot used by the website widget.
 // This avoids a network-dependent icon or any visual placeholder.
@@ -670,7 +671,8 @@ export const GlobalAIChatBot: React.FC = () => {
 
               {/* Website-equivalent persistent daily quick replies, horizontally scrollable. */}
               <View style={styles.quickRepliesRail}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}
+                <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false}
                   keyboardShouldPersistTaps="always" contentContainerStyle={styles.quickPromptsWrap}>
                   {quickReplies.map((q) => (
                     <TouchableOpacity

@@ -30,6 +30,7 @@ import { GradeChip } from '../../components/GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/AuctionCardBadges';
 import { WishlistHeart } from '../../components/WishlistHeart';
 import { getAuctionFirstOfferFloor } from '../../lib/auctionPricing';
+import { Layout } from '../../constants/layout';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -278,7 +279,8 @@ function Rail<T>({
 }) {
   if (loading) {
     return (
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
+      <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
         {skeleton}
       </ScrollView>
     );
@@ -338,7 +340,7 @@ const Section: React.FC<{ title: string; onSeeAll?: () => void; children: React.
 
 const EmptyState: React.FC<{ icon: string; text: string }> = ({ icon, text }) => (
   <View style={s.emptyState}>
-    <Ionicons name={icon as any} size={24} color={Colors.borderMuted} />
+    <Ionicons name={icon as any} size={24} color={Colors.textMuted} />
     <Text style={s.emptyStateText}>{text}</Text>
   </View>
 );
@@ -652,6 +654,7 @@ export const HomeScreen: React.FC = () => {
         {/* Quick category chips */}
         <ScrollView
           horizontal
+        style={Layout.hScroll}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={s.quickChipsRow}
         >
@@ -742,7 +745,8 @@ export const HomeScreen: React.FC = () => {
 
         {/* ── BROWSE BY BODY TYPE ── */}
         <Section title="BROWSE BY TYPE">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
+          <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
             {BODY_TYPES.map(bt => (
               <TouchableOpacity
                 key={bt.bodyType}
@@ -959,7 +963,7 @@ const s = StyleSheet.create({
   // every card in this screen blind.
   auctionCard: { width: 282, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.card, overflow: 'hidden', ...Elevation.card },
   listingCard: { width: 240, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.card, overflow: 'hidden', ...Elevation.card },
-  cardImgWrap: { position: 'relative', height: 150, backgroundColor: Colors.bgTertiary },
+  cardImgWrap: { position: 'relative', height: 150, overflow: 'hidden', backgroundColor: Colors.bgTertiary },
   cardImg: { width: '100%', height: '100%' },
   cardImgEmpty: { width: '100%', height: '100%', backgroundColor: Colors.bgTertiary },
   cardBody: { padding: 16 },

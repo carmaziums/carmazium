@@ -7,6 +7,7 @@ import { fetchAllMyListings } from '../../lib/myListingsApi';
 import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
+import { Layout } from '../../constants/layout';
 
 type Vehicle = {
   id: string; title?: string; make?: string; model?: string; year?: number;
@@ -60,7 +61,7 @@ export const MyCarsScreen: React.FC = () => {
           </TouchableOpacity>
         ))}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filters}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.filters, Layout.hScroll]}
         contentContainerStyle={styles.filterContent}>
         {FILTERS.filter(status => channel === 'Listings'
           ? !['SCHEDULED', 'ENDED', 'CANCELLED'].includes(status)

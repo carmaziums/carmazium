@@ -20,6 +20,7 @@ import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
 import { IconButton } from '../../components/IconButton';
+import { Layout } from '../../constants/layout';
 // ─────────────────────────── interfaces ───────────────────────────
 
 interface SellerProfileData {
@@ -280,7 +281,8 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
         {listings.length === 0 ? (
           <Text style={styles.sectionEmptyText}>No active listings right now.</Text>
         ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+          <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
             {listings.map((l) => (
               <TouchableOpacity key={l.id} style={styles.listingCard} activeOpacity={0.85} onPress={() => openListing(l)}>
                 <Image

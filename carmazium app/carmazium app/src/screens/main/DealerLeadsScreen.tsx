@@ -38,6 +38,7 @@ import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
 import { getScrollableStageHeight } from '../../lib/nativeLayoutParity';
+import { Layout } from '../../constants/layout';
 type FilterTab = 'All' | 'Hot' | 'Warm' | 'New' | 'Won' | 'Lost';
 type ViewMode = 'list' | 'board';
 
@@ -266,7 +267,8 @@ const LeadDetail: React.FC<{
           {staffOptions.length > 0 && (
             <>
               <Text style={styles.sectionLabel}>ASSIGNED TO</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 24 }}>
+              <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 24 }}>
                 <TouchableOpacity
                   style={[styles.staffChip, !lead.assignedToId && styles.staffChipActive]}
                   onPress={() => onReassign(lead.id, null)}
@@ -368,7 +370,8 @@ const LeadDetail: React.FC<{
         {/* Status pipeline footer */}
         <View style={[styles.statusBarWrap, { paddingBottom: Math.max(insets.bottom + 12, 12) }]}>
           <Text style={styles.statusBarLabel}>UPDATE STATUS</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+          <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
             {STATUS_OPTIONS.map(opt => {
               const active = lead.status === opt.key;
               return (
@@ -900,7 +903,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
       )}
       {viewMode === 'board' && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}
-          style={[styles.crmStagesScroll, { maxHeight: getScrollableStageHeight(fontScale) }]}
+          style={[styles.crmStagesScroll, { maxHeight: getScrollableStageHeight(fontScale) }, Layout.hScroll]}
           contentContainerStyle={styles.crmStagesList}>
           {BOARD_STAGES.map(stage => {
             const selected = stage.key === mobileStage;
@@ -921,7 +924,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
       )}
 
       {viewMode === 'list' && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.filterScroll, Layout.hScroll]} contentContainerStyle={styles.filterContent}>
            {FILTERS.map(f => (
               <TouchableOpacity
                  key={f.label}
@@ -1100,7 +1103,8 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 />
 
                 <Text style={styles.createFieldLabel}>SOURCE</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 8 }}>
+                <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 8 }}>
                   {Object.entries(SOURCE_LABELS).map(([key, label]) => (
                     <TouchableOpacity
                       key={key}
@@ -1116,7 +1120,8 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 {staffOptions.length > 0 && (
                   <>
                     <Text style={styles.createFieldLabel}>ASSIGN TO</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 8 }}>
+                    <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 8 }}>
                       <TouchableOpacity
                         style={[styles.staffChip, !newAssignedToId && styles.staffChipActive]}
                         onPress={() => setNewAssignedToId(null)}

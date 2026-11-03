@@ -1,6 +1,7 @@
 import React, { useRef, useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { useScrollLockStore } from '../../lib/scrollLock';
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
@@ -105,6 +106,11 @@ export function ThreeDVehicleViewer({
   readOnly = false,
 }: ThreeDVehicleViewerProps) {
   const webViewRef = useRef<WebView>(null);
+  const setScrollLocked = useScrollLockStore((st) => st.setLocked);
+  const lockScroll = useCallback(() => setScrollLocked(true), [setScrollLocked]);
+  const unlockScroll = useCallback(() => setScrollLocked(false), [setScrollLocked]);
+  // Never leave the page frozen if the viewer unmounts mid-gesture.
+  useEffect(() => () => setScrollLocked(false), [setScrollLocked]);
 
   // viewerHtml drives whether the WebView mounts at all; null = still loading
   const [viewerHtml, setViewerHtml] = useState<string | null>(null);
@@ -229,7 +235,14 @@ export function ThreeDVehicleViewer({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <View style={[styles.wrap, { height }]}>
+    <View
+      style={[styles.wrap, { height }]}
+      // Hold the page still while a finger is on the model so drags orbit
+      // the car instead of scrolling the screen (see lib/scrollLock.ts).
+      onTouchStart={lockScroll}
+      onTouchEnd={unlockScroll}
+      onTouchCancel={unlockScroll}
+    >
 
       {/* 3D viewer — only mounts once the HTML string is ready */}
       {viewerHtml ? (

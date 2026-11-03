@@ -221,7 +221,9 @@ export function DealerActiveBidPositions({ navigation }: { navigation?: Nav }) {
     return () => clearInterval(id);
   }, [fetchBids]);
   const leading = positions.filter(x=>x.isLeading).length;
-  return <View style={styles.root}>
+  // Title and totals scroll with the bids (list header) so a tall header on
+  // a small phone or large font size never leaves only a sliver for the list.
+  const bidsHeader = <View style={styles.bidsHeaderBleed}>
     <Text style={styles.title}>My Auction Bids</Text>
     <Text style={styles.subtitle}>One live position per vehicle you're currently bidding on</Text>
     {error && <ErrorText message={error} onRetry={() => void fetchBids(true)} />}
@@ -235,7 +237,10 @@ export function DealerActiveBidPositions({ navigation }: { navigation?: Nav }) {
         </View>
       ))}
     </View>}
+  </View>;
+  return <View style={styles.root}>
     <FlatList
+      ListHeaderComponent={bidsHeader}
       style={styles.list}
       data={error && !positions.length ? [] : positions}
       keyExtractor={x => x.listingId}
@@ -305,6 +310,8 @@ const styles = StyleSheet.create({
   retry:{color:Colors.accent,fontFamily:FontFamily.bold,fontSize:12},
   list:{flex:1},
   listContent:{paddingBottom:100,paddingHorizontal:20},
+  // Header rows carry their own 20pt gutters inside the padded list.
+  bidsHeaderBleed:{marginHorizontal:-20},
   thumb:{width:90,height:88,backgroundColor:Colors.bgElevated,
     alignItems:'center',justifyContent:'center',borderRadius:11,overflow:'hidden'},
   image:{width:'100%',height:'100%'},

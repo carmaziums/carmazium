@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useScrollLocked } from '../../lib/scrollLock';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Dimensions, StatusBar, TextInput, ActivityIndicator,
@@ -47,6 +48,7 @@ import { getMinimumAuctionBid } from '../../lib/auctionPricing';
 import { formatBuyerFeeRemaining } from '../../lib/auctionFeeDeadline';
 
 import { IconButton } from '../../components/IconButton';
+import { Layout } from '../../constants/layout';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Props = NativeStackScreenProps<MainStackParamList, 'LiveAuctionDetailed'>;
@@ -189,6 +191,8 @@ const AuctionDetailSkeleton: React.FC = () => (
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
+  // Paused while a finger is on the 3D damage viewer (lib/scrollLock.ts).
+  const scrollLocked = useScrollLocked();
   const { listing } = route.params;
   const listingObj = listing as any;
   const insets = useSafeAreaInsets();
@@ -1086,7 +1090,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     return (
       <View style={[s.container, { alignItems: 'center', justifyContent: 'center', gap: 12 }]}>
         <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
-        <Ionicons name="hammer-outline" size={40} color={Colors.borderMuted} />
+        <Ionicons name="hammer-outline" size={40} color={Colors.textMuted} />
         <Text style={s.muted}>{loadError}</Text>
         <TouchableOpacity style={s.retryBtn} onPress={() => loadAuction()} activeOpacity={0.8}>
           <Text style={s.retryBtnText}>Try Again</Text>
@@ -1421,7 +1425,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       )}
 
       {/* Main scroll */}
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView scrollEnabled={!scrollLocked} showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
         {/* Hero image */}
         <View style={s.heroWrap}>
@@ -1509,7 +1513,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={{ color: Colors.textSecondary, fontSize: 12, paddingHorizontal: 14 }}>
               Photo {Math.min(activePhotoIndex + 1, photoGallery.length)} of {photoGallery.length} — select a thumbnail
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 14, gap: 9 }}>
+            <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 14, gap: 9 }}>
               {photoGallery.map((url, index) => (
                 <TouchableOpacity key={url + index} accessibilityRole="button"
                   accessibilityLabel={`View vehicle photo ${index + 1} of ${photoGallery.length}`}
@@ -1814,7 +1819,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               />
               {bidHistory.length === 0 ? (
                 <View style={{ alignItems: 'center', paddingVertical: 40, gap: 8 }}>
-                  <Ionicons name="hammer-outline" size={28} color={Colors.borderMuted} />
+                  <Ionicons name="hammer-outline" size={28} color={Colors.textMuted} />
                   <Text style={s.muted}>No bids yet — be the first.</Text>
                 </View>
               ) : (
@@ -2271,7 +2276,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   value={bidAmount}
                   onChangeText={t => { setBidAmount(t); setBidError(null); }}
                   placeholder="Custom amount"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={Colors.inputPlaceholder}
                   keyboardType="number-pad"
                   onSubmitEditing={() => Keyboard.dismiss()}
                 />

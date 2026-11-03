@@ -25,6 +25,7 @@ import { KeyboardStickyView } from './KeyboardStickyView';
 import { createPaymentSheet } from '../lib/paymentsApi';
 
 import { IconButton } from './IconButton';
+import { Layout } from '../constants/layout';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3;
@@ -301,7 +302,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                   value={url}
                   onChangeText={v => { setUrl(v); setFetchError(null); }}
                   placeholder="https://www.autotrader.co.uk/car-details/..."
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={Colors.inputPlaceholder}
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="url"
@@ -309,7 +310,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                   onSubmitEditing={handleFetch}
                 />
                 {url.length > 0 && (
-                  <IconButton icon={<Ionicons name="close-circle" size={16} color={Colors.borderMuted} />} onPress={() => setUrl('')} accessibilityLabel="Clear" />
+                  <IconButton icon={<Ionicons name="close-circle" size={16} color={Colors.textMuted} />} onPress={() => setUrl('')} accessibilityLabel="Clear" />
                 )}
               </View>
 
@@ -356,7 +357,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
 
               {/* Image strip */}
               {preview.images.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 8 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[{ marginBottom: 16 }, Layout.hScroll]} contentContainerStyle={{ gap: 8 }}>
                   {preview.images.slice(0, 5).map((img, i) => (
                     <Image
                       key={`img-${i}`}
@@ -394,7 +395,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 value={editTitle}
                 onChangeText={v => { setEditTitle(v); setSaveError(null); }}
                 placeholder="e.g. BMW M4 Competition 2021"
-                placeholderTextColor={Colors.borderMuted}
+                placeholderTextColor={Colors.inputPlaceholder}
                 autoCorrect={false}
               />
 
@@ -406,7 +407,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                   value={editPrice}
                   onChangeText={v => { setEditPrice(v); setSaveError(null); }}
                   placeholder="0"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={Colors.inputPlaceholder}
                   keyboardType="number-pad"
                 />
               </View>
@@ -417,7 +418,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 value={editVrm}
                 onChangeText={v => { setEditVrm(v.toUpperCase()); setSaveError(null); }}
                 placeholder="e.g. AB12 CDE"
-                placeholderTextColor={Colors.borderMuted}
+                placeholderTextColor={Colors.inputPlaceholder}
                 autoCapitalize="characters"
                 autoCorrect={false}
               />

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useScrollLocked } from '../../lib/scrollLock';
 import {
   View,
   Text,
@@ -59,6 +60,7 @@ import { EnquireModal } from '../../components/listing/EnquireModal';
 import { useLocation } from '../../context/LocationContext';
 
 import { IconButton } from '../../components/IconButton';
+import { Layout } from '../../constants/layout';
 
 const FINANCE_MIN_APR = 9;
 const FINANCE_MAX_APR = 49;
@@ -167,6 +169,8 @@ const SPEC_GROUPS: { title: string; rows: (l: CarListing) => SpecRow[] }[] = [
 ];
 
 export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
+  // Paused while a finger is on the 3D damage viewer (lib/scrollLock.ts).
+  const scrollLocked = useScrollLocked();
   const { listing } = route.params;
   const insets = useSafeAreaInsets();
   const [activeImage, setActiveImage] = useState(0);
@@ -809,6 +813,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
       {/* Main Scrollable Content */}
       <ScrollView
+        scrollEnabled={!scrollLocked}
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
@@ -1133,7 +1138,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {listing.videoUrls != null && listing.videoUrls.length > 0 && (
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionHeaderTitle}>VIDEOS</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+              <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
                 {listing.videoUrls.map((url, i) => {
                   const ytId = extractYouTubeId(url);
                   if (ytId) {
@@ -1906,7 +1912,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           value={deliveryStreet}
           onChangeText={v => { setDeliveryStreet(v); setDeliveryError(null); }}
           placeholder="e.g. 42 Park Lane"
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={Colors.inputPlaceholder}
           autoCapitalize="words"
         />
 
@@ -1917,7 +1923,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           value={deliveryCity}
           onChangeText={v => { setDeliveryCity(v); setDeliveryError(null); }}
           placeholder="e.g. London"
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={Colors.inputPlaceholder}
           autoCapitalize="words"
         />
 
@@ -1928,7 +1934,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           value={deliveryPostcode}
           onChangeText={v => { setDeliveryPostcode(v.toUpperCase()); setDeliveryError(null); }}
           placeholder="e.g. SW1A 1AA"
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={Colors.inputPlaceholder}
           autoCapitalize="characters"
         />
 
@@ -1939,7 +1945,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           value={deliveryNotes}
           onChangeText={setDeliveryNotes}
           placeholder="e.g. Leave at reception, call on arrival…"
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={Colors.inputPlaceholder}
           multiline
         />
 
@@ -2366,6 +2372,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <View style={styles.quickRepliesContainer}>
               <ScrollView
                 horizontal
+        style={Layout.hScroll}
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.quickRepliesContent}
               >
