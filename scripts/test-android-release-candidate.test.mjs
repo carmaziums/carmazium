@@ -40,6 +40,9 @@ test('valid synthetic signing metadata allows INTERNAL candidate only, not publi
   assert.ok(source.includes('uk.carmazium.app'));
   assert.ok(source.includes('apksigner" verify'));
   assert.ok(source.includes('REVIEW-ONLY'));
+  assert.ok(source.includes('stage-android-direct-download.mjs'));
+  assert.ok(source.includes('CarMazium-Android-STAGED-NOT-APPROVED'));
+  assert.ok(source.includes('private-staged-apk/*'));
   assert.ok(source.includes('retention-days: 3'));
   assert.ok(source.includes('app.expo.updates.enabled=false'));
   assert.ok(source.includes('app.expo.android.versionCode=Number(process.env.CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE)'));
