@@ -13,7 +13,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { Logo } from '../../components/Logo';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { useAuthStore, AccountRole } from '../../store/authStore';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
@@ -66,7 +66,7 @@ export const AccountRoleHomeScreen: React.FC<{ navigation?: any }> = ({ navigati
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <View style={{ height: insets.top }} />
 
       <View style={styles.header}>
@@ -104,7 +104,7 @@ export const AccountRoleHomeScreen: React.FC<{ navigation?: any }> = ({ navigati
             activeOpacity={0.8}
             accessibilityRole="button"
           >
-            <Ionicons name="settings-outline" size={18} color={Colors.white} />
+            <Ionicons name="settings-outline" size={18} color={Colors.onAccent} />
             <Text style={styles.primaryActionText}>Account Settings</Text>
           </TouchableOpacity>
 
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   primaryActionText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   secondaryAction: {
     height: 52,

@@ -19,7 +19,7 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { IconButton } from '../../components/IconButton';
 import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -93,7 +93,7 @@ export const AcceptInviteScreen: React.FC = () => {
 
   return (
     <KeyboardStickyView style={styles.container} behavior="padding">
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}

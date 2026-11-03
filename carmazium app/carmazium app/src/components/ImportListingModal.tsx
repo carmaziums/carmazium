@@ -17,7 +17,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useStripe } from '@stripe/stripe-react-native';
-import { Colors } from '../constants/colors';
+import { Colors, themeStatusBarStyle } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
 import { haptics } from '../lib/haptics';
 import { previewImport, importFromUrl, type ScrapedListingPreview } from '../lib/listingsApi';
@@ -237,7 +237,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <View style={st.container}>
         <LinearGradient
           colors={[Colors.infoBlueAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -268,7 +268,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
               <View style={[st.stepDot, step >= n && st.stepDotActive]}>
                 {step > n
                   ? <Ionicons name="checkmark" size={10} color={Colors.white} />
-                  : <Text style={[st.stepDotText, step === n && { color: Colors.white }]}>{n}</Text>
+                  : <Text style={[st.stepDotText, step === n && { color: Colors.onAccent }]}>{n}</Text>
                 }
               </View>
               {n < 3 && <View style={[st.stepLine, step > n && st.stepLineActive]} />}
@@ -327,10 +327,10 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 activeOpacity={0.85}
               >
                 {fetching ? (
-                  <ActivityIndicator color={Colors.white} size="small" />
+                  <ActivityIndicator color={Colors.onAccent} size="small" />
                 ) : (
                   <>
-                    <Ionicons name="search-outline" size={16} color={Colors.white} />
+                    <Ionicons name="search-outline" size={16} color={Colors.onAccent} />
                     <Text style={st.primaryBtnText}>Fetch Details</Text>
                   </>
                 )}
@@ -436,11 +436,11 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 activeOpacity={0.85}
               >
                 {saving ? (
-                  <ActivityIndicator color={Colors.white} size="small" />
+                  <ActivityIndicator color={Colors.onAccent} size="small" />
                 ) : (
                   <>
                     <Text style={st.primaryBtnText}>Save as Draft</Text>
-                    <Ionicons name="arrow-forward" size={15} color={Colors.white} />
+                    <Ionicons name="arrow-forward" size={15} color={Colors.onAccent} />
                   </>
                 )}
               </TouchableOpacity>
@@ -508,7 +508,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 activeOpacity={0.85}
               >
                 {activating ? (
-                  <ActivityIndicator color={Colors.white} size="small" />
+                  <ActivityIndicator color={Colors.onAccent} size="small" />
                 ) : (
                   <Text style={st.primaryBtnText}>
                     Activate for £{PLANS.find(p => p.tier === selectedTier)?.price}
@@ -801,7 +801,7 @@ const st = StyleSheet.create({
   primaryBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.3,
   },
   backLink: {

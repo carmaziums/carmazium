@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   channelRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20 },
   channel: { minHeight: 44, flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: Colors.borderSubtle },
   selected: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  selectedText: { color: Colors.white },
+  selectedText: { color: Colors.onAccent },
   channelText: { color: Colors.textSecondary, fontFamily: FontFamily.bold },
   filters: { flexGrow: 0, marginVertical: 12, maxHeight: 48 },
   filterContent: { gap: 8, paddingHorizontal: 20, alignItems: 'center' },

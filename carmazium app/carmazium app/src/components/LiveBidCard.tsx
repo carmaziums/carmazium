@@ -206,7 +206,7 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
         {/* CTA */}
         {auction.isLive && (
           <TouchableOpacity style={styles.bidBtn} onPress={onBid} activeOpacity={0.85}>
-            <Ionicons name="hammer-outline" size={15} color={Colors.white} />
+            <Ionicons name="hammer-outline" size={15} color={Colors.onAccent} />
             <Text style={styles.bidBtnText}>Place Bid</Text>
           </TouchableOpacity>
         )}
@@ -253,12 +253,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.onAccent,
   },
   liveText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size10,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1.5,
   },
   viewersBadge: {
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
   bidBtnText: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.3,
   },
 });

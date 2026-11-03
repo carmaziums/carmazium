@@ -16,7 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -96,7 +96,7 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <View style={styles.header}>
         <IconButton style={styles.headerButton} icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.headerTitle}>Service add-ons</Text>
@@ -134,7 +134,7 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
               <Ionicons name="checkmark-circle" size={24} color={Colors.accentGreen} />
             ) : (
               <TouchableOpacity style={styles.smallButton} onPress={connectStripe} disabled={busy === 'stripe'}>
-                {busy === 'stripe' ? <ActivityIndicator size="small" color={Colors.white} /> : <Text style={styles.smallButtonText}>{stripe.connected ? 'FINISH' : 'SET UP'}</Text>}
+                {busy === 'stripe' ? <ActivityIndicator size="small" color={Colors.onAccent} /> : <Text style={styles.smallButtonText}>{stripe.connected ? 'FINISH' : 'SET UP'}</Text>}
               </TouchableOpacity>
             )}
           </View>
@@ -159,7 +159,7 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
                   </View>
                   {canApply ? (
                     <TouchableOpacity style={styles.smallButton} onPress={() => apply(type)} disabled={busy === type} accessibilityRole="button" accessibilityLabel={`${cap ? 'Reapply for' : 'Add'} ${SERVICE_LABELS[type]} service`}>
-                      {busy === type ? <ActivityIndicator size="small" color={Colors.white} /> : <Text style={styles.smallButtonText}>{cap ? 'REAPPLY' : 'ADD'}</Text>}
+                      {busy === type ? <ActivityIndicator size="small" color={Colors.onAccent} /> : <Text style={styles.smallButtonText}>{cap ? 'REAPPLY' : 'ADD'}</Text>}
                     </TouchableOpacity>
                   ) : null}
                 </View>
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   cardText: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, lineHeight: 19, color: Colors.textSecondary },
   status: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, marginTop: 3 },
   smallButton: { minHeight: 44, minWidth: 80, borderRadius: 10, backgroundColor: Colors.accent, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
-  smallButtonText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size10 },
+  smallButtonText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: FontSize.size10 },
   actions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   actionButton: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: 10, paddingHorizontal: 11, backgroundColor: Colors.bgElevated },
   actionText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size10 },

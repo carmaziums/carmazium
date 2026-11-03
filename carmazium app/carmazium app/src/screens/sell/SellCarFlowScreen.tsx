@@ -12,7 +12,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { BODY_TYPE_ICONS } from '../../constants/bodyTypes';
 import { VEHICLE_FEATURE_GROUPS } from '../../data/vehicleFeatures';
 import { normalizeNativeTransmission, normalizeNativeBodyType, normalizeNativeRegistration, type NativeVehicleType } from '../../lib/sellerVehicleSpecs';
@@ -2881,7 +2881,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 onPress={() => setBodyType(bt.v)}
                 activeOpacity={0.7}
               >
-                <MaterialCommunityIcons name={bt.icon as any} size={18} color={bodyType === bt.v ? Colors.white : Colors.textSecondary} />
+                <MaterialCommunityIcons name={bt.icon as any} size={18} color={bodyType === bt.v ? Colors.onAccent : Colors.textSecondary} />
                 <Text style={[s.pillText, bodyType === bt.v && s.pillTextActive]}>{bt.l}</Text>
               </TouchableOpacity>
             ))}
@@ -2989,9 +2989,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 activeOpacity={0.8}
               >
                 {aiGenerating
-                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  ? <ActivityIndicator size="small" color={Colors.onAccent} />
                   : <>
-                      <Ionicons name="sparkles" size={12} color={Colors.white} />
+                      <Ionicons name="sparkles" size={12} color={Colors.onAccent} />
                       <Text style={s.aiBtnText}>AUTO GENERATE WITH AI</Text>
                     </>
                 }
@@ -3129,7 +3129,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               value={isImported}
               onValueChange={setIsImported}
               trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
-              thumbColor={Colors.white}
+              thumbColor={Colors.onAccent}
             />
           </View>
 
@@ -3148,7 +3148,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 if (!v) { setDepartedRelSelect(''); setDepartedRelOther(''); }
               }}
               trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
-              thumbColor={Colors.white}
+              thumbColor={Colors.onAccent}
             />
           </View>
           <Text style={s.fieldHint}>
@@ -3408,7 +3408,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                             style={{ backgroundColor: 'rgba(0,0,0,0.72)', borderRadius: 6, padding: 4, opacity: i === 0 ? 0.35 : 1 }}
                             accessibilityLabel="Move photo earlier"
                           >
-                            <Ionicons name="chevron-back" size={12} color={Colors.white} />
+                            <Ionicons name="chevron-back" size={12} color={Colors.onAccent} />
                           </TouchableOpacity>
                           {photoTab === 'Exterior' && i > 0 && (
                             <TouchableOpacity
@@ -3416,7 +3416,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                               style={{ backgroundColor: 'rgba(0,0,0,0.72)', borderRadius: 6, padding: 4 }}
                               accessibilityLabel="Make cover photo"
                             >
-                              <Ionicons name="star" size={12} color={Colors.white} />
+                              <Ionicons name="star" size={12} color={Colors.onAccent} />
                             </TouchableOpacity>
                           )}
                           <TouchableOpacity
@@ -3425,10 +3425,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                             style={{ backgroundColor: 'rgba(0,0,0,0.72)', borderRadius: 6, padding: 4, opacity: i === tabImages.length - 1 ? 0.35 : 1 }}
                             accessibilityLabel="Move photo later"
                           >
-                            <Ionicons name="chevron-forward" size={12} color={Colors.white} />
+                            <Ionicons name="chevron-forward" size={12} color={Colors.onAccent} />
                           </TouchableOpacity>
                         </View>
-                        <IconButton style={s.photoRemoveBtn} icon={<Ionicons name="close" size={10} color={Colors.white} />} onPress={() => void removePhoto(photoTab, uri)} accessibilityLabel="Remove photo" />
+                        <IconButton style={s.photoRemoveBtn} icon={<Ionicons name="close" size={10} color={Colors.onAccent} />} onPress={() => void removePhoto(photoTab, uri)} accessibilityLabel="Remove photo" />
                       </View>
                     );
                   })}
@@ -3494,11 +3494,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   key={url}
                   style={[s.pill, s.pillActive, { flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 8 }]}
                 >
-                  <Ionicons name="play-circle-outline" size={14} color={Colors.white} />
+                  <Ionicons name="play-circle-outline" size={14} color={Colors.onAccent} />
                   <Text style={[s.pillTextActive, { flex: 1, fontSize: FontSize.xs }]} numberOfLines={1}>
                     {url.length > 40 ? `${url.slice(0, 40)}…` : url}
                   </Text>
-                  <IconButton icon={<Ionicons name="close" size={13} color={Colors.white} />} onPress={() => setVideoUrls(p => p.filter(v => v !== url))} accessibilityLabel="Remove video" />
+                  <IconButton icon={<Ionicons name="close" size={13} color={Colors.onAccent} />} onPress={() => setVideoUrls(p => p.filter(v => v !== url))} accessibilityLabel="Remove video" />
                 </View>
               ))}
             </View>
@@ -3717,7 +3717,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               value={deliveryAvailable}
               onValueChange={setDeliveryAvailable}
               trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
-              thumbColor={Colors.white}
+              thumbColor={Colors.onAccent}
             />
           </View>
 
@@ -3796,7 +3796,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   )}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     <View style={[s.radioCircle, active && { backgroundColor: badge.accent, borderColor: badge.accent }]}>
-                      {active && <Ionicons name="checkmark" size={12} color={badge.id === 'PREMIUM' ? Colors.black : Colors.white} />}
+                      {active && <Ionicons name="checkmark" size={12} color={badge.id === 'PREMIUM' ? Colors.black : Colors.onAccent} />}
                     </View>
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -4159,7 +4159,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   return (
     <View style={s.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -4268,7 +4268,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                     : step === 3 ? 'REVIEW LISTING'
                     : 'REVIEW LISTING'}
                 </Text>
-                <Ionicons name="arrow-forward" size={16} color={Colors.white} style={{ marginLeft: 8 }} />
+                <Ionicons name="arrow-forward" size={16} color={Colors.onAccent} style={{ marginLeft: 8 }} />
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
@@ -4278,10 +4278,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 disabled={isPublishing}
               >
                 {isPublishing
-                  ? <ActivityIndicator color={Colors.white} size="small" />
+                  ? <ActivityIndicator color={Colors.onAccent} size="small" />
                   : <>
                       <Text style={s.nextBtnText}>{editMode ? 'SAVE CHANGES' : 'PUBLISH LISTING'}</Text>
-                      <Ionicons name="checkmark" size={16} color={Colors.white} style={{ marginLeft: 8 }} />
+                      <Ionicons name="checkmark" size={16} color={Colors.onAccent} style={{ marginLeft: 8 }} />
                     </>
                 }
               </TouchableOpacity>
@@ -4321,7 +4321,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             </Text>
             <TouchableOpacity onPress={() => resolveAuctionRetailChoice('KEEP_BOTH')} accessibilityRole="button"
               style={{ backgroundColor: Colors.accentGreen, padding: 15, borderRadius: 10, alignItems: 'center', minHeight: 48 }}>
-              <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>KEEP AUCTION & ALSO LIST RETAIL</Text>
+              <Text style={{ color: Colors.onAccent, fontFamily: FontFamily.bold }}>KEEP AUCTION & ALSO LIST RETAIL</Text>
             </TouchableOpacity>
           </View>
           <View style={{ padding: 14, borderRadius: 12, backgroundColor: Colors.warningAlpha08, borderWidth: 1, borderColor: Colors.warningAlpha15, gap: 10 }}>
@@ -4346,7 +4346,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => resolveAuctionRetailChoice('CONVERT')} accessibilityRole="button"
                   style={{ padding: 14, borderRadius: 9, backgroundColor: Colors.error, alignItems: 'center' }}>
-                  <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>CONFIRM: CANCEL AUCTION & SWITCH</Text>
+                  <Text style={{ color: Colors.onAccent, fontFamily: FontFamily.bold }}>CONFIRM: CANCEL AUCTION & SWITCH</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -4441,7 +4441,7 @@ const s = StyleSheet.create({
   vrmRow: { flexDirection: 'row', gap: 8, alignItems: 'stretch' },
   vrmInput: { flex: 1, backgroundColor: Colors.lightYellow, borderRadius: Radius.inline, paddingHorizontal: 16, fontFamily: FontFamily.black, fontSize: FontSize.size22, color: Colors.black, letterSpacing: 2 } as any,
   vrmBtn: { backgroundColor: Colors.accent, borderRadius: Radius.inline, paddingHorizontal: 14, justifyContent: 'center', alignItems: 'center', minWidth: 120 },
-  vrmBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 0.8 },
+  vrmBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent, letterSpacing: 0.8 },
   dvlaSuccess: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, padding: 10, backgroundColor: Colors.accentGreenAlpha08, borderRadius: 8, borderWidth: 1, borderColor: Colors.accentGreenAlpha20 },
   dvlaSuccessText: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.accentGreen, flex: 1 },
   dvlaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 0, marginBottom: 12 },
@@ -4462,7 +4462,7 @@ const s = StyleSheet.create({
   pill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
   pillActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   pillText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
-  pillTextActive: { color: Colors.white },
+  pillTextActive: { color: Colors.onAccent },
   zoneChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   zoneHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted, marginTop: 6, lineHeight: 16 },
 
@@ -4474,7 +4474,7 @@ const s = StyleSheet.create({
 
   // AI
   aiBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.accent, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginBottom: 8 },
-  aiBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white, letterSpacing: 0.8 },
+  aiBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.onAccent, letterSpacing: 0.8 },
 
   // Legal
   warnText: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.warning, lineHeight: 18, marginBottom: 14, padding: 10, backgroundColor: Colors.warningAlpha08, borderRadius: 8 },
@@ -4499,7 +4499,7 @@ const s = StyleSheet.create({
   photoTab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
   photoTabActive: { backgroundColor: Colors.accent },
   photoTabText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.iconMuted },
-  photoTabTextActive: { color: Colors.white },
+  photoTabTextActive: { color: Colors.onAccent },
   proTip: { flexDirection: 'row', gap: 8, backgroundColor: Colors.infoBlueAlpha08, borderWidth: 1, borderColor: Colors.infoBlueAlpha20, borderRadius: Radius.inline, padding: 10, marginBottom: 14 },
   proTipText: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.paleBlue_93c5fd, lineHeight: 16, flex: 1 },
   uploadZone: { borderWidth: 1, borderColor: Colors.whiteAlpha10, borderStyle: 'dashed', borderRadius: Radius.inline, alignItems: 'center', justifyContent: 'center', paddingVertical: 36, gap: 8 },
@@ -4510,7 +4510,7 @@ const s = StyleSheet.create({
   photoThumb: { width: (SW - 32 - 24) / 4, aspectRatio: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: Colors.deepBlue_1a1a22 },
   photoThumbImg: { width: '100%', height: '100%' },
   coverBadge: { position: 'absolute', bottom: 4, left: 4, backgroundColor: Colors.accent, paddingHorizontal: 4, paddingVertical: 2, borderRadius: 3 },
-  coverBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size7, color: Colors.white },
+  coverBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size7, color: Colors.onAccent },
   photoRemoveBtn: { position: 'absolute', top: 3, right: 3, width: 16, height: 16, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
   photoProgressBar: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 4, backgroundColor: 'rgba(0,0,0,0.4)' },
   photoProgressFill: { height: 4, backgroundColor: Colors.accent ?? Colors.accent, borderRadius: 0 },
@@ -4548,9 +4548,9 @@ const s = StyleSheet.create({
   // Badge Cards
   badgeCard: { backgroundColor: Colors.bgSecondaryAlt, borderRadius: 14, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 14, position: 'relative', overflow: 'hidden' },
   badgeSelected: { position: 'absolute', top: 8, right: 8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  badgeSelectedText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white, letterSpacing: 0.8 },
+  badgeSelectedText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.onAccent, letterSpacing: 0.8 },
   badgePopular: { position: 'absolute', top: 0, right: 0, backgroundColor: Colors.infoBlue, paddingHorizontal: 8, paddingVertical: 4, borderBottomLeftRadius: 8 },
-  badgePopularText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white },
+  badgePopularText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.onAccent },
   radioCircle: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: Colors.iconMuted, alignItems: 'center', justifyContent: 'center' },
   badgeLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, marginBottom: 2 },
   badgePrice: { fontFamily: FontFamily.extraBold, fontSize: FontSize.size22, marginBottom: 2 },
@@ -4591,6 +4591,6 @@ const s = StyleSheet.create({
   backBtnSm: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, height: 52, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.whiteAlpha05 },
   backBtnSmText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white },
   nextBtn: { flex: 1, backgroundColor: Colors.accent, borderRadius: Radius.inline, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  nextBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.8 },
+  nextBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent, letterSpacing: 0.8 },
   publishBtn: { backgroundColor: Colors.accentGreen },
 });

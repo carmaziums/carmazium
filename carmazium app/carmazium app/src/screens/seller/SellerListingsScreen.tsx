@@ -23,7 +23,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { apiClient } from '../../lib/apiClient';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -768,7 +768,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           disabled={actionLoading}
         >
           {actionLoading ? (
-            <ActivityIndicator color={Colors.white} size="small" />
+            <ActivityIndicator color={Colors.onAccent} size="small" />
           ) : (
             <Text style={styles.soldConfirmBtnText}>Confirm Sale</Text>
           )}
@@ -788,7 +788,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -1008,7 +1008,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   disabled={auctionSubmitting}
                   activeOpacity={0.85}
                 >
-                  {auctionSubmitting ? <ActivityIndicator color={Colors.white} size="small" /> : (
+                  {auctionSubmitting ? <ActivityIndicator color={Colors.onAccent} size="small" /> : (
                     <Text style={styles.dualSubmitText}>Create Auction</Text>
                   )}
                 </TouchableOpacity>
@@ -1083,7 +1083,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   tabLabelActive: {
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   tabBadge: {
     minWidth: 18,
@@ -1301,7 +1301,7 @@ const styles = StyleSheet.create({
   soldConfirmBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   soldCancelBtn: {
     marginHorizontal: 20,
@@ -1341,7 +1341,7 @@ const styles = StyleSheet.create({
   boostToastText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size12,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.3,
   },
 
@@ -1357,5 +1357,5 @@ const styles = StyleSheet.create({
   dualErrorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: Colors.errorAlpha08, borderWidth: 1, borderColor: Colors.errorAlpha20, borderRadius: Radius.inline, padding: 10, marginTop: 10 },
   dualErrorText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.error, flex: 1, lineHeight: 17 },
   dualSubmitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: Radius.inline, backgroundColor: Colors.lightOrange_f97316, marginTop: 16 },
-  dualSubmitText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, letterSpacing: 0.3 },
+  dualSubmitText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.onAccent, letterSpacing: 0.3 },
 });

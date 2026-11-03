@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
   applyText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size12,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1,
     textTransform: 'uppercase',
   },

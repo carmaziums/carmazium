@@ -17,7 +17,7 @@ import { apiClient } from '../../lib/apiClient';
 import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
 import { startAddressVerification, confirmAddressVerification } from '../../lib/addressVerificationApi';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 
 import { IconButton } from '../../components/IconButton';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -594,7 +594,7 @@ export const SettingsScreen: React.FC = () => {
   };
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha04, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }}
@@ -670,7 +670,7 @@ export const SettingsScreen: React.FC = () => {
                 <Ionicons
                   name={category.icon as any}
                   size={19}
-                  color={selected ? Colors.white : Colors.textSecondary}
+                  color={selected ? Colors.onAccent : Colors.textSecondary}
                 />
                 <Text style={[styles.categoryLabel, selected && styles.categoryLabelSelected]}>
                   {category.label}
@@ -757,7 +757,7 @@ export const SettingsScreen: React.FC = () => {
             disabled={profileSaving}
           >
             {profileSaving
-              ? <ActivityIndicator size="small" color={Colors.white} />
+              ? <ActivityIndicator size="small" color={Colors.onAccent} />
               : <Text style={styles.saveBtnText}>SAVE PROFILE</Text>}
           </TouchableOpacity>
         </View>
@@ -800,7 +800,7 @@ export const SettingsScreen: React.FC = () => {
               disabled={!preferencesLoaded}
               accessibilityLabel="Email me when a listing is sold"
               trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }}
-              thumbColor={Colors.white}
+              thumbColor={Colors.onAccent}
               ios_backgroundColor={Colors.whiteAlpha10}
             />
           </View>
@@ -814,7 +814,7 @@ export const SettingsScreen: React.FC = () => {
               disabled={!preferencesLoaded}
               accessibilityLabel="Show my profile publicly"
               trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }}
-              thumbColor={Colors.white}
+              thumbColor={Colors.onAccent}
               ios_backgroundColor={Colors.whiteAlpha10}
             />
           </View>
@@ -828,7 +828,7 @@ export const SettingsScreen: React.FC = () => {
                 accessibilityLabel="Save notification and privacy preferences"
               >
                 {preferencesSaving
-                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  ? <ActivityIndicator size="small" color={Colors.onAccent} />
                   : <Text style={styles.saveBtnText}>SAVE PREFERENCES</Text>}
               </TouchableOpacity>
             </View>
@@ -993,7 +993,7 @@ export const SettingsScreen: React.FC = () => {
                 disabled={dealerSaving}
               >
                 {dealerSaving
-                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  ? <ActivityIndicator size="small" color={Colors.onAccent} />
                   : <Text style={styles.saveBtnText}>SAVE DEALERSHIP PROFILE</Text>}
               </TouchableOpacity>
             </View>
@@ -1143,7 +1143,7 @@ export const SettingsScreen: React.FC = () => {
           >
             {pwdSaving
               ? <ActivityIndicator size="small" color={Colors.white} />
-              : <Text style={styles.saveBtnText}>UPDATE PASSWORD</Text>}
+              : <Text style={[styles.saveBtnText, styles.saveBtnTextOnGround]}>UPDATE PASSWORD</Text>}
           </TouchableOpacity>
         </View>
           </>
@@ -1182,9 +1182,9 @@ export const SettingsScreen: React.FC = () => {
                 disabled={stripeConnecting}
               >
                 {stripeConnecting
-                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  ? <ActivityIndicator size="small" color={Colors.onAccent} />
                   : <>
-                      <Ionicons name="arrow-redo-outline" size={16} color={Colors.white} />
+                      <Ionicons name="arrow-redo-outline" size={16} color={Colors.onAccent} />
                       <Text style={styles.stripeBtnText}>{stripePartial ? 'REVIEW PAYOUT ONBOARDING' : 'CONNECT PAYOUT ACCOUNT'}</Text>
                     </>}
               </TouchableOpacity>
@@ -1247,7 +1247,7 @@ export const SettingsScreen: React.FC = () => {
             disabled={bankSaving}
           >
             {bankSaving
-              ? <ActivityIndicator size="small" color={Colors.white} />
+              ? <ActivityIndicator size="small" color={Colors.onAccent} />
               : <Text style={styles.saveBtnText}>SAVE BANK DETAILS</Text>}
           </TouchableOpacity>
         </View>
@@ -1362,14 +1362,14 @@ export const SettingsScreen: React.FC = () => {
                 accessibilityRole="button" accessibilityLabel="Review business verification"
                 onPress={() => selectCategory('verification')}>
                 <Text style={styles.accountActionText}>Review business verification</Text>
-                <Ionicons name="chevron-forward" size={17} color={Colors.white} />
+                <Ionicons name="chevron-forward" size={17} color={Colors.onAccent} />
               </TouchableOpacity>
             ) : !isDealerStaff ? (
               <TouchableOpacity style={styles.accountAction}
                 accessibilityRole="button" accessibilityLabel="Explore Partner Account"
                 onPress={() => navigation.navigate('PartnerDashboard')}>
                 <Text style={styles.accountActionText}>Explore Partner Account</Text>
-                <Ionicons name="chevron-forward" size={17} color={Colors.white} />
+                <Ionicons name="chevron-forward" size={17} color={Colors.onAccent} />
               </TouchableOpacity>
             ) : (
               <Text style={styles.accountSectionText}>
@@ -1421,7 +1421,7 @@ export const SettingsScreen: React.FC = () => {
             accessibilityLabel="Permanently delete my account"
           >
             {deleting
-              ? <ActivityIndicator size="small" color={Colors.white} />
+              ? <ActivityIndicator size="small" color={Colors.onAccent} />
               : <Text style={styles.deleteConfirmBtnText}>DELETE MY ACCOUNT</Text>}
           </TouchableOpacity>
           <TouchableOpacity
@@ -1468,7 +1468,7 @@ export const SettingsScreen: React.FC = () => {
                 disabled={verifySending}
               >
                 {verifySending
-                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  ? <ActivityIndicator size="small" color={Colors.onAccent} />
                   : <Text style={styles.stripeBtnText}>SEND VERIFICATION CODE</Text>}
               </TouchableOpacity>
             </View>
@@ -1494,7 +1494,7 @@ export const SettingsScreen: React.FC = () => {
                 disabled={verifyConfirming}
               >
                 {verifyConfirming
-                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  ? <ActivityIndicator size="small" color={Colors.onAccent} />
                   : <Text style={styles.stripeBtnText}>CONFIRM & VERIFY</Text>}
               </TouchableOpacity>
               <TouchableOpacity style={{ alignItems: 'center', marginTop: 14 }} onPress={() => { setVerifyStage('address'); setVerifyError(null); }}>
@@ -1550,7 +1550,7 @@ const styles = StyleSheet.create({
   accountAction: { backgroundColor: Colors.accent, borderRadius: 11, minHeight: 46,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 13 },
-  accountActionText: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: 12 },
+  accountActionText: { color: Colors.onAccent, fontFamily: FontFamily.bold, fontSize: 12 },
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   dangerCard: {
     backgroundColor: Colors.errorAlpha08,
@@ -1596,7 +1596,7 @@ const styles = StyleSheet.create({
   deleteConfirmBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1.1,
   },
   header: {
@@ -1615,7 +1615,7 @@ const styles = StyleSheet.create({
   categoryButton: { flexGrow: 1, flexBasis: '46%', minHeight: 56, flexDirection: 'row', gap: 9, alignItems: 'center', backgroundColor: Colors.bgCardSolid, borderColor: Colors.borderHi, borderWidth: 1, borderRadius: Radius.inline, paddingHorizontal: 13, paddingVertical: 10 },
   categoryButtonSelected: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   categoryLabel: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.xs, lineHeight: 18, color: Colors.textSecondary },
-  categoryLabelSelected: { color: Colors.white },
+  categoryLabelSelected: { color: Colors.onAccent },
   notificationShortcut: { flexDirection: 'row', alignItems: 'center', minHeight: 68, padding: 14, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgCardSolid, gap: 12, marginBottom: 6 },
   notificationShortcutIcon: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: Colors.accentAlpha10 },
   notificationShortcutTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 3 },
@@ -1702,7 +1702,8 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: Colors.accent,
   },
-  saveBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.5 },
+  saveBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent, letterSpacing: 0.5 },
+  saveBtnTextOnGround: { color: Colors.textPrimary },
 
   // Stripe
   payoutDesc: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 18 },
@@ -1718,7 +1719,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent, borderRadius: Radius.inline, height: 44,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
-  stripeBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.5 },
+  stripeBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent, letterSpacing: 0.5 },
   stripeNote: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted, textAlign: 'center', marginTop: -4 },
 
   // Bank details

@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { getAccessToken } from '../../lib/supabase';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -265,7 +265,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={['rgba(34,197,94,0.05)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -438,7 +438,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
               activeOpacity={0.85}
             >
               {connectLoading ? (
-                <ActivityIndicator color={Colors.white} />
+                <ActivityIndicator color={Colors.onAccent} />
               ) : (
                 <Text style={styles.connectButtonText}>Set up Payouts with Stripe</Text>
               )}
@@ -824,7 +824,7 @@ const styles = StyleSheet.create({
   connectButtonText: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     textAlign: 'center',
   },
 });

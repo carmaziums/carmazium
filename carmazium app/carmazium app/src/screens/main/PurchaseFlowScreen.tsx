@@ -17,7 +17,7 @@ import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet, reconcileAuctionFeeIntent } from '../../lib/paymentsApi';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 
 import { IconButton } from '../../components/IconButton';
 // ─────────────────────────────── types ────────────────────────────────
@@ -257,7 +257,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
   if (paymentType !== 'COMMISSION') {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
         <View style={{ paddingTop: insets.top + 24, paddingHorizontal: 20, flex: 1 }}>
           <IconButton
             style={styles.backBtn}
@@ -281,7 +281,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
   if (paid) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
         <LinearGradient
           colors={[Colors.accentGreenAlpha08, 'rgba(0,0,0,0)', Colors.bgPrimary]}
           style={StyleSheet.absoluteFillObject}
@@ -327,7 +327,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
   // ── Payment screen ────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -454,9 +454,9 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
           disabled={paying}
         >
           {paying ? (
-            <ActivityIndicator color={Colors.white} style={{ marginRight: 10 }} />
+            <ActivityIndicator color={Colors.onAccent} style={{ marginRight: 10 }} />
           ) : (
-            <Ionicons name="lock-closed-outline" size={18} color={Colors.white} style={styles.btnIconLeft} />
+            <Ionicons name="lock-closed-outline" size={18} color={Colors.onAccent} style={styles.btnIconLeft} />
           )}
           <Text style={styles.mainBtnText}>
             {paying
@@ -630,7 +630,7 @@ const styles = StyleSheet.create({
   mainBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1,
   },
   btnIconLeft: { marginRight: 10 },
@@ -682,7 +682,7 @@ const styles = StyleSheet.create({
   doneBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1,
   },
 });

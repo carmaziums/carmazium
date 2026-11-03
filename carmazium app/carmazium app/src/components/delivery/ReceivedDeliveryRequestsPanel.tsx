@@ -159,11 +159,11 @@ export const ReceivedDeliveryRequestsPanel: React.FC<Props> = ({
                 disabled={isActioning}
               >
                 {isActioning ? (
-                  <ActivityIndicator size="small" color={Colors.white} />
+                  <ActivityIndicator size="small" color={Colors.onAccent} />
                 ) : (
                   <>
-                    <Ionicons name="checkmark" size={13} color={Colors.white} />
-                    <Text style={[styles.btnText, { color: Colors.white }]}>Accept</Text>
+                    <Ionicons name="checkmark" size={13} color={Colors.onAccent} />
+                    <Text style={[styles.btnText, { color: Colors.onAccent }]}>Accept</Text>
                   </>
                 )}
               </TouchableOpacity>

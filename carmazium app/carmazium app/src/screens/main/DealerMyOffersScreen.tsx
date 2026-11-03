@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -410,8 +410,8 @@ export const DealerMyOffersScreen: React.FC = () => {
                 onPress={() => handleMessageSeller(offer)}
                 disabled={isActioning}
               >
-                <Ionicons name="chatbubble-ellipses-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
-                <Text style={[styles.actionBtnText, { color: Colors.white }]}>
+                <Ionicons name="chatbubble-ellipses-outline" size={14} color={Colors.onAccent} style={{ marginRight: 6 }} />
+                <Text style={[styles.actionBtnText, { color: Colors.onAccent }]}>
                   Message Seller
                 </Text>
               </TouchableOpacity>
@@ -446,7 +446,7 @@ export const DealerMyOffersScreen: React.FC = () => {
               onPress={() => handleCounterRespond(offer, 'ACCEPTED')}
               disabled={isActioning}
             >
-              <Text style={[styles.actionBtnText, { color: Colors.white }]}>
+              <Text style={[styles.actionBtnText, { color: Colors.onAccent }]}>
                 Accept Counter
               </Text>
             </TouchableOpacity>
@@ -480,7 +480,7 @@ export const DealerMyOffersScreen: React.FC = () => {
           onCreated={() => void fetchData()}
         />
       )}
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
   counterBadgeText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // ── Scroll ──
@@ -655,7 +655,7 @@ const styles = StyleSheet.create({
   emptyCtaBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // ── Offer card ──

@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
 import { useAuthStore } from '../../store/authStore';
 
@@ -128,7 +128,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
        value={value}
        onValueChange={onValueChange}
        trackColor={{ false: Colors.whiteAlpha10, true: activeColor }}
-       thumbColor={Colors.white}
+       thumbColor={Colors.onAccent}
        ios_backgroundColor={Colors.whiteAlpha10}
        disabled={disabled}
     />
@@ -372,7 +372,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}

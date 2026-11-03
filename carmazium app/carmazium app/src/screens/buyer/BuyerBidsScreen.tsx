@@ -21,7 +21,7 @@ import { apiClient } from '../../lib/apiClient';
 import { getListingById } from '../../lib/listingsApi';
 import { getAuction } from '../../lib/auctionApi';
 import { useAuthStore } from '../../store/authStore';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -533,7 +533,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
             {!bid.buyerFeePaid ? (
               dealerAccessLoading ? (
                 <View style={[styles.wonCtaBtn, { flex: 1, justifyContent: 'center' }]}>
-                  <ActivityIndicator size="small" color={Colors.white} />
+                  <ActivityIndicator size="small" color={Colors.onAccent} />
                 </View>
               ) : canPayAuctionFee ? (
                 <TouchableOpacity
@@ -541,12 +541,12 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
                   activeOpacity={0.85}
                   onPress={handlePayFee}
                 >
-                  <Ionicons name="lock-closed-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
+                  <Ionicons name="lock-closed-outline" size={14} color={Colors.onAccent} style={{ marginRight: 6 }} />
                   <Text style={styles.wonCtaBtnText}>PAY BUYER FEE · £125</Text>
                 </TouchableOpacity>
               ) : (
                 <View style={[styles.wonCtaBtn, { flex: 1, opacity: 0.65 }]}>
-                  <Ionicons name="lock-closed-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
+                  <Ionicons name="lock-closed-outline" size={14} color={Colors.onAccent} style={{ marginRight: 6 }} />
                   <Text style={styles.wonCtaBtnText}>OWNER / ADMIN / FINANCE TO PAY</Text>
                 </View>
               )
@@ -614,7 +614,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
   // ── main render ────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {/* Gradient backdrop */}
       <LinearGradient
@@ -761,7 +761,7 @@ const styles = StyleSheet.create({
   countBadgeText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // ── Scroll ──
@@ -884,7 +884,7 @@ const styles = StyleSheet.create({
   wonCtaBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size12,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.8,
   },
   wonChatBtnText: {

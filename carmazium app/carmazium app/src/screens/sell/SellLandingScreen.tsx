@@ -7,7 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@/components/BrandIcon';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
 import { apiClient } from '../../lib/apiClient';
 import { getVehicleValuation, type VehicleValuation } from '../../lib/valuationApi';
@@ -187,7 +187,7 @@ export const SellLandingScreen: React.FC = () => {
 
   return (
     <View style={styles.screen}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent"/>
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent"/>
       <WebsiteTopBar />
       <ScrollView keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
@@ -208,7 +208,7 @@ export const SellLandingScreen: React.FC = () => {
             </View>
             <TouchableOpacity style={styles.lookupBtn} onPress={() => { void findRegistration(); }}
               disabled={lookingUp || valuing} accessibilityRole="button" accessibilityLabel="Analyse registration">
-              {lookingUp ? <ActivityIndicator color={Colors.white}/> :
+              {lookingUp ? <ActivityIndicator color={Colors.onAccent}/> :
                 <Text style={styles.lookupText}>Analyse</Text>}
             </TouchableOpacity>
           </View>
@@ -235,9 +235,9 @@ export const SellLandingScreen: React.FC = () => {
             onPress={() => { void getGuide(); }}
             disabled={lookingUp || valuing} accessibilityRole="button"
             accessibilityLabel="Get My Free Valuation">
-            {valuing ? <ActivityIndicator color={Colors.white}/> :
+            {valuing ? <ActivityIndicator color={Colors.onAccent}/> :
               <Text style={styles.valuationButtonText}>Get My Free Valuation</Text>}
-            <Ionicons name="arrow-forward" size={17} color={Colors.white}/>
+            <Ionicons name="arrow-forward" size={17} color={Colors.onAccent}/>
           </TouchableOpacity>
           <Text style={styles.guideNote}>Free valuation · No obligation · Guide only, not a guaranteed offer.</Text>
           {!!valuation && <View style={styles.guideResult}>
@@ -256,7 +256,7 @@ export const SellLandingScreen: React.FC = () => {
                 <TouchableOpacity accessibilityRole="button" accessibilityLabel="Choose Free Auction"
                   style={styles.auctionPriceButton} onPress={() => startListing('AUCTION')}>
                   <Text style={styles.auctionPriceButtonText}>Choose Free Auction</Text>
-                  <Ionicons name="arrow-forward" size={17} color={Colors.white}/>
+                  <Ionicons name="arrow-forward" size={17} color={Colors.onAccent}/>
                 </TouchableOpacity>
               </View>
               <View style={[styles.priceChoice, styles.retailPriceChoice]}>
@@ -270,7 +270,7 @@ export const SellLandingScreen: React.FC = () => {
                 <TouchableOpacity accessibilityRole="button" accessibilityLabel="Choose £1 Retail"
                   style={styles.retailPriceButton} onPress={() => startListing('CLASSIFIED')}>
                   <Text style={styles.auctionPriceButtonText}>Choose £1 Retail</Text>
-                  <Ionicons name="arrow-forward" size={17} color={Colors.white}/>
+                  <Ionicons name="arrow-forward" size={17} color={Colors.onAccent}/>
                 </TouchableOpacity>
               </View>
             </View>
@@ -293,12 +293,12 @@ export const SellLandingScreen: React.FC = () => {
         {!valuation && <><Text style={styles.chooseTitle}>Choose how to sell</Text>
         <TouchableOpacity style={styles.auctionAction} onPress={()=>startListing('AUCTION')}
           accessibilityRole="button" accessibilityLabel="FREE Dealer Auction, continue to listing">
-          <Ionicons name="hammer-outline" size={20} color={Colors.white}/>
+          <Ionicons name="hammer-outline" size={20} color={Colors.onAccent}/>
           <View style={styles.actionCopy}>
             <Text style={styles.actionTitle}>FREE Dealer Auction</Text>
             <Text style={styles.actionSub}>£0 listing fee · Qualifying successful auction sales may earn £100 after approved handover</Text>
           </View>
-          <Ionicons name="arrow-forward" size={18} color={Colors.white}/>
+          <Ionicons name="arrow-forward" size={18} color={Colors.onAccent}/>
         </TouchableOpacity>
         <TouchableOpacity style={styles.retailAction} onPress={()=>startListing('CLASSIFIED')}
           accessibilityRole="button" accessibilityLabel="£1 Retail Listing, continue to listing">
@@ -332,10 +332,10 @@ const styles=StyleSheet.create({
   vrmRow:{flexDirection:'row',alignItems:'flex-end',gap:8},
   vrmInputWrap:{flex:1},lookupBtn:{height:45,backgroundColor:Colors.accent,borderRadius:10,
     justifyContent:'center',alignItems:'center',paddingHorizontal:12,minWidth:85},
-  lookupText:{color:Colors.white,fontFamily:FontFamily.bold,fontSize:12},
+  lookupText:{color:Colors.onAccent,fontFamily:FontFamily.bold,fontSize:12},
   valuationButton:{flexDirection:'row',alignItems:'center',justifyContent:'center',
     gap:10,backgroundColor:Colors.accent,borderRadius:12,minHeight:49,marginTop:1},
-  valuationButtonText:{fontFamily:FontFamily.extraBold,color:Colors.white,fontSize:13},
+  valuationButtonText:{fontFamily:FontFamily.extraBold,color:Colors.onAccent,fontSize:13},
   guideNote:{fontFamily:FontFamily.regular,color:Colors.textMuted,fontSize:11,lineHeight:17},
   error:{color:Colors.error,fontFamily:FontFamily.medium,fontSize:12,lineHeight:18},
   guideResult:{borderRadius:13,borderWidth:1,borderColor:Colors.infoBlue,backgroundColor:Colors.bgElevated,
@@ -353,7 +353,7 @@ const styles=StyleSheet.create({
     flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,marginTop:5},
   retailPriceButton:{minHeight:46,borderRadius:9,backgroundColor:Colors.infoBlue,
     flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,marginTop:5},
-  auctionPriceButtonText:{fontFamily:FontFamily.extraBold,fontSize:13,color:Colors.white},
+  auctionPriceButtonText:{fontFamily:FontFamily.extraBold,fontSize:13,color:Colors.onAccent},
   benefits:{flexDirection:'row',gap:7},benefit:{flex:1,minWidth:0,borderRadius:12,
     backgroundColor:Colors.bgCard,borderColor:Colors.borderSubtle,borderWidth:1,padding:9,gap:6},
   benefitTitle:{fontFamily:FontFamily.extraBold,color:Colors.textPrimary,fontSize:11},
@@ -363,7 +363,7 @@ const styles=StyleSheet.create({
     gap:11,padding:13,minHeight:72},
   retailAction:{backgroundColor:Colors.bgCard,borderRadius:13,flexDirection:'row',alignItems:'center',
     borderWidth:1,borderColor:Colors.borderSubtle,gap:11,padding:13,minHeight:72},
-  actionCopy:{flex:1,gap:4},actionTitle:{fontFamily:FontFamily.extraBold,color:Colors.white,fontSize:14},
+  actionCopy:{flex:1,gap:4},actionTitle:{fontFamily:FontFamily.extraBold,color:Colors.onAccent,fontSize:14},
   retailTitle:{fontFamily:FontFamily.extraBold,color:Colors.textPrimary,fontSize:14},
   actionSub:{fontFamily:FontFamily.medium,fontSize:11,lineHeight:16,color:Colors.textSecondary},
   footnote:{fontFamily:FontFamily.regular,color:Colors.textMuted,fontSize:11,lineHeight:17,marginTop:4},

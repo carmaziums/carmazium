@@ -129,7 +129,7 @@ export const LocationPromptSheet: React.FC = () => {
           accessibilityRole="button"
         >
           {saving ? (
-            <ActivityIndicator size="small" color={Colors.white} />
+            <ActivityIndicator size="small" color={Colors.onAccent} />
           ) : (
             <Text style={styles.saveBtnText}>Save</Text>
           )}
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   saveBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size12,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1,
     textTransform: 'uppercase',
   },

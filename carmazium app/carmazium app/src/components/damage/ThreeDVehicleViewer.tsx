@@ -262,7 +262,7 @@ export function ThreeDVehicleViewer({
         <View style={styles.errorState}>
           <Text style={styles.errorText}>Couldn't load the 3D model.</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={handleWebViewLoad} activeOpacity={0.75}>
-            <Ionicons name="refresh" size={14} color={Colors.white} />
+            <Ionicons name="refresh" size={14} color={Colors.onAccent} />
             <Text style={styles.retryBtnText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -328,7 +328,7 @@ export function ThreeDVehicleViewer({
               )}
               {hasPhoto && (
                 <View style={styles.photoBadge}>
-                  <Ionicons name="camera" size={8} color={Colors.white} />
+                  <Ionicons name="camera" size={8} color={Colors.onAccent} />
                 </View>
               )}
             </TouchableOpacity>
@@ -353,7 +353,7 @@ export function ThreeDVehicleViewer({
               onPress={() => onZoneClick(pillZone.label)}
               activeOpacity={0.7}
             >
-              <Ionicons name="alert-circle-outline" size={13} color={Colors.white} />
+              <Ionicons name="alert-circle-outline" size={13} color={Colors.onAccent} />
               <Text style={styles.pillBtnText}>Mark</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -361,7 +361,7 @@ export function ThreeDVehicleViewer({
               onPress={() => handleHideToggle(pillZone.id)}
               activeOpacity={0.7}
             >
-              <Ionicons name={hiddenZones.has(pillZone.id) ? 'eye-off' : 'eye-off-outline'} size={13} color={Colors.white} />
+              <Ionicons name={hiddenZones.has(pillZone.id) ? 'eye-off' : 'eye-off-outline'} size={13} color={Colors.onAccent} />
               <Text style={styles.pillBtnText}>{hiddenZones.has(pillZone.id) ? 'Unhide' : 'Hide'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -369,7 +369,7 @@ export function ThreeDVehicleViewer({
               onPress={() => handlePhotoPick(pillZone.id)}
               activeOpacity={0.7}
             >
-              <Ionicons name="camera-outline" size={13} color={Colors.white} />
+              <Ionicons name="camera-outline" size={13} color={Colors.onAccent} />
               <Text style={styles.pillBtnText}>{zonePhotos[pillZone.id] ? 'Retake' : 'Photo'}</Text>
             </TouchableOpacity>
           </View>
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
   },
   retryBtnText: {
-    color: Colors.white,
+    color: Colors.onAccent,
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semiBold,
   },
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
   },
   disclosureText: {
     flex: 1,
-    color: Colors.paleNearWhite_e4e4e7,
+    color: Colors.onAccent,
     fontSize: FontSize.xs,
     fontFamily: FontFamily.medium,
     lineHeight: 15,
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
   },
   dotSelected: {
     backgroundColor: Colors.accent,
-    borderColor: Colors.white,
+    borderColor: Colors.onAccent,
     width: 18,
     height: 18,
     borderRadius: 9,
@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentAlpha22,
   },
   pillBtnText: {
-    color: Colors.white,
+    color: Colors.onAccent,
     fontSize: FontSize.size9,
     fontFamily: FontFamily.medium,
   },
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   hintText: {
-    color: Colors.textMuted,
+    color: Colors.onAccentMuted,
     fontSize: FontSize.size10,
     fontFamily: FontFamily.regular,
   },

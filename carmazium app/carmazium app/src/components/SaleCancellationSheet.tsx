@@ -311,7 +311,7 @@ export const SaleCancellationSheet: React.FC<SaleCancellationSheetProps> = ({
             disabled={submitting}
           >
             {submitting ? (
-              <ActivityIndicator color={Colors.white} size="small" />
+              <ActivityIndicator color={Colors.onAccent} size="small" />
             ) : (
               <Text style={styles.submitButtonText}>Request Cancellation</Text>
             )}
@@ -518,6 +518,6 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 });

@@ -23,7 +23,7 @@ import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { createChatRoom } from '../../lib/chatApi';
@@ -198,7 +198,7 @@ const LeadDetail: React.FC<{
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -353,9 +353,9 @@ const LeadDetail: React.FC<{
               disabled={busy}
               activeOpacity={0.8}
             >
-              {busy ? <ActivityIndicator size="small" color={Colors.white} /> : (
+              {busy ? <ActivityIndicator size="small" color={Colors.onAccent} /> : (
                 <>
-                  <Ionicons name="checkmark" size={14} color={Colors.white} />
+                  <Ionicons name="checkmark" size={14} color={Colors.onAccent} />
                   <Text style={styles.saveNotesBtnText}>Save Notes</Text>
                 </>
               )}
@@ -818,7 +818,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -836,7 +836,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
           <TouchableOpacity style={styles.crmAddButton}
             onPress={() => setCreateModalVisible(true)}
             accessibilityRole="button" accessibilityLabel="Add Customer">
-            <Ionicons name="add-circle-outline" size={19} color={Colors.white} />
+            <Ionicons name="add-circle-outline" size={19} color={Colors.onAccent} />
             <Text style={styles.crmAddButtonText}>Add Customer</Text>
           </TouchableOpacity>
           {canManageOffers && (
@@ -854,7 +854,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
               accessibilityRole="button" accessibilityState={{ selected: viewMode === 'board' }}
               accessibilityLabel="Pipeline board view">
               <Ionicons name="albums-outline" size={17}
-                color={viewMode === 'board' ? Colors.white : Colors.textMuted} />
+                color={viewMode === 'board' ? Colors.onAccent : Colors.textMuted} />
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.viewModeBtn, viewMode === 'list' && styles.viewModeBtnActive]}
@@ -862,7 +862,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
               accessibilityRole="button" accessibilityState={{ selected: viewMode === 'list' }}
               accessibilityLabel="Customer list view">
               <Ionicons name="list-outline" size={17}
-                color={viewMode === 'list' ? Colors.white : Colors.textMuted} />
+                color={viewMode === 'list' ? Colors.onAccent : Colors.textMuted} />
             </TouchableOpacity>
           </View>
         </View>
@@ -1157,7 +1157,7 @@ const styles = StyleSheet.create({
   crmAddButton: { flexDirection: 'row', alignItems: 'center', gap: 7,
     borderRadius: 12, backgroundColor: Colors.accent, minHeight: 44,
     paddingHorizontal: 14 },
-  crmAddButtonText: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: 12 },
+  crmAddButtonText: { color: Colors.onAccent, fontFamily: FontFamily.bold, fontSize: 12 },
   crmOffersButton: { flexDirection: 'row', alignItems: 'center', gap: 4,
     borderRadius: 12, borderWidth: 1, borderColor: Colors.borderSubtle,
     backgroundColor: Colors.bgCard, paddingHorizontal: 11, minHeight: 44 },
@@ -1194,7 +1194,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgCard },
   crmStageSelected: { borderColor: Colors.accent, backgroundColor: Colors.accent },
   crmStageText: { fontSize: 12, fontFamily: FontFamily.bold, color: Colors.textMuted },
-  crmStageSelectedText: { color: Colors.white },
+  crmStageSelectedText: { color: Colors.onAccent },
   crmBoardCards: { paddingHorizontal: 20, paddingBottom: 90, paddingTop: 6 },
   crmBoardEmpty: { paddingVertical: 45, alignItems: 'center', gap: 12 },
   crmBoardEmptyText: { fontFamily: FontFamily.bold, fontSize: 12,
@@ -1307,7 +1307,7 @@ const styles = StyleSheet.create({
      fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary
   },
   filterTabTextActive: {
-     color: Colors.white
+     color: Colors.onAccent
   },
   listScroll: {
      flex: 1,
@@ -1465,7 +1465,7 @@ const styles = StyleSheet.create({
      borderRadius: 9, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center'
   },
   unreadBadgeText: {
-     fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.white
+     fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.onAccent
   },
 
   emptyWrap: {
@@ -1585,7 +1585,7 @@ const styles = StyleSheet.create({
      height: 40, borderRadius: Radius.inline, backgroundColor: Colors.accent,
   },
   saveNotesBtnText: {
-     fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white,
+     fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent,
   },
   messageCTA: {
      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 20,

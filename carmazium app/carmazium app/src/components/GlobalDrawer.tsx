@@ -855,7 +855,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: FontSize.xl,
     fontFamily: FontFamily.bold,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   userMeta: {
     flex: 1,
@@ -1019,7 +1019,7 @@ const styles = StyleSheet.create({
   activePillText: {
     fontSize: FontSize.size8,
     fontFamily: FontFamily.bold,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.5,
   },
 

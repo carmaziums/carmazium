@@ -18,7 +18,7 @@ import { DrawerProvider } from './src/context/DrawerContext';
 import { GlobalDrawer } from './src/components/GlobalDrawer';
 import { LocationPromptSheet } from './src/components/LocationPromptSheet';
 import { ProfileCompletionPromptSheet } from './src/components/ProfileCompletionPromptSheet';
-import { Colors } from './src/constants/colors';
+import { Colors, themeMode, themeStatusBarExpoStyle } from './src/constants/colors';
 import { ChatProvider } from './src/context/ChatContext';
 import { LocationProvider } from './src/context/LocationContext';
 import { useAuthStore } from './src/store/authStore';
@@ -329,7 +329,7 @@ export default function App() {
         // the ad-hoc listener above, which only understood Supabase tokens.
         linking={linking}
         theme={{
-          dark: true,
+          dark: themeMode === 'dark',
           colors: {
             primary: Colors.accent,
             background: Colors.bgPrimary,
@@ -373,7 +373,7 @@ export default function App() {
               route including ones added later. Renders null when online. */}
           <OfflineBanner />
         </DrawerProvider>
-        <StatusBar style="light" />
+        <StatusBar style={themeStatusBarExpoStyle} />
       </NavigationContainer>
     </SafeAreaProvider>
     </StripeProvider>

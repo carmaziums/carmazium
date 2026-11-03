@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     backgroundColor:Colors.bgCard, borderColor:Colors.borderSubtle, borderWidth:1, borderRadius:11 },
   segmentOn:{ backgroundColor: Colors.accent, borderColor:Colors.accent },
   segmentText: {fontFamily: FontFamily.bold,fontSize:12,color:Colors.textMuted},
-  segmentTextOn:{color:Colors.white},
+  segmentTextOn:{color:Colors.onAccent},
   total:{fontFamily:FontFamily.bold,color:Colors.textMuted,fontSize:11, marginLeft:6},
   error: {marginHorizontal:20,marginVertical:7,padding:12,backgroundColor:Colors.bgCard,
     borderWidth:1,borderColor:Colors.warning,borderRadius:12,gap:6},
@@ -331,6 +331,6 @@ const styles = StyleSheet.create({
   bidMetrics:{gap:6,paddingVertical:8},
   mainAction:{minHeight:44,backgroundColor:Colors.accent,borderRadius:11,
     alignItems:'center',justifyContent:'center',marginTop:6},
-  mainActionText:{fontFamily:FontFamily.bold,color:Colors.white,fontSize:12},
+  mainActionText:{fontFamily:FontFamily.bold,color:Colors.onAccent,fontSize:12},
   historyLink:{paddingTop:15,paddingBottom:15,alignItems:'center'},
 });

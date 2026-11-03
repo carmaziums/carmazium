@@ -19,7 +19,7 @@ import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
 import { getSellerAuctionStage, type SellerAuctionProgressInput } from '../../lib/auctionSellerStage';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { useAuthStore } from '../../store/authStore';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
@@ -200,7 +200,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha06, Colors.infoBlueAlpha03, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
@@ -271,8 +271,8 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
             accessibilityLabel="Browse cars for sale"
             activeOpacity={0.8}
           >
-            <Ionicons name="car-outline" size={19} color={Colors.white} />
-            <Text style={styles.accountQuickText}>Buy Cars</Text>
+            <Ionicons name="car-outline" size={19} color={Colors.onAccent} />
+            <Text style={[styles.accountQuickText, styles.onAccentText]}>Buy Cars</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.accountQuickManage}
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
   avatar: { width: 50, height: 50, borderRadius: 14, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
   avatarDealer: { backgroundColor: Colors.midOrange_b8860b, borderWidth: 1.5, borderColor: Colors.warning },
   avatarSeller: { backgroundColor: Colors.midBlue_1d4ed8, borderWidth: 1.5, borderColor: Colors.infoBlue },
-  avatarText: { fontFamily: FontFamily.bold, fontSize: FontSize.xl, color: Colors.white },
+  avatarText: { fontFamily: FontFamily.bold, fontSize: FontSize.xl, color: Colors.onAccent },
   avatarCheck: { position: 'absolute', bottom: -2, right: -2, width: 16, height: 16, borderRadius: 8, backgroundColor: Colors.success, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: Colors.bgPrimary },
   profileInfo: { flex: 1 },
   profileName: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 2 },
@@ -462,6 +462,7 @@ const styles = StyleSheet.create({
   accountQuickActions: { flexDirection: 'row', gap: 10, marginHorizontal: 20, marginBottom: 22 },
   accountQuickBuy: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: Colors.accent, borderRadius: Radius.inline, paddingHorizontal: 8 },
   accountQuickManage: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.inline, paddingHorizontal: 8 },
+  onAccentText: { color: Colors.onAccent },
   accountQuickText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
   // Overview stats
   statsRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 24, backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: BORDER, paddingVertical: 18 },
@@ -477,7 +478,7 @@ const styles = StyleSheet.create({
   tileTextWrap: { flex: 1, gap: 3 },
   tileIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   tileBadge: { position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, borderWidth: 1.5, borderColor: Colors.bgPrimary },
-  tileBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white },
+  tileBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.onAccent },
   tileLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
   tileSublabel: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
 

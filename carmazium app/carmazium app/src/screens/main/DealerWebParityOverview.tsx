@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
     borderRadius: 9, backgroundColor: Colors.bgElevated },
   presetSelected: { backgroundColor: Colors.accent },
   presetText: { fontFamily: FontFamily.bold, color: Colors.textMuted, fontSize: 11 },
-  presetTextSelected: { color: Colors.white },
+  presetTextSelected: { color: Colors.onAccent },
   customRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
   amountInput: { minWidth: 55, width: 60, height: 42, borderRadius: 8,
     backgroundColor: Colors.bgElevated, color: Colors.textPrimary,

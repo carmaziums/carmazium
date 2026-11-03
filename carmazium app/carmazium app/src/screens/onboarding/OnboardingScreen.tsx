@@ -16,7 +16,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { useAuthStore } from '../../store/authStore';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -169,7 +169,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {/* Skip Button (Static on top right) */}
       <TouchableOpacity style={styles.skipBtn} onPress={handleSkip} activeOpacity={0.7}>
@@ -255,7 +255,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
         >
           <View style={styles.ctaContent}>
             <Text style={styles.ctaText}>{SLIDES[activeIndex].buttonLabel}</Text>
-            <Ionicons name="arrow-forward" size={16} color={Colors.white} style={styles.ctaIcon} />
+            <Ionicons name="arrow-forward" size={16} color={Colors.onAccent} style={styles.ctaIcon} />
           </View>
           
           {/* Visual Chamfer diagonal cut on bottom right corner */}
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
   ctaText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1.5,
   },
   ctaIcon: {

@@ -43,7 +43,7 @@ import {
   type ChatUser,
 } from '../../lib/chatApi';
 import { getListingById } from '../../lib/listingsApi';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -1006,7 +1006,7 @@ export const ChatScreen: React.FC = () => {
 
   return (
     <ScreenWrapper {...screenWrapperProps}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {/* Top Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -1208,7 +1208,7 @@ export const ChatScreen: React.FC = () => {
               onPress={handleAcceptOffer}
               activeOpacity={0.7}
             >
-              <Ionicons name="checkmark-circle-outline" size={13} color={Colors.white} style={{ marginRight: 4 }} />
+              <Ionicons name="checkmark-circle-outline" size={13} color={Colors.onAccent} style={{ marginRight: 4 }} />
               <Text style={styles.actionLabel}>Accept Offer</Text>
             </TouchableOpacity>
           )}
@@ -1240,7 +1240,7 @@ export const ChatScreen: React.FC = () => {
             accessibilityHint="Type a message to send in this conversation"
           />
 
-          <IconButton style={[styles.sendBtn, (!inputVal.trim() || uploadingPhoto) && styles.sendBtnDisabled]} icon={<Ionicons name="send" size={15} color={Colors.white} />} onPress={handleSend} disabled={!inputVal.trim() || uploadingPhoto} accessibilityLabel="Send message" />
+          <IconButton style={[styles.sendBtn, (!inputVal.trim() || uploadingPhoto) && styles.sendBtnDisabled]} icon={<Ionicons name="send" size={15} color={Colors.onAccent} />} onPress={handleSend} disabled={!inputVal.trim() || uploadingPhoto} accessibilityLabel="Send message" />
         </View>
       )}
 
@@ -1344,9 +1344,9 @@ export const ChatScreen: React.FC = () => {
                 accessibilityState={{ disabled: !reportReason || reporting, busy: reporting }}
               >
                 {reporting ? (
-                  <ActivityIndicator size="small" color={Colors.white} />
+                  <ActivityIndicator size="small" color={Colors.onAccent} />
                 ) : (
-                  <Ionicons name="flag-outline" size={16} color={Colors.white} />
+                  <Ionicons name="flag-outline" size={16} color={Colors.onAccent} />
                 )}
                 <Text style={styles.reportSubmitText}>Submit report</Text>
               </TouchableOpacity>
@@ -1395,7 +1395,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   headerInfo: {
     flex: 1,
@@ -1642,7 +1642,7 @@ const styles = StyleSheet.create({
   timeTextRightInline: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.size9,
-    color: Colors.whiteAlpha50,
+    color: Colors.onAccentMuted,
   },
   timeTextLeftInline: {
     fontFamily: FontFamily.regular,
@@ -1683,7 +1683,7 @@ const styles = StyleSheet.create({
   seenAvatarText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size8,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   seenText: {
     fontFamily: FontFamily.regular,
@@ -1726,7 +1726,7 @@ const styles = StyleSheet.create({
   offerText: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     lineHeight: 20,
   },
   // Custom Counter Card
@@ -1811,7 +1811,7 @@ const styles = StyleSheet.create({
   actionLabel: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   photoMessageBubble: {
     padding: 8,
@@ -2047,7 +2047,7 @@ const styles = StyleSheet.create({
   reportSubmitText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size12,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   // General Errors
   errorContainer: {

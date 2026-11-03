@@ -24,7 +24,7 @@ import { fetchAllMyListings } from '../../lib/myListingsApi';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 import { haptics } from '../../lib/haptics';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { useDrawer } from '../../context/DrawerContext';
 
 import { IconButton } from '../../components/IconButton';
@@ -312,7 +312,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
                 onPress={() => navigation?.navigate('SellCarFlow')}
                 activeOpacity={0.85}
               >
-                <Ionicons name="add" size={18} color={Colors.white} style={{ marginRight: 8 }} />
+                <Ionicons name="add" size={18} color={Colors.onAccent} style={{ marginRight: 8 }} />
                 <Text style={styles.emptyCtaText}>LIST YOUR CAR</Text>
               </TouchableOpacity>
             </View>
@@ -396,7 +396,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
                     <View style={styles.liveDot} />
                     <Text style={styles.liveText}>LIVE</Text>
                   </View>
-                  <IconButton style={styles.editBtn} icon={<Ionicons name="create-outline" size={14} color={Colors.white} />} onPress={() => navigation?.navigate('SellCarFlow', { listingId: listings[0]?.id })} accessibilityLabel="Edit listing" />
+                  <IconButton style={styles.editBtn} icon={<Ionicons name="create-outline" size={14} color={Colors.onAccent} />} onPress={() => navigation?.navigate('SellCarFlow', { listingId: listings[0]?.id })} accessibilityLabel="Edit listing" />
                 </View>
               )}
 
@@ -434,7 +434,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -662,7 +662,7 @@ const styles = StyleSheet.create({
   emptyCtaText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.6,
   },
 
@@ -795,7 +795,7 @@ const styles = StyleSheet.create({
   toastText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size12,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.3,
   },
 });

@@ -18,7 +18,7 @@ import { naturalLanguageSearch } from '../../lib/aiApi';
 import { HorizontalVehicleCard } from '../../components/HorizontalVehicleCard';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useLocation } from '../../context/LocationContext';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -634,7 +634,7 @@ export const SearchScreen: React.FC = () => {
 
   return (
     <View style={s.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.4 }}
@@ -739,8 +739,8 @@ export const SearchScreen: React.FC = () => {
             onPress={() => setFilterOpen(true)}
             activeOpacity={0.7}
           >
-            <Ionicons name="options-outline" size={14} color={filterCount > 0 ? Colors.white : Colors.textSecondary} />
-            <Text style={[s.filterBtnText, filterCount > 0 && { color: Colors.white }]}>
+            <Ionicons name="options-outline" size={14} color={filterCount > 0 ? Colors.onAccent : Colors.textSecondary} />
+            <Text style={[s.filterBtnText, filterCount > 0 && { color: Colors.onAccent }]}>
               Filters{filterCount > 0 ? ` (${filterCount})` : ''}
             </Text>
           </TouchableOpacity>
@@ -873,10 +873,10 @@ export const SearchScreen: React.FC = () => {
             activeOpacity={0.85}
           >
             {aiLoading ? (
-              <ActivityIndicator color={Colors.white} size="small" />
+              <ActivityIndicator color={Colors.onAccent} size="small" />
             ) : (
               <>
-                <Ionicons name="sparkles" size={14} color={Colors.white} />
+                <Ionicons name="sparkles" size={14} color={Colors.onAccent} />
                 <Text style={s.aiModalBtnText}>Search with AI</Text>
               </>
             )}
@@ -1046,7 +1046,7 @@ export const SearchScreen: React.FC = () => {
                     onPress={() => setSelectedBody(prev => prev === bt.id ? '' : bt.id)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name={bt.icon as any} size={16} color={selectedBody === bt.id ? Colors.white : Colors.textSecondary} />
+                    <Ionicons name={bt.icon as any} size={16} color={selectedBody === bt.id ? Colors.onAccent : Colors.textSecondary} />
                     <Text style={[s.filterChipText, selectedBody === bt.id && s.filterChipTextActive]}>
                       {bt.label}
                     </Text>
@@ -1096,7 +1096,7 @@ export const SearchScreen: React.FC = () => {
                 <View style={{ flexDirection: 'row', gap: 6 }}>
                   {YEAR_OPTS.map(y => <TouchableOpacity key={y}
                     style={[s.miniChip, minYear === y && s.filterChipActive]} onPress={() => setMinYear(y)}>
-                    <Text style={[s.miniChipText, minYear === y && { color: Colors.white }]}>{y}</Text>
+                    <Text style={[s.miniChipText, minYear === y && { color: Colors.onAccent }]}>{y}</Text>
                   </TouchableOpacity>)}
                 </View>
               </ScrollView>
@@ -1105,7 +1105,7 @@ export const SearchScreen: React.FC = () => {
                 <View style={{ flexDirection: 'row', gap: 6 }}>
                   {YEAR_OPTS_MAX.map(y => <TouchableOpacity key={y}
                     style={[s.miniChip, maxYear === y && s.filterChipActive]} onPress={() => setMaxYear(y)}>
-                    <Text style={[s.miniChipText, maxYear === y && { color: Colors.white }]}>{y}</Text>
+                    <Text style={[s.miniChipText, maxYear === y && { color: Colors.onAccent }]}>{y}</Text>
                   </TouchableOpacity>)}
                 </View>
               </ScrollView>
@@ -1119,7 +1119,7 @@ export const SearchScreen: React.FC = () => {
                   <View style={{ flexDirection: 'row', gap: 6 }}>
                     {MILES_OPTS_MIN.map(m => (
                       <TouchableOpacity key={m} style={[s.miniChip, minMiles === m && s.filterChipActive]} onPress={() => setMinMiles(m)} activeOpacity={0.7}>
-                        <Text style={[s.miniChipText, minMiles === m && { color: Colors.white }]}>{m}</Text>
+                        <Text style={[s.miniChipText, minMiles === m && { color: Colors.onAccent }]}>{m}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -1132,7 +1132,7 @@ export const SearchScreen: React.FC = () => {
                     <View style={{ flexDirection: 'row', gap: 6 }}>
                       {MILES_OPTS.map(m => (
                         <TouchableOpacity key={m} style={[s.miniChip, maxMiles === m && s.filterChipActive]} onPress={() => setMaxMiles(m)} activeOpacity={0.7}>
-                          <Text style={[s.miniChipText, maxMiles === m && { color: Colors.white }]}>{m}</Text>
+                          <Text style={[s.miniChipText, maxMiles === m && { color: Colors.onAccent }]}>{m}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -1576,7 +1576,7 @@ export const SearchScreen: React.FC = () => {
                   value={deliveryAvailable}
                   onValueChange={setDeliveryAvailable}
                   trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
-                  thumbColor={Colors.white}
+                  thumbColor={Colors.onAccent}
                 />
               </View>
               {/* Import status — was a plain "Imported only" toggle with no
@@ -1682,7 +1682,7 @@ const s = StyleSheet.create({
   quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: Radius.card, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
   quickChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, lineHeight: 16, color: Colors.paleGrey_cccccc },
-  quickChipTextActive: { color: Colors.white },
+  quickChipTextActive: { color: Colors.onAccent },
 
   sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 8, marginTop: 4, position: 'relative', zIndex: 10 },
   resultsCount: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary },
@@ -1750,7 +1750,7 @@ const s = StyleSheet.create({
   filterChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
   filterChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   filterChipText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.textSecondary },
-  filterChipTextActive: { color: Colors.white, fontFamily: FontFamily.bold },
+  filterChipTextActive: { color: Colors.onAccent, fontFamily: FontFamily.bold },
   bodyChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
   bodyChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   twoCol: { flexDirection: 'row', gap: 10 },
@@ -1777,13 +1777,13 @@ const s = StyleSheet.create({
   aiPrivacyHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted, lineHeight: 16 },
   aiModalInput: { backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderSubtle, paddingHorizontal: 16, paddingVertical: 14, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.white, minHeight: 80, textAlignVertical: 'top' },
   aiModalBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: Radius.inline, backgroundColor: Colors.warning },
-  aiModalBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
+  aiModalBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.onAccent },
 
   // Segmented controls (listing type / seller type)
   segmentBtn: { flex: 1, paddingVertical: 10, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06, alignItems: 'center' },
   segmentBtnActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   segmentBtnText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textSecondary },
-  segmentBtnTextActive: { color: Colors.white, fontFamily: FontFamily.bold },
+  segmentBtnTextActive: { color: Colors.onAccent, fontFamily: FontFamily.bold },
 
   // Toggle rows
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },

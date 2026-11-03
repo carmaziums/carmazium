@@ -21,7 +21,7 @@ import { GlobalToastContext } from '../../components/GlobalToastProvider';
 import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 
 import { IconButton } from '../../components/IconButton';
 
@@ -151,7 +151,7 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
   if (reactivating) {
     return (
       <View style={[styles.container, styles.reactivatingWrap]}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
         <ActivityIndicator size="large" color={Colors.accent} />
         <Text style={styles.reactivatingText}>Your dealer account is already verified — switching you over…</Text>
       </View>
@@ -160,7 +160,7 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
 
   return (
     <KeyboardStickyView style={styles.container} behavior="padding">
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -365,7 +365,7 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
             loading={submitting}
             size="lg"
             fullWidth
-            icon={<Ionicons name="arrow-forward" size={18} color={Colors.white} />}
+            icon={<Ionicons name="arrow-forward" size={18} color={Colors.onAccent} />}
           />
         </View>
       </View>
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
      fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.iconMuted
   },
   stepperNumActive: {
-     color: Colors.white
+     color: Colors.onAccent
   },
   stepperLabel: {
      fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.iconMuted

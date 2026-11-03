@@ -17,7 +17,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
@@ -574,7 +574,7 @@ export const DealerProfileScreen: React.FC = () => {
             activeOpacity={0.8}
             onPress={() => navigation.navigate('SellCarFlow')}
           >
-            <Ionicons name="add" size={20} color={Colors.white} style={{ marginRight: 6 }} />
+            <Ionicons name="add" size={20} color={Colors.onAccent} style={{ marginRight: 6 }} />
             <Text style={styles.addListingCTAText}>ADD LISTING</Text>
           </TouchableOpacity>
         )}
@@ -612,7 +612,7 @@ export const DealerProfileScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {/* Background gradient glow matching the dashboard styling */}
       <LinearGradient
@@ -916,7 +916,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   tabToggleTextActive: {
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   tabContent: {
@@ -1308,7 +1308,7 @@ const styles = StyleSheet.create({
   addListingCTAText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1,
   },
   switchProfileBtn: {

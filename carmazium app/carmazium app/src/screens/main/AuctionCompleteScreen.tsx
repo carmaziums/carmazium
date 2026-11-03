@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet, reconcileAuctionFeeIntent } from '../../lib/paymentsApi';
 import { apiClient } from '../../lib/apiClient';
@@ -373,7 +373,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
             onClose={() => setCancelOpen(false)}
           />
         )}
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
         <LinearGradient
           colors={[Colors.accentGreenAlpha08, 'rgba(0,0,0,0)', Colors.bgPrimary]}
           style={StyleSheet.absoluteFillObject}
@@ -466,7 +466,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
                     disabled={reviewRating === 0 || submittingReview}
                   >
                     {submittingReview ? (
-                      <ActivityIndicator size="small" color={Colors.white} />
+                      <ActivityIndicator size="small" color={Colors.onAccent} />
                     ) : (
                       <Text style={styles.reviewBtnText}>SUBMIT REVIEW</Text>
                     )}
@@ -518,7 +518,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
           onClose={() => setCancelOpen(false)}
         />
       )}
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentGreenAlpha06, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -1084,7 +1084,7 @@ const styles = StyleSheet.create({
   doneBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1,
   },
 });
