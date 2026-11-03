@@ -37,5 +37,7 @@ test('do not offer digest timing without a scheduler in the backend', () => {
 test('copy must be correct on both Android and iOS', () => {
   assert.match(native, /Android and iPhone notifications/);
   assert.doesNotMatch(native, />iPhone notifications<\/Text>/);
-  assert.match(native, /<Text style=\{styles\.toggleSub\}>Coming soon<\/Text>/); // SMS disabled
+  // No SMS provider exists and web offers no SMS preference: no dead switch.
+  assert.doesNotMatch(native, /<Text style=\{styles\.toggleTitle\}>SMS<\/Text>/);
+  assert.doesNotMatch(native, /onValueChange=\{\(\) => \{\}\} disabled/);
 });

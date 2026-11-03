@@ -87,8 +87,18 @@ const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
 export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embeddedDealerHub = false }) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
-  const { user: currentUser, accountRole, role } = useAuthStore();
+  const currentUser = useAuthStore((s) => s.user);
+  const accountRole = useAuthStore((s) => s.accountRole);
+  const role = useAuthStore((s) => s.role);
   const dealerMode = accountRole === 'dealer' && role === 'dealer';
+  // /auctions/active and /auctions/scheduled are behind the backend's
+  // VerifiedDealerGuard. Mirror the website (/auctions/browse): retail
+  // buyers and unverified dealers get an explanation and the next step,
+  // not a 403 error banner with a Retry button that can never succeed.
+  const hasTradeAccess =
+    accountRole === 'admin'
+    || currentUser?.isDealerStaff === true
+    || (accountRole === 'dealer' && currentUser?.isVerified === true);
   const { loading: accessLoading, hasPermission } = useDealerAccess(dealerMode);
   const canCreateAuction = !dealerMode || (!accessLoading && hasPermission('MANAGE_INVENTORY'));
   const canPlaceDealerBid = !dealerMode || (!accessLoading && hasPermission('PLACE_BID'));
@@ -112,6 +122,11 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
 
   const fetchData = useCallback(async () => {
     setAuctionLoadError(null);
+    if (!hasTradeAccess) {
+      setIsLoading(false);
+      setIsRefreshing(false);
+      return;
+    }
     try {
       // Both endpoints enforce verified-dealer access. Fetch all scheduled
       // pages and only commit both lists once the complete response succeeds.
@@ -124,7 +139,8 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
       }
 
       // Map dynamic active auctions to UI component-friendly shapes
-      const mappedActive = activeData.map((a) => {
+      // A lot whose listing was removed must not take down every other card.
+      const mappedActive = activeData.filter((a) => !!a?.listing).map((a) => {
         const totalBidsCount = a.listing._count?.bids ?? a.listing.bids?.length ?? 0;
         const latestBid = totalBidsCount > 0 && a.listing.bids && a.listing.bids.length > 0
           ? Number(a.listing.bids[0].amount)
@@ -182,7 +198,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
       });
 
       setLiveAuctions(mappedActive);
-      setUpcomingAuctions(upcomingData);
+      setUpcomingAuctions(Array.isArray(upcomingData) ? upcomingData.filter((u) => !!u?.listing) : []);
     } catch (error: any) {
       // A 403, network outage or partial scheduled list must not be displayed
       // as 'No auctions right now'. Retain the last known cards with a visible
@@ -193,7 +209,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [hasTradeAccess]);
 
   // Tab screens stay mounted; refresh the latest bids and auction status on
   // every return from detail, KYC or saved auctions, not just initial mount.
@@ -256,6 +272,50 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
       ),
     [upcomingList, q, filters],
   );
+
+  if (!hasTradeAccess) {
+    const isUnverifiedDealer = accountRole === 'dealer';
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        {dealerMode && !embeddedDealerHub && <WebsiteTopBar />}
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: dealerMode ? 12 : insets.top + 16 }]}>
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.headerMeta}>VERIFIED DEALERS</Text>
+              <Text style={styles.headerTitle}>Live Auctions</Text>
+            </View>
+            {!dealerMode && <HamburgerButton />}
+          </View>
+          <EmptyState
+            icon="shield-checkmark-outline"
+            title="Verified Dealer Access Required"
+            subtitle={isUnverifiedDealer
+              ? 'Live vehicle auctions are available only to verified, KYC-approved motor dealers. Finish your business verification to start bidding.'
+              : 'Live vehicle auctions are available only to verified, KYC-approved motor dealers. Selling your own car? Auction listings are FREE.'}
+            ctaLabel={isUnverifiedDealer ? 'Complete Verification' : 'Become a Dealer'}
+            onCtaPress={() => navigation.navigate(isUnverifiedDealer ? 'DealerKYC' : 'DealerOnboarding')}
+          />
+          <TouchableOpacity
+            style={styles.gateSecondaryBtn}
+            onPress={() => navigation.navigate('Tabs' as any, { screen: 'Search' } as any)}
+            accessibilityRole="button"
+          >
+            <Text style={styles.gateSecondaryText}>Browse Retail Listings</Text>
+          </TouchableOpacity>
+          {!isUnverifiedDealer && (
+            <TouchableOpacity
+              style={styles.gateSecondaryBtn}
+              onPress={() => navigation.navigate('SellLanding')}
+              accessibilityRole="button"
+            >
+              <Text style={styles.gateSecondaryText}>Sell My Car at Auction (FREE)</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -689,6 +749,20 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
 };
 
 const styles = StyleSheet.create({
+  gateSecondaryBtn: {
+    marginTop: 12,
+    marginHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: Radius.inline,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    alignItems: 'center',
+  },
+  gateSecondaryText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: FontSize.base,
+    color: Colors.textPrimary,
+  },
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',

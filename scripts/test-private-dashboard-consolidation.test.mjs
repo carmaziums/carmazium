@@ -60,8 +60,9 @@ test("native private dashboard groups selling and buying consistently", () => {
     const drawer = read("carmazium app/carmazium app/src/components/GlobalDrawer.tsx")
     const stack = read("carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx")
     const cars = read("carmazium app/carmazium app/src/screens/account/MyCarsScreen.tsx")
-    assert.match(drawer, /id: 'user-cars',\s*label: 'My cars'/)
-    assert.match(drawer, /id: 'user-purchases',\s*label: 'Purchases'/)
+    // Labels and sections mirror the website DashboardSidebar (Selling/Buying).
+    assert.match(drawer, /id: 'user-cars', section: 'Selling', label: 'My Cars'/)
+    assert.match(drawer, /id: 'user-purchases', section: 'Buying', label: 'Purchases'/)
     assert.doesNotMatch(drawer, /id: 'user-auctions',/)
     assert.match(stack, /name="MyCars" component=\{MyCarsScreen\}/)
     assert.match(cars, /fetchAllMyAuctions/)

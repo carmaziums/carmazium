@@ -18,6 +18,7 @@ import {
 // expo-image: caching/recycling for the swipeable photo gallery + thumbnail
 // strip — users flick through many high-res car photos per listing here.
 import { Image } from 'expo-image';
+import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -57,6 +58,10 @@ import { EnquireModal } from '../../components/listing/EnquireModal';
 import { useLocation } from '../../context/LocationContext';
 
 import { IconButton } from '../../components/IconButton';
+
+const FINANCE_MIN_APR = 9;
+const FINANCE_MAX_APR = 49;
+const FINANCE_DEFAULT_APR = 19;
 type Props = NativeStackScreenProps<MainStackParamList, 'VehicleDetail'>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -267,6 +272,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [financeExpanded, setFinanceExpanded] = useState(false);
   const [depositPct, setDepositPct] = useState(10); // % of price as deposit
   const [termMonths, setTermMonths] = useState(48);
+  // Same 9–49% adjustable range and 19% default as web's FinanceCalculator.
+  const [aprPct, setAprPct] = useState(FINANCE_DEFAULT_APR);
 
   // Delivery
   const [offerStatus, setOfferStatus] = useState<string | null>(null);
@@ -677,7 +684,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     // Was 9.9% — web's FinanceCalculator.tsx uses a 9–49% adjustable range
     // with a 19% representative default; mobile's fixed rate undershot the
     // real quoted figure by ~15-20% for the same inputs.
-    const monthlyRate = 19 / 1200;
+    const monthlyRate = aprPct / 1200;
+    if (monthlyRate === 0) return principal / termMonths;
     return principal * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / (Math.pow(1 + monthlyRate, termMonths) - 1);
   };
 
@@ -1592,11 +1600,15 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             )}
           </View>
 
-          {/* Expandable Finance Calculator — Coming Soon */}
+          {/* Finance Calculator — same inputs and maths as web's
+              components/features/FinanceCalculator.tsx. CarMazium isn't a
+              lender, so the CTA opens the website's finance enquiry. */}
           <TouchableOpacity
             style={styles.financeCard}
             activeOpacity={0.85}
             onPress={() => setFinanceExpanded(!financeExpanded)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: financeExpanded }}
           >
             <View style={styles.financeIconWrapper}>
               <Ionicons name="calculator-outline" size={18} color={Colors.accent} />
@@ -1606,12 +1618,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 Finance Calculator
               </Text>
               <Text style={styles.financeSubtext}>
-                19% APR representative · tap to expand
+                Estimate your monthly payments · tap to expand
               </Text>
-            </View>
-            {/* Coming Soon badge */}
-            <View style={styles.comingSoonBadge}>
-              <Text style={styles.comingSoonText}>Coming Soon</Text>
             </View>
             <Ionicons
               name={financeExpanded ? 'chevron-up' : 'chevron-down'}
@@ -1623,52 +1631,97 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {financeExpanded && (
             <View style={styles.financeCalcBody}>
-              {/* Coming Soon overlay message */}
-              <View style={styles.financeComingSoonBox}>
-                <Ionicons name="time-outline" size={20} color={Colors.textMuted} />
-                <Text style={styles.financeComingSoonLabel}>Finance Calculator Coming Soon</Text>
-                <Text style={styles.financeComingSoonSub}>
-                  Finance options will be available here. Contact the seller directly to discuss finance.
-                </Text>
-              </View>
-
-              {/* Deposit Row — inert preview */}
-              <View style={[styles.calcRow, { opacity: 0.4 }]}>
+              <View style={styles.calcRow}>
                 <Text style={styles.calcLabel}>DEPOSIT</Text>
                 <Text style={styles.calcValue}>
                   {depositPct}% — £{Math.round(listing.price * depositPct / 100).toLocaleString('en-GB')}
                 </Text>
               </View>
-              <View style={[styles.depositStepsRow, { opacity: 0.4 }]}>
+              <View style={styles.depositStepsRow}>
                 {[0, 10, 20, 30, 40, 50].map(pct => (
-                  <View
+                  <TouchableOpacity
                     key={pct}
                     style={[styles.depositStep, depositPct === pct && styles.depositStepActive]}
+                    onPress={() => setDepositPct(pct)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: depositPct === pct }}
+                    accessibilityLabel={`${pct}% deposit`}
                   >
                     <Text style={[styles.depositStepText, depositPct === pct && styles.depositStepTextActive]}>
                       {pct}%
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
 
-              {/* Term Row — inert preview */}
-              <View style={[styles.calcRow, { marginTop: 14, opacity: 0.4 }]}>
-                <Text style={styles.calcLabel}>TERM</Text>
+              <View style={[styles.calcRow, styles.calcRowSpaced]}>
+                <Text style={styles.calcLabel}>FINANCE TERM</Text>
                 <Text style={styles.calcValue}>{termMonths} months</Text>
               </View>
-              <View style={[styles.depositStepsRow, { opacity: 0.4 }]}>
+              <View style={styles.depositStepsRow}>
                 {[12, 24, 36, 48, 60].map(t => (
-                  <View
+                  <TouchableOpacity
                     key={t}
                     style={[styles.depositStep, termMonths === t && styles.depositStepActive]}
+                    onPress={() => setTermMonths(t)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: termMonths === t }}
+                    accessibilityLabel={`${t} months`}
                   >
                     <Text style={[styles.depositStepText, termMonths === t && styles.depositStepTextActive]}>
                       {t}m
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
+
+              <View style={[styles.calcRow, styles.calcRowSpaced]}>
+                <Text style={styles.calcLabel}>REPRESENTATIVE APR</Text>
+                <View style={styles.aprStepper}>
+                  <TouchableOpacity
+                    style={styles.aprStepBtn}
+                    onPress={() => setAprPct(a => Math.max(FINANCE_MIN_APR, a - 1))}
+                    disabled={aprPct <= FINANCE_MIN_APR}
+                    accessibilityRole="button"
+                    accessibilityLabel="Decrease APR"
+                  >
+                    <Ionicons name="remove" size={16} color={Colors.white} />
+                  </TouchableOpacity>
+                  <Text style={styles.calcValue}>{aprPct}%</Text>
+                  <TouchableOpacity
+                    style={styles.aprStepBtn}
+                    onPress={() => setAprPct(a => Math.min(FINANCE_MAX_APR, a + 1))}
+                    disabled={aprPct >= FINANCE_MAX_APR}
+                    accessibilityRole="button"
+                    accessibilityLabel="Increase APR"
+                  >
+                    <Ionicons name="add" size={16} color={Colors.white} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.financeResultBox}>
+                <Text style={styles.calcLabel}>MONTHLY PAYMENT</Text>
+                <Text style={styles.financeResultValue}>
+                  £{Math.round(calcMonthlyPayment()).toLocaleString('en-GB')}
+                </Text>
+                <Text style={styles.financeResultTotal}>
+                  Total Payable: £{Math.round(calcMonthlyPayment() * termMonths + listing.price * depositPct / 100).toLocaleString('en-GB')}
+                </Text>
+                <TouchableOpacity
+                  style={styles.financeEnquiryBtn}
+                  onPress={() => {
+                    WebBrowser.openBrowserAsync('https://www.carmazium.com/services/finance').catch(() =>
+                      Alert.alert('Could not open CarMazium', 'Please visit www.carmazium.com/services/finance.'));
+                  }}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.financeEnquiryText}>Send a finance enquiry</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.financeCalcDisclaimer}>
+                *Figures are estimates and do not constitute a formal offer of finance. Rates and acceptance subject to status.
+              </Text>
             </View>
           )}
 
@@ -3709,44 +3762,53 @@ const styles = StyleSheet.create({
   hpiCheckLabel: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 2 },
   hpiCheckDetail: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 16 },
 
-  // Finance Coming Soon
-  comingSoonBadge: {
-    backgroundColor: Colors.warningAlpha12,
-    borderWidth: 1,
-    borderColor: Colors.warningAlpha30,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    marginRight: 4,
+  // Finance calculator (ported from web)
+  calcRowSpaced: { marginTop: 14 },
+  aprStepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  aprStepBtn: {
+    width: 30, height: 30, borderRadius: Radius.chip,
+    borderWidth: 1, borderColor: Colors.whiteAlpha08,
+    alignItems: 'center', justifyContent: 'center',
   },
-  comingSoonText: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size9,
-    color: Colors.warning,
-    letterSpacing: 0.3,
-  },
-  financeComingSoonBox: {
+  financeResultBox: {
     alignItems: 'center',
     backgroundColor: Colors.whiteAlpha02,
     borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha06,
-    padding: 20,
-    marginBottom: 16,
-    gap: 8,
+    padding: 16,
+    marginTop: 16,
+    gap: 6,
   },
-  financeComingSoonLabel: {
+  financeResultValue: {
+    ...TextPresets.monoPrice,
+    color: Colors.white,
+  },
+  financeResultTotal: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xs,
+    color: Colors.success,
+  },
+  financeEnquiryBtn: {
+    alignSelf: 'stretch',
+    marginTop: 8,
+    backgroundColor: Colors.accent,
+    borderRadius: Radius.inline,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  financeEnquiryText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    marginTop: 4,
+    color: Colors.white,
   },
-  financeComingSoonSub: {
+  financeCalcDisclaimer: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.size12,
+    fontSize: FontSize.xs,
     color: Colors.textMuted,
     textAlign: 'center',
-    lineHeight: 18,
+    marginTop: 12,
+    lineHeight: 16,
   },
 
   // Fullscreen photo viewer

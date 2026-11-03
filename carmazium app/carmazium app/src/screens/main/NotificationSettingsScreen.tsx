@@ -307,23 +307,9 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
               </View>
               <CustomSwitch value={email} onValueChange={setEmail} />
            </View>
-           <View style={styles.divider} />
-           <View style={styles.toggleRow}>
-              <View style={styles.channelIconGrey}>
-                 <Ionicons name="chatbubble-outline" size={16} color={Colors.textSecondary} />
-              </View>
-              <View style={styles.toggleTextWrap}>
-                 <Text style={styles.toggleTitle}>SMS</Text>
-                 {/* No SMS provider exists in the backend at all — this toggle
-                     could never have worked regardless of preference-reading
-                     fixes elsewhere (mobile-production-readiness-plan.md F23).
-                     Disabled + labeled, not silently inert, matching the
-                     Apple sign-in / Finance Calculator "Coming Soon" pattern
-                     already used elsewhere in this app. */}
-                 <Text style={styles.toggleSub}>Coming soon</Text>
-              </View>
-              <CustomSwitch value={false} onValueChange={() => {}} disabled />
-           </View>
+           {/* SMS row removed: no SMS provider exists in the backend and the
+               website offers no SMS preference (F23), so a permanently
+               disabled "Coming soon" switch was a dead end. */}
         </View>
 
         <Text style={[styles.sectionTitle, { marginLeft: 24, marginBottom: 16, marginTop: 8 }]}>ALERT DELIVERY</Text>
