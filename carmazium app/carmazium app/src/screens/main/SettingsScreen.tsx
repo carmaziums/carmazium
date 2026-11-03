@@ -78,6 +78,44 @@ export const SettingsScreen: React.FC = () => {
   // A team member may edit their OWN personal settings, but is not the dealer owner.
   // Do not display ownership-sensitive business forms or KYC entry points to staff.
   const canManageBusiness = isDealerAccount && !isDealerStaff;
+  const setPreviewRole = useAuthStore((st) => st.setRole);
+  const [roleSwitching, setRoleSwitching] = useState(false);
+
+  // Same as the website's Account Type section (profile/page.tsx
+  // handleRoleElevation): POST /users/elevate. Verification/KYC records are
+  // kept by the backend, so switching back to Partner never repeats KYC.
+  const switchAccountType = (newRole: 'BUYER' | 'DEALER') => {
+    const toPersonal = newRole === 'BUYER';
+    Alert.alert(
+      toPersonal ? 'Switch to Personal Account?' : 'Create Partner Account?',
+      toPersonal
+        ? 'Your dealer tools will be hidden until you switch back. Your business details and verification are kept.'
+        : 'One business login with Dealer, Delivery, Inspection, Finance and Warranty add-ons. Dealer features unlock after business verification.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: toPersonal ? 'Switch' : 'Create',
+          onPress: async () => {
+            setRoleSwitching(true);
+            try {
+              await apiClient('/users/elevate', { method: 'POST', body: JSON.stringify({ newRole }) });
+              await initializeAuth();
+              setPreviewRole(toPersonal ? 'buyer' : 'dealer');
+              if (toPersonal) {
+                Alert.alert('Account updated', 'Your account is now set up as a Personal Account.');
+              } else {
+                navigation.navigate('PartnerDashboard');
+              }
+            } catch (err: any) {
+              Alert.alert('Could not change your account type', err?.message || 'Please try again.');
+            } finally {
+              setRoleSwitching(false);
+            }
+          },
+        },
+      ],
+    );
+  };
   const requestedSection = route.params?.section;
   const resolveCategory = (section: unknown): SettingsCategory =>
     isSettingsCategory(section) && (section !== 'business' || canManageBusiness)
@@ -1392,18 +1430,32 @@ export const SettingsScreen: React.FC = () => {
               Changing your dashboard view does not change your verified account permissions.
             </Text>
             {canManageBusiness ? (
-              <TouchableOpacity style={styles.accountAction}
-                accessibilityRole="button" accessibilityLabel="Review business verification"
-                onPress={() => selectCategory('verification')}>
-                <Text style={styles.accountActionText}>Review business verification</Text>
-                <Ionicons name="chevron-forward" size={17} color={Colors.onAccent} />
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity style={styles.accountAction}
+                  accessibilityRole="button" accessibilityLabel="Review business verification"
+                  onPress={() => selectCategory('verification')}>
+                  <Text style={styles.accountActionText}>Review business verification</Text>
+                  <Ionicons name="chevron-forward" size={17} color={Colors.onAccent} />
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.accountAction, styles.accountActionSecondary]}
+                  accessibilityRole="button" accessibilityLabel="Switch to Personal Account"
+                  disabled={roleSwitching}
+                  onPress={() => switchAccountType('BUYER')}>
+                  <Text style={[styles.accountActionText, styles.accountActionSecondaryText]}>Switch to Personal Account</Text>
+                  {roleSwitching
+                    ? <ActivityIndicator size="small" color={Colors.accent} />
+                    : <Ionicons name="swap-horizontal-outline" size={17} color={Colors.accent} />}
+                </TouchableOpacity>
+              </>
             ) : !isDealerStaff ? (
               <TouchableOpacity style={styles.accountAction}
-                accessibilityRole="button" accessibilityLabel="Explore Partner Account"
-                onPress={() => navigation.navigate('PartnerDashboard')}>
-                <Text style={styles.accountActionText}>Explore Partner Account</Text>
-                <Ionicons name="chevron-forward" size={17} color={Colors.onAccent} />
+                accessibilityRole="button" accessibilityLabel="Create Partner Account"
+                disabled={roleSwitching}
+                onPress={() => switchAccountType('DEALER')}>
+                <Text style={styles.accountActionText}>Create Partner Account</Text>
+                {roleSwitching
+                  ? <ActivityIndicator size="small" color={Colors.onAccent} />
+                  : <Ionicons name="chevron-forward" size={17} color={Colors.onAccent} />}
               </TouchableOpacity>
             ) : (
               <Text style={styles.accountSectionText}>
@@ -1587,6 +1639,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 13 },
   accountActionText: { color: Colors.onAccent, fontFamily: FontFamily.bold, fontSize: 12 },
+  accountActionSecondary: { marginTop: 10, backgroundColor: Colors.bgCard, borderWidth: 1.5, borderColor: Colors.accent },
+  accountActionSecondaryText: { color: Colors.accent },
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   dangerCard: {
     backgroundColor: Colors.errorAlpha08,
