@@ -8,7 +8,7 @@ import { stageAndroidDirectDownload } from './stage-android-direct-download.mjs'
 
 const cert = 'b'.repeat(64);
 const source = 'a'.repeat(40);
-const bytes = Buffer.concat([Buffer.from('PK\\x03\\x04'), Buffer.alloc(4096, 0x42)]);
+const bytes = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.alloc(4096, 0x42)]);
 const sha = createHash('sha256').update(bytes).digest('hex');
 const signer = `Verifies\nSigner #1 certificate SHA-256 digest: ${cert}\n`;
 const badge = "package: name='uk.carmazium.app' versionCode='42' versionName='1.0.0'\n";
