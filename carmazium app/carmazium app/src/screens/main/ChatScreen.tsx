@@ -253,50 +253,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
     );
   }
 
-  if (parsedSpecial?.type === 'offer') {
-    return (
-      <View style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
-        <View style={styles.offerMessageBubble}>
-          <View style={styles.offerTagHeader}>
-            <Ionicons name="pricetag" size={12} color={Colors.white} />
-            <Text style={styles.offerTagTitle}>{isOwn ? 'YOUR OFFER' : 'OFFER'}</Text>
-            <Text style={styles.offerTagAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
-          </View>
-          <Text style={styles.offerText}>{msg.content}</Text>
-          <Text
-            style={styles.timeTextRight}
-            accessibilityLabel={`${formatMessageTime(msg.createdAt)}${isOwn && !msg.deliveryStatus && msg.isRead ? ', read' : ''}`}
-          >
-            {formatMessageTime(msg.createdAt)}
-            {isOwn && !msg.deliveryStatus && msg.isRead && ' ✓✓'}
-          </Text>
-        </View>
-        {deliveryState}
-      </View>
-    );
-  }
-
-  if (parsedSpecial?.type === 'counter') {
-    return (
-      <View style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
-        <View style={styles.counterMessageCard}>
-          <View style={styles.counterHeader}>
-            <Ionicons name="pricetag" size={12} color={Colors.lightGrey} />
-            <Text style={styles.counterTitle}>{isOwn ? 'YOUR COUNTER OFFER' : 'COUNTER OFFER'}</Text>
-            <Text style={styles.counterAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
-          </View>
-          <Text
-            style={isOwn ? styles.timeTextRight : styles.timeTextLeft}
-            accessibilityLabel={`${formatMessageTime(msg.createdAt)}${isOwn && !msg.deliveryStatus && msg.isRead ? ', read' : ''}`}
-          >
-            {formatMessageTime(msg.createdAt)}
-            {isOwn && !msg.deliveryStatus && msg.isRead && ' ✓✓'}
-          </Text>
-        </View>
-        {deliveryState}
-      </View>
-    );
-  }
+  // Offers are not shown as offer cards in chat (owner decision, matches the
+  // website): a legacy "Offer:" / "Counter-offer:" text message renders as an
+  // ordinary message. Real offers live on the Offers screens.
 
   return (
     <View style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
@@ -903,23 +862,6 @@ export const ChatScreen: React.FC = () => {
     }, 2000);
   };
 
-  const handleAcceptOffer = async () => {
-    const text = "I accept the counter-offer. Let's finalize the paperwork.";
-    const sent = await queueMessage(text);
-    showToast(
-      sent ? 'Accepted!' : 'Message not sent. Tap it to retry.',
-      sent ? 'success' : 'info',
-    );
-  };
-
-  const handleCounterOffer = async () => {
-    const text = `Counter-offer: £${carPrice.toLocaleString('en-GB')}`;
-    const sent = await queueMessage(text);
-    showToast(
-      sent ? 'Counter-offer sent!' : 'Message not sent. Tap it to retry.',
-      'info',
-    );
-  };
 
   const handlePayDeposit = () => {
     if (!room.listing) return;
@@ -990,10 +932,6 @@ export const ChatScreen: React.FC = () => {
 
   const carPrice = room.listing?.price ? parseFloat(String(room.listing.price)) : 0;
 
-  // Hide "Accept Offer" if this user already sent an acceptance message in this thread
-  const offerAccepted = messages.some(
-    (m) => m.senderId === user?.id && m.content.startsWith("I accept the counter-offer"),
-  );
 
   // iOS keeps the native KeyboardAvoidingView path, which already works
   // reliably there. Android drives its shift from androidKeyboardHeight
@@ -1190,31 +1128,10 @@ export const ChatScreen: React.FC = () => {
         )}
       </View>
 
-      {/* Sticky action CTAs bar (hide if blocked) */}
-      {!shouldBlockChat && !room.chatBlocked && room.listing && (
-        <View style={styles.actionsBar}>
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.actionBtnOutlineRed]}
-            onPress={handleCounterOffer}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="pricetag-outline" size={13} color={Colors.accent} style={{ marginRight: 4 }} />
-            <Text style={[styles.actionLabel, { color: Colors.accent }]}>Counter £{carPrice.toLocaleString('en-GB')}</Text>
-          </TouchableOpacity>
-
-          {!offerAccepted && (
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnGreen]}
-              onPress={handleAcceptOffer}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="checkmark-circle-outline" size={13} color={Colors.onAccent} style={{ marginRight: 4 }} />
-              <Text style={styles.actionLabel}>Accept Offer</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
+      {/* No Counter / Accept buttons in chat: they only posted chat text that
+          looked like an offer, sat next to the composer and were easy to tap by
+          mistake. Offers are made and answered on the Offers screens, as on
+          the website. */}
       {/* Bottom Text bar (hide if blocked) */}
       {!shouldBlockChat && !room.chatBlocked && (
         <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
