@@ -61,6 +61,9 @@ export default async function BlogTagPage({ params, searchParams }: { params: Pr
     const decoded = decodeURIComponent(tag)
     const page = requestedPage(pageParam)
     const { data: posts, totalPages, loaded } = await getPostsByTag(decoded, page)
+    // The API being unavailable does not mean a tag has no published articles.
+    // Avoid a successful HTTP response containing an empty, misleading index.
+    if (!loaded) throw new Error("[blog] Tag archive feed temporarily unavailable")
 
     // Tag archives should not manufacture empty, self-canonical page numbers.
     // Only return 404 when the successful public API response confirms no
