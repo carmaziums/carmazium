@@ -162,11 +162,30 @@ jobs:
           (cd "$GITHUB_WORKSPACE/review-only-apk" && sha256sum CarMazium-Android-REVIEW-ONLY.apk > SHA256SUMS.txt)
           echo 'Verified private artifact manifest: release-evidence.json, APK and SHA256SUMS.txt.' >> "$GITHUB_STEP_SUMMARY"
           echo 'Release signer verified. INTERNAL REVIEW ONLY; no public distribution authorised.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Stage exactly verified APK for later owner approval (private only)
+        env:
+          CARMAZIUM_ANDROID_RELEASE_CERT_SHA256: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node ../../scripts/stage-android-direct-download.mjs \
+            "$GITHUB_WORKSPACE/review-only-apk/CarMazium-Android-REVIEW-ONLY.apk" \
+            "$GITHUB_WORKSPACE/review-only-apk/release-evidence.json" \
+            "$GITHUB_WORKSPACE/private-staged-apk"
+          test -s "$GITHUB_WORKSPACE/private-staged-apk/staging-manifest.json"
+          echo 'Versioned APK staged privately. This is NOT customer approval or publishing.' >> "$GITHUB_STEP_SUMMARY"
       - name: Store short-lived private review artifact only
         uses: actions/upload-artifact@v4
         with:
           name: CarMazium-Android-REVIEW-ONLY
           path: review-only-apk/*
+          retention-days: 3
+          if-no-files-found: error
+      - name: Store short-lived private staged download artifact (not approved)
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarMazium-Android-STAGED-NOT-APPROVED
+          path: private-staged-apk/*
           retention-days: 3
           if-no-files-found: error
       - name: Remove signing material from temporary runner
