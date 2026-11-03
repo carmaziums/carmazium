@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Elevation, Radius } from '../constants/spacing';
 import { Colors } from '../constants/colors';
 import { getBottomTabItemHeight } from '../lib/nativeLayoutParity';
 import { TextPresets } from '../constants/typography';
@@ -266,7 +267,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
               {isFocused && (
                 <View style={styles.activeDot} />
               )}
-              <View style={styles.iconWrapper}>
+              <View style={[styles.iconWrapper, isFocused && styles.iconWrapperActive]}>
                 <AnimatedTabIcon
                   focused={isFocused}
                   iconName={isMore && isDrawerOpen ? 'close' : isFocused ? config.iconActive : config.icon}
@@ -329,6 +330,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    // Lifted off the page with a soft shadow (website bar stays full width;
+    // the heavier Elevation.float is intentionally not used here).
+    ...Elevation.card,
     borderTopWidth: 1,
     borderTopColor: Colors.tabBarBorder,
     backgroundColor: Colors.bgDropdown,
@@ -354,6 +358,14 @@ const styles = StyleSheet.create({
     height: 26,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Raised pill behind the active tab icon.
+  iconWrapperActive: {
+    width: 52,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.accentAlpha14,
+    borderWidth: 1,
+    borderColor: Colors.borderAccent,
   },
   activeDot: {
     width: 4,

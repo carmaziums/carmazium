@@ -61,8 +61,10 @@ const darkPalette = {
   bgSurfaceHi,
 
   /** Translucent card surface — pair with a blur for the glass treatment. */
-  bgCard: 'rgba(51, 65, 85, 0.58)',
-  bgCardHi: 'rgba(51, 65, 85, 0.72)',
+  // Solid, not translucent: Android draws no elevation shadow under a
+  // translucent background, which left every card flat ("paper") on Android.
+  bgCard: '#243047',
+  bgCardHi: '#2B3A55',
 
   // Legacy ground names, kept because they're used everywhere. Same three tiers.
   bgPrimary: bgBody,
@@ -140,6 +142,8 @@ const darkPalette = {
   onAccent: '#FFFFFF',
   /** Fixed: secondary text/meta on accent, scrim or photo fills. */
   onAccentMuted: 'rgba(255, 255, 255, 0.72)',
+  /** Top-edge highlight on raised red buttons; white in both themes. */
+  onAccentHighlight: 'rgba(255, 255, 255, 0.35)',
   /** Fixed black: text on yellow/amber fills, and shadow colour. */
   black: '#000000',
   iconMuted: '#A3B1C4',
