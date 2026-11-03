@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { ImageUpload } from "@/components/listing/ImageUpload"
 import { PendingReviewModal } from "@/components/listing/PendingReviewModal"
 import {
@@ -2413,7 +2414,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         {retailActionError && (
                             <div role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 p-3">
                                 <p className="text-sm text-red-400">{retailActionError}</p>
-                                <Link href="/dashboard/seller/auctions" className="mt-2 inline-flex min-h-[40px] items-center font-bold text-sm text-[var(--text-primary)] underline">
+                                <Link href="/dashboard/seller/auctions" className={buttonVariants({ variant: "outline", size: "sm", className: "mt-2" })}>
                                     Open My Auctions
                                 </Link>
                             </div>
@@ -4305,7 +4306,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <button
                                         type="button"
                                         onClick={() => setSellingMethod(null)}
-                                        className="text-xs font-bold text-primary hover:underline shrink-0"
+                                        className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}
                                     >
                                         Change listing method
                                     </button>
@@ -4904,7 +4905,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     {missing && (
                                         <>
                                             <p className="text-xs text-[var(--text-secondary)]">{fieldReasons[missing.field] ?? "Please complete this field to continue."}</p>
-                                            <button type="button" className="self-start text-xs font-semibold underline text-primary"
+                                            <button type="button" className={buttonVariants({ variant: "outline", size: "sm", className: "self-start" })}
                                                 onClick={() => focusMissingField(missing.field)}>Go to missing field</button>
                                         </>
                                     )}
@@ -4938,7 +4939,7 @@ function SummarySection({ title, onEdit, children }: { title: string; onEdit: ()
         <div className="space-y-3">
             <div className="flex items-center justify-between">
                 <h3 className="font-bold">{title}</h3>
-                <button type="button" onClick={onEdit} className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors">
+                <button type="button" onClick={onEdit} className={buttonVariants({ variant: "outline", size: "sm" })}>
                     <Edit size={12} /> Edit
                 </button>
             </div>

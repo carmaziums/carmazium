@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { Briefcase, AlertCircle, Inbox, ArrowLeft } from "lucide-react"
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/AsyncState"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -116,7 +117,7 @@ export default function ContractorJobsPage() {
                                 <p className="font-bold text-sm">Verification required for new jobs</p>
                                 <p className="text-xs text-[var(--text-muted)] mt-0.5">Apply for a service, upload its verification documents and complete Stripe Connect. You can still view and finish previously accepted jobs under My Work.</p>
                             </div>
-                            <Link href="/dashboard/service/capabilities" className="text-xs font-black uppercase tracking-widest text-primary hover:underline shrink-0">Review verification →</Link>
+                            <Link href="/dashboard/service/capabilities" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>Review verification →</Link>
                         </div>
                     )}
                     {error && <ErrorState message={error} onRetry={loadJobs} />}

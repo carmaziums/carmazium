@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { useRouter } from "next/navigation"
 import { Truck, Loader2, ArrowRight } from "lucide-react"
 import { createJobFromPurchase, type PurchaseDeliverySource } from "@/lib/servicesApi"
@@ -66,7 +67,7 @@ export function ArrangeDelivery({ compact = false, ...source }: PurchaseDelivery
                 className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest hover:bg-primary/90 disabled:opacity-60">
                 {busy ? <Loader2 className="animate-spin" size={14} /> : <>Post job <ArrowRight size={13} /></>}
             </button>
-            <button type="button" onClick={() => setOpen(false)} className="text-xs text-[var(--text-muted)] hover:underline">Cancel</button>
+            <button type="button" onClick={() => setOpen(false)} className={buttonVariants({ variant: "outline", size: "sm" })}>Cancel</button>
             {error && <span className="text-xs text-red-500">{error}</span>}
         </form>
     )

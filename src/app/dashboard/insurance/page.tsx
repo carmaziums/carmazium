@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { Loader2, Clock, CheckCircle, XCircle, Shield, ClipboardList, TrendingUp, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -146,7 +147,7 @@ export default function InsuranceDashboard() {
                             <h2 className="text-xl font-black font-heading uppercase tracking-tight flex items-center gap-2">
                                 <Shield className="text-primary" /> Recent Quote Requests
                             </h2>
-                            <Link href="/dashboard/insurance/quotes" className="text-primary hover:text-primary dark:hover:text-white text-sm font-black transition-colors uppercase">View All</Link>
+                            <Link href="/dashboard/insurance/quotes" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>View All</Link>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">

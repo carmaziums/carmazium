@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -458,7 +459,7 @@ function EmptyState({ tab }: { tab: "live" | "upcoming" }) {
                     ? "Auctions go live automatically at their scheduled time. Check back soon."
                     : "New auctions are added regularly — check back to catch the next one."}
             </p>
-            <Link href="/sell" className="mt-5 inline-flex items-center gap-2 text-xs font-bold text-primary hover:text-red-400 transition-colors">
+            <Link href="/sell" className={buttonVariants({ size: "sm", className: "mt-5" })}>
                 List your car for auction <ChevronRight size={13} />
             </Link>
         </div>
@@ -935,7 +936,7 @@ export default function AuctionsBrowsePage() {
                         <h3 className="font-heading font-bold text-xl">Filters</h3>
                         <div className="flex items-center gap-4">
                             {activeFilterCount > 0 && (
-                                <button onClick={handleResetFilters} className="text-xs text-primary font-normal cursor-pointer hover:underline flex items-center gap-1">
+                                <button onClick={handleResetFilters} className={buttonVariants({ variant: "outline", size: "sm" })}>
                                     <RotateCcw size={12} /> Reset All
                                 </button>
                             )}
@@ -1432,7 +1433,7 @@ export default function AuctionsBrowsePage() {
                     {error && (
                         <div className="text-center py-16 space-y-3">
                             <p className="text-red-400 text-sm">{error}</p>
-                            <button onClick={load} className="text-primary underline text-xs">Try again</button>
+                            <button onClick={load} className={buttonVariants({ variant: "outline", size: "sm" })}>Try again</button>
                         </div>
                     )}
 

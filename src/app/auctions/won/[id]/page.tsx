@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
@@ -174,7 +175,7 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
             <div className="min-h-screen pt-20 flex flex-col items-center justify-center gap-4 text-center px-6">
                 <AlertTriangle size={36} className="text-red-400" />
                 <p className="text-[var(--text-primary)] font-bold">{loadError ?? "Auction not found."}</p>
-                <Link href="/auctions/browse" className="text-sm text-primary hover:underline">Browse auctions</Link>
+                <Link href="/auctions/browse" className={buttonVariants()}>Browse auctions</Link>
             </div>
         )
     }
@@ -528,7 +529,7 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                         <button
                                             type="button"
                                             onClick={() => auction?.listing.sellerId && connectChat(auction.listing.sellerId, auction.listing.id)}
-                                            className="text-xs font-bold text-primary hover:underline"
+                                            className={buttonVariants({ variant: "outline", size: "sm" })}
                                         >
                                             Try again
                                         </button>

@@ -3,6 +3,7 @@
 import * as React from "react"
 import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import Image from "next/image"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/Button"
@@ -185,7 +186,7 @@ function SellerDashboard() {
                     <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
                         <div className="p-6 border-b border-[var(--border-default)] flex justify-between items-center bg-[var(--bg-card)]">
                             <h2 className="text-xl font-black font-heading text-[var(--text-primary)] uppercase tracking-tight">Your Inventory</h2>
-                            <Link href="/dashboard/seller/listings" className="text-primary hover:text-primary dark:hover:text-white text-sm font-black transition-colors uppercase">Manage All</Link>
+                            <Link href="/dashboard/seller/listings" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>Manage All</Link>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
@@ -208,7 +209,8 @@ function SellerDashboard() {
                                     ) : listings.length === 0 ? (
                                         <tr>
                                             <td colSpan={5} className="px-6 py-12 text-center text-[var(--text-muted)] italic">
-                                                No listings found. <Link href="/sell" className="text-primary hover:underline">Create your first listing!</Link>
+                                                <p>No listings found.</p>
+                                                <Link href="/sell" className={buttonVariants({ size: "sm", className: "mt-4 not-italic" })}>Create your first listing</Link>
                                             </td>
                                         </tr>
                                     ) : (
@@ -238,7 +240,7 @@ function SellerDashboard() {
                                                 <td className="px-6 py-4 text-right font-bold">{formatPrice(listing.price)}</td>
                                                 <td className="px-6 py-4 text-center text-[var(--text-muted)]">{listing.viewCount || 0}</td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <Link href={`/buy-cars/${listing.slug}`} className="text-primary hover:text-primary dark:hover:text-white text-xs font-bold transition-colors">
+                                                    <Link href={`/buy-cars/${listing.slug}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
                                                         View
                                                     </Link>
                                                 </td>

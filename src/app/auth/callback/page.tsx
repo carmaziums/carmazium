@@ -1,6 +1,7 @@
 "use client"
 
 import { Suspense, useEffect, useState } from "react"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { fetchWithRetry } from "@/lib/fetchWithRetry"
@@ -301,7 +302,7 @@ function AuthCallbackContent() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6">
         <p className="text-red-400 text-center">{errorMessage}</p>
-        <a href="/auth/login" className="text-primary hover:underline">
+        <a href="/auth/login" className={buttonVariants()}>
           Back to login
         </a>
       </div>

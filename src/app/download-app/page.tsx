@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { PageJsonLd } from "@/components/seo/PageJsonLd"
 import type { ReactNode } from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { ArrowDownToLine, ArrowRight, CheckCircle2, ExternalLink, ShieldCheck } from "lucide-react"
 import { FaAndroid, FaApple, FaGooglePlay, FaWindows } from "react-icons/fa"
 import { AppPromoShowcase, appPromoButtonClass } from "@/components/features/AppPromoShowcase"
@@ -181,7 +182,7 @@ export default function DownloadAppPage() {
                 ) : (
                   <UnavailableNotice>Microsoft Store app coming soon. CarMazium works in your Windows browser now.</UnavailableNotice>
                 )}
-                <Link href="/search" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-cyan-200 underline decoration-cyan-300/50 underline-offset-4 hover:text-white">
+                <Link href="/search" className={buttonVariants({ variant: "dark", className: "mt-5" })}>
                   Open the website <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
               </div>

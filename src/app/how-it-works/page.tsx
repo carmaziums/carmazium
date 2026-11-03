@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 
@@ -300,7 +301,7 @@ export default function HowItWorksPage() {
           <p className="mt-2 text-sm leading-7 text-[var(--text-secondary)]">
             You do not need to bid in a trade auction. Browse available retail listings and contact the seller through the retail purchase process.
           </p>
-          <Link href="/search" className="mt-4 inline-flex min-h-11 items-center gap-2 font-bold text-primary underline-offset-4 hover:underline">
+          <Link href="/search" className={buttonVariants({ className: "mt-4" })}>
             Browse retail cars <ArrowRight size={17} aria-hidden="true" />
           </Link>
         </div>

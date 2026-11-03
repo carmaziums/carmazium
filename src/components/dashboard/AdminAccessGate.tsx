@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { usePathname, useRouter } from "next/navigation"
 import { Loader2, LockKeyhole, RefreshCw, ShieldAlert } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
@@ -56,7 +57,7 @@ export function AdminAccessGate({ children }: { children: React.ReactNode }) {
                     <RefreshCw className="h-4 w-4" aria-hidden="true" />
                     {retrying ? "Verifying..." : "Retry admin verification"}
                 </button>
-                <Link className="mt-4 text-sm underline underline-offset-4" href="/">Return to homepage</Link>
+                <Link className={buttonVariants({ variant: "outline", className: "mt-3" })} href="/">Return to homepage</Link>
             </div>
         )
     }

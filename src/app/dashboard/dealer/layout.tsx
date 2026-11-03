@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { useAuth } from "@/context/AuthContext"
 import { KycOverlayForm, KYC_SKIP_KEY } from "@/components/dashboard/KycOverlayForm"
 import { Loader2, Lock, ShieldCheck, ArrowRight, Phone, AlertCircle } from "lucide-react"
@@ -188,8 +189,8 @@ function DealerDashboardLayoutContent({
             <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 px-6 text-center">
                 <p className="font-semibold">Dealer tools require a Partner Account.</p>
                 <p className="text-sm text-[var(--text-muted)]">Your personal account is unchanged. You can create a Partner Account in Account Settings.</p>
-                <button type="button" className="rounded-lg bg-primary px-5 py-3 font-semibold text-white" onClick={() => router.replace('/profile?section=account')}>Manage account type</button>
-                <button type="button" className="text-sm underline" onClick={() => router.replace('/dashboard')}>Return to my dashboard</button>
+                <button type="button" className={buttonVariants()} onClick={() => router.replace('/profile?section=account')}>Manage account type</button>
+                <button type="button" className={buttonVariants({ variant: "outline" })} onClick={() => router.replace('/dashboard')}>Return to my dashboard</button>
             </div>
         )
     }

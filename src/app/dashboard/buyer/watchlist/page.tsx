@@ -3,6 +3,7 @@
 import * as React from "react"
 import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { Button } from "@/components/ui/Button"
@@ -67,7 +68,8 @@ function SavedCarsPage() {
                         </div>
                     ) : items.length === 0 ? (
                         <div className="glass-card p-12 text-center text-[var(--text-muted)]">
-                            Your Saved Cars list is empty. <Link href="/search" className="text-primary hover:underline">Browse cars to add some!</Link>
+                            <p>Your Saved Cars list is empty.</p>
+                            <Link href="/search" className={buttonVariants({ size: "sm", className: "mt-4" })}>Browse cars to add some</Link>
                         </div>
                     ) : (
                         <>
