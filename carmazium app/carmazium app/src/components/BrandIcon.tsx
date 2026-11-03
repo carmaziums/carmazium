@@ -234,6 +234,57 @@ const ICON_MAP: Record<string, string> = {
   'timer-outline': 'Timer',
   'trending-up-outline': 'TrendingUp',
   'videocam-outline': 'Video',
+  // Previously unmapped names: each rendered as the HelpCircle "?" fallback.
+  'menu': 'Menu',
+  'warning': 'AlertTriangle',
+  'menu-outline': 'Menu',
+  'arrow-forward-outline': 'ArrowRight',
+  'attach-outline': 'Paperclip',
+  'cloud-offline-outline': 'CloudOff',
+  'color-palette-outline': 'Palette',
+  'flag-outline': 'Flag',
+  'gavel-outline': 'Gavel',
+  'hand-left-outline': 'Hand',
+  'headset-outline': 'Headphones',
+  'help-buoy-outline': 'LifeBuoy',
+  'mail-unread-outline': 'MailOpen',
+  'navigate-outline': 'Navigation',
+  'open-outline': 'ExternalLink',
+  'return-up-back-outline': 'Undo2',
+  'sparkles-outline': 'Sparkles',
+  'umbrella-outline': 'Umbrella',
+  'document-outline': 'File',
+  'lock-open-outline': 'LockOpen',
+  'pricetags-outline': 'Tags',
+  'checkbox': 'SquareCheck',
+  'square-outline': 'Square',
+  'star-half': 'StarHalf',
+  'car-limousine': 'Car',
+  'account': 'User',
+  'image': 'Image',
+  'import': 'Import',
+  'sort': 'ArrowUpDown',
+  'numeric': 'Hash',
+  'finance': 'Landmark',
+};
+
+const toPascal = (n: string) =>
+  n.replace(/-(outline|sharp)$/, '').split('-').map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join('');
+
+/**
+ * Explicit map first, then the Lucide icon of the same name (e.g.
+ * 'flag-outline' -> Flag). Never fall back to HelpCircle: a "?" glyph on a
+ * button reads as broken to customers. Unknown names render a neutral dot and
+ * warn in development so they get mapped.
+ */
+const resolveIcon = (name: string): React.ComponentType<any> => {
+  const lib = Lucide as unknown as Record<string, React.ComponentType<any> | undefined>;
+  const mapped = ICON_MAP[name];
+  if (mapped && lib[mapped]) return lib[mapped]!;
+  const guessed = lib[toPascal(name)];
+  if (guessed) return guessed;
+  if (__DEV__) console.warn(`[BrandIcon] No icon mapping for "${name}"`);
+  return Lucide.Circle;
 };
 
 interface IconProps {
@@ -251,8 +302,7 @@ interface IconProps {
 }
 
 export const Ionicons: React.FC<IconProps> = ({ name, size = 24, color = Colors.white, style, onPress, accessibilityElementsHidden, importantForAccessibility }) => {
-  const lucideName = ICON_MAP[name] || 'HelpCircle';
-  const Component = (Lucide as any)[lucideName] || Lucide.HelpCircle;
+  const Component = resolveIcon(name);
   return (
     <Component
       size={size}
