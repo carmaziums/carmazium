@@ -43,6 +43,7 @@ import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/Aucti
 import { WishlistHeart } from '../../components/WishlistHeart';
 import { getAuctionFirstOfferFloor } from '../../lib/auctionPricing';
 import { mapTransmission } from '../../lib/listingsApi';
+import { useTabBarClearance } from '../../hooks/useTabBarClearance';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -86,6 +87,8 @@ const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
 };
 
 export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embeddedDealerHub = false }) => {
+  // Clear the floating tab bar, which grows with the system font size.
+  const tabBarClearance = useTabBarClearance();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const currentUser = useAuthStore((s) => s.user);
@@ -742,7 +745,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
         )}
 
         {/* Bottom spacing so last element clears the tab bar */}
-        <View style={{ height: 120 }} />
+        <View style={{ height: Math.max(120, tabBarClearance) }} />
       </ScrollView>
 
       <AuctionFilterSheet

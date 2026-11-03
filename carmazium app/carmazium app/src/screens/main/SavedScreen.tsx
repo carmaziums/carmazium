@@ -10,6 +10,7 @@ import {
   StatusBar,
   Dimensions,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
@@ -20,6 +21,8 @@ import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { getBottomTabBarHeight } from '../../lib/nativeLayoutParity';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '../../components/IconButton';
 import { CarListing, formatPrice } from '../../data/listings';
 import { useWatchlistStore } from '../../store/watchlistStore';
@@ -45,6 +48,8 @@ type ViewMode = 'grid' | 'list';
 export const SavedScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const accountRole = useAuthStore(s => s.accountRole);
+  const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const [savedTab, setSavedTab] = useState<'auctions' | 'retail'>('auctions');
 
   // Readable website-style list first; a two-column grid remains optional.
@@ -266,17 +271,10 @@ export const SavedScreen: React.FC = () => {
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
-      <LinearGradient
-        colors={[Colors.accentAlpha03, Colors.groundClear, Colors.bgPrimary]}
-        style={StyleSheet.absoluteFillObject}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0.4 }}
-      />
-
-      <WebsiteTopBar />
+  // Title, view toggle and dealer tab switch scroll with the saved cars (list
+  // header) rather than sitting fixed above a flex:1 list.
+  const pageHeader = (
+    <View style={styles.headerBleed}>
       {/* Website watchlist header below global navigation. */}
       <View style={[styles.header, { paddingTop: 12 }]}>
         <View>
@@ -305,19 +303,35 @@ export const SavedScreen: React.FC = () => {
           ))}
         </View>
       )}
+    </View>
+  );
+  // The tab bar floats over the screen; keep the last card clear of it.
+  const bottomPad = { paddingBottom: getBottomTabBarHeight(fontScale, insets.bottom) + 16 };
 
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
+      <LinearGradient
+        colors={[Colors.accentAlpha03, Colors.groundClear, Colors.bgPrimary]}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0.4 }}
+      />
+
+      <WebsiteTopBar />
       {/* Content */}
       {isLoading && savedListings.length === 0 ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+          contentContainerStyle={[styles.scrollContent, bottomPad]}
         >
+          {pageHeader}
           {renderSkeleton()}
         </ScrollView>
       ) : viewMode === 'list' ? (
         <FlatList
           style={{ flex: 1 }}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+          contentContainerStyle={[styles.scrollContent, bottomPad]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -330,13 +344,13 @@ export const SavedScreen: React.FC = () => {
           data={displayedListings}
           keyExtractor={(item) => item.id}
           renderItem={renderListItem}
-          ListHeaderComponent={displayedListings.length > 0 ? renderListSortRow() : null}
+          ListHeaderComponent={<>{pageHeader}{displayedListings.length > 0 ? renderListSortRow() : null}</>}
           ListEmptyComponent={renderEmptyState()}
         />
       ) : (
         <FlatList
           style={{ flex: 1 }}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100, gap: 16 }]}
+          contentContainerStyle={[styles.scrollContent, bottomPad, styles.gridGap]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -351,7 +365,7 @@ export const SavedScreen: React.FC = () => {
           columnWrapperStyle={styles.gridRow}
           keyExtractor={(item) => item.id}
           renderItem={renderGridItem}
-          ListHeaderComponent={displayedListings.length > 0 ? renderListSortRow() : null}
+          ListHeaderComponent={<>{pageHeader}{displayedListings.length > 0 ? renderListSortRow() : null}</>}
           ListEmptyComponent={renderEmptyState()}
         />
       )}
@@ -408,6 +422,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 8,
   },
+  gridGap: { gap: 16 },
+  // Header rows carry their own 24pt gutters inside the padded list.
+  headerBleed: { marginHorizontal: -24 },
 
   // Skeleton
   skeletonGrid: {

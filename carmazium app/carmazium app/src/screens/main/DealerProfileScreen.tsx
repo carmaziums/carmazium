@@ -32,6 +32,7 @@ type NavProp = NativeStackNavigationProp<MainStackParamList>;
 import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
+import { useTabBarClearance } from '../../hooks/useTabBarClearance';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Backend response shapes (see GET /dealers/stats & /dealers/analytics) ──
@@ -84,6 +85,8 @@ const trendStyle = (value: number) =>
 const trendLabel = (value: number) => (value === 0 ? '—' : `${value > 0 ? '+' : ''}${value}%`);
 
 export const DealerProfileScreen: React.FC = () => {
+  // Clear the floating tab bar, which grows with the system font size.
+  const tabBarClearance = useTabBarClearance();
   const navigation = useNavigation<NavProp>();
   const { showToast } = useContext(GlobalToastContext);
   const { user, setRole } = useAuthStore();
@@ -737,7 +740,7 @@ export const DealerProfileScreen: React.FC = () => {
           )}
         </View>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: Math.max(100, tabBarClearance) }} />
       </ScrollView>
     </View>
   );

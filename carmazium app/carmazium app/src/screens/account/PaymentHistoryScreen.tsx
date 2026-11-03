@@ -191,6 +191,38 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
     );
   }, []);
 
+  // Total and filters scroll with the transactions (list header) so a
+  // larger system font size can't squeeze the list to nothing.
+  const listHeader = (
+    <View style={styles.listHeaderBleed}>
+    {!loading && (
+      <View style={styles.summaryCard}>
+        <Text style={styles.summaryLabel}>TOTAL SPENT</Text>
+        <Text style={styles.summaryValue}>{formatPrice(totalSpent)}</Text>
+        <Text style={styles.summarySub}>{transactions.length} transaction{transactions.length === 1 ? '' : 's'}</Text>
+      </View>
+    )}
+
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.filterRow}
+      style={[{ flexGrow: 0 }, Layout.hScroll]}
+    >
+      {FILTERS.map((f) => (
+        <TouchableOpacity
+          key={f.key}
+          style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
+          activeOpacity={0.8}
+          onPress={() => setFilter(f.key)}
+        >
+          <Text style={[styles.filterChipText, filter === f.key && styles.filterChipTextActive]}>{f.label}</Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
@@ -209,37 +241,12 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
         <View style={{ width: 36 }} />
       </View>
 
-      {!loading && (
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>TOTAL SPENT</Text>
-          <Text style={styles.summaryValue}>{formatPrice(totalSpent)}</Text>
-          <Text style={styles.summarySub}>{transactions.length} transaction{transactions.length === 1 ? '' : 's'}</Text>
-        </View>
-      )}
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-        style={[{ flexGrow: 0 }, Layout.hScroll]}
-      >
-        {FILTERS.map((f) => (
-          <TouchableOpacity
-            key={f.key}
-            style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
-            activeOpacity={0.8}
-            onPress={() => setFilter(f.key)}
-          >
-            <Text style={[styles.filterChipText, filter === f.key && styles.filterChipTextActive]}>{f.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
       {loading ? (
         <ScrollView
           contentContainerStyle={{ paddingBottom: insets.bottom + 32, paddingTop: 4 }}
           showsVerticalScrollIndicator={false}
         >
+          {listHeader}
           {renderSkeleton()}
         </ScrollView>
       ) : (
@@ -251,6 +258,7 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
           renderItem={renderTxCard}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           ListEmptyComponent={renderEmptyState}
+          ListHeaderComponent={listHeader}
           contentContainerStyle={[
             { paddingHorizontal: 20, paddingTop: 4, paddingBottom: insets.bottom + 32 },
             filtered.length === 0 && { flexGrow: 1 },
@@ -266,6 +274,8 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
+  // Header rows carry their own 20pt gutters inside the padded list.
+  listHeaderBleed: { marginHorizontal: -20, marginTop: -4 },
 
   header: {
     flexDirection: 'row',

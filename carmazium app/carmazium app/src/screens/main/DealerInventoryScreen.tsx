@@ -13,6 +13,7 @@ import {
   RefreshControl,
   TextInput,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
@@ -35,6 +36,7 @@ import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
+import { getBottomTabBarHeight } from '../../lib/nativeLayoutParity';
 import { formatTransmission } from '../../lib/transmission';
 
 const VIEW_MODE_STORAGE_KEY = 'czm_dealer_inventory_view_mode';
@@ -560,6 +562,7 @@ const InventoryGridCard: React.FC<{ listing: Listing; onPress: (id: string) => v
 // ─── MAIN INVENTORY SCREEN ───────────────────────────────────────────────────
 export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const { hasPermission } = useDealerAccess(true);
   const canManageInventory = hasPermission('MANAGE_INVENTORY');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
@@ -699,17 +702,12 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
   ];
   const activeFilterInfo = FILTERS.find(f => f.label === activeFilter) ?? FILTERS[0];
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
-      <LinearGradient
-        colors={[Colors.accentAlpha04, Colors.groundClear, Colors.bgPrimary]}
-        style={StyleSheet.absoluteFillObject}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0.5 }}
-      />
-
-      <WebsiteTopBar />
+  // Title, actions, search, status/sort controls and their open panels
+  // scroll with the stock (list header element, so the search keeps focus).
+  // Fixed above the list they could fill the screen with a larger system
+  // font size, leaving the vehicles no height to scroll.
+  const stockHeader = (
+    <View style={viewMode === 'grid' ? styles.gridHeaderBleed : undefined}>
       {/* The same global web header stays visible while the stock-specific
           view picker and inventory count remain below it. */}
       <View style={[styles.listHeader, { paddingTop: 8 }]}>
@@ -848,31 +846,48 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       <View style={styles.sortRow}>
         <Text style={styles.sortLabel}>{filtered.length} {filtered.length === 1 ? 'vehicle' : 'vehicles'} shown</Text>
       </View>
+    </View>
+  );
+  // Load error / first-load skeleton render inside the list.
+  const listStatus = fetchError ? (
+    <View style={{ marginHorizontal: 16, marginTop: 20 }}>
+      <ErrorBanner message="Could not load inventory. Check your connection." onRetry={() => fetchListings()} />
+    </View>
+  ) : loading && listings.length === 0 ? (
+    <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 12 }}>
+      {[0, 1, 2, 3].map((i) => (
+        <Skeleton key={i} w={SCREEN_WIDTH - (viewMode === 'grid' ? 72 : 32)} h={76} r={18} />
+      ))}
+    </View>
+  ) : null;
 
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
+      <LinearGradient
+        colors={[Colors.accentAlpha04, Colors.groundClear, Colors.bgPrimary]}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0.5 }}
+      />
+
+      <WebsiteTopBar />
       {/* ── Listing cards ─────────────────────────────────────────────────── */}
-      {fetchError ? (
-        <View style={{ marginHorizontal: 16, marginTop: 20 }}>
-          <ErrorBanner message="Could not load inventory. Check your connection." onRetry={() => fetchListings()} />
-        </View>
-      ) : loading && listings.length === 0 ? (
-        <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 12 }}>
-          {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} w={SCREEN_WIDTH - 32} h={76} r={18} />
-          ))}
-        </View>
-      ) : (
       <FlatList
         key={viewMode}
         style={styles.listScroll}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={viewMode === 'grid' ? styles.gridContent : styles.stockListContent}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[viewMode === 'grid' ? styles.gridContent : styles.stockListContent,
+          { paddingBottom: getBottomTabBarHeight(fontScale, insets.bottom) + 24 }]}
+        ListHeaderComponent={stockHeader}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchListings(true)} tintColor={Colors.accent} colors={[Colors.accent]} />}
-        data={filtered}
+        data={listStatus ? [] : filtered}
         numColumns={viewMode === 'grid' ? 2 : 1}
         columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
         keyExtractor={(item) => item.id}
         renderItem={viewMode === 'grid' ? renderInventoryGrid : renderInventoryRow}
-        ListEmptyComponent={
+        ListEmptyComponent={listStatus ?? (
           <View style={{ marginTop: 40 }}>
             <EmptyState
               icon="car-outline"
@@ -882,9 +897,8 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
                 : 'Add your first vehicle to start building your dealership inventory.'}
             />
           </View>
-        }
+        )}
       />
-      )}
 
       {/* Bulk CSV Import Modal */}
       {canManageInventory && (
@@ -1249,6 +1263,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 92,
   },
+  // Header rows carry their own 20pt gutters inside the padded grid.
+  gridHeaderBleed: { marginHorizontal: -20 },
   gridRow: {
     justifyContent: 'space-between',
   },

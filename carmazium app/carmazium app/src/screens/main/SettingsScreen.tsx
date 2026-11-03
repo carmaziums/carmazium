@@ -611,17 +611,6 @@ export const SettingsScreen: React.FC = () => {
       />
 
       <WebsiteTopBar />
-      <View style={styles.settingsPageHeader}>
-        <Text style={styles.settingsPageTitle}>Account Settings</Text>
-        <Text style={styles.settingsPageSubtitle}>
-          One place for your profile, business, notifications, payouts and security.
-        </Text>
-        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to previous screen"
-          onPress={() => navigation.goBack()} style={styles.settingsBackLink}>
-          <Ionicons name="arrow-back" size={16} color={Colors.accent} />
-          <Text style={styles.settingsBackText}>Back</Text>
-        </TouchableOpacity>
-      </View>
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
@@ -630,6 +619,19 @@ export const SettingsScreen: React.FC = () => {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
+        {/* Page title scrolls with the settings; fixed above the scroll view
+            it took a large share of a small screen with larger system fonts. */}
+        <View style={[styles.settingsPageHeader, styles.settingsPageHeaderBleed]}>
+          <Text style={styles.settingsPageTitle}>Account Settings</Text>
+          <Text style={styles.settingsPageSubtitle}>
+            One place for your profile, business, notifications, payouts and security.
+          </Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to previous screen"
+            onPress={() => navigation.goBack()} style={styles.settingsBackLink}>
+            <Ionicons name="arrow-back" size={16} color={Colors.accent} />
+            <Text style={styles.settingsBackText}>Back</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.accountToolsPanel}>
           <Text style={styles.accountToolsHeading}>YOUR ACCOUNT TOOLS</Text>
@@ -1544,6 +1546,8 @@ export const SettingsScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   settingsPageHeader: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14 },
+  // Inside the 20pt-padded scroll content; keeps its own gutters.
+  settingsPageHeaderBleed: { marginHorizontal: -20 },
   settingsPageTitle: { fontFamily: FontFamily.extraBold, color: Colors.textPrimary,
     fontSize: 25, lineHeight: 32 },
   settingsPageSubtitle: { fontFamily: FontFamily.medium, color: Colors.textMuted,

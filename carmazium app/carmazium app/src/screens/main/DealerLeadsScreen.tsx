@@ -37,7 +37,7 @@ import { IconButton } from '../../components/IconButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
-import { getScrollableStageHeight } from '../../lib/nativeLayoutParity';
+import { getBottomTabBarHeight, getScrollableStageHeight } from '../../lib/nativeLayoutParity';
 import { Layout } from '../../constants/layout';
 type FilterTab = 'All' | 'Hot' | 'Warm' | 'New' | 'Won' | 'Lost';
 type ViewMode = 'list' | 'board';
@@ -819,17 +819,11 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
     </View>
   );
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
-      <LinearGradient
-        colors={[Colors.accentAlpha05, Colors.groundClear, Colors.bgPrimary]}
-        style={StyleSheet.absoluteFillObject}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0.5 }}
-      />
-
-      <WebsiteTopBar />
+  // Everything above the customer rows scrolls with them (list header).
+  // As a fixed block it could take the whole screen on a small phone or
+  // with a larger system font size, leaving the list no height to scroll.
+  const pageHeader = (
+    <View>
       {/* Use the exact website dealer Customers hierarchy and labels.
           Existing MANAGE_CRM screen gate remains in navigation. */}
       <View style={styles.crmPageHeader}>
@@ -943,24 +937,48 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
         </ScrollView>
       )}
 
-      {loading && leads.length === 0 ? (
-        <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 10 }}>
-          {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} w={SCREEN_WIDTH - 32} h={84} r={20} />
-          ))}
-        </View>
-      ) : loadError && leads.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <Text style={styles.emptyTitle}>Customers unavailable</Text>
-          <TouchableOpacity onPress={() => { void fetchLeads(); }} accessibilityRole="button">
-            <Text style={styles.crmRetry}>Retry loading customers</Text>
-          </TouchableOpacity>
-        </View>
-      ) : viewMode === 'board' ? (
+    </View>
+  );
+
+  // Loading / failed-load states render inside the list (ListEmptyComponent)
+  // so the header above them still scrolls and pull-to-refresh still works.
+  const listStatus = loading && leads.length === 0 ? (
+    <View style={styles.skeletonList}>
+      {[0, 1, 2, 3].map((i) => (
+        <Skeleton key={i} w={SCREEN_WIDTH - 40} h={84} r={20} />
+      ))}
+    </View>
+  ) : loadError && leads.length === 0 ? (
+    <View style={styles.emptyWrap}>
+      <Text style={styles.emptyTitle}>Customers unavailable</Text>
+      <TouchableOpacity onPress={() => { void fetchLeads(); }} accessibilityRole="button">
+        <Text style={styles.crmRetry}>Retry loading customers</Text>
+      </TouchableOpacity>
+    </View>
+  ) : null;
+  // Tab bar is absolutely positioned over the screen; keep the last row clear.
+  const listBottomPad = { paddingBottom: getBottomTabBarHeight(fontScale, insets.bottom) + 24 };
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
+      <LinearGradient
+        colors={[Colors.accentAlpha05, Colors.groundClear, Colors.bgPrimary]}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0.5 }}
+      />
+
+      <WebsiteTopBar />
+      {viewMode === 'board' ? (
         <FlatList
-          key={mobileStage}
+          // Stage switch keeps the scroll position: the stage tabs are in the
+          // list header, so remounting would jump the page back to the top.
+          key="board"
           style={styles.listScroll}
-          contentContainerStyle={styles.crmBoardCards}
+          contentContainerStyle={[styles.crmBoardCards, listBottomPad]}
+          ListHeaderComponent={pageHeader}
+          ListHeaderComponentStyle={styles.boardHeaderBleed}
           data={leadsByStage[mobileStage] || []}
           keyExtractor={lead => lead.id}
           renderItem={({ item }) => (
@@ -969,23 +987,25 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
           )}
           refreshControl={<RefreshControl refreshing={refreshing}
             onRefresh={() => { void fetchLeads(true); }} tintColor={Colors.accent} />}
-          ListEmptyComponent={
+          ListEmptyComponent={listStatus ?? (
             <View style={styles.crmBoardEmpty}>
               <Ionicons name="people-outline" size={24} color={Colors.textMuted} />
               <Text style={styles.crmBoardEmptyText}>Empty</Text>
             </View>
-          }
+          )}
         />
-      ) : filteredLeads.length === 0 ? (
-        renderEmptyState()
       ) : (
       <FlatList
+        key="list"
         style={styles.listScroll}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 20, paddingHorizontal: 16 }}
+        contentContainerStyle={[styles.crmListCards, listBottomPad]}
+        ListHeaderComponent={pageHeader}
+        ListHeaderComponentStyle={styles.listHeaderBleed}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchLeads(true)} tintColor={Colors.accent} />}
         data={filteredLeads}
         keyExtractor={(item) => item.id}
         renderItem={renderLeadRow}
+        ListEmptyComponent={listStatus ?? renderEmptyState()}
       />
       )}
 
@@ -1201,6 +1221,11 @@ const styles = StyleSheet.create({
   crmStageText: { fontSize: 12, fontFamily: FontFamily.bold, color: Colors.textMuted },
   crmStageSelectedText: { color: Colors.onAccent },
   crmBoardCards: { paddingHorizontal: 20, paddingBottom: 90, paddingTop: 6 },
+  // List header rows carry their own 20pt gutters inside the padded lists.
+  boardHeaderBleed: { marginHorizontal: -20, marginTop: -6, marginBottom: 6 },
+  crmListCards: { paddingHorizontal: 16 },
+  listHeaderBleed: { marginHorizontal: -16 },
+  skeletonList: { paddingTop: 8, gap: 10 },
   crmBoardEmpty: { paddingVertical: 45, alignItems: 'center', gap: 12 },
   crmBoardEmptyText: { fontFamily: FontFamily.bold, fontSize: 12,
     textTransform: 'uppercase', color: Colors.textMuted },
@@ -1474,7 +1499,7 @@ const styles = StyleSheet.create({
   },
 
   emptyWrap: {
-     flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 10, paddingBottom: 80,
+     flexGrow: 1, paddingTop: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 10, paddingBottom: 80,
   },
   emptyTitle: {
      fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white, textAlign: 'center',

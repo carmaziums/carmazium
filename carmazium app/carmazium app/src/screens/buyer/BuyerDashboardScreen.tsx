@@ -26,6 +26,7 @@ import { HamburgerButton } from '../../components/HamburgerButton';
 import { Skeleton } from '../../components/ui/Skeleton';
 
 import { IconButton } from '../../components/IconButton';
+import { useTabBarClearance } from '../../hooks/useTabBarClearance';
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
 interface BuyerDashData {
@@ -136,6 +137,8 @@ const ActivityRow: React.FC<{
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  // Clear the floating tab bar, which grows with the system font size.
+  const tabBarClearance = useTabBarClearance();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
 
@@ -580,7 +583,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
           <IconButton style={styles.profileGear} icon={<Ionicons name="settings-outline" size={18} color={Colors.textSecondary} />} onPress={() => navigation?.navigate('Settings')} accessibilityLabel="Settings" />
         </View>
 
-        <View style={{ height: 110 }} />
+        <View style={{ height: Math.max(110, tabBarClearance) }} />
       </ScrollView>
     </View>
   );

@@ -434,6 +434,23 @@ export const DealerPurchasesScreen: React.FC = () => {
 
   // ─────────────── main render ───────────────────────
 
+  // Stage tabs and the auction-wins link scroll with the purchases (list
+  // header) instead of a fixed block that a larger system font size grew
+  // until the list below had no height.
+  const stageHeader = (
+    <View style={styles.stageHeaderBleed}>
+    <PurchaseDestinations active={stage} onSelect={selectDestination} />
+    {isHistory && <Text style={styles.purchaseDate}>Delivery Requested counts as completed; delivery may still be on its way.</Text>}
+    {channel !== 'retail' && stage !== 'cancelled' && (
+      <TouchableOpacity accessibilityRole="button" style={[styles.purchaseCard, { marginHorizontal: 16, marginBottom: 10 }]}
+        onPress={() => navigation.navigate('SellerAuctions', { initialTab: 'WON' })}>
+        <Text style={styles.vehicleTitle}>Auction wins, fees & handovers</Text>
+        <Text style={styles.purchaseDate}>Pay the £125 fee and check handover steps.</Text>
+      </TouchableOpacity>
+    )}
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
@@ -465,23 +482,15 @@ export const DealerPurchasesScreen: React.FC = () => {
         </View>
       </View>
 
-      <PurchaseDestinations active={stage} onSelect={selectDestination} />
-      {isHistory && <Text style={styles.purchaseDate}>Delivery Requested counts as completed; delivery may still be on its way.</Text>}
-      {channel !== 'retail' && stage !== 'cancelled' && (
-        <TouchableOpacity accessibilityRole="button" style={[styles.purchaseCard, { marginHorizontal: 16, marginBottom: 10 }]}
-          onPress={() => navigation.navigate('SellerAuctions', { initialTab: 'WON' })}>
-          <Text style={styles.vehicleTitle}>Auction wins, fees & handovers</Text>
-          <Text style={styles.purchaseDate}>Pay the £125 fee and check handover steps.</Text>
-        </TouchableOpacity>
-      )}
-
       {/* ── Content ── */}
       {fetchError ? (
         <View style={{ marginHorizontal: 16, marginTop: 20 }}>
+          <View style={styles.errorHeaderBleed}>{stageHeader}</View>
           <ErrorBanner message="Could not load purchases. Check your connection." onRetry={() => fetchData()} />
         </View>
       ) : loading ? (
         <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {stageHeader}
           {renderSkeletons()}
           <View style={{ height: 110 }} />
         </ScrollView>
@@ -495,6 +504,7 @@ export const DealerPurchasesScreen: React.FC = () => {
           renderItem={renderPurchaseCard}
           ListHeaderComponent={
             <>
+              {stageHeader}
               {renderPendingRetail()}
               {renderFilters()}
               {stage === 'progress' && isRetail && shownPendingRetail.length === 0 && (
@@ -622,6 +632,9 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     gap: 10,
   },
+  // Stage rows carry their own 16pt gutters inside the 20pt-padded list.
+  stageHeaderBleed: { marginHorizontal: -20 },
+  errorHeaderBleed: { marginHorizontal: -16, marginTop: -20, marginBottom: 12 },
 
   // ── Totals bar ──
   totalsCard: {
