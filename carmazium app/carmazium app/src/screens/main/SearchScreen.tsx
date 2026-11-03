@@ -22,7 +22,7 @@ import { useLocation } from '../../context/LocationContext';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import {FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -1559,7 +1559,7 @@ export const SearchScreen: React.FC = () => {
                   <View style={s.postcodeRow}>
                     <Ionicons name="location" size={14} color={Colors.accent} />
                     <Text style={s.postcodeRowText}>Using {userPostcode}</Text>
-                    <TouchableOpacity onPress={() => setPostcodeInput(userPostcode ?? '')} activeOpacity={0.7}>
+                    <TouchableOpacity style={s.postcodeChangeBtn} onPress={() => setPostcodeInput(userPostcode ?? '')} activeOpacity={0.7}>
                       <Text style={s.postcodeChangeLink}>Change</Text>
                     </TouchableOpacity>
                   </View>
@@ -1586,7 +1586,7 @@ export const SearchScreen: React.FC = () => {
                     autoCapitalize="characters"
                     autoCorrect={false}
                   />
-                  <TouchableOpacity onPress={handleSavePostcode} disabled={postcodeSaving || !postcodeInput.trim()} activeOpacity={0.7}>
+                  <TouchableOpacity style={s.postcodeChangeBtn} onPress={handleSavePostcode} disabled={postcodeSaving || !postcodeInput.trim()} activeOpacity={0.7}>
                     {postcodeSaving
                       ? <ActivityIndicator size="small" color={Colors.accent} />
                       : <Text style={[s.postcodeChangeLink, (!postcodeInput.trim()) && { opacity: 0.4 }]}>Save</Text>}
@@ -1731,13 +1731,13 @@ const s = StyleSheet.create({
   headerResults: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: 12, marginTop: 7 },
   auctionBrowseBanner: { marginHorizontal: 24, marginBottom: 13, flexDirection: 'row',
     alignItems: 'center', gap: 11, padding: 12, minHeight: 60, backgroundColor: Colors.bgCard,
-    borderWidth: 1, borderColor: Colors.borderSubtle, borderRadius: 13 },
+    borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.card, ...Elevation.card },
   auctionBrowseTitle: { fontFamily: FontFamily.bold, color: Colors.textPrimary, fontSize: 13 },
   auctionBrowseDesc: { fontFamily: FontFamily.medium, color: Colors.textMuted, fontSize: 11 },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center' },
 
   searchWrap: { paddingHorizontal: 24, marginBottom: 8 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderSubtle, paddingHorizontal: 16, minHeight: 52, gap: 10 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgCard, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 16, minHeight: 52, gap: 10, ...Elevation.card },
   searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.white },
 
   // A horizontal ScrollView's cross-axis size is NOT auto-grown by its
@@ -1755,19 +1755,20 @@ const s = StyleSheet.create({
   // larger system font grows the row instead of clipping the labels.
   quickScroll: { flexGrow: 0, marginBottom: 4 },
   quickRow: { paddingHorizontal: 24, paddingVertical: 10, gap: 10, alignItems: 'center', flexDirection: 'row' },
-  quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: Radius.card, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
-  quickChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.paleGrey_cccccc },
+  // Solid raised chips; the selected one is an accent fill with a bevel.
+  quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: Radius.card, backgroundColor: Colors.bgCard, borderWidth: 1, borderBottomWidth: 2, borderColor: Colors.border, ...Elevation.card },
+  quickChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent, borderBottomColor: Colors.accentDark, ...Elevation.neon },
+  quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.textSecondary },
   quickChipTextActive: { color: Colors.onAccent },
 
   sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 8, marginTop: 4, position: 'relative', zIndex: 10 },
   resultsCount: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary },
-  clearBelowRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 24, paddingVertical: 5, alignSelf: 'flex-start', marginBottom: 7, minHeight: 32 },
+  clearBelowRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginHorizontal: 24, paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start', marginBottom: 7, minHeight: 34, borderRadius: Radius.inline, borderWidth: 1.5, borderBottomWidth: 3, borderColor: Colors.accent, backgroundColor: Colors.bgCard },
   clearBelowText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: Colors.accent },
-  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
+  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, minHeight: 38, backgroundColor: Colors.bgCard, borderRadius: Radius.inline, borderWidth: 1, borderBottomWidth: 3, borderColor: Colors.borderHi, ...Elevation.card },
   sortBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
-  filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
-  filterBtnActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, minHeight: 38, backgroundColor: Colors.bgCard, borderRadius: Radius.inline, borderWidth: 1, borderBottomWidth: 3, borderColor: Colors.borderHi, ...Elevation.card },
+  filterBtnActive: { backgroundColor: Colors.accent, borderColor: Colors.accent, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   filterBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
   filterClearBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 7, backgroundColor: 'transparent', borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha10 },
   filterClearBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
@@ -1788,7 +1789,7 @@ const s = StyleSheet.create({
   loadMoreWrap: { alignItems: 'center', paddingVertical: 20 },
   endText: { textAlign: 'center', fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, paddingVertical: 20 },
   skeletonList: { paddingHorizontal: 24, gap: 14 },
-  skeletonCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 14 },
+  skeletonCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: Colors.bgCard, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.border, padding: 14, ...Elevation.card },
   skeletonInfo: { flex: 1, gap: 6 },
 
   // Filter modal
@@ -1831,25 +1832,27 @@ const s = StyleSheet.create({
     paddingVertical: 6,
   },
   chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  filterChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
-  filterChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  filterChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.inline, backgroundColor: Colors.bgCard, borderWidth: 1, borderBottomWidth: 2, borderColor: Colors.borderHi },
+  filterChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent, borderBottomColor: Colors.accentDark },
   filterChipText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.textSecondary },
   filterChipTextActive: { color: Colors.onAccent, fontFamily: FontFamily.bold },
-  bodyChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
-  bodyChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  bodyChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.inline, backgroundColor: Colors.bgCard, borderWidth: 1, borderBottomWidth: 2, borderColor: Colors.borderHi },
+  bodyChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent, borderBottomColor: Colors.accentDark },
   twoCol: { flexDirection: 'row', gap: 10 },
   inputBox: { flex: 1, backgroundColor: Colors.whiteAlpha03, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 12 },
   inputBoxLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 6 },
   inputBoxValue: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
-  miniChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
+  miniChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.chip, backgroundColor: Colors.bgCard, borderWidth: 1, borderBottomWidth: 2, borderColor: Colors.borderHi },
   miniChipText: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary },
   postcodeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   postcodeRowText: { flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
   postcodeChangeLink: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent },
+  // Raised outline chip so Change / Save read as buttons, not loose links.
+  postcodeChangeBtn: { minHeight: 32, paddingHorizontal: 12, justifyContent: 'center', alignItems: 'center', borderRadius: Radius.inline, borderWidth: 1.5, borderBottomWidth: 3, borderColor: Colors.accent, backgroundColor: Colors.bgCard },
 
   // AI search button
   aiSearchWrap: { paddingHorizontal: 24, marginBottom: 6 },
-  aiSearchBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.card, backgroundColor: Colors.warningAlpha10, borderWidth: 1, borderColor: Colors.warningAlpha25 },
+  aiSearchBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 8, minHeight: 36, borderRadius: Radius.card, backgroundColor: Colors.bgCard, borderWidth: 1, borderBottomWidth: 3, borderColor: Colors.warning, ...Elevation.card },
   aiSearchBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.warning },
 
   // AI explanation banner

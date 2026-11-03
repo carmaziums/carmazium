@@ -305,10 +305,19 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
   },
+  // Visual "button" affordance (the whole card is the tap target): a raised
+  // outline chip rather than bare accent text.
   viewDetails: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: Radius.inline,
+    borderWidth: 1.5,
+    borderBottomWidth: 3,
+    borderColor: Colors.accent,
+    backgroundColor: Colors.bgCard,
   },
   viewDetailsText: {
     fontFamily: FontFamily.bold,
