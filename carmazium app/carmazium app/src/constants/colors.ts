@@ -451,6 +451,14 @@ const lightPalette: Palette = {
   infoLight: lInfoText,
   errorLight: lErrorText,
   infoBlueLight: lInfoText,
+  // Base success/warning are also used as text ("Valid", "None", "Grade 1")
+  // and at #10B981/#F59E0B they read ~2:1 on white. On a light ground use
+  // the deeper shade of the same hue; white-on-fill badges get more contrast
+  // too. Their *Alpha tint scales are unchanged.
+  success: '#047857',
+  accentGreen: '#047857',
+  midGreen_00d28e: '#047857',
+  warning: '#B45309',
   // Utility
   white: lText,
   onAccent: '#FFFFFF',

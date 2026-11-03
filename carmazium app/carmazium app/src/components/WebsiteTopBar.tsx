@@ -4,11 +4,13 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
-import { FontFamily } from '../constants/typography';
+import { FontFamily, FontSize } from '../constants/typography';
+import { Radius } from '../constants/spacing';
 import { useAuthStore } from '../store/authStore';
 import { HamburgerButton } from './HamburgerButton';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
+import { openSignIn } from './SignInRequired';
 
 /**
  * Single native counterpart of website src/components/layout/Header.tsx.
@@ -26,6 +28,7 @@ export const WebsiteTopBar: React.FC = () => {
   // 44dp action targets.
   const logoWidth = Math.min(160, Math.max(104, windowWidth - 249));
   const user = useAuthStore(s => s.user);
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated);
   const role = useAuthStore(s => s.accountRole);
   const initial = (user?.firstName?.trim()?.charAt(0)
     || user?.email?.trim()?.charAt(0)
@@ -36,6 +39,19 @@ export const WebsiteTopBar: React.FC = () => {
       <Logo size="sm" width={logoWidth} />
       <View style={styles.actions}>
         <ThemeToggle />
+        {/* Signed-out visitors see Login, like the website header's
+            Sign Up / Login, instead of a bell and an account avatar. */}
+        {!isAuthenticated ? (
+          <TouchableOpacity
+            style={styles.loginButton}
+            onPress={() => openSignIn(navigation, 'Login')}
+            accessibilityRole="button"
+            accessibilityLabel="Log in or create an account"
+            activeOpacity={0.8}
+          >
+            <Text style={styles.loginText}>Login</Text>
+          </TouchableOpacity>
+        ) : (<>
         <TouchableOpacity
           style={styles.notificationButton}
           onPress={() => navigation.navigate('Notifications')}
@@ -56,6 +72,7 @@ export const WebsiteTopBar: React.FC = () => {
           <View style={styles.avatar}><Text style={styles.avatarLetter}>{initial}</Text></View>
           <Ionicons name="chevron-down" size={15} color={Colors.textMuted} />
         </TouchableOpacity>
+        </>)}
         <HamburgerButton websiteStyle />
       </View>
     </View>
@@ -82,6 +99,13 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.borderSubtle,
     backgroundColor: Colors.bgCard,
   },
+  loginButton: {
+    height: 44, paddingHorizontal: 16,
+    alignItems: 'center', justifyContent: 'center',
+    borderRadius: Radius.inline,
+    backgroundColor: Colors.accent,
+  },
+  loginText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent },
   accountButton: {
     minWidth: 65, height: 44, paddingHorizontal: 6,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

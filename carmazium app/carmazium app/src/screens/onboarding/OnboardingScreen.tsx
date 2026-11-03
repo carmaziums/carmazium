@@ -340,12 +340,16 @@ const styles = StyleSheet.create({
     top: Platform.OS === 'ios' ? 60 : 44,
     right: 24,
     zIndex: 10,
-    padding: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    // Sits on the photo in both themes: a dark pill keeps it legible.
+    borderRadius: 9999,
+    backgroundColor: Colors.blackAlpha45,
   },
   skipText: {
-    fontFamily: FontFamily.medium,
+    fontFamily: FontFamily.semiBold,
     fontSize: FontSize.size12,
-    color: Colors.textSecondary,
+    color: Colors.onAccent,
     letterSpacing: 1.5,
   },
   // Bottom Controls

@@ -289,6 +289,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
             {!dealerMode && <HamburgerButton />}
           </View>
           <EmptyState
+            accent
             icon="shield-checkmark-outline"
             title="Verified Dealer Access Required"
             subtitle={isUnverifiedDealer
