@@ -32,6 +32,7 @@ import { LegacyPartnerDashboardScreen } from '../screens/account/LegacyPartnerDa
 import { DealerBuyBidScreen } from '../screens/main/DealerBuyBidScreen';
 import { PartnerDashboardScreen } from '../screens/main/PartnerDashboardScreen';
 import { useAuthStore } from '../store/authStore';
+import { GUEST_TABS, SignInRequired } from '../components/SignInRequired';
 
 // Stable wrapper so the Profile tab's component prop never changes reference,
 // preventing React Navigation from unmounting + remounting the tab when role loads.
@@ -93,6 +94,24 @@ export type TabParamList = {
 };
 
 const Tab = createBottomTabNavigator<TabParamList>();
+
+// Saved and Dashboard need an account; Home, Buy Cars and Auctions stay open
+// to signed-out visitors like the website. Module scope keeps it stable.
+const GuestTabGate: React.FC<{ routeName: string; children: React.ReactNode }> = ({ routeName, children }) => {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  if (isAuthenticated || GUEST_TABS.has(routeName)) return <>{children}</>;
+  return (
+    <SignInRequired
+      routeName="Tabs"
+      routeParams={{ screen: routeName }}
+      showBack={false}
+      title={routeName === 'Saved' ? 'Sign in to see your saved cars' : 'Sign in to your dashboard'}
+    />
+  );
+};
+const GuestAwareTabLayout = ({ children, route }: { children: React.ReactNode; route: { name: string } }) => (
+  <GuestTabGate routeName={route.name}>{children}</GuestTabGate>
+);
 
 const TAB_CONFIG: {
   name: keyof TabParamList;
@@ -288,6 +307,7 @@ export const TabNavigator: React.FC = () => {
         headerShown: false,
         lazy: true,
       }}
+      screenLayout={GuestAwareTabLayout}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Search" component={SearchScreen} />

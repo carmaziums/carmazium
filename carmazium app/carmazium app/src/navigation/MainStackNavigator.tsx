@@ -74,6 +74,8 @@ import { AcceptInviteScreen } from '../screens/main/AcceptInviteScreen';
 import { CarListing } from '../data/listings';
 import type { VehicleValuation } from '../lib/valuationApi';
 import { Colors } from '../constants/colors';
+import { useAuthStore } from '../store/authStore';
+import { GUEST_ROUTES, SignInRequired } from '../components/SignInRequired';
 
 
 // Hoisted to module scope on purpose. Calling withDealerGate(...) inline in the
@@ -211,6 +213,22 @@ export type MainStackParamList = {
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
 
+/**
+ * Signed-out visitors browse like on carmazium.com: public routes render
+ * normally, account-only routes render a sign-in prompt instead of a screen
+ * whose API calls could only fail. Module scope (not inline) so React
+ * Navigation never remounts screens because the layout identity changed.
+ */
+const GuestAwareLayout = ({ children, route }: { children: React.ReactNode; route: { name: string; params?: object } }) => (
+  <GuestGate routeName={route.name} routeParams={route.params}>{children}</GuestGate>
+);
+
+const GuestGate: React.FC<{ routeName: string; routeParams?: object; children: React.ReactNode }> = ({ routeName, routeParams, children }) => {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  if (isAuthenticated || GUEST_ROUTES.has(routeName)) return <>{children}</>;
+  return <SignInRequired routeName={routeName} routeParams={routeParams} />;
+};
+
 export const MainStackNavigator: React.FC = () => {
   return (
     <Stack.Navigator
@@ -219,6 +237,7 @@ export const MainStackNavigator: React.FC = () => {
         animation: 'slide_from_right',
         contentStyle: { backgroundColor: Colors.bgPrimary },
       }}
+      screenLayout={GuestAwareLayout}
     >
       <Stack.Screen name="Tabs" component={TabNavigator} />
       <Stack.Screen

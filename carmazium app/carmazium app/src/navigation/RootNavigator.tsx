@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigatorScreenParams } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
-import { AuthNavigator } from './AuthNavigator';
+import { AuthNavigator, AuthStackParamList } from './AuthNavigator';
 import { MainStackNavigator, MainStackParamList } from './MainStackNavigator';
 import { PostSignupOnboardingScreen } from '../screens/auth/PostSignupOnboardingScreen';
 import { VerifyEmailScreen } from '../screens/auth/VerifyEmailScreen';
@@ -10,7 +10,7 @@ import { Colors } from '../constants/colors';
 import { navigationRef } from '../lib/navigationRef';
 
 export type RootStackParamList = {
-  Auth: undefined;
+  Auth: NavigatorScreenParams<AuthStackParamList> | undefined;
   VerifyEmail: undefined;
   PostSignupOnboarding: undefined;
   Main: NavigatorScreenParams<MainStackParamList> | undefined;
@@ -24,6 +24,30 @@ export const RootNavigator: React.FC = () => {
   const pendingEmailVerification = useAuthStore((s) => s.pendingEmailVerification);
   const postLoginRedirect = useAuthStore((s) => s.postLoginRedirect);
   const consumePostLoginRedirect = useAuthStore((s) => s.consumePostLoginRedirect);
+  const hasSeenIntro = useAuthStore((s) => s.hasSeenIntro);
+  // Like carmazium.com, signed-out visitors browse the app as guests once the
+  // intro has been seen. Account-only screens show <SignInRequired /> (see
+  // MainStackNavigator's screenLayout) and Login/Signup open over the app.
+  const guestBrowsing = !isAuthenticated && hasSeenIntro;
+
+  // After an explicit sign-out (no saved destination), start again on Home
+  // rather than leaving the visitor on an account screen's sign-in prompt.
+  const wasAuthenticated = useRef(isAuthenticated);
+  useEffect(() => {
+    const signedOut = wasAuthenticated.current && !isAuthenticated;
+    wasAuthenticated.current = isAuthenticated;
+    if (!signedOut || postLoginRedirect || !hasSeenIntro) return;
+    const id = setTimeout(() => {
+      try {
+        if (navigationRef.isReady()) {
+          navigationRef.reset({ index: 0, routes: [{ name: 'Main' as never }] });
+        }
+      } catch {
+        // Navigation not ready: the guest stack still mounts on its default route.
+      }
+    }, 0);
+    return () => clearTimeout(id);
+  }, [isAuthenticated, postLoginRedirect, hasSeenIntro]);
 
   // Restore the screen the user was on when their session expired, once the
   // Main stack actually exists to navigate within (AUTH-034). Web does this
@@ -53,6 +77,9 @@ export const RootNavigator: React.FC = () => {
 
   return (
     <Stack.Navigator
+      // Remount once when the intro finishes, so the guest app opens on Main
+      // instead of keeping the intro's Auth route on top.
+      key={!isAuthenticated && !hasSeenIntro && !pendingEmailVerification ? 'intro' : 'app'}
       screenOptions={{
         headerShown: false,
         animation: 'fade',
@@ -64,6 +91,15 @@ export const RootNavigator: React.FC = () => {
         // Show VerifyEmail screen; it subscribes to onAuthStateChange and calls
         // initializeAuth() automatically when the user clicks the link.
         <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
+      ) : guestBrowsing ? (
+        <>
+          <Stack.Screen name="Main" component={MainStackNavigator} />
+          <Stack.Screen
+            name="Auth"
+            component={AuthNavigator}
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+        </>
       ) : !isAuthenticated ? (
         <Stack.Screen name="Auth" component={AuthNavigator} />
       ) : !hasCompletedOnboarding ? (

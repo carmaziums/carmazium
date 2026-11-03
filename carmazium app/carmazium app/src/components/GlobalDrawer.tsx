@@ -34,6 +34,8 @@ import { useDealerAccess } from '../hooks/useDealerAccess';
 import type { DealerPermission } from '../lib/dealerAccessApi';
 
 import { IconButton } from './IconButton';
+import { openSignIn } from './SignInRequired';
+import { Radius } from '../constants/spacing';
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -176,6 +178,8 @@ const DEALER_ITEMS: MenuItem[] = [
 export const GlobalDrawer: React.FC = () => {
   const { isOpen, closeDrawer } = useDrawer();
   const user         = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isGuest = !isAuthenticated;
   const logout       = useAuthStore((s) => s.logout);
   const [supportLoading, setSupportLoading] = useState(false);
   const [showMorePages, setShowMorePages] = useState(false);
@@ -431,7 +435,25 @@ export const GlobalDrawer: React.FC = () => {
 
         {/* Settings belongs next to the account identity, not underneath
             dozens of buyer/dealer tools at the very bottom of this drawer. */}
-        <View style={styles.accountShortcuts}>
+        {isGuest && (
+          <View style={styles.accountShortcuts}>
+            <TouchableOpacity
+              style={styles.guestPrimaryBtn}
+              onPress={() => { closeDrawer(); setTimeout(() => openSignIn(navigation, 'Login'), 160); }}
+              accessibilityRole="button"
+            >
+              <Text style={styles.guestPrimaryText}>Sign In</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.guestSecondaryBtn}
+              onPress={() => { closeDrawer(); setTimeout(() => openSignIn(navigation, 'Signup'), 160); }}
+              accessibilityRole="button"
+            >
+              <Text style={styles.guestSecondaryText}>Create Free Account</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {!isGuest && <View style={styles.accountShortcuts}>
           <TouchableOpacity
             style={styles.accountShortcut}
             onPress={() => handleItem({ id: 'account-settings', label: 'Account settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings' })}
@@ -458,7 +480,7 @@ export const GlobalDrawer: React.FC = () => {
               <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
             </TouchableOpacity>
           )}
-        </View>
+        </View>}
 
         <View style={styles.divider} />
 
@@ -520,7 +542,7 @@ export const GlobalDrawer: React.FC = () => {
           {/* Unified Buyer/Seller toolset — web treats BUYER and SELLER as the
               same entity with one shared dashboard, so mobile does too now.
               Dealer keeps its own dedicated DEALER CONTROLS group below. */}
-          {(role === 'buyer' || role === 'seller') && (
+          {!isGuest && (role === 'buyer' || role === 'seller') && (
             <>
               <View style={styles.divider} />
               <Text style={[styles.groupLabel, styles.groupLabelSeller]}>{isProvider ? 'PARTNER DASHBOARD' : 'MY DASHBOARD'}</Text>
@@ -598,7 +620,7 @@ export const GlobalDrawer: React.FC = () => {
           )}
 
           {/* ── Dealer toggle — visible for all non-dealer users ── */}
-          {role !== 'dealer' && (accountRole === 'buyer' || accountRole === 'seller' || isActualDealer) && (
+          {!isGuest && role !== 'dealer' && (accountRole === 'buyer' || accountRole === 'seller' || isActualDealer) && (
             <>
               <View style={styles.divider} />
               <TouchableOpacity
@@ -687,7 +709,7 @@ export const GlobalDrawer: React.FC = () => {
               every role; mobile had no in-app route to support at all. Opens
               the support chat room rather than an email client, matching web
               and keeping the conversation in the product. */}
-          <TouchableOpacity style={styles.row} onPress={handleContactSupport} activeOpacity={0.7} disabled={supportLoading}>
+          {!isGuest && <TouchableOpacity style={styles.row} onPress={handleContactSupport} activeOpacity={0.7} disabled={supportLoading}>
             <View style={styles.bar} />
             <View style={styles.iconWrap}>
               {supportLoading
@@ -695,16 +717,16 @@ export const GlobalDrawer: React.FC = () => {
                 : <Ionicons name="help-buoy-outline" size={19} color={Colors.accent} />}
             </View>
             <Text style={styles.rowLabel}>Contact Support</Text>
-          </TouchableOpacity>
+          </TouchableOpacity>}
 
           {/* Sign Out row */}
-          <TouchableOpacity style={styles.row} onPress={handleSignOut} activeOpacity={0.7}>
+          {!isGuest && <TouchableOpacity style={styles.row} onPress={handleSignOut} activeOpacity={0.7}>
             <View style={styles.bar} />
             <View style={[styles.iconWrap, styles.iconWrapRed]}>
               <Ionicons name="log-out-outline" size={19} color={Colors.accent} />
             </View>
             <Text style={styles.rowLabelRed}>Sign Out</Text>
-          </TouchableOpacity>
+          </TouchableOpacity>}
         </ScrollView>
 
         {/* ── Footer brand ─────────────────────────────── */}
@@ -737,6 +759,22 @@ export const GlobalDrawer: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  guestPrimaryBtn: {
+    backgroundColor: Colors.accent,
+    borderRadius: Radius.inline,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  guestPrimaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
+  guestSecondaryBtn: {
+    marginTop: 8,
+    borderRadius: Radius.inline,
+    borderWidth: 1,
+    borderColor: Colors.borderHi,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  guestSecondaryText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.base, color: Colors.textPrimary },
   // Dealer overlay belongs to the same RN view hierarchy as the tabs, so
   // touches on those existing tabs are not swallowed by another window.
   dealerOverlay: {

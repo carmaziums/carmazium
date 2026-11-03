@@ -249,6 +249,21 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.signupLink}>Create an account</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Like carmazium.com, browsing doesn't need an account. */}
+            <TouchableOpacity
+              style={styles.guestBtn}
+              onPress={async () => {
+                useAuthStore.getState().setPostLoginRedirect(null);
+                await useAuthStore.getState().completeIntro();
+                const parent = navigation.getParent();
+                if (parent?.canGoBack()) parent.goBack();
+              }}
+              accessibilityRole="button"
+              activeOpacity={0.7}
+            >
+              <Text style={styles.guestBtnText}>Continue browsing without an account</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.bottomSpacer} />
@@ -420,6 +435,8 @@ const styles = StyleSheet.create({
     fontSize: FontSize.base,
     color: Colors.textSecondary,
   },
+  guestBtn: { alignSelf: 'center', marginTop: 16, paddingVertical: 8, paddingHorizontal: 12 },
+  guestBtnText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.textMuted, textDecorationLine: 'underline' },
   signupLink: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,

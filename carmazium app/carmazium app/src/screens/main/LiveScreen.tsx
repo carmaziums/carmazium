@@ -35,6 +35,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { useAuthStore } from '../../store/authStore';
+import { openSignIn } from '../../components/SignInRequired';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { ImageCarousel } from '../../components/ImageCarousel';
 import { GradeChip } from '../../components/GradeChip';
@@ -293,8 +294,14 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
             subtitle={isUnverifiedDealer
               ? 'Live vehicle auctions are available only to verified, KYC-approved motor dealers. Finish your business verification to start bidding.'
               : 'Live vehicle auctions are available only to verified, KYC-approved motor dealers. Selling your own car? Auction listings are FREE.'}
-            ctaLabel={isUnverifiedDealer ? 'Complete Verification' : 'Become a Dealer'}
-            onCtaPress={() => navigation.navigate(isUnverifiedDealer ? 'DealerKYC' : 'DealerOnboarding')}
+            ctaLabel={!currentUser ? 'Dealer Sign In' : isUnverifiedDealer ? 'Complete Verification' : 'Become a Dealer'}
+            onCtaPress={() => {
+              if (!currentUser) {
+                openSignIn(navigation, 'Login', { name: 'Tabs', params: { screen: 'Live' } });
+                return;
+              }
+              navigation.navigate(isUnverifiedDealer ? 'DealerKYC' : 'DealerOnboarding');
+            }}
           />
           <TouchableOpacity
             style={styles.gateSecondaryBtn}

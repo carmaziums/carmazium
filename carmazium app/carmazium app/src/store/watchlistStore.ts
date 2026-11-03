@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { CarListing } from '../data/listings';
+import { useAuthStore } from './authStore';
+import { navigationRef } from '../lib/navigationRef';
 import {
   getWatchlist,
   addToWatchlist,
@@ -105,6 +107,23 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
   },
 
   toggle: (listing) => {
+    // Saving needs an account. A guest tapping a heart (Home, Search,
+    // VehicleDetail, auction cards) is offered Sign In instead of a silent
+    // NO_SESSION revert; they return to the screen they were on afterwards.
+    if (!useAuthStore.getState().isAuthenticated) {
+      try {
+        if (navigationRef.isReady()) {
+          const route = navigationRef.getCurrentRoute();
+          useAuthStore.getState().setPostLoginRedirect(
+            route?.name ? { name: route.name, params: route.params as object | undefined } : null,
+          );
+          (navigationRef.navigate as (name: string, params?: object) => void)('Auth', { screen: 'Login' });
+        }
+      } catch {
+        // Navigation not ready — nothing to save without an account anyway.
+      }
+      return;
+    }
     const { savedIds, save, unsave } = get();
     savedIds.has(listing.id) ? unsave(listing.id) : save(listing);
   },

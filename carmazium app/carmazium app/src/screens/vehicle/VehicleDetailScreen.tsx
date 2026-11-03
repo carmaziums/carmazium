@@ -49,6 +49,7 @@ import { useChat } from '../../context/ChatContext';
 import { BuyerDamageViewer } from '../../components/damage/BuyerDamageViewer';
 import { GradeChip } from '../../components/GradeChip';
 import { useAuthStore } from '../../store/authStore';
+import { openSignIn } from '../../components/SignInRequired';
 import { haptics } from '../../lib/haptics';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { createDeliveryRequest, getDeliveryQuote, DeliveryQuote } from '../../lib/deliveryApi';
@@ -455,6 +456,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handleOpenChat = async () => {
+    if (!requireAccount()) return;
     try {
       if (listing.seller?.id) {
         const room = await createChatRoom(listing.seller.id, listing.id);
@@ -530,7 +532,14 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   }, [listing.seller?.id, listing.id]);
 
   // Fetch the current user's offer status for this listing (to gate "Request Delivery")
-  const { user: currentUser } = useAuthStore();
+  const currentUser = useAuthStore((s) => s.user);
+  // Guests can view every public listing; acting on one (offer, enquiry,
+  // chat, delivery, history check) needs an account, as on the website.
+  const requireAccount = (): boolean => {
+    if (currentUser) return true;
+    openSignIn(navigation, 'Login', { name: 'VehicleDetail', params: route.params });
+    return false;
+  };
   // Full offer object — kept alongside offerStatus so we can render the
   // OfferStatusChip on this screen with the amount, matching web
   // VehicleDetailPageClient.tsx L31-90 wording.
@@ -556,6 +565,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   }, [listing.id, currentUser]);
 
   const handleDeliveryRequest = async () => {
+    if (!requireAccount()) return;
     if (!deliveryStreet.trim() || !deliveryCity.trim() || !deliveryPostcode.trim()) {
       setDeliveryError('Street, city and postcode are required.');
       return;
@@ -624,6 +634,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handleHpiCheck = async () => {
+    if (!requireAccount()) return;
     if (!listing.id) return;
     // A report already exists — whether it's finished or still being prepared,
     // open the sheet rather than charging for another one.
@@ -1472,7 +1483,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 onPress={(e) => {
                   e.stopPropagation();
                   if (listing.seller?.id) {
-                    setEnquireVisible(true);
+                    if (requireAccount()) setEnquireVisible(true);
                   } else {
                     handleOpenChat();
                   }
@@ -1963,7 +1974,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         />
         <IconButton style={styles.chatButton} icon={<Ionicons name="chatbubble-ellipses-outline" size={20} color={Colors.white} />} onPress={() => {
             if (listing.seller?.id) {
-              setEnquireVisible(true);
+              if (requireAccount()) setEnquireVisible(true);
             } else {
               handleOpenChat();
             }
@@ -2000,7 +2011,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 } else {
                   setOfferMessage('');
                 }
-                setOfferModalVisible(true);
+                if (requireAccount()) setOfferModalVisible(true);
               }}
             >
               <Text style={styles.makeOfferText}>

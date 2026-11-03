@@ -149,6 +149,9 @@ interface AuthState {
    *  Returns an unsubscribe function. */
   subscribeToAuthChanges: () => () => void;
   consumePostLoginRedirect: () => { name: string; params?: object } | null;
+  /** Remember where a guest was when they tapped Sign In, so RootNavigator
+   *  can return them there once they are signed in. */
+  setPostLoginRedirect: (target: { name: string; params?: object } | null) => void;
   /** Marks the pre-auth carousel as seen. Deliberately NOT completeOnboarding —
    *  see INTRO_SEEN_KEY. */
   completeIntro: () => Promise<void>;
@@ -232,6 +235,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       postLoginRedirect: target,
     });
   },
+
+  setPostLoginRedirect: (target) => set({ postLoginRedirect: target }),
 
   consumePostLoginRedirect: () => {
     const target = get().postLoginRedirect;

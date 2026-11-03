@@ -16,6 +16,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { useAuthStore } from '../../store/authStore';
+import { navigationRef } from '../../lib/navigationRef';
 import { Colors } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
 
@@ -61,7 +62,7 @@ const SLIDES: SlideData[] = [
     headlineRed: 'Dealers can bid.',
     description:
       'Everyone can browse. Only verified motor traders can bid in auctions. Winning dealer fee: £125. Retail buyers pay no platform fee.',
-    buttonLabel: 'SIGN IN',
+    buttonLabel: 'START BROWSING',
     image: require('../../../assets/images/onboarding_car3.png'),
   },
 ];
@@ -157,14 +158,24 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
       flatListRef.current?.scrollToIndex({ index: activeIndex + 1, animated: true });
       setActiveIndex(activeIndex + 1);
     } else {
-      completeIntro();
-      navigation.navigate('Login');
+      // Everyone can browse, like carmazium.com: finishing the intro opens
+      // the app as a guest (RootNavigator), not a login wall.
+      void completeIntro();
     }
   };
 
   const handleSkip = () => {
-    completeIntro();
-    navigation.navigate('Login');
+    void completeIntro();
+  };
+
+  const handleSignIn = async () => {
+    await completeIntro();
+    // RootNavigator remounts into the guest app; open Login over it.
+    setTimeout(() => {
+      if (navigationRef.isReady()) {
+        (navigationRef.navigate as (name: string, params?: object) => void)('Auth', { screen: 'Login' });
+      }
+    }, 250);
   };
 
   return (
@@ -261,12 +272,22 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
           {/* Visual Chamfer diagonal cut on bottom right corner */}
           <View style={styles.chamferCut} />
         </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.signInLink}
+          onPress={() => void handleSignIn()}
+          accessibilityRole="button"
+          activeOpacity={0.7}
+        >
+          <Text style={styles.signInLinkText}>Already have an account? Sign In</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  signInLink: { alignSelf: 'center', marginTop: 14, paddingVertical: 6, paddingHorizontal: 12 },
+  signInLinkText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.textSecondary },
   container: {
     flex: 1,
     backgroundColor: Colors.bgPrimary,
