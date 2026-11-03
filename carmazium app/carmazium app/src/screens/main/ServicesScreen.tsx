@@ -141,13 +141,13 @@ export const ServicesScreen: React.FC = () => {
           activeOpacity={0.8}
           onPress={() => navigation.navigate('CreateServiceJob', { serviceType: 'DELIVERY' })}
           accessibilityRole="button"
-          accessibilityLabel="Post a service job on the CarMazium website"
-          accessibilityHint="Opens the CarMazium website to complete the request"
+          accessibilityLabel="Post a delivery or inspection job"
+          accessibilityHint="Opens the job form to request quotes from approved providers"
         >
           <Ionicons name="add-circle-outline" size={22} color={Colors.onAccent} />
           <View style={{ flex: 1 }}>
             <Text style={styles.postJobTitle}>Post a delivery or inspection job</Text>
-            <Text style={styles.postJobHint}>Open native posting form</Text>
+            <Text style={styles.postJobHint}>Get competing quotes from approved providers</Text>
           </View>
           <Ionicons name="arrow-forward" size={20} color={Colors.onAccent} />
         </TouchableOpacity>
@@ -160,7 +160,7 @@ export const ServicesScreen: React.FC = () => {
           onPress={() => navigation.navigate('CustomerServiceJobs')}
         >
           <View style={styles.customerJobsIcon}>
-            <Ionicons name="briefcase-outline" size={22} color={Colors.infoBlueLight} />
+            <Ionicons name="briefcase-outline" size={22} color={Colors.accent} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.partnerTitle}>My service jobs</Text>
@@ -177,7 +177,7 @@ export const ServicesScreen: React.FC = () => {
           onPress={() => navigation.navigate('PartnerDashboard')}
         >
           <View style={styles.partnerIcon}>
-            <Ionicons name="business-outline" size={22} color={Colors.warning} />
+            <Ionicons name="business-outline" size={22} color={Colors.accent} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.partnerTitle}>Provide services with CarMazium</Text>
@@ -193,9 +193,9 @@ export const ServicesScreen: React.FC = () => {
           const isJobService = service.kind === 'Paid service job';
           const expanded = expandedService === service.title;
           return (
-            <View key={service.title} style={{ marginBottom: 2 }}>
+            <View key={service.title} style={isJobService && expanded ? styles.expandedGroup : undefined}>
               <TouchableOpacity
-                style={[styles.card, { minHeight: 76, alignItems: 'center' }]}
+                style={[styles.card, isJobService && expanded && styles.cardExpanded]}
                 activeOpacity={0.8}
                 onPress={() => isJobService
                   ? setExpandedService(current => current === service.title ? null : service.title)
@@ -205,19 +205,19 @@ export const ServicesScreen: React.FC = () => {
                 accessibilityState={isJobService ? { expanded } : undefined}
                 accessibilityHint={isJobService ? 'Show or hide Post a Job and Find Jobs and Bid' : 'Opens the service form on CarMazium website'}
               >
-                <View style={[styles.iconWrap, { backgroundColor: service.bg, borderColor: service.border }]}>
-                  <Ionicons name={service.icon} size={22} color={service.color} />
+                <View style={styles.iconWrap}>
+                  <Ionicons name={service.icon} size={22} color={Colors.accent} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardTitle}>{service.title}</Text>
-                  {!isJobService && <Text style={styles.cardDesc}>{service.desc}</Text>}
+                  <Text style={styles.cardDesc}>{service.desc}</Text>
                 </View>
                 <Ionicons name={isJobService && expanded ? 'chevron-up' : isJobService ? 'chevron-down' : 'chevron-forward'} size={20} color={Colors.textMuted} />
               </TouchableOpacity>
               {isJobService && expanded && (
-                <View style={{ marginTop: -2, borderWidth: 1, borderColor: Colors.borderSubtle, borderTopWidth: 0, borderBottomLeftRadius: Radius.card, borderBottomRightRadius: Radius.card, overflow: 'hidden' }}>
+                <View style={styles.expandedPanel}>
                   <TouchableOpacity
-                    style={[styles.customerJobsCard, { borderWidth: 0, borderRadius: 0, backgroundColor: Colors.bgCardSolid }]}
+                    style={styles.expandedRow}
                     onPress={() => navigation.navigate('CreateServiceJob', { serviceType: service.title === 'Delivery & Recovery' ? 'DELIVERY' : 'INSPECTION' })}
                     accessibilityRole="button"
                     accessibilityLabel={`Post a Job for ${service.title}`}
@@ -231,7 +231,7 @@ export const ServicesScreen: React.FC = () => {
                   </TouchableOpacity>
                   <View style={{ height: 1, backgroundColor: Colors.borderSubtle }} />
                   <TouchableOpacity
-                    style={[styles.customerJobsCard, { borderWidth: 0, borderRadius: 0, backgroundColor: Colors.bgCardSolid }]}
+                    style={styles.expandedRow}
                     onPress={() => navigation.navigate('ProviderJobs')}
                     accessibilityRole="button"
                     accessibilityLabel={`Find Jobs and Bid for ${service.title}`}
@@ -318,46 +318,52 @@ const styles = StyleSheet.create({
 
   customerJobsCard: {
     flexDirection: 'row',
-    gap: 13,
+    gap: 14,
     alignItems: 'center',
-    backgroundColor: Colors.infoBlueAlpha10,
+    backgroundColor: Colors.bgCardSolid,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.22)',
+    borderColor: Colors.borderSubtle,
     padding: 16,
+    marginBottom: 12,
   },
   customerJobsIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 13,
+    width: 46,
+    height: 46,
+    borderRadius: Radius.inline,
+    borderWidth: 1,
+    borderColor: Colors.borderAccent,
+    backgroundColor: Colors.accentAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.infoBlueAlpha10,
-    borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.22)',
+    flexShrink: 0,
   },
   partnerCard: {
     flexDirection: 'row',
-    gap: 13,
+    gap: 14,
     alignItems: 'center',
-    backgroundColor: Colors.warningAlpha08,
+    backgroundColor: Colors.bgCardSolid,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.warningAlpha30,
+    borderColor: Colors.borderSubtle,
     padding: 16,
+    marginBottom: 12,
   },
   partnerIcon: {
     width: 46,
     height: 46,
     borderRadius: Radius.inline,
+    borderWidth: 1,
+    borderColor: Colors.borderAccent,
+    backgroundColor: Colors.accentAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.warningAlpha10,
+    flexShrink: 0,
   },
   partnerTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.textPrimary,
     marginBottom: 4,
   },
   partnerText: {
@@ -370,19 +376,21 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     gap: 14,
+    alignItems: 'center',
     backgroundColor: Colors.bgCardSolid,
     borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
     padding: 16,
-    alignItems: 'flex-start',
-    minHeight: 130,
+    marginBottom: 12,
   },
   iconWrap: {
     width: 46,
     height: 46,
     borderRadius: Radius.inline,
     borderWidth: 1,
+    borderColor: Colors.borderAccent,
+    backgroundColor: Colors.accentAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -394,16 +402,24 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.textPrimary,
     marginBottom: 4,
   },
   cardDesc: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.size12,
     color: Colors.textSecondary,
-    lineHeight: 19,
+    lineHeight: 18,
   },
 
+  cardExpanded: { marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
+  expandedGroup: { marginBottom: 12 },
+  expandedPanel: {
+    borderWidth: 1, borderTopWidth: 0, borderColor: Colors.borderSubtle,
+    borderBottomLeftRadius: Radius.card, borderBottomRightRadius: Radius.card,
+    overflow: 'hidden', backgroundColor: Colors.bgCardSolid,
+  },
+  expandedRow: { flexDirection: 'row', gap: 13, alignItems: 'center', padding: 16 },
   noteCard: {
     flexDirection: 'row',
     gap: 10,

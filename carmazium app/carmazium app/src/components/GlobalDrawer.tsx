@@ -110,7 +110,7 @@ const PROVIDER_ITEMS: MenuItem[] = [
 // Match that first-run information hierarchy instead of showing a public
 // Buy/Sell/Explore menu in the dealer workspace.
 const DEALER_PRIMARY_ITEMS: MenuItem[] = [
-  { id: 'dealer-home-tab', label: 'Home', icon: 'grid-outline', iconLib: 'ion', tabName: 'DealerHome' },
+  { id: 'dealer-home-tab', label: 'Dashboard', icon: 'grid-outline', iconLib: 'ion', tabName: 'DealerHome' },
   { id: 'dealer-stock-tab', label: 'Stock', icon: 'car-outline', iconLib: 'ion', tabName: 'DealerStock', requiredPermission: 'VIEW_INVENTORY' },
   { id: 'dealer-customers-tab', label: 'Customers', icon: 'people-outline', iconLib: 'ion', tabName: 'DealerCustomers', requiredPermission: 'MANAGE_CRM' },
   { id: 'dealer-auctions-tab', label: 'Live Auctions', icon: 'gavel', iconLib: 'mci', tabName: 'DealerBuyBid', tabParams: { initialSection: 'live' }, requiredPermission: 'VIEW_TRADE' },
@@ -386,7 +386,11 @@ export const GlobalDrawer: React.FC = () => {
   const initial   = userName.charAt(0).toUpperCase();
 
   const renderIcon = (item: MenuItem, active: boolean, goldMode?: boolean, blueMode?: boolean) => {
-    const color = active ? Colors.accent : goldMode ? Colors.warning : blueMode ? Colors.infoBlue : Colors.lightGrey;
+    // Website DashboardSidebar: every group shares one neutral style; only
+    // the active destination is red. (Gold dealer / blue account rows made
+    // the app menu look like a different product.)
+    void goldMode; void blueMode;
+    const color = active ? Colors.accent : Colors.textSecondary;
     return item.iconLib === 'mci'
       ? <MaterialCommunityIcons name={item.icon} size={19} color={color} />
       : <Ionicons name={item.icon} size={19} color={color} />;
@@ -856,26 +860,20 @@ const styles = StyleSheet.create({
   avatar: {
     width: 46,
     height: 46,
-    borderRadius: 14,
-    backgroundColor: Colors.accent,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.accentAlpha15,
+    borderWidth: 1,
+    borderColor: Colors.borderAccent,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  avatarDealer: {
-    backgroundColor: Colors.midOrange_b8860b,
-    borderWidth: 1.5,
-    borderColor: Colors.warning,
-  },
-  avatarSeller: {
-    backgroundColor: Colors.midBlue_1d4ed8,
-    borderWidth: 1.5,
-    borderColor: Colors.infoBlue,
-  },
+  avatarDealer: {},
+  avatarSeller: {},
   avatarText: {
     fontSize: FontSize.xl,
     fontFamily: FontFamily.bold,
-    color: Colors.onAccent,
+    color: Colors.accent,
   },
   userMeta: {
     flex: 1,
@@ -883,13 +881,13 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: FontSize.base,
     fontFamily: FontFamily.bold,
-    color: Colors.white,
+    color: Colors.textPrimary,
     marginBottom: 2,
   },
   userEmail: {
     fontSize: FontSize.xs,
     fontFamily: FontFamily.regular,
-    color: Colors.lightGrey,
+    color: Colors.textMuted,
   },
   verifiedDot: {
     padding: 2,
@@ -902,7 +900,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, gap: 10, borderRadius: 12,
   },
   accountShortcutText: {
-    flex: 1, color: Colors.white, fontFamily: FontFamily.semiBold,
+    flex: 1, color: Colors.textPrimary, fontFamily: FontFamily.semiBold,
     fontSize: FontSize.sm,
   },
 
@@ -926,11 +924,10 @@ const styles = StyleSheet.create({
   groupLabel: {
     fontSize: FontSize.size9,
     fontFamily: FontFamily.bold,
-    color: Colors.iconMuted,
+    color: Colors.textMuted,
     letterSpacing: 1.6,
     marginLeft: 24,
     marginBottom: 8,
-    marginTop: 4,
   },
 
   // Menu rows
@@ -978,10 +975,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentAlpha08,
   },
   iconWrapGold: {
-    backgroundColor: Colors.warningAlpha12,
+    backgroundColor: Colors.whiteAlpha07,
   },
   iconWrapBlue: {
-    backgroundColor: Colors.infoBlueAlpha12,
+    backgroundColor: Colors.whiteAlpha07,
   },
 
   // Labels
@@ -989,7 +986,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: FontSize.base,
     fontFamily: FontFamily.medium,
-    color: Colors.lightGrey,
+    color: Colors.textPrimary,
   },
   rowLabelActive: {
     fontFamily: FontFamily.bold,
@@ -1003,30 +1000,30 @@ const styles = StyleSheet.create({
   },
   rowLabelDealer: {
     flex: 1,
-    fontSize: FontSize.size14,
+    fontSize: FontSize.base,
     fontFamily: FontFamily.medium,
-    color: Colors.midOrange_d4a017,
+    color: Colors.textPrimary,
   },
   rowLabelSeller: {
     flex: 1,
-    fontSize: FontSize.size14,
+    fontSize: FontSize.base,
     fontFamily: FontFamily.medium,
-    color: Colors.infoBlueLight,
+    color: Colors.textPrimary,
   },
   groupLabelDealer: {
-    color: Colors.warning,
+    color: Colors.textMuted,
   },
   dealerSectionLabel: {
     fontSize: FontSize.size9,
     fontFamily: FontFamily.bold,
-    color: Colors.iconMuted,
+    color: Colors.textMuted,
     letterSpacing: 1.2,
     marginLeft: 24,
     marginTop: 10,
     marginBottom: 4,
   },
   groupLabelSeller: {
-    color: Colors.infoBlue,
+    color: Colors.textMuted,
   },
 
   // Active pill badge

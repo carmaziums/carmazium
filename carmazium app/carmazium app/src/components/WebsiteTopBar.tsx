@@ -36,7 +36,15 @@ export const WebsiteTopBar: React.FC = () => {
 
   return (
     <View style={[styles.bar, { paddingTop: insets.top + 7 }]}>
-      <Logo size="sm" width={logoWidth} />
+      {/* Logo goes to the marketplace homepage, as on the website. */}
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Main', { screen: 'Tabs', params: { screen: 'Home' } })}
+        accessibilityRole="link"
+        accessibilityLabel="CarMazium home"
+        activeOpacity={0.8}
+      >
+        <Logo size="sm" width={logoWidth} />
+      </TouchableOpacity>
       <View style={styles.actions}>
         <ThemeToggle />
         {/* Signed-out visitors see Login, like the website header's

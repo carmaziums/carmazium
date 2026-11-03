@@ -125,7 +125,7 @@ const TAB_CONFIG: {
   { name: 'Live', icon: 'gavel', iconActive: 'gavel', label: 'Auctions', iconType: 'material-community' },
   { name: 'Saved', icon: 'heart-outline', iconActive: 'heart', label: 'Saved', iconType: 'ionicons' },
   { name: 'Profile', icon: 'grid-outline', iconActive: 'grid', label: 'Dashboard', iconType: 'ionicons' },
-  { name: 'DealerHome', icon: 'grid-outline', iconActive: 'grid', label: 'Home', iconType: 'ionicons' },
+  { name: 'DealerHome', icon: 'grid-outline', iconActive: 'grid', label: 'Dashboard', iconType: 'ionicons' },
   { name: 'DealerStock', icon: 'car-outline', iconActive: 'car', label: 'Stock', iconType: 'ionicons' },
   { name: 'DealerCustomers', icon: 'people-outline', iconActive: 'people', label: 'Customers', iconType: 'ionicons' },
   { name: 'DealerBuyBid', icon: 'gavel', iconActive: 'gavel', label: 'Auctions', iconType: 'material-community' },
