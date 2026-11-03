@@ -30,7 +30,7 @@ function UnavailableNotice({ children }: { children: ReactNode }) {
 export default function DownloadAppPage() {
   const links = getMobileAppLinks()
   const iosHref = links.ios.href ?? links.iosTestFlight.href
-  const androidHref = links.android.href ?? links.androidApk.href
+  const androidHref = links.androidApk.href ?? links.android.href
   const windowsHref = links.microsoftStore.href
   const anyAvailable = Boolean(iosHref || androidHref || windowsHref)
 
@@ -52,7 +52,7 @@ export default function DownloadAppPage() {
               </a>
               <a href={androidHref ?? "#android"} className={appPromoButtonClass}
                 aria-label={androidHref ? "Open verified CarMazium Android installation" : "See Android installation status"}>
-                <FaGooglePlay className="h-7 w-7 shrink-0 text-emerald-300" aria-hidden="true" />
+                <FaAndroid className="h-7 w-7 shrink-0 text-emerald-300" aria-hidden="true" />
                 <span className="min-w-0 text-xs leading-4">
                   {androidHref ? "Install for" : "Explore"} <strong className="block text-base">Android</strong>
                 </span>
@@ -131,7 +131,7 @@ export default function DownloadAppPage() {
                 <p className="mt-3 min-h-20 text-sm leading-6 text-blue-100">
                   {androidHref
                     ? "Install CarMazium using the option below."
-                    : "Once released, CarMazium for Android will be available through Google Play or as an approved signed APK from this website."}
+                    : "Once approved, download the signed CarMazium Android APK directly from this website. Google Play is not required."}
                 </p>
                 {links.android.href ? (
                   <a href={links.android.href} className={installButtonClass}
@@ -140,7 +140,7 @@ export default function DownloadAppPage() {
                     Get it on Google Play <ExternalLink className="h-4 w-4" aria-hidden="true" />
                   </a>
                 ) : !links.androidApk.href ? (
-                  <UnavailableNotice>Android release coming soon. No approved public APK or Google Play installation is available yet.</UnavailableNotice>
+                  <UnavailableNotice>The independently installable Android APK has not yet been approved for public download.</UnavailableNotice>
                 ) : null}
                 {links.androidApk.href && (
                   <div className="mt-4">

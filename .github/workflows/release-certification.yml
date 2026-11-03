@@ -203,6 +203,10 @@ jobs:
         run: node --test scripts/test-android-apk-release-evidence.test.mjs
       - name: Test first-party hosted APK verification without external requests
         run: node --test scripts/test-first-party-android-apk.test.mjs
+      - name: Check standalone APK staging rejects tampered or mis-signed builds
+        run: node --test scripts/test-stage-android-direct-download.test.mjs
+      - name: Check direct APK download button remains independently approved
+        run: node --test scripts/test-android-direct-download-cta.test.mjs
       - name: Check native seller, MOT and 3D buyer website parity
         run: node --test scripts/test-native-web-vehicle-parity-20261015.test.mjs
       - name: Check genuine homepage inventory and truthful retail cards
