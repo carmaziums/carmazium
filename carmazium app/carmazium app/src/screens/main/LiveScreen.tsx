@@ -371,10 +371,6 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
                   <View style={styles.liveDot} />
                   <Text style={styles.liveBadgeText}>LIVE</Text>
                 </View>
-                <View style={styles.viewerBadge} pointerEvents="none">
-                  <Ionicons name="eye-outline" size={10} color={Colors.onAccentMuted} />
-                  <Text style={styles.viewerCount}>{auction.viewers}</Text>
-                </View>
                 <WishlistHeart listing={auction} />
                 {/* Trust badges sit below the LIVE pill, same left offset */}
                 <View style={{ position: 'absolute', top: 38, left: 12, right: 12 }} pointerEvents="none">
