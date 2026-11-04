@@ -10,7 +10,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { auctionToListingParam, getAuction } from '../../lib/auctionApi';
 
@@ -44,7 +44,7 @@ export const AuctionDeepLinkScreen: React.FC<Props> = ({ navigation, route }) =>
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.bgPrimary} />
+      <StatusBar barStyle={themeStatusBarStyle} backgroundColor={Colors.bgPrimary} />
       {error ? (
         <View style={styles.card}>
           <Ionicons name="alert-circle-outline" size={34} color={Colors.accent} />
@@ -85,5 +85,5 @@ const styles = StyleSheet.create({
   title: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white, textAlign: 'center' },
   body: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center' },
   button: { marginTop: 6, backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 12 },
-  buttonText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white },
+  buttonText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent },
 });

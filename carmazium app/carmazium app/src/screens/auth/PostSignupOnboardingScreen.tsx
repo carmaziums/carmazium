@@ -15,7 +15,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../lib/supabase';
 import { apiClient } from '../../lib/apiClient';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
@@ -410,7 +410,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       <LinearGradient
         colors={[Colors.accentAlpha08, Colors.bgPrimary, Colors.bgPrimary]}
@@ -668,7 +668,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
                 {roleGuide.items.map((item) => (
                   <View key={item} style={styles.guideItem}>
                     <View style={styles.guideCheck}>
-                      <Ionicons name="checkmark" size={12} color={Colors.white} />
+                      <Ionicons name="checkmark" size={12} color={Colors.onAccent} />
                     </View>
                     <Text style={styles.guideItemText}>{item}</Text>
                   </View>

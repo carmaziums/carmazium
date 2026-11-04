@@ -1,4 +1,5 @@
 import { capturePurchaseSnapshot } from '../dealers/purchase-listing-record';
+import { applyHistoryFilters } from './history-search';
 import { buildFeatureConditions } from './feature-search';
 import { buildGradeSearchWhere } from './grade-search';
 import { summariseHistoricalQuotes, ArchivedValuationObservation, QUOTE_HISTORY_MONTHS } from './valuation-quote-history';
@@ -2049,6 +2050,23 @@ export class ListingsService {
      * Find all listings with filtering and pagination
      * Automatically excludes soft-deleted items
      */
+    /**
+     * Live retail listing counts per make, for the search make picker.
+     * Same base visibility as the public catalogue (ACTIVE, not deleted,
+     * CLASSIFIED only). Aggregate counts only — no listing data is exposed.
+     */
+    async getMakeCounts(): Promise<{ make: string; count: number }[]> {
+        const rows = await this.prisma.listing.groupBy({
+            by: ['make'],
+            where: { deletedAt: null, status: 'ACTIVE', type: 'CLASSIFIED', make: { not: null } },
+            _count: { _all: true },
+        });
+        return rows
+            .filter((r) => !!r.make)
+            .map((r) => ({ make: r.make as string, count: r._count._all }))
+            .sort((a, b) => a.make.localeCompare(b.make, 'en-GB'));
+    }
+
     async findAll(filterDto: ListingFilterDto): Promise<{ data: Listing[]; total: number }> {
         const {
             minPrice, maxPrice,
@@ -2133,6 +2151,9 @@ export class ListingsService {
         // ─── Door / Seat minimums ────────────────────────────────────────────
         if (minDoors !== undefined) where.doors = { gte: minDoors };
         if (minSeats !== undefined) where.seats = { gte: minSeats };
+
+        // Door/seat maximums, saved MOT/tax snapshot, seller-declared history.
+        applyHistoryFilters(where, filterDto);
 
         // ─── Engine capacity (cc) ────────────────────────────────────────────
         if (minEngine !== undefined || maxEngine !== undefined) {

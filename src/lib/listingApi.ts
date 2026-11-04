@@ -403,6 +403,13 @@ export interface ListingFilters {
     page?: number
     limit?: number
     deliveryAvailable?: boolean
+    /** Saved DVLA snapshot: MOT status Valid / tax status Taxed. */
+    motValid?: boolean
+    taxedOnly?: boolean
+    /** FULL_MAIN_DEALER | FULL_INDEPENDENT | PARTIAL | NONE */
+    serviceHistories?: string[]
+    /** 1–5 (5 = 5 or more previous keepers). */
+    maxOwners?: number
 }
 
 /**
@@ -459,6 +466,10 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
         if (filters.page) params.append('page', filters.page.toString())
         if (filters.limit) params.append('limit', filters.limit.toString())
         if (filters.deliveryAvailable !== undefined) params.append('deliveryAvailable', String(filters.deliveryAvailable))
+        if (filters.motValid) params.append('motValid', 'true')
+        if (filters.taxedOnly) params.append('taxedOnly', 'true')
+        if (filters.serviceHistories?.length) params.append('serviceHistories', filters.serviceHistories.join(','))
+        if (filters.maxOwners !== undefined) params.append('maxOwners', String(filters.maxOwners))
     }
 
     return apiClient<ListingsResponse>(`/listings${params.toString() ? `?${params.toString()}` : ''}`, {
@@ -590,6 +601,27 @@ export async function boostListing(listingId: string): Promise<BoostResult> {
 /**
  * Get featured listings (public)
  */
+/**
+ * Live retail listing counts per make (GET /listings/facets/makes), keyed by
+ * lower-case make. Empty when the backend is not yet updated, so the make
+ * picker still works without counts.
+ */
+export async function getMakeCounts(): Promise<Record<string, number>> {
+    try {
+        const res = await apiClient<{ data?: { make: string; count: number }[] }>('/listings/facets/makes', {
+            method: 'GET',
+            next: { revalidate: 300 },
+        })
+        const out: Record<string, number> = {}
+        for (const row of res?.data ?? []) {
+            if (row?.make) out[row.make.toLowerCase()] = (out[row.make.toLowerCase()] ?? 0) + Number(row.count || 0)
+        }
+        return out
+    } catch {
+        return {}
+    }
+}
+
 export async function getFeaturedListings(): Promise<Listing[]> {
     try {
         const data = await apiClient<{ data: Listing[] }>('/listings/featured', {

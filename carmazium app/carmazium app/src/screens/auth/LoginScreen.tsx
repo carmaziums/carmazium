@@ -21,9 +21,9 @@ import { Logo } from '../../components/Logo';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 
 import { IconButton } from '../../components/IconButton';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
@@ -80,7 +80,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {/* Background gradient with top red glow */}
       <LinearGradient
@@ -249,6 +249,21 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.signupLink}>Create an account</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Like carmazium.com, browsing doesn't need an account. */}
+            <TouchableOpacity
+              style={styles.guestBtn}
+              onPress={async () => {
+                useAuthStore.getState().setPostLoginRedirect(null);
+                await useAuthStore.getState().completeIntro();
+                const parent = navigation.getParent();
+                if (parent?.canGoBack()) parent.goBack();
+              }}
+              accessibilityRole="button"
+              activeOpacity={0.7}
+            >
+              <Text style={styles.guestBtnText}>Continue browsing without an account</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.bottomSpacer} />
@@ -394,11 +409,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 50,
     borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,
-    backgroundColor: Colors.bgSecondary,
+    minHeight: 50,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   socialBtnDisabled: {
     opacity: 0.6,
@@ -420,6 +437,8 @@ const styles = StyleSheet.create({
     fontSize: FontSize.base,
     color: Colors.textSecondary,
   },
+  guestBtn: { alignSelf: 'center', marginTop: 16, paddingVertical: 8, paddingHorizontal: 12 },
+  guestBtnText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.textMuted, textDecorationLine: 'underline' },
   signupLink: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,

@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { useRouter, useSearchParams } from "next/navigation"
 import { CheckCircle, XCircle, Loader2, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
@@ -100,7 +101,7 @@ function AcceptInviteContent() {
                 <h2 className="text-xl font-semibold text-gray-900">Invitation failed</h2>
                 <p className="mt-1 text-sm text-[var(--text-muted)]">{message}</p>
             </div>
-            <Link href="/auth/login" className="text-sm text-blue-600 hover:underline">
+            <Link href="/auth/login" className={buttonVariants()}>
                 Back to login
             </Link>
         </div>

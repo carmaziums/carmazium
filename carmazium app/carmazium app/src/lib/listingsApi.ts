@@ -448,6 +448,15 @@ export async function searchListings(params: {
   color?: string;
   minDoors?: number;
   minSeats?: number;
+  maxDoors?: number;
+  maxSeats?: number;
+  /** Saved DVLA snapshot: MOT status Valid / tax status Taxed. */
+  motValid?: boolean;
+  taxedOnly?: boolean;
+  /** FULL_MAIN_DEALER | FULL_INDEPENDENT | PARTIAL | NONE */
+  serviceHistories?: string[];
+  /** 1–5, where 5 means "5 or more". */
+  maxOwners?: number;
   euroStandard?: string;
   /** Listings must have ALL of these features (comma-separated, AND-match on backend). */
   features?: string[];
@@ -500,6 +509,12 @@ export async function searchListings(params: {
     if (params.color) query.set('color', params.color);
     if (params.minDoors != null) query.set('minDoors', String(params.minDoors));
     if (params.minSeats != null) query.set('minSeats', String(params.minSeats));
+    if (params.maxDoors != null) query.set('maxDoors', String(params.maxDoors));
+    if (params.maxSeats != null) query.set('maxSeats', String(params.maxSeats));
+    if (params.motValid) query.set('motValid', 'true');
+    if (params.taxedOnly) query.set('taxedOnly', 'true');
+    if (params.serviceHistories?.length) query.set('serviceHistories', params.serviceHistories.join(','));
+    if (params.maxOwners != null) query.set('maxOwners', String(params.maxOwners));
     if (params.euroStandard) query.set('euroStandard', params.euroStandard);
     if (params.features?.length) query.set('features', params.features.join(','));
     // Was `if (params.isImported)` — only ever sent 'true', so there was no
@@ -728,4 +743,23 @@ export async function alsoAuction(
     },
   );
   return res.data;
+}
+
+
+/**
+ * Live retail listing counts per make (GET /listings/facets/makes) for the
+ * search make picker. Returns an empty map when the backend has not been
+ * updated yet, so the picker still works and simply shows no counts.
+ */
+export async function getMakeCounts(): Promise<Record<string, number>> {
+  try {
+    const res = await apiClient<{ data?: { make: string; count: number }[] }>('/listings/facets/makes');
+    const out: Record<string, number> = {};
+    for (const row of res?.data ?? []) {
+      if (row?.make) out[row.make.toLowerCase()] = (out[row.make.toLowerCase()] ?? 0) + Number(row.count || 0);
+    }
+    return out;
+  } catch {
+    return {};
+  }
 }

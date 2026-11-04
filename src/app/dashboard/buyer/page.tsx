@@ -3,6 +3,7 @@
 import * as React from "react"
 import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import Image from "next/image"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/Button"
@@ -132,7 +133,7 @@ function BuyerDashboard() {
                             <h2 className="text-2xl font-bold font-heading flex items-center gap-2">
                                 <TrendingUp size={24} className="text-primary" /> Active Bids
                             </h2>
-                            <Link href="/dashboard/buyer/bids" className="text-primary hover:text-red-600 dark:hover:text-white text-sm font-bold transition-colors">View All</Link>
+                            <Link href="/dashboard/buyer/bids" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>View All</Link>
                         </div>
                         <div className="space-y-4">
                             {loading ? (
@@ -182,7 +183,7 @@ function BuyerDashboard() {
                             <h2 className="text-2xl font-bold font-heading flex items-center gap-2">
                                 <Heart size={24} className="text-pink-400" /> Watchlist
                             </h2>
-                            <Link href="/dashboard/buyer/watchlist" className="text-primary hover:text-red-600 dark:hover:text-white text-sm font-bold transition-colors">View All</Link>
+                            <Link href="/dashboard/buyer/watchlist" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>View All</Link>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {loading ? (
@@ -191,7 +192,8 @@ function BuyerDashboard() {
                                 </div>
                             ) : watchlist.length === 0 ? (
                                 <div className="col-span-3 glass-card p-8 text-center text-[var(--text-muted)]">
-                                    Your watchlist is empty. <Link href="/search" className="text-primary hover:underline">Browse cars</Link>
+                                    <p>Your watchlist is empty.</p>
+                                    <Link href="/search" className={buttonVariants({ size: "sm", className: "mt-4" })}>Browse cars</Link>
                                 </div>
                             ) : (
                                 watchlist.map((item) => (

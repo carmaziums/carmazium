@@ -19,9 +19,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { apiClient } from '../../lib/apiClient';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
@@ -631,8 +631,8 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 onPress={() => handleMessageSeller(offer)}
                 disabled={isActioning}
               >
-                <Ionicons name="chatbubble-ellipses-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
-                <Text style={[styles.actionBtnText, { color: Colors.white }]}>
+                <Ionicons name="chatbubble-ellipses-outline" size={14} color={Colors.onAccent} style={{ marginRight: 6 }} />
+                <Text style={[styles.actionBtnText, { color: Colors.onAccent }]}>
                   Message Seller
                 </Text>
               </TouchableOpacity>
@@ -702,7 +702,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 onPress={() => handleCounterRespond(offer, 'ACCEPTED')}
                 disabled={isActioning || counterBackLoading}
               >
-                <Text style={[styles.actionBtnText, { color: Colors.white }]}>
+                <Text style={[styles.actionBtnText, { color: Colors.onAccent }]}>
                   Accept
                 </Text>
               </TouchableOpacity>
@@ -754,9 +754,9 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                     activeOpacity={0.8}
                   >
                     {counterBackLoading ? (
-                      <ActivityIndicator size="small" color={Colors.white} />
+                      <ActivityIndicator size="small" color={Colors.onAccent} />
                     ) : (
-                      <Text style={[styles.actionBtnText, { color: Colors.white }]}>Submit</Text>
+                      <Text style={[styles.actionBtnText, { color: Colors.onAccent }]}>Submit</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -793,6 +793,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 </View>
                 {deliveryReq.status === 'PENDING' && (
                   <TouchableOpacity
+                    style={styles.deliveryChipBtn}
                     onPress={() => handleCancelDelivery(deliveryReq.id)}
                     disabled={deliveryActionId === deliveryReq.id}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -802,6 +803,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 )}
                 {deliveryReq.status === 'ACCEPTED' && (
                   <TouchableOpacity
+                    style={[styles.deliveryChipBtn, styles.deliveryChipBtnSuccess]}
                     onPress={() => handleCompleteDelivery(deliveryReq.id)}
                     disabled={deliveryActionId === deliveryReq.id}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -868,9 +870,9 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                     activeOpacity={0.8}
                   >
                     {deliverySubmitting ? (
-                      <ActivityIndicator size="small" color={Colors.white} />
+                      <ActivityIndicator size="small" color={Colors.onAccent} />
                     ) : (
-                      <Text style={[styles.actionBtnText, { color: Colors.white }]}>Request Delivery</Text>
+                      <Text style={[styles.actionBtnText, { color: Colors.onAccent }]}>Request Delivery</Text>
                     )}
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -921,9 +923,9 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
           onCreated={() => void fetchData(true)}
         />
       )}
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha06, Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -1025,11 +1027,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
@@ -1051,7 +1055,7 @@ const styles = StyleSheet.create({
   counterBadgeText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // ── Scroll ──
@@ -1086,28 +1090,32 @@ const styles = StyleSheet.create({
   },
   emptyCtaBtn: {
     marginTop: 8,
-    height: 44,
     paddingHorizontal: 28,
     borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 44,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   emptyCtaBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // ── Offer card ──
   offerCard: {
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
     padding: 16,
     gap: 10,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -1217,16 +1225,20 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   actionBtn: {
-    height: 36,
     borderRadius: Radius.inline,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     paddingHorizontal: 14,
+    minHeight: 36,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderHi,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   actionBtnWithdraw: {
-    backgroundColor: 'transparent',
     borderColor: Colors.whiteAlpha15,
+    backgroundColor: Colors.bgCard,
   },
   actionBtnWithdrawText: {
     fontFamily: FontFamily.bold,
@@ -1270,19 +1282,21 @@ const styles = StyleSheet.create({
   },
   actionBtnDeclineCounter: {
     flex: 1,
-    backgroundColor: 'transparent',
     borderColor: Colors.accent,
+    backgroundColor: Colors.bgCard,
   },
   actionBtnAcceptCounter: {
     flex: 1,
     backgroundColor: Colors.success,
     borderColor: Colors.success,
+    borderBottomColor: Colors.blackAlpha45,
   },
   actionBtnMessage: {
     flex: 1,
     backgroundColor: Colors.infoBlue,
     borderColor: Colors.infoBlue,
     flexDirection: 'row',
+    borderBottomColor: Colors.blackAlpha45,
   },
   actionBtnText: {
     fontFamily: FontFamily.bold,
@@ -1295,9 +1309,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'transparent',
     borderColor: Colors.whiteAlpha12,
     alignSelf: 'flex-start',
+    backgroundColor: Colors.bgCard,
   },
   actionBtnCounterBackText: {
     fontFamily: FontFamily.bold,
@@ -1390,23 +1404,43 @@ const styles = StyleSheet.create({
     color: Colors.accentGreen,
     flexShrink: 1,
   },
+  // Raised chip buttons for the delivery-request actions (were underlined links).
+  deliveryChipBtn: {
+    minHeight: 32,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+    borderRadius: Radius.chip,
+    borderWidth: 1,
+    borderBottomWidth: 3,
+    borderColor: Colors.borderHi,
+    backgroundColor: Colors.bgCard,
+  },
+  deliveryChipBtnSuccess: {
+    borderColor: Colors.accentGreen,
+  },
   deliveryLinkMuted: {
-    fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
-    color: Colors.textMuted,
-    textDecorationLine: 'underline',
+    color: Colors.textSecondary,
+    fontFamily: FontFamily.bold,
   },
   deliveryLinkSuccess: {
-    fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
     color: Colors.accentGreen,
-    textDecorationLine: 'underline',
+    fontFamily: FontFamily.bold,
   },
   deliveryCtaBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 6,
+    minHeight: 34,
+    paddingHorizontal: 12,
+    borderRadius: Radius.inline,
+    borderWidth: 1.5,
+    borderBottomWidth: 3,
+    borderColor: Colors.accentGreen,
+    backgroundColor: Colors.bgCard,
+    ...Elevation.card,
   },
   deliveryCtaText: {
     fontFamily: FontFamily.bold,

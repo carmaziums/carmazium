@@ -41,6 +41,36 @@ function normalizeErrorMessage(body: any, status: number, statusText: string): s
 // Endpoints that are always public (no Bearer token required)
 const PUBLIC_ENDPOINTS = ['/auth/supabase-session', '/users/sync', '/auth/logout', '/dvla/lookup'];
 
+// Read-only endpoints the backend serves without a session (no guard, or
+// OptionalSessionAuthGuard). Signed-out visitors can browse these exactly as on
+// carmazium.com; everything else still requires an account.
+const GUEST_READABLE_GET: RegExp[] = [
+  /^\/listings(\?|$)/,
+  /^\/listings\/featured(\?|$)/,
+  /^\/listings\/facets\/makes(\?|$)/,
+  /^\/listings\/valuation(\?|$)/,
+  // /listings/:slug — static siblings (my, stats, earnings…) are guarded and
+  // excluded so a guest never fires a request that can only 401.
+  /^\/listings\/(?!my(\b|-)|stats|performance|earnings|retail-conversion-candidate)[^/?]+(\?|$)/,
+  /^\/damage\/[^/?]+(\?|$)/,
+  /^\/sellers\//,
+  /^\/profiles\/[^/?]+(\/reviews(\/given)?)?(\?|$)/,
+  /^\/blog(\/|\?|$)/,
+  /^\/marketing-popup(\?|$)/,
+  /^\/health(\/|\?|$)/,
+];
+
+// Unguarded, rate-limited POSTs the website also lets visitors use: MaziuM
+// AI search/chat and reporting an unsafe AI answer.
+const GUEST_POST = [/^\/ai\/search$/, /^\/ai\/chat$/, /^\/ai\/report$/];
+
+export function isGuestReadable(endpoint: string, method = 'GET'): boolean {
+  const m = method.toUpperCase();
+  if (m === 'GET') return GUEST_READABLE_GET.some((re) => re.test(endpoint));
+  if (m === 'POST') return GUEST_POST.some((re) => re.test(endpoint));
+  return false;
+}
+
 type ApiClientOptions = RequestInit & { timeoutMs?: number };
 
 export async function apiClient<T>(
@@ -67,7 +97,8 @@ export async function apiClient<T>(
   // This prevents ChatContext from triggering AUTH_REDIRECT when a newly
   // signed-up user is still on the VerifyEmail screen.
   const isPublic = PUBLIC_ENDPOINTS.some((p) => endpoint.startsWith(p));
-  if (!token && !isPublic) {
+  const guestRead = !token && isGuestReadable(endpoint, options.method || 'GET');
+  if (!token && !isPublic && !guestRead) {
     throw new Error('NO_SESSION');
   }
 
@@ -118,6 +149,12 @@ export async function apiClient<T>(
       // Keep raw body if parsing fails
     }
     const message = normalizeErrorMessage(parsedBody, response.status, response.statusText);
+
+    // A signed-out visitor has no session to expire: treat an auth error on a
+    // guest read as "sign in required", never as a logout.
+    if (!token && isAuthError(response.status, message)) {
+      throw new Error('NO_SESSION');
+    }
 
     if (isAuthError(response.status, message)) {
       // Tell the auth store the session is gone, then throw as before.

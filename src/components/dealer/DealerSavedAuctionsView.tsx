@@ -3,6 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { AlertCircle, Clock3, Flame, Gavel, Loader2, RefreshCw, Star, Trash2 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { DealerSavedTabs } from "@/components/dealer/DealerSavedTabs"
@@ -149,7 +150,7 @@ export default function DealerSavedAuctionsView() {
                             <div role="alert" className="flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-400">
                                 <AlertCircle size={16} className="mt-0.5 shrink-0" />
                                 <span>{error}</span>
-                                <button type="button" onClick={() => void load()} className="ml-auto font-bold underline">Retry</button>
+                                <button type="button" onClick={() => void load()} className={buttonVariants({ variant: "outline", size: "sm", className: "ml-auto shrink-0" })}>Retry</button>
                             </div>
                         )}
 
@@ -221,7 +222,6 @@ export default function DealerSavedAuctionsView() {
                                                         <div>
                                                             <div className="text-xs text-[var(--text-muted)]">{bidCount ? "Current bid" : "Starting bid"}</div>
                                                             <div className="text-lg font-black text-[var(--text-primary)]">{money(amount)}</div>
-                                                            <div className="text-xs text-[var(--text-muted)]">{bidCount} {bidCount === 1 ? "bid" : "bids"}</div>
                                                         </div>
                                                         <div className="text-right">
                                                             <div className="flex items-center justify-end gap-1 text-xs text-[var(--text-muted)]">

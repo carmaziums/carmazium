@@ -25,9 +25,9 @@ import { convertAndCompress } from '../../lib/storageHelper';
 import { haptics } from '../../lib/haptics';
 import { BottomSheet } from '../../components/BottomSheet';
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
-import { Colors } from '../../constants/colors';
+import { Colors, themeMode, themeStatusBarStyle } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -45,6 +45,7 @@ import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { Layout } from '../../constants/layout';
 // ─────────────────────────── Types ───────────────────────────
 
 type AuctionStatus = 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED';
@@ -1246,7 +1247,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 activeOpacity={0.8}
               >
                 {editSaving ? (
-                  <ActivityIndicator size="small" color={Colors.white} />
+                  <ActivityIndicator size="small" color={Colors.onAccent} />
                 ) : (
                   <Text style={styles.editSaveBtnText}>Save Changes</Text>
                 )}
@@ -1349,7 +1350,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   activeOpacity={0.8}
                 >
                   {fundsConfirming[item.id]
-                    ? <ActivityIndicator color={Colors.white} />
+                    ? <ActivityIndicator color={Colors.onAccent} />
                     : <Text style={styles.handoverButtonText}>Confirm Vehicle Funds Received</Text>}
                 </TouchableOpacity>
               </View>
@@ -1366,7 +1367,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 activeOpacity={0.8}
               >
                 {handoverUploading[item.id] ? (
-                  <ActivityIndicator color={Colors.white} />
+                  <ActivityIndicator color={Colors.onAccent} />
                 ) : (
                   <Text style={styles.handoverButtonText}>{stage === 'CORRECT_PROOF' ? 'Upload Corrected Handover Proof' : 'Upload Handover Proof'}</Text>
                 )}
@@ -1512,7 +1513,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           onCreated={() => void fetchAuctions(true)}
         />
       )}
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha04, Colors.infoBlueAlpha03, Colors.bgPrimary]}
         start={{ x: 0, y: 0 }}
@@ -1534,6 +1535,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       {/* Status tabs */}
       <ScrollView
         horizontal
+        style={Layout.hScroll}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.tabsContent}
       >
@@ -1631,7 +1633,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 onPress={() => openCreateModal()}
                 activeOpacity={0.85}
               >
-                <MaterialCommunityIcons name="gavel" size={18} color={Colors.white} />
+                <MaterialCommunityIcons name="gavel" size={18} color={Colors.onAccent} />
                 <Text style={styles.createAuctionText}>CREATE AUCTION</Text>
               </TouchableOpacity>
               <View style={{ height: 110 }} />
@@ -1707,7 +1709,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           disabled={retailSubmitting}
           activeOpacity={0.85}
         >
-          {retailSubmitting ? <ActivityIndicator color={Colors.white} size="small" /> : (
+          {retailSubmitting ? <ActivityIndicator color={Colors.onAccent} size="small" /> : (
             <Text style={styles.retailSubmitText}>Create & Pay</Text>
           )}
         </TouchableOpacity>
@@ -1748,7 +1750,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             disabled={digestTags.length >= 10}
             activeOpacity={0.8}
           >
-            <Ionicons name="add" size={18} color={Colors.white} />
+            <Ionicons name="add" size={18} color={Colors.onAccent} />
           </TouchableOpacity>
         </View>
         {digestTags.length > 0 && (
@@ -1791,7 +1793,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           disabled={digestSaving}
           activeOpacity={0.85}
         >
-          {digestSaving ? <ActivityIndicator color={Colors.white} size="small" /> : (
+          {digestSaving ? <ActivityIndicator color={Colors.onAccent} size="small" /> : (
             <Text style={styles.retailSubmitText}>Save Digest</Text>
           )}
         </TouchableOpacity>
@@ -1911,9 +1913,9 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   onPress={() => handleConnectWithWinner(resultsAuction)}
                   disabled={connectingChat}
                 >
-                  {connectingChat ? <ActivityIndicator size="small" color={Colors.white} /> : (
+                  {connectingChat ? <ActivityIndicator size="small" color={Colors.onAccent} /> : (
                     <>
-                      <Ionicons name="chatbubble-ellipses-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
+                      <Ionicons name="chatbubble-ellipses-outline" size={14} color={Colors.onAccent} style={{ marginRight: 6 }} />
                       <Text style={styles.resultsPrimaryBtnText}>Connect with Winner</Text>
                     </>
                   )}
@@ -1966,7 +1968,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                     openCreateModal(relistId);
                   }}
                 >
-                  <MaterialCommunityIcons name="gavel" size={14} color={Colors.white} style={{ marginRight: 6 }} />
+                  <MaterialCommunityIcons name="gavel" size={14} color={Colors.onAccent} style={{ marginRight: 6 }} />
                   <Text style={styles.resultsPrimaryBtnText}>Re-auction</Text>
                 </TouchableOpacity>
               )}
@@ -2086,7 +2088,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                     display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                     onChange={onDateChange}
                     minimumDate={new Date(Date.now() + 60_000)}
-                    themeVariant="dark"
+                    themeVariant={themeMode}
                     style={Platform.OS === 'ios' ? styles.iosDatePicker : undefined}
                   />
                 )}
@@ -2202,10 +2204,10 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 activeOpacity={0.85}
               >
                 {createSubmitting ? (
-                  <ActivityIndicator color={Colors.white} size="small" />
+                  <ActivityIndicator color={Colors.onAccent} size="small" />
                 ) : (
                   <>
-                    <MaterialCommunityIcons name="gavel" size={16} color={Colors.white} />
+                    <MaterialCommunityIcons name="gavel" size={16} color={Colors.onAccent} />
                     <Text style={styles.createSubmitBtnText}>Schedule Auction</Text>
                   </>
                 )}
@@ -2225,8 +2227,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderTopWidth: 1,
     borderTopColor: Colors.borderSubtle,
+    gap: 8,
+    padding: 10,
   },
-  wonAction: { flex: 1, minHeight: 44, justifyContent: 'center', paddingHorizontal: 14 },
+  wonAction: { flex: 1, minHeight: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 10, borderRadius: Radius.inline, borderWidth: 1.5, borderBottomWidth: 3, borderColor: Colors.borderHi, backgroundColor: Colors.bgCard, ...Elevation.card },
   wonActionText: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: FontSize.sm },
   wonActionTextMuted: { color: Colors.textMuted, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm },
   container: {
@@ -2243,12 +2247,14 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 38,
     height: 38,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
@@ -2264,13 +2270,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: Radius.card,
-    backgroundColor: Colors.whiteAlpha04,
+    backgroundColor: Colors.bgCard,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha08,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
   },
   tabActive: {
     backgroundColor: Colors.accent,
     borderColor: Colors.accent,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   tabText: {
     fontFamily: FontFamily.bold,
@@ -2278,7 +2287,7 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   tabTextActive: {
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   list: {
     paddingHorizontal: 20,
@@ -2310,12 +2319,13 @@ const styles = StyleSheet.create({
 
   // ── Card ──
   card: {
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.inline,
     borderWidth: 1,
     borderLeftWidth: 3,
-    borderColor: Colors.whiteAlpha06,
     padding: 12,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   cardRow: {
     flexDirection: 'row',
@@ -2386,9 +2396,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: Radius.card,
-    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
+    borderColor: Colors.borderHi,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   resultsBtnText: {
     fontFamily: FontFamily.bold,
@@ -2490,7 +2502,7 @@ const styles = StyleSheet.create({
   editSaveBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   editDiscard: {
     fontFamily: FontFamily.medium,
@@ -2577,11 +2589,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 42,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
+    borderColor: Colors.borderHi,
+    minHeight: 42,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   resultsViewBtnText: {
     fontFamily: FontFamily.bold,
@@ -2600,7 +2614,7 @@ const styles = StyleSheet.create({
   resultsPrimaryBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // ── Handover section ──
@@ -2644,7 +2658,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   handoverButtonText: {
-    color: Colors.white,
+    color: Colors.onAccent,
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.size14,
   },
@@ -2718,7 +2732,7 @@ const styles = StyleSheet.create({
   createAuctionText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.5,
   },
 
@@ -2728,14 +2742,14 @@ const styles = StyleSheet.create({
   retailPriceRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.inputBg, borderWidth: 1, borderColor: Colors.inputBorder, borderRadius: Radius.inline, paddingHorizontal: 12 },
   retailCurrency: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.textMuted, marginRight: 4 },
   retailInput: { flex: 1, fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.textPrimary, paddingVertical: 12 },
-  retailPlanCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.whiteAlpha08, borderRadius: Radius.inline, padding: 12 },
+  retailPlanCard: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: Radius.inline, padding: 12, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
   retailPlanRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: Colors.whiteAlpha20, alignItems: 'center', justifyContent: 'center' },
   retailPlanLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, flex: 1 },
   retailPlanPrice: { fontFamily: FontFamily.mono, fontSize: FontSize.base, flexShrink: 0 },
   retailErrorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: Colors.errorAlpha08, borderWidth: 1, borderColor: Colors.errorAlpha20, borderRadius: Radius.inline, padding: 10, marginTop: 12 },
   retailErrorText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.error, flex: 1, lineHeight: 17 },
   retailSubmitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 50, borderRadius: Radius.inline, backgroundColor: Colors.infoBlue, marginTop: 16, marginBottom: 4 },
-  retailSubmitText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, letterSpacing: 0.3 },
+  retailSubmitText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.onAccent, letterSpacing: 0.3 },
 
   // ── Digest modal ──
   fieldHintSmall: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, marginBottom: 8, lineHeight: 15 },
@@ -2772,21 +2786,25 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   modalCloseBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   stepIndicator: {
     flexDirection: 'row',
@@ -2843,11 +2861,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.inline,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha08,
     padding: 12,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   listingPickThumb: {
     width: 60,
@@ -2904,7 +2923,7 @@ const styles = StyleSheet.create({
   formHint: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs,
-    color: Colors.borderMuted,
+    color: Colors.textMuted,
     lineHeight: 15,
     marginBottom: 2,
   },
@@ -2998,7 +3017,7 @@ const styles = StyleSheet.create({
   createSubmitBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.3,
   },
 });

@@ -65,15 +65,25 @@ import { BuyerPurchaseHistoryScreen } from '../screens/buyer/BuyerPurchaseHistor
 import { BuyerDeliveryRequestsScreen } from '../screens/buyer/BuyerDeliveryRequestsScreen';
 import { EarningsScreen } from '../screens/seller/EarningsScreen';
 import { SellerProfileScreen } from '../screens/seller/SellerProfileScreen';
+import { SellerAllListingsScreen } from '../screens/seller/SellerAllListingsScreen';
 import { SellerPerformanceScreen } from '../screens/seller/SellerPerformanceScreen';
 import { PaymentHistoryScreen } from '../screens/account/PaymentHistoryScreen';
 import { SaleCancellationsScreen } from '../screens/account/SaleCancellationsScreen';
 import { SellerListingsScreen } from '../screens/seller/SellerListingsScreen';
 import { SellerAuctionsScreen } from '../screens/seller/SellerAuctionsScreen';
 import { AcceptInviteScreen } from '../screens/main/AcceptInviteScreen';
+import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
+import { AdminListingsReviewScreen } from '../screens/admin/AdminListingsReviewScreen';
+import { AdminDealerKycScreen } from '../screens/admin/AdminDealerKycScreen';
+import { AdminHandoversScreen } from '../screens/admin/AdminHandoversScreen';
+import { AdminAccountsScreen } from '../screens/admin/AdminAccountsScreen';
+import { AdminAccountDetailScreen } from '../screens/admin/AdminAccountDetailScreen';
+import { withAdminGate } from '../screens/admin/adminShared';
 import { CarListing } from '../data/listings';
 import type { VehicleValuation } from '../lib/valuationApi';
 import { Colors } from '../constants/colors';
+import { useAuthStore } from '../store/authStore';
+import { GUEST_ROUTES, SignInRequired } from '../components/SignInRequired';
 
 
 // Hoisted to module scope on purpose. Calling withDealerGate(...) inline in the
@@ -94,6 +104,16 @@ const GatedDealerPurchaseDetailScreen = withDealerGate(DealerPurchaseDetailScree
 const GatedDealerEarningsScreen = withDealerGate(DealerEarningsScreen, 'VIEW_ANALYTICS');
 const GatedDealerFinanceScreen = withDealerGate(DealerFinanceScreen);
 
+// Native admin phase 1. Gated on accountRole === 'admin' (the backend enforces
+// ADMIN on every /admin route too). Not in GUEST_ROUTES, so signed-out
+// visitors get the sign-in prompt first.
+const GatedAdminDashboardScreen = withAdminGate(AdminDashboardScreen);
+const GatedAdminListingsReviewScreen = withAdminGate(AdminListingsReviewScreen);
+const GatedAdminDealerKycScreen = withAdminGate(AdminDealerKycScreen);
+const GatedAdminHandoversScreen = withAdminGate(AdminHandoversScreen);
+const GatedAdminAccountsScreen = withAdminGate(AdminAccountsScreen);
+const GatedAdminAccountDetailScreen = withAdminGate(AdminAccountDetailScreen);
+
 export type MainStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
   VehicleDetail: { listing: CarListing };
@@ -111,7 +131,7 @@ export type MainStackParamList = {
   Compare: { initialListing?: CarListing } | undefined;
   Settings: { section?: 'personal' | 'business' | 'verification' | 'notifications' | 'security' | 'payouts' } | undefined;
   DealerAnalytics: undefined;
-  DealerInventory: undefined;
+  DealerInventory: { status?: import('../screens/main/DealerInventoryScreen').FilterTab } | undefined;
   DealerLeads: undefined;
   DealerKYC: {
     businessType?: 'PRIVATE_LIMITED' | 'SOLE_PROPRIETORSHIP';
@@ -201,15 +221,39 @@ export type MainStackParamList = {
   BuyerDeliveryRequests: undefined;
   Earnings: undefined;
   SellerProfile: { sellerId: string };
+  SellerAllListings: { sellerId: string; sellerName?: string };
   SellerPerformance: undefined;
   PaymentHistory: undefined;
   SaleCancellations: undefined;
   // Was `undefined`, which is why the invite link could not be routed and the
   // screen asked the user to paste it instead (AUTH-030).
   AcceptInvite: { token?: string } | undefined;
+  // Native admin phase 1 (ADMIN accounts only; other admin sections open the website).
+  AdminDashboard: undefined;
+  AdminListingsReview: undefined;
+  AdminDealerKyc: undefined;
+  AdminHandovers: undefined;
+  AdminAccounts: undefined;
+  AdminAccountDetail: { userId: string };
 };
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
+
+/**
+ * Signed-out visitors browse like on carmazium.com: public routes render
+ * normally, account-only routes render a sign-in prompt instead of a screen
+ * whose API calls could only fail. Module scope (not inline) so React
+ * Navigation never remounts screens because the layout identity changed.
+ */
+const GuestAwareLayout = ({ children, route }: { children: React.ReactNode; route: { name: string; params?: object } }) => (
+  <GuestGate routeName={route.name} routeParams={route.params}>{children}</GuestGate>
+);
+
+const GuestGate: React.FC<{ routeName: string; routeParams?: object; children: React.ReactNode }> = ({ routeName, routeParams, children }) => {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  if (isAuthenticated || GUEST_ROUTES.has(routeName)) return <>{children}</>;
+  return <SignInRequired routeName={routeName} routeParams={routeParams} />;
+};
 
 export const MainStackNavigator: React.FC = () => {
   return (
@@ -219,6 +263,7 @@ export const MainStackNavigator: React.FC = () => {
         animation: 'slide_from_right',
         contentStyle: { backgroundColor: Colors.bgPrimary },
       }}
+      screenLayout={GuestAwareLayout}
     >
       <Stack.Screen name="Tabs" component={TabNavigator} />
       <Stack.Screen
@@ -411,10 +456,17 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="BuyerPurchaseHistory" component={BuyerPurchaseHistoryScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="BuyerDeliveryRequests" component={BuyerDeliveryRequestsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="SellerProfile" component={SellerProfileScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="SellerAllListings" component={SellerAllListingsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="SellerPerformance" component={SellerPerformanceScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PaymentHistory" component={PaymentHistoryScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="SaleCancellations" component={SaleCancellationsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="AcceptInvite" component={AcceptInviteScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="AdminDashboard" component={GatedAdminDashboardScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="AdminListingsReview" component={GatedAdminListingsReviewScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="AdminDealerKyc" component={GatedAdminDealerKycScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="AdminHandovers" component={GatedAdminHandoversScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="AdminAccounts" component={GatedAdminAccountsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="AdminAccountDetail" component={GatedAdminAccountDetailScreen} options={{ animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 };

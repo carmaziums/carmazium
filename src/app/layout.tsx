@@ -23,6 +23,7 @@ import { MetaAdvancedMatching, MetaPixel } from "@/components/analytics/MetaPixe
 import { TikTokPixel } from "@/components/analytics/TikTokPixel";
 import { CookieConsentBanner } from "@/components/analytics/CookieConsentBanner";
 import { ConsentProvider } from "@/context/ConsentContext";
+import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
 
 // Canonical SEO origin. The apex domain permanently redirects to this host.
 const SITE_URL = "https://www.carmazium.com";
@@ -77,6 +78,13 @@ export const metadata: Metadata = {
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
   },
+  // iPhone/iPad "Add to Home Screen": open full screen with the CarMazium name.
+  appleWebApp: {
+    capable: true,
+    title: "CarMazium",
+    statusBarStyle: "default",
+  },
+  applicationName: "CarMazium",
   other: {
     "geo.region": "GB",
     "geo.placename": "United Kingdom",
@@ -144,6 +152,7 @@ export default function RootLayout({
             </AuthProvider>
           </ThemeProvider>
         </ConsentProvider>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

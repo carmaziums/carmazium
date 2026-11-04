@@ -13,13 +13,16 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Button } from '../../components/Button';
 import { apiClient } from '../../lib/apiClient';
 import { mapApiListingToCarListing, ApiListing, BackendPaginatedResponse } from '../../lib/listingsApi';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 
 import { IconButton } from '../../components/IconButton';
+import { ProfileReviewForm } from '../../components/profile/ProfileReviewForm';
+import { Layout } from '../../constants/layout';
 // ─────────────────────────── interfaces ───────────────────────────
 
 interface SellerProfileData {
@@ -29,7 +32,8 @@ interface SellerProfileData {
     reliabilityScore: number;
     totalSales: number;
     totalListings: number;
-    responseRate: number;
+    /** null until the seller has had an offer to answer. */
+    responseRate: number | null;
     avgResponseHours: number | null;
     createdAt: string;
   };
@@ -119,6 +123,8 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
 
   const [profile, setProfile] = useState<SellerProfileData | null>(null);
   const [listings, setListings] = useState<ApiListing[]>([]);
+  // Real active-listing count; the strip below previews only the first 6.
+  const [listingsTotal, setListingsTotal] = useState<number | null>(null);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [contactPhone, setContactPhone] = useState<ContactPhone | null>(null);
   const [loading, setLoading] = useState(true);
@@ -147,6 +153,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
 
       if (listingsRes.status === 'fulfilled' && Array.isArray(listingsRes.value?.data)) {
         setListings(listingsRes.value.data);
+        setListingsTotal(listingsRes.value.pagination?.total ?? listingsRes.value.data.length);
       }
       if (reviewsRes.status === 'fulfilled' && Array.isArray(reviewsRes.value?.data)) {
         setReviews(reviewsRes.value.data);
@@ -174,7 +181,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
   if (loading) {
     return (
       <View style={[styles.container, styles.centerFill]}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
         <ActivityIndicator color={Colors.accent} />
       </View>
     );
@@ -183,7 +190,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
   if (notFound || !profile) {
     return (
       <View style={[styles.container, styles.centerFill]}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
         <View style={{ height: insets.top }} />
         <IconButton style={[styles.backBtn, { position: 'absolute', top: insets.top + 10, left: 16 }]} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
         <Ionicons name="person-circle-outline" size={48} color={Colors.textMuted} />
@@ -198,9 +205,9 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha06, Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -223,7 +230,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
           {user.profileImage ? (
             <Image source={{ uri: user.profileImage }} style={styles.avatarImg} contentFit="cover" cachePolicy="memory-disk" />
           ) : (
-            <LinearGradient colors={[Colors.darkBlue_2d3c63, Colors.darkBlue_1a2238]} style={styles.avatar}>
+            <LinearGradient colors={[Colors.brandSlate, Colors.brandNavy]} style={styles.avatar}>
               <Text style={styles.avatarText}>{getInitials(user)}</Text>
             </LinearGradient>
           )}
@@ -264,11 +271,11 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
             <Text style={styles.statLabel}>LISTINGS</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{Math.round(stats.responseRate)}%</Text>
+            <Text style={styles.statValue}>{stats.responseRate == null ? '—' : `${Math.round(stats.responseRate)}%`}</Text>
             <Text style={styles.statLabel}>RESPONSE RATE</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{Math.round(stats.reliabilityScore)}</Text>
+            <Text style={styles.statValue}>{(stats.reliabilityScore ?? 0).toFixed(1)}/5</Text>
             <Text style={styles.statLabel}>RELIABILITY</Text>
           </View>
         </View>
@@ -280,7 +287,8 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
         {listings.length === 0 ? (
           <Text style={styles.sectionEmptyText}>No active listings right now.</Text>
         ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+          <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
             {listings.map((l) => (
               <TouchableOpacity key={l.id} style={styles.listingCard} activeOpacity={0.85} onPress={() => openListing(l)}>
                 <Image
@@ -297,6 +305,17 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
               </TouchableOpacity>
             ))}
           </ScrollView>
+        )}
+        {listings.length > 0 && (
+          <View style={styles.viewAllWrap}>
+            <Button
+              label={listingsTotal && listingsTotal > listings.length ? `View all ${listingsTotal.toLocaleString('en-GB')} listings` : 'View all listings'}
+              variant="outline"
+              size="sm"
+              fullWidth
+              onPress={() => navigation?.navigate('SellerAllListings', { sellerId, sellerName: getName(user) || undefined })}
+            />
+          </View>
         )}
 
         {/* Reviews */}
@@ -324,6 +343,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
             ))}
           </View>
         )}
+        <ProfileReviewForm profileUserId={profile.profile.userId} onSaved={() => { void fetchData(); }} />
       </ScrollView>
     </View>
   );
@@ -332,6 +352,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
 // ═══════════════════════════ STYLES ═══════════════════════════════
 
 const styles = StyleSheet.create({
+  viewAllWrap: { paddingHorizontal: 20, marginTop: 14 },
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   centerFill: { alignItems: 'center', justifyContent: 'center', gap: 12 },
 
@@ -346,11 +367,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontSize: FontSize.base,
@@ -381,7 +404,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: FontSize.size26,
     fontFamily: FontFamily.bold,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   heroNameRow: { flexDirection: 'row', alignItems: 'center' },
   heroName: {
@@ -427,12 +450,13 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '47%',
-    backgroundColor: Colors.glassBg,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
     borderRadius: Radius.inline,
     paddingVertical: 16,
     alignItems: 'center',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   statValue: {
     fontSize: FontSize.xl,
@@ -469,9 +493,10 @@ const styles = StyleSheet.create({
     width: 180,
     borderRadius: Radius.inline,
     overflow: 'hidden',
-    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   listingImg: {
     width: '100%',
@@ -491,12 +516,13 @@ const styles = StyleSheet.create({
   },
 
   reviewCard: {
-    backgroundColor: Colors.glassBg,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
     borderRadius: Radius.inline,
     padding: 14,
     marginBottom: 10,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   reviewTopRow: { flexDirection: 'row', alignItems: 'center' },
   reviewAvatar: {

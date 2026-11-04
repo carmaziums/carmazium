@@ -38,7 +38,12 @@ test('web dealer bottom navigation and native route labels have the same informa
   assert.ok(dealerRoutes.includes('label: "Purchases"'));
   assert.ok(tabs.includes("initialRouteName={dealerMode ? 'DealerHome' : 'Home'}"));
   assert.ok(tabs.includes("openDrawer();"));
-  assert.ok(drawer.includes("dealerMode ? 'DEALER WORKSPACE' : 'BUY, SELL & EXPLORE'"));
+  // Website parity: dealer More = dashboard sidebar; elsewhere = header main menu.
+  assert.ok(drawer.includes('dealerMode ? dealerDashboard : userDashboard'));
+  const siteMenu = readFileSync(new URL('../carmazium app/carmazium app/src/components/SiteMenu.tsx', import.meta.url), 'utf8');
+  for (const label of ['Buy Cars','Sell Cars','Get Valuation','TradeXchange','Compare','Pricing','About','Warranty','Post a Job','Find Jobs & Bid']) {
+    assert.ok(siteMenu.includes("label: '" + label + "'"), label);
+  }
 });
 
 test('role switching and permissions retain secured routes and consumer deep links', () => {
@@ -48,7 +53,7 @@ test('role switching and permissions retain secured routes and consumer deep lin
   for (const route of ['Home','Search','Live','Saved','Profile']) {
     assert.ok(tabs.includes('<Tab.Screen name="'+route+'"'));
   }
-  assert.ok(drawer.includes('visiblePrimaryDealerItems'));
+  assert.ok(drawer.includes('visibleDealerItems'));
   assert.ok(drawer.includes('hasDealerPermission(item.requiredPermission)'));
 });
 
@@ -59,7 +64,8 @@ test('native shared header follows actual website logo, notification, account an
   assert.ok(bar.includes("navigation.navigate('Notifications')"));
   assert.ok(bar.includes("navigation.navigate('Settings')"));
   assert.ok(bar.includes('<HamburgerButton websiteStyle />'));
-  assert.ok(bar.includes("backgroundColor: '#1E293B'"));
+  // Themed: bgElevated is #1E293B in the dark palette, white in light.
+  assert.ok(bar.includes('backgroundColor: Colors.bgElevated'));
   assert.ok(!bar.includes("setRole("));
   for (const screen of [
     'DealerProfileScreen.tsx',
@@ -76,7 +82,10 @@ test('website and native match dark navy body + red brand, with a full width bot
   assert.ok(css.includes('--bg-dropdown: #243047'));
   assert.ok(colors.includes("const bgBody = '#1B2538';"));
   assert.ok(colors.includes("const accent = '#ED1C24';"));
-  assert.ok(tabs.includes("backgroundColor: '#243047'"));
+  // Tab bar uses the website --bg-dropdown token, which is #243047 in dark and
+  // white in light (light/dark switch, 2026-11).
+  assert.ok(colors.includes("bgDropdown: '#243047'"));
+  assert.ok(tabs.includes('backgroundColor: Colors.bgDropdown'));
   assert.ok(tabs.includes("left: 0,"));
   assert.ok(tabs.includes("right: 0,"));
   assert.ok(tabs.includes("paddingBottom: insets.bottom"));

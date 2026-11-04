@@ -16,7 +16,8 @@ import { Ionicons } from '@/components/BrandIcon';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { useAuthStore } from '../../store/authStore';
-import { Colors } from '../../constants/colors';
+import { navigationRef } from '../../lib/navigationRef';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -61,7 +62,7 @@ const SLIDES: SlideData[] = [
     headlineRed: 'Dealers can bid.',
     description:
       'Everyone can browse. Only verified motor traders can bid in auctions. Winning dealer fee: £125. Retail buyers pay no platform fee.',
-    buttonLabel: 'SIGN IN',
+    buttonLabel: 'START BROWSING',
     image: require('../../../assets/images/onboarding_car3.png'),
   },
 ];
@@ -157,19 +158,29 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
       flatListRef.current?.scrollToIndex({ index: activeIndex + 1, animated: true });
       setActiveIndex(activeIndex + 1);
     } else {
-      completeIntro();
-      navigation.navigate('Login');
+      // Everyone can browse, like carmazium.com: finishing the intro opens
+      // the app as a guest (RootNavigator), not a login wall.
+      void completeIntro();
     }
   };
 
   const handleSkip = () => {
-    completeIntro();
-    navigation.navigate('Login');
+    void completeIntro();
+  };
+
+  const handleSignIn = async () => {
+    await completeIntro();
+    // RootNavigator remounts into the guest app; open Login over it.
+    setTimeout(() => {
+      if (navigationRef.isReady()) {
+        (navigationRef.navigate as (name: string, params?: object) => void)('Auth', { screen: 'Login' });
+      }
+    }, 250);
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {/* Skip Button (Static on top right) */}
       <TouchableOpacity style={styles.skipBtn} onPress={handleSkip} activeOpacity={0.7}>
@@ -255,11 +266,19 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
         >
           <View style={styles.ctaContent}>
             <Text style={styles.ctaText}>{SLIDES[activeIndex].buttonLabel}</Text>
-            <Ionicons name="arrow-forward" size={16} color={Colors.white} style={styles.ctaIcon} />
+            <Ionicons name="arrow-forward" size={16} color={Colors.onAccent} style={styles.ctaIcon} />
           </View>
           
           {/* Visual Chamfer diagonal cut on bottom right corner */}
           <View style={styles.chamferCut} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.signInLink}
+          onPress={() => void handleSignIn()}
+          accessibilityRole="button"
+          activeOpacity={0.7}
+        >
+          <Text style={styles.signInLinkText}>Already have an account? Sign In</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -267,6 +286,8 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  signInLink: { alignSelf: 'center', marginTop: 14, paddingVertical: 6, paddingHorizontal: 12 },
+  signInLinkText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.textSecondary },
   container: {
     flex: 1,
     backgroundColor: Colors.bgPrimary,
@@ -319,12 +340,16 @@ const styles = StyleSheet.create({
     top: Platform.OS === 'ios' ? 60 : 44,
     right: 24,
     zIndex: 10,
-    padding: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    // Sits on the photo in both themes: a dark pill keeps it legible.
+    borderRadius: 9999,
+    backgroundColor: Colors.blackAlpha45,
   },
   skipText: {
-    fontFamily: FontFamily.medium,
+    fontFamily: FontFamily.semiBold,
     fontSize: FontSize.size12,
-    color: Colors.textSecondary,
+    color: Colors.onAccent,
     letterSpacing: 1.5,
   },
   // Bottom Controls
@@ -363,7 +388,7 @@ const styles = StyleSheet.create({
   ctaText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1.5,
   },
   ctaIcon: {

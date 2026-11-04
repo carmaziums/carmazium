@@ -13,13 +13,15 @@ import {
   RefreshControl,
   TextInput,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Colors } from '../../constants/colors';
+import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { haptics } from '../../lib/haptics';
@@ -35,6 +37,7 @@ import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
+import { getBottomTabBarHeight } from '../../lib/nativeLayoutParity';
 import { formatTransmission } from '../../lib/transmission';
 
 const VIEW_MODE_STORAGE_KEY = 'czm_dealer_inventory_view_mode';
@@ -43,7 +46,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 type StatusTag = 'LIVE' | 'DRAFT' | 'REVIEW' | 'SALE_PENDING' | 'REJECTED' | 'SOLD' | 'OTHER';
-type FilterTab = 'All' | 'Live' | 'Under Review' | 'Rejected' | 'Draft' | 'Sold' | 'Sale pending' | 'Other';
+export type FilterTab = 'All' | 'Live' | 'Under Review' | 'Rejected' | 'Draft' | 'Sold' | 'Sale pending' | 'Other';
 
 interface Listing {
   id: string;
@@ -65,7 +68,18 @@ interface Listing {
   visibility: string;
   linkedListingId?: string | null;
   linkedAuctionStatus?: string | null;
+  /** Public URL slug (website /buy-cars/:slug) for "View listing". */
+  slug: string | null;
+  /** CLASSIFIED (retail) or AUCTION — website card actions depend on it. */
+  listingType: string;
+  /** The auction's linked retail listing, if any (website `linkedListing`). */
+  linkedListing: { id: string; status: string } | null;
 }
+
+/** Website stock card actions (dashboard/dealer/inventory/page.tsx). */
+export type StockAction =
+  | 'publish' | 'sold' | 'cancelSale' | 'edit' | 'view' | 'boost'
+  | 'putOnAuction' | 'alsoRetail' | 'linkedRetail' | 'delete';
 
 // ─── API mapping helper ──────────────────────────────────────────────────────
 const mapApiListing = (l: any): Listing => ({
@@ -96,6 +110,9 @@ const mapApiListing = (l: any): Listing => ({
       : 'OTHER'
   ) as StatusTag,
   linkedListingId: l.linkedListingId ?? null,
+  slug: l.slug ?? null,
+  listingType: String(l.type ?? l.listingType ?? 'CLASSIFIED').toUpperCase(),
+  linkedListing: l.linkedListing?.id ? { id: String(l.linkedListing.id), status: String(l.linkedListing.status ?? '') } : null,
   linkedAuctionStatus: l.linkedListing?.auction?.status ?? null,
   images: l.images || [],
   offersStatus: (l._count?.offers ?? 0) > 0 ? `${l._count.offers} received` : 'No offers yet',
@@ -104,13 +121,13 @@ const mapApiListing = (l: any): Listing => ({
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 const STATUS_STYLE: Record<StatusTag, { bg: string; color: string; label: string }> = {
-  LIVE:         { bg: Colors.success, color: Colors.white, label: 'Live' },
-  DRAFT:        { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'Draft' },
-  REVIEW:       { bg: Colors.warning, color: Colors.white, label: 'Under Review' },
-  SALE_PENDING: { bg: Colors.warning, color: Colors.white, label: 'SALE PENDING' },
-  REJECTED:     { bg: Colors.error, color: Colors.white, label: 'Rejected' },
-  SOLD:         { bg: Colors.infoBlue, color: Colors.white, label: 'Sold' },
-  OTHER:        { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'Not Live' },
+  LIVE:         { bg: Colors.success, color: Colors.onAccent, label: 'Live' },
+  DRAFT:        { bg: Colors.midBlue_6b7280, color: Colors.onAccent, label: 'Draft' },
+  REVIEW:       { bg: Colors.warning, color: Colors.onAccent, label: 'Under Review' },
+  SALE_PENDING: { bg: Colors.warning, color: Colors.onAccent, label: 'SALE PENDING' },
+  REJECTED:     { bg: Colors.error, color: Colors.onAccent, label: 'Rejected' },
+  SOLD:         { bg: Colors.infoBlue, color: Colors.onAccent, label: 'Sold' },
+  OTHER:        { bg: Colors.midBlue_6b7280, color: Colors.onAccent, label: 'Not Live' },
 };
 
 // ─── LISTING DETAIL SUBSCREEN ────────────────────────────────────────────────
@@ -119,8 +136,13 @@ const ListingDetail: React.FC<{
   onBack: () => void;
   navigation?: any;
   onSold: () => void;
+  onDeleted: () => void;
   canManageInventory: boolean;
-}> = ({ listing, onBack, navigation, onSold, canManageInventory }) => {
+  /** Height of the dealer tab bar when shown inside the Stock tab. */
+  bottomInset: number;
+  /** Card shortcut that opened this page (Mark sold / Boost), run once. */
+  initialAction?: 'sold' | 'boost' | null;
+}> = ({ listing, onBack, navigation, onSold, onDeleted, canManageInventory, bottomInset, initialAction }) => {
   const insets = useSafeAreaInsets();
   const [selectedImg, setSelectedImg] = useState(0);
   const thumbW = (SCREEN_WIDTH - 48 - 12) / 3;
@@ -202,21 +224,61 @@ const ListingDetail: React.FC<{
     navigation?.navigate('SellCarFlow', { listingId: listing.id });
   };
 
+  // Delete — same soft delete as the website inventory (DELETE /listings/:id);
+  // the backend checks ownership and team permission.
+  const [deleting, setDeleting] = useState(false);
+  const handleDelete = () => {
+    if (!canManageInventory || deleting) return;
+    Alert.alert('Delete listing', `Delete ${listing.title}? It will be removed from CarMazium and your stock.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          setDeleting(true);
+          try {
+            await apiClient(`/listings/${listing.id}`, { method: 'DELETE' });
+            haptics.success();
+            onDeleted();
+          } catch (err: any) {
+            Alert.alert('Could not delete listing', err?.message ?? 'Please try again.');
+          } finally {
+            setDeleting(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const initialActionDone = useRef(false);
+  useEffect(() => {
+    if (!initialAction || initialActionDone.current || !canManageInventory) return;
+    initialActionDone.current = true;
+    if (initialAction === 'sold') openMarkSold();
+    if (initialAction === 'boost') void handleBoost();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialAction]);
+
   const statusS = STATUS_STYLE[listing.status];
+  const canMarkSold = listing.status === 'LIVE' || listing.status === 'SALE_PENDING';
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha05, Colors.groundClear, Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
       />
 
+      {/* The page scrolls between the header and the action bar; the action
+          bar sits in normal flow above the tab bar, so nothing is hidden
+          behind it and the content can always scroll. */}
       <ScrollView
+        style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
       >
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <View style={[styles.detailHeader, { paddingTop: insets.top + 14 }]}>
@@ -230,7 +292,10 @@ const ListingDetail: React.FC<{
           </View>
           <IconButton style={styles.backBtn} icon={<Ionicons name="ellipsis-horizontal" size={20} color={Colors.white} />} onPress={() =>
               Alert.alert('Options', '', [
-                ...(canManageInventory ? [{ text: 'Edit listing', onPress: handleEditListing }] : []),
+                ...(canManageInventory ? [
+                  { text: 'Edit listing', onPress: handleEditListing },
+                  { text: 'Delete listing', style: 'destructive' as const, onPress: handleDelete },
+                ] : []),
                 { text: 'Cancel', style: 'cancel' },
               ])
             } accessibilityLabel="More options" />
@@ -319,10 +384,24 @@ const ListingDetail: React.FC<{
             <Text style={styles.detailRowValue}>{listing.daysListed} days</Text>
           </View>
         </View>
+        {canManageInventory && (
+          <TouchableOpacity
+            style={[styles.deleteListingBtn, deleting && { opacity: 0.6 }]}
+            onPress={handleDelete}
+            disabled={deleting}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+          >
+            {deleting
+              ? <ActivityIndicator color={Colors.accent} />
+              : <Ionicons name="trash-outline" size={17} color={Colors.accent} />}
+            <Text style={styles.deleteListingText}>Delete listing</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       {/* ── Bottom CTAs ─────────────────────────────────────────────────────── */}
-      <View style={[styles.detailFooterWrap, { paddingBottom: insets.bottom + 16 }]}>
+      <View style={[styles.detailFooterWrap, { paddingBottom: (bottomInset > 0 ? bottomInset : insets.bottom) + 14 }]}>
         {/* Put on Auction — only ACTIVE listings can be converted; the
             destination screen (SellerAuctionsScreen) re-validates eligibility
             itself, so this is a convenience shortcut, not the only gate. */}
@@ -332,11 +411,18 @@ const ListingDetail: React.FC<{
             activeOpacity={0.85}
             onPress={() => navigation?.navigate('SellerAuctions', { preselectListingId: listing.id })}
           >
-            <MaterialCommunityIcons name="gavel" size={16} color={Colors.white} style={{ marginRight: 6 }} />
+            <MaterialCommunityIcons name="gavel" size={16} color={Colors.onAccent} style={{ marginRight: 6 }} />
             <Text style={styles.putOnAuctionBtnText}>PUT ON AUCTION</Text>
           </TouchableOpacity>
         )}
-        {canManageInventory && (
+        {canManageInventory && listing.status === 'DRAFT' && (
+          // Website: a draft's main action is Complete & Publish.
+          <TouchableOpacity style={[styles.putOnAuctionBtn, { backgroundColor: Colors.success }]} activeOpacity={0.85} onPress={handleEditListing}>
+            <Ionicons name="cloud-upload-outline" size={16} color={Colors.onAccent} style={{ marginRight: 6 }} />
+            <Text style={styles.putOnAuctionBtnText}>COMPLETE & PUBLISH</Text>
+          </TouchableOpacity>
+        )}
+        {canManageInventory && listing.status !== 'DRAFT' && (
         <View style={styles.detailFooter}>
         <TouchableOpacity
           style={[styles.boostBtn, boosting && { opacity: 0.6 }]}
@@ -355,13 +441,13 @@ const ListingDetail: React.FC<{
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.markSoldBtn, listing.status !== 'LIVE' && styles.markSoldBtnDim]}
+          style={[styles.markSoldBtn, !canMarkSold && styles.markSoldBtnDim]}
           activeOpacity={0.85}
-          onPress={listing.status === 'LIVE' ? openMarkSold : undefined}
+          onPress={canMarkSold ? openMarkSold : undefined}
         >
-          <Ionicons name="checkmark-circle-outline" size={16} color={Colors.white} style={{ marginRight: 6 }} />
+          <Ionicons name="checkmark-circle-outline" size={16} color={Colors.onAccent} style={{ marginRight: 6 }} />
           <Text style={styles.markSoldBtnText}>
-            {listing.status === 'LIVE' ? 'MARK SOLD' : STATUS_STYLE[listing.status].label}
+            {canMarkSold ? 'MARK SOLD' : STATUS_STYLE[listing.status].label}
           </Text>
         </TouchableOpacity>
         </View>
@@ -378,7 +464,7 @@ const ListingDetail: React.FC<{
       />
       {boostToast && (
         <View style={styles.boostToast} pointerEvents="none">
-          <Ionicons name="checkmark-circle" size={16} color={Colors.white} />
+          <Ionicons name="checkmark-circle" size={16} color={Colors.onAccent} />
           <Text style={styles.boostToastText}>{boostToast}</Text>
         </View>
       )}
@@ -413,7 +499,7 @@ const ListingDetail: React.FC<{
             disabled={markSoldSubmitting}
           >
             {markSoldSubmitting ? (
-              <ActivityIndicator color={Colors.white} />
+              <ActivityIndicator color={Colors.onAccent} />
             ) : (
               <Text style={styles.markSoldConfirmBtnText}>Confirm Sold</Text>
             )}
@@ -431,12 +517,13 @@ const InventoryRow: React.FC<{
   onPress: (id: string) => void;
   onPutOnAuction?: (id: string) => void;
   onOpenLinkedAuction?: (linkedId: string) => void;
+  onAction: (id: string, action: StockAction) => void;
   canManageInventory: boolean;
-}> = React.memo(({ listing, onPress, onPutOnAuction, onOpenLinkedAuction, canManageInventory }) => {
+}> = React.memo(({ listing, onPress, onOpenLinkedAuction, onAction, canManageInventory }) => {
   const s = STATUS_STYLE[listing.status];
+  const [menuOpen, setMenuOpen] = useState(false);
   const hasLinkedAuction = !!listing.linkedListingId;
   const linkedAuctionLive = listing.linkedAuctionStatus === 'ACTIVE';
-  const canPutOnAuction = canManageInventory && listing.status === 'LIVE' && !hasLinkedAuction;
   return (
     <TouchableOpacity
       style={styles.websiteStockCard}
@@ -496,8 +583,8 @@ const InventoryRow: React.FC<{
         </View>
       </View>
 
-      {/* Existing linked-auction and dealer-only actions stay on the card. */}
-      {hasLinkedAuction ? (
+      {/* Linked auction status (informational, opens the auction). */}
+      {hasLinkedAuction && (
         <TouchableOpacity style={[styles.rowCrossListChip, linkedAuctionLive && styles.rowCrossListChipLive]}
           onPress={() => listing.linkedListingId && onOpenLinkedAuction?.(listing.linkedListingId)}
           accessibilityRole="button" accessibilityLabel="Open linked auction" activeOpacity={0.8}>
@@ -507,18 +594,81 @@ const InventoryRow: React.FC<{
               (listing.linkedAuctionStatus ? ` · ${listing.linkedAuctionStatus}` : '')}
           </Text>
         </TouchableOpacity>
-      ) : canPutOnAuction && onPutOnAuction ? (
-        <TouchableOpacity style={styles.rowPutOnAuction}
-          onPress={() => onPutOnAuction(listing.id)}
-          accessibilityRole="button" accessibilityLabel="Also list on auction" activeOpacity={0.8}>
-          <Ionicons name="hammer-outline" size={13} color={Colors.accent} />
-          <Text style={styles.rowPutOnAuctionText}>Also list on auction</Text>
-        </TouchableOpacity>
-      ) : null}
-      <View style={styles.stockOpenRow}>
-        <Text style={styles.stockOpenText}>View details and actions</Text>
-        <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-      </View>
+      )}
+
+      {/* Website stock card: status-dependent primary action + Edit. */}
+      {canManageInventory && (
+        <View style={styles.cardActions}>
+          {listing.status === 'DRAFT' ? (
+            <TouchableOpacity style={styles.cardPrimary} onPress={() => onAction(listing.id, 'publish')} accessibilityRole="button" activeOpacity={0.85}>
+              <Ionicons name="cloud-upload-outline" size={17} color={Colors.onAccent} />
+              <Text style={styles.cardPrimaryText} numberOfLines={2}>Complete & Publish</Text>
+            </TouchableOpacity>
+          ) : listing.status === 'SOLD' ? (
+            <TouchableOpacity style={styles.cardDanger} onPress={() => onAction(listing.id, 'cancelSale')} accessibilityRole="button" activeOpacity={0.85}>
+              <Ionicons name="close-circle-outline" size={17} color={Colors.accent} />
+              <Text style={styles.cardDangerText}>Cancel sale</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.cardPrimary} onPress={() => onAction(listing.id, 'sold')} accessibilityRole="button" activeOpacity={0.85}>
+              <Ionicons name="checkmark-circle-outline" size={17} color={Colors.onAccent} />
+              <Text style={styles.cardPrimaryText}>Mark sold</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.cardSecondary} onPress={() => onAction(listing.id, 'edit')} accessibilityRole="button" activeOpacity={0.85}>
+            <Ionicons name="create-outline" size={17} color={Colors.textPrimary} />
+            <Text style={styles.cardSecondaryText}>Edit</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <TouchableOpacity style={styles.moreOptionsBtn} onPress={() => setMenuOpen(v => !v)} accessibilityRole="button" accessibilityState={{ expanded: menuOpen }}>
+        <Text style={styles.moreOptionsText}>{menuOpen ? 'Hide more options' : 'More options'}</Text>
+        <Ionicons name={menuOpen ? 'chevron-down' : 'chevron-forward'} size={15} color={Colors.textMuted} />
+      </TouchableOpacity>
+
+      {menuOpen && (
+        <View style={styles.moreOptions}>
+          {!!listing.slug && (
+            <TouchableOpacity style={styles.optionRow} onPress={() => onAction(listing.id, 'view')} accessibilityRole="button">
+              <Ionicons name="eye-outline" size={18} color={Colors.textPrimary} />
+              <Text style={styles.optionText}>View listing</Text>
+            </TouchableOpacity>
+          )}
+          {canManageInventory && (
+            <>
+              {listing.status === 'LIVE' && (
+                <TouchableOpacity style={[styles.optionRow, styles.optionAmber]} onPress={() => onAction(listing.id, 'boost')} accessibilityRole="button">
+                  <Ionicons name="trending-up-outline" size={18} color={Colors.warning} />
+                  <Text style={[styles.optionText, { color: Colors.warning }]}>Boost to featured</Text>
+                </TouchableOpacity>
+              )}
+              {listing.listingType === 'CLASSIFIED' && listing.status === 'LIVE' && !listing.linkedListingId && (
+                <TouchableOpacity style={[styles.optionRow, styles.optionAmber]} onPress={() => onAction(listing.id, 'putOnAuction')} accessibilityRole="button">
+                  <MaterialCommunityIcons name="gavel" size={18} color={Colors.warning} />
+                  <Text style={[styles.optionText, { color: Colors.warning }]}>Put to auction</Text>
+                </TouchableOpacity>
+              )}
+              {listing.listingType === 'AUCTION' && listing.status === 'LIVE' && !listing.linkedListing && (
+                <TouchableOpacity style={[styles.optionRow, styles.optionBlue]} onPress={() => onAction(listing.id, 'alsoRetail')} accessibilityRole="button">
+                  <Ionicons name="pricetag-outline" size={18} color={Colors.infoBlue} />
+                  <Text style={[styles.optionText, { color: Colors.infoBlue }]}>Also list for retail</Text>
+                </TouchableOpacity>
+              )}
+              {listing.listingType === 'AUCTION' && listing.status === 'LIVE' && listing.linkedListing?.status === 'DRAFT' && (
+                <TouchableOpacity style={[styles.optionRow, styles.optionAmber]} onPress={() => onAction(listing.id, 'linkedRetail')} accessibilityRole="button">
+                  <Ionicons name="pricetag-outline" size={18} color={Colors.warning} />
+                  <Text style={[styles.optionText, { color: Colors.warning }]}>Complete linked retail listing</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={[styles.optionRow, styles.optionRed]} onPress={() => onAction(listing.id, 'delete')} accessibilityRole="button">
+                <Ionicons name="trash-outline" size={18} color={Colors.accent} />
+                <Text style={[styles.optionText, { color: Colors.accent }]}>Delete listing</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      )}
     </TouchableOpacity>
   );});
 
@@ -558,11 +708,18 @@ const InventoryGridCard: React.FC<{ listing: Listing; onPress: (id: string) => v
   );});
 
 // ─── MAIN INVENTORY SCREEN ───────────────────────────────────────────────────
-export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+export const DealerInventoryScreen: React.FC<{ navigation?: any; route?: any }> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const { hasPermission } = useDealerAccess(true);
   const canManageInventory = hasPermission('MANAGE_INVENTORY');
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
+  const requestedStatus: FilterTab | undefined = route?.params?.status;
+  const [activeFilter, setActiveFilter] = useState<FilterTab>(requestedStatus ?? 'All');
+  // Menu Stock › Live / Drafts / Sold… (website Stock submenu) re-targets the
+  // already-mounted tab, so follow the param whenever it changes.
+  useEffect(() => {
+    if (requestedStatus) setActiveFilter(requestedStatus);
+  }, [requestedStatus]);
   // One panel at a time below the header: every status, the sort orders, or
   // the two import actions. Replaces the sideways-scrolling status strip
   // whose later statuses were hidden off the right-hand edge.
@@ -634,6 +791,56 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
     const l = listings.find((x) => x.id === id);
     if (l) setSelectedListing(l);
   }, [listings]);
+  const [detailAction, setDetailAction] = useState<'sold' | 'boost' | null>(null);
+  const [cancelSaleFor, setCancelSaleFor] = useState<Listing | null>(null);
+  // Website stock card actions, by status (dashboard/dealer/inventory/page.tsx).
+  const handleStockAction = useCallback((id: string, action: StockAction) => {
+    const l = listings.find((x) => x.id === id);
+    if (!l) return;
+    switch (action) {
+      case 'publish':
+      case 'edit':
+        navigation?.navigate('SellCarFlow', { listingId: l.id });
+        return;
+      case 'view':
+        if (l.slug) navigation?.navigate('VehicleDeepLink', { slug: l.slug });
+        return;
+      case 'sold':
+      case 'boost':
+        setDetailAction(action);
+        setSelectedListing(l);
+        return;
+      case 'cancelSale':
+        setCancelSaleFor(l);
+        return;
+      case 'putOnAuction':
+        navigation?.navigate('SellerAuctions', { preselectListingId: l.id });
+        return;
+      case 'alsoRetail':
+        navigation?.navigate('SellerAuctions', { alsoRetailListingId: l.id });
+        return;
+      case 'linkedRetail':
+        if (l.linkedListing) navigation?.navigate('SellCarFlow', { listingId: l.linkedListing.id });
+        return;
+      case 'delete':
+        Alert.alert('Delete listing', `Are you sure you want to delete ${l.title}?`, [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete', style: 'destructive', onPress: async () => {
+              try {
+                await apiClient(`/listings/${l.id}`, { method: 'DELETE' });
+                haptics.success();
+                fetchListings(true);
+              } catch (err: any) {
+                Alert.alert('Could not delete listing', err?.message ?? 'Please try again.');
+              }
+            },
+          },
+        ]);
+        return;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listings, navigation]);
   const handlePutOnAuction = useCallback((listingId: string) => {
     navigation?.navigate('SellerAuctions', { preselectListingId: listingId });
   }, [navigation]);
@@ -645,12 +852,12 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       <InventoryRow
         listing={item}
         onPress={handleRowPress}
-        onPutOnAuction={canManageInventory ? handlePutOnAuction : undefined}
         onOpenLinkedAuction={canManageInventory ? handleOpenLinkedAuction : undefined}
+        onAction={handleStockAction}
         canManageInventory={canManageInventory}
       />
     ),
-    [handleRowPress, handlePutOnAuction, handleOpenLinkedAuction, canManageInventory],
+    [handleRowPress, handleOpenLinkedAuction, handleStockAction, canManageInventory],
   );
   const renderInventoryGrid = useCallback(
     ({ item }: { item: Listing }) => <InventoryGridCard listing={item} onPress={handleRowPress} />,
@@ -661,10 +868,16 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
     return (
       <ListingDetail
         listing={selectedListing}
-        onBack={() => setSelectedListing(null)}
+        initialAction={detailAction}
+        onBack={() => { setSelectedListing(null); setDetailAction(null); }}
         navigation={navigation}
         canManageInventory={canManageInventory}
+        bottomInset={route?.name === 'DealerStock' ? getBottomTabBarHeight(fontScale, insets.bottom) : 0}
         onSold={() => {
+          setSelectedListing(null);
+          fetchListings();
+        }}
+        onDeleted={() => {
           setSelectedListing(null);
           fetchListings();
         }}
@@ -699,17 +912,12 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
   ];
   const activeFilterInfo = FILTERS.find(f => f.label === activeFilter) ?? FILTERS[0];
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
-        style={StyleSheet.absoluteFillObject}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0.5 }}
-      />
-
-      <WebsiteTopBar />
+  // Title, actions, search, status/sort controls and their open panels
+  // scroll with the stock (list header element, so the search keeps focus).
+  // Fixed above the list they could fill the screen with a larger system
+  // font size, leaving the vehicles no height to scroll.
+  const stockHeader = (
+    <View style={viewMode === 'grid' ? styles.gridHeaderBleed : undefined}>
       {/* The same global web header stays visible while the stock-specific
           view picker and inventory count remain below it. */}
       <View style={[styles.listHeader, { paddingTop: 8 }]}>
@@ -730,7 +938,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         <View style={styles.stockHeaderActions}>
           <TouchableOpacity style={styles.stockAddAction} onPress={() => navigation?.navigate('SellCarFlow')}
             accessibilityRole="button" accessibilityLabel="Add Vehicle">
-            <Ionicons name="add-circle-outline" size={18} color={Colors.white} />
+            <Ionicons name="add-circle-outline" size={18} color={Colors.onAccent} />
             <Text style={styles.stockAddActionText}>Add Vehicle</Text>
           </TouchableOpacity>
           {/* Import Listing and Bulk Import stay one tap away, behind a
@@ -848,31 +1056,48 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       <View style={styles.sortRow}>
         <Text style={styles.sortLabel}>{filtered.length} {filtered.length === 1 ? 'vehicle' : 'vehicles'} shown</Text>
       </View>
+    </View>
+  );
+  // Load error / first-load skeleton render inside the list.
+  const listStatus = fetchError ? (
+    <View style={{ marginHorizontal: 16, marginTop: 20 }}>
+      <ErrorBanner message="Could not load inventory. Check your connection." onRetry={() => fetchListings()} />
+    </View>
+  ) : loading && listings.length === 0 ? (
+    <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 12 }}>
+      {[0, 1, 2, 3].map((i) => (
+        <Skeleton key={i} w={SCREEN_WIDTH - (viewMode === 'grid' ? 72 : 32)} h={76} r={18} />
+      ))}
+    </View>
+  ) : null;
 
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
+      <LinearGradient
+        colors={[Colors.accentAlpha04, Colors.groundClear, Colors.bgPrimary]}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0.5 }}
+      />
+
+      <WebsiteTopBar />
       {/* ── Listing cards ─────────────────────────────────────────────────── */}
-      {fetchError ? (
-        <View style={{ marginHorizontal: 16, marginTop: 20 }}>
-          <ErrorBanner message="Could not load inventory. Check your connection." onRetry={() => fetchListings()} />
-        </View>
-      ) : loading && listings.length === 0 ? (
-        <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 12 }}>
-          {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} w={SCREEN_WIDTH - 32} h={76} r={18} />
-          ))}
-        </View>
-      ) : (
       <FlatList
         key={viewMode}
         style={styles.listScroll}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={viewMode === 'grid' ? styles.gridContent : styles.stockListContent}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[viewMode === 'grid' ? styles.gridContent : styles.stockListContent,
+          { paddingBottom: getBottomTabBarHeight(fontScale, insets.bottom) + 24 }]}
+        ListHeaderComponent={stockHeader}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchListings(true)} tintColor={Colors.accent} colors={[Colors.accent]} />}
-        data={filtered}
+        data={listStatus ? [] : filtered}
         numColumns={viewMode === 'grid' ? 2 : 1}
         columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
         keyExtractor={(item) => item.id}
         renderItem={viewMode === 'grid' ? renderInventoryGrid : renderInventoryRow}
-        ListEmptyComponent={
+        ListEmptyComponent={listStatus ?? (
           <View style={{ marginTop: 40 }}>
             <EmptyState
               icon="car-outline"
@@ -882,9 +1107,8 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
                 : 'Add your first vehicle to start building your dealership inventory.'}
             />
           </View>
-        }
+        )}
       />
-      )}
 
       {/* Bulk CSV Import Modal */}
       {canManageInventory && (
@@ -902,12 +1126,47 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
           onImported={() => { setShowImportModal(false); /* fetchListings called by onClose */ }}
         />
       )}
+      {/* Website "Cancel sale" — the same reviewed cancellation request flow. */}
+      {cancelSaleFor && (
+        <SaleCancellationSheet
+          visible
+          listingId={cancelSaleFor.id}
+          vehicleTitle={cancelSaleFor.title}
+          onClose={() => setCancelSaleFor(null)}
+          onCreated={() => { setCancelSaleFor(null); fetchListings(true); }}
+        />
+      )}
     </View>
   );
 };
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
+  // Website stock card actions.
+  cardActions: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  cardPrimary: {
+    flex: 1, minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingHorizontal: 10, borderRadius: Radius.inline, backgroundColor: Colors.success,
+  },
+  cardPrimaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent, textAlign: 'center', flexShrink: 1 },
+  cardDanger: {
+    flex: 1, minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha30, backgroundColor: Colors.accentAlpha05,
+  },
+  cardDangerText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent },
+  cardSecondary: {
+    flex: 1, minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.border,
+  },
+  cardSecondaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textPrimary },
+  moreOptionsBtn: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 6 },
+  moreOptionsText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textMuted },
+  moreOptions: { gap: 8, marginTop: 4, paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.border },
+  optionRow: { minHeight: 46, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, borderRadius: Radius.inline },
+  optionText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textPrimary },
+  optionAmber: { backgroundColor: Colors.warningAlpha10 },
+  optionBlue: { backgroundColor: Colors.infoBlueAlpha10 },
+  optionRed: { backgroundColor: Colors.accentAlpha05 },
   container: {
     flex: 1,
     backgroundColor: Colors.bgPrimary,
@@ -938,7 +1197,7 @@ const styles = StyleSheet.create({
     minHeight: 46, paddingHorizontal: 16,
   },
   stockAddActionText: {
-    fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white,
+    fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent,
   },
   stockSecondaryAction: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -1090,7 +1349,7 @@ const styles = StyleSheet.create({
     color: Colors.iconMuted,
   },
   filterTabTextActive: {
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   filterTabCount: {
     fontFamily: FontFamily.bold,
@@ -1156,7 +1415,7 @@ const styles = StyleSheet.create({
   statusBadgeText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size8,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.5,
   },
   listingInfo: {
@@ -1249,6 +1508,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 92,
   },
+  // Header rows carry their own 20pt gutters inside the padded grid.
+  gridHeaderBleed: { marginHorizontal: -20 },
   gridRow: {
     justifyContent: 'space-between',
   },
@@ -1297,7 +1558,7 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 24,
     paddingTop: 12,
-    backgroundColor: 'rgba(10,10,12,0.92)',
+    backgroundColor: Colors.bgElevated,
     borderTopWidth: 1,
     borderTopColor: Colors.whiteAlpha05,
     flexDirection: 'row',
@@ -1544,7 +1805,7 @@ const styles = StyleSheet.create({
   heroBadgeText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size8,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.5,
   },
 
@@ -1618,14 +1879,10 @@ const styles = StyleSheet.create({
 
   // Footer CTAs
   detailFooterWrap: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     paddingHorizontal: 20,
     paddingTop: 14,
     gap: 10,
-    backgroundColor: 'rgba(10,10,12,0.95)',
+    backgroundColor: Colors.bgElevated,
     borderTopWidth: 1,
     borderTopColor: Colors.whiteAlpha05,
   },
@@ -1633,6 +1890,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
+  deleteListingBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    marginHorizontal: 20, marginTop: 20, minHeight: 48,
+    borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha30,
+  },
+  deleteListingText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.base, color: Colors.accent },
   putOnAuctionBtn: {
     height: 48,
     borderRadius: Radius.card,
@@ -1644,7 +1907,7 @@ const styles = StyleSheet.create({
   putOnAuctionBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.5,
   },
   boostBtn: {
@@ -1686,7 +1949,7 @@ const styles = StyleSheet.create({
   markSoldBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1,
   },
 
@@ -1706,7 +1969,7 @@ const styles = StyleSheet.create({
   boostToastText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // ── Mark Sold modal ──
@@ -1758,6 +2021,6 @@ const styles = StyleSheet.create({
   markSoldConfirmBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 });

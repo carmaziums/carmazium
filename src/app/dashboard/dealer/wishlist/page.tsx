@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation"
 import DealerSavedAuctionsView from "@/components/dealer/DealerSavedAuctionsView"
 import { DealerSavedTabs } from "@/components/dealer/DealerSavedTabs"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { Button } from "@/components/ui/Button"
@@ -90,7 +91,8 @@ function SavedRetailContent() {
                         </div>
                     ) : items.filter(item => item.listing.type === "CLASSIFIED").length === 0 ? (
                         <div className="glass-card p-12 text-center text-[var(--text-muted)]">
-                            No saved retail cars. <Link href="/search" className="inline-flex min-h-11 items-center text-primary underline">Browse retail cars</Link>
+                            <p>No saved retail cars.</p>
+                            <Link href="/search" className={buttonVariants({ size: "sm", className: "mt-4" })}>Browse retail cars</Link>
                         </div>
                     ) : (
                         <>

@@ -43,7 +43,7 @@ test('native follows website chat layout, status indicator and persistent quick-
   assert.match(native, /botAccentDot:[\s\S]*?backgroundColor: Colors\.success/);
   assert.match(native, /Math\.min\(540, maxBoxHeight\)/);
   assert.match(native, /Math\.min\(340, windowWidth - 24\)/);
-  assert.match(native, /<ScrollView horizontal showsHorizontalScrollIndicator=\{false\}/);
+  assert.match(native, /<ScrollView horizontal\s+(?:style=\{Layout\.hScroll\}\s+)?showsHorizontalScrollIndicator=\{false\}/);
   assert.match(native, /quickReplies\.map\(\(q\) =>/);
   assert.match(native, /disabled=\{isThinking \|\| hasAiConsent !== true\}/);
   assert.ok(native.indexOf('Website-equivalent persistent daily quick replies') >

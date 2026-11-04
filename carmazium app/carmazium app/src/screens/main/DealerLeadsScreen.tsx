@@ -23,7 +23,7 @@ import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { createChatRoom } from '../../lib/chatApi';
@@ -37,7 +37,8 @@ import { IconButton } from '../../components/IconButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
-import { getScrollableStageHeight } from '../../lib/nativeLayoutParity';
+import { getBottomTabBarHeight, getScrollableStageHeight } from '../../lib/nativeLayoutParity';
+import { Layout } from '../../constants/layout';
 type FilterTab = 'All' | 'Hot' | 'Warm' | 'New' | 'Won' | 'Lost';
 type ViewMode = 'list' | 'board';
 
@@ -198,9 +199,9 @@ const LeadDetail: React.FC<{
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha05, Colors.groundClear, Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -266,7 +267,8 @@ const LeadDetail: React.FC<{
           {staffOptions.length > 0 && (
             <>
               <Text style={styles.sectionLabel}>ASSIGNED TO</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 24 }}>
+              <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 24 }}>
                 <TouchableOpacity
                   style={[styles.staffChip, !lead.assignedToId && styles.staffChipActive]}
                   onPress={() => onReassign(lead.id, null)}
@@ -353,9 +355,9 @@ const LeadDetail: React.FC<{
               disabled={busy}
               activeOpacity={0.8}
             >
-              {busy ? <ActivityIndicator size="small" color={Colors.white} /> : (
+              {busy ? <ActivityIndicator size="small" color={Colors.onAccent} /> : (
                 <>
-                  <Ionicons name="checkmark" size={14} color={Colors.white} />
+                  <Ionicons name="checkmark" size={14} color={Colors.onAccent} />
                   <Text style={styles.saveNotesBtnText}>Save Notes</Text>
                 </>
               )}
@@ -368,7 +370,8 @@ const LeadDetail: React.FC<{
         {/* Status pipeline footer */}
         <View style={[styles.statusBarWrap, { paddingBottom: Math.max(insets.bottom + 12, 12) }]}>
           <Text style={styles.statusBarLabel}>UPDATE STATUS</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+          <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
             {STATUS_OPTIONS.map(opt => {
               const active = lead.status === opt.key;
               return (
@@ -816,17 +819,11 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
     </View>
   );
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <LinearGradient
-        colors={[Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
-        style={StyleSheet.absoluteFillObject}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0.5 }}
-      />
-
-      <WebsiteTopBar />
+  // Everything above the customer rows scrolls with them (list header).
+  // As a fixed block it could take the whole screen on a small phone or
+  // with a larger system font size, leaving the list no height to scroll.
+  const pageHeader = (
+    <View>
       {/* Use the exact website dealer Customers hierarchy and labels.
           Existing MANAGE_CRM screen gate remains in navigation. */}
       <View style={styles.crmPageHeader}>
@@ -836,7 +833,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
           <TouchableOpacity style={styles.crmAddButton}
             onPress={() => setCreateModalVisible(true)}
             accessibilityRole="button" accessibilityLabel="Add Customer">
-            <Ionicons name="add-circle-outline" size={19} color={Colors.white} />
+            <Ionicons name="add-circle-outline" size={19} color={Colors.onAccent} />
             <Text style={styles.crmAddButtonText}>Add Customer</Text>
           </TouchableOpacity>
           {canManageOffers && (
@@ -854,7 +851,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
               accessibilityRole="button" accessibilityState={{ selected: viewMode === 'board' }}
               accessibilityLabel="Pipeline board view">
               <Ionicons name="albums-outline" size={17}
-                color={viewMode === 'board' ? Colors.white : Colors.textMuted} />
+                color={viewMode === 'board' ? Colors.onAccent : Colors.textMuted} />
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.viewModeBtn, viewMode === 'list' && styles.viewModeBtnActive]}
@@ -862,7 +859,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
               accessibilityRole="button" accessibilityState={{ selected: viewMode === 'list' }}
               accessibilityLabel="Customer list view">
               <Ionicons name="list-outline" size={17}
-                color={viewMode === 'list' ? Colors.white : Colors.textMuted} />
+                color={viewMode === 'list' ? Colors.onAccent : Colors.textMuted} />
             </TouchableOpacity>
           </View>
         </View>
@@ -900,7 +897,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
       )}
       {viewMode === 'board' && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}
-          style={[styles.crmStagesScroll, { maxHeight: getScrollableStageHeight(fontScale) }]}
+          style={[styles.crmStagesScroll, { maxHeight: getScrollableStageHeight(fontScale) }, Layout.hScroll]}
           contentContainerStyle={styles.crmStagesList}>
           {BOARD_STAGES.map(stage => {
             const selected = stage.key === mobileStage;
@@ -921,7 +918,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
       )}
 
       {viewMode === 'list' && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.filterScroll, Layout.hScroll]} contentContainerStyle={styles.filterContent}>
            {FILTERS.map(f => (
               <TouchableOpacity
                  key={f.label}
@@ -940,24 +937,48 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
         </ScrollView>
       )}
 
-      {loading && leads.length === 0 ? (
-        <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 10 }}>
-          {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} w={SCREEN_WIDTH - 32} h={84} r={20} />
-          ))}
-        </View>
-      ) : loadError && leads.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <Text style={styles.emptyTitle}>Customers unavailable</Text>
-          <TouchableOpacity onPress={() => { void fetchLeads(); }} accessibilityRole="button">
-            <Text style={styles.crmRetry}>Retry loading customers</Text>
-          </TouchableOpacity>
-        </View>
-      ) : viewMode === 'board' ? (
+    </View>
+  );
+
+  // Loading / failed-load states render inside the list (ListEmptyComponent)
+  // so the header above them still scrolls and pull-to-refresh still works.
+  const listStatus = loading && leads.length === 0 ? (
+    <View style={styles.skeletonList}>
+      {[0, 1, 2, 3].map((i) => (
+        <Skeleton key={i} w={SCREEN_WIDTH - 40} h={84} r={20} />
+      ))}
+    </View>
+  ) : loadError && leads.length === 0 ? (
+    <View style={styles.emptyWrap}>
+      <Text style={styles.emptyTitle}>Customers unavailable</Text>
+      <TouchableOpacity onPress={() => { void fetchLeads(); }} accessibilityRole="button">
+        <Text style={styles.crmRetry}>Retry loading customers</Text>
+      </TouchableOpacity>
+    </View>
+  ) : null;
+  // Tab bar is absolutely positioned over the screen; keep the last row clear.
+  const listBottomPad = { paddingBottom: getBottomTabBarHeight(fontScale, insets.bottom) + 24 };
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
+      <LinearGradient
+        colors={[Colors.accentAlpha05, Colors.groundClear, Colors.bgPrimary]}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0.5 }}
+      />
+
+      <WebsiteTopBar />
+      {viewMode === 'board' ? (
         <FlatList
-          key={mobileStage}
+          // Stage switch keeps the scroll position: the stage tabs are in the
+          // list header, so remounting would jump the page back to the top.
+          key="board"
           style={styles.listScroll}
-          contentContainerStyle={styles.crmBoardCards}
+          contentContainerStyle={[styles.crmBoardCards, listBottomPad]}
+          ListHeaderComponent={pageHeader}
+          ListHeaderComponentStyle={styles.boardHeaderBleed}
           data={leadsByStage[mobileStage] || []}
           keyExtractor={lead => lead.id}
           renderItem={({ item }) => (
@@ -966,23 +987,25 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
           )}
           refreshControl={<RefreshControl refreshing={refreshing}
             onRefresh={() => { void fetchLeads(true); }} tintColor={Colors.accent} />}
-          ListEmptyComponent={
+          ListEmptyComponent={listStatus ?? (
             <View style={styles.crmBoardEmpty}>
               <Ionicons name="people-outline" size={24} color={Colors.textMuted} />
               <Text style={styles.crmBoardEmptyText}>Empty</Text>
             </View>
-          }
+          )}
         />
-      ) : filteredLeads.length === 0 ? (
-        renderEmptyState()
       ) : (
       <FlatList
+        key="list"
         style={styles.listScroll}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 20, paddingHorizontal: 16 }}
+        contentContainerStyle={[styles.crmListCards, listBottomPad]}
+        ListHeaderComponent={pageHeader}
+        ListHeaderComponentStyle={styles.listHeaderBleed}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchLeads(true)} tintColor={Colors.accent} />}
         data={filteredLeads}
         keyExtractor={(item) => item.id}
         renderItem={renderLeadRow}
+        ListEmptyComponent={listStatus ?? renderEmptyState()}
       />
       )}
 
@@ -1100,7 +1123,8 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 />
 
                 <Text style={styles.createFieldLabel}>SOURCE</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 8 }}>
+                <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 8 }}>
                   {Object.entries(SOURCE_LABELS).map(([key, label]) => (
                     <TouchableOpacity
                       key={key}
@@ -1116,7 +1140,8 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 {staffOptions.length > 0 && (
                   <>
                     <Text style={styles.createFieldLabel}>ASSIGN TO</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 8 }}>
+                    <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 8 }}>
                       <TouchableOpacity
                         style={[styles.staffChip, !newAssignedToId && styles.staffChipActive]}
                         onPress={() => setNewAssignedToId(null)}
@@ -1157,7 +1182,7 @@ const styles = StyleSheet.create({
   crmAddButton: { flexDirection: 'row', alignItems: 'center', gap: 7,
     borderRadius: 12, backgroundColor: Colors.accent, minHeight: 44,
     paddingHorizontal: 14 },
-  crmAddButtonText: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: 12 },
+  crmAddButtonText: { color: Colors.onAccent, fontFamily: FontFamily.bold, fontSize: 12 },
   crmOffersButton: { flexDirection: 'row', alignItems: 'center', gap: 4,
     borderRadius: 12, borderWidth: 1, borderColor: Colors.borderSubtle,
     backgroundColor: Colors.bgCard, paddingHorizontal: 11, minHeight: 44 },
@@ -1194,8 +1219,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgCard },
   crmStageSelected: { borderColor: Colors.accent, backgroundColor: Colors.accent },
   crmStageText: { fontSize: 12, fontFamily: FontFamily.bold, color: Colors.textMuted },
-  crmStageSelectedText: { color: Colors.white },
+  crmStageSelectedText: { color: Colors.onAccent },
   crmBoardCards: { paddingHorizontal: 20, paddingBottom: 90, paddingTop: 6 },
+  // List header rows carry their own 20pt gutters inside the padded lists.
+  boardHeaderBleed: { marginHorizontal: -20, marginTop: -6, marginBottom: 6 },
+  crmListCards: { paddingHorizontal: 16 },
+  listHeaderBleed: { marginHorizontal: -16 },
+  skeletonList: { paddingTop: 8, gap: 10 },
   crmBoardEmpty: { paddingVertical: 45, alignItems: 'center', gap: 12 },
   crmBoardEmptyText: { fontFamily: FontFamily.bold, fontSize: 12,
     textTransform: 'uppercase', color: Colors.textMuted },
@@ -1307,7 +1337,7 @@ const styles = StyleSheet.create({
      fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary
   },
   filterTabTextActive: {
-     color: Colors.white
+     color: Colors.onAccent
   },
   listScroll: {
      flex: 1,
@@ -1465,11 +1495,11 @@ const styles = StyleSheet.create({
      borderRadius: 9, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center'
   },
   unreadBadgeText: {
-     fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.white
+     fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.onAccent
   },
 
   emptyWrap: {
-     flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 10, paddingBottom: 80,
+     flexGrow: 1, paddingTop: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 10, paddingBottom: 80,
   },
   emptyTitle: {
      fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white, textAlign: 'center',
@@ -1585,7 +1615,7 @@ const styles = StyleSheet.create({
      height: 40, borderRadius: Radius.inline, backgroundColor: Colors.accent,
   },
   saveNotesBtnText: {
-     fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white,
+     fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent,
   },
   messageCTA: {
      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 20,

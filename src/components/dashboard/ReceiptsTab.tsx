@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import * as React from "react"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import Image from "next/image"
 import {
     Receipt, Car, Download, Loader2, CheckCircle2, Clock,
@@ -208,11 +209,11 @@ export function ReceiptsTab({ isDealer = false }: { isDealer?: boolean }) {
                             <p className="text-lg font-black">{formatPrice(receipt.amount)}</p>
                             <button
                                 onClick={() => downloadReceiptPdf(receipt.id)}
-                                className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-primary transition-colors"
+                                className={buttonVariants({ variant: "outline", size: "sm" })}
                                 disabled={!!receipt.synthetic}
                                 title={receipt.synthetic ? 'Receipt will be available after the payment ledger is reconciled' : 'Download PDF receipt'}
                             >
-                                <Download size={10} /> Download PDF
+                                <Download size={12} /> Download PDF
                             </button>
                         </div>
                     </div>

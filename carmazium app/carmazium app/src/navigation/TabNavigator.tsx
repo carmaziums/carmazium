@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Elevation, Radius } from '../constants/spacing';
 import { Colors } from '../constants/colors';
 import { getBottomTabItemHeight } from '../lib/nativeLayoutParity';
 import { TextPresets } from '../constants/typography';
@@ -27,11 +28,12 @@ import { useDealerAccess } from '../hooks/useDealerAccess';
 import { withDealerGate } from '../components/DealerGate';
 import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScreen';
 import { BuyerDashboardScreen } from '../screens/buyer/BuyerDashboardScreen';
-import { AccountRoleHomeScreen } from '../screens/account/AccountRoleHomeScreen';
+import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
 import { LegacyPartnerDashboardScreen } from '../screens/account/LegacyPartnerDashboardScreen';
 import { DealerBuyBidScreen } from '../screens/main/DealerBuyBidScreen';
 import { PartnerDashboardScreen } from '../screens/main/PartnerDashboardScreen';
 import { useAuthStore } from '../store/authStore';
+import { GUEST_TABS, SignInRequired } from '../components/SignInRequired';
 
 // Stable wrapper so the Profile tab's component prop never changes reference,
 // preventing React Navigation from unmounting + remounting the tab when role loads.
@@ -57,7 +59,9 @@ const ProfileTabScreen: React.FC<any> = React.memo((props) => {
   // Business/platform roles must never be silently presented as a personal
   // Buyer simply because the mobile preview role is intentionally narrower.
   // Route each operational role to the same backend-backed workspace it has
-  // on web. Admin remains intentionally web-only (product-parity.json).
+  // on web. Admin gets the native admin dashboard (phase 1: overview, listings
+  // review, dealer KYC, handovers, accounts read-only; other sections open
+  // the website — product-parity.json admin.operations).
   if (accountRole === 'contractor') {
     return <PartnerDashboardScreen {...props} />;
   }
@@ -65,7 +69,7 @@ const ProfileTabScreen: React.FC<any> = React.memo((props) => {
     return <LegacyPartnerDashboardScreen {...props} />;
   }
   if (accountRole === 'admin') {
-    return <AccountRoleHomeScreen {...props} />;
+    return <AdminDashboardScreen />;
   }
 
   // DEALER can deliberately preview the personal buyer experience via the
@@ -86,13 +90,31 @@ export type TabParamList = {
   // Dealer-only mobile shortcuts, mirroring web DashboardSidebar mobile tabs.
   // Core routes above are retained for deep links and buyer-preview switching.
   DealerHome: undefined;
-  DealerStock: undefined;
+  DealerStock: { status?: import('../screens/main/DealerInventoryScreen').FilterTab } | undefined;
   DealerCustomers: undefined;
   DealerBuyBid: { initialSection?: 'live' | 'bids' } | undefined;
   DealerMore: undefined;
 };
 
 const Tab = createBottomTabNavigator<TabParamList>();
+
+// Saved and Dashboard need an account; Home, Buy Cars and Auctions stay open
+// to signed-out visitors like the website. Module scope keeps it stable.
+const GuestTabGate: React.FC<{ routeName: string; children: React.ReactNode }> = ({ routeName, children }) => {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  if (isAuthenticated || GUEST_TABS.has(routeName)) return <>{children}</>;
+  return (
+    <SignInRequired
+      routeName="Tabs"
+      routeParams={{ screen: routeName }}
+      showBack={false}
+      title={routeName === 'Saved' ? 'Sign in to see your saved cars' : 'Sign in to your dashboard'}
+    />
+  );
+};
+const GuestAwareTabLayout = ({ children, route }: { children: React.ReactNode; route: { name: string } }) => (
+  <GuestTabGate routeName={route.name}>{children}</GuestTabGate>
+);
 
 const TAB_CONFIG: {
   name: keyof TabParamList;
@@ -101,12 +123,12 @@ const TAB_CONFIG: {
   label: string;
   iconType: 'ionicons' | 'material-community';
 }[] = [
-  { name: 'Home', icon: 'home-outline', iconActive: 'home', label: 'HOME', iconType: 'ionicons' },
-  { name: 'Search', icon: 'car-outline', iconActive: 'car', label: 'BUY CARS', iconType: 'ionicons' },
-  { name: 'Live', icon: 'gavel', iconActive: 'gavel', label: 'AUCTIONS', iconType: 'material-community' },
-  { name: 'Saved', icon: 'heart-outline', iconActive: 'heart', label: 'SAVED', iconType: 'ionicons' },
-  { name: 'Profile', icon: 'grid-outline', iconActive: 'grid', label: 'DASHBOARD', iconType: 'ionicons' },
-  { name: 'DealerHome', icon: 'grid-outline', iconActive: 'grid', label: 'Home', iconType: 'ionicons' },
+  { name: 'Home', icon: 'home-outline', iconActive: 'home', label: 'Home', iconType: 'ionicons' },
+  { name: 'Search', icon: 'car-outline', iconActive: 'car', label: 'Buy Cars', iconType: 'ionicons' },
+  { name: 'Live', icon: 'gavel', iconActive: 'gavel', label: 'Auctions', iconType: 'material-community' },
+  { name: 'Saved', icon: 'heart-outline', iconActive: 'heart', label: 'Saved', iconType: 'ionicons' },
+  { name: 'Profile', icon: 'grid-outline', iconActive: 'grid', label: 'Dashboard', iconType: 'ionicons' },
+  { name: 'DealerHome', icon: 'grid-outline', iconActive: 'grid', label: 'Dashboard', iconType: 'ionicons' },
   { name: 'DealerStock', icon: 'car-outline', iconActive: 'car', label: 'Stock', iconType: 'ionicons' },
   { name: 'DealerCustomers', icon: 'people-outline', iconActive: 'people', label: 'Customers', iconType: 'ionicons' },
   { name: 'DealerBuyBid', icon: 'gavel', iconActive: 'gavel', label: 'Auctions', iconType: 'material-community' },
@@ -247,7 +269,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
               {isFocused && (
                 <View style={styles.activeDot} />
               )}
-              <View style={styles.iconWrapper}>
+              <View style={[styles.iconWrapper, isFocused && styles.iconWrapperActive]}>
                 <AnimatedTabIcon
                   focused={isFocused}
                   iconName={isMore && isDrawerOpen ? 'close' : isFocused ? config.iconActive : config.icon}
@@ -288,6 +310,7 @@ export const TabNavigator: React.FC = () => {
         headerShown: false,
         lazy: true,
       }}
+      screenLayout={GuestAwareTabLayout}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Search" component={SearchScreen} />
@@ -309,12 +332,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    // Lifted off the page with a soft shadow (website bar stays full width;
+    // the heavier Elevation.float is intentionally not used here).
+    ...Elevation.card,
     borderTopWidth: 1,
     borderTopColor: Colors.tabBarBorder,
-    backgroundColor: '#243047',
+    backgroundColor: Colors.bgDropdown,
   },
   tabBarGlass: {
-    backgroundColor: '#243047',
+    backgroundColor: Colors.bgDropdown,
   },
   tabBarInner: {
     flexDirection: 'row',
@@ -335,6 +361,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Raised pill behind the active tab icon.
+  iconWrapperActive: {
+    width: 52,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.accentAlpha14,
+    borderWidth: 1,
+    borderColor: Colors.borderAccent,
+  },
   activeDot: {
     width: 4,
     height: 4,
@@ -346,6 +380,9 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     ...TextPresets.tabLabel,
+    // Title Case like the website's mobile bottom bar, not all caps.
+    textTransform: 'none',
+    letterSpacing: 0.2,
     textAlign: 'center',
     flexShrink: 1,
   },

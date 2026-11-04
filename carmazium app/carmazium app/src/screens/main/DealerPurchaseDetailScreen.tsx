@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useScrollLocked } from '../../lib/scrollLock';
 import {
   ActivityIndicator, Alert, Linking, ScrollView, StyleSheet,
   Text, TouchableOpacity, View,
@@ -18,6 +19,7 @@ import { getServiceSettings } from '../../lib/servicesApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
 import type { MainStackParamList } from '../../navigation/MainStackNavigator';
+import { Layout } from '../../constants/layout';
 
 type Nav = NativeStackNavigationProp<MainStackParamList>;
 type DetailRoute = RouteProp<MainStackParamList, 'DealerPurchaseDetail'>;
@@ -114,6 +116,8 @@ const DetailSection = ({
 
 /** Never request seller PII outside the fee-gated /:id/seller endpoint. */
 export const DealerPurchaseDetailScreen: React.FC = () => {
+  // Paused while a finger is on the 3D damage viewer (lib/scrollLock.ts).
+  const scrollLocked = useScrollLocked();
   const navigation = useNavigation<Nav>();
   const { params } = useRoute<DetailRoute>();
   const { saleId } = params;
@@ -240,7 +244,7 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
         </View>
       ) : (
         <>
-          <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.content}
+          <ScrollView ref={scrollRef} scrollEnabled={!scrollLocked} style={styles.scroll} contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}>
             <DetailSection title="Purchase summary" icon="car-outline">
               {!!detail.vehicle.imageUrl && (
@@ -280,7 +284,7 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
                       : `Current listing${r.lastUpdatedAt ? `, last updated ${date(r.lastUpdatedAt)}` : ''}. The seller may have changed it since you bought the vehicle.${r.removedFromSaleAt ? ` Removed from sale ${date(r.removedFromSaleAt)}.` : ''}`}
                   </Text>
                   {photos.length > 0 ? (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.recordPhotos}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.recordPhotos, Layout.hScroll]}>
                       {photos.map((uri, i) => (
                         <TouchableOpacity key={uri + i} accessibilityRole="imagebutton"
                           accessibilityLabel={`Open photo ${i + 1} of ${photos.length}`}
@@ -444,7 +448,7 @@ export const DealerPurchaseDetailScreen: React.FC = () => {
                 !detail.delivery && ((detail.buyerFee.required && !detail.buyerFee.settled) || !deliveryAvailable)
                   && styles.buttonDisabled]}
               onPress={bookDelivery}>
-              <Ionicons name="car-sport-outline" color={Colors.white} size={17} />
+              <Ionicons name="car-sport-outline" color={Colors.onAccent} size={17} />
               <Text style={styles.buttonPrimaryText}>{detail.delivery ? 'View delivery' : 'Book delivery'}</Text>
             </TouchableOpacity>
           </View>
@@ -580,7 +584,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 8,
   },
   buttonDisabled: { opacity: 0.55 },
-  buttonPrimaryText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: 12 },
+  buttonPrimaryText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: 12 },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 14, padding: 24 },
   actionItem: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   actionText: { fontFamily: FontFamily.bold, color: Colors.textPrimary, fontSize: 14 },

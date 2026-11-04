@@ -3,6 +3,7 @@
 import * as React from "react"
 import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -254,14 +255,14 @@ function MyBidsPage() {
                                                         ) : isAuction && auction ? (
                                                             <Link
                                                                 href={`/auctions/live/${auction.id}`}
-                                                                className="text-primary dark:hover:text-white text-sm font-bold transition-colors"
+                                                                className={buttonVariants({ variant: "outline", size: "sm" })}
                                                             >
                                                                 View Results
                                                             </Link>
                                                         ) : (
                                                             <Link
                                                                 href={`/buy-cars/${bid.listing.slug}`}
-                                                                className="text-primary dark:hover:text-white text-sm font-bold transition-colors"
+                                                                className={buttonVariants({ variant: "outline", size: "sm" })}
                                                             >
                                                                 View
                                                             </Link>

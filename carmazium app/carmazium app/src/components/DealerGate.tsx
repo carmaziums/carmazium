@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { Ionicons } from '@/components/BrandIcon';
 import { useAuthStore } from '../store/authStore';
-import { Colors } from '../constants/colors';
+import { Colors, themeStatusBarStyle } from '../constants/colors';
 import { Radius } from '../constants/spacing';
 import { FontFamily, FontSize } from '../constants/typography';
 import { useDealerAccess } from '../hooks/useDealerAccess';
@@ -112,7 +112,7 @@ export const DealerGate: React.FC<{
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 40 }]}
         showsVerticalScrollIndicator={false}
@@ -170,7 +170,7 @@ export const DealerGate: React.FC<{
             accessibilityRole="button"
           >
             <Text style={styles.primaryBtnText}>Start KYC verification</Text>
-            <Ionicons name="arrow-forward" size={16} color={Colors.white} />
+            <Ionicons name="arrow-forward" size={16} color={Colors.onAccent} />
           </TouchableOpacity>
         )}
 
@@ -182,7 +182,7 @@ export const DealerGate: React.FC<{
             accessibilityRole="button"
           >
             <Text style={styles.primaryBtnText}>Retry access check</Text>
-            <Ionicons name="refresh" size={16} color={Colors.white} />
+            <Ionicons name="refresh" size={16} color={Colors.onAccent} />
           </TouchableOpacity>
         )}
 
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.5,
   },
   secondaryText: {

@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import Image from "next/image"
 import { Gavel, Loader2, RefreshCw } from "lucide-react"
 import { getMyAuctions, type Auction } from "@/lib/auctionApi"
@@ -83,7 +84,7 @@ export function MyCarsAuctionPanel() {
                                 <p className="truncate text-sm font-bold">{auction.listing.title}</p>
                                 <p className="text-xs text-[var(--text-muted)]">Status: {auction.status}</p>
                                 <Link href={`/dashboard/seller/auctions?manage=1&listingId=${encodeURIComponent(auction.listingId)}`}
-                                    className="inline-flex min-h-8 items-center text-xs font-bold text-primary hover:underline">
+                                    className={buttonVariants({ variant: "outline", size: "sm", className: "mt-1" })}>
                                     Manage auction and handover
                                 </Link>
                             </div>

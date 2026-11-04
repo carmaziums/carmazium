@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { useRouter, useSearchParams } from "next/navigation"
 
 /**
@@ -37,7 +38,7 @@ export function LegacyDashboardRedirect({
     return (
         <div role="status" className="min-h-[50vh] flex flex-col items-center justify-center gap-3 px-5 pt-24 text-center">
             <p className="text-sm text-[var(--text-muted)]">Opening your unified dashboard…</p>
-            <Link href={destination} className="text-sm font-bold text-primary hover:underline">
+            <Link href={destination} className={buttonVariants()}>
                 Continue to dashboard
             </Link>
         </div>

@@ -15,9 +15,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart, LineChart } from 'react-native-gifted-charts';
 import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 
@@ -144,9 +144,9 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha06, Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -320,11 +320,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontSize: FontSize.base,
@@ -341,11 +343,12 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '47%',
-    backgroundColor: Colors.glassBg,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
     borderRadius: Radius.card,
     padding: 16,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   statIconWrap: {
     width: 30,
@@ -378,24 +381,26 @@ const styles = StyleSheet.create({
   },
 
   chartCard: {
-    backgroundColor: Colors.glassBg,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
     borderRadius: Radius.card,
     paddingHorizontal: 12,
     paddingTop: 16,
     paddingBottom: 8,
     overflow: 'hidden',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
 
   convCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.glassBg,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
     borderRadius: Radius.card,
     padding: 20,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   convIconWrap: {
     width: 48,

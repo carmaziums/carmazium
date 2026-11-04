@@ -11,6 +11,7 @@ const app = path => readFileSync(resolve(root, 'carmazium app/carmazium app/src/
 const web = path => readFileSync(resolve(root, path), 'utf8');
 const tabs = app('navigation/TabNavigator.tsx');
 const drawer = app('components/GlobalDrawer.tsx');
+const dealerHome = app('screens/main/DealerProfileScreen.tsx');
 const top = app('components/WebsiteTopBar.tsx');
 const hamburger = app('components/HamburgerButton.tsx');
 const logo = app('components/Logo.tsx');
@@ -24,7 +25,10 @@ test('actual website dealer bottom More panel is matched by native dealer mode o
   assert.ok(drawer.includes('borderTopLeftRadius: 20'));
   assert.ok(drawer.includes('translateY: translateY.value'));
   assert.ok(drawer.includes('translateX: translateX.value'));
-  assert.ok(drawer.includes('onRequestClose={closeDrawer}'));
+  // Drawer is always mounted (no Modal, so opening is instant); the Android
+  // back button closes it in every mode via BackHandler.
+  assert.ok(drawer.includes('if (!isOpen) return;'));
+  assert.ok(!drawer.includes('<Modal'));
   assert.ok(drawer.includes('<TouchableWithoutFeedback onPress={closeDrawer}>'));
   assert.ok(drawer.includes('height: sheetHeight'));
   assert.ok(drawer.includes('dealerTabBarHeight = getBottomTabBarHeight(fontScale, insets.bottom)'));
@@ -40,21 +44,27 @@ test('More is a real toggle with active/expanded state, but not an extra route',
   assert.ok(tabs.includes('expanded: isDrawerOpen'));
   assert.ok(tabs.includes("isMore && isDrawerOpen ? 'close'"));
   assert.ok(tabs.includes('<Tab.Screen name="DealerMore" component={ProfileTabScreen} />'));
-  assert.ok(drawer.includes('visiblePrimaryDealerItems'));
-  assert.ok(drawer.includes("!['dealer-inventory', 'dealer-leads'].includes(item.id)"));
+  // More opens the website dealer sidebar (Dashboard › Sell › Buy › Business › Services).
+  assert.ok(drawer.includes('const dealerDashboard = ('));
+  assert.ok(drawer.includes("tabName: 'DealerStock'") && drawer.includes("tabName: 'DealerCustomers'"));
 });
 
 test('website-styled header uses the real asset, adapts logo to viewport and toggles menu', () => {
   const header = web('src/components/layout/Header.tsx');
   assert.ok(header.includes('width={160}'));
   assert.ok(top.includes('useWindowDimensions()'));
-  assert.ok(top.includes('Math.min(160, Math.max(110, windowWidth - 202))'));
+  // Narrower floor since the header also carries the website's theme toggle.
+  // Narrower still when the back arrow is shown on non-tab pages.
+  assert.ok(top.includes('Math.min(160, Math.max(showBack ? 88 : 104, windowWidth - 249 - (showBack ? 48 : 0)))'));
+  assert.ok(top.includes('<ThemeToggle />'));
   assert.ok(top.includes('<Logo size="sm" width={logoWidth} />'));
   assert.ok(logo.includes("const LOGO_SOURCE = require('../../assets/images/logo.png')"));
   assert.ok(logo.includes("const width = overrideWidth ??"));
   assert.ok(hamburger.includes("name={isOpen ? 'close' : 'menu'}"));
   assert.ok(hamburger.includes("style={[styles.btn, websiteStyle && styles.websiteButton]}"));
-  assert.ok(hamburger.includes('websiteStyle && isOpen ? closeDrawer : openDrawer'));
+  // Header ☰ opens the website main menu; bottom More opens the dashboard.
+  assert.ok(hamburger.includes('websiteStyle && isOpen ? closeDrawer :'));
+  assert.ok(hamburger.includes("openDrawer('site')"));
   assert.ok(hamburger.includes('accessibilityState={websiteStyle ? { expanded: isOpen } : undefined}'));
   assert.ok(top.includes('<HamburgerButton websiteStyle />'));
   assert.ok(top.includes("navigation.navigate('Settings')"));
@@ -74,7 +84,9 @@ test('dealer route remains named and gated, including Block 6 website-canonical 
   for (const route of ['Home','Search','Live','Saved','Profile']) {
     assert.ok(tabs.includes('<Tab.Screen name="' + route + '"'));
   }
-  assert.ok(drawer.includes("setRole('buyer')") && drawer.includes("setRole('dealer')"));
+  // Buyer preview lives on the dealer dashboard (as on web); the menu keeps
+  // the one-tap way back into dealer mode.
+  assert.ok(dealerHome.includes("setRole('buyer')") && drawer.includes("setRole('dealer')"));
   assert.ok(drawer.includes("navigation.navigate('Main'"));
   assert.ok(!drawer.includes("const isActualDealer = role === 'dealer'"));
 });

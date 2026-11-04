@@ -20,9 +20,9 @@ import { apiClient } from '../../lib/apiClient';
 import { haptics } from '../../lib/haptics';
 import { BottomSheet } from '../../components/BottomSheet';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { CounterLedger } from '../../components/offers/CounterLedger';
@@ -423,7 +423,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
         <View style={styles.cardTopRow}>
           {/* Buyer avatar */}
           <LinearGradient
-            colors={[Colors.darkBlue_2d3c63, Colors.darkBlue_1a2238]}
+            colors={[Colors.brandSlate, Colors.brandNavy]}
             style={styles.buyerAvatar}
           >
             <Text style={styles.buyerInitials}>{initials}</Text>
@@ -538,7 +538,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
               onPress={() => handleAccept(offer)}
               disabled={isActioning}
             >
-              <Text style={[styles.actionBtnText, { color: Colors.white }]}>Accept</Text>
+              <Text style={[styles.actionBtnText, { color: Colors.onAccent }]}>Accept</Text>
             </TouchableOpacity>
           </View>
           </>
@@ -577,7 +577,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
               activeOpacity={0.75}
               onPress={() => openSaleModal(offer)}
             >
-              <Text style={[styles.actionBtnText, { color: Colors.white }]}>Mark as Sold</Text>
+              <Text style={[styles.actionBtnText, { color: Colors.onAccent }]}>Mark as Sold</Text>
             </TouchableOpacity>
 
           </View>
@@ -618,9 +618,9 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
           onCreated={() => void fetchData(true)}
         />
       )}
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.warningAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.warningAlpha05, Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -797,7 +797,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
               disabled={saleSubmitting}
             >
               {saleSubmitting ? (
-                <ActivityIndicator color={Colors.white} />
+                <ActivityIndicator color={Colors.onAccent} />
               ) : (
                 <Text style={styles.modalBtnConfirmSaleText}>Confirm Sold</Text>
               )}
@@ -846,11 +846,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
@@ -872,7 +874,7 @@ const styles = StyleSheet.create({
   pendingBadgeText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // ── Scroll ──
@@ -906,13 +908,14 @@ const styles = StyleSheet.create({
 
   // ── Offer card ──
   offerCard: {
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
     padding: 16,
     gap: 10,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -930,7 +933,7 @@ const styles = StyleSheet.create({
   buyerInitials: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   cardTopCenter: {
     flex: 1,
@@ -1039,31 +1042,37 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     flex: 1,
-    height: 36,
     borderRadius: Radius.inline,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+    minHeight: 36,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderHi,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   actionBtnDecline: {
-    backgroundColor: 'transparent',
     borderColor: Colors.accent,
+    backgroundColor: Colors.bgCard,
   },
   actionBtnCounter: {
-    backgroundColor: 'transparent',
     borderColor: Colors.warning,
+    backgroundColor: Colors.bgCard,
   },
   actionBtnAccept: {
     backgroundColor: Colors.success,
     borderColor: Colors.success,
+    borderBottomColor: Colors.blackAlpha45,
   },
   actionBtnMessage: {
-    backgroundColor: 'transparent',
     borderColor: Colors.infoBlue,
+    backgroundColor: Colors.bgCard,
   },
   actionBtnMarkSold: {
     backgroundColor: Colors.success,
     borderColor: Colors.success,
+    borderBottomColor: Colors.blackAlpha45,
   },
   actionBtnText: {
     fontFamily: FontFamily.bold,
@@ -1104,26 +1113,33 @@ const styles = StyleSheet.create({
   },
   modalBtn: {
     flex: 1,
-    height: 48,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 48,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.borderHi,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   modalBtnCancel: {
-    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha10,
+    backgroundColor: Colors.bgCard,
   },
   modalBtnConfirm: {
     backgroundColor: Colors.warning,
+    borderBottomColor: Colors.blackAlpha45,
   },
   modalBtnConfirmSale: {
     backgroundColor: Colors.success,
+    borderBottomColor: Colors.blackAlpha45,
   },
   modalBtnConfirmSaleText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   modalBtnCancelText: {
     fontFamily: FontFamily.bold,

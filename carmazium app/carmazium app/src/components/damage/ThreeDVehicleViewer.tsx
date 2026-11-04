@@ -1,6 +1,7 @@
 import React, { useRef, useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { useScrollLockStore } from '../../lib/scrollLock';
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
@@ -105,6 +106,11 @@ export function ThreeDVehicleViewer({
   readOnly = false,
 }: ThreeDVehicleViewerProps) {
   const webViewRef = useRef<WebView>(null);
+  const setScrollLocked = useScrollLockStore((st) => st.setLocked);
+  const lockScroll = useCallback(() => setScrollLocked(true), [setScrollLocked]);
+  const unlockScroll = useCallback(() => setScrollLocked(false), [setScrollLocked]);
+  // Never leave the page frozen if the viewer unmounts mid-gesture.
+  useEffect(() => () => setScrollLocked(false), [setScrollLocked]);
 
   // viewerHtml drives whether the WebView mounts at all; null = still loading
   const [viewerHtml, setViewerHtml] = useState<string | null>(null);
@@ -229,7 +235,14 @@ export function ThreeDVehicleViewer({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <View style={[styles.wrap, { height }]}>
+    <View
+      style={[styles.wrap, { height }]}
+      // Hold the page still while a finger is on the model so drags orbit
+      // the car instead of scrolling the screen (see lib/scrollLock.ts).
+      onTouchStart={lockScroll}
+      onTouchEnd={unlockScroll}
+      onTouchCancel={unlockScroll}
+    >
 
       {/* 3D viewer — only mounts once the HTML string is ready */}
       {viewerHtml ? (
@@ -262,7 +275,7 @@ export function ThreeDVehicleViewer({
         <View style={styles.errorState}>
           <Text style={styles.errorText}>Couldn't load the 3D model.</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={handleWebViewLoad} activeOpacity={0.75}>
-            <Ionicons name="refresh" size={14} color={Colors.white} />
+            <Ionicons name="refresh" size={14} color={Colors.onAccent} />
             <Text style={styles.retryBtnText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -328,7 +341,7 @@ export function ThreeDVehicleViewer({
               )}
               {hasPhoto && (
                 <View style={styles.photoBadge}>
-                  <Ionicons name="camera" size={8} color={Colors.white} />
+                  <Ionicons name="camera" size={8} color={Colors.onAccent} />
                 </View>
               )}
             </TouchableOpacity>
@@ -353,7 +366,7 @@ export function ThreeDVehicleViewer({
               onPress={() => onZoneClick(pillZone.label)}
               activeOpacity={0.7}
             >
-              <Ionicons name="alert-circle-outline" size={13} color={Colors.white} />
+              <Ionicons name="alert-circle-outline" size={13} color={Colors.onAccent} />
               <Text style={styles.pillBtnText}>Mark</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -361,7 +374,7 @@ export function ThreeDVehicleViewer({
               onPress={() => handleHideToggle(pillZone.id)}
               activeOpacity={0.7}
             >
-              <Ionicons name={hiddenZones.has(pillZone.id) ? 'eye-off' : 'eye-off-outline'} size={13} color={Colors.white} />
+              <Ionicons name={hiddenZones.has(pillZone.id) ? 'eye-off' : 'eye-off-outline'} size={13} color={Colors.onAccent} />
               <Text style={styles.pillBtnText}>{hiddenZones.has(pillZone.id) ? 'Unhide' : 'Hide'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -369,7 +382,7 @@ export function ThreeDVehicleViewer({
               onPress={() => handlePhotoPick(pillZone.id)}
               activeOpacity={0.7}
             >
-              <Ionicons name="camera-outline" size={13} color={Colors.white} />
+              <Ionicons name="camera-outline" size={13} color={Colors.onAccent} />
               <Text style={styles.pillBtnText}>{zonePhotos[pillZone.id] ? 'Retake' : 'Photo'}</Text>
             </TouchableOpacity>
           </View>
@@ -428,7 +441,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
   },
   retryBtnText: {
-    color: Colors.white,
+    color: Colors.onAccent,
     fontSize: FontSize.xs,
     fontFamily: FontFamily.semiBold,
   },
@@ -450,7 +463,7 @@ const styles = StyleSheet.create({
   },
   disclosureText: {
     flex: 1,
-    color: Colors.paleNearWhite_e4e4e7,
+    color: Colors.onAccent,
     fontSize: FontSize.xs,
     fontFamily: FontFamily.medium,
     lineHeight: 15,
@@ -480,7 +493,7 @@ const styles = StyleSheet.create({
   },
   dotSelected: {
     backgroundColor: Colors.accent,
-    borderColor: Colors.white,
+    borderColor: Colors.onAccent,
     width: 18,
     height: 18,
     borderRadius: 9,
@@ -534,7 +547,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentAlpha22,
   },
   pillBtnText: {
-    color: Colors.white,
+    color: Colors.onAccent,
     fontSize: FontSize.size9,
     fontFamily: FontFamily.medium,
   },
@@ -550,7 +563,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   hintText: {
-    color: Colors.textMuted,
+    color: Colors.onAccentMuted,
     fontSize: FontSize.size10,
     fontFamily: FontFamily.regular,
   },

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import dynamic from "next/dynamic"
 import { Camera, X, Plus, AlertTriangle, CheckCircle2, Trash2, Pencil, ChevronDown, ChevronUp, Images } from "lucide-react"
 import Image from "next/image"
@@ -409,7 +410,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, onP
             {uploadError && <p role="alert" className="text-xs text-red-500">
               {uploadError} Your damage details remain in this editor. Select the photo again to retry.
               <button type="button" onClick={() => { setUploadError(null); setPendingPhoto(undefined) }}
-                className="ml-2 underline">Continue without photo</button>
+                className={buttonVariants({ variant: "outline", size: "sm", className: "ml-2 mt-2" })}>Continue without photo</button>
             </p>}
             {pendingPhoto ? (
               <div className="relative inline-block">

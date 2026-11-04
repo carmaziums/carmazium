@@ -86,7 +86,7 @@ test('all public sell entry points use landing but keep existing validated wizar
   assert.ok(stack.includes('SellCarFlow: { listingId?: string; listingType?:'));
   assert.ok(home.includes("navigation.navigate('SellLanding')"));
   assert.ok(!home.includes("navigation.navigate('SellCarFlow')"));
-  assert.ok(drawer.includes("stackScreen: 'SellLanding'"));
+  assert.ok(readFileSync(new URL('../carmazium app/carmazium app/src/components/SiteMenu.tsx', import.meta.url), 'utf8').includes("screen: 'SellLanding'"));
   assert.ok(landing.includes("navigation.navigate('SellCarFlow',"));
   assert.ok(landing.includes("startListing('AUCTION')"));
   assert.ok(landing.includes("startListing('CLASSIFIED')"));

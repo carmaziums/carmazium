@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { Loader2, Clock, CheckCircle, XCircle, DollarSign, FileText, TrendingUp, Banknote } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -138,7 +139,7 @@ export default function FinanceDashboard() {
                             <h2 className="text-xl font-black font-heading text-[var(--text-primary)] uppercase tracking-tight flex items-center gap-2">
                                 <FileText className="text-primary" /> Recent Applications
                             </h2>
-                            <Link href="/dashboard/finance/applications" className="text-primary hover:text-primary dark:hover:text-white text-sm font-black transition-colors uppercase">View All</Link>
+                            <Link href="/dashboard/finance/applications" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>View All</Link>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">

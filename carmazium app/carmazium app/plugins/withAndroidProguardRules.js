@@ -15,6 +15,12 @@ const KEEP_RULES = `
 -keepnames class expo.modules.** { *; }
 -keepclassmembers class expo.modules.** { *; }
 -dontwarn expo.modules.**
+
+# @stripe/stripe-react-native references the optional push-provisioning SDK
+# (Google Pay card provisioning), which CarMazium does not ship. Without this
+# R8 fails the release build with "Missing class ...PushProvisioningActivity".
+-dontwarn com.stripe.android.pushProvisioning.**
+-dontwarn com.reactnativestripesdk.pushprovisioning.**
 `;
 
 const withAndroidProguardRules = (config) => {
@@ -28,7 +34,7 @@ const withAndroidProguardRules = (config) => {
       );
       if (fs.existsSync(proguardFile)) {
         const existing = fs.readFileSync(proguardFile, 'utf8');
-        if (!existing.includes('expo.modules.kotlin.**')) {
+        if (!existing.includes('com.stripe.android.pushProvisioning.**')) {
           fs.appendFileSync(proguardFile, KEEP_RULES);
         }
       }

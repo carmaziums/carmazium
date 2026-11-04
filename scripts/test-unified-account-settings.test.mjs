@@ -45,7 +45,8 @@ test('header, dashboard and dealer menus point to canonical Account Settings', (
   assert.match(dealer, /href: "\/profile\?section=business"/);
   assert.match(dashboard, /activeTab === "settings"/);
   assert.match(dashboard, /router.replace\(\`\/profile\?section=/);
-  assert.match(drawer, /label: 'Account settings'/);
+  assert.match(drawer, /label: 'Account Settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings'/);
+  assert.match(read('carmazium app/carmazium app/src/components/WebsiteTopBar.tsx'), />Account Settings</);
   assert.doesNotMatch(drawer, /id: 'notification-settings', label: 'Notification settings'/);
 });
 

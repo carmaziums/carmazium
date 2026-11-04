@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  Platform,
 } from 'react-native';
 // expo-image (not react-native's Image): gives disk+memory caching, recycling
 // and progressive loading for free — these cards render in long scrollable
@@ -171,7 +172,7 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
         </View>
 
         {/* Save button */}
-        <IconButton style={styles.saveBtn} icon={<Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={18} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
+        <IconButton style={styles.saveBtn} icon={<Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={18} color={saved ? Colors.accent : Colors.onAccent} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
 
         {/* Price tag */}
         <View style={styles.priceTag}>
@@ -255,11 +256,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgCard,
     borderWidth: 1,
     borderColor: Colors.border,
-    overflow: 'hidden',
+    // iOS clips a view's own shadow to overflow:'hidden', so on iOS the card
+    // stays unclipped and the image container rounds its own top corners.
+    // Android elevation isn't clipped, so it keeps the simple clipping path.
+    overflow: Platform.OS === 'ios' ? 'visible' : 'hidden',
     ...Elevation.card,
   },
   imageContainer: {
     position: 'relative',
+    borderTopLeftRadius: Radius.card - 1,
+    borderTopRightRadius: Radius.card - 1,
     overflow: 'hidden',
     backgroundColor: Colors.bgTertiary,
   },
@@ -288,7 +294,7 @@ const styles = StyleSheet.create({
   featuredText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size9,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.8,
   },
   importedBadge: {
@@ -317,7 +323,7 @@ const styles = StyleSheet.create({
   newText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size9,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.8,
   },
   bannerBadge: {
@@ -391,7 +397,7 @@ const styles = StyleSheet.create({
   priceText: {
     fontFamily: FontFamily.mono,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.3,
   },
   body: {

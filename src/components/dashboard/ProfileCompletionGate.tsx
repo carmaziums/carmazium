@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { usePathname, useRouter } from "next/navigation"
 import { Loader2, RefreshCw, ShieldAlert } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
@@ -63,7 +64,7 @@ export function ProfileCompletionGate({ children }: { children: React.ReactNode 
                     <RefreshCw className="h-4 w-4" aria-hidden="true" />
                     {retrying ? "Checking..." : "Retry account verification"}
                 </button>
-                <Link href="/" className="mt-4 text-sm font-semibold underline underline-offset-4">
+                <Link href="/" className={buttonVariants({ variant: "outline", className: "mt-3" })}>
                     Back to homepage
                 </Link>
             </div>

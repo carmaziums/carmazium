@@ -19,6 +19,12 @@ const APP_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const KEYSTORE_PROPERTIES = path.join(APP_ROOT, 'keystores', 'release.keystore.properties');
 const ANDROID_DIR = path.join(APP_ROOT, 'android');
 const AAB_OUTPUT = path.join(ANDROID_DIR, 'app', 'build', 'outputs', 'bundle', 'release', 'app-release.aab');
+const APK_OUTPUT = path.join(ANDROID_DIR, 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk');
+// `--apk` builds the signed APK customers install directly from carmazium.com
+// (no Play Store). An AAB cannot be sideloaded. Includes 32-bit ARM so older
+// phones don't fail with INSTALL_FAILED_NO_MATCHING_ABIS.
+const BUILD_APK = process.argv.includes('--apk');
+const APK_ARCHITECTURES = 'armeabi-v7a,arm64-v8a,x86_64';
 
 function log(msg) {
   console.log(`\n[android:release] ${msg}`);
@@ -71,6 +77,33 @@ if (!props.MYAPP_RELEASE_STORE_FILE || !existsSync(keystoreFile)) {
 }
 log(`Using release keystore: keystores/${props.MYAPP_RELEASE_STORE_FILE} (alias: ${props.MYAPP_RELEASE_KEY_ALIAS})`);
 
+// ── 1b. Refuse to build an app that cannot log in or take payments ──
+// Without these, src/lib/supabase.ts falls back to a placeholder project and
+// Stripe gets an empty key: the APK installs and opens, but every login fails.
+const REQUIRED_CLIENT_ENV = [
+  'EXPO_PUBLIC_API_URL',
+  'EXPO_PUBLIC_SUPABASE_URL',
+  'EXPO_PUBLIC_SUPABASE_ANON_KEY',
+  'EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY',
+];
+const dotEnvPath = path.join(APP_ROOT, '.env');
+const dotEnv = existsSync(dotEnvPath)
+  ? Object.fromEntries(
+      readFileSync(dotEnvPath, 'utf8')
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l && !l.startsWith('#') && l.includes('='))
+        .map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()])
+    )
+  : {};
+const missingEnv = REQUIRED_CLIENT_ENV.filter((k) => !(process.env[k] || dotEnv[k]));
+if (missingEnv.length > 0) {
+  fail(
+    `Missing ${missingEnv.join(', ')}.\n` +
+    `Set them in .env (see .env.example) or the shell before building; the production values are in eas.json build.production.env.`
+  );
+}
+
 // ── 2. Regenerate the native Android project (also re-applies release
 //      signing via plugins/withAndroidReleaseSigning.js — see that file) ──
 run('npx', ['expo', 'prebuild', '--clean', '--platform', 'android']);
@@ -96,12 +129,22 @@ const gradleWrapper = process.platform === 'win32'
   : path.join(ANDROID_DIR, 'gradlew');
 run(
   gradleWrapper,
-  ['bundleRelease', '--max-workers', '2', '--no-daemon'],
+  BUILD_APK
+    ? ['assembleRelease', `-PreactNativeArchitectures=${APK_ARCHITECTURES}`, '--max-workers', '2', '--no-daemon']
+    : ['bundleRelease', '--max-workers', '2', '--no-daemon'],
   ANDROID_DIR
 );
 
-// ── 5. Verify the signed Play Store bundle actually landed where expected ──
-if (!existsSync(AAB_OUTPUT)) {
-  fail(`Build reported success but no AAB was found at ${AAB_OUTPUT}.`);
+// ── 5. Verify the signed output actually landed where expected ──
+if (BUILD_APK) {
+  if (!existsSync(APK_OUTPUT)) {
+    fail(`Build reported success but no APK was found at ${APK_OUTPUT}.`);
+  }
+  log(`Signed direct-install APK ready: ${APK_OUTPUT}`);
+  log('Before publishing it, follow docs/native/DIRECT_ANDROID_APK_RELEASE_RUNBOOK.md (signer check, device QA, checksum).');
+} else {
+  if (!existsSync(AAB_OUTPUT)) {
+    fail(`Build reported success but no AAB was found at ${AAB_OUTPUT}.`);
+  }
+  log(`Signed Play Store AAB ready: ${AAB_OUTPUT}`);
 }
-log(`Signed Play Store AAB ready: ${AAB_OUTPUT}`);

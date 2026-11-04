@@ -627,11 +627,22 @@
     {
       "id": "admin.operations",
       "web": [
-        "src/app/dashboard/admin/page.tsx"
+        "src/app/dashboard/admin/page.tsx",
+        "src/app/dashboard/admin/listings/page.tsx",
+        "src/app/dashboard/admin/dealer-verification/page.tsx",
+        "src/app/dashboard/admin/handovers/page.tsx",
+        "src/app/dashboard/admin/users/page.tsx"
       ],
-      "mobile": [],
-      "status": "web_only",
-      "reason": "Privileged internal back-office operations are intentionally restricted to the authenticated web admin console; the native customer/partner app does not expose an ADMIN application surface."
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/admin/AdminDashboardScreen.tsx",
+        "carmazium app/carmazium app/src/screens/admin/AdminListingsReviewScreen.tsx",
+        "carmazium app/carmazium app/src/screens/admin/AdminDealerKycScreen.tsx",
+        "carmazium app/carmazium app/src/screens/admin/AdminHandoversScreen.tsx",
+        "carmazium app/carmazium app/src/screens/admin/AdminAccountsScreen.tsx",
+        "carmazium app/carmazium app/src/lib/adminApi.ts"
+      ],
+      "status": "required",
+      "note": "Admin phase 1 native: overview, listings review, dealer KYC, handovers, accounts (read-only); other sections web. Money-moving admin actions (payouts, mark-paid, retry, refunds, assign-winner, auction price edits) and account mutations stay on the website admin console, which the native dashboard links to."
     },
     {
       "id": "blog.seo",

@@ -9,10 +9,12 @@ import { Image } from 'expo-image';
 import { DealerActiveBidPositions, DealerAuctionShortlist } from './DealerAuctionBuyingSections';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Colors } from '../../constants/colors';
+import { Button } from '../../components/Button';
 import { FontFamily } from '../../constants/typography';
 import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
-import { getScrollableStageHeight } from '../../lib/nativeLayoutParity';
+import { getBottomTabBarHeight, getScrollableStageHeight } from '../../lib/nativeLayoutParity';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LiveScreen } from './LiveScreen';
 
 // Website reference: src/app/dashboard/dealer/auctions/page.tsx.
@@ -59,6 +61,7 @@ const formatDate = (raw?: string | null): string => {
 export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation }) => {
   const { loading: accessLoading, hasPermission } = useDealerAccess(true);
   const { fontScale } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const canManageInventory = !accessLoading && hasPermission('MANAGE_INVENTORY');
   const canViewPurchases = !accessLoading && hasPermission('VIEW_PURCHASES');
   const canPlaceBid = !accessLoading && hasPermission('PLACE_BID');
@@ -174,92 +177,75 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
     </TouchableOpacity>
   );
 
+  // On My Auctions the heading, warning and totals scroll with the list (list
+  // header): fixed above it they could leave the list no height with a
+  // larger system font size. Other sections keep it above their own view.
+  const pageHeading = (
+    <View style={styles.heading}>
+      <Text style={styles.pageTitle}>{section === 'bids' ? 'Bids & Offers' : section === 'mine' ? 'My Auctions' : 'Live Auctions'}</Text>
+      <Text style={styles.subtitle}>{section === 'bids' ? 'Auction bids and your retail offers.' : 'Cars available to bid on.'}</Text>
+      {canManageInventory && (
+        <TouchableOpacity accessibilityRole="button"
+          accessibilityLabel="Create Auction"
+          onPress={openCreate} style={styles.createButton}>
+          <Ionicons name="add-circle-outline" size={19} color={Colors.onAccent} />
+          <Text style={styles.createText}>Create Auction</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+
   return (
     <View style={styles.screen}>
       <WebsiteTopBar />
-      <View style={styles.heading}>
-        <Text style={styles.pageTitle}>{section === 'bids' ? 'Bids & Offers' : section === 'mine' ? 'My Auctions' : 'Live Auctions'}</Text>
-        <Text style={styles.subtitle}>{section === 'bids' ? 'Auction bids and your retail offers.' : 'Cars available to bid on.'}</Text>
-        {canManageInventory && (
-          <TouchableOpacity accessibilityRole="button"
-            accessibilityLabel="Create Auction"
-            onPress={openCreate} style={styles.createButton}>
-            <Ionicons name="add-circle-outline" size={19} color={Colors.white} />
-            <Text style={styles.createText}>Create Auction</Text>
-          </TouchableOpacity>
-        )}
-      </View>
       {section === 'live' ? (
         <View style={styles.liveContainer}>
-          {!accessLoading && !canPlaceBid && (
-            <Text style={styles.permissionNotice}>
-              You can browse auctions. Placing bids requires dealer bidding permission.
-            </Text>
-          )}
-          <LiveScreen embeddedDealerHub />
+          <LiveScreen
+            embeddedDealerHub
+            headerContent={<>
+              {pageHeading}
+              {!accessLoading && !canPlaceBid && (
+                <Text style={styles.permissionNotice}>
+                  You can browse auctions. Placing bids requires dealer bidding permission.
+                </Text>
+              )}
+            </>}
+          />
         </View>
       ) : section === 'shortlisted' ? (
-        <DealerAuctionShortlist navigation={navigation} />
+        <DealerAuctionShortlist navigation={navigation} header={pageHeading} />
       ) : section === 'bids' ? (
         <>
           {/* Bids & offers: auction bids here; retail offers keep their own
               MANAGE_OFFERS-gated screen. Same two views as the website. */}
+          <DealerActiveBidPositions
+            navigation={navigation}
+            header={<>
+              {pageHeading}
           {canManageOffers && (
-            <View style={styles.bidsSwitch} accessibilityRole="tablist">
-              <View style={[styles.bidsSwitchItem, styles.bidsSwitchItemActive]} accessibilityRole="tab" accessibilityState={{ selected: true }}>
-                <Text style={[styles.bidsSwitchText, styles.bidsSwitchTextActive]}>Auction bids</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.bidsSwitchItem}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: false }}
-                onPress={() => navigation?.navigate('DealerMyOffers', { fromBidsOffers: true })}
-              >
-                <Text style={styles.bidsSwitchText}>Retail offers</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          <DealerActiveBidPositions navigation={navigation} />
+                <View style={styles.bidsSwitch} accessibilityRole="tablist">
+                  <View style={[styles.bidsSwitchItem, styles.bidsSwitchItemActive]} accessibilityRole="tab" accessibilityState={{ selected: true }}>
+                    <Text style={[styles.bidsSwitchText, styles.bidsSwitchTextActive]}>Auction bids</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.bidsSwitchItem}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: false }}
+                    onPress={() => navigation?.navigate('DealerMyOffers', { fromBidsOffers: true })}
+                  >
+                    <Text style={styles.bidsSwitchText}>Retail offers</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>}
+          />
         </>
       ) : (
         <>
-          {canManageInventory && needsHandover > 0 && !error && !loading && (
-            <TouchableOpacity style={styles.warning} onPress={openManager}
-              accessibilityRole="button"
-              accessibilityLabel={`${needsHandover} auctions may need next handover steps`}>
-              <Ionicons name="alert-circle-outline" size={19} color={Colors.warning} />
-              <Text style={styles.warningText}>
-                {needsHandover} auction{needsHandover === 1 ? '' : 's'} may need a next step.
-                Open My Auctions to review funds confirmation, inspection and handover.
-              </Text>
-            </TouchableOpacity>
-          )}
-          {error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity accessibilityRole="button" onPress={() => { void fetchOwned(true); }}>
-                <Text style={styles.retryText}>Retry</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          {!loading && !error && (
-            <View style={styles.metrics}>
-              {[
-                { label: 'My Auctions', count: auctions.length },
-                { label: 'Live', count: active },
-                { label: 'Scheduled', count: scheduled },
-                { label: 'Ended', count: ended },
-              ].map(value => (
-                <View key={value.label} style={styles.metric}>
-                  <Text style={styles.metricCount}>{value.count}</Text>
-                  <Text style={styles.metricLabel}>{value.label}</Text>
-                </View>
-              ))}
-            </View>
-          )}
           <FlatList
             style={styles.list}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[styles.listContent,
+              { paddingBottom: getBottomTabBarHeight(fontScale, insets.bottom) + 24 }]}
             data={error && auctions.length === 0 ? [] : auctions}
             keyExtractor={a => a.id}
             renderItem={renderCard}
@@ -267,14 +253,49 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
               refreshing={refreshing} onRefresh={() => { void fetchOwned(true); }}
               tintColor={Colors.accent} />}
             ListHeaderComponent={
-              <View style={styles.sectionHeading}>
-                <Text style={styles.sectionTitle}>My Auctions</Text>
-                {canManageInventory && (
-                  <TouchableOpacity accessibilityRole="button" onPress={openManager}>
-                    <Text style={styles.manageLink}>Manage Auctions</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+              <>
+                <View style={styles.listHeaderBleed}>
+                  {pageHeading}
+                  {canManageInventory && needsHandover > 0 && !error && !loading && (
+                    <TouchableOpacity style={styles.warning} onPress={openManager}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${needsHandover} auctions may need next handover steps`}>
+                      <Ionicons name="alert-circle-outline" size={19} color={Colors.warning} />
+                      <Text style={styles.warningText}>
+                        {needsHandover} auction{needsHandover === 1 ? '' : 's'} may need a next step.
+                        Open My Auctions to review funds confirmation, inspection and handover.
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {error && (
+                    <View style={styles.errorBox}>
+                      <Text style={styles.errorText}>{error}</Text>
+                      <Button label="Retry" onPress={() => { void fetchOwned(true); }} variant="outline" size="sm" />
+                    </View>
+                  )}
+                  {!loading && !error && (
+                    <View style={styles.metrics}>
+                      {[
+                        { label: 'My Auctions', count: auctions.length },
+                        { label: 'Live', count: active },
+                        { label: 'Scheduled', count: scheduled },
+                        { label: 'Ended', count: ended },
+                      ].map(value => (
+                        <View key={value.label} style={styles.metric}>
+                          <Text style={styles.metricCount}>{value.count}</Text>
+                          <Text style={styles.metricLabel}>{value.label}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+                <View style={styles.sectionHeading}>
+                  <Text style={styles.sectionTitle}>My Auctions</Text>
+                  {canManageInventory && (
+                    <Button label="Manage Auctions" onPress={openManager} variant="outline" size="sm" />
+                  )}
+                </View>
+              </>
             }
             ListEmptyComponent={
               loading ? <View style={styles.emptyState}>
@@ -304,7 +325,7 @@ const styles = StyleSheet.create({
   bidsSwitchItem: { minHeight: 44, paddingHorizontal: 14, borderRadius: 9, justifyContent: 'center' },
   bidsSwitchItemActive: { backgroundColor: Colors.accent },
   bidsSwitchText: { fontFamily: FontFamily.bold, fontSize: 14, color: Colors.textMuted },
-  bidsSwitchTextActive: { color: '#FFFFFF' },
+  bidsSwitchTextActive: { color: Colors.onAccent },
   permissionNotice: { color: Colors.textMuted, paddingHorizontal: 20, paddingBottom: 5,
     fontFamily: FontFamily.medium, fontSize: 12 },
   heading: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 9, gap: 5 },
@@ -314,7 +335,7 @@ const styles = StyleSheet.create({
   createButton: { flexDirection: 'row', gap: 7, alignItems: 'center',
     backgroundColor: Colors.accent, borderRadius: 12,
     minHeight: 44, paddingHorizontal: 15, alignSelf: 'flex-start', marginTop: 10 },
-  createText: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: 13 },
+  createText: { color: Colors.onAccent, fontFamily: FontFamily.bold, fontSize: 13 },
   navScroller: { flexGrow: 0, marginBottom: 9, maxHeight: 58 },
   navContent: { gap: 4, padding: 5, marginHorizontal: 20, alignItems: 'center',
     borderRadius: 14, borderWidth: 1, borderColor: Colors.borderSubtle,
@@ -343,6 +364,8 @@ const styles = StyleSheet.create({
   metricLabel: { color: Colors.textMuted, fontFamily: FontFamily.bold, fontSize: 11 },
   list: { flex: 1 },
   listContent: { paddingHorizontal: 20, paddingBottom: 110 },
+  // Header rows carry their own 20pt gutters inside the padded list.
+  listHeaderBleed: { marginHorizontal: -20 },
   sectionHeading: { flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between', paddingVertical: 12 },
   sectionTitle: { color: Colors.textPrimary, fontSize: 16,

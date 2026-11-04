@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, Dimensions, RefreshControl,
-  TextInput, ActivityIndicator, FlatList, Alert,
+  TextInput, ActivityIndicator, FlatList, Alert, Platform,
 } from 'react-native';
 import type { ListRenderItem } from 'react-native';
 import { Image } from 'expo-image';
@@ -19,7 +19,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { Colors } from '../../constants/colors';
+import { Button } from '../../components/Button';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
@@ -30,6 +31,8 @@ import { GradeChip } from '../../components/GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/AuctionCardBadges';
 import { WishlistHeart } from '../../components/WishlistHeart';
 import { getAuctionFirstOfferFloor } from '../../lib/auctionPricing';
+import { Layout } from '../../constants/layout';
+import { useTabBarClearance } from '../../hooks/useTabBarClearance';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -55,10 +58,15 @@ function useCountdown(targetIso: string) {
   return str;
 }
 
+/** Only this text re-renders each second, not the whole card + carousel. */
+const CountdownText: React.FC<{ target: string; style?: any }> = React.memo(({ target, style }) => {
+  const value = useCountdown(target);
+  return <Text style={style}>{value}</Text>;
+});
+
 // ─── Live Auction Card ────────────────────────────────────────────────────────
 
 const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }> = ({ auction, onPress }) => {
-  const timeLeft = useCountdown(auction.endTime);
   const l = auction.listing as any;
   const images: string[] = l?.images ?? [];
   const bids = l?._count?.bids ?? l?.bids?.length ?? 0;
@@ -92,7 +100,7 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
             <Text style={s.overlayLabel}>ENDS IN</Text>
-            <Text style={[s.overlayVal, { color: Colors.warning }]}>{timeLeft}</Text>
+            <CountdownText target={auction.endTime} style={[s.overlayVal, { color: Colors.warning }]} />
           </View>
         </View>
       </View>
@@ -114,7 +122,8 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
         />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
           <Ionicons name="hammer-outline" size={11} color={Colors.textSecondary} />
-          <Text style={s.cardMeta}>{bids} bid{bids !== 1 ? 's' : ''}</Text>
+          {/* Bid counts are not shown on browse cards (owner decision): a fresh lot reading "0 bids" undersold the trade buyer base. */}
+          <Text style={s.cardMeta}>Bidding open</Text>
           <Text style={s.cardMeta}> · </Text>
           <Text style={[s.cardMeta, { color: Colors.warning }]}>View auction</Text>
         </View>
@@ -126,7 +135,6 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
 // ─── Upcoming Auction Card ────────────────────────────────────────────────────
 
 const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }> = ({ auction, onPress }) => {
-  const startsIn = useCountdown(auction.startTime);
   const l = auction.listing as any;
   const images: string[] = l?.images ?? [];
   const startingBid = Number(auction.startingBid ?? 0);
@@ -138,7 +146,7 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
           ? <ImageCarousel images={images} width={282} height={150} onPress={onPress} showIndicator={false} />
           : <View style={s.cardImgEmpty} />}
         <View style={[s.livePill, { backgroundColor: 'rgba(59,130,246,0.9)' }]} pointerEvents="none">
-          <Ionicons name="calendar-outline" size={9} color={Colors.white} />
+          <Ionicons name="calendar-outline" size={9} color={Colors.onAccent} />
           <Text style={s.livePillText}>UPCOMING</Text>
         </View>
         <View style={{ position: 'absolute', top: 34, left: 10, right: 10 }} pointerEvents="none">
@@ -152,7 +160,7 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
             <Text style={s.overlayLabel}>STARTS IN</Text>
-            <Text style={[s.overlayVal, { color: Colors.infoBlueLight }]}>{startsIn}</Text>
+            <CountdownText target={auction.startTime} style={[s.overlayVal, { color: Colors.infoBlueLight }]} />
           </View>
         </View>
       </View>
@@ -228,7 +236,7 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
           accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'}
           accessibilityRole="button"
         >
-          <Ionicons name={saved ? 'heart' : 'heart-outline'} size={15} color={saved ? Colors.accent : Colors.white} />
+          <Ionicons name={saved ? 'heart' : 'heart-outline'} size={15} color={saved ? Colors.accent : Colors.onAccent} />
         </TouchableOpacity>
       </View>
       <View style={s.cardBody}>
@@ -278,7 +286,8 @@ function Rail<T>({
 }) {
   if (loading) {
     return (
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
+      <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
         {skeleton}
       </ScrollView>
     );
@@ -325,9 +334,7 @@ const Section: React.FC<{ title: string; onSeeAll?: () => void; children: React.
         {badge ? <View style={s.sectionBadge}><Text style={s.sectionBadgeText}>{badge}</Text></View> : null}
       </View>
       {onSeeAll && (
-        <TouchableOpacity onPress={onSeeAll} activeOpacity={0.7}>
-          <Text style={s.seeAll}>See all</Text>
-        </TouchableOpacity>
+        <Button label="See all" onPress={onSeeAll} variant="outline" size="sm" />
       )}
     </View>
     {children}
@@ -338,7 +345,7 @@ const Section: React.FC<{ title: string; onSeeAll?: () => void; children: React.
 
 const EmptyState: React.FC<{ icon: string; text: string }> = ({ icon, text }) => (
   <View style={s.emptyState}>
-    <Ionicons name={icon as any} size={24} color={Colors.borderMuted} />
+    <Ionicons name={icon as any} size={24} color={Colors.textMuted} />
     <Text style={s.emptyStateText}>{text}</Text>
   </View>
 );
@@ -361,8 +368,12 @@ const BODY_TYPES = [
 // ─── Home Screen ──────────────────────────────────────────────────────────────
 
 export const HomeScreen: React.FC = () => {
+  // Clear the floating tab bar, which grows with the system font size.
+  const tabBarClearance = useTabBarClearance();
   const navigation = useNavigation<NavProp>();
   const role = useAuthStore((s) => s.role);
+  // Signed-out visitors never see how many auctions are running (website rule too).
+  const isSignedIn = useAuthStore((s) => s.isAuthenticated);
   // Deliberately does NOT subscribe to the watchlist store — ListingCard owns
   // its own saved state (see its selector). Subscribing here re-rendered the
   // entire Home screen, every rail included, whenever any listing was saved.
@@ -522,7 +533,7 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <View style={s.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <View style={s.topGlow} />
       <WebsiteTopBar />
 
@@ -571,9 +582,9 @@ export const HomeScreen: React.FC = () => {
             accessibilityRole="button"
             accessibilityLabel="Start selling your car"
           >
-            <Ionicons name="pricetag-outline" size={20} color={Colors.white} />
+            <Ionicons name="pricetag-outline" size={20} color={Colors.onAccent} />
             <Text style={s.sellJourneyText}>Sell a Car</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.white} />
+            <Ionicons name="chevron-forward" size={16} color={Colors.onAccent} />
           </TouchableOpacity>
         </View>
 
@@ -583,7 +594,7 @@ export const HomeScreen: React.FC = () => {
             {liveAuctions.length > 0 && (
               <View style={s.statChip}>
                 <View style={s.liveDot} />
-                <Text style={s.statChipText}>{liveAuctions.length} Live now</Text>
+                <Text style={s.statChipText}>{isSignedIn ? `${liveAuctions.length} Live now` : 'Live now'}</Text>
               </View>
             )}
             {upcomingAuctions.length > 0 && (
@@ -619,9 +630,9 @@ export const HomeScreen: React.FC = () => {
           <TouchableOpacity style={s.aiChip} onPress={handleAiSearch} disabled={aiLoading}
             accessibilityRole="button" accessibilityLabel="AI Search" activeOpacity={0.8}>
             {aiLoading
-              ? <ActivityIndicator size="small" color={Colors.white} />
+              ? <ActivityIndicator size="small" color={Colors.onAccent} />
               : <>
-                  <Ionicons name="sparkles" size={10} color={Colors.white} />
+                  <Ionicons name="sparkles" size={10} color={Colors.onAccent} />
                   <Text style={s.aiChipText}>AI</Text>
                 </>}
           </TouchableOpacity>
@@ -643,7 +654,7 @@ export const HomeScreen: React.FC = () => {
             {Object.keys(aiResult.filterCard?.params ?? {}).length > 0 && (
               <TouchableOpacity style={s.aiResultBtn} onPress={viewAiResults} activeOpacity={0.85}>
                 <Text style={s.aiResultBtnText}>VIEW MATCHING CARS</Text>
-                <Ionicons name="arrow-forward" size={14} color={Colors.white} />
+                <Ionicons name="arrow-forward" size={14} color={Colors.onAccent} />
               </TouchableOpacity>
             )}
           </View>
@@ -652,6 +663,7 @@ export const HomeScreen: React.FC = () => {
         {/* Quick category chips */}
         <ScrollView
           horizontal
+        style={Layout.hScroll}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={s.quickChipsRow}
         >
@@ -664,7 +676,7 @@ export const HomeScreen: React.FC = () => {
           ].map((chip) => (
             <TouchableOpacity
               key={chip.label}
-              style={[s.quickChip, { borderColor: `${chip.color}40`, backgroundColor: `${chip.color}0D` }]}
+              style={[s.quickChip, { borderColor: `${chip.color}55` }]}
               onPress={() => {
                 const params = chip.params ? { ...chip.params, _t: Date.now() } : undefined;
                 navigation.navigate(chip.screen as any, params as any);
@@ -680,7 +692,7 @@ export const HomeScreen: React.FC = () => {
         {/* ── LIVE AUCTIONS ── */}
         <Section
           title="LIVE AUCTIONS"
-          badge={liveAuctions.length > 0 ? `${liveAuctions.length} LIVE` : undefined}
+          badge={liveAuctions.length > 0 ? (isSignedIn ? `${liveAuctions.length} LIVE` : 'LIVE') : undefined}
           onSeeAll={() => navigation.navigate('Tabs', { screen: 'Live' })}
         >
           <Rail
@@ -742,7 +754,8 @@ export const HomeScreen: React.FC = () => {
 
         {/* ── BROWSE BY BODY TYPE ── */}
         <Section title="BROWSE BY TYPE">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
+          <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
             {BODY_TYPES.map(bt => (
               <TouchableOpacity
                 key={bt.bodyType}
@@ -812,7 +825,7 @@ export const HomeScreen: React.FC = () => {
           <Text style={s.sellCtaHint}>List in minutes · Get offers from buyers</Text>
           <View style={s.sellCtaBtn}>
             <Text style={s.sellCtaBtnText}>Start listing</Text>
-            <Ionicons name="arrow-forward" size={14} color={Colors.white} />
+            <Ionicons name="arrow-forward" size={14} color={Colors.onAccent} />
           </View>
         </TouchableOpacity>
 
@@ -838,7 +851,9 @@ export const HomeScreen: React.FC = () => {
                     <View style={s.auctionLiveDot} />
                   </View>
                   <Text style={s.utilityRowText} numberOfLines={1}>
-                    {liveAuctions.length} live auction{liveAuctions.length !== 1 ? 's' : ''} right now
+                    {isSignedIn
+                      ? `${liveAuctions.length} live auction${liveAuctions.length !== 1 ? 's' : ''} right now`
+                      : 'Live auctions happening now'}
                   </Text>
                   <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
@@ -864,7 +879,7 @@ export const HomeScreen: React.FC = () => {
           );
         })()}
 
-        <View style={{ height: 110 }} />
+        <View style={{ height: Math.max(110, tabBarClearance) }} />
       </ScrollView>
     </View>
   );
@@ -900,10 +915,10 @@ const s = StyleSheet.create({
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.accent },
 
   // Search
-  searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, marginBottom: 12, paddingHorizontal: 16, height: 52, borderRadius: Radius.inline, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.borderSubtle, gap: 10 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, marginBottom: 12, paddingHorizontal: 16, minHeight: 52, borderRadius: Radius.inline, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, gap: 10, ...Elevation.card },
   searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size14, color: Colors.white },
-  aiChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accent, paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.inline, minWidth: 40, justifyContent: 'center' },
-  aiChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.white },
+  aiChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accent, paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.inline, minWidth: 40, justifyContent: 'center', borderBottomWidth: 2, borderBottomColor: Colors.accentDark },
+  aiChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.onAccent },
 
   // Inline AI search result
   aiResultCard: {
@@ -922,21 +937,27 @@ const s = StyleSheet.create({
   aiResultError: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.error },
   aiResultBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    height: 42, borderRadius: Radius.inline, backgroundColor: Colors.accent,
+    minHeight: 42, borderRadius: Radius.inline, backgroundColor: Colors.accent,
+    borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon,
   },
-  aiResultBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.5 },
+  aiResultBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent, letterSpacing: 0.5 },
 
   // Quick chips
-  quickChipsRow: { paddingHorizontal: 24, paddingBottom: 4, gap: 8, marginBottom: 36 },
-  quickChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.card, borderWidth: 1 },
+  // Vertical padding leaves room for the chips' raised shadow inside the
+  // horizontal ScrollView, which otherwise clips it.
+  quickChipsRow: { paddingHorizontal: 24, paddingTop: 4, paddingBottom: 10, gap: 8, marginBottom: 28 },
+  // Solid raised chips (was a translucent tint, which read as flat paper and
+  // draws no Android elevation).
+  quickChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.card, borderWidth: 1, borderBottomWidth: 2, backgroundColor: Colors.bgCard, ...Elevation.card },
   quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs },
 
   // Buyer and seller journeys; stable on small screens.
   primaryJourneyRow: { flexDirection: 'row', paddingHorizontal: 24, gap: 10, marginBottom: 20 },
-  buyJourneyBtn: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 10, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgSecondary },
-  sellJourneyBtn: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 10, borderRadius: Radius.inline, backgroundColor: Colors.accent },
+  // Raised 3D journey buttons: solid surface + bevelled bottom edge + shadow.
+  buyJourneyBtn: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 10, borderRadius: Radius.inline, borderWidth: 1, borderBottomWidth: 3, borderColor: Colors.borderHi, backgroundColor: Colors.bgCard, ...Elevation.card },
+  sellJourneyBtn: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 10, borderRadius: Radius.inline, backgroundColor: Colors.accent, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   buyJourneyText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
-  sellJourneyText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
+  sellJourneyText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent },
   // Section
   section: { marginBottom: 36 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, marginBottom: 18 },
@@ -944,22 +965,19 @@ const s = StyleSheet.create({
   // bold-small-caps pair per screen.
   sectionTitle: { ...TextPresets.eyebrow, color: Colors.white },
   sectionBadge: { backgroundColor: Colors.accent, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
-  sectionBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white, letterSpacing: 0.5 },
-  seeAll: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.accent },
+  sectionBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.onAccent, letterSpacing: 0.5 },
 
   // Horizontal scroll
-  hScroll: { paddingHorizontal: 24, gap: 16, flexDirection: 'row', alignItems: 'center' },
+  // Vertical padding so the raised cards' shadows aren't clipped by the rail.
+  hScroll: { paddingHorizontal: 24, paddingTop: 4, paddingBottom: 14, gap: 16, flexDirection: 'row', alignItems: 'center' },
 
   // Cards shared
-  // NOTE: these two carry `overflow: 'hidden'` to clip the image to the
-  // radius, and iOS clips shadows to that — so Elevation.card's shadow*
-  // half is inert here and only the Android `elevation` takes effect.
-  // Making it render on iOS needs a shadow-bearing wrapper around a
-  // clipping inner view; left as a follow-up rather than restructuring
-  // every card in this screen blind.
-  auctionCard: { width: 282, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.card, overflow: 'hidden', ...Elevation.card },
-  listingCard: { width: 240, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.card, overflow: 'hidden', ...Elevation.card },
-  cardImgWrap: { position: 'relative', height: 150, backgroundColor: Colors.bgTertiary },
+  // iOS clips a view's own shadow to `overflow: 'hidden'`, so on iOS these
+  // cards stay unclipped and the image wrapper rounds its own top corners;
+  // Android's elevation isn't clipped, so it keeps the simple clip.
+  auctionCard: { width: 282, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.card, overflow: Platform.OS === 'ios' ? 'visible' : 'hidden', ...Elevation.card },
+  listingCard: { width: 240, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.card, overflow: Platform.OS === 'ios' ? 'visible' : 'hidden', ...Elevation.card },
+  cardImgWrap: { position: 'relative', height: 150, overflow: 'hidden', backgroundColor: Colors.bgTertiary, borderTopLeftRadius: Radius.card - 1, borderTopRightRadius: Radius.card - 1 },
   cardImg: { width: '100%', height: '100%' },
   cardImgEmpty: { width: '100%', height: '100%', backgroundColor: Colors.bgTertiary },
   cardBody: { padding: 16 },
@@ -972,10 +990,10 @@ const s = StyleSheet.create({
 
   // Auction overlays
   livePill: { position: 'absolute', top: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.accent, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 },
-  livePillText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white, letterSpacing: 1 },
+  livePillText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.onAccent, letterSpacing: 1 },
   bidOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', backgroundColor: 'rgba(10,10,12,0.78)', borderTopWidth: 1, borderTopColor: Colors.whiteAlpha07, paddingVertical: 9, paddingHorizontal: 14 },
-  overlayLabel: { fontFamily: FontFamily.medium, fontSize: FontSize.size8, color: Colors.textSecondary, letterSpacing: 1, marginBottom: 2 },
-  overlayVal: { ...TextPresets.monoFigure, fontSize: FontSize.size14, color: Colors.white },
+  overlayLabel: { fontFamily: FontFamily.medium, fontSize: FontSize.size8, color: Colors.onAccentMuted, letterSpacing: 1, marginBottom: 2 },
+  overlayVal: { ...TextPresets.monoFigure, fontSize: FontSize.size14, color: Colors.onAccent },
 
   // Listing badges
   featuredBadge: { position: 'absolute', top: 10, left: 10, backgroundColor: Colors.warning, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 5 },
@@ -983,14 +1001,14 @@ const s = StyleSheet.create({
   heartBtn: { position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.4)', borderWidth: 1, borderColor: Colors.whiteAlpha12, alignItems: 'center', justifyContent: 'center' },
 
   // Body type
-  bodyTypeCard: { width: 80, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.whiteAlpha07, borderRadius: Radius.inline, alignItems: 'center', paddingVertical: 14, gap: 8 },
+  bodyTypeCard: { width: 80, backgroundColor: Colors.bgCard, borderWidth: 1, borderBottomWidth: 3, borderColor: Colors.border, borderRadius: Radius.inline, alignItems: 'center', paddingVertical: 14, gap: 8, ...Elevation.card },
   bodyTypeIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   bodyTypeLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.white },
 
   // Recent grid
   recentGrid: { flexDirection: 'column', paddingHorizontal: 24, rowGap: 12 },
-  recentCard: { width: '100%', minHeight: 124, flexDirection: 'row', backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderSubtle, borderRadius: Radius.card, overflow: 'hidden' },
-  recentImgWrap: { width: 132, height: 124 },
+  recentCard: { width: '100%', minHeight: 124, flexDirection: 'row', backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.card, overflow: Platform.OS === 'ios' ? 'visible' : 'hidden', ...Elevation.card },
+  recentImgWrap: { width: 132, height: 124, overflow: 'hidden', borderTopLeftRadius: Radius.card - 1, borderBottomLeftRadius: Radius.card - 1 },
   recentImg: { width: '100%', height: '100%', resizeMode: 'cover' },
   recentBody: { flex: 1, padding: 14, justifyContent: 'center' },
   recentSpecs: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textMuted, marginBottom: 6 },
@@ -998,24 +1016,26 @@ const s = StyleSheet.create({
   recentPrice: { fontFamily: FontFamily.mono, fontSize: FontSize.lg, color: Colors.white },
 
   // Empty state
-  emptyState: { width: 240, height: 100, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.whiteAlpha02, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha05 },
-  emptyStateText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.midBlue_505060 },
+  emptyState: { width: 240, minHeight: 100, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.bgCard, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.border, ...Elevation.card },
+  emptyStateText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.textMuted },
 
   // Sell CTA — the one accent-filled hero action on this screen (CDS restraint
   // rule: at most one primary accent-filled action per view). Accent wash
   // fill instead of a thin border, a watermark icon for texture, and a
   // trailing-arrow button instead of a boxed label.
-  sellCta: { marginHorizontal: 24, marginBottom: 14, backgroundColor: Colors.accentAlpha12, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.accentAlpha25, padding: 24, overflow: 'hidden' },
+  // Solid hero surface (a translucent wash draws no Android elevation and read
+  // as flat paper); the accent border + watermark carry the brand tint.
+  sellCta: { marginHorizontal: 24, marginBottom: 14, backgroundColor: Colors.bgCard, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.accentAlpha30, padding: 24, overflow: 'hidden', ...Elevation.cardHi },
   sellCtaWatermark: { position: 'absolute', top: -10, right: -10 },
   sellCtaTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.xl, color: Colors.white, marginBottom: 4 },
   sellCtaHint: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: 16 },
-  sellCtaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, alignSelf: 'flex-start', backgroundColor: Colors.accent, paddingHorizontal: 20, paddingVertical: 12, borderRadius: Radius.inline },
-  sellCtaBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.3 },
+  sellCtaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, alignSelf: 'flex-start', backgroundColor: Colors.accent, paddingHorizontal: 20, paddingVertical: 12, borderRadius: Radius.inline, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
+  sellCtaBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent, letterSpacing: 0.3 },
 
   // Secondary utility rows (live auctions / dealer signup) — deliberately
   // quiet compact rows, not competing hero cards, so the sell CTA above is
   // the only bold moment on the screen.
-  secondaryRows: { marginHorizontal: 24, marginBottom: 8, backgroundColor: Colors.bgSecondary, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderSubtle, overflow: 'hidden' },
+  secondaryRows: { marginHorizontal: 24, marginBottom: 8, backgroundColor: Colors.bgCard, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.border, ...Elevation.card },
   utilityRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
   utilityRowIconWrap: { width: 30, height: 30, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha05, alignItems: 'center', justifyContent: 'center' },
   auctionLiveDot: { position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.accent, borderWidth: 1.5, borderColor: Colors.bgSecondary },

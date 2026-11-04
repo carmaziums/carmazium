@@ -4,6 +4,7 @@ import * as React from "react"
 import { Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { CarCard } from "@/components/features/CarCard"
@@ -11,7 +12,7 @@ import {
     Search, Filter, X, Gavel, AlertTriangle, Loader2,
     RotateCcw, ChevronDown, ShieldCheck, Star, ArrowRight, MapPin, Truck, EyeOff,
 } from "lucide-react"
-import { getListings, getFeaturedListings, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type WriteOffSearchValue, type EuroStandardValue } from "@/lib/listingApi"
+import { getListings, getFeaturedListings, getMakeCounts, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type WriteOffSearchValue, type EuroStandardValue } from "@/lib/listingApi"
 import { EXTERIOR_GRADE_OPTIONS } from "@/lib/exteriorGrade"
 import { haversineDistanceMiles } from "@/lib/distance"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
@@ -129,6 +130,10 @@ interface FilterState {
     maxDistanceMi: number | null
     deliveryAvailable: boolean
     isImported: 'yes' | 'no' | ''
+    motValid: boolean
+    taxedOnly: boolean
+    serviceHistories: string[]
+    maxOwners: string
 }
 
 const INITIAL_FILTERS: FilterState = {
@@ -150,7 +155,19 @@ const INITIAL_FILTERS: FilterState = {
     maxDistanceMi: null,
     deliveryAvailable: false,
     isImported: '',
+    motValid: false,
+    taxedOnly: false,
+    serviceHistories: [],
+    maxOwners: '',
 }
+
+// Same options as the app (and the listing form's service history choices).
+const SERVICE_HISTORY_OPTIONS = [
+    { value: 'FULL_MAIN_DEALER', label: 'Full main dealer' },
+    { value: 'FULL_INDEPENDENT', label: 'Full independent' },
+    { value: 'PARTIAL', label: 'Partial' },
+    { value: 'NONE', label: 'None' },
+] as const
 
 // ─── Collapsible Section ──────────────────────────────────────────────────────
 
@@ -263,6 +280,11 @@ function SearchPageContent() {
             maxDistanceMi: searchParams.get('maxDistanceMi') ? Number(searchParams.get('maxDistanceMi')) : null,
             deliveryAvailable: p('deliveryAvailable') === 'true',
             isImported: (p('isImported') as 'yes' | 'no') || '',
+            motValid: p('motValid') === 'true',
+            taxedOnly: p('taxedOnly') === 'true',
+            serviceHistories: (searchParams.get('serviceHistories')?.split(',') || [])
+                .filter(v => SERVICE_HISTORY_OPTIONS.some(o => o.value === v)),
+            maxOwners: /^[1-5]$/.test(p('maxOwners')) ? p('maxOwners') : '',
         }
     }, [searchParams])
 
@@ -298,6 +320,10 @@ function SearchPageContent() {
     }, [])
 
     // Effect moved down after fetchListings definition
+
+    // Live counts beside each make, same source as the app's make picker.
+    const [makeCounts, setMakeCounts] = React.useState<Record<string, number>>({})
+    React.useEffect(() => { void getMakeCounts().then(setMakeCounts) }, [])
 
     const set = <K extends keyof FilterState>(key: K, val: FilterState[K]) =>
         setFilters(prev => ({ ...prev, [key]: val }))
@@ -353,6 +379,10 @@ function SearchPageContent() {
         if (appliedFilters.maxDistanceMi) count++
         if (appliedFilters.deliveryAvailable) count++
         if (appliedFilters.isImported) count++
+        if (appliedFilters.motValid) count++
+        if (appliedFilters.taxedOnly) count++
+        if (appliedFilters.serviceHistories.length) count++
+        if (appliedFilters.maxOwners) count++
         if (appliedFilters.features.length) count++
         return count
     }, [appliedFilters])
@@ -399,6 +429,10 @@ function SearchPageContent() {
         if (state.deliveryAvailable) f.deliveryAvailable = true
         if (state.isImported === 'yes') f.isImported = true
         else if (state.isImported === 'no') f.isImported = false
+        if (state.motValid) f.motValid = true
+        if (state.taxedOnly) f.taxedOnly = true
+        if (state.serviceHistories.length) f.serviceHistories = state.serviceHistories
+        if (state.maxOwners) f.maxOwners = parseInt(state.maxOwners)
         return f
     }, [])
 
@@ -616,7 +650,7 @@ function SearchPageContent() {
                         <h3 className="font-heading font-bold text-xl">Filters</h3>
                         <div className="flex items-center gap-4">
                             {activeFilterCount > 0 && (
-                                <button onClick={handleResetFilters} className="text-xs text-primary font-normal cursor-pointer hover:underline flex items-center gap-1">
+                                <button onClick={handleResetFilters} className={buttonVariants({ variant: "outline", size: "sm" })}>
                                     <RotateCcw size={12} /> Reset All
                                 </button>
                             )}
@@ -701,7 +735,10 @@ function SearchPageContent() {
                                         className="h-10 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm text-[var(--text-primary)] focus:border-primary focus:outline-none"
                                     >
                                         <option value="">All makes</option>
-                                        {CAR_MAKES.filter(m => !makeQuery.trim() || m.toLowerCase().includes(makeQuery.trim().toLowerCase()) || m === filters.make).map(m => <option key={m} value={m}>{m}</option>)}
+                                        {CAR_MAKES.filter(m => !makeQuery.trim() || m.toLowerCase().includes(makeQuery.trim().toLowerCase()) || m === filters.make).map(m => {
+                                            const count = makeCounts[m.toLowerCase()]
+                                            return <option key={m} value={m}>{count ? `${m} (${count.toLocaleString('en-GB')})` : m}</option>
+                                        })}
                                         <option value="__other__">Other make (type manually)</option>
                                     </select>
                                     {(makeManualEntry || (filters.make && !CAR_MAKES.includes(filters.make))) && (
@@ -969,6 +1006,44 @@ function SearchPageContent() {
 
 
                             {/* BHP / Power */}
+                            <FilterSection title="History & Status">
+                                <div className="space-y-3">
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {([['motValid', 'MOT valid'], ['taxedOnly', 'Taxed']] as const).map(([key, label]) => (
+                                            <button key={key} type="button" aria-pressed={filters[key]}
+                                                onClick={() => set(key, !filters[key])}
+                                                className={`px-3 py-1.5 rounded-md border text-xs font-semibold transition-all ${filters[key] ? 'border-primary bg-primary/15 text-primary' : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
+                                            >{label}</button>
+                                        ))}
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-[var(--text-muted)] mb-1.5">Service history</p>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {SERVICE_HISTORY_OPTIONS.map(o => {
+                                                const on = filters.serviceHistories.includes(o.value)
+                                                return (
+                                                    <button key={o.value} type="button" aria-pressed={on}
+                                                        onClick={() => set('serviceHistories', on ? filters.serviceHistories.filter(v => v !== o.value) : [...filters.serviceHistories, o.value])}
+                                                        className={`px-3 py-1.5 rounded-md border text-xs font-semibold transition-all ${on ? 'border-primary bg-primary/15 text-primary' : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
+                                                    >{o.label}</button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-[var(--text-muted)] mb-1.5">Previous owners (up to)</p>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {['1', '2', '3', '4'].map(n => (
+                                                <button key={n} type="button" aria-pressed={filters.maxOwners === n}
+                                                    onClick={() => set('maxOwners', filters.maxOwners === n ? '' : n)}
+                                                    className={`px-3 py-1.5 rounded-md border text-xs font-semibold transition-all ${filters.maxOwners === n ? 'border-primary bg-primary/15 text-primary' : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30'}`}
+                                                >{n === '1' ? '1 owner' : `Up to ${n}`}</button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </FilterSection>
+
                             <FilterSection title="Power (BHP)">
                                 <RangeInputs minVal={filters.minBhp} maxVal={filters.maxBhp}
                                     onMinChange={(v) => set('minBhp', v)} onMaxChange={(v) => set('maxBhp', v)}
@@ -1234,6 +1309,10 @@ function SearchPageContent() {
                             {appliedFilters.location && <FilterTag label={`Near: ${appliedFilters.location}`} onRemove={() => clearFilter({ location: '' })} />}
                             {appliedFilters.sellerType && <FilterTag label={appliedFilters.sellerType === 'DEALER' ? 'Dealer' : 'Private Seller'} onRemove={() => clearFilter({ sellerType: '' })} />}
                             {appliedFilters.maxDistanceMi && <FilterTag label={`Within ${appliedFilters.maxDistanceMi} mi`} onRemove={() => clearFilter({ maxDistanceMi: null })} />}
+                            {appliedFilters.motValid && <FilterTag label="MOT valid" onRemove={() => clearFilter({ motValid: false })} />}
+                            {appliedFilters.taxedOnly && <FilterTag label="Taxed" onRemove={() => clearFilter({ taxedOnly: false })} />}
+                            {appliedFilters.serviceHistories.map(v => <FilterTag key={v} label={`Service: ${SERVICE_HISTORY_OPTIONS.find(o => o.value === v)?.label ?? v}`} onRemove={() => clearFilter({ serviceHistories: appliedFilters.serviceHistories.filter(x => x !== v) })} />)}
+                            {appliedFilters.maxOwners && <FilterTag label={`Up to ${appliedFilters.maxOwners} owner${appliedFilters.maxOwners === '1' ? '' : 's'}`} onRemove={() => clearFilter({ maxOwners: '' })} />}
                             {appliedFilters.deliveryAvailable && (
                                 <FilterTag label="Delivery available" onRemove={() => clearFilter({ deliveryAvailable: false })} />
                             )}

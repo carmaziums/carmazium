@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useScrollLocked } from '../../lib/scrollLock';
 import {
   View,
   Text,
@@ -18,6 +19,7 @@ import {
 // expo-image: caching/recycling for the swipeable photo gallery + thumbnail
 // strip — users flick through many high-res car photos per listing here.
 import { Image } from 'expo-image';
+import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -32,7 +34,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { formatPrice, formatMileage, CarListing } from '../../data/listings';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
 import { useWatchlistStore } from '../../store/watchlistStore';
@@ -48,6 +50,7 @@ import { useChat } from '../../context/ChatContext';
 import { BuyerDamageViewer } from '../../components/damage/BuyerDamageViewer';
 import { GradeChip } from '../../components/GradeChip';
 import { useAuthStore } from '../../store/authStore';
+import { openSignIn } from '../../components/SignInRequired';
 import { haptics } from '../../lib/haptics';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { createDeliveryRequest, getDeliveryQuote, DeliveryQuote } from '../../lib/deliveryApi';
@@ -57,6 +60,11 @@ import { EnquireModal } from '../../components/listing/EnquireModal';
 import { useLocation } from '../../context/LocationContext';
 
 import { IconButton } from '../../components/IconButton';
+import { Layout } from '../../constants/layout';
+
+const FINANCE_MIN_APR = 9;
+const FINANCE_MAX_APR = 49;
+const FINANCE_DEFAULT_APR = 19;
 type Props = NativeStackScreenProps<MainStackParamList, 'VehicleDetail'>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -161,6 +169,8 @@ const SPEC_GROUPS: { title: string; rows: (l: CarListing) => SpecRow[] }[] = [
 ];
 
 export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
+  // Paused while a finger is on the 3D damage viewer (lib/scrollLock.ts).
+  const scrollLocked = useScrollLocked();
   const { listing } = route.params;
   const insets = useSafeAreaInsets();
   const [activeImage, setActiveImage] = useState(0);
@@ -267,6 +277,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [financeExpanded, setFinanceExpanded] = useState(false);
   const [depositPct, setDepositPct] = useState(10); // % of price as deposit
   const [termMonths, setTermMonths] = useState(48);
+  // Same 9–49% adjustable range and 19% default as web's FinanceCalculator.
+  const [aprPct, setAprPct] = useState(FINANCE_DEFAULT_APR);
 
   // Delivery
   const [offerStatus, setOfferStatus] = useState<string | null>(null);
@@ -448,6 +460,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handleOpenChat = async () => {
+    if (!requireAccount()) return;
     try {
       if (listing.seller?.id) {
         const room = await createChatRoom(listing.seller.id, listing.id);
@@ -523,7 +536,14 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   }, [listing.seller?.id, listing.id]);
 
   // Fetch the current user's offer status for this listing (to gate "Request Delivery")
-  const { user: currentUser } = useAuthStore();
+  const currentUser = useAuthStore((s) => s.user);
+  // Guests can view every public listing; acting on one (offer, enquiry,
+  // chat, delivery, history check) needs an account, as on the website.
+  const requireAccount = (): boolean => {
+    if (currentUser) return true;
+    openSignIn(navigation, 'Login', { name: 'VehicleDetail', params: route.params });
+    return false;
+  };
   // Full offer object — kept alongside offerStatus so we can render the
   // OfferStatusChip on this screen with the amount, matching web
   // VehicleDetailPageClient.tsx L31-90 wording.
@@ -549,6 +569,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   }, [listing.id, currentUser]);
 
   const handleDeliveryRequest = async () => {
+    if (!requireAccount()) return;
     if (!deliveryStreet.trim() || !deliveryCity.trim() || !deliveryPostcode.trim()) {
       setDeliveryError('Street, city and postcode are required.');
       return;
@@ -617,6 +638,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handleHpiCheck = async () => {
+    if (!requireAccount()) return;
     if (!listing.id) return;
     // A report already exists — whether it's finished or still being prepared,
     // open the sheet rather than charging for another one.
@@ -677,7 +699,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     // Was 9.9% — web's FinanceCalculator.tsx uses a 9–49% adjustable range
     // with a 19% representative default; mobile's fixed rate undershot the
     // real quoted figure by ~15-20% for the same inputs.
-    const monthlyRate = 19 / 1200;
+    const monthlyRate = aprPct / 1200;
+    if (monthlyRate === 0) return principal / termMonths;
     return principal * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / (Math.pow(1 + monthlyRate, termMonths) - 1);
   };
 
@@ -786,10 +809,11 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {/* Main Scrollable Content */}
       <ScrollView
+        scrollEnabled={!scrollLocked}
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
@@ -842,12 +866,12 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Floating Header Actions */}
           <View style={[styles.floatingHeader, { top: insets.top + 8 }]}>
-            <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+            <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.onAccent} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
             <View style={styles.headerRightActions}>
-              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="git-compare-outline" size={18} color={Colors.white} />} onPress={() => navigation.navigate('Compare', { initialListing: listing })} accessibilityLabel="Compare this car" />
-              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="share-social-outline" size={18} color={Colors.white} />} onPress={() => Share.share({ message: `Check out this ${listing.year} ${listing.make} ${listing.model} on Carmazium!` })} accessibilityLabel="Share this listing" />
-              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggleSaved} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
+              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="git-compare-outline" size={18} color={Colors.onAccent} />} onPress={() => navigation.navigate('Compare', { initialListing: listing })} accessibilityLabel="Compare this car" />
+              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="share-social-outline" size={18} color={Colors.onAccent} />} onPress={() => Share.share({ message: `Check out this ${listing.year} ${listing.make} ${listing.model} on Carmazium!` })} accessibilityLabel="Share this listing" />
+              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? Colors.accent : Colors.onAccent} />} onPress={handleToggleSaved} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
             </View>
           </View>
 
@@ -1114,7 +1138,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {listing.videoUrls != null && listing.videoUrls.length > 0 && (
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionHeaderTitle}>VIDEOS</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+              <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
                 {listing.videoUrls.map((url, i) => {
                   const ytId = extractYouTubeId(url);
                   if (ytId) {
@@ -1464,7 +1489,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 onPress={(e) => {
                   e.stopPropagation();
                   if (listing.seller?.id) {
-                    setEnquireVisible(true);
+                    if (requireAccount()) setEnquireVisible(true);
                   } else {
                     handleOpenChat();
                   }
@@ -1592,11 +1617,15 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             )}
           </View>
 
-          {/* Expandable Finance Calculator — Coming Soon */}
+          {/* Finance Calculator — same inputs and maths as web's
+              components/features/FinanceCalculator.tsx. CarMazium isn't a
+              lender, so the CTA opens the website's finance enquiry. */}
           <TouchableOpacity
             style={styles.financeCard}
             activeOpacity={0.85}
             onPress={() => setFinanceExpanded(!financeExpanded)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: financeExpanded }}
           >
             <View style={styles.financeIconWrapper}>
               <Ionicons name="calculator-outline" size={18} color={Colors.accent} />
@@ -1606,12 +1635,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 Finance Calculator
               </Text>
               <Text style={styles.financeSubtext}>
-                19% APR representative · tap to expand
+                Estimate your monthly payments · tap to expand
               </Text>
-            </View>
-            {/* Coming Soon badge */}
-            <View style={styles.comingSoonBadge}>
-              <Text style={styles.comingSoonText}>Coming Soon</Text>
             </View>
             <Ionicons
               name={financeExpanded ? 'chevron-up' : 'chevron-down'}
@@ -1623,52 +1648,97 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {financeExpanded && (
             <View style={styles.financeCalcBody}>
-              {/* Coming Soon overlay message */}
-              <View style={styles.financeComingSoonBox}>
-                <Ionicons name="time-outline" size={20} color={Colors.textMuted} />
-                <Text style={styles.financeComingSoonLabel}>Finance Calculator Coming Soon</Text>
-                <Text style={styles.financeComingSoonSub}>
-                  Finance options will be available here. Contact the seller directly to discuss finance.
-                </Text>
-              </View>
-
-              {/* Deposit Row — inert preview */}
-              <View style={[styles.calcRow, { opacity: 0.4 }]}>
+              <View style={styles.calcRow}>
                 <Text style={styles.calcLabel}>DEPOSIT</Text>
                 <Text style={styles.calcValue}>
                   {depositPct}% — £{Math.round(listing.price * depositPct / 100).toLocaleString('en-GB')}
                 </Text>
               </View>
-              <View style={[styles.depositStepsRow, { opacity: 0.4 }]}>
+              <View style={styles.depositStepsRow}>
                 {[0, 10, 20, 30, 40, 50].map(pct => (
-                  <View
+                  <TouchableOpacity
                     key={pct}
                     style={[styles.depositStep, depositPct === pct && styles.depositStepActive]}
+                    onPress={() => setDepositPct(pct)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: depositPct === pct }}
+                    accessibilityLabel={`${pct}% deposit`}
                   >
                     <Text style={[styles.depositStepText, depositPct === pct && styles.depositStepTextActive]}>
                       {pct}%
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
 
-              {/* Term Row — inert preview */}
-              <View style={[styles.calcRow, { marginTop: 14, opacity: 0.4 }]}>
-                <Text style={styles.calcLabel}>TERM</Text>
+              <View style={[styles.calcRow, styles.calcRowSpaced]}>
+                <Text style={styles.calcLabel}>FINANCE TERM</Text>
                 <Text style={styles.calcValue}>{termMonths} months</Text>
               </View>
-              <View style={[styles.depositStepsRow, { opacity: 0.4 }]}>
+              <View style={styles.depositStepsRow}>
                 {[12, 24, 36, 48, 60].map(t => (
-                  <View
+                  <TouchableOpacity
                     key={t}
                     style={[styles.depositStep, termMonths === t && styles.depositStepActive]}
+                    onPress={() => setTermMonths(t)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: termMonths === t }}
+                    accessibilityLabel={`${t} months`}
                   >
                     <Text style={[styles.depositStepText, termMonths === t && styles.depositStepTextActive]}>
                       {t}m
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
+
+              <View style={[styles.calcRow, styles.calcRowSpaced]}>
+                <Text style={styles.calcLabel}>REPRESENTATIVE APR</Text>
+                <View style={styles.aprStepper}>
+                  <TouchableOpacity
+                    style={styles.aprStepBtn}
+                    onPress={() => setAprPct(a => Math.max(FINANCE_MIN_APR, a - 1))}
+                    disabled={aprPct <= FINANCE_MIN_APR}
+                    accessibilityRole="button"
+                    accessibilityLabel="Decrease APR"
+                  >
+                    <Ionicons name="remove" size={16} color={Colors.textPrimary} />
+                  </TouchableOpacity>
+                  <Text style={styles.calcValue}>{aprPct}%</Text>
+                  <TouchableOpacity
+                    style={styles.aprStepBtn}
+                    onPress={() => setAprPct(a => Math.min(FINANCE_MAX_APR, a + 1))}
+                    disabled={aprPct >= FINANCE_MAX_APR}
+                    accessibilityRole="button"
+                    accessibilityLabel="Increase APR"
+                  >
+                    <Ionicons name="add" size={16} color={Colors.textPrimary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.financeResultBox}>
+                <Text style={styles.calcLabel}>MONTHLY PAYMENT</Text>
+                <Text style={styles.financeResultValue}>
+                  £{Math.round(calcMonthlyPayment()).toLocaleString('en-GB')}
+                </Text>
+                <Text style={styles.financeResultTotal}>
+                  Total Payable: £{Math.round(calcMonthlyPayment() * termMonths + listing.price * depositPct / 100).toLocaleString('en-GB')}
+                </Text>
+                <TouchableOpacity
+                  style={styles.financeEnquiryBtn}
+                  onPress={() => {
+                    WebBrowser.openBrowserAsync('https://www.carmazium.com/services/finance').catch(() =>
+                      Alert.alert('Could not open CarMazium', 'Please visit www.carmazium.com/services/finance.'));
+                  }}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.financeEnquiryText}>Send a finance enquiry</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.financeCalcDisclaimer}>
+                *Figures are estimates and do not constitute a formal offer of finance. Rates and acceptance subject to status.
+              </Text>
             </View>
           )}
 
@@ -1804,7 +1874,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   onPress={() => setDeliveryModalVisible(true)}
                   activeOpacity={0.85}
                 >
-                  <Ionicons name="car-outline" size={15} color={Colors.white} />
+                  <Ionicons name="car-outline" size={15} color={Colors.onAccent} />
                   <Text style={styles.deliveryRequestBtnText}>Request Delivery</Text>
                 </TouchableOpacity>
               )}
@@ -1842,7 +1912,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           value={deliveryStreet}
           onChangeText={v => { setDeliveryStreet(v); setDeliveryError(null); }}
           placeholder="e.g. 42 Park Lane"
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={Colors.inputPlaceholder}
           autoCapitalize="words"
         />
 
@@ -1853,7 +1923,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           value={deliveryCity}
           onChangeText={v => { setDeliveryCity(v); setDeliveryError(null); }}
           placeholder="e.g. London"
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={Colors.inputPlaceholder}
           autoCapitalize="words"
         />
 
@@ -1864,7 +1934,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           value={deliveryPostcode}
           onChangeText={v => { setDeliveryPostcode(v.toUpperCase()); setDeliveryError(null); }}
           placeholder="e.g. SW1A 1AA"
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={Colors.inputPlaceholder}
           autoCapitalize="characters"
         />
 
@@ -1875,7 +1945,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           value={deliveryNotes}
           onChangeText={setDeliveryNotes}
           placeholder="e.g. Leave at reception, call on arrival…"
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={Colors.inputPlaceholder}
           multiline
         />
 
@@ -1890,7 +1960,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           activeOpacity={0.85}
         >
           {deliverySubmitting ? (
-            <ActivityIndicator color={Colors.white} size="small" />
+            <ActivityIndicator color={Colors.onAccent} size="small" />
           ) : (
             <Text style={styles.deliveryModalSubmitText}>Confirm Delivery Request</Text>
           )}
@@ -1903,14 +1973,14 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           the page instead of bolted to the bottom of it. */}
       <View style={[styles.stickyCTAOuter, { paddingBottom: insets.bottom + 12 }]} pointerEvents="box-none">
         <LinearGradient
-          colors={['rgba(10,13,20,0)', Colors.bgPrimary, Colors.bgPrimary]}
+          colors={[Colors.groundClear, Colors.bgPrimary, Colors.bgPrimary]}
           locations={[0, 0.45, 1]}
           style={StyleSheet.absoluteFillObject}
           pointerEvents="none"
         />
         <IconButton style={styles.chatButton} icon={<Ionicons name="chatbubble-ellipses-outline" size={20} color={Colors.white} />} onPress={() => {
             if (listing.seller?.id) {
-              setEnquireVisible(true);
+              if (requireAccount()) setEnquireVisible(true);
             } else {
               handleOpenChat();
             }
@@ -1947,7 +2017,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 } else {
                   setOfferMessage('');
                 }
-                setOfferModalVisible(true);
+                if (requireAccount()) setOfferModalVisible(true);
               }}
             >
               <Text style={styles.makeOfferText}>
@@ -1957,7 +2027,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     ? 'MANAGE COUNTER'
                     : 'MAKE A PRIVATE OFFER'}
               </Text>
-              <Ionicons name="arrow-forward" size={18} color={Colors.white} style={styles.offerArrow} />
+              <Ionicons name="arrow-forward" size={18} color={Colors.onAccent} style={styles.offerArrow} />
             </TouchableOpacity>
           ) : (
             <View style={[styles.makeOfferButton, styles.makeOfferButtonDisabled]}>
@@ -2057,7 +2127,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               disabled={isSubmittingOffer}
             >
               {isSubmittingOffer ? (
-                <ActivityIndicator size="small" color={Colors.white} />
+                <ActivityIndicator size="small" color={Colors.onAccent} />
               ) : (
                 <Text style={styles.submitOfferText}>{myOffer?.status === 'PENDING' ? 'Update Offer' : 'Submit Private Offer'}</Text>
               )}
@@ -2066,7 +2136,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         ) : (
           <View style={styles.successContainer}>
             <View style={styles.successIconWrapper}>
-              <Ionicons name="checkmark" size={32} color={Colors.white} />
+              <Ionicons name="checkmark" size={32} color={Colors.onAccent} />
             </View>
             <Text style={styles.successTitle}>{myOffer?.status === 'PENDING' ? 'Offer Updated!' : 'Offer Sent!'}</Text>
             <Text style={styles.successSubtitle}>
@@ -2302,6 +2372,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <View style={styles.quickRepliesContainer}>
               <ScrollView
                 horizontal
+        style={Layout.hScroll}
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.quickRepliesContent}
               >
@@ -2413,7 +2484,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.35)',
   },
   pageDotActive: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.onAccent,
     width: 18,
     borderRadius: 3,
   },
@@ -2430,7 +2501,7 @@ const styles = StyleSheet.create({
   photoCounterText: {
     fontFamily: FontFamily.mono,
     fontSize: FontSize.size12,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   floatingHeader: {
     position: 'absolute',
@@ -2475,7 +2546,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   thumbnailActive: {
-    borderColor: Colors.white,
+    borderColor: Colors.onAccent,
   },
   thumbnailImage: {
     width: '100%',
@@ -2490,7 +2561,7 @@ const styles = StyleSheet.create({
   thumbnailOverlayText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size12,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   // Details Block
   detailsBlock: {
@@ -2589,13 +2660,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
-    borderColor: Colors.warningAlpha25,
-    borderRadius: Radius.inline,
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 16,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.warning,
+    borderRadius: Radius.card,
+    ...Elevation.card,
   },
   linkedAuctionText: {
     flex: 1,
@@ -2609,6 +2681,14 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size12,
     color: Colors.warning,
     flexShrink: 0,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: Radius.chip,
+    borderWidth: 1.5,
+    borderBottomWidth: 3,
+    borderColor: Colors.warning,
+    backgroundColor: Colors.bgCard,
+    overflow: 'hidden',
   },
   vehicleImportBadge: {
     alignSelf: 'flex-start',
@@ -2659,11 +2739,12 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     minHeight: 65,
     borderRadius: 12,
-    backgroundColor: Colors.bgSecondary,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
     justifyContent: 'center',
     paddingHorizontal: 12,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   specBadgeLabel: {
     ...TextPresets.eyebrow,
@@ -2759,11 +2840,12 @@ const styles = StyleSheet.create({
   },
   // Specifications Table Card
   specCardContainer: {
-    backgroundColor: Colors.bgSecondary,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
     borderRadius: Radius.card,
     paddingHorizontal: 18,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   specRow: {
     flexDirection: 'row',
@@ -2796,14 +2878,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   historyBox: {
-    width: (SCREEN_WIDTH - 60) / 3, // 3 columns
-    height: 58,
+    width: (SCREEN_WIDTH - 60) / 3,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.bgSecondary,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
     justifyContent: 'center',
     paddingHorizontal: 12,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Elevation.card,
+    minHeight: 58,
   },
   historyLabel: {
     fontFamily: FontFamily.bold,
@@ -2855,6 +2938,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.card,
     padding: 14,
     gap: 8,
+    ...Elevation.card,
   },
   reviewTop: {
     flexDirection: 'row',
@@ -2910,6 +2994,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.card,
     padding: 16,
     gap: 12,
+    ...Elevation.card,
   },
   dealerDescription: {
     fontFamily: FontFamily.regular,
@@ -2939,10 +3024,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 9,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.accentAlpha08,
-    borderWidth: 1,
-    borderColor: Colors.accentAlpha25,
     maxWidth: '100%',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1.5,
+    borderBottomWidth: 3,
+    borderColor: Colors.accent,
+    ...Elevation.card,
   },
   dealerWebsiteText: {
     flexShrink: 1,
@@ -2953,23 +3040,24 @@ const styles = StyleSheet.create({
   sellerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 68,
     borderRadius: Radius.card,
-    backgroundColor: Colors.deepBlue_11131e,
-    borderWidth: 1,
-    borderColor: Colors.darkBlue_222636,
     paddingHorizontal: 16,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Elevation.card,
+    minHeight: 68,
   },
   sellerAvatar: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: Colors.darkBlue_1c2033,
     borderWidth: 1,
-    borderColor: Colors.darkBlue_2b3252,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    backgroundColor: Colors.bgSurface,
+    borderColor: Colors.border,
   },
   sellerAvatarText: {
     fontFamily: FontFamily.bold,
@@ -3002,22 +3090,24 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.darkBlue_1c2033,
     borderWidth: 1,
-    borderColor: Colors.darkBlue_2b3252,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
+    backgroundColor: Colors.bgSurface,
+    borderColor: Colors.borderHi,
+    borderBottomWidth: 2,
   },
   financeCard: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: Radius.card,
-    backgroundColor: Colors.deepPurple,
     borderWidth: 1,
-    borderColor: Colors.darkPink_3b1e2b,
     padding: 16,
     marginBottom: 14,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderAccent,
+    ...Elevation.card,
   },
   financeIconWrapper: {
     width: 36,
@@ -3065,13 +3155,14 @@ const styles = StyleSheet.create({
 
   // Delivery section
   deliveryCard: {
-    backgroundColor: Colors.accentGreenAlpha06,
     borderWidth: 1,
-    borderColor: Colors.accentGreenAlpha20,
-    borderRadius: Radius.inline,
     padding: 14,
     marginTop: 12,
     gap: 12,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.accentGreenAlpha30,
+    borderRadius: Radius.card,
+    ...Elevation.card,
   },
   deliveryHeader: {
     flexDirection: 'row',
@@ -3123,14 +3214,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
-    height: 42,
     borderRadius: Radius.inline,
     backgroundColor: Colors.accentGreen,
+    minHeight: 44,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentGreenAlpha30,
+    ...Elevation.card,
   },
   deliveryRequestBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   deliverySuccessRow: {
     flexDirection: 'row',
@@ -3237,7 +3331,7 @@ const styles = StyleSheet.create({
   deliveryModalSubmitText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // Bottom Sticky Actions Bar
@@ -3338,7 +3432,7 @@ const styles = StyleSheet.create({
   makeOfferText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1,
   },
   offerArrow: {
@@ -3479,7 +3573,7 @@ const styles = StyleSheet.create({
   submitOfferText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   successContainer: {
     alignItems: 'center',
@@ -3642,14 +3736,20 @@ const styles = StyleSheet.create({
 
   // HPI Report button
   hpiReportBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1,
-    borderColor: Colors.whiteAlpha06, padding: 14,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: Radius.inline, padding: 14,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Elevation.card,
+    borderBottomWidth: 3,
   },
   hpiButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1,
-    borderColor: Colors.whiteAlpha06, padding: 14,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: Radius.inline, padding: 14,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Elevation.card,
+    borderBottomWidth: 3,
   },
   hpiReportLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   hpiIconBg: {
@@ -3662,27 +3762,42 @@ const styles = StyleSheet.create({
   // HPI inline card (shown after payment)
   hpiViewFullBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: Radius.chip,
+    borderWidth: 1.5,
+    borderBottomWidth: 3,
+    borderColor: Colors.infoBlue,
+    backgroundColor: Colors.bgCard,
+    overflow: 'hidden',
+    alignSelf: 'flex-start',
   },
   hpiViewFullText: {
     fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.infoBlue,
   },
 
   // Finance calculator body
-  financeCalcBody: {
-    backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1,
-    borderColor: Colors.whiteAlpha06, padding: 16, marginTop: 8, marginBottom: 12,
+  financeCalcBody: { borderRadius: Radius.inline, padding: 16, marginTop: 8, marginBottom: 12,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   calcRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   calcLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.textSecondary, letterSpacing: 1 },
   calcValue: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
   depositStepsRow: { flexDirection: 'row', gap: 8 },
   depositStep: {
-    flex: 1, height: 34, borderRadius: 8, backgroundColor: Colors.whiteAlpha04,
-    borderWidth: 1, borderColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center',
+    flex: 1, borderRadius: 8,
+    borderWidth: 1, alignItems: 'center', justifyContent: 'center',
+    minHeight: 34,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderHi,
+    borderBottomWidth: 2,
   },
-  depositStepActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  depositStepActive: { backgroundColor: Colors.accent, borderColor: Colors.accent, borderBottomColor: Colors.accentDark },
   depositStepText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
-  depositStepTextActive: { color: Colors.white },
+  depositStepTextActive: { color: Colors.onAccent },
   calcResult: {
     marginTop: 16, backgroundColor: Colors.whiteAlpha03, borderRadius: Radius.inline,
     borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 16, alignItems: 'center',
@@ -3691,8 +3806,13 @@ const styles = StyleSheet.create({
   calcResultValue: { fontFamily: FontFamily.bold, fontSize: FontSize['3xl'], color: Colors.white },
   calcResultSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 4, textAlign: 'center' },
   financeApplyBtn: {
-    marginTop: 14, height: 44, borderRadius: Radius.inline, borderWidth: 1,
-    borderColor: Colors.accent, backgroundColor: Colors.accentAlpha08, alignItems: 'center', justifyContent: 'center',
+    marginTop: 14, borderRadius: Radius.inline,
+    borderColor: Colors.accent, alignItems: 'center', justifyContent: 'center',
+    minHeight: 44,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1.5,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   financeApplyBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent, letterSpacing: 0.5 },
 
@@ -3709,44 +3829,56 @@ const styles = StyleSheet.create({
   hpiCheckLabel: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 2 },
   hpiCheckDetail: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 16 },
 
-  // Finance Coming Soon
-  comingSoonBadge: {
-    backgroundColor: Colors.warningAlpha12,
-    borderWidth: 1,
-    borderColor: Colors.warningAlpha30,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    marginRight: 4,
+  // Finance calculator (ported from web)
+  calcRowSpaced: { marginTop: 14 },
+  aprStepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  aprStepBtn: {
+    width: 30, height: 30, borderRadius: Radius.chip,
+    borderWidth: 1, borderColor: Colors.whiteAlpha08,
+    alignItems: 'center', justifyContent: 'center',
   },
-  comingSoonText: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size9,
-    color: Colors.warning,
-    letterSpacing: 0.3,
-  },
-  financeComingSoonBox: {
+  financeResultBox: {
     alignItems: 'center',
-    backgroundColor: Colors.whiteAlpha02,
     borderRadius: Radius.inline,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
-    padding: 20,
-    marginBottom: 16,
-    gap: 8,
+    padding: 16,
+    marginTop: 16,
+    gap: 6,
+    backgroundColor: Colors.bgSurface,
+    borderColor: Colors.border,
   },
-  financeComingSoonLabel: {
+  financeResultValue: {
+    ...TextPresets.monoPrice,
+    color: Colors.textPrimary,
+  },
+  financeResultTotal: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xs,
+    color: Colors.success,
+  },
+  financeEnquiryBtn: {
+    alignSelf: 'stretch',
+    marginTop: 8,
+    backgroundColor: Colors.accent,
+    borderRadius: Radius.inline,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
+  },
+  financeEnquiryText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    marginTop: 4,
+    color: Colors.onAccent,
   },
-  financeComingSoonSub: {
+  financeCalcDisclaimer: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.size12,
+    fontSize: FontSize.xs,
     color: Colors.textMuted,
     textAlign: 'center',
-    lineHeight: 18,
+    marginTop: 12,
+    lineHeight: 16,
   },
 
   // Fullscreen photo viewer
@@ -3779,7 +3911,7 @@ const styles = StyleSheet.create({
   fullscreenCounterText: {
     fontFamily: FontFamily.mono,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   fullscreenImageWrap: {
     width: SCREEN_WIDTH,

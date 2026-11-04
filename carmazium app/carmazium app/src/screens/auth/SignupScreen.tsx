@@ -20,9 +20,9 @@ import { supabase } from '../../lib/supabase';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 
 import { IconButton } from '../../components/IconButton';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Signup'>;
@@ -133,7 +133,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {/* Background gradient with top glow */}
       <LinearGradient
@@ -518,11 +518,13 @@ const styles = StyleSheet.create({
     borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.inputBorder,
-    backgroundColor: Colors.whiteAlpha04,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   roleCardActive: {
     borderColor: Colors.accent,
-    backgroundColor: Colors.accentAlpha10,
+    backgroundColor: Colors.bgCard,
   },
   roleCardLabel: {
     fontFamily: FontFamily.bold,
@@ -655,12 +657,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    height: 52,
     borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,
-    backgroundColor: Colors.bgSecondary,
     marginBottom: 24,
+    minHeight: 52,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   googleBtnDisabled: {
     opacity: 0.6,

@@ -6,6 +6,7 @@
  */
 
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { notFound } from "next/navigation"
 import Image from "next/image"
 import { Star, ShieldCheck, Car, MessageCircle, TrendingUp, Clock, ChevronRight, AlertCircle, BadgeCheck } from "lucide-react"
@@ -30,7 +31,8 @@ interface SellerProfileStats {
     reliabilityScore: number
     totalSales: number
     totalListings: number
-    responseRate: number
+    /** null until the seller has had an offer to answer */
+    responseRate: number | null
     avgResponseHours: number | null
     createdAt: string
 }
@@ -317,7 +319,7 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
                                 <StatRow
                                     icon={<MessageCircle size={15} className="text-blue-400" />}
                                     label="Response Rate"
-                                    value={`${profile.responseRate.toFixed(0)}%`}
+                                    value={profile.responseRate == null ? "No offers yet" : `${profile.responseRate.toFixed(0)}%`}
                                 />
                                 {profile.avgResponseHours !== null && (
                                     <StatRow
@@ -346,7 +348,7 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
                             <div className="mb-5 flex items-center justify-between">
                                 <h2 className="text-lg font-bold">Active Listings</h2>
                                 {totalListings > 6 && (
-                                    <Link href={`/seller/${id}/listings`} className="flex items-center gap-1 text-sm text-primary hover:underline">
+                                    <Link href={`/seller/${id}/listings`} className={buttonVariants({ variant: "outline", size: "sm" })}>
                                         View all {totalListings} <ChevronRight size={14} />
                                     </Link>
                                 )}

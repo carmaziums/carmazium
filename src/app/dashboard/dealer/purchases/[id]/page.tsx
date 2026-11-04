@@ -3,6 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { useParams } from "next/navigation"
 import {
     ArrowLeft, BadgeCheck, Calendar, CarFront, ChevronRight, ClipboardList,
@@ -254,7 +255,7 @@ export default function DealerPurchaseDetailPage() {
                                     </>
                                 ) : null}
                                 <Link href={`/dashboard/dealer/purchases/${encodeURIComponent(id)}/seller`}
-                                    className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
+                                    className={buttonVariants({ variant: "outline", size: "sm", className: "mt-3" })}>
                                     View full seller details <ChevronRight size={16} />
                                 </Link>
                             </section>
@@ -280,7 +281,7 @@ export default function DealerPurchaseDetailPage() {
                                 {purchase.buyerFee.required && !purchase.buyerFee.settled
                                     && !accessLoading && hasPermission("PAY_AUCTION_FEE") && (
                                     <Link href={`/checkout?listing_id=${encodeURIComponent(purchase.listingId)}&mode=auction_fee`}
-                                        className="text-sm font-bold text-primary hover:underline">
+                                        className={buttonVariants({ size: "sm", className: "mt-3" })}>
                                         Check auction fee payment options
                                     </Link>
                                 )}
@@ -314,7 +315,7 @@ export default function DealerPurchaseDetailPage() {
                                         <DetailRow label="Job created" value={formatDate(purchase.delivery.createdAt)} />
                                         <DetailRow label="Requested date" value={formatDate(purchase.delivery.requestedFor)} />
                                         <Link href={`/services/jobs/${encodeURIComponent(purchase.delivery.jobId)}`}
-                                            className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
+                                            className={buttonVariants({ variant: "outline", size: "sm", className: "mt-3" })}>
                                             View delivery quotes and progress <ChevronRight size={16} />
                                         </Link>
                                     </>

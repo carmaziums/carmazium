@@ -22,6 +22,7 @@ describe('ProfilesService', () => {
         serviceJob: { findFirst: jest.fn() },
         serviceRequest: { findFirst: jest.fn() },
         auction: { findFirst: jest.fn() },
+        offer: { findMany: jest.fn().mockResolvedValue([]) },
         $transaction: jest.fn(async (items: any[]) => Promise.all(items)),
     });
 
@@ -188,9 +189,14 @@ describe('ProfilesService', () => {
             rating: 5,
             comment: 'Excellent service',
         });
+        // The seller answered the one offer they received, two hours later.
+        prisma.offer.findMany.mockResolvedValue([
+            { status: 'ACCEPTED', createdAt: new Date('2026-01-01T10:00:00Z'), updatedAt: new Date('2026-01-01T12:00:00Z') },
+        ]);
         prisma.sellerProfile.findUnique.mockResolvedValue({
             id: 'review-profile-1',
-            responseRate: 100,
+            userId: 'target-1',
+            responseRate: 0,
             totalListings: 1,
             totalSales: 1,
             reviews: [{ rating: 5 }],
@@ -215,7 +221,7 @@ describe('ProfilesService', () => {
         });
         expect(prisma.sellerProfile.update).toHaveBeenCalledWith({
             where: { id: 'review-profile-1' },
-            data: { reliabilityScore: 5 },
+            data: { reliabilityScore: 5, responseRate: 100, avgResponseHours: 2 },
         });
     });
 

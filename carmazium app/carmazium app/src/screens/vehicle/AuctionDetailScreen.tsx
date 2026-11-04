@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useScrollLocked } from '../../lib/scrollLock';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Dimensions, StatusBar, TextInput, ActivityIndicator,
@@ -24,7 +25,7 @@ import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { useAuthStore } from '../../store/authStore';
 import {
   getAuction, placeBid, declineProvisionalOffer,
@@ -47,6 +48,7 @@ import { getMinimumAuctionBid } from '../../lib/auctionPricing';
 import { formatBuyerFeeRemaining } from '../../lib/auctionFeeDeadline';
 
 import { IconButton } from '../../components/IconButton';
+import { Layout } from '../../constants/layout';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Props = NativeStackScreenProps<MainStackParamList, 'LiveAuctionDetailed'>;
@@ -100,6 +102,19 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly
 function fmt(n: number) {
   return `£${n.toLocaleString('en-GB')}`;
 }
+
+/** Owns its own 1s tick so only these digits re-render. Nested in a Text. */
+const CountdownText: React.FC<{ target: Date }> = React.memo(({ target }) => {
+  const targetMs = target.getTime();
+  const [secs, setSecs] = useState(() => Math.max(0, Math.floor((targetMs - Date.now()) / 1000)));
+  useEffect(() => {
+    const tick = () => setSecs(Math.max(0, Math.floor((targetMs - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [targetMs]);
+  return <Text>{fmtCountdown(secs)}</Text>;
+});
 
 function fmtCountdown(totalSecs: number) {
   if (totalSecs <= 0) return '00:00:00';
@@ -158,7 +173,7 @@ const ContactRow: React.FC<{
 
 const AuctionDetailSkeleton: React.FC = () => (
   <View style={s.container}>
-    <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
     {/* Hero image skeleton */}
     <View style={[s.heroWrap, { marginHorizontal: 0, borderRadius: 0, marginBottom: 0, height: 240 }]}>
       <Skeleton w={SW} h={240} r={0} />
@@ -189,6 +204,8 @@ const AuctionDetailSkeleton: React.FC = () => (
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
+  // Paused while a finger is on the 3D damage viewer (lib/scrollLock.ts).
+  const scrollLocked = useScrollLocked();
   const { listing } = route.params;
   const listingObj = listing as any;
   const insets = useSafeAreaInsets();
@@ -665,9 +682,15 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // ─── Countdown ────────────────────────────────────────────────────────────
 
   useEffect(() => {
+    // Re-render the (long) screen only when the phase changes — final 5
+    // minutes or ended. The ticking digits are <CountdownText>, which owns
+    // its own 1s timer; a screen-wide 1s state made scrolling judder.
+    const phaseOf = (secs: number) => (secs <= 0 ? 0 : secs <= 5 * 60 ? 1 : 2);
     const tick = () => {
       const target = auction?.status === 'ACTIVE' ? endTime : auction?.status === 'SCHEDULED' ? startTime : null;
-      if (target) setSecondsLeft(Math.max(0, Math.floor((target.getTime() - Date.now()) / 1000)));
+      if (!target) return;
+      const secs = Math.max(0, Math.floor((target.getTime() - Date.now()) / 1000));
+      setSecondsLeft(prev => (prev !== 0 && phaseOf(prev) === phaseOf(secs) ? prev : secs));
     };
     tick();
     const t = setInterval(tick, 1000);
@@ -1085,8 +1108,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   if (loadError) {
     return (
       <View style={[s.container, { alignItems: 'center', justifyContent: 'center', gap: 12 }]}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-        <Ionicons name="hammer-outline" size={40} color={Colors.borderMuted} />
+        <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
+        <Ionicons name="hammer-outline" size={40} color={Colors.textMuted} />
         <Text style={s.muted}>{loadError}</Text>
         <TouchableOpacity style={s.retryBtn} onPress={() => loadAuction()} activeOpacity={0.8}>
           <Text style={s.retryBtnText}>Try Again</Text>
@@ -1109,7 +1132,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <ScreenWrapper {...screenWrapperProps}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {/* Anti-snipe floating toast */}
       {antiSnipeToast && (
@@ -1221,7 +1244,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             activeOpacity={0.8}
           >
             {acceptingBidId === bidHistory[0].id
-              ? <ActivityIndicator size="small" color={Colors.white} />
+              ? <ActivityIndicator size="small" color={Colors.onAccent} />
               : <Text style={s.binSellerConfirmText}>{provisionalPending ? `Accept ${fmt(bidHistory[0].amount)} & Confirm Sale` : `Accept ${fmt(bidHistory[0].amount)} & End Auction`}</Text>
             }
           </TouchableOpacity>
@@ -1307,7 +1330,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               activeOpacity={0.8}
             >
               {binLoading
-                ? <ActivityIndicator size="small" color={Colors.white} />
+                ? <ActivityIndicator size="small" color={Colors.onAccent} />
                 : <Text style={s.binSellerConfirmText}>Confirm Sale — {fmt(Number(auction.buyItNowPrice))}</Text>
               }
             </TouchableOpacity>
@@ -1365,7 +1388,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   }}
                 >
                   {connectingChat
-                    ? <ActivityIndicator size="small" color={Colors.white} />
+                    ? <ActivityIndicator size="small" color={Colors.onAccent} />
                     : <Text style={s.bannerBtnText}>Message Seller</Text>
                   }
                 </TouchableOpacity>
@@ -1421,7 +1444,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       )}
 
       {/* Main scroll */}
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView scrollEnabled={!scrollLocked} showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
         {/* Hero image */}
         <View style={s.heroWrap}>
@@ -1471,14 +1494,14 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   { fontFamily: FontFamily.mono },
                   isUnder5Min && { color: Colors.accentGlow },
                 ]}>
-                  {fmtCountdown(secondsLeft)}
+                  {endTime ? <CountdownText target={endTime} /> : fmtCountdown(secondsLeft)}
                 </Text>
               </Animated.View>
             )}
             {isScheduled && startTime && (
               <View style={[s.timerBox, { borderColor: Colors.infoBlueAlpha30 }]}>
                 <Text style={[s.timerBoxLabel, { color: Colors.infoLight }]}>STARTS IN</Text>
-                <Text style={[s.timerBoxValue, { color: Colors.infoBlueLight, fontFamily: FontFamily.mono }]}>{fmtCountdown(secondsLeft)}</Text>
+                <Text style={[s.timerBoxValue, { color: Colors.infoBlueLight, fontFamily: FontFamily.mono }]}><CountdownText target={startTime} /></Text>
               </View>
             )}
           </View>
@@ -1509,7 +1532,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={{ color: Colors.textSecondary, fontSize: 12, paddingHorizontal: 14 }}>
               Photo {Math.min(activePhotoIndex + 1, photoGallery.length)} of {photoGallery.length} — select a thumbnail
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 14, gap: 9 }}>
+            <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 14, gap: 9 }}>
               {photoGallery.map((url, index) => (
                 <TouchableOpacity key={url + index} accessibilityRole="button"
                   accessibilityLabel={`View vehicle photo ${index + 1} of ${photoGallery.length}`}
@@ -1617,7 +1641,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   <TouchableOpacity key={url + index} accessibilityRole="link"
                     accessibilityLabel={`Open seller vehicle video ${index + 1}`}
                     onPress={() => { void Linking.openURL(url).catch(() => Alert.alert('Cannot open video', 'This video link is currently unavailable.')); }}
-                    style={{ paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.borderSubtle }}>
+                    style={s.videoRow}>
                     <Text style={{ color: Colors.infoBlue, fontFamily: FontFamily.bold }}>View video {index + 1}</Text>
                     <Text numberOfLines={1} style={{ color: Colors.textMuted, fontSize: 11 }}>{url}</Text>
                   </TouchableOpacity>
@@ -1814,7 +1838,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               />
               {bidHistory.length === 0 ? (
                 <View style={{ alignItems: 'center', paddingVertical: 40, gap: 8 }}>
-                  <Ionicons name="hammer-outline" size={28} color={Colors.borderMuted} />
+                  <Ionicons name="hammer-outline" size={28} color={Colors.textMuted} />
                   <Text style={s.muted}>No bids yet — be the first.</Text>
                 </View>
               ) : (
@@ -1846,7 +1870,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                             activeOpacity={0.8}
                           >
                             {acceptingBidId === bid.id
-                              ? <ActivityIndicator size="small" color={Colors.white} />
+                              ? <ActivityIndicator size="small" color={Colors.onAccent} />
                               : <Text style={s.acceptBidBtnText}>Accept</Text>
                             }
                           </TouchableOpacity>
@@ -1986,9 +2010,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 activeOpacity={0.85}
               >
                 {binLoading
-                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  ? <ActivityIndicator size="small" color={Colors.onAccent} />
                   : <>
-                      <Ionicons name="pricetag-outline" size={15} color={Colors.white} />
+                      <Ionicons name="pricetag-outline" size={15} color={Colors.onAccent} />
                       <Text style={s.binBtnText}>Buy Now — {fmt(Number(auction.buyItNowPrice))}</Text>
                     </>
                 }
@@ -2030,9 +2054,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 }}
               >
                 {connectingChat
-                  ? <ActivityIndicator color={Colors.white} size="small" />
+                  ? <ActivityIndicator color={Colors.onAccent} size="small" />
                   : <>
-                      <Ionicons name="chatbubble-outline" size={15} color={Colors.white} />
+                      <Ionicons name="chatbubble-outline" size={15} color={Colors.onAccent} />
                       <Text style={s.bidBtnText}>Message Seller</Text>
                     </>
                 }
@@ -2093,7 +2117,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     })
                   }
                 >
-                  <Ionicons name="lock-closed-outline" size={15} color={Colors.white} />
+                  <Ionicons name="lock-closed-outline" size={15} color={Colors.onAccent} />
                   <Text style={s.bidBtnText}>Pay £125 Fee to Unlock Chat</Text>
                 </TouchableOpacity>
               ) : (
@@ -2271,7 +2295,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   value={bidAmount}
                   onChangeText={t => { setBidAmount(t); setBidError(null); }}
                   placeholder="Custom amount"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={Colors.inputPlaceholder}
                   keyboardType="number-pad"
                   onSubmitEditing={() => Keyboard.dismiss()}
                 />
@@ -2283,9 +2307,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 activeOpacity={0.8}
               >
                 {bidLoading
-                  ? <ActivityIndicator color={Colors.white} size="small" />
+                  ? <ActivityIndicator color={Colors.onAccent} size="small" />
                   : <>
-                      <Ionicons name="hammer-outline" size={15} color={Colors.white} />
+                      <Ionicons name="hammer-outline" size={15} color={Colors.onAccent} />
                       <Text style={s.bidBtnText}>Place Bid</Text>
                     </>
                 }
@@ -2338,7 +2362,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     activeOpacity={0.8}
                   >
                     {cancelLoadingId === bid.id
-                      ? <ActivityIndicator size="small" color={Colors.white} />
+                      ? <ActivityIndicator size="small" color={Colors.onAccent} />
                       : <Text style={s.cancelBidBtnText}>Cancel Bid</Text>
                     }
                   </TouchableOpacity>
@@ -2398,9 +2422,12 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: Radius.chip,
-    backgroundColor: Colors.accentAlpha12,
-    borderWidth: 1,
-    borderColor: Colors.accentAlpha30,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1.5,
+    borderBottomWidth: 3,
+    borderColor: Colors.accent,
+    minHeight: 34,
+    justifyContent: 'center',
   },
   contactActionText: {
     fontFamily: FontFamily.bold,
@@ -2421,7 +2448,7 @@ const s = StyleSheet.create({
 
   // Header
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 10, backgroundColor: Colors.bgPrimary, zIndex: 10 },
-  iconBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCard, borderColor: Colors.border, borderBottomWidth: 2, ...Elevation.card },
   headerCenter: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, maxWidth: SW - 160 },
   watcherChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.whiteAlpha05, borderRadius: Radius.inline, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
@@ -2430,8 +2457,8 @@ const s = StyleSheet.create({
 
   // Status pills
   livePill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accent, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
-  liveDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: Colors.white },
-  livePillText: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.white, letterSpacing: 1 },
+  liveDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: Colors.onAccent },
+  livePillText: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.onAccent, letterSpacing: 1 },
   statusPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: Colors.whiteAlpha06, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha10 },
   statusPillText: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.textSecondary, letterSpacing: 0.8 },
 
@@ -2443,8 +2470,8 @@ const s = StyleSheet.create({
   bannerAmber: { backgroundColor: Colors.warningAlpha08, borderBottomWidth: 1, borderBottomColor: Colors.warningAlpha15 },
   bannerDark: { backgroundColor: Colors.whiteAlpha02, borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha05 },
   bannerText: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, lineHeight: 18, flex: 1 },
-  bannerBtn: { backgroundColor: Colors.accent, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignSelf: 'center' },
-  bannerBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white },
+  bannerBtn: { backgroundColor: Colors.accent, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignSelf: 'center', borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon, minHeight: 32, justifyContent: 'center' },
+  bannerBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent },
 
   // Anti-snipe
   antiSnipeToast: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.warning, paddingHorizontal: 14, paddingVertical: 10, borderRadius: Radius.sheet, zIndex: 100, shadowColor: Colors.warning, shadowOpacity: 0.5, shadowRadius: 12, elevation: 20 },
@@ -2453,7 +2480,7 @@ const s = StyleSheet.create({
   antiSnipeBarText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.warning, flex: 1 },
 
   // Hero image
-  heroWrap: { height: 240, borderRadius: Radius.card, overflow: 'hidden', marginBottom: 14, position: 'relative', backgroundColor: Colors.bgSecondary },
+  heroWrap: { height: 240, borderRadius: Radius.card, overflow: 'hidden', marginBottom: 14, position: 'relative', backgroundColor: Colors.bgSecondary, ...Elevation.cardHi },
   heroImg: { width: '100%', height: '100%' },
   heroTopLeft: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', gap: 6, zIndex: 2 },
   heroTopRight: { position: 'absolute', top: 12, right: 12, gap: 6, alignItems: 'flex-end', zIndex: 2 },
@@ -2471,23 +2498,23 @@ const s = StyleSheet.create({
   outbidBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accentAlpha20, borderWidth: 1, borderColor: Colors.accentAlpha30, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   outbidBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.accent },
   timerBox: { backgroundColor: Colors.blackAlpha55, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.inline, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
-  timerBoxLabel: { ...TextPresets.eyebrow, fontSize: FontSize.size9, color: Colors.textMuted, marginBottom: 2 },
-  timerBoxValue: { fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.white },
+  timerBoxLabel: { ...TextPresets.eyebrow, fontSize: FontSize.size9, color: Colors.onAccentMuted, marginBottom: 2 },
+  timerBoxValue: { fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.onAccent },
 
   // Tabs
-  tabs: { flexDirection: 'row', backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, marginBottom: 14, padding: 3 },
-  tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
-  tabActive: { backgroundColor: Colors.accent },
+  tabs: { flexDirection: 'row', borderRadius: Radius.inline, marginBottom: 14, padding: 3, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, ...Elevation.card },
+  tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8, minHeight: 36, justifyContent: 'center' },
+  tabActive: { backgroundColor: Colors.accent, borderBottomWidth: 2, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   tabText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 0.8 },
-  tabTextActive: { color: Colors.white },
+  tabTextActive: { color: Colors.onAccent },
 
   // Card
-  card: { backgroundColor: Colors.bgCard, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.border, padding: 16, marginBottom: 0 },
+  card: { backgroundColor: Colors.bgCard, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.border, padding: 16, marginBottom: 0, ...Elevation.card },
   cardSectionTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 1, marginBottom: 12, borderLeftWidth: 2, borderLeftColor: Colors.accent, paddingLeft: 8 },
 
   // Stats row
   statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 0 },
-  statBox: { flexBasis: '47%', flexGrow: 1, minHeight: 63, backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderSubtle, padding: 10, alignItems: 'center', justifyContent: 'center' },
+  statBox: { flexBasis: '47%', flexGrow: 1, minHeight: 63, borderRadius: Radius.inline, borderWidth: 1, padding: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgSurface, borderColor: Colors.border },
   statLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.textMuted, letterSpacing: 0.6, marginBottom: 4 },
   statValue: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, textAlign: 'center', flexShrink: 1 },
 
@@ -2531,19 +2558,19 @@ const s = StyleSheet.create({
   bidStateText: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
   currentBidVal: { fontFamily: FontFamily.mono, fontSize: FontSize.size22, color: Colors.white },
   minNextBid: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
-  quickBidBtn: { flex: 1, backgroundColor: Colors.whiteAlpha04, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, paddingVertical: 10, alignItems: 'center', gap: 2, minHeight: 52, justifyContent: 'center' },
+  quickBidBtn: { flex: 1, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, paddingVertical: 10, alignItems: 'center', gap: 2, minHeight: 52, justifyContent: 'center', backgroundColor: Colors.bgCard, borderBottomWidth: 3, ...Elevation.card },
   quickBidSelected: { backgroundColor: Colors.accentAlpha10, borderColor: Colors.accent },
   bidHelpText: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 18 },
   quickBidLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted },
   quickBidAmt: { fontFamily: FontFamily.mono, fontSize: FontSize.size12, color: Colors.white },
   quickBidBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, letterSpacing: 0.5 },
-  customBidWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.whiteAlpha04, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 12 },
+  customBidWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', borderRadius: Radius.inline, borderWidth: 1, paddingHorizontal: 12, backgroundColor: Colors.bgSurface, borderColor: Colors.borderHi },
   customBidCurrency: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.iconMuted, marginRight: 4 },
   customBidInput: { flex: 1, fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.white, paddingVertical: 10 },
   // Place Bid is the primary action of the whole screen — the design system's
   // red glow belongs here and nowhere else on it.
-  bidBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: Colors.accent, borderRadius: Radius.inline, paddingHorizontal: 20, paddingVertical: 12, ...Elevation.neon },
-  bidBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.8 },
+  bidBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: Colors.accent, borderRadius: Radius.inline, paddingHorizontal: 20, paddingVertical: 12, ...Elevation.neon, borderBottomWidth: 3, borderBottomColor: Colors.accentDark },
+  bidBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent, letterSpacing: 0.8 },
   feeNotice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.warningAlpha06, borderWidth: 1, borderColor: Colors.warningAlpha15, borderRadius: Radius.inline, paddingHorizontal: 12, paddingVertical: 8 },
   feeNoticeLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.warning, letterSpacing: 1 },
   feeNoticeHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 4, lineHeight: 17 },
@@ -2573,11 +2600,13 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.accentAlpha40,
-    backgroundColor: Colors.accentAlpha08,
     minWidth: 44,
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1.5,
+    borderBottomWidth: 3,
+    borderColor: Colors.accent,
+    minHeight: 34,
   },
   sellerCloseBtnText: {
     fontFamily: FontFamily.bold,
@@ -2594,11 +2623,15 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 52,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
+    minHeight: 32,
   },
   acceptBidBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size10,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.2,
   },
 
@@ -2612,23 +2645,30 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 80,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
+    minHeight: 32,
   },
-  cancelBidBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white },
+  cancelBidBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent },
 
+  // Seller video rows: raised tappable rows rather than bare links.
+  videoRow: { paddingVertical: 10, paddingHorizontal: 12, marginBottom: 8, borderRadius: Radius.inline, borderWidth: 1, borderBottomWidth: 3, borderColor: Colors.infoBlue, backgroundColor: Colors.bgSurface },
   // Error/retry
-  retryBtn: { backgroundColor: Colors.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.inline },
-  retryBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
+  retryBtn: { backgroundColor: Colors.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.inline, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
+  retryBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent },
 
   // ── Buy It Now (buyer) ──
   binPanel: {
-    backgroundColor: Colors.accentAlpha06,
     borderWidth: 1,
-    borderColor: Colors.accentAlpha25,
-    borderRadius: Radius.inline,
     padding: 14,
     marginHorizontal: 14,
     marginBottom: 14,
     gap: 12,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderAccent,
+    borderRadius: Radius.card,
+    ...Elevation.card,
   },
   binPanelRow: {
     flexDirection: 'row',
@@ -2658,14 +2698,17 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 46,
     borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
+    minHeight: 46,
   },
   binBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.3,
   },
 
@@ -2695,11 +2738,12 @@ const s = StyleSheet.create({
   binSellerPanel: {
     marginHorizontal: 14,
     marginBottom: 4,
-    backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
-    borderColor: Colors.warningAlpha30,
-    borderRadius: Radius.inline,
     padding: 14,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.warningAlpha30,
+    borderRadius: Radius.card,
+    ...Elevation.card,
   },
   binSellerTitle: {
     fontFamily: FontFamily.bold,
@@ -2714,12 +2758,15 @@ const s = StyleSheet.create({
   },
   binSellerDeclineBtn: {
     flex: 1,
-    height: 40,
     borderRadius: Radius.inline,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha20,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 40,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderHi,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   binSellerDeclineText: {
     fontFamily: FontFamily.bold,
@@ -2728,16 +2775,19 @@ const s = StyleSheet.create({
   },
   binSellerConfirmBtn: {
     flex: 2,
-    height: 40,
     borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
+    minHeight: 40,
   },
   binSellerConfirmText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 });

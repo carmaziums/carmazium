@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ScreenBackBar } from '../../components/ScreenBackBar';
 import {
   View,
   Text,
@@ -18,15 +19,17 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { apiClient } from '../../lib/apiClient';
+import { apiClient } from '../../lib/apiClient';
+
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { CarListing } from '../../data/listings';
 import { PRICING } from '../../constants/pricing';
 
 import { IconButton } from '../../components/IconButton';
+import { Button } from '../../components/Button';
 import { HamburgerButton } from '../../components/HamburgerButton';
 // ─────────────────────────── interfaces ───────────────────────────
 
@@ -285,7 +288,8 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ScreenBackBar />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={['rgba(59,130,246,0.05)', Colors.accentAlpha03, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -365,7 +369,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
               </View>
 
               {/* Edit pill */}
-              <IconButton style={styles.heroEditBtn} icon={<Ionicons name="pencil-outline" size={15} color={Colors.white} />} onPress={() => navigation?.navigate('SellCarFlow')} accessibilityLabel="Edit" />
+              <IconButton style={styles.heroEditBtn} icon={<Ionicons name="pencil-outline" size={15} color={Colors.onAccent} />} onPress={() => navigation?.navigate('SellCarFlow')} accessibilityLabel="Edit" />
 
               {/* Days listed pill */}
               <View style={styles.heroDaysPill}>
@@ -492,7 +496,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
           activeOpacity={0.85}
           onPress={() => navigation?.navigate('SellCarFlow')}
         >
-          <Ionicons name="add" size={20} color={Colors.white} />
+          <Ionicons name="add" size={20} color={Colors.onAccent} />
           <Text style={styles.ctaButtonText}>CREATE NEW LISTING</Text>
         </TouchableOpacity>
 
@@ -500,9 +504,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Latest offers</Text>
-            <TouchableOpacity activeOpacity={0.75} onPress={() => navigation?.navigate('SellerOffers')}>
-              <Text style={styles.sectionSeeAll}>See all</Text>
-            </TouchableOpacity>
+            <Button label="See all" onPress={() => navigation?.navigate('SellerOffers')} variant="outline" size="sm" />
           </View>
 
           {recentOffers.length === 0 ? (
@@ -687,8 +689,8 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
 
 // ═══════════════════════════ STYLES ════════════════════════════════
 
-const CARD_BG = 'rgba(20,26,42,0.65)';
-const CARD_BORDER = Colors.whiteAlpha08;
+const CARD_BG = Colors.bgCard;
+const CARD_BORDER = Colors.border;
 
 const styles = StyleSheet.create({
   // ── base ──
@@ -733,11 +735,11 @@ const styles = StyleSheet.create({
   },
   periodToggle: {
     flexDirection: 'row',
-    backgroundColor: Colors.whiteAlpha07,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     padding: 2,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
   },
   periodToggleBtn: {
     paddingHorizontal: 10,
@@ -746,6 +748,9 @@ const styles = StyleSheet.create({
   },
   periodToggleBtnActive: {
     backgroundColor: Colors.accent,
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   periodToggleText: {
     fontFamily: FontFamily.bold,
@@ -753,26 +758,29 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   periodToggleTextActive: {
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   bellBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.whiteAlpha07,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
 
   // ── hero card ──
   heroCard: {
     backgroundColor: CARD_BG,
     borderWidth: 1,
-    borderColor: CARD_BORDER,
     borderRadius: Radius.card,
     overflow: 'hidden',
+    borderColor: Colors.border,
+    ...Elevation.cardHi,
   },
   heroImageArea: {
     height: 150,
@@ -824,7 +832,7 @@ const styles = StyleSheet.create({
   heroDaysPillText: {
     fontFamily: FontFamily.mono,
     fontSize: FontSize.size10,
-    color: Colors.textSecondary,
+    color: Colors.onAccentMuted,
   },
   heroBody: {
     flexDirection: 'row',
@@ -866,26 +874,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderWidth: 1,
+    ...Elevation.card,
   },
   statCardViews: {
-    backgroundColor: 'rgba(20,26,42,0.60)',
-    borderColor: Colors.whiteAlpha06,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
   },
   statCardSaves: {
-    backgroundColor: 'rgba(20,26,42,0.60)',
-    borderColor: Colors.whiteAlpha06,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
   },
   statCardOffers: {
-    backgroundColor: Colors.warningAlpha08,
     borderColor: Colors.warningAlpha25,
+    backgroundColor: Colors.bgCard,
   },
   statCardSold: {
-    backgroundColor: Colors.successAlpha08,
     borderColor: Colors.successAlpha25,
+    backgroundColor: Colors.bgCard,
   },
   statCardRevenue: {
-    backgroundColor: Colors.accentGreenAlpha08,
     borderColor: Colors.accentGreenAlpha20,
+    backgroundColor: Colors.bgCard,
   },
   statValue: {
     fontFamily: FontFamily.mono,
@@ -910,14 +919,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    height: 52,
     borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
+    minHeight: 52,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   ctaButtonText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.6,
   },
 
@@ -952,13 +964,14 @@ const styles = StyleSheet.create({
 
   // ── offers empty ──
   offersEmpty: {
-    backgroundColor: 'rgba(20,26,42,0.55)',
+    backgroundColor: Colors.bgCard,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha05,
     borderRadius: Radius.card,
     padding: 20,
     alignItems: 'center',
     gap: 8,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   offersEmptyTitle: {
     fontFamily: FontFamily.bold,
@@ -980,11 +993,12 @@ const styles = StyleSheet.create({
   },
   quickTile: {
     width: '47.5%',
-    backgroundColor: 'rgba(20,26,42,0.55)',
+    backgroundColor: Colors.bgCard,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     borderRadius: Radius.card,
     padding: 16,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   quickIconWrap: {
     width: 32,
@@ -1008,9 +1022,11 @@ const styles = StyleSheet.create({
 
   // ── listing cards ──
   listingCardSkeleton: {
-    height: 76,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.whiteAlpha04,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    minHeight: 76,
   },
   listingCard: {
     flexDirection: 'row',
@@ -1018,9 +1034,10 @@ const styles = StyleSheet.create({
     backgroundColor: CARD_BG,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: CARD_BORDER,
     padding: 18,
     gap: 14,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   listingThumbContainer: {
     width: 64,
@@ -1098,17 +1115,20 @@ const styles = StyleSheet.create({
   },
   emptyCtaBtn: {
     marginTop: 8,
-    height: 48,
     paddingHorizontal: 28,
     borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 48,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   emptyCtaBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // ── recent offers card ──

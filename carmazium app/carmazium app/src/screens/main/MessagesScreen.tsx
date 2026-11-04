@@ -17,10 +17,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { useChat } from '../../context/ChatContext';
 import { ChatRoom, ChatUser } from '../../lib/chatApi';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -238,7 +238,7 @@ export const MessagesScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {/* Top red-blue glow backdrop */}
       <LinearGradient
@@ -426,15 +426,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     minHeight: 44,
     borderRadius: 18,
-    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha05,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
   },
   tabPillActive: {
     backgroundColor: Colors.accent,
     borderColor: Colors.accent,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   tabPillContent: {
     flexDirection: 'row',
@@ -447,7 +450,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   tabLabelActive: {
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   tabCount: {
     fontFamily: FontFamily.regular,
@@ -466,11 +469,12 @@ const styles = StyleSheet.create({
   threadCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.bgCardSolid,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
     borderRadius: Radius.card,
     padding: 16,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   threadCardUnread: {
     borderColor: Colors.accentAlpha25,
@@ -500,7 +504,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.md,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   metaContainer: {
     flex: 1,
@@ -570,7 +574,7 @@ const styles = StyleSheet.create({
   unreadBadgeText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size10,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   // Skeleton
   skeletonList: {

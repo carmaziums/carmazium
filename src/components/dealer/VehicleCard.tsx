@@ -143,11 +143,6 @@ export function VehicleCard({ vehicle, onPlaceBid, onSetProxyBid, variant = "act
 
                 {/* Meta stats */}
                 <div className="absolute bottom-3 left-3 flex items-center gap-3">
-                    {vehicle.bidCount !== undefined && (
-                        <span className="flex items-center gap-1 text-xs font-bold text-white/70 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-md">
-                            <Gavel size={10} /> {vehicle.bidCount} bids
-                        </span>
-                    )}
                     {vehicle.watchers !== undefined && (
                         <span className="flex items-center gap-1 text-xs font-bold text-white/70 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-md">
                             <Eye size={10} /> {vehicle.watchers}

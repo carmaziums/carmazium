@@ -18,7 +18,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -304,7 +304,7 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
   if (loading) {
     return (
       <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
         <ActivityIndicator size="large" color={Colors.accent} />
         <Text style={styles.loadingText}>Loading {labels.title}…</Text>
       </View>
@@ -313,7 +313,7 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <View style={styles.header}>
         <View>
           <Text style={styles.eyebrow}>{labels.eyebrow}</Text>
@@ -391,7 +391,7 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
             accessibilityRole="button"
           >
             {loadingMore ? (
-              <ActivityIndicator color={Colors.white} />
+              <ActivityIndicator color={Colors.onAccent} />
             ) : (
               <Text style={styles.loadMoreText}>LOAD MORE</Text>
             )}
@@ -433,7 +433,7 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
             accessibilityRole="button"
           >
             {savingSettings ? (
-              <ActivityIndicator color={Colors.white} />
+              <ActivityIndicator color={Colors.onAccent} />
             ) : (
               <Text style={styles.primaryButtonText}>SAVE PARTNER SETTINGS</Text>
             )}
@@ -531,7 +531,7 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
               accessibilityRole="button"
             >
               {busyId ? (
-                <ActivityIndicator color={Colors.white} />
+                <ActivityIndicator color={Colors.onAccent} />
               ) : (
                 <Text style={styles.primaryButtonText}>
                   {kind === 'finance' ? 'APPROVE APPLICATION' : 'SEND QUOTE'}
@@ -629,7 +629,7 @@ const PartnerRecordCard = ({
             accessibilityRole="button"
           >
             {busy ? (
-              <ActivityIndicator size="small" color={Colors.white} />
+              <ActivityIndicator size="small" color={Colors.onAccent} />
             ) : (
               <Text style={styles.recordPrimaryText}>
                 {kind === 'finance' ? 'APPROVE' : 'PROVIDE QUOTE'}
@@ -653,7 +653,7 @@ const PartnerRecordCard = ({
           accessibilityRole="button"
         >
           {busy ? (
-            <ActivityIndicator size="small" color={Colors.white} />
+            <ActivityIndicator size="small" color={Colors.onAccent} />
           ) : (
             <Text style={styles.recordPrimaryText}>MARK COMPLETED</Text>
           )}
@@ -793,7 +793,7 @@ const styles = StyleSheet.create({
   recordPrimaryText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   recordReject: {
     minWidth: 92,
@@ -819,7 +819,7 @@ const styles = StyleSheet.create({
   loadMoreText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.8,
   },
   settingsCard: {
@@ -859,7 +859,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.5,
   },
   secondaryButton: {

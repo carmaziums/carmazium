@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { Lock, Loader2, ShieldCheck } from "lucide-react"
 import { useDealerAccess } from "@/context/DealerAccessContext"
 import type { DealerPermission } from "@/lib/dealerAccess"
@@ -52,7 +53,7 @@ export function DealerPermissionGate({
                         <button
                             type="button"
                             onClick={refresh}
-                            className="mt-5 block w-full text-sm font-bold text-primary hover:underline"
+                            className={buttonVariants({ variant: "outline", className: "mt-5 w-full" })}
                         >
                             Retry access check
                         </button>

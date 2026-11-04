@@ -90,7 +90,7 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
 
         <IconButton
           style={styles.closeBtn}
-          icon={<Ionicons name="close" size={22} color={Colors.white} />}
+          icon={<Ionicons name="close" size={22} color={Colors.onAccent} />}
           onPress={onClose}
           accessibilityLabel="Close"
         />
@@ -143,6 +143,6 @@ const styles = StyleSheet.create({
   counterText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size12,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 });

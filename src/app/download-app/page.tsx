@@ -2,17 +2,19 @@ import type { Metadata } from "next"
 import { PageJsonLd } from "@/components/seo/PageJsonLd"
 import type { ReactNode } from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { ArrowDownToLine, ArrowRight, CheckCircle2, ExternalLink, ShieldCheck } from "lucide-react"
 import { FaAndroid, FaApple, FaGooglePlay, FaWindows } from "react-icons/fa"
 import { AppPromoShowcase, appPromoButtonClass } from "@/components/features/AppPromoShowcase"
 import { getMobileAppLinks } from "@/lib/mobileAppDownloads"
+import { InstallWebAppButton } from "@/components/pwa/InstallWebAppButton"
 
 // Availability follows approved release settings, not placeholder store URLs.
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
   title: { absolute: "Get the CarMazium App | iPhone, Android and Windows" },
-  description: "Explore CarMazium app installation options for iPhone, Android and Windows. Official links appear only when the corresponding release is approved.",
+  description: "Install CarMazium on iPhone, Android and Windows. Add it to your iPhone Home Screen, install it on Windows from Edge or Chrome, or download the signed Android app. No app store needed.",
   alternates: { canonical: "/download-app" },
 }
 
@@ -43,10 +45,10 @@ export default function DownloadAppPage() {
           actions={
             <>
               <a href={iosHref ?? "#iphone"} className={appPromoButtonClass}
-                aria-label={iosHref ? "Open verified CarMazium iPhone installation" : "See iPhone installation status"}>
+                aria-label={iosHref ? "Open verified CarMazium iPhone installation" : "Install CarMazium on iPhone"}>
                 <FaApple className="h-8 w-8 shrink-0" aria-hidden="true" />
                 <span className="min-w-0 text-xs leading-4">
-                  {iosHref ? "Install for" : "Explore"} <strong className="block text-base">iPhone</strong>
+                  Install for <strong className="block text-base">iPhone</strong>
                 </span>
                 <ArrowRight className="ml-auto h-4 w-4 shrink-0" aria-hidden="true" />
               </a>
@@ -59,10 +61,10 @@ export default function DownloadAppPage() {
                 <ArrowRight className="ml-auto h-4 w-4 shrink-0" aria-hidden="true" />
               </a>
               <a href={windowsHref ?? "#windows"} className={appPromoButtonClass}
-                aria-label={windowsHref ? "Open verified CarMazium Microsoft Store listing" : "See Microsoft Store availability"}>
+                aria-label={windowsHref ? "Open verified CarMazium Microsoft Store listing" : "Install CarMazium on Windows"}>
                 <FaWindows className="h-7 w-7 shrink-0 text-sky-300" aria-hidden="true" />
                 <span className="min-w-0 text-xs leading-4">
-                  {windowsHref ? "Get it from" : "Check"} <strong className="block text-sm">Microsoft Store</strong>
+                  {windowsHref ? "Get it from" : "Install for"} <strong className="block text-sm">{windowsHref ? "Microsoft Store" : "Windows"}</strong>
                 </span>
                 <ArrowRight className="ml-auto h-4 w-4 shrink-0" aria-hidden="true" />
               </a>
@@ -71,9 +73,9 @@ export default function DownloadAppPage() {
         />
 
         {!anyAvailable && (
-          <div role="status" className="mx-auto mt-7 max-w-5xl rounded-2xl border border-amber-300/30 bg-amber-400/10 px-5 py-4 text-center text-sm leading-6 text-amber-100">
-            Official installation releases are being prepared. The buttons above show each platform&apos;s status;
-            they do not take you to unverified downloads. CarMazium is available in your browser now.
+          <div role="status" className="mx-auto mt-7 max-w-5xl rounded-2xl border border-cyan-300/30 bg-cyan-400/10 px-5 py-4 text-center text-sm leading-6 text-cyan-50">
+            Install CarMazium straight from this website on iPhone and Windows today — no app store needed.
+            The signed Android app download appears here as soon as its release is approved.
           </div>
         )}
 
@@ -82,7 +84,7 @@ export default function DownloadAppPage() {
             <p className="text-xs font-black uppercase tracking-[0.22em] text-cyan-300">Choose your device</p>
             <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Your CarMazium. Your way.</h2>
             <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-blue-100 sm:text-base">
-              Install through a verified official release when available, or continue using the full website today.
+              Install CarMazium on your phone or computer straight from this website — no app store needed.
             </p>
           </div>
 
@@ -96,7 +98,9 @@ export default function DownloadAppPage() {
                 </div>
                 <h3 id="iphone-app-title" className="text-2xl font-black">CarMazium for iPhone</h3>
                 <p className="mt-3 min-h-20 text-sm leading-6 text-blue-100">
-                  Access CarMazium with Apple&apos;s official App Store or an approved public TestFlight beta invitation.
+                  {links.ios.href || links.iosTestFlight.href
+                    ? "Install CarMazium on your iPhone or iPad."
+                    : "Add CarMazium to your iPhone or iPad Home Screen in two taps. It opens full screen, like an app — no App Store needed."}
                 </p>
                 {links.ios.href ? (
                   <a href={links.ios.href} className={installButtonClass} aria-label="Install CarMazium from Apple App Store">
@@ -115,7 +119,12 @@ export default function DownloadAppPage() {
                     </p>
                   </div>
                 ) : (
-                  <UnavailableNotice>iPhone release coming soon. No public App Store or TestFlight installation is available yet.</UnavailableNotice>
+                  <>
+                    <InstallWebAppButton platform="ios" />
+                    <p className="mt-3 text-xs leading-5 text-blue-100">
+                      Apple only allows native iPhone apps through the App Store. Our App Store link will appear here once Apple approves the app.
+                    </p>
+                  </>
                 )}
               </div>
             </section>
@@ -140,7 +149,10 @@ export default function DownloadAppPage() {
                     Get it on Google Play <ExternalLink className="h-4 w-4" aria-hidden="true" />
                   </a>
                 ) : !links.androidApk.href ? (
-                  <UnavailableNotice>The independently installable Android APK has not yet been approved for public download.</UnavailableNotice>
+                  <>
+                    <UnavailableNotice>The signed Android app download is being finalised. Meanwhile you can install CarMazium from Chrome:</UnavailableNotice>
+                    <InstallWebAppButton platform="android" />
+                  </>
                 ) : null}
                 {links.androidApk.href && (
                   <div className="mt-4">
@@ -170,7 +182,9 @@ export default function DownloadAppPage() {
                 </div>
                 <h3 id="windows-heading" className="text-2xl font-black">CarMazium for Windows</h3>
                 <p className="mt-3 min-h-20 text-sm leading-6 text-blue-100">
-                  Use CarMazium on your Windows computer today. We&apos;ll show a Microsoft Store install link after a verified Windows release.
+                  {windowsHref
+                    ? "Install CarMazium from the Microsoft Store."
+                    : "Install CarMazium on your Windows PC from Microsoft Edge or Google Chrome. It gets its own window, Start menu and taskbar icon — no Microsoft Store needed."}
                 </p>
                 {windowsHref ? (
                   <a href={windowsHref} className={installButtonClass}
@@ -179,9 +193,9 @@ export default function DownloadAppPage() {
                     Get it from Microsoft Store <ExternalLink className="h-4 w-4" aria-hidden="true" />
                   </a>
                 ) : (
-                  <UnavailableNotice>Microsoft Store app coming soon. CarMazium works in your Windows browser now.</UnavailableNotice>
+                  <InstallWebAppButton platform="windows" />
                 )}
-                <Link href="/search" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-cyan-200 underline decoration-cyan-300/50 underline-offset-4 hover:text-white">
+                <Link href="/search" className={buttonVariants({ variant: "dark", className: "mt-5" })}>
                   Open the website <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
               </div>
@@ -190,9 +204,9 @@ export default function DownloadAppPage() {
 
           <div className="mt-8 grid gap-5 rounded-3xl border border-white/15 bg-white/[0.06] p-6 sm:grid-cols-3 sm:p-8">
             {[
-              { icon: ShieldCheck, heading: "Official installation only", detail: "We enable store and APK links only after the corresponding customer release is approved." },
+              { icon: ShieldCheck, heading: "Official installation only", detail: "Install only from carmazium.com or an official store. The Android download is our signed release." },
               { icon: CheckCircle2, heading: "One CarMazium account", detail: "Use your existing CarMazium account on supported devices." },
-              { icon: ArrowRight, heading: "Website ready now", detail: "You can browse, sell and manage your vehicles in a browser while apps are prepared." },
+              { icon: ArrowRight, heading: "Always up to date", detail: "The installed iPhone and Windows app is CarMazium itself, so it always has the latest cars, auctions and features." },
             ].map(({ icon: Icon, heading, detail }) => (
               <div key={heading} className="flex gap-3">
                 <Icon className="mt-0.5 h-6 w-6 shrink-0 text-cyan-300" aria-hidden="true" />

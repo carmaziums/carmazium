@@ -12,9 +12,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@/components/BrandIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
@@ -50,9 +50,9 @@ export const ReviewsScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha05, Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
@@ -107,7 +107,7 @@ export const ReviewsScreen: React.FC = () => {
             <Text style={styles.ctaTitle}>See a seller's reviews</Text>
             <Text style={styles.ctaSub}>Open any listing and tap through to the seller's profile</Text>
           </View>
-          <Ionicons name="arrow-forward" size={18} color={Colors.white} />
+          <Ionicons name="arrow-forward" size={18} color={Colors.onAccent} />
         </TouchableOpacity>
 
         <View style={{ height: 60 }} />
@@ -130,11 +130,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
@@ -198,12 +200,13 @@ const styles = StyleSheet.create({
   },
 
   sectionCard: {
-    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
     borderRadius: Radius.card,
     padding: 18,
     marginBottom: 16,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   sectionTitle: {
     fontFamily: FontFamily.bold,
@@ -229,7 +232,7 @@ const styles = StyleSheet.create({
   ctaTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   ctaSub: {
     fontFamily: FontFamily.regular,

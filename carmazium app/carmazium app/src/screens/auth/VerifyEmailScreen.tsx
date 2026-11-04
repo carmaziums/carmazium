@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   secondaryBtn: {
     width: '100%',

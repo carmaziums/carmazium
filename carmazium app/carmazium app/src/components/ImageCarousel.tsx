@@ -3,7 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  ScrollView,
   Pressable,
   NativeSyntheticEvent,
   NativeScrollEvent,
@@ -77,33 +77,42 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = React.memo(({
   }
 
   return (
-    <View style={{ width, height }}>
-      <FlatList
-        data={data}
+    <View style={[styles.frame, { width, height }]}>
+      {/* A plain paging ScrollView, not a FlatList: this carousel sits inside
+          horizontal FlatList rails (Home), and a nested same-orientation
+          VirtualizedList laid its pages out wrongly on Android — the second
+          photo rendered underneath the first, over the card's details. With at
+          most `maxImages` (8) pages there is nothing to virtualise. */}
+      <ScrollView
         horizontal
         pagingEnabled
+        nestedScrollEnabled
         showsHorizontalScrollIndicator={false}
-        snapToInterval={width}
-        snapToAlignment="start"
         decelerationRate="fast"
         onMomentumScrollEnd={onMomentumScrollEnd}
-        keyExtractor={(uri, i) => `${uri}-${i}`}
-        renderItem={({ item, index: i }) => (
-          <Pressable onPress={() => onPress?.(i)} style={{ width, height }}>
-            <Image
-              source={{ uri: item }}
-              style={{ width, height }}
-              contentFit="cover"
-              transition={200}
-              cachePolicy="memory-disk"
-            />
+        style={{ width, height }}
+        contentContainerStyle={styles.pages}
+      >
+        {data.map((item, i) => (
+          <Pressable key={`${item}-${i}`} onPress={() => onPress?.(i)} style={{ width, height }}>
+            {/* Only the visible photo and its neighbours are decoded. Mounting
+                every page (up to 8 per card × every card on Home/Live) made
+                scrolling those screens judder. */}
+            {Math.abs(i - index) <= 1 ? (
+              <Image
+                source={{ uri: item }}
+                style={{ width, height }}
+                contentFit="cover"
+                transition={150}
+                cachePolicy="memory-disk"
+                recyclingKey={item}
+              />
+            ) : (
+              <View style={{ width, height, backgroundColor: Colors.bgSecondary }} />
+            )}
           </Pressable>
-        )}
-        initialNumToRender={1}
-        maxToRenderPerBatch={2}
-        windowSize={3}
-        getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
-      />
+        ))}
+      </ScrollView>
       {showIndicator && (
         data.length <= 5 ? (
           <View style={styles.dotsRow} pointerEvents="none">
@@ -122,6 +131,8 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = React.memo(({
 });
 
 const styles = StyleSheet.create({
+  frame: { overflow: 'hidden' },
+  pages: { flexDirection: 'row' },
   dotsRow: {
     position: 'absolute',
     bottom: 8,
@@ -139,7 +150,7 @@ const styles = StyleSheet.create({
   },
   dotActive: {
     width: 12,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.onAccent,
   },
   counterBadge: {
     position: 'absolute',
@@ -153,6 +164,6 @@ const styles = StyleSheet.create({
   counterText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size9,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 });

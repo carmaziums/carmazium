@@ -4,7 +4,7 @@
     "slug": "carmazium",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "backgroundColor": "#1B2538",
     "icon": "./assets/images/icon.png",
     "scheme": "carmazium",
@@ -250,7 +250,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/icon.png",
+          "icon": "./assets/images/notification-icon.png",
           "color": "#ED1C24",
           "sounds": [],
           "androidMode": "default",

@@ -37,14 +37,16 @@ test('Auction onboarding informs ordinary buyers of trader-only auction bidding 
   assert.ok(native.includes('Retail buyers pay no platform fee.'));
   assert.ok(!native.includes('Sub-second updates'));
   assert.ok(!native.includes('proxy bidding'));
-  assert.ok(native.includes("buttonLabel: 'SIGN IN'"));
+  // Like carmazium.com, the intro ends in guest browsing; sign-in stays one tap away.
+  assert.ok(native.includes("buttonLabel: 'START BROWSING'"));
+  assert.ok(native.includes('Already have an account? Sign In'));
 });
 
 test('Carousel, skip, and sign-in flow are preserved', () => {
   assert.ok(native.includes("image: require('../../../assets/images/onboarding_car1.png')"));
   assert.ok(native.includes("image: require('../../../assets/images/onboarding_car2.png')"));
   assert.ok(native.includes("image: require('../../../assets/images/onboarding_car3.png')"));
-  assert.ok(native.includes("navigation.navigate('Login')"));
-  assert.ok(native.includes("completeIntro();"));
+  assert.ok(native.includes("('Auth', { screen: 'Login' })"));
+  assert.ok(native.includes("completeIntro()"));
   assert.ok(native.includes("onMomentumScrollEnd={handleMomentumScrollEnd}"));
 });

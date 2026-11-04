@@ -23,9 +23,9 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { apiClient } from '../../lib/apiClient';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
-import { Colors } from '../../constants/colors';
+import { Colors, themeMode, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ImportListingModal } from '../../components/ImportListingModal';
@@ -38,6 +38,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { Layout } from '../../constants/layout';
 // ─────────────────────────── types ────────────────────────────────
 
 interface ApiListing {
@@ -768,7 +769,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           disabled={actionLoading}
         >
           {actionLoading ? (
-            <ActivityIndicator color={Colors.white} size="small" />
+            <ActivityIndicator color={Colors.onAccent} size="small" />
           ) : (
             <Text style={styles.soldConfirmBtnText}>Confirm Sale</Text>
           )}
@@ -788,9 +789,9 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha04, Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -817,7 +818,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.tabsContent}
-        style={styles.tabsRow}
+        style={[styles.tabsRow, Layout.hScroll]}
       >
         {TABS.map(tab => {
           const isActive = tab === activeTab;
@@ -952,7 +953,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                     display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                     onChange={onAuctionDateChange}
                     minimumDate={new Date(Date.now() + 60_000)}
-                    themeVariant="dark"
+                    themeVariant={themeMode}
                     style={Platform.OS === 'ios' ? { marginVertical: 4 } : undefined}
                   />
                 )}
@@ -1008,7 +1009,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   disabled={auctionSubmitting}
                   activeOpacity={0.85}
                 >
-                  {auctionSubmitting ? <ActivityIndicator color={Colors.white} size="small" /> : (
+                  {auctionSubmitting ? <ActivityIndicator color={Colors.onAccent} size="small" /> : (
                     <Text style={styles.dualSubmitText}>Create Auction</Text>
                   )}
                 </TouchableOpacity>
@@ -1040,11 +1041,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha07,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
@@ -1060,6 +1063,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 8,
     flexDirection: 'row',
+    paddingVertical: 6,
   },
   tab: {
     flexDirection: 'row',
@@ -1068,13 +1072,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: Radius.card,
-    backgroundColor: Colors.whiteAlpha05,
+    backgroundColor: Colors.bgCard,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha08,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
   },
   tabActive: {
     backgroundColor: Colors.accent,
     borderColor: Colors.accent,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   tabLabel: {
     fontFamily: FontFamily.bold,
@@ -1083,7 +1090,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   tabLabelActive: {
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   tabBadge: {
     minWidth: 18,
@@ -1148,13 +1155,14 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.inline,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
     padding: 12,
     gap: 12,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   thumb: {
     width: 64,
@@ -1301,13 +1309,18 @@ const styles = StyleSheet.create({
   soldConfirmBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   soldCancelBtn: {
     marginHorizontal: 20,
-    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 44,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.borderHi,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   soldCancelBtnText: {
     fontFamily: FontFamily.semiBold,
@@ -1331,7 +1344,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(17,17,22,0.95)',
+    backgroundColor: Colors.bgElevated,
     borderWidth: 1,
     borderColor: Colors.warningAlpha30,
     borderRadius: 999,
@@ -1341,7 +1354,7 @@ const styles = StyleSheet.create({
   boostToastText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size12,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.3,
   },
 
@@ -1357,5 +1370,5 @@ const styles = StyleSheet.create({
   dualErrorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: Colors.errorAlpha08, borderWidth: 1, borderColor: Colors.errorAlpha20, borderRadius: Radius.inline, padding: 10, marginTop: 10 },
   dualErrorText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.error, flex: 1, lineHeight: 17 },
   dualSubmitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: Radius.inline, backgroundColor: Colors.lightOrange_f97316, marginTop: 16 },
-  dualSubmitText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, letterSpacing: 0.3 },
+  dualSubmitText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.onAccent, letterSpacing: 0.3 },
 });

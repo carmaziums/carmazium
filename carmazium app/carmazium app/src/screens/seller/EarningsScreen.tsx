@@ -18,9 +18,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { getAccessToken } from '../../lib/supabase';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -265,9 +265,9 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(34,197,94,0.05)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={['rgba(34,197,94,0.05)', Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -438,7 +438,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
               activeOpacity={0.85}
             >
               {connectLoading ? (
-                <ActivityIndicator color={Colors.white} />
+                <ActivityIndicator color={Colors.onAccent} />
               ) : (
                 <Text style={styles.connectButtonText}>Set up Payouts with Stripe</Text>
               )}
@@ -472,11 +472,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
@@ -492,10 +494,12 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    backgroundColor: Colors.successAlpha10,
     borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.successAlpha25,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   exportBtnText: {
     fontFamily: FontFamily.bold,
@@ -516,12 +520,13 @@ const styles = StyleSheet.create({
 
   // ── Summary card ──
   bonusCard: {
-    backgroundColor: Colors.successAlpha08,
     borderWidth: 1,
-    borderColor: Colors.successAlpha20,
     borderRadius: Radius.card,
     padding: 16,
     marginTop: 16,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   bonusHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   bonusTitle: {
@@ -573,13 +578,14 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   summaryCard: {
-    backgroundColor: 'rgba(20,26,42,0.70)',
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha08,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.cardHi,
   },
   summaryCol: {
     flex: 1,
@@ -631,7 +637,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'rgba(20,26,42,0.70)',
+    backgroundColor: Colors.bgCard,
     borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,
@@ -779,12 +785,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   payoutsCard: {
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.inline,
     borderWidth: 1,
-    borderColor: Colors.successAlpha15,
     padding: 16,
     gap: 14,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   payoutsCardHeader: {
     flexDirection: 'row',
@@ -824,7 +831,7 @@ const styles = StyleSheet.create({
   connectButtonText: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     textAlign: 'center',
   },
 });

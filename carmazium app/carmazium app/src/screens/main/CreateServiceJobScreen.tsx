@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { ScreenBackBar } from '../../components/ScreenBackBar';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { Elevation } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CreateServiceJob'>;
@@ -70,6 +72,8 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
     }
   };
   return (
+    <View style={styles.container}>
+    <ScreenBackBar title="TradeXchange" forceSafeArea />
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>{delivery ? 'Post Delivery & Recovery Job' : 'Post Vehicle Inspection Job'}</Text>
       <Text style={styles.subtitle}>Approved providers can quote for your request. No provider is booked until you accept a quote.</Text>
@@ -91,9 +95,10 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
       )}
       {field('Additional details', description, setDescription, 'Condition, availability and special instructions', true)}
       <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={() => void submit()} style={[styles.submit, saving && { opacity: 0.6 }]}>
-        {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Post a Job</Text>}
+        {saving ? <ActivityIndicator color={Colors.onAccent} /> : <Text style={styles.submitText}>Post a Job</Text>}
       </TouchableOpacity>
     </ScrollView>
+    </View>
   );
 };
 const styles = StyleSheet.create({
@@ -105,6 +110,6 @@ const styles = StyleSheet.create({
   label: { color: Colors.white, fontSize: 14, fontWeight: '600' },
   input: { borderColor: Colors.borderSubtle, borderWidth: 1, borderRadius: 12, color: Colors.white, backgroundColor: Colors.bgCardSolid, padding: 14, minHeight: 50 },
   toggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  submit: { borderRadius: 12, backgroundColor: Colors.accent, padding: 17, alignItems: 'center' },
-  submitText: { color: '#fff', fontWeight: '700' },
+  submit: { borderRadius: 12, backgroundColor: Colors.accent, padding: 17, alignItems: 'center', borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
+  submitText: { color: Colors.onAccent, fontWeight: '700' },
 });

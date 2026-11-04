@@ -18,7 +18,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { IconButton } from '../../components/IconButton';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -131,7 +131,7 @@ export const SaleCancellationsScreen: React.FC<{ navigation?: any }> = ({ naviga
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha04, Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -271,7 +271,7 @@ export const SaleCancellationsScreen: React.FC<{ navigation?: any }> = ({ naviga
                           disabled={isBusy}
                         >
                           {isBusy
-                            ? <ActivityIndicator size="small" color={Colors.white} />
+                            ? <ActivityIndicator size="small" color={Colors.onAccent} />
                             : <Text style={styles.primaryBtnText}>Agree & Cancel</Text>}
                         </TouchableOpacity>
                       </>
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
   withdrawBtn: {
     width: '100%',

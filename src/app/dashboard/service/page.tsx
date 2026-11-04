@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import {
     Briefcase,
     CheckCircle,
@@ -176,7 +177,7 @@ export default function ServiceDashboard() {
                                 <h2 className="text-xl font-bold font-heading">My recent assigned jobs</h2>
                                 <p className="text-xs text-[var(--text-muted)] mt-1">Delivery and Inspection jobs assigned to your business.</p>
                             </div>
-                            <Link href="/dashboard/service/jobs" className="text-xs font-black uppercase tracking-widest text-primary hover:underline shrink-0">View all</Link>
+                            <Link href="/dashboard/service/jobs" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>View all</Link>
                         </div>
 
                         {loading ? (
@@ -185,7 +186,7 @@ export default function ServiceDashboard() {
                             <div className="p-8 md:p-10 text-center">
                                 <Briefcase size={28} className="mx-auto text-[var(--text-muted)] mb-3" />
                                 <p className="text-sm text-[var(--text-muted)]">No assigned jobs yet. Approved Delivery or Inspection providers can quote on open jobs.</p>
-                                <Link href="/dashboard/service/jobs" className="inline-flex items-center gap-1 text-sm font-bold text-primary mt-4">Browse open jobs <ChevronRight size={14} /></Link>
+                                <Link href="/dashboard/service/jobs" className={buttonVariants({ size: "sm", className: "mt-4" })}>Browse open jobs <ChevronRight size={14} /></Link>
                             </div>
                         ) : (
                             <div className="p-4 md:p-5 space-y-3">
@@ -214,7 +215,7 @@ export default function ServiceDashboard() {
                                     </p>
                                 </div>
                             </div>
-                            <Link href="/dashboard/service/capabilities" className="text-xs font-black uppercase tracking-widest text-primary hover:underline shrink-0">Manage approvals</Link>
+                            <Link href="/dashboard/service/capabilities" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>Manage approvals</Link>
                         </div>
                     </section>
                 </main>

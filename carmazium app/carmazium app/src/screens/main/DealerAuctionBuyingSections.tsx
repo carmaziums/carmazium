@@ -8,6 +8,8 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
+import { Elevation, Radius } from '../../constants/spacing';
+import { Button } from '../../components/Button';
 import { FontFamily } from '../../constants/typography';
 
 // Canonical sources: src/app/dashboard/dealer/auctions/shortlisted/page.tsx
@@ -42,6 +44,15 @@ const money = (v: number | string | null | undefined) => {
   if (v == null || String(v).trim() === '' || !Number.isFinite(Number(v))) return '—';
   return '£' + Number(v).toLocaleString('en-GB', { maximumFractionDigits: 0 });
 };
+const TimeLeftText: React.FC<{ endTime: string; style?: any }> = React.memo(({ endTime, style }) => {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <Text style={style}>{timeLeft(endTime, now)}</Text>;
+});
+
 const timeLeft = (raw: string, now: number): string => {
   const ms = new Date(raw).getTime() - now;
   if (!Number.isFinite(ms) || ms <= 0) return 'Ending';
@@ -61,13 +72,11 @@ function Thumbnail({ uri }: { uri?: string }) {
 function ErrorText({ message, onRetry }: { message: string; onRetry: () => void }) {
   return <View style={styles.error}>
     <Text style={styles.errorText}>{message}</Text>
-    <TouchableOpacity onPress={onRetry} accessibilityRole="button">
-      <Text style={styles.retry}>Retry</Text>
-    </TouchableOpacity>
+    <Button label="Retry" onPress={onRetry} variant="outline" size="sm" style={styles.retryBtn} />
   </View>;
 }
 
-export function DealerAuctionShortlist({ navigation }: { navigation?: Nav }) {
+export function DealerAuctionShortlist({ navigation, header }: { navigation?: Nav; header?: React.ReactNode }) {
   const [view, setView] = useState<'live' | 'all'>('live');
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<SavedAuction[]>([]);
@@ -110,8 +119,11 @@ export function DealerAuctionShortlist({ navigation }: { navigation?: Nav }) {
     setPage(1);
     setView(next);
   };
-  return (
-    <View style={styles.root}>
+  // Page heading (from DealerBuyBid), intro and filters scroll with the saved
+  // list so a tall header can never leave the list without room.
+  const shortlistHeader = (
+    <View style={styles.bidsHeaderBleed}>
+      {header}
       <Text style={styles.title}>Shortlisted Auctions</Text>
       <Text style={styles.subtitle}>
         Save live vehicles and return to bid when you are ready.
@@ -132,7 +144,12 @@ export function DealerAuctionShortlist({ navigation }: { navigation?: Nav }) {
         )}
       </View>
       {error && <ErrorText message={error} onRetry={() => void fetchSaved(true)} />}
+    </View>
+  );
+  return (
+    <View style={styles.root}>
       <FlatList
+        ListHeaderComponent={shortlistHeader}
         data={error && !items.length ? [] : items}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
@@ -173,12 +190,12 @@ export function DealerAuctionShortlist({ navigation }: { navigation?: Nav }) {
         }
         ListFooterComponent={!error && !loading && totalPages > 1 ? (
           <View style={styles.pageRow}>
-            <TouchableOpacity onPress={() => setPage(x=>Math.max(1,x-1))}
+            <TouchableOpacity style={[styles.pageBtn, page===1 && styles.pageBtnDisabled]} onPress={() => setPage(x=>Math.max(1,x-1))}
               disabled={page===1} accessibilityRole="button">
               <Text style={styles.pageLink}>Previous</Text>
             </TouchableOpacity>
             <Text style={styles.meta}>{page} / {totalPages}</Text>
-            <TouchableOpacity onPress={()=>setPage(x=>Math.min(totalPages,x+1))}
+            <TouchableOpacity style={[styles.pageBtn, page>=totalPages && styles.pageBtnDisabled]} onPress={()=>setPage(x=>Math.min(totalPages,x+1))}
               disabled={page>=totalPages} accessibilityRole="button">
               <Text style={styles.pageLink}>Next</Text>
             </TouchableOpacity>
@@ -189,12 +206,11 @@ export function DealerAuctionShortlist({ navigation }: { navigation?: Nav }) {
   );
 }
 
-export function DealerActiveBidPositions({ navigation }: { navigation?: Nav }) {
+export function DealerActiveBidPositions({ navigation, header }: { navigation?: Nav; header?: React.ReactNode }) {
   const [positions, setPositions] = useState<AuctionPosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [now, setNow] = useState(Date.now());
   const fetchBids = useCallback(async (quiet = false) => {
     if (quiet) setRefreshing(true);
     else setLoading(true);
@@ -211,17 +227,18 @@ export function DealerActiveBidPositions({ navigation }: { navigation?: Nav }) {
     }
   }, []);
   useFocusEffect(useCallback(() => { void fetchBids(); }, [fetchBids]));
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
+  // Each row's time-left text owns its own 1s tick (TimeLeftText); a
+  // list-wide 1s state re-rendered every bid card each second.
   // Same 20s read-only poll as website's My Auction Bids page.
   useEffect(() => {
     const id = setInterval(() => { void fetchBids(true); }, 20000);
     return () => clearInterval(id);
   }, [fetchBids]);
   const leading = positions.filter(x=>x.isLeading).length;
-  return <View style={styles.root}>
+  // Title and totals scroll with the bids (list header) so a tall header on
+  // a small phone or large font size never leaves only a sliver for the list.
+  const bidsHeader = <View style={styles.bidsHeaderBleed}>
+    {header}
     <Text style={styles.title}>My Auction Bids</Text>
     <Text style={styles.subtitle}>One live position per vehicle you're currently bidding on</Text>
     {error && <ErrorText message={error} onRetry={() => void fetchBids(true)} />}
@@ -235,7 +252,10 @@ export function DealerActiveBidPositions({ navigation }: { navigation?: Nav }) {
         </View>
       ))}
     </View>}
+  </View>;
+  return <View style={styles.root}>
     <FlatList
+      ListHeaderComponent={bidsHeader}
       style={styles.list}
       data={error && !positions.length ? [] : positions}
       keyExtractor={x => x.listingId}
@@ -252,13 +272,12 @@ export function DealerActiveBidPositions({ navigation }: { navigation?: Nav }) {
                 { color: item.isLeading ? Colors.success : Colors.warning }]}>
                 {item.isLeading ? 'CURRENTLY LEADING' : 'OUTBID / ACTION NEEDED'}
               </Text>
-              <Text style={styles.meta}>{timeLeft(item.endTime, now)}</Text>
+              <TimeLeftText endTime={item.endTime} style={styles.meta} />
             </View>
           </View>
           <View style={styles.bidMetrics}>
             <Text style={styles.meta}>Your highest bid: {money(item.myHighestBid)}</Text>
             <Text style={styles.meta}>Current highest: {money(item.currentHighestBid)}</Text>
-            <Text style={styles.meta}>{item.bidCount} bid{item.bidCount===1?'':'s'}</Text>
           </View>
           <TouchableOpacity style={styles.mainAction}
             accessibilityRole="button"
@@ -297,7 +316,7 @@ const styles = StyleSheet.create({
     backgroundColor:Colors.bgCard, borderColor:Colors.borderSubtle, borderWidth:1, borderRadius:11 },
   segmentOn:{ backgroundColor: Colors.accent, borderColor:Colors.accent },
   segmentText: {fontFamily: FontFamily.bold,fontSize:12,color:Colors.textMuted},
-  segmentTextOn:{color:Colors.white},
+  segmentTextOn:{color:Colors.onAccent},
   total:{fontFamily:FontFamily.bold,color:Colors.textMuted,fontSize:11, marginLeft:6},
   error: {marginHorizontal:20,marginVertical:7,padding:12,backgroundColor:Colors.bgCard,
     borderWidth:1,borderColor:Colors.warning,borderRadius:12,gap:6},
@@ -305,6 +324,8 @@ const styles = StyleSheet.create({
   retry:{color:Colors.accent,fontFamily:FontFamily.bold,fontSize:12},
   list:{flex:1},
   listContent:{paddingBottom:100,paddingHorizontal:20},
+  // Header rows carry their own 20pt gutters inside the padded list.
+  bidsHeaderBleed:{marginHorizontal:-20},
   thumb:{width:90,height:88,backgroundColor:Colors.bgElevated,
     alignItems:'center',justifyContent:'center',borderRadius:11,overflow:'hidden'},
   image:{width:'100%',height:'100%'},
@@ -331,6 +352,12 @@ const styles = StyleSheet.create({
   bidMetrics:{gap:6,paddingVertical:8},
   mainAction:{minHeight:44,backgroundColor:Colors.accent,borderRadius:11,
     alignItems:'center',justifyContent:'center',marginTop:6},
-  mainActionText:{fontFamily:FontFamily.bold,color:Colors.white,fontSize:12},
-  historyLink:{paddingTop:15,paddingBottom:15,alignItems:'center'},
+  mainActionText:{fontFamily:FontFamily.bold,color:Colors.onAccent,fontSize:12},
+  // Raised outline buttons (were bare accent text links).
+  historyLink:{marginTop:15,marginBottom:15,minHeight:44,paddingHorizontal:14,paddingVertical:10,alignItems:'center',justifyContent:'center',
+    borderRadius:Radius.inline,borderWidth:1.5,borderBottomWidth:3,borderColor:Colors.accent,backgroundColor:Colors.bgCard,...Elevation.card},
+  pageBtn:{minHeight:38,paddingHorizontal:14,justifyContent:'center',borderRadius:Radius.inline,borderWidth:1,borderBottomWidth:3,
+    borderColor:Colors.borderHi,backgroundColor:Colors.bgCard,...Elevation.card},
+  pageBtnDisabled:{opacity:0.45},
+  retryBtn:{alignSelf:'flex-start',marginTop:8},
 });

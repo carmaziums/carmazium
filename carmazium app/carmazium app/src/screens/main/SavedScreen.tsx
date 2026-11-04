@@ -10,6 +10,8 @@ import {
   StatusBar,
   Dimensions,
   Alert,
+  useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
@@ -17,9 +19,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
-import { Colors } from '../../constants/colors';
+import { Elevation, Radius } from '../../constants/spacing';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { getBottomTabBarHeight } from '../../lib/nativeLayoutParity';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconButton } from '../../components/IconButton';
 import { CarListing, formatPrice } from '../../data/listings';
 import { useWatchlistStore } from '../../store/watchlistStore';
@@ -45,6 +49,8 @@ type ViewMode = 'grid' | 'list';
 export const SavedScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const accountRole = useAuthStore(s => s.accountRole);
+  const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const [savedTab, setSavedTab] = useState<'auctions' | 'retail'>('auctions');
 
   // Readable website-style list first; a two-column grid remains optional.
@@ -172,7 +178,7 @@ export const SavedScreen: React.FC = () => {
             <Ionicons
               name={saved ? 'heart' : 'heart-outline'}
               size={16}
-              color={saved ? Colors.accent : Colors.white}
+              color={saved ? Colors.accent : Colors.onAccent}
             />
           </TouchableOpacity>
         </View>
@@ -266,17 +272,10 @@ export const SavedScreen: React.FC = () => {
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <LinearGradient
-        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
-        style={StyleSheet.absoluteFillObject}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0.4 }}
-      />
-
-      <WebsiteTopBar />
+  // Title, view toggle and dealer tab switch scroll with the saved cars (list
+  // header) rather than sitting fixed above a flex:1 list.
+  const pageHeader = (
+    <View style={styles.headerBleed}>
       {/* Website watchlist header below global navigation. */}
       <View style={[styles.header, { paddingTop: 12 }]}>
         <View>
@@ -293,31 +292,47 @@ export const SavedScreen: React.FC = () => {
         </View>}
       </View>
       {accountRole === 'dealer' && (
-        <View style={{ flexDirection: 'row', marginHorizontal: 24, marginBottom: 12, padding: 4, gap: 4, borderRadius: 12, backgroundColor: Colors.bgCard }} accessibilityRole="tablist">
+        <View style={styles.segTrack} accessibilityRole="tablist">
           {(['auctions', 'retail'] as const).map(tab => (
             <TouchableOpacity key={tab} accessibilityRole="tab" accessibilityState={{ selected: savedTab === tab }}
               onPress={() => setSavedTab(tab)}
-              style={{ flex: 1, minHeight: 44, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: savedTab === tab ? Colors.accent : 'transparent' }}>
-              <Text style={{ color: savedTab === tab ? Colors.white : Colors.textMuted, fontFamily: FontFamily.bold }}>
+              style={[styles.segTab, savedTab === tab && styles.segTabActive]}>
+              <Text style={{ color: savedTab === tab ? Colors.onAccent : Colors.textMuted, fontFamily: FontFamily.bold }}>
                 {tab === 'auctions' ? 'Auctions' : 'Retail cars'}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
       )}
+    </View>
+  );
+  // The tab bar floats over the screen; keep the last card clear of it.
+  const bottomPad = { paddingBottom: getBottomTabBarHeight(fontScale, insets.bottom) + 16 };
 
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
+      <LinearGradient
+        colors={[Colors.accentAlpha03, Colors.groundClear, Colors.bgPrimary]}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0.4 }}
+      />
+
+      <WebsiteTopBar />
       {/* Content */}
       {isLoading && savedListings.length === 0 ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+          contentContainerStyle={[styles.scrollContent, bottomPad]}
         >
+          {pageHeader}
           {renderSkeleton()}
         </ScrollView>
       ) : viewMode === 'list' ? (
         <FlatList
           style={{ flex: 1 }}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+          contentContainerStyle={[styles.scrollContent, bottomPad]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -330,13 +345,13 @@ export const SavedScreen: React.FC = () => {
           data={displayedListings}
           keyExtractor={(item) => item.id}
           renderItem={renderListItem}
-          ListHeaderComponent={displayedListings.length > 0 ? renderListSortRow() : null}
+          ListHeaderComponent={<>{pageHeader}{displayedListings.length > 0 ? renderListSortRow() : null}</>}
           ListEmptyComponent={renderEmptyState()}
         />
       ) : (
         <FlatList
           style={{ flex: 1 }}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100, gap: 16 }]}
+          contentContainerStyle={[styles.scrollContent, bottomPad, styles.gridGap]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -351,7 +366,7 @@ export const SavedScreen: React.FC = () => {
           columnWrapperStyle={styles.gridRow}
           keyExtractor={(item) => item.id}
           renderItem={renderGridItem}
-          ListHeaderComponent={displayedListings.length > 0 ? renderListSortRow() : null}
+          ListHeaderComponent={<>{pageHeader}{displayedListings.length > 0 ? renderListSortRow() : null}</>}
           ListEmptyComponent={renderEmptyState()}
         />
       )}
@@ -392,15 +407,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
+  // Segmented Auctions / Retail switch: solid track, raised accent selection.
+  segTrack: {
+    flexDirection: 'row',
+    marginHorizontal: 24,
+    marginBottom: 12,
+    padding: 4,
+    gap: 4,
+    borderRadius: Radius.inline,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Elevation.card,
+  },
+  segTab: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: Radius.chip,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  segTabActive: {
+    backgroundColor: Colors.accent,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
+  },
   iconBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha03,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
 
   // Tabs
@@ -408,6 +452,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 8,
   },
+  gridGap: { gap: 16 },
+  // Header rows carry their own 24pt gutters inside the padded list.
+  headerBleed: { marginHorizontal: -24 },
 
   // Skeleton
   skeletonGrid: {
@@ -417,11 +464,11 @@ const styles = StyleSheet.create({
   },
   skeletonCard: {
     width: CARD_WIDTH,
-    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     overflow: 'hidden',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
   },
   skeletonInfo: {
     padding: 14,
@@ -434,17 +481,21 @@ const styles = StyleSheet.create({
   },
   gridCard: {
     width: CARD_WIDTH,
-    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
-    overflow: 'hidden',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    overflow: Platform.OS === 'ios' ? 'visible' : 'hidden',
+    ...Elevation.card,
   },
   gridImgWrap: {
     width: '100%',
     height: 116,
     position: 'relative',
     backgroundColor: Colors.deepBlue_1e1e28,
+    overflow: 'hidden',
+    borderTopLeftRadius: Radius.card - 1,
+    borderTopRightRadius: Radius.card - 1,
   },
   gridImg: {
     width: '100%',
@@ -538,6 +589,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    minHeight: 34,
+    paddingHorizontal: 12,
+    borderRadius: Radius.pill,
+    borderWidth: 1.5,
+    borderBottomWidth: 3,
+    borderColor: Colors.accent,
+    backgroundColor: Colors.bgCard,
   },
   listSortChangeText: {
     fontFamily: FontFamily.bold,
@@ -546,12 +604,13 @@ const styles = StyleSheet.create({
   },
   listCard: {
     flexDirection: 'row',
-    backgroundColor: Colors.bgCardSolid,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
     padding: 12,
     alignItems: 'center',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   listImg: {
     width: 116,

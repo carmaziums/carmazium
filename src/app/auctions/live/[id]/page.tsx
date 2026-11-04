@@ -3,6 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import dynamic from "next/dynamic"
 import { io, Socket } from "socket.io-client"
 import { motion, AnimatePresence } from "framer-motion"
@@ -1001,10 +1002,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 <CountdownTimer targetDate={startTime} minimal />
                             </div>
                         )}
-                        <div className="flex items-center gap-1.5 bg-[var(--bg-input)] border border-[var(--border-default)] px-3 py-1.5 rounded-full">
-                            <Users size={11} className="text-primary" />
-                            <span className="text-xs font-bold">{watchers}</span>
-                        </div>
+                        {/* Watcher count removed: nobody sees how many people are in an auction. */}
                         <div className="flex items-center gap-1.5">
                             <span className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-emerald-500" : "bg-red-500"}`} />
                             <span className="text-[9px] text-[var(--text-muted)] hidden sm:inline">{connected ? "Live" : "Offline"}</span>
@@ -1030,7 +1028,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     <WishlistButton listingId={auction.listing.id} variant="shortlist" />
                     <Link
                         href="/dashboard/dealer/auctions/shortlisted"
-                        className="min-h-11 inline-flex items-center text-xs font-bold text-primary hover:underline"
+                        className={buttonVariants({ variant: "outline", size: "sm" })}
                     >
                         View my shortlist →
                     </Link>
@@ -1046,7 +1044,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             <p className="text-red-400 font-bold text-sm">This auction has been cancelled</p>
                             <p className="text-[var(--text-muted)] text-xs">The seller has cancelled this auction before it started.</p>
                         </div>
-                        <Link href="/auctions/browse" className="ml-auto text-xs font-bold text-primary hover:text-red-400 transition-colors shrink-0">
+                        <Link href="/auctions/browse" className={buttonVariants({ variant: "outline", size: "sm", className: "ml-auto shrink-0" })}>
                             Browse Auctions →
                         </Link>
                     </div>
@@ -1062,7 +1060,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             <strong>This is your auction.</strong>{" "}
                             {isLive ? "Your auction is live — bids appear in real time." : isScheduled ? "Your auction is scheduled and will start automatically." : "Your auction has ended."}
                         </p>
-                        <Link href="/dashboard/seller/auctions" className="ml-auto text-xs font-bold text-blue-400 hover:text-blue-300 shrink-0 transition-colors">
+                        <Link href="/dashboard/seller/auctions" className={buttonVariants({ variant: "outline", size: "sm", className: "ml-auto shrink-0" })}>
                             Manage →
                         </Link>
                     </div>
@@ -1325,7 +1323,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                         <div className="flex border-b border-[var(--border-default)]">
                             {[
                                 { id: "details", label: "Details", icon: Info },
-                                { id: "bids", label: `Bids (${bidCount})`, icon: Timer },
+                                { id: "bids", label: "Bids", icon: Timer },
                                 { id: "seller", label: "Seller", icon: Users },
                             ].map(tab => (
                                 <button
@@ -1774,7 +1772,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                         onClick={() => setShowAllBids(true)}
                                                         className="w-full py-2 text-[10px] font-bold text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
                                                     >
-                                                        Show all {bidHistory.length} bids
+                                                        Show all bids
                                                     </button>
                                                 )}
                                             </>
@@ -1876,9 +1874,6 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                         <div className="px-4 py-3 border-b border-[var(--border-default)] flex items-center justify-between bg-[var(--bg-input)] shrink-0">
                             <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">
                                 <Flame size={12} className="text-primary" /> Live Feed
-                                {bidCount > 0 && (
-                                    <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-black">{bidCount}</span>
-                                )}
                             </div>
                             <div className="flex items-center gap-1.5">
                                 {connected
@@ -1889,7 +1884,14 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                         </div>
 
                         <div ref={feedRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5">
-                            {bidHistory.length === 0 ? (
+                            {!user ? (
+                                // Signed-out visitors don't see bidding activity.
+                                <div className="h-full flex flex-col items-center justify-center gap-3 text-[var(--text-muted)]">
+                                    <Gavel size={20} />
+                                    <p className="text-xs text-center leading-relaxed">Sign in to follow live bidding.</p>
+                                    <Link href="/auth/login" className={buttonVariants({ size: "sm" })}>Sign in</Link>
+                                </div>
+                            ) : bidHistory.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center gap-2 text-[var(--text-muted)]">
                                     <Gavel size={20} />
                                     <p className="text-xs text-center leading-relaxed">

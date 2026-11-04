@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
 import { useAuthStore } from '../../store/authStore';
 
@@ -128,7 +128,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
        value={value}
        onValueChange={onValueChange}
        trackColor={{ false: Colors.whiteAlpha10, true: activeColor }}
-       thumbColor={Colors.white}
+       thumbColor={Colors.onAccent}
        ios_backgroundColor={Colors.whiteAlpha10}
        disabled={disabled}
     />
@@ -307,23 +307,9 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
               </View>
               <CustomSwitch value={email} onValueChange={setEmail} />
            </View>
-           <View style={styles.divider} />
-           <View style={styles.toggleRow}>
-              <View style={styles.channelIconGrey}>
-                 <Ionicons name="chatbubble-outline" size={16} color={Colors.textSecondary} />
-              </View>
-              <View style={styles.toggleTextWrap}>
-                 <Text style={styles.toggleTitle}>SMS</Text>
-                 {/* No SMS provider exists in the backend at all — this toggle
-                     could never have worked regardless of preference-reading
-                     fixes elsewhere (mobile-production-readiness-plan.md F23).
-                     Disabled + labeled, not silently inert, matching the
-                     Apple sign-in / Finance Calculator "Coming Soon" pattern
-                     already used elsewhere in this app. */}
-                 <Text style={styles.toggleSub}>Coming soon</Text>
-              </View>
-              <CustomSwitch value={false} onValueChange={() => {}} disabled />
-           </View>
+           {/* SMS row removed: no SMS provider exists in the backend and the
+               website offers no SMS preference (F23), so a permanently
+               disabled "Coming soon" switch was a dead end. */}
         </View>
 
         <Text style={[styles.sectionTitle, { marginLeft: 24, marginBottom: 16, marginTop: 8 }]}>ALERT DELIVERY</Text>
@@ -372,9 +358,9 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha03, Colors.groundClear, Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}

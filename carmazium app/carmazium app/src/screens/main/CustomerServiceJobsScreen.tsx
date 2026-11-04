@@ -14,9 +14,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import {
   SERVICE_LABELS,
   ServiceJob,
@@ -163,7 +163,7 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       <View style={styles.header}>
         <IconButton
@@ -245,22 +245,25 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
   list: { padding: 18, gap: 12, paddingBottom: 60 },
   card: {
-    backgroundColor: Colors.bgCardSolid,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
     borderRadius: Radius.card,
     padding: 16,
     gap: 10,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   topRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   iconBox: {
@@ -286,7 +289,7 @@ const styles = StyleSheet.create({
   centerCard: { flex: 1, padding: 34, alignItems: 'center', justifyContent: 'center', gap: 12 },
   emptyTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white, textAlign: 'center' },
   emptyText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
-  primaryButton: { backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 12, minHeight: 48, justifyContent: 'center', marginTop: 6 },
-  primaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white },
+  primaryButton: { backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 12, minHeight: 48, justifyContent: 'center', marginTop: 6, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
+  primaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent },
   inlineError: { color: Colors.accent, fontFamily: FontFamily.medium, textAlign: 'center', padding: 12 },
 });

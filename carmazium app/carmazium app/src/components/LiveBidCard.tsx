@@ -6,12 +6,14 @@ import {
   TouchableOpacity,
   Animated as RNAnimated,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { AuctionListing, formatPrice, formatMileage } from '../data/listings';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
-import { Radius } from '../constants/spacing';
+import { Elevation, Radius } from '../constants/spacing';
+import { Button } from './Button';
 import { ImageCarousel } from './ImageCarousel';
 import { GradeChip } from './GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from './AuctionCardBadges';
@@ -167,8 +169,7 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
             <Text style={styles.bidLabel}>{hasRealBids ? 'CURRENT BID' : 'STARTING BID'}</Text>
             <Text style={styles.bidAmount}>{formatPrice(displayBid)}</Text>
             <View style={styles.bidMeta}>
-              <Ionicons name="people-outline" size={11} color={Colors.textMuted} />
-              <Text style={styles.bidCount}>{auction.totalBids} bids</Text>
+              {/* Bid counts are not shown on browse cards (owner decision): a fresh lot reading "0 bids" undersold the trade buyer base. */}
               {!hasRealBids && firstOfferFloor > 0 && (
                 <Text style={[styles.bidCount, { color: Colors.warning }]}>
                   First offer {formatPrice(firstOfferFloor)}
@@ -205,10 +206,14 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
 
         {/* CTA */}
         {auction.isLive && (
-          <TouchableOpacity style={styles.bidBtn} onPress={onBid} activeOpacity={0.85}>
-            <Ionicons name="hammer-outline" size={15} color={Colors.white} />
-            <Text style={styles.bidBtnText}>Place Bid</Text>
-          </TouchableOpacity>
+          <Button
+            label="Place Bid"
+            onPress={onBid}
+            variant="primary"
+            fullWidth
+            icon={<Ionicons name="hammer-outline" size={15} color={Colors.onAccent} />}
+            iconPosition="left"
+          />
         )}
       </View>
     </TouchableOpacity>
@@ -221,12 +226,17 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgCard,
     borderWidth: 1,
     borderColor: Colors.border,
-    overflow: 'hidden',
+    // Raised auction card; see VehicleCard for why iOS skips the clip.
+    overflow: Platform.OS === 'ios' ? 'visible' : 'hidden',
     marginBottom: 16,
+    ...Elevation.card,
   },
   imageWrapper: {
     height: 160,
     position: 'relative',
+    overflow: 'hidden',
+    borderTopLeftRadius: Radius.card - 1,
+    borderTopRightRadius: Radius.card - 1,
   },
   imageOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -253,12 +263,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.onAccent,
   },
   liveText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size10,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 1.5,
   },
   viewersBadge: {
@@ -392,25 +402,5 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     color: Colors.textMuted,
     marginBottom: 8,
-  },
-  bidBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Colors.accent,
-    paddingVertical: 14,
-    borderRadius: 12,
-    shadowColor: Colors.accent,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  bidBtnText: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.base,
-    color: Colors.white,
-    letterSpacing: 0.3,
   },
 });

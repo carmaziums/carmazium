@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { BuyerCollectedButton } from "@/components/purchases/BuyerCollectedButton"
 import { PurchaseReceiptButton } from "@/components/purchases/PurchaseReceiptButton"
 import Image from "next/image"
@@ -165,7 +166,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                     </p>
                     {onViewSummary && (
                         <button type="button" onClick={() => onViewSummary(item)}
-                            className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded"
+                            className={buttonVariants({ variant: "outline", size: "sm", className: "mt-2" })}
                             aria-label={`View purchase details for ${item.vehicleTitle}`}>
                             View purchase details <ChevronRight size={13} aria-hidden="true" />
                         </button>

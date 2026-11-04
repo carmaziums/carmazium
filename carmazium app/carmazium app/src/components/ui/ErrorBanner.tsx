@@ -1,7 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
+import { Button } from '../Button';
 import { Colors } from '../../constants/colors';
+import { Radius } from '../../constants/spacing';
 import { FontFamily, FontSize } from '../../constants/typography';
 
 interface ErrorBannerProps {
@@ -18,9 +20,7 @@ export const ErrorBanner: React.FC<ErrorBannerProps> = ({ message, onRetry }) =>
       <Ionicons name="alert-circle-outline" size={18} color={Colors.error} />
       <Text style={styles.message}>{message}</Text>
       {onRetry ? (
-        <TouchableOpacity onPress={onRetry} activeOpacity={0.7}>
-          <Text style={styles.retry}>Try again</Text>
-        </TouchableOpacity>
+        <Button label="Try again" onPress={onRetry} variant="outline" size="sm" />
       ) : null}
     </View>
   );
@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
     backgroundColor: ERROR_BG,
     borderWidth: 1,
     borderColor: ERROR_BORDER,
-    borderRadius: 10,
+    borderRadius: Radius.inline,
     paddingHorizontal: 14,
     paddingVertical: 10,
     gap: 10,
@@ -43,11 +43,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: FontSize.sm,
     color: Colors.textPrimary,
-  },
-  retry: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.sm,
-    color: Colors.accent,
   },
 });
 

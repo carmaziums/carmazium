@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import Image from "next/image"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -102,7 +103,7 @@ function BuyerHistoryPage() {
                                             <dt className="text-[var(--text-muted)]">Amount</dt><dd className="text-right font-semibold tabular-nums">{formatPrice(Number(tx.amount))}</dd>
                                             <dt className="text-[var(--text-muted)]">Status</dt><dd className="text-right font-medium">{tx.status}</dd>
                                         </dl>
-                                        <button type="button" onClick={() => downloadReceipt(tx.id)} className="inline-flex min-h-10 items-center gap-2 text-sm font-medium text-primary" aria-label={`Download PDF receipt for order ${tx.id.slice(0, 8)}`}><Download size={16} /> Download PDF receipt</button>
+                                        <button type="button" onClick={() => downloadReceipt(tx.id)} className={buttonVariants({ variant: "outline", size: "sm", className: "w-full" })} aria-label={`Download PDF receipt for order ${tx.id.slice(0, 8)}`}><Download size={16} /> Download PDF receipt</button>
                                     </article>
                                 ))}
                             </div>
@@ -145,7 +146,7 @@ function BuyerHistoryPage() {
                                                     <button
                                                         type="button"
                                                         onClick={() => downloadReceipt(tx.id)}
-                                                        className="inline-flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-primary transition-colors"
+                                                        className={buttonVariants({ variant: "outline", size: "sm" })}
                                                         aria-label="Download PDF receipt"
                                                     >
                                                         <Download size={12} /> PDF

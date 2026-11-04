@@ -14,9 +14,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import {
   ServiceLead,
   formatPence,
@@ -176,24 +176,10 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
     );
   };
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-
-      <View style={styles.header}>
-        <IconButton
-          style={styles.headerButton}
-          icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
-          onPress={() => navigation.goBack()}
-          accessibilityLabel="Go back"
-        />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Finance & Warranty Enquiries</Text>
-          <Text style={styles.headerSub}>Matched customer enquiries</Text>
-        </View>
-        <HamburgerButton />
-      </View>
-
+  // Tabs, filters and the coverage link scroll with the list (header) so a
+  // larger system font size can't leave the list too little height.
+  const listHeader = (
+    <View>
       <View style={styles.filters}>
         {FILTERS.map((item) => (
           <TouchableOpacity
@@ -221,30 +207,53 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={styles.manageCoverageText}>Manage service areas & approval</Text>
         <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
       </TouchableOpacity>
+    </View>
+  );
+  // Loading / approval / load-error states render inside the list.
+  const listStatus = loading && leads.length === 0 ? (
+    <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
+  ) : error && leads.length === 0 ? (
+    <View style={styles.centerCard}>
+      <Ionicons name="alert-circle-outline" size={34} color={Colors.accent} />
+      <Text style={styles.emptyTitle}>Could not load enquiries</Text>
+      <Text style={styles.emptyText}>{error}</Text>
+      <TouchableOpacity style={styles.primaryButton} onPress={() => void load('reset')}>
+        <Text style={styles.primaryText}>TRY AGAIN</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={() => navigation.navigate('ProviderCapabilities')}
+      >
+        <Text style={styles.secondaryText}>CHECK SERVICE APPROVAL</Text>
+      </TouchableOpacity>
+    </View>
+  ) : null;
 
-      {loading && leads.length === 0 ? (
-        <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
-      ) : error && leads.length === 0 ? (
-        <View style={styles.centerCard}>
-          <Ionicons name="alert-circle-outline" size={34} color={Colors.accent} />
-          <Text style={styles.emptyTitle}>Could not load enquiries</Text>
-          <Text style={styles.emptyText}>{error}</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => void load('reset')}>
-            <Text style={styles.primaryText}>TRY AGAIN</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => navigation.navigate('ProviderCapabilities')}
-          >
-            <Text style={styles.secondaryText}>CHECK SERVICE APPROVAL</Text>
-          </TouchableOpacity>
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
+
+      <View style={styles.header}>
+        <IconButton
+          style={styles.headerButton}
+          icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
+          onPress={() => navigation.goBack()}
+          accessibilityLabel="Go back"
+        />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Finance & Warranty Enquiries</Text>
+          <Text style={styles.headerSub}>Matched customer enquiries</Text>
         </View>
-      ) : (
+        <HamburgerButton />
+      </View>
+
         <FlatList
-          data={leads}
+          data={listStatus ? [] : leads}
+          ListHeaderComponent={listHeader}
+          ListHeaderComponentStyle={styles.listHeaderBleed}
           keyExtractor={(item) => item.id}
           renderItem={renderLead}
-          contentContainerStyle={leads.length ? styles.list : styles.emptyList}
+          contentContainerStyle={leads.length && !listStatus ? styles.list : styles.emptyList}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -252,7 +261,7 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
               tintColor={Colors.accent}
             />
           }
-          ListEmptyComponent={
+          ListEmptyComponent={listStatus ?? (
             <View style={styles.centerCard}>
               <Ionicons name="mail-unread-outline" size={34} color={Colors.textMuted} />
               <Text style={styles.emptyTitle}>No matched enquiries</Text>
@@ -266,7 +275,7 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.secondaryText}>MANAGE MATCHING</Text>
               </TouchableOpacity>
             </View>
-          }
+          )}
           onEndReached={() => {
             if (nextCursor && !loadingMore) void load('more');
           }}
@@ -275,7 +284,6 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
             loadingMore ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 18 }} /> : null
           }
         />
-      )}
     </View>
   );
 };
@@ -283,7 +291,7 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingVertical: 12 },
-  headerButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
+  headerButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderBottomWidth: 2, ...Elevation.card },
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted, marginTop: 2 },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 18, paddingVertical: 10 },
@@ -293,10 +301,12 @@ const styles = StyleSheet.create({
   filterActive: { borderColor: Colors.accentAlpha25, backgroundColor: Colors.accentAlpha10 },
   filterText: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.textMuted },
   filterTextActive: { color: Colors.accent },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  center: { flexGrow: 1, minHeight: 160, alignItems: 'center', justifyContent: 'center' },
   list: { padding: 18, gap: 12, paddingBottom: 36 },
-  emptyList: { flexGrow: 1, padding: 18, justifyContent: 'center' },
-  card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCardSolid, padding: 16, gap: 12 },
+  emptyList: { flexGrow: 1, padding: 18 },
+  // Header rows carry their own 18pt gutters inside the padded list.
+  listHeaderBleed: { marginHorizontal: -18, marginTop: -18, marginBottom: 6 },
+  card: { borderRadius: Radius.card, borderWidth: 1, padding: 16, gap: 12, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   typeRow: { flex: 1, flexDirection: 'row', gap: 10 },
   iconBox: { width: 38, height: 38, borderRadius: 11, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
@@ -316,11 +326,11 @@ const styles = StyleSheet.create({
   receivedText: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted },
   openRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   openText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accent, letterSpacing: 0.5 },
-  centerCard: { alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
+  centerCard: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
   emptyTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, textAlign: 'center' },
   emptyText: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textMuted, textAlign: 'center', lineHeight: 19, maxWidth: 340 },
-  primaryButton: { marginTop: 5, minHeight: 44, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
-  primaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 0.7 },
-  secondaryButton: { minHeight: 42, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  primaryButton: { marginTop: 5, minHeight: 44, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
+  primaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent, letterSpacing: 0.7 },
+  secondaryButton: { minHeight: 42, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, backgroundColor: Colors.bgCard, borderBottomWidth: 3, ...Elevation.card },
   secondaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
 });

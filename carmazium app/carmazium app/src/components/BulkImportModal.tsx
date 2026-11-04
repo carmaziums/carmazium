@@ -16,7 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { Colors } from '../constants/colors';
+import { Colors, themeStatusBarStyle } from '../constants/colors';
 import {FontFamily, FontSize } from '../constants/typography';
 import { apiClient } from '../lib/apiClient';
 
@@ -253,10 +253,10 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
       statusBarTranslucent
       onRequestClose={() => { if (status !== 'importing') { reset(); onClose(); } }}
     >
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <View style={st.container}>
         <LinearGradient
-          colors={[Colors.warningAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+          colors={[Colors.warningAlpha05, Colors.groundClear, Colors.bgPrimary]}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0, y: 0.4 }}
           style={StyleSheet.absoluteFillObject}
@@ -309,7 +309,7 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
 
               {/* File pick button */}
               <TouchableOpacity style={st.primaryBtn} onPress={handlePickFile} activeOpacity={0.85}>
-                <Ionicons name="document-text-outline" size={16} color={Colors.white} />
+                <Ionicons name="document-text-outline" size={16} color={Colors.onAccent} />
                 <Text style={st.primaryBtnText}>Pick CSV File</Text>
               </TouchableOpacity>
             </>
@@ -458,7 +458,7 @@ const st = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: Colors.accent,
   },
-  primaryBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, letterSpacing: 0.3 },
+  primaryBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.onAccent, letterSpacing: 0.3 },
   outlineBtn: {
     flexDirection: 'row',
     alignItems: 'center',

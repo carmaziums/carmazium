@@ -9,6 +9,8 @@ import {
   Dimensions,
   StatusBar,
   RefreshControl,
+  FlatList,
+  Platform,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,7 +19,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { formatPrice, AuctionListing } from '../../data/listings';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { AuctionFilterSheet } from '../../components/filters/AuctionFilterSheet';
 import {
   AUCTION_SORT_OPTIONS,
@@ -28,13 +30,14 @@ import {
   matchesAuctionFilters,
 } from '../../components/filters/auctionFilters';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { getActiveAuctions, getAllScheduledAuctions, AuctionDetail } from '../../lib/auctionApi';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { useAuthStore } from '../../store/authStore';
+import { openSignIn } from '../../components/SignInRequired';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { ImageCarousel } from '../../components/ImageCarousel';
 import { GradeChip } from '../../components/GradeChip';
@@ -42,6 +45,7 @@ import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/Aucti
 import { WishlistHeart } from '../../components/WishlistHeart';
 import { getAuctionFirstOfferFloor } from '../../lib/auctionPricing';
 import { mapTransmission } from '../../lib/listingsApi';
+import { useTabBarClearance } from '../../hooks/useTabBarClearance';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -84,11 +88,40 @@ const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
   );
 };
 
-export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embeddedDealerHub = false }) => {
+/**
+ * Owns its own 1s tick. The screen used to hold a global `now` that
+ * re-rendered every card (and its photo carousel) once a second, which made
+ * scrolling Live Auctions visibly jerky.
+ */
+const LiveFlipTimer: React.FC<{ endsAt: Date | string }> = React.memo(({ endsAt }) => {
+  const endMs = new Date(endsAt).getTime();
+  const [secs, setSecs] = useState(() => Math.max(0, Math.floor((endMs - Date.now()) / 1000)));
+  useEffect(() => {
+    const tick = () => setSecs(Math.max(0, Math.floor((endMs - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [endMs]);
+  return <FlipTimer seconds={secs} />;
+});
+
+export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?: React.ReactNode }> = ({ embeddedDealerHub = false, headerContent }) => {
+  // Clear the floating tab bar, which grows with the system font size.
+  const tabBarClearance = useTabBarClearance();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
-  const { user: currentUser, accountRole, role } = useAuthStore();
+  const currentUser = useAuthStore((s) => s.user);
+  const accountRole = useAuthStore((s) => s.accountRole);
+  const role = useAuthStore((s) => s.role);
   const dealerMode = accountRole === 'dealer' && role === 'dealer';
+  // /auctions/active and /auctions/scheduled are behind the backend's
+  // VerifiedDealerGuard. Mirror the website (/auctions/browse): retail
+  // buyers and unverified dealers get an explanation and the next step,
+  // not a 403 error banner with a Retry button that can never succeed.
+  const hasTradeAccess =
+    accountRole === 'admin'
+    || currentUser?.isDealerStaff === true
+    || (accountRole === 'dealer' && currentUser?.isVerified === true);
   const { loading: accessLoading, hasPermission } = useDealerAccess(dealerMode);
   const canCreateAuction = !dealerMode || (!accessLoading && hasPermission('MANAGE_INVENTORY'));
   const canPlaceDealerBid = !dealerMode || (!accessLoading && hasPermission('PLACE_BID'));
@@ -100,8 +133,6 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
   const [isLoading, setIsLoading] = useState(true);
   const [auctionLoadError, setAuctionLoadError] = useState<string | null>(null);
 
-  // Global ticker reference time
-  const [now, setNow] = useState(Date.now());
 
   // Make/model search — web's /auctions page has this, mobile didn't
   // (mobile-production-readiness-plan.md F15). Filters client-side like
@@ -112,6 +143,11 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
 
   const fetchData = useCallback(async () => {
     setAuctionLoadError(null);
+    if (!hasTradeAccess) {
+      setIsLoading(false);
+      setIsRefreshing(false);
+      return;
+    }
     try {
       // Both endpoints enforce verified-dealer access. Fetch all scheduled
       // pages and only commit both lists once the complete response succeeds.
@@ -124,7 +160,8 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
       }
 
       // Map dynamic active auctions to UI component-friendly shapes
-      const mappedActive = activeData.map((a) => {
+      // A lot whose listing was removed must not take down every other card.
+      const mappedActive = activeData.filter((a) => !!a?.listing).map((a) => {
         const totalBidsCount = a.listing._count?.bids ?? a.listing.bids?.length ?? 0;
         const latestBid = totalBidsCount > 0 && a.listing.bids && a.listing.bids.length > 0
           ? Number(a.listing.bids[0].amount)
@@ -182,7 +219,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
       });
 
       setLiveAuctions(mappedActive);
-      setUpcomingAuctions(upcomingData);
+      setUpcomingAuctions(Array.isArray(upcomingData) ? upcomingData.filter((u) => !!u?.listing) : []);
     } catch (error: any) {
       // A 403, network outage or partial scheduled list must not be displayed
       // as 'No auctions right now'. Retain the last known cards with a visible
@@ -193,7 +230,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [hasTradeAccess]);
 
   // Tab screens stay mounted; refresh the latest bids and auction status on
   // every return from detail, KYC or saved auctions, not just initial mount.
@@ -206,15 +243,6 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
     fetchData();
   };
 
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const getRemainingSeconds = (endsAt: Date | string) => {
-    const endMs = new Date(endsAt).getTime();
-    return Math.max(0, Math.floor((endMs - now) / 1000));
-  };
 
   const activeList = liveAuctions;
   const upcomingList = upcomingAuctions;
@@ -257,13 +285,187 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
     [upcomingList, q, filters],
   );
 
+  if (!hasTradeAccess) {
+    const isUnverifiedDealer = accountRole === 'dealer';
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
+        {dealerMode && !embeddedDealerHub && <WebsiteTopBar />}
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: dealerMode ? 12 : insets.top + 16 }]}>
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.headerMeta}>VERIFIED DEALERS</Text>
+              <Text style={styles.headerTitle}>Live Auctions</Text>
+            </View>
+            {!dealerMode && <HamburgerButton />}
+          </View>
+          <EmptyState
+            accent
+            icon="shield-checkmark-outline"
+            title="Verified Dealer Access Required"
+            subtitle={isUnverifiedDealer
+              ? 'Live vehicle auctions are available only to verified, KYC-approved motor dealers. Finish your business verification to start bidding.'
+              : 'Live vehicle auctions are available only to verified, KYC-approved motor dealers. Selling your own car? Auction listings are FREE.'}
+            ctaLabel={!currentUser ? 'Dealer Sign In' : isUnverifiedDealer ? 'Complete Verification' : 'Become a Dealer'}
+            onCtaPress={() => {
+              if (!currentUser) {
+                openSignIn(navigation, 'Login', { name: 'Tabs', params: { screen: 'Live' } });
+                return;
+              }
+              navigation.navigate(isUnverifiedDealer ? 'DealerKYC' : 'DealerOnboarding');
+            }}
+          />
+          <TouchableOpacity
+            style={styles.gateSecondaryBtn}
+            onPress={() => navigation.navigate('Tabs' as any, { screen: 'Search' } as any)}
+            accessibilityRole="button"
+          >
+            <Text style={styles.gateSecondaryText}>Browse Retail Listings</Text>
+          </TouchableOpacity>
+          {!isUnverifiedDealer && (
+            <TouchableOpacity
+              style={styles.gateSecondaryBtn}
+              onPress={() => navigation.navigate('SellLanding')}
+              accessibilityRole="button"
+            >
+              <Text style={styles.gateSecondaryText}>Sell My Car at Auction (FREE)</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {dealerMode && !embeddedDealerHub && <WebsiteTopBar />}
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: dealerMode ? 12 : insets.top + 16 }]}
+      {/* Virtualised: only on-screen auction cards are mounted. A ScrollView
+          rendered every lot (photos, shadows, gradients) at once, so Live
+          Auctions kept juddering even after the per-card timer fix. */}
+      <FlatList
+        data={filteredActive}
+        keyExtractor={(auction) => String(auction.id)}
+        renderItem={({ item: auction }) => {
+          // Reserve is never shown to buyers — enforced server-side (Ground
+          // Rules). Show Buy It Now instead when the seller set one.
+
+          return (
+            <View style={styles.auctionCard}>
+              {/* Image Block */}
+              <View style={styles.imageBlock}>
+                <ImageCarousel
+                  images={auction.images}
+                  width={SCREEN_WIDTH - 48}
+                  height={196}
+                  onPress={() => navigation.navigate('LiveAuctionDetailed', { listing: auction })}
+                  // The bottom strip is already occupied by the make/model
+                  // name overlay below — showing the dots/counter there too
+                  // would collide with that text.
+                  showIndicator={false}
+                />
+                <View style={styles.imageGradient} pointerEvents="none" />
+
+                <View style={styles.liveBadge} pointerEvents="none">
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveBadgeText}>LIVE</Text>
+                </View>
+                <View style={styles.viewerBadge} pointerEvents="none">
+                  <Ionicons name="eye-outline" size={10} color={Colors.onAccentMuted} />
+                  <Text style={styles.viewerCount}>{auction.viewers}</Text>
+                </View>
+                <WishlistHeart listing={auction} />
+                {/* Trust badges sit below the LIVE pill, same left offset */}
+                <View style={{ position: 'absolute', top: 38, left: 12, right: 12 }} pointerEvents="none">
+                  <AuctionCardTrustBadges
+                    badgeTier={auction.badgeTier}
+                    isFeatured={auction.isFeatured}
+                    isDepartedSale={auction.isDepartedSale}
+                  />
+                </View>
+
+                <View style={styles.imageNameContainer} pointerEvents="none">
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.imageCarMake}>
+                      {auction.make.toUpperCase()}
+                    </Text>
+                    <GradeChip grade={auction.exteriorGrade} />
+                  </View>
+                  <Text style={styles.imageCarModel}>
+                    {auction.model} {auction.variant}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Meta chips — year / mileage / fuel / body / location / delivery */}
+              <View style={{ paddingHorizontal: 18, paddingTop: 14 }}>
+                <AuctionCardChips
+                  year={auction.year}
+                  mileage={auction.mileage}
+                  fuelType={auction.fuelType}
+                  transmission={auction.transmission}
+                  bodyType={auction.category}
+                  location={auction.location}
+                  deliveryAvailable={auction.deliveryAvailable}
+                />
+              </View>
+
+              {/* Stats Row */}
+              <View style={styles.statsRow}>
+                <View style={styles.statsLeft}>
+                  <Text style={styles.statsLabel}>{auction.totalBids > 0 ? 'CURRENT BID' : 'STARTING BID'}</Text>
+                  <Text style={styles.statsPrice}>
+                    {formatPrice(auction.totalBids > 0 ? auction.currentBid : auction.startingBid)}
+                  </Text>
+                  {auction.totalBids === 0 && (
+                    <View style={styles.statsSubRow}>
+                      <Text style={[styles.statsAboveReserve, { color: Colors.warning }]}>
+                        First offer from {formatPrice(getAuctionFirstOfferFloor(auction.startingBid, auction.reserve))}
+                      </Text>
+                    </View>
+                  )}
+                  {!!auction.buyItNowPrice && (
+                    <View style={styles.statsSubRow}>
+                      <Text style={styles.statsAboveReserve}>Buy it now: {formatPrice(auction.buyItNowPrice)}</Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.statsRight}>
+                  <Text style={styles.statsLabel}>ENDS IN</Text>
+                  <LiveFlipTimer endsAt={auction.endsAt} />
+                </View>
+              </View>
+
+              {/* BID NOW Button — was unconditional on every card, including
+                  the viewer's own auction. Not actually exploitable (the
+                  real seller/dealer-only gate lives on AuctionDetailScreen
+                  and the backend), but misleading (mobile-production-
+                  readiness-plan.md F36). */}
+              {(() => {
+                const isOwnAuction = !!currentUser?.id && auction.seller?.id === currentUser.id;
+                return (
+                  <TouchableOpacity
+                    style={[styles.bidNowBtn, isOwnAuction && styles.bidNowBtnOwn]}
+                    activeOpacity={0.8}
+                    onPress={() =>
+                      navigation.navigate('LiveAuctionDetailed', { listing: auction })
+                    }
+                  >
+                    <MaterialCommunityIcons name={isOwnAuction ? 'eye-outline' : 'gavel'} size={16} color={Colors.onAccent} style={styles.bidBtnIcon} />
+                    <Text style={styles.bidNowBtnText}>{isOwnAuction ? 'YOUR AUCTION' : 'BID NOW'}</Text>
+                    <Ionicons name="arrow-forward" size={15} color={Colors.onAccent} style={styles.bidBtnArrow} />
+                  </TouchableOpacity>
+                );
+              })()}
+            </View>
+          );
+        }}
+        initialNumToRender={3}
+        maxToRenderPerBatch={3}
+        windowSize={5}
+        removeClippedSubviews={Platform.OS === 'android'}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: headerContent ? 0 : dealerMode ? 12 : insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -273,11 +475,14 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
             colors={[Colors.accent]}
           />
         }
-      >
+        ListHeaderComponent={<>
+        {/* Dealer hub heading (title, Create Auction) scrolls with the list
+            instead of staying fixed above it. */}
+        {headerContent}
         {/* ─── Header ──────────────────────────────────────────────── */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.headerMeta}>{activeList.length} LIVE NOW · UPCOMING</Text>
+            <Text style={styles.headerMeta}>{currentUser ? `${activeList.length} LIVE NOW · UPCOMING` : 'LIVE NOW · UPCOMING'}</Text>
             <Text style={styles.headerTitle}>Live Auctions</Text>
           </View>
           {!dealerMode && <HamburgerButton />}
@@ -323,7 +528,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
             <Ionicons
               name="options-outline"
               size={15}
-              color={activeFilterCount > 0 ? Colors.accent : Colors.textSecondary}
+              color={activeFilterCount > 0 ? Colors.onAccent : Colors.textSecondary}
             />
             <Text
               style={[styles.filterBtnText, activeFilterCount > 0 && styles.filterBtnTextActive]}
@@ -343,6 +548,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
 
           {activeFilterCount > 0 && (
             <TouchableOpacity
+              style={styles.clearFiltersBtn}
               onPress={() => setFilters({ ...INITIAL_AUCTION_FILTERS, sortBy: filters.sortBy })}
               activeOpacity={0.7}
               accessibilityRole="button"
@@ -420,124 +626,8 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
           />
         ) : null}
 
-        {filteredActive.map((auction) => {
-          const secsLeft = getRemainingSeconds(auction.endsAt);
-          // Reserve is never shown to buyers — enforced server-side (Ground
-          // Rules). Show Buy It Now instead when the seller set one.
-
-          return (
-            <View key={auction.id} style={styles.auctionCard}>
-              {/* Image Block */}
-              <View style={styles.imageBlock}>
-                <ImageCarousel
-                  images={auction.images}
-                  width={SCREEN_WIDTH - 48}
-                  height={196}
-                  onPress={() => navigation.navigate('LiveAuctionDetailed', { listing: auction })}
-                  // The bottom strip is already occupied by the make/model
-                  // name overlay below — showing the dots/counter there too
-                  // would collide with that text.
-                  showIndicator={false}
-                />
-                <View style={styles.imageGradient} pointerEvents="none" />
-
-                <View style={styles.liveBadge} pointerEvents="none">
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveBadgeText}>LIVE</Text>
-                </View>
-                <View style={styles.viewerBadge} pointerEvents="none">
-                  <Ionicons name="eye-outline" size={10} color={Colors.textSecondary} />
-                  <Text style={styles.viewerCount}>{auction.viewers}</Text>
-                </View>
-                <WishlistHeart listing={auction} />
-                {/* Trust badges sit below the LIVE pill, same left offset */}
-                <View style={{ position: 'absolute', top: 38, left: 12, right: 12 }} pointerEvents="none">
-                  <AuctionCardTrustBadges
-                    badgeTier={auction.badgeTier}
-                    isFeatured={auction.isFeatured}
-                    isDepartedSale={auction.isDepartedSale}
-                  />
-                </View>
-
-                <View style={styles.imageNameContainer} pointerEvents="none">
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={styles.imageCarMake}>
-                      {auction.make.toUpperCase()}
-                    </Text>
-                    <GradeChip grade={auction.exteriorGrade} />
-                  </View>
-                  <Text style={styles.imageCarModel}>
-                    {auction.model} {auction.variant}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Meta chips — year / mileage / fuel / body / location / delivery */}
-              <View style={{ paddingHorizontal: 18, paddingTop: 14 }}>
-                <AuctionCardChips
-                  year={auction.year}
-                  mileage={auction.mileage}
-                  fuelType={auction.fuelType}
-                  transmission={auction.transmission}
-                  bodyType={auction.category}
-                  location={auction.location}
-                  deliveryAvailable={auction.deliveryAvailable}
-                />
-              </View>
-
-              {/* Stats Row */}
-              <View style={styles.statsRow}>
-                <View style={styles.statsLeft}>
-                  <Text style={styles.statsLabel}>{auction.totalBids > 0 ? 'CURRENT BID' : 'STARTING BID'}</Text>
-                  <Text style={styles.statsPrice}>
-                    {formatPrice(auction.totalBids > 0 ? auction.currentBid : auction.startingBid)}
-                  </Text>
-                  {auction.totalBids === 0 && (
-                    <View style={styles.statsSubRow}>
-                      <Text style={[styles.statsAboveReserve, { color: Colors.warning }]}>
-                        First offer from {formatPrice(getAuctionFirstOfferFloor(auction.startingBid, auction.reserve))}
-                      </Text>
-                    </View>
-                  )}
-                  {!!auction.buyItNowPrice && (
-                    <View style={styles.statsSubRow}>
-                      <Text style={styles.statsAboveReserve}>Buy it now: {formatPrice(auction.buyItNowPrice)}</Text>
-                    </View>
-                  )}
-                </View>
-                <View style={styles.statsRight}>
-                  <Text style={styles.statsLabel}>ENDS IN</Text>
-                  <FlipTimer seconds={secsLeft} />
-                  <Text style={styles.statsBidderCount}>
-                    {auction.totalBids} bidders
-                  </Text>
-                </View>
-              </View>
-
-              {/* BID NOW Button — was unconditional on every card, including
-                  the viewer's own auction. Not actually exploitable (the
-                  real seller/dealer-only gate lives on AuctionDetailScreen
-                  and the backend), but misleading (mobile-production-
-                  readiness-plan.md F36). */}
-              {(() => {
-                const isOwnAuction = !!currentUser?.id && auction.seller?.id === currentUser.id;
-                return (
-                  <TouchableOpacity
-                    style={[styles.bidNowBtn, isOwnAuction && styles.bidNowBtnOwn]}
-                    activeOpacity={0.8}
-                    onPress={() =>
-                      navigation.navigate('LiveAuctionDetailed', { listing: auction })
-                    }
-                  >
-                    <MaterialCommunityIcons name={isOwnAuction ? 'eye-outline' : 'gavel'} size={16} color={Colors.white} style={styles.bidBtnIcon} />
-                    <Text style={styles.bidNowBtnText}>{isOwnAuction ? 'YOUR AUCTION' : 'BID NOW'}</Text>
-                    <Ionicons name="arrow-forward" size={15} color={Colors.white} style={styles.bidBtnArrow} />
-                  </TouchableOpacity>
-                );
-              })()}
-            </View>
-          );
-        })}
+        </>}
+        ListFooterComponent={<>
 
         {/* ─── UPCOMING Section ─────────────────────────────────── */}
         <View style={styles.upcomingHeaderRow}>
@@ -660,7 +750,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
                   <>
                     {topActiveAuction.make} {topActiveAuction.model} is currently leading at{' '}
                     {formatPrice(topActiveAuction.currentBid)}
-                    {' '}— {topActiveAuction.totalBids} bid{topActiveAuction.totalBids === 1 ? '' : 's'} so far.
+.
                   </>
                 ) : (
                   <>
@@ -674,8 +764,9 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
         )}
 
         {/* Bottom spacing so last element clears the tab bar */}
-        <View style={{ height: 120 }} />
-      </ScrollView>
+        <View style={{ height: Math.max(120, tabBarClearance) }} />
+        </>}
+      />
 
       <AuctionFilterSheet
         visible={filterSheetOpen}
@@ -689,6 +780,23 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
 };
 
 const styles = StyleSheet.create({
+  gateSecondaryBtn: {
+    marginTop: 12,
+    marginHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: Radius.inline,
+    borderWidth: 1,
+    alignItems: 'center',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderHi,
+    borderBottomWidth: 3,
+    ...Elevation.card,
+  },
+  gateSecondaryText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: FontSize.base,
+    color: Colors.textPrimary,
+  },
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -702,13 +810,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: Radius.pill,
-    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
     borderColor: Colors.border,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   filterBtnActive: {
-    backgroundColor: Colors.accentAlpha12,
+    backgroundColor: Colors.accent,
     borderColor: Colors.accent,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   filterBtnText: {
     fontFamily: FontFamily.bold,
@@ -716,27 +828,38 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   filterBtnTextActive: {
-    color: Colors.accent,
+    color: Colors.onAccent,
   },
   filterCountBadge: {
     minWidth: 18,
     height: 18,
     borderRadius: 9,
     paddingHorizontal: 5,
-    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.onAccent,
   },
   filterCountText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size9,
-    color: Colors.white,
+    color: Colors.accent,
   },
   sortLabel: {
     flex: 1,
     fontFamily: FontFamily.medium,
     fontSize: FontSize.size11_5,
     color: Colors.textMuted,
+  },
+  // Raised outline chip: "Clear" is an action, not a link.
+  clearFiltersBtn: {
+    minHeight: 34,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    borderRadius: Radius.pill,
+    borderWidth: 1.5,
+    borderBottomWidth: 3,
+    borderColor: Colors.accent,
+    backgroundColor: Colors.bgCard,
   },
   clearFiltersText: {
     fontFamily: FontFamily.bold,
@@ -794,14 +917,15 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
     paddingHorizontal: 16,
     gap: 10,
     marginBottom: 14,
+    minHeight: 48,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   searchInput: {
     flex: 1,
@@ -815,14 +939,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
-    borderColor: Colors.warningAlpha25,
-    borderRadius: Radius.inline,
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 14,
     gap: 10,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.warning,
+    borderRadius: Radius.card,
+    ...Elevation.card,
   },
   auctionCtaLeft: {
     flexDirection: 'row',
@@ -846,14 +971,15 @@ const styles = StyleSheet.create({
   alertBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.deepPurple,
     borderWidth: 1,
-    borderColor: Colors.darkPink_3b1e2b,
     borderRadius: Radius.inline,
     paddingHorizontal: 16,
     paddingVertical: 13,
     marginBottom: 28,
     gap: 10,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderAccent,
+    ...Elevation.card,
   },
   alertDot: {
     width: 6,
@@ -885,11 +1011,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 36,
     gap: 10,
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     marginBottom: 24,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   emptyUpcomingText: {
     fontFamily: FontFamily.medium,
@@ -901,12 +1028,13 @@ const styles = StyleSheet.create({
 
   // ─── Auction Card ───────────────────────────────────────────────
   auctionCard: {
-    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
     borderRadius: Radius.card,
     overflow: 'hidden',
     marginBottom: 24,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
 
   // Image block
@@ -942,12 +1070,12 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.onAccent,
   },
   liveBadgeText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size9,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.5,
   },
   viewerBadge: {
@@ -967,7 +1095,7 @@ const styles = StyleSheet.create({
   viewerCount: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size10,
-    color: Colors.textSecondary,
+    color: Colors.onAccentMuted,
   },
 
   // Car name overlay on image
@@ -1094,7 +1222,7 @@ const styles = StyleSheet.create({
   bidNowBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.6,
   },
   bidBtnArrow: {

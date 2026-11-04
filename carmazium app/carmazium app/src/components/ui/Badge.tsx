@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: Radius.pill,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.onAccent,
   },
 });
 
@@ -131,7 +131,7 @@ const variantContainer = StyleSheet.create({
 const variantLabel = StyleSheet.create({
   live: { color: Colors.white },
   // Amber is a light fill — needs dark text to stay legible.
-  featured: { color: Colors.bgBody },
+  featured: { color: Colors.black },
   premium: { color: Colors.warningLight },
   standard: { color: Colors.infoLight },
   verified: { color: Colors.successLight },

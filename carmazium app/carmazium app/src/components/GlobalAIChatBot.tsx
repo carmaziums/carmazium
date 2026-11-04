@@ -18,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IconButton } from './IconButton';
 import { useReduceMotionPreference } from '../hooks/useReduceMotionPreference';
 import { getBottomTabBarHeight } from '../lib/nativeLayoutParity';
+import { Layout } from '../constants/layout';
 
 // Bundle the exact approved transparent mascot used by the website widget.
 // This avoids a network-dependent icon or any visual placeholder.
@@ -670,7 +671,8 @@ export const GlobalAIChatBot: React.FC = () => {
 
               {/* Website-equivalent persistent daily quick replies, horizontally scrollable. */}
               <View style={styles.quickRepliesRail}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}
+                <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false}
                   keyboardShouldPersistTaps="always" contentContainerStyle={styles.quickPromptsWrap}>
                   {quickReplies.map((q) => (
                     <TouchableOpacity
@@ -704,7 +706,7 @@ export const GlobalAIChatBot: React.FC = () => {
                   accessibilityHint="Enter a question about cars"
                   accessibilityState={{ disabled: isThinking || hasAiConsent !== true }}
                 />
-                <IconButton style={[styles.sendBtn, (isThinking || !message.trim()) && { opacity: 0.4 }]} icon={<Ionicons name="send" size={16} color={Colors.white} />} onPress={() => sendMessage(message)} disabled={isThinking || hasAiConsent !== true || !message.trim()} accessibilityLabel="Send message" />
+                <IconButton style={[styles.sendBtn, (isThinking || !message.trim()) && { opacity: 0.4 }]} icon={<Ionicons name="send" size={16} color={Colors.onAccent} />} onPress={() => sendMessage(message)} disabled={isThinking || hasAiConsent !== true || !message.trim()} accessibilityLabel="Send message" />
               </View>
 
               {hasAiConsent === true && (
@@ -823,8 +825,8 @@ export const GlobalAIChatBot: React.FC = () => {
                 accessibilityState={{ disabled: !aiReportReason || aiReporting, busy: aiReporting }}
               >
                 {aiReporting
-                  ? <ActivityIndicator size="small" color={Colors.white} />
-                  : <Ionicons name="flag-outline" size={15} color={Colors.white} />}
+                  ? <ActivityIndicator size="small" color={Colors.onAccent} />
+                  : <Ionicons name="flag-outline" size={15} color={Colors.onAccent} />}
                 <Text style={styles.aiReportSubmitText}>Submit report</Text>
               </TouchableOpacity>
             </View>
@@ -937,7 +939,7 @@ const styles = StyleSheet.create({
     borderRadius: 10, backgroundColor: Colors.accent,
   },
   errorFallbackBtnText: {
-    fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white,
+    fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent,
   },
   chatHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -968,7 +970,7 @@ const styles = StyleSheet.create({
   msgUser: { alignSelf: 'flex-end', backgroundColor: Colors.accent, borderBottomRightRadius: 4 },
   msgText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, lineHeight: 21 },
   msgTextAI: { color: Colors.textPrimary },
-  msgTextUser: { color: Colors.white },
+  msgTextUser: { color: Colors.onAccent },
 
   aiConsentCard: {
     padding: 12,
@@ -1011,7 +1013,7 @@ const styles = StyleSheet.create({
   aiConsentPrimaryText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size10,
-    color: Colors.white,
+    color: Colors.onAccent,
     textAlign: 'center',
   },
   aiConsentSecondary: {
@@ -1186,7 +1188,7 @@ const styles = StyleSheet.create({
   aiReportSubmitText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size12,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // Filter card

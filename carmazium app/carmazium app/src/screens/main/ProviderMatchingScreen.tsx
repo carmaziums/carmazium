@@ -15,9 +15,9 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import {
   ContractorCapability,
   SERVICE_LABELS,
@@ -169,7 +169,7 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <View style={styles.header}>
         <IconButton style={styles.headerButton} icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         <Text style={styles.headerTitle}>Matching settings</Text>
@@ -194,7 +194,7 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
                     value={nationwide}
                     onValueChange={setNationwide}
                     trackColor={{ false: Colors.borderMuted, true: Colors.accent }}
-                    thumbColor={Colors.white}
+                    thumbColor={Colors.onAccent}
                   />
                 </View>
                 {!nationwide ? (
@@ -242,7 +242,7 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
               ) : null}
 
               <TouchableOpacity style={[styles.primaryButton, busy && { opacity: 0.6 }]} onPress={save} disabled={busy}>
-                {busy ? <ActivityIndicator color={Colors.white} /> : <><Ionicons name="checkmark-circle-outline" size={17} color={Colors.white} /><Text style={styles.primaryText}>SAVE MATCHING SETTINGS</Text></>}
+                {busy ? <ActivityIndicator color={Colors.onAccent} /> : <><Ionicons name="checkmark-circle-outline" size={17} color={Colors.onAccent} /><Text style={styles.primaryText}>SAVE MATCHING SETTINGS</Text></>}
               </TouchableOpacity>
             </>
           ) : null}
@@ -257,12 +257,12 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12 },
-  headerButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
+  headerButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderBottomWidth: 2, ...Elevation.card },
   headerTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.lg },
   content: { padding: 18, gap: 14 },
   title: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.xl },
   sub: { fontFamily: FontFamily.regular, color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 },
-  card: { borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.bgSecondary, borderRadius: Radius.card, padding: 15, gap: 13 },
+  card: { borderWidth: 1, borderRadius: Radius.card, padding: 15, gap: 13, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
   cardTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.sm },
   cardText: { fontFamily: FontFamily.regular, color: Colors.textSecondary, fontSize: FontSize.xs, lineHeight: 18 },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   label: { fontFamily: FontFamily.bold, color: Colors.textMuted, fontSize: FontSize.size10, letterSpacing: 0.8 },
   input: { borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.bgTertiary, borderRadius: Radius.inline, color: Colors.white, paddingHorizontal: 13, paddingVertical: 11, fontFamily: FontFamily.regular, fontSize: FontSize.sm },
   hint: { fontFamily: FontFamily.regular, color: Colors.textMuted, fontSize: FontSize.size10 },
-  primaryButton: { minHeight: 48, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
-  primaryText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.xs },
+  primaryButton: { minHeight: 48, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
+  primaryText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: FontSize.xs },
   error: { fontFamily: FontFamily.regular, color: Colors.paleRed_fca5a5, fontSize: FontSize.size12 },
 });

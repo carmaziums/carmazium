@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { MapPin, ArrowRight, Car, Calendar, AlertTriangle, Clock } from "lucide-react"
 import type { ServiceJob, ServiceJobStatus, JobVehicle } from "@/lib/servicesApi"
 
@@ -97,7 +98,7 @@ export function JobVehicles({ vehicles, compact = false }: { vehicles: JobVehicl
                             {v.notes ? <span className="font-sans"> · {v.notes}</span> : null}
                         </p>
                         {v.listing && (
-                            <Link href={`/buy-cars/${v.listing.slug}`} className="text-xs text-primary hover:underline">View listing</Link>
+                            <Link href={`/buy-cars/${v.listing.slug}`} className={buttonVariants({ variant: "outline", size: "sm", className: "mt-2" })}>View listing</Link>
                         )}
                     </div>
                 </li>

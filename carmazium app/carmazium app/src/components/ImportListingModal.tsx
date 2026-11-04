@@ -17,7 +17,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useStripe } from '@stripe/stripe-react-native';
-import { Colors } from '../constants/colors';
+import { Colors, themeStatusBarStyle } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
 import { haptics } from '../lib/haptics';
 import { previewImport, importFromUrl, type ScrapedListingPreview } from '../lib/listingsApi';
@@ -25,6 +25,7 @@ import { KeyboardStickyView } from './KeyboardStickyView';
 import { createPaymentSheet } from '../lib/paymentsApi';
 
 import { IconButton } from './IconButton';
+import { Layout } from '../constants/layout';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3;
@@ -237,10 +238,10 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <View style={st.container}>
         <LinearGradient
-          colors={[Colors.infoBlueAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+          colors={[Colors.infoBlueAlpha06, Colors.groundClear, Colors.bgPrimary]}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0, y: 0.5 }}
           style={StyleSheet.absoluteFillObject}
@@ -268,7 +269,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
               <View style={[st.stepDot, step >= n && st.stepDotActive]}>
                 {step > n
                   ? <Ionicons name="checkmark" size={10} color={Colors.white} />
-                  : <Text style={[st.stepDotText, step === n && { color: Colors.white }]}>{n}</Text>
+                  : <Text style={[st.stepDotText, step === n && { color: Colors.onAccent }]}>{n}</Text>
                 }
               </View>
               {n < 3 && <View style={[st.stepLine, step > n && st.stepLineActive]} />}
@@ -301,7 +302,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                   value={url}
                   onChangeText={v => { setUrl(v); setFetchError(null); }}
                   placeholder="https://www.autotrader.co.uk/car-details/..."
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={Colors.inputPlaceholder}
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="url"
@@ -309,7 +310,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                   onSubmitEditing={handleFetch}
                 />
                 {url.length > 0 && (
-                  <IconButton icon={<Ionicons name="close-circle" size={16} color={Colors.borderMuted} />} onPress={() => setUrl('')} accessibilityLabel="Clear" />
+                  <IconButton icon={<Ionicons name="close-circle" size={16} color={Colors.textMuted} />} onPress={() => setUrl('')} accessibilityLabel="Clear" />
                 )}
               </View>
 
@@ -327,10 +328,10 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 activeOpacity={0.85}
               >
                 {fetching ? (
-                  <ActivityIndicator color={Colors.white} size="small" />
+                  <ActivityIndicator color={Colors.onAccent} size="small" />
                 ) : (
                   <>
-                    <Ionicons name="search-outline" size={16} color={Colors.white} />
+                    <Ionicons name="search-outline" size={16} color={Colors.onAccent} />
                     <Text style={st.primaryBtnText}>Fetch Details</Text>
                   </>
                 )}
@@ -356,7 +357,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
 
               {/* Image strip */}
               {preview.images.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 8 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[{ marginBottom: 16 }, Layout.hScroll]} contentContainerStyle={{ gap: 8 }}>
                   {preview.images.slice(0, 5).map((img, i) => (
                     <Image
                       key={`img-${i}`}
@@ -394,7 +395,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 value={editTitle}
                 onChangeText={v => { setEditTitle(v); setSaveError(null); }}
                 placeholder="e.g. BMW M4 Competition 2021"
-                placeholderTextColor={Colors.borderMuted}
+                placeholderTextColor={Colors.inputPlaceholder}
                 autoCorrect={false}
               />
 
@@ -406,7 +407,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                   value={editPrice}
                   onChangeText={v => { setEditPrice(v); setSaveError(null); }}
                   placeholder="0"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={Colors.inputPlaceholder}
                   keyboardType="number-pad"
                 />
               </View>
@@ -417,7 +418,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 value={editVrm}
                 onChangeText={v => { setEditVrm(v.toUpperCase()); setSaveError(null); }}
                 placeholder="e.g. AB12 CDE"
-                placeholderTextColor={Colors.borderMuted}
+                placeholderTextColor={Colors.inputPlaceholder}
                 autoCapitalize="characters"
                 autoCorrect={false}
               />
@@ -436,11 +437,11 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 activeOpacity={0.85}
               >
                 {saving ? (
-                  <ActivityIndicator color={Colors.white} size="small" />
+                  <ActivityIndicator color={Colors.onAccent} size="small" />
                 ) : (
                   <>
                     <Text style={st.primaryBtnText}>Save as Draft</Text>
-                    <Ionicons name="arrow-forward" size={15} color={Colors.white} />
+                    <Ionicons name="arrow-forward" size={15} color={Colors.onAccent} />
                   </>
                 )}
               </TouchableOpacity>
@@ -508,7 +509,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 activeOpacity={0.85}
               >
                 {activating ? (
-                  <ActivityIndicator color={Colors.white} size="small" />
+                  <ActivityIndicator color={Colors.onAccent} size="small" />
                 ) : (
                   <Text style={st.primaryBtnText}>
                     Activate for £{PLANS.find(p => p.tier === selectedTier)?.price}
@@ -801,7 +802,7 @@ const st = StyleSheet.create({
   primaryBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
-    color: Colors.white,
+    color: Colors.onAccent,
     letterSpacing: 0.3,
   },
   backLink: {

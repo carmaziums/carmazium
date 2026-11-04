@@ -1,5 +1,9 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabase';
+import { supabase, hybridStorageAdapter } from '../lib/supabase';
+
+// See logout(): blocks automatic re-authentication while signing out.
+let signingOutUntil = 0;
+const isSigningOut = () => Date.now() < signingOutUntil;
 import { apiClient } from '../lib/apiClient';
 import * as SecureStore from 'expo-secure-store';
 import { setAuthRedirectHandler, resetAuthRedirectLatch } from '../lib/authEvents';
@@ -149,6 +153,9 @@ interface AuthState {
    *  Returns an unsubscribe function. */
   subscribeToAuthChanges: () => () => void;
   consumePostLoginRedirect: () => { name: string; params?: object } | null;
+  /** Remember where a guest was when they tapped Sign In, so RootNavigator
+   *  can return them there once they are signed in. */
+  setPostLoginRedirect: (target: { name: string; params?: object } | null) => void;
   /** Marks the pre-auth carousel as seen. Deliberately NOT completeOnboarding —
    *  see INTRO_SEEN_KEY. */
   completeIntro: () => Promise<void>;
@@ -233,6 +240,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 
+  setPostLoginRedirect: (target) => set({ postLoginRedirect: target }),
+
   consumePostLoginRedirect: () => {
     const target = get().postLoginRedirect;
     if (target) set({ postLoginRedirect: null });
@@ -264,6 +273,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       if (event === 'SIGNED_IN') {
+        if (isSigningOut()) return;
         resetAuthRedirectLatch();
         // VerifyEmailScreen runs its own SIGNED_IN handler so it can show a
         // spinner while the account is confirmed. Standing aside here avoids
@@ -274,6 +284,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       if (event === 'TOKEN_REFRESHED') {
+        if (isSigningOut()) return;
         // The backend session outlives a token refresh, so there is nothing to
         // re-bridge in the normal case. The one case worth catching is a
         // refresh arriving while local state thinks it is signed out — a cold
@@ -292,6 +303,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   updateUser: (updates) => set((state) => ({ user: state.user ? { ...state.user, ...updates } : state.user })),
 
   initializeAuth: async (signupRole) => {
+    if (isSigningOut()) return;
     set({ isLoading: true });
     try {
       // Read first and unconditionally: the carousel gate matters precisely
@@ -399,6 +411,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   login: async (email, password) => {
+    signingOutUntil = 0;
     set({ isLoading: true });
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -488,6 +501,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signup: async (email, password, fullName, selectedRole = 'BUYER') => {
+    signingOutUntil = 0;
     set({ isLoading: true });
     try {
       const parts = fullName.trim().split(/\s+/);
@@ -620,34 +634,48 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    set({ isLoading: true });
+    // Signed out in the UI immediately. Previously the state only flipped at
+    // the end of network calls, and a SIGNED_IN / TOKEN_REFRESHED event
+    // arriving meanwhile re-ran initializeAuth, so the user stayed signed in
+    // until the app restarted (owner report). While `signingOutUntil` is in
+    // the future, automatic re-authentication is ignored.
+    signingOutUntil = Date.now() + 15_000;
+    await detachSellWizardDraft().catch(error => console.warn('Seller draft detach failed:', error));
+    set({
+      isAuthenticated: false,
+      pendingEmailVerification: false,
+      user: null,
+      role: 'buyer',
+      accountRole: 'buyer',
+      hasCompletedOnboarding: false,
+      isLoading: false,
+      // A deliberate sign-out is not a session expiry: there is no
+      // destination to come back to.
+      postLoginRedirect: null,
+    });
+    const withTimeout = <T,>(p: Promise<T>, ms: number) =>
+      Promise.race([p, new Promise<void>((resolve) => setTimeout(resolve, ms))]);
+    // Destroy the backend session (the stale "sid" cookie would otherwise let
+    // the next login on this device inherit it). The Supabase token is still
+    // stored at this point, so the request is authenticated.
     try {
-      // Destroy the backend session first — otherwise the stale "sid" cookie
-      // outlives this user and the next login on this device inherits their
-      // session (wrong role/profile) because SessionAuthGuard prefers the
-      // cookie over the fresh Supabase bearer token.
-      try {
-        await apiClient('/auth/logout', { method: 'POST' });
-      } catch (e) {
-        console.warn('Backend logout failed:', e);
-      }
-      await supabase.auth.signOut();
+      await withTimeout(apiClient('/auth/logout', { method: 'POST', timeoutMs: 4000 }), 4500);
     } catch (e) {
-      console.warn('Supabase logout error:', e);
-    } finally {
-      await detachSellWizardDraft().catch(error => console.warn('Seller draft detach failed:', error));
-      set({
-        isAuthenticated: false,
-        pendingEmailVerification: false,
-        user: null,
-        role: 'buyer',
-        accountRole: 'buyer',
-        hasCompletedOnboarding: false,
-        isLoading: false,
-        // A deliberate sign-out is not a session expiry: there is no
-        // destination to come back to.
-        postLoginRedirect: null,
-      });
+      console.warn('Backend logout failed:', e);
+    }
+    // 'local' clears this device's session even if the network revoke fails.
+    try {
+      await withTimeout(supabase.auth.signOut({ scope: 'local' }), 5000);
+    } catch (e) {
+      console.warn('Supabase local sign-out error:', e);
+    }
+    // Belt and braces: remove the persisted session directly in case signOut
+    // timed out behind a pending token refresh.
+    try {
+      const storageKey = (supabase.auth as unknown as { storageKey?: string }).storageKey;
+      if (storageKey) await hybridStorageAdapter.removeItem(storageKey);
+    } catch {
+      // Nothing persisted — fine.
     }
   },
 }));

@@ -2,6 +2,7 @@ import React from 'react';
 import {
   TouchableOpacity,
   Text,
+  View,
   StyleSheet,
   ActivityIndicator,
   ViewStyle,
@@ -11,6 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
+import { Elevation } from '../constants/spacing';
 
 // Mirrors the web app's `src/components/ui/Button.tsx` variant system
 // (variant/size/shape) so CTAs read as the same product across platforms
@@ -72,7 +74,11 @@ export const Button: React.FC<ButtonProps> = ({
       // Web's signature clipped bottom-right corner ("clip-path-carmazium").
       : styles.clippedCorner;
 
-  const labelColor = variant === 'outline' || variant === 'ghost' ? Colors.accent : Colors.textPrimary;
+  // White on the red primary in both themes (was textPrimary: navy-on-red
+  // in light mode).
+  const labelColor = variant === 'outline' || variant === 'ghost'
+    ? Colors.accent
+    : variant === 'primary' ? Colors.onAccent : Colors.textPrimary;
 
   const content = (
     <>
@@ -100,6 +106,7 @@ export const Button: React.FC<ButtonProps> = ({
     fullWidth && styles.fullWidth,
     variant === 'outline' && styles.outline,
     variant === 'dark' && styles.dark,
+    (variant === 'outline' || variant === 'dark') && !isDisabled && styles.raised,
     isDisabled && styles.disabled,
     style,
   ];
@@ -110,19 +117,27 @@ export const Button: React.FC<ButtonProps> = ({
         onPress={onPress}
         disabled={isDisabled}
         activeOpacity={0.85}
-        style={[containerStyle, styles.overflowHidden]}
+        style={[containerStyle, !isDisabled && styles.primaryRaised]}
         accessibilityRole="button"
         accessibilityLabel={resolvedAccessibilityLabel}
         accessibilityHint={accessibilityHint}
         accessibilityState={{ disabled: isDisabled, busy: loading }}
         hitSlop={expandedHitSlop}
       >
-        <LinearGradient
-          colors={isDisabled ? [Colors.textDisabled, Colors.textDisabled] : [Colors.accentGlow, Colors.accent]}
-          style={StyleSheet.absoluteFillObject}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        />
+        {/* 3D raised CTA: vertical gradient, top highlight, darker bevel
+            edge and a red glow (Elevation.neon). Clipped in an inner layer so
+            the outer view keeps its shadow on iOS. */}
+        <View style={[StyleSheet.absoluteFillObject, shapeStyle, styles.overflowHidden]} pointerEvents="none">
+          <LinearGradient
+            colors={isDisabled ? [Colors.textDisabled, Colors.textDisabled] : [Colors.accentGlow, Colors.accent, Colors.accentDeep]}
+            locations={isDisabled ? undefined : [0, 0.55, 1]}
+            style={StyleSheet.absoluteFillObject}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+          />
+          {!isDisabled && <View style={styles.primaryHighlight} />}
+          {!isDisabled && <View style={styles.primaryBevel} />}
+        </View>
         {content}
       </TouchableOpacity>
     );
@@ -165,9 +180,24 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
   },
   outline: {
-    backgroundColor: 'transparent',
+    backgroundColor: Colors.bgCard,
     borderWidth: 1.5,
     borderColor: Colors.accent,
+  },
+  raised: {
+    ...Elevation.card,
+    borderBottomWidth: 3,
+  },
+  primaryRaised: {
+    ...Elevation.neon,
+  },
+  primaryHighlight: {
+    position: 'absolute', top: 0, left: 0, right: 0, height: 1.5,
+    backgroundColor: Colors.onAccentHighlight,
+  },
+  primaryBevel: {
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: 3,
+    backgroundColor: Colors.accentDark,
   },
   dark: {
     backgroundColor: Colors.bgTertiary,

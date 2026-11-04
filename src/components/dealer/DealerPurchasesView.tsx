@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import {
     Loader2, Package, Clock, FileSearch, CheckCircle2, Truck, LayoutList, Columns3, ChevronLeft, ChevronRight, RefreshCw,
     Search, Ban,
@@ -378,7 +379,8 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
 
                     {!loading && !isCancelled && visiblePurchases.length === 0 && shownPendingRetail.length === 0 && !loadError && (
                         <div className="dealer-glass-card p-6 text-sm">
-                            No purchases yet. <Link href="/auctions/browse" className="font-semibold text-primary underline">Browse live auctions</Link>
+                            <p>No purchases yet.</p>
+                            <Link href="/auctions/browse" className={buttonVariants({ size: "sm", className: "mt-4" })}>Browse live auctions</Link>
                         </div>
                     )}
                                         {/* List View */}

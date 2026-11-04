@@ -14,6 +14,7 @@ import { createChatRoom } from "@/lib/chatApi"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 
@@ -797,13 +798,13 @@ function SellerOffersPage() {
                                                                                 <>
                                                                                     <button
                                                                                         onClick={() => handleAcceptDelivery(delivReq.id)}
-                                                                                        className="text-xs text-emerald-400 hover:text-emerald-300 underline transition-colors"
+                                                                                        className={buttonVariants({ size: "sm" })}
                                                                                     >
                                                                                         Accept
                                                                                     </button>
                                                                                     <button
                                                                                         onClick={() => handleDeclineDelivery(delivReq.id)}
-                                                                                        className="text-xs text-red-400 hover:text-red-300 underline transition-colors"
+                                                                                        className={buttonVariants({ variant: "outline", size: "sm" })}
                                                                                     >
                                                                                         Decline
                                                                                     </button>

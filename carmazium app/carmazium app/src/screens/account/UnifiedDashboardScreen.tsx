@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { ScreenBackBar } from '../../components/ScreenBackBar';
 import {
   Alert,
   Animated,
@@ -19,9 +20,9 @@ import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
 import { getSellerAuctionStage, type SellerAuctionProgressInput } from '../../lib/auctionSellerStage';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { useAuthStore } from '../../store/authStore';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 
 // ─────────────────────────── types ───────────────────────────────
 
@@ -105,7 +106,7 @@ const Tile: React.FC<TileProps> = ({ label, icon, iconLib = 'ion', accentColor, 
         {sublabel ? <Text style={styles.tileSublabel} numberOfLines={1}>{sublabel}</Text> : null}
       </>
     )}
-    {wide && <Ionicons name="chevron-forward" size={16} color={Colors.borderMuted} accessibilityElementsHidden importantForAccessibility="no" />}
+    {wide && <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />}
   </TouchableOpacity>
 );
 
@@ -200,7 +201,8 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ScreenBackBar />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha06, Colors.infoBlueAlpha03, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
@@ -271,8 +273,8 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
             accessibilityLabel="Browse cars for sale"
             activeOpacity={0.8}
           >
-            <Ionicons name="car-outline" size={19} color={Colors.white} />
-            <Text style={styles.accountQuickText}>Buy Cars</Text>
+            <Ionicons name="car-outline" size={19} color={Colors.onAccent} />
+            <Text style={[styles.accountQuickText, styles.onAccentText]}>Buy Cars</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.accountQuickManage}
@@ -436,15 +438,15 @@ const styles = StyleSheet.create({
   // Header
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 14 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  bellBtn: { width: 38, height: 38, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
+  bellBtn: { width: 38, height: 38, borderRadius: Radius.inline, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderBottomWidth: 2, ...Elevation.card },
   bellDot: { position: 'absolute', top: 8, right: 8, width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.accent },
 
   // Profile card
-  profileCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 20, backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: BORDER, padding: 16, gap: 14 },
+  profileCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 20, borderRadius: Radius.card, borderWidth: 1, padding: 16, gap: 14, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.cardHi },
   avatar: { width: 50, height: 50, borderRadius: 14, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
   avatarDealer: { backgroundColor: Colors.midOrange_b8860b, borderWidth: 1.5, borderColor: Colors.warning },
   avatarSeller: { backgroundColor: Colors.midBlue_1d4ed8, borderWidth: 1.5, borderColor: Colors.infoBlue },
-  avatarText: { fontFamily: FontFamily.bold, fontSize: FontSize.xl, color: Colors.white },
+  avatarText: { fontFamily: FontFamily.bold, fontSize: FontSize.xl, color: Colors.onAccent },
   avatarCheck: { position: 'absolute', bottom: -2, right: -2, width: 16, height: 16, borderRadius: 8, backgroundColor: Colors.success, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: Colors.bgPrimary },
   profileInfo: { flex: 1 },
   profileName: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 2 },
@@ -460,11 +462,12 @@ const styles = StyleSheet.create({
   sectionLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 1.6 },
 
   accountQuickActions: { flexDirection: 'row', gap: 10, marginHorizontal: 20, marginBottom: 22 },
-  accountQuickBuy: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: Colors.accent, borderRadius: Radius.inline, paddingHorizontal: 8 },
-  accountQuickManage: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.inline, paddingHorizontal: 8 },
+  accountQuickBuy: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: Colors.accent, borderRadius: Radius.inline, paddingHorizontal: 8, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
+  accountQuickManage: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.inline, paddingHorizontal: 8, borderBottomWidth: 3, borderBottomColor: Colors.blackAlpha45, ...Elevation.card },
+  onAccentText: { color: Colors.onAccent },
   accountQuickText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
   // Overview stats
-  statsRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 24, backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: BORDER, paddingVertical: 18 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 24, borderRadius: Radius.card, borderWidth: 1, paddingVertical: 18, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
   statCell: { flex: 1, alignItems: 'center' },
   statValue: { fontFamily: FontFamily.extraBold, fontSize: FontSize.size22, color: Colors.white, marginBottom: 2 },
   statName: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 0.5 },
@@ -472,17 +475,17 @@ const styles = StyleSheet.create({
 
   // Tile grid
   tileGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12, marginBottom: 20 },
-  tile: { width: '47%', backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: BORDER, padding: 16, gap: 8 },
+  tile: { width: '47%', borderRadius: Radius.card, borderWidth: 1, padding: 16, gap: 8, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
   tileWide: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 14 },
   tileTextWrap: { flex: 1, gap: 3 },
   tileIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   tileBadge: { position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, borderWidth: 1.5, borderColor: Colors.bgPrimary },
-  tileBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white },
+  tileBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.onAccent },
   tileLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
   tileSublabel: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
 
   // Sign out
-  signOutRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, backgroundColor: Colors.accentAlpha06, borderWidth: 1, borderColor: Colors.accentAlpha20, borderRadius: Radius.inline, paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
+  signOutRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, borderWidth: 1, borderColor: Colors.accentAlpha20, borderRadius: Radius.inline, paddingHorizontal: 16, paddingVertical: 14, gap: 12, backgroundColor: Colors.bgCard, borderBottomWidth: 3, ...Elevation.card },
   signOutIcon: { width: 34, height: 34, borderRadius: Radius.inline, backgroundColor: Colors.accentAlpha12, alignItems: 'center', justifyContent: 'center' },
   signOutText: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.accent },
 });

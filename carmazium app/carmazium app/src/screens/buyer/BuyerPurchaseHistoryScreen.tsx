@@ -19,9 +19,9 @@ import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
 import { getListingById } from '../../lib/listingsApi';
 import { getAccessToken } from '../../lib/supabase';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
 import { IconButton } from '../../components/IconButton';
@@ -372,7 +372,7 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
   // ── main render ────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {/* Gradient backdrop */}
       <LinearGradient
@@ -500,11 +500,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
@@ -526,7 +528,7 @@ const styles = StyleSheet.create({
   countBadgeText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
-    color: Colors.white,
+    color: Colors.onAccent,
   },
 
   // ── Scroll ──
@@ -541,14 +543,15 @@ const styles = StyleSheet.create({
 
   // ── Totals bar ──
   totalsCard: {
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.cardHi,
   },
   totalCol: {
     flex: 1,
@@ -604,12 +607,13 @@ const styles = StyleSheet.create({
 
   // ── History card ──
   historyCard: {
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.inline,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     padding: 14,
     gap: 10,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   historyTopRow: {
     flexDirection: 'row',
@@ -643,9 +647,11 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 9,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha08,
+    borderColor: Colors.borderHi,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   receiptBtnText: {
     fontFamily: FontFamily.semiBold,
@@ -698,9 +704,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginTop: 4,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha08,
+    borderColor: Colors.borderHi,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   loadMoreBtnText: {
     fontFamily: FontFamily.semiBold,

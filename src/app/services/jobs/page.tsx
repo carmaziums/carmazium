@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { ArrowLeft, Loader2, Truck, Plus } from "lucide-react"
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { getMyJobsPage, type ServiceJob } from "@/lib/servicesApi"
@@ -67,7 +68,7 @@ function MyJobsList() {
                     <Truck size={32} className="mx-auto text-[var(--text-muted)] mb-4" />
                     <h2 className="font-heading font-bold text-lg mb-2">No jobs yet</h2>
                     <p className="text-sm text-[var(--text-muted)] mb-6">Post a delivery, recovery or inspection job and approved providers can compete for it with quotes.</p>
-                    <Link href="/services/jobs/new" className="text-primary font-bold text-sm hover:underline">Post your first job →</Link>
+                    <Link href="/services/jobs/new" className={buttonVariants()}>Post your first job →</Link>
                 </div>
             )}
 

@@ -14,6 +14,7 @@
 
 import type { Metadata } from "next"
 import Link from "next/link"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import HomeClient from "./HomeClient"
 import { PageJsonLd, SEO_SITE } from "@/components/seo/PageJsonLd"
 import { indexableRetail } from "@/components/seo/RetailVehicleJsonLd"
@@ -234,7 +235,7 @@ export default async function Home() {
                             <p className="mt-3 text-sm leading-7" style={{ color: "var(--text-secondary)" }}>
                                 CarMazium gives UK drivers a choice when they want to sell a car online: use a free dealer auction and let verified dealers compete, or create a retail listing for £1 and advertise directly to buyers. Sellers stay in control of how the vehicle is offered, with a straightforward route into each option.
                             </p>
-                            <Link href="/sell" className="mt-5 inline-flex rounded-sm font-bold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                            <Link href="/sell" className={buttonVariants({ className: "mt-5" })}>
                                 Sell your car
                             </Link>
                         </article>
@@ -244,9 +245,9 @@ export default async function Home() {
                             <p className="mt-3 text-sm leading-7" style={{ color: "var(--text-secondary)" }}>
                                 Buyers can browse used cars for sale across the UK from verified sellers and compare live listings before narrowing down a choice. CarMazium is a marketplace rather than the seller of every vehicle, so buyers should review the listing, inspect the car and complete the usual checks before purchase. See the <a href="https://www.gov.uk/checks-when-buying-a-used-car" className="font-semibold text-primary underline-offset-4 hover:underline">GOV.UK used-vehicle checks</a> for official guidance.
                             </p>
-                            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2">
-                                <Link href="/search" className="rounded-sm font-bold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Browse used cars</Link>
-                                <Link href="/compare" className="rounded-sm font-bold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Compare vehicles</Link>
+                            <div className="mt-5 flex flex-wrap gap-3">
+                                <Link href="/search" className={buttonVariants()}>Browse used cars</Link>
+                                <Link href="/compare" className={buttonVariants({ variant: "outline" })}>Compare vehicles</Link>
                             </div>
                         </article>
 
@@ -255,7 +256,7 @@ export default async function Home() {
                             <p className="mt-3 text-sm leading-7" style={{ color: "var(--text-secondary)" }}>
                                 Sellers who prefer trade bidding can list a vehicle for auction free of charge and let verified dealers compete. The winning dealer can arrange inspection and collection. Qualifying completed auction sales can also receive CarMazium&apos;s £100 seller incentive after the required handover confirmation.
                             </p>
-                            <Link href="/how-it-works" className="mt-5 inline-flex rounded-sm font-bold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                            <Link href="/how-it-works" className={buttonVariants({ variant: "outline", className: "mt-5" })}>
                                 How selling works
                             </Link>
                         </article>
@@ -265,7 +266,7 @@ export default async function Home() {
                             <p className="mt-3 text-sm leading-7" style={{ color: "var(--text-secondary)" }}>
                                 Whether you want to sell your car, compare auction options or browse used cars in the UK, CarMazium is built around direct marketplace transactions with dedicated buying, selling and automotive-service entry points. Vehicle purchase funds are handled between buyer and seller rather than being held by CarMazium.
                             </p>
-                            <Link href="/services" className="mt-5 inline-flex rounded-sm font-bold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                            <Link href="/services" className={buttonVariants({ variant: "outline", className: "mt-5" })}>
                                 Explore TradeXchange services
                             </Link>
                         </article>

@@ -15,12 +15,13 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
 
 import { IconButton } from '../../components/IconButton';
+import { Layout } from '../../constants/layout';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // ─────────────────────────── interfaces ───────────────────────────
@@ -190,11 +191,43 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
     );
   }, []);
 
+  // Total and filters scroll with the transactions (list header) so a
+  // larger system font size can't squeeze the list to nothing.
+  const listHeader = (
+    <View style={styles.listHeaderBleed}>
+    {!loading && (
+      <View style={styles.summaryCard}>
+        <Text style={styles.summaryLabel}>TOTAL SPENT</Text>
+        <Text style={styles.summaryValue}>{formatPrice(totalSpent)}</Text>
+        <Text style={styles.summarySub}>{transactions.length} transaction{transactions.length === 1 ? '' : 's'}</Text>
+      </View>
+    )}
+
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.filterRow}
+      style={[{ flexGrow: 0 }, Layout.hScroll]}
+    >
+      {FILTERS.map((f) => (
+        <TouchableOpacity
+          key={f.key}
+          style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
+          activeOpacity={0.8}
+          onPress={() => setFilter(f.key)}
+        >
+          <Text style={[styles.filterChipText, filter === f.key && styles.filterChipTextActive]}>{f.label}</Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha06, Colors.groundClear, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -208,37 +241,12 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
         <View style={{ width: 36 }} />
       </View>
 
-      {!loading && (
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>TOTAL SPENT</Text>
-          <Text style={styles.summaryValue}>{formatPrice(totalSpent)}</Text>
-          <Text style={styles.summarySub}>{transactions.length} transaction{transactions.length === 1 ? '' : 's'}</Text>
-        </View>
-      )}
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-        style={{ flexGrow: 0 }}
-      >
-        {FILTERS.map((f) => (
-          <TouchableOpacity
-            key={f.key}
-            style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
-            activeOpacity={0.8}
-            onPress={() => setFilter(f.key)}
-          >
-            <Text style={[styles.filterChipText, filter === f.key && styles.filterChipTextActive]}>{f.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
       {loading ? (
         <ScrollView
           contentContainerStyle={{ paddingBottom: insets.bottom + 32, paddingTop: 4 }}
           showsVerticalScrollIndicator={false}
         >
+          {listHeader}
           {renderSkeleton()}
         </ScrollView>
       ) : (
@@ -250,6 +258,7 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
           renderItem={renderTxCard}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           ListEmptyComponent={renderEmptyState}
+          ListHeaderComponent={listHeader}
           contentContainerStyle={[
             { paddingHorizontal: 20, paddingTop: 4, paddingBottom: insets.bottom + 32 },
             filtered.length === 0 && { flexGrow: 1 },
@@ -265,6 +274,8 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
+  // Header rows carry their own 20pt gutters inside the padded list.
+  listHeaderBleed: { marginHorizontal: -20, marginTop: -4 },
 
   header: {
     flexDirection: 'row',
@@ -277,11 +288,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontSize: FontSize.base,
@@ -295,9 +308,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 18,
     borderRadius: Radius.card,
-    backgroundColor: Colors.glassBg,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.cardHi,
   },
   summaryLabel: {
     fontSize: FontSize.size10,
@@ -327,13 +341,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 999,
-    backgroundColor: Colors.whiteAlpha05,
+    backgroundColor: Colors.bgCard,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha08,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
   },
   filterChipActive: {
     backgroundColor: Colors.accent,
     borderColor: Colors.accent,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   filterChipText: {
     fontSize: FontSize.size12,
@@ -341,7 +358,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   filterChipTextActive: {
-    color: Colors.white,
+    color: Colors.onAccent,
     fontFamily: FontFamily.semiBold,
   },
 
@@ -350,9 +367,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.glassBg,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   txThumb: {
     width: 48,

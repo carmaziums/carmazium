@@ -12,16 +12,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { CarListing } from '../../data/listings';
 import { CAR_MAKES, getModelsForMake, getVariantsForModel } from '../../data/carData';
 import { VEHICLE_FEATURE_GROUPS } from '../../data/vehicleFeatures';
-import { searchListings } from '../../lib/listingsApi';
+import { searchListings, getMakeCounts } from '../../lib/listingsApi';
+import { ListPickerSheet } from '../../components/filters/ListPickerSheet';
 import { EXTERIOR_GRADE_OPTIONS } from '../../lib/exteriorGrade';
 import { naturalLanguageSearch } from '../../lib/aiApi';
 import { HorizontalVehicleCard } from '../../components/HorizontalVehicleCard';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useLocation } from '../../context/LocationContext';
-import { Colors } from '../../constants/colors';
+import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import {FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -31,9 +32,18 @@ import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { Layout } from '../../constants/layout';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 const { width: SW } = Dimensions.get('window');
+
+// Matches the listing form's service history options (backend serviceHistories).
+const SERVICE_HISTORY_OPTS = [
+  { id: 'FULL_MAIN_DEALER', label: 'Full main dealer' },
+  { id: 'FULL_INDEPENDENT', label: 'Full independent' },
+  { id: 'PARTIAL', label: 'Partial' },
+  { id: 'NONE', label: 'None' },
+];
 
 // ─── Quick filter chips ───────────────────────────────────────────────────────
 
@@ -187,6 +197,9 @@ export const SearchScreen: React.FC = () => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedMakes, setSelectedMakes] = useState<string[]>([]);
   const [makeQuery, setMakeQuery] = useState('');
+  const [picker, setPicker] = useState<null | 'make' | 'model' | 'variant'>(null);
+  const [makeCounts, setMakeCounts] = useState<Record<string, number>>({});
+  useEffect(() => { void getMakeCounts().then(setMakeCounts); }, []);
   const [showAllMakes, setShowAllMakes] = useState(false);
   const [featureQuery, setFeatureQuery] = useState('');
   const makeQueryTrimmed = makeQuery.trim().toLowerCase();
@@ -230,6 +243,12 @@ export const SearchScreen: React.FC = () => {
   const [colorFilter, setColorFilter] = useState('');
   const [minDoors, setMinDoors] = useState('');
   const [minSeats, setMinSeats] = useState('');
+  // Saved DVLA snapshot + seller-declared history (backend: motValid,
+  // taxedOnly, serviceHistories, maxOwners).
+  const [motValid, setMotValid] = useState(false);
+  const [taxedOnly, setTaxedOnly] = useState(false);
+  const [serviceHistories, setServiceHistories] = useState<string[]>([]);
+  const [maxOwners, setMaxOwners] = useState<number | null>(null);
   const [euroStandard, setEuroStandard] = useState('');
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
   // Tri-state: '' = any, 'yes' = imported only, 'no' = explicitly hide
@@ -378,6 +397,10 @@ export const SearchScreen: React.FC = () => {
       color: colorFilter.trim() || undefined,
       minDoors: minDoors ? parseInt(minDoors) : undefined,
       minSeats: minSeats ? parseInt(minSeats) : undefined,
+      motValid: motValid || undefined,
+      taxedOnly: taxedOnly || undefined,
+      serviceHistories: serviceHistories.length ? serviceHistories : undefined,
+      maxOwners: maxOwners ?? undefined,
       euroStandard: euroStandard || undefined,
       features: selectedFeatures.length ? selectedFeatures : undefined,
       isImported: isImported === 'yes' ? true : isImported === 'no' ? false : undefined,
@@ -423,7 +446,7 @@ export const SearchScreen: React.FC = () => {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, exteriorGrades, writeOffCategories, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
+  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, exteriorGrades, writeOffCategories, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, motValid, taxedOnly, serviceHistories, maxOwners, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
 
   // The instant filter effect already loads the initial catalogue once.
   // Text query: debounce to avoid hitting the API on every keystroke.
@@ -444,7 +467,7 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => {
     fetch(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, exteriorGrades, writeOffCategories, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng]);
+  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, exteriorGrades, writeOffCategories, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, motValid, taxedOnly, serviceHistories, maxOwners, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
 
@@ -476,6 +499,10 @@ export const SearchScreen: React.FC = () => {
     !!colorFilter,
     !!minDoors,
     !!minSeats,
+    motValid,
+    taxedOnly,
+    serviceHistories.length > 0,
+    maxOwners != null,
     !!euroStandard,
     selectedFeatures.length > 0,
     !!isImported,
@@ -486,6 +513,7 @@ export const SearchScreen: React.FC = () => {
     conditions.length > 0, exteriorGrades.length > 0, writeOffCategories.length > 0, !!minBhp || !!maxBhp, !!minEngine || !!maxEngine,
     !!maxCo2, !!minCombinedMpg || !!maxZeroTo60Mph || !!driveTypeFilter,
     vehicleType !== 'CAR', !!colorFilter, !!minDoors, !!minSeats,
+    motValid, taxedOnly, serviceHistories.length > 0, maxOwners != null,
     !!euroStandard, selectedFeatures.length > 0, !!locationFilter,
     maxDistanceMi != null, !!sellerType, !!ulezCompliant,
     deliveryAvailable, !!isImported,
@@ -523,6 +551,10 @@ export const SearchScreen: React.FC = () => {
     setColorFilter('');
     setMinDoors('');
     setMinSeats('');
+    setMotValid(false);
+    setTaxedOnly(false);
+    setServiceHistories([]);
+    setMaxOwners(null);
     setEuroStandard('');
     setSelectedFeatures([]);
     setIsImported('');
@@ -632,16 +664,10 @@ export const SearchScreen: React.FC = () => {
     }
   };
 
-  return (
-    <View style={s.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.4 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      <WebsiteTopBar />
+  // Everything above the results scrolls away with the list. Kept as an
+  // element (not a component) so the search TextInput keeps focus.
+  const listHeader = (
+    <>
       {/* Match website Search title; result counts belong beside sorting,
           not as a changing page title that jumps between 0 and a number. */}
       <View style={[s.header, { paddingTop: 12 }]}>
@@ -673,7 +699,7 @@ export const SearchScreen: React.FC = () => {
             value={query}
             onChangeText={setQuery}
             placeholder="Make, model, or keyword..."
-            placeholderTextColor={Colors.borderMuted}
+            placeholderTextColor={Colors.inputPlaceholder}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
@@ -705,7 +731,7 @@ export const SearchScreen: React.FC = () => {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={s.quickScroll}
+        style={[s.quickScroll, Layout.hScroll]}
         contentContainerStyle={s.quickRow}
       >
         {QUICK_FILTERS.map(f => (
@@ -739,8 +765,8 @@ export const SearchScreen: React.FC = () => {
             onPress={() => setFilterOpen(true)}
             activeOpacity={0.7}
           >
-            <Ionicons name="options-outline" size={14} color={filterCount > 0 ? Colors.white : Colors.textSecondary} />
-            <Text style={[s.filterBtnText, filterCount > 0 && { color: Colors.white }]}>
+            <Ionicons name="options-outline" size={14} color={filterCount > 0 ? Colors.onAccent : Colors.textSecondary} />
+            <Text style={[s.filterBtnText, filterCount > 0 && { color: Colors.onAccent }]}>
               Filters{filterCount > 0 ? ` (${filterCount})` : ''}
             </Text>
           </TouchableOpacity>
@@ -754,9 +780,10 @@ export const SearchScreen: React.FC = () => {
           <Text style={s.clearBelowText}>Clear {filterCount} {filterCount === 1 ? 'filter' : 'filters'}</Text>
         </TouchableOpacity>
       )}
-
-      {/* ── Results ── */}
-      {loading && listings.length === 0 ? (
+    </>
+  );
+  const showResults = !(loading && listings.length === 0) && !(searchError && listings.length === 0) && listings.length > 0;
+  const listEmpty = (loading && listings.length === 0 ? (
         <View style={s.skeletonList}>
           {Array.from({ length: 4 }).map((_, i) => (
             <View key={`sk-${i}`} style={s.skeletonCard}>
@@ -791,9 +818,27 @@ export const SearchScreen: React.FC = () => {
           ctaLabel="Clear filters"
           onCtaPress={resetFilters}
         />
-      ) : (
+      ) : null);
+
+  return (
+    <View style={s.container}>
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
+      <LinearGradient
+        colors={[Colors.accentAlpha04, Colors.groundClear, Colors.bgPrimary]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.4 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+
+      <WebsiteTopBar />
+      {/* ── Results ── header scrolls with the list (like the website page)
+           instead of a fixed block eating half the screen. */}
         <FlatList
-          data={listings}
+          data={showResults ? listings : []}
+          ListHeaderComponent={listHeader}
+          // Header sections carry their own 24pt gutters.
+          ListHeaderComponentStyle={s.listHeaderBleed}
+          ListEmptyComponent={<View style={s.listHeaderBleed}>{listEmpty}</View>}
+          keyboardShouldPersistTaps="handled"
           keyExtractor={item => item.id}
           contentContainerStyle={[s.listContent, { paddingBottom: insets.bottom + 110 }]}
           showsVerticalScrollIndicator={false}
@@ -804,7 +849,7 @@ export const SearchScreen: React.FC = () => {
           ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
           onEndReached={() => { if (hasMore && !loadingMore) fetch(false); }}
           onEndReachedThreshold={0.4}
-          ListFooterComponent={
+          ListFooterComponent={!showResults ? null : 
             searchError ? (
               <TouchableOpacity onPress={() => fetch(false)} style={s.loadMoreWrap} accessibilityRole="button">
                 <Text style={s.endText}>Loading failed — tap to retry</Text>
@@ -818,7 +863,6 @@ export const SearchScreen: React.FC = () => {
             ) : null
           }
         />
-      )}
 
       {/* Sort choices live in a native sheet instead of a narrow overlay. */}
       <BottomSheet visible={showSortMenu} onClose={() => setShowSortMenu(false)} title="Sort cars" maxHeightPercent={65}>
@@ -859,7 +903,7 @@ export const SearchScreen: React.FC = () => {
             value={aiQuery}
             onChangeText={setAiQuery}
             placeholder="Describe the car you're looking for…"
-            placeholderTextColor={Colors.borderMuted}
+            placeholderTextColor={Colors.inputPlaceholder}
             multiline
             numberOfLines={3}
             onSubmitEditing={handleAiSearch}
@@ -873,16 +917,49 @@ export const SearchScreen: React.FC = () => {
             activeOpacity={0.85}
           >
             {aiLoading ? (
-              <ActivityIndicator color={Colors.white} size="small" />
+              <ActivityIndicator color={Colors.onAccent} size="small" />
             ) : (
               <>
-                <Ionicons name="sparkles" size={14} color={Colors.white} />
+                <Ionicons name="sparkles" size={14} color={Colors.onAccent} />
                 <Text style={s.aiModalBtnText}>Search with AI</Text>
               </>
             )}
           </TouchableOpacity>
         </View>
       </BottomSheet>
+
+      <ListPickerSheet
+        visible={picker === 'make'}
+        title="Select makes"
+        multi
+        options={CAR_MAKES}
+        counts={makeCounts}
+        selected={selectedMakes}
+        allLabel="All makes"
+        searchPlaceholder="Search makes"
+        onChange={(next) => { setSelectedMakes(next); setModelFilter(''); setVariantFilter(''); }}
+        onClose={() => setPicker(null)}
+      />
+      <ListPickerSheet
+        visible={picker === 'model'}
+        title={selectedMakes[0] ? `${selectedMakes[0]} models` : 'Models'}
+        options={selectedMakes.length === 1 ? getModelsForMake(selectedMakes[0]) : []}
+        selected={modelFilter ? [modelFilter] : []}
+        allLabel="All models"
+        searchPlaceholder="Search models"
+        onChange={(next) => { setModelFilter(next[0] ?? ''); setVariantFilter(''); }}
+        onClose={() => setPicker(null)}
+      />
+      <ListPickerSheet
+        visible={picker === 'variant'}
+        title={modelFilter ? `${modelFilter} variants` : 'Variants'}
+        options={selectedMakes.length === 1 && modelFilter ? getVariantsForModel(selectedMakes[0], modelFilter) : []}
+        selected={variantFilter ? [variantFilter] : []}
+        allLabel="All variants"
+        searchPlaceholder="Search variants"
+        onChange={(next) => setVariantFilter(next[0] ?? '')}
+        onClose={() => setPicker(null)}
+      />
 
       {/* ── Advanced Filters Modal ── */}
       <BottomSheet visible={filterOpen} onClose={() => setFilterOpen(false)} maxHeightPercent={92} avoidKeyboard>
@@ -899,113 +976,48 @@ export const SearchScreen: React.FC = () => {
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={s.modalBody}>
           <Text style={s.filterIntro}>Choose the details that matter. More options are available below.</Text>
 
-              {/* Select several makes: all selections are now submitted to the backend. */}
-              <Text style={s.filterLabel}>MAKE</Text>
-              <View style={s.makeSearchBox}>
-                <Ionicons name="search" size={14} color={Colors.iconMuted} />
-                <TextInput
-                  style={s.makeSearchInput}
-                  placeholder="Search all makes"
-                  placeholderTextColor={Colors.iconMuted}
-                  value={makeQuery}
-                  onChangeText={setMakeQuery}
-                  autoCorrect={false}
-                  autoCapitalize="words"
-                  returnKeyType="search"
-                />
-                {makeQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setMakeQuery('')} activeOpacity={0.7} accessibilityLabel="Clear make search">
-                    <Ionicons name="close-circle" size={15} color={Colors.iconMuted} />
-                  </TouchableOpacity>
-                )}
-              </View>
-              {visibleMakes.length === 0 ? (
-                <Text style={s.makeEmptyText}>No makes match “{makeQuery.trim()}”</Text>
-              ) : (
-                <View style={s.chipGrid}>
-                  {visibleMakes.map(m => (
-                    <TouchableOpacity
-                      key={m}
-                      style={[s.filterChip, selectedMakes.includes(m) && s.filterChipActive]}
-                      onPress={() => { setSelectedMakes(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]); setModelFilter(''); setVariantFilter(''); setMakeQuery(''); }}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[s.filterChipText, selectedMakes.includes(m) && s.filterChipTextActive]}>
-                        {m}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-
-              {!makeQuery.trim() && (
-                <TouchableOpacity onPress={() => setShowAllMakes(v => !v)} activeOpacity={0.7}
-                  accessibilityRole="button" accessibilityLabel={showAllMakes ? 'Show popular makes' : 'Browse all makes'}
-                  style={{ paddingVertical: 12 }}>
-                  <Text style={[s.filterChipText, { color: Colors.accent }]}>
-                    {showAllMakes ? 'Show popular makes' : `Browse all ${CAR_MAKES.length} makes (A–Z)`}
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              <View style={s.divider} />
-
-              {/* Model/variant are single-make refinements only. */}
-              {selectedMakes.length > 1 && <Text style={s.makeEmptyText}>To search by model, select just one make.</Text>}
-              {selectedMakes.length <= 1 && <Text style={s.filterLabel}>MODEL</Text>}
-              {selectedMakes.length <= 1 && <View style={s.inputBox}>
-                <Text style={s.inputBoxLabel}>SEARCH OR ENTER MODEL</Text>
-                <TextInput style={s.inputBoxValue} value={modelFilter} onChangeText={value => { setModelFilter(value); setVariantFilter(''); }}
-                  placeholder={selectedMakes.length ? 'Search models or enter another' : 'Choose a make or type model'}
-                  placeholderTextColor={Colors.borderMuted} autoCorrect={false} autoCapitalize="words" />
-              </View>}
-              {selectedMakes.length === 1 && (
-                <View style={{ marginTop: 8 }}>
-                  <Text style={s.inputBoxLabel}>{selectedMakes[0]} MODELS</Text>
-                  <View style={s.chipGrid}>
-                    <TouchableOpacity style={[s.filterChip, !modelFilter && s.filterChipActive]} onPress={() => { setModelFilter(''); setVariantFilter(''); }}>
-                      <Text style={[s.filterChipText, !modelFilter && s.filterChipTextActive]}>All models</Text>
-                    </TouchableOpacity>
-                    {getModelsForMake(selectedMakes[0])
-                      .filter(m => !modelFilter || m.toLowerCase().includes(modelFilter.toLowerCase()))
-                      .slice(0, 35)
-                      .map(m => <TouchableOpacity key={m}
-                        style={[s.filterChip, modelFilter === m && s.filterChipActive]}
-                        onPress={() => { setModelFilter(m); setVariantFilter(''); }}>
-                        <Text style={[s.filterChipText, modelFilter === m && s.filterChipTextActive]}>{m}</Text>
-                      </TouchableOpacity>)}
-                  </View>
-                  {getModelsForMake(selectedMakes[0]).length > 35 && !modelFilter &&
-                    <Text style={s.makeEmptyText}>Type a model name to search the full list.</Text>}
+              {/* Make / Model / Variant: full searchable A–Z pickers with live
+                  counts, instead of chip grids capped at 35 models. */}
+              <Text style={s.filterLabel}>MAKE, MODEL & VARIANT</Text>
+              <TouchableOpacity style={s.pickerRow} onPress={() => setPicker('make')} accessibilityRole="button" accessibilityLabel="Choose make">
+                <Text style={s.pickerRowLabel}>Make</Text>
+                <Text style={s.pickerRowValue} numberOfLines={1}>{selectedMakes.length ? selectedMakes.join(', ') : 'All'}</Text>
+                <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.pickerRow, selectedMakes.length !== 1 && s.pickerRowDisabled]}
+                disabled={selectedMakes.length !== 1}
+                onPress={() => setPicker('model')}
+                accessibilityRole="button"
+                accessibilityLabel="Choose model"
+                accessibilityHint={selectedMakes.length !== 1 ? 'Choose exactly one make first' : undefined}
+              >
+                <Text style={s.pickerRowLabel}>Model</Text>
+                <Text style={s.pickerRowValue} numberOfLines={1}>{modelFilter || (selectedMakes.length > 1 ? 'Choose one make' : 'All')}</Text>
+                <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.pickerRow, (!modelFilter || selectedMakes.length !== 1) && s.pickerRowDisabled]}
+                disabled={!modelFilter || selectedMakes.length !== 1}
+                onPress={() => setPicker('variant')}
+                accessibilityRole="button"
+                accessibilityLabel="Choose model variant"
+              >
+                <Text style={s.pickerRowLabel}>Model variant</Text>
+                <Text style={s.pickerRowValue} numberOfLines={1}>{variantFilter || 'All'}</Text>
+                <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+              {/* Free text still allowed for imports / trims not in the list. */}
+              {!!modelFilter && selectedMakes.length <= 1 && (
+                <View style={[s.inputBox, { marginTop: 10 }]}>
+                  <Text style={s.inputBoxLabel}>OR TYPE A VARIANT / TRIM</Text>
+                  <TextInput style={s.inputBoxValue} value={variantFilter}
+                    onChangeText={setVariantFilter} placeholder="e.g. M Sport, GT Line"
+                    placeholderTextColor={Colors.inputPlaceholder} autoCapitalize="words" />
                 </View>
               )}
 
               <View style={s.divider} />
-
-              {/* Exact trim is stored on listing.variant. Permit free text for imports. */}
-              {selectedMakes.length <= 1 && !!modelFilter && (
-                <View style={{ marginTop: 10 }}>
-                  <Text style={s.filterLabel}>MODEL VARIANT / TRIM</Text>
-                  <View style={s.inputBox}>
-                    <TextInput style={s.inputBoxValue} value={variantFilter}
-                      onChangeText={setVariantFilter} placeholder="e.g. M Sport, GT Line"
-                      placeholderTextColor={Colors.borderMuted} autoCapitalize="words" />
-                  </View>
-                  {selectedMakes.length === 1 && getVariantsForModel(selectedMakes[0], modelFilter).length > 0 && (
-                    <View style={s.chipGrid}>
-                      <TouchableOpacity style={[s.filterChip, !variantFilter && s.filterChipActive]}
-                        onPress={() => setVariantFilter('')}>
-                        <Text style={[s.filterChipText, !variantFilter && s.filterChipTextActive]}>Any variant</Text>
-                      </TouchableOpacity>
-                      {getVariantsForModel(selectedMakes[0], modelFilter).map(v => <TouchableOpacity key={v}
-                        style={[s.filterChip, variantFilter === v && s.filterChipActive]}
-                        onPress={() => setVariantFilter(v)}>
-                        <Text style={[s.filterChipText, variantFilter === v && s.filterChipTextActive]}>{v}</Text>
-                      </TouchableOpacity>)}
-                    </View>
-                  )}
-                </View>
-              )}
 
               {/* Price */}
               <Text style={s.filterLabel}>PRICE RANGE</Text>
@@ -1017,7 +1029,7 @@ export const SearchScreen: React.FC = () => {
                     value={minPrice > 0 ? `£${minPrice.toLocaleString()}` : ''}
                     onChangeText={t => setMinPrice(parseInt(t.replace(/[^0-9]/g, '') || '0'))}
                     placeholder="£ 0"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1028,7 +1040,7 @@ export const SearchScreen: React.FC = () => {
                     value={maxPrice < 150000 ? `£${maxPrice.toLocaleString()}` : ''}
                     onChangeText={t => setMaxPrice(parseInt(t.replace(/[^0-9]/g, '') || '150000'))}
                     placeholder="£ Any"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1046,7 +1058,7 @@ export const SearchScreen: React.FC = () => {
                     onPress={() => setSelectedBody(prev => prev === bt.id ? '' : bt.id)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name={bt.icon as any} size={16} color={selectedBody === bt.id ? Colors.white : Colors.textSecondary} />
+                    <Ionicons name={bt.icon as any} size={16} color={selectedBody === bt.id ? Colors.onAccent : Colors.textSecondary} />
                     <Text style={[s.filterChipText, selectedBody === bt.id && s.filterChipTextActive]}>
                       {bt.label}
                     </Text>
@@ -1080,32 +1092,34 @@ export const SearchScreen: React.FC = () => {
                   <Text style={s.inputBoxLabel}>FROM YEAR</Text>
                   <TextInput style={s.inputBoxValue} value={minYear === 'Any' ? '' : minYear}
                     onChangeText={v => setMinYear(v ? v.replace(/[^0-9]/g, '').slice(0, 4) : 'Any')}
-                    placeholder="Any" placeholderTextColor={Colors.borderMuted}
+                    placeholder="Any" placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad" maxLength={4} />
                 </View>
                 <View style={[s.inputBox, { flex: 1 }]}>
                   <Text style={s.inputBoxLabel}>TO YEAR</Text>
                   <TextInput style={s.inputBoxValue} value={maxYear === 'Any' ? '' : maxYear}
                     onChangeText={v => setMaxYear(v ? v.replace(/[^0-9]/g, '').slice(0, 4) : 'Any')}
-                    placeholder={String(CURRENT_YEAR)} placeholderTextColor={Colors.borderMuted}
+                    placeholder={String(CURRENT_YEAR)} placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad" maxLength={4} />
                 </View>
               </View>
               <Text style={[s.inputBoxLabel, { marginTop: 12 }]}>QUICK YEAR CHOICES (FROM)</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false}>
                 <View style={{ flexDirection: 'row', gap: 6 }}>
                   {YEAR_OPTS.map(y => <TouchableOpacity key={y}
                     style={[s.miniChip, minYear === y && s.filterChipActive]} onPress={() => setMinYear(y)}>
-                    <Text style={[s.miniChipText, minYear === y && { color: Colors.white }]}>{y}</Text>
+                    <Text style={[s.miniChipText, minYear === y && { color: Colors.onAccent }]}>{y}</Text>
                   </TouchableOpacity>)}
                 </View>
               </ScrollView>
               <Text style={[s.inputBoxLabel, { marginTop: 12 }]}>QUICK YEAR CHOICES (TO)</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false}>
                 <View style={{ flexDirection: 'row', gap: 6 }}>
                   {YEAR_OPTS_MAX.map(y => <TouchableOpacity key={y}
                     style={[s.miniChip, maxYear === y && s.filterChipActive]} onPress={() => setMaxYear(y)}>
-                    <Text style={[s.miniChipText, maxYear === y && { color: Colors.white }]}>{y}</Text>
+                    <Text style={[s.miniChipText, maxYear === y && { color: Colors.onAccent }]}>{y}</Text>
                   </TouchableOpacity>)}
                 </View>
               </ScrollView>
@@ -1115,11 +1129,12 @@ export const SearchScreen: React.FC = () => {
               <Text style={s.filterLabel}>MILEAGE RANGE</Text>
               <View style={s.inputBox}>
                 <Text style={s.inputBoxLabel}>MIN MILES</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false}>
                   <View style={{ flexDirection: 'row', gap: 6 }}>
                     {MILES_OPTS_MIN.map(m => (
                       <TouchableOpacity key={m} style={[s.miniChip, minMiles === m && s.filterChipActive]} onPress={() => setMinMiles(m)} activeOpacity={0.7}>
-                        <Text style={[s.miniChipText, minMiles === m && { color: Colors.white }]}>{m}</Text>
+                        <Text style={[s.miniChipText, minMiles === m && { color: Colors.onAccent }]}>{m}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -1128,11 +1143,12 @@ export const SearchScreen: React.FC = () => {
               <View style={{ marginTop: 10 }}>
                 <View style={s.inputBox}>
                   <Text style={s.inputBoxLabel}>MAX MILES</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false}>
                     <View style={{ flexDirection: 'row', gap: 6 }}>
                       {MILES_OPTS.map(m => (
                         <TouchableOpacity key={m} style={[s.miniChip, maxMiles === m && s.filterChipActive]} onPress={() => setMaxMiles(m)} activeOpacity={0.7}>
-                          <Text style={[s.miniChipText, maxMiles === m && { color: Colors.white }]}>{m}</Text>
+                          <Text style={[s.miniChipText, maxMiles === m && { color: Colors.onAccent }]}>{m}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -1237,7 +1253,7 @@ export const SearchScreen: React.FC = () => {
                     value={minBhp}
                     onChangeText={setMinBhp}
                     placeholder="0"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1248,7 +1264,7 @@ export const SearchScreen: React.FC = () => {
                     value={maxBhp}
                     onChangeText={setMaxBhp}
                     placeholder="Any"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1266,7 +1282,7 @@ export const SearchScreen: React.FC = () => {
                     value={minEngine}
                     onChangeText={setMinEngine}
                     placeholder="0"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1277,7 +1293,7 @@ export const SearchScreen: React.FC = () => {
                     value={maxEngine}
                     onChangeText={setMaxEngine}
                     placeholder="Any"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1294,7 +1310,7 @@ export const SearchScreen: React.FC = () => {
                   value={maxCo2}
                   onChangeText={setMaxCo2}
                   placeholder="Any"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={Colors.inputPlaceholder}
                   keyboardType="number-pad"
                 />
               </View>
@@ -1319,7 +1335,7 @@ export const SearchScreen: React.FC = () => {
                 <Text style={s.inputBoxLabel}>MINIMUM MPG (REPORTED)</Text>
                 <TextInput style={s.inputBoxValue} value={minCombinedMpg}
                   onChangeText={setMinCombinedMpg} placeholder="Any"
-                  placeholderTextColor={Colors.borderMuted} keyboardType="decimal-pad" />
+                  placeholderTextColor={Colors.inputPlaceholder} keyboardType="decimal-pad" />
               </View>
               <View style={s.divider} />
               <Text style={s.filterLabel}>ACCELERATION (0–60 MPH)</Text>
@@ -1327,7 +1343,7 @@ export const SearchScreen: React.FC = () => {
                 <Text style={s.inputBoxLabel}>MAXIMUM SECONDS</Text>
                 <TextInput style={s.inputBoxValue} value={maxZeroTo60Mph}
                   onChangeText={setMaxZeroTo60Mph} placeholder="Any"
-                  placeholderTextColor={Colors.borderMuted} keyboardType="decimal-pad" />
+                  placeholderTextColor={Colors.inputPlaceholder} keyboardType="decimal-pad" />
               </View>
               <View style={s.divider} />
               <Text style={s.filterLabel}>DRIVETRAIN</Text>
@@ -1370,7 +1386,7 @@ export const SearchScreen: React.FC = () => {
                   value={colorFilter}
                   onChangeText={setColorFilter}
                   placeholder="Any colour"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={Colors.inputPlaceholder}
                   autoCapitalize="words"
                 />
               </View>
@@ -1404,6 +1420,64 @@ export const SearchScreen: React.FC = () => {
                     activeOpacity={0.7}
                   >
                     <Text style={[s.segmentBtnText, minSeats === sv && s.segmentBtnTextActive]}>{sv}+</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={s.divider} />
+
+              {/* History & status — saved DVLA snapshot and seller declarations */}
+              <Text style={s.filterLabel}>MOT & TAX</Text>
+              <View style={s.chipGrid}>
+                {([['motValid', 'MOT valid', motValid, setMotValid], ['taxed', 'Taxed', taxedOnly, setTaxedOnly]] as const).map(([key, label, on, set]) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[s.filterChip, on && s.filterChipActive]}
+                    onPress={() => (set as (v: boolean) => void)(!on)}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: on }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.filterChipText, on && s.filterChipTextActive]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={{ height: 16 }} />
+
+              <Text style={s.filterLabel}>SERVICE HISTORY</Text>
+              <View style={s.chipGrid}>
+                {SERVICE_HISTORY_OPTS.map(o => {
+                  const on = serviceHistories.includes(o.id);
+                  return (
+                    <TouchableOpacity
+                      key={o.id}
+                      style={[s.filterChip, on && s.filterChipActive]}
+                      onPress={() => setServiceHistories(prev => on ? prev.filter(x => x !== o.id) : [...prev, o.id])}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: on }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[s.filterChipText, on && s.filterChipTextActive]}>{o.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <View style={{ height: 16 }} />
+
+              <Text style={s.filterLabel}>PREVIOUS OWNERS (UP TO)</Text>
+              <View style={s.chipGrid}>
+                {[1, 2, 3, 4].map(n => (
+                  <TouchableOpacity
+                    key={n}
+                    style={[s.filterChip, maxOwners === n && s.filterChipActive]}
+                    onPress={() => setMaxOwners(prev => prev === n ? null : n)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: maxOwners === n }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.filterChipText, maxOwners === n && s.filterChipTextActive]}>{n === 1 ? '1 owner' : `Up to ${n}`}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -1468,7 +1542,7 @@ export const SearchScreen: React.FC = () => {
                   value={locationFilter}
                   onChangeText={setLocationFilter}
                   placeholder="e.g. London"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={Colors.inputPlaceholder}
                   autoCapitalize="words"
                 />
               </View>
@@ -1485,7 +1559,7 @@ export const SearchScreen: React.FC = () => {
                   <View style={s.postcodeRow}>
                     <Ionicons name="location" size={14} color={Colors.accent} />
                     <Text style={s.postcodeRowText}>Using {userPostcode}</Text>
-                    <TouchableOpacity onPress={() => setPostcodeInput(userPostcode ?? '')} activeOpacity={0.7}>
+                    <TouchableOpacity style={s.postcodeChangeBtn} onPress={() => setPostcodeInput(userPostcode ?? '')} activeOpacity={0.7}>
                       <Text style={s.postcodeChangeLink}>Change</Text>
                     </TouchableOpacity>
                   </View>
@@ -1508,11 +1582,11 @@ export const SearchScreen: React.FC = () => {
                     value={postcodeInput}
                     onChangeText={setPostcodeInput}
                     placeholder="e.g. SW1X 7LY"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={Colors.inputPlaceholder}
                     autoCapitalize="characters"
                     autoCorrect={false}
                   />
-                  <TouchableOpacity onPress={handleSavePostcode} disabled={postcodeSaving || !postcodeInput.trim()} activeOpacity={0.7}>
+                  <TouchableOpacity style={s.postcodeChangeBtn} onPress={handleSavePostcode} disabled={postcodeSaving || !postcodeInput.trim()} activeOpacity={0.7}>
                     {postcodeSaving
                       ? <ActivityIndicator size="small" color={Colors.accent} />
                       : <Text style={[s.postcodeChangeLink, (!postcodeInput.trim()) && { opacity: 0.4 }]}>Save</Text>}
@@ -1576,7 +1650,7 @@ export const SearchScreen: React.FC = () => {
                   value={deliveryAvailable}
                   onValueChange={setDeliveryAvailable}
                   trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
-                  thumbColor={Colors.white}
+                  thumbColor={Colors.onAccent}
                 />
               </View>
               {/* Import status — was a plain "Imported only" toggle with no
@@ -1657,13 +1731,13 @@ const s = StyleSheet.create({
   headerResults: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: 12, marginTop: 7 },
   auctionBrowseBanner: { marginHorizontal: 24, marginBottom: 13, flexDirection: 'row',
     alignItems: 'center', gap: 11, padding: 12, minHeight: 60, backgroundColor: Colors.bgCard,
-    borderWidth: 1, borderColor: Colors.borderSubtle, borderRadius: 13 },
+    borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.card, ...Elevation.card },
   auctionBrowseTitle: { fontFamily: FontFamily.bold, color: Colors.textPrimary, fontSize: 13 },
   auctionBrowseDesc: { fontFamily: FontFamily.medium, color: Colors.textMuted, fontSize: 11 },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center' },
 
   searchWrap: { paddingHorizontal: 24, marginBottom: 8 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderSubtle, paddingHorizontal: 16, height: 52, gap: 10 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgCard, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 16, minHeight: 52, gap: 10, ...Elevation.card },
   searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.white },
 
   // A horizontal ScrollView's cross-axis size is NOT auto-grown by its
@@ -1677,21 +1751,24 @@ const s = StyleSheet.create({
   // (18px padding + up to ~20px line height at a large accessibility font
   // scale + 2px border), so 64 leaves real headroom instead of the 48 that
   // was already marginal at default scale.
-  quickScroll: { height: 64, marginBottom: 4 },
-  quickRow: { paddingHorizontal: 24, gap: 10, alignItems: 'center', flexDirection: 'row' },
-  quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: Radius.card, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
-  quickChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, lineHeight: 16, color: Colors.paleGrey_cccccc },
-  quickChipTextActive: { color: Colors.white },
+  // Inside the list header the row sizes to its chips (flexGrow: 0), so a
+  // larger system font grows the row instead of clipping the labels.
+  quickScroll: { flexGrow: 0, marginBottom: 4 },
+  quickRow: { paddingHorizontal: 24, paddingVertical: 10, gap: 10, alignItems: 'center', flexDirection: 'row' },
+  // Solid raised chips; the selected one is an accent fill with a bevel.
+  quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: Radius.card, backgroundColor: Colors.bgCard, borderWidth: 1, borderBottomWidth: 2, borderColor: Colors.border, ...Elevation.card },
+  quickChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent, borderBottomColor: Colors.accentDark, ...Elevation.neon },
+  quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.textSecondary },
+  quickChipTextActive: { color: Colors.onAccent },
 
   sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 8, marginTop: 4, position: 'relative', zIndex: 10 },
   resultsCount: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary },
-  clearBelowRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 24, paddingVertical: 5, alignSelf: 'flex-start', marginBottom: 7, minHeight: 32 },
+  clearBelowRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginHorizontal: 24, paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start', marginBottom: 7, minHeight: 34, borderRadius: Radius.inline, borderWidth: 1.5, borderBottomWidth: 3, borderColor: Colors.accent, backgroundColor: Colors.bgCard },
   clearBelowText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: Colors.accent },
-  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
+  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, minHeight: 38, backgroundColor: Colors.bgCard, borderRadius: Radius.inline, borderWidth: 1, borderBottomWidth: 3, borderColor: Colors.borderHi, ...Elevation.card },
   sortBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
-  filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
-  filterBtnActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, minHeight: 38, backgroundColor: Colors.bgCard, borderRadius: Radius.inline, borderWidth: 1, borderBottomWidth: 3, borderColor: Colors.borderHi, ...Elevation.card },
+  filterBtnActive: { backgroundColor: Colors.accent, borderColor: Colors.accent, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   filterBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
   filterClearBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 7, backgroundColor: 'transparent', borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha10 },
   filterClearBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
@@ -1701,10 +1778,18 @@ const s = StyleSheet.create({
   sortOptionText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
 
   listContent: { paddingHorizontal: 24 },
+  pickerRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 52,
+    borderBottomWidth: 1, borderBottomColor: Colors.borderSubtle,
+  },
+  pickerRowDisabled: { opacity: 0.45 },
+  pickerRowLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.textPrimary },
+  pickerRowValue: { flex: 1, textAlign: 'right', fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textSecondary },
+  listHeaderBleed: { marginHorizontal: -24 },
   loadMoreWrap: { alignItems: 'center', paddingVertical: 20 },
-  endText: { textAlign: 'center', fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.borderMuted, paddingVertical: 20 },
+  endText: { textAlign: 'center', fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, paddingVertical: 20 },
   skeletonList: { paddingHorizontal: 24, gap: 14 },
-  skeletonCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 14 },
+  skeletonCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: Colors.bgCard, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.border, padding: 14, ...Elevation.card },
   skeletonInfo: { flex: 1, gap: 6 },
 
   // Filter modal
@@ -1747,25 +1832,27 @@ const s = StyleSheet.create({
     paddingVertical: 6,
   },
   chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  filterChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
-  filterChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  filterChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.inline, backgroundColor: Colors.bgCard, borderWidth: 1, borderBottomWidth: 2, borderColor: Colors.borderHi },
+  filterChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent, borderBottomColor: Colors.accentDark },
   filterChipText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.textSecondary },
-  filterChipTextActive: { color: Colors.white, fontFamily: FontFamily.bold },
-  bodyChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
-  bodyChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  filterChipTextActive: { color: Colors.onAccent, fontFamily: FontFamily.bold },
+  bodyChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.inline, backgroundColor: Colors.bgCard, borderWidth: 1, borderBottomWidth: 2, borderColor: Colors.borderHi },
+  bodyChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent, borderBottomColor: Colors.accentDark },
   twoCol: { flexDirection: 'row', gap: 10 },
   inputBox: { flex: 1, backgroundColor: Colors.whiteAlpha03, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 12 },
   inputBoxLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 6 },
   inputBoxValue: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
-  miniChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
+  miniChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.chip, backgroundColor: Colors.bgCard, borderWidth: 1, borderBottomWidth: 2, borderColor: Colors.borderHi },
   miniChipText: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary },
   postcodeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   postcodeRowText: { flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
   postcodeChangeLink: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent },
+  // Raised outline chip so Change / Save read as buttons, not loose links.
+  postcodeChangeBtn: { minHeight: 32, paddingHorizontal: 12, justifyContent: 'center', alignItems: 'center', borderRadius: Radius.inline, borderWidth: 1.5, borderBottomWidth: 3, borderColor: Colors.accent, backgroundColor: Colors.bgCard },
 
   // AI search button
   aiSearchWrap: { paddingHorizontal: 24, marginBottom: 6 },
-  aiSearchBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.card, backgroundColor: Colors.warningAlpha10, borderWidth: 1, borderColor: Colors.warningAlpha25 },
+  aiSearchBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 8, minHeight: 36, borderRadius: Radius.card, backgroundColor: Colors.bgCard, borderWidth: 1, borderBottomWidth: 3, borderColor: Colors.warning, ...Elevation.card },
   aiSearchBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.warning },
 
   // AI explanation banner
@@ -1777,13 +1864,13 @@ const s = StyleSheet.create({
   aiPrivacyHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted, lineHeight: 16 },
   aiModalInput: { backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderSubtle, paddingHorizontal: 16, paddingVertical: 14, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.white, minHeight: 80, textAlignVertical: 'top' },
   aiModalBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: Radius.inline, backgroundColor: Colors.warning },
-  aiModalBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
+  aiModalBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.onAccent },
 
   // Segmented controls (listing type / seller type)
   segmentBtn: { flex: 1, paddingVertical: 10, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06, alignItems: 'center' },
   segmentBtnActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   segmentBtnText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textSecondary },
-  segmentBtnTextActive: { color: Colors.white, fontFamily: FontFamily.bold },
+  segmentBtnTextActive: { color: Colors.onAccent, fontFamily: FontFamily.bold },
 
   // Toggle rows
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },

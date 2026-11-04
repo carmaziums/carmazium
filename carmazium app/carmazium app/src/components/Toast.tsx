@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(22, 22, 28, 0.97)',
+    backgroundColor: Colors.bgElevated,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
