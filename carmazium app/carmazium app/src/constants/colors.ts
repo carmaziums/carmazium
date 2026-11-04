@@ -101,7 +101,8 @@ const darkPalette = {
    */
   textFaint: '#A3B1C4',
   /** Non-content only — placeholders, disabled controls, decorative rules. */
-  textDisabled: '#4B556B',
+  // Was #4B556B (1.8:1 on the dark grounds): disabled labels vanished.
+  textDisabled: '#6E7A8F',
 
   // ═══ Borders ═══════════════════════════════════════════════════════════════
   border: 'rgba(255, 255, 255, 0.14)',
@@ -180,7 +181,9 @@ const darkPalette = {
   inputBg: 'rgba(51, 65, 85, 0.38)',
   inputBorder: 'rgba(255, 255, 255, 0.14)',
   inputBorderFocused: accent,
-  inputPlaceholder: '#4B556B',
+  // Was #4B556B (1.8:1): every placeholder in dark mode was near-invisible,
+  // so search boxes and form fields looked empty / missing.
+  inputPlaceholder: '#8A99AE',
 
   // ═══ Alpha scales ══════════════════════════════════════════════════════════
   whiteAlpha02: 'rgba(255, 255, 255, 0.02)',
