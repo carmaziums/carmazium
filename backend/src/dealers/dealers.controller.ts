@@ -208,6 +208,23 @@ export class DealersController {
         return new StandardResponse(await this.dealersService.getDealerReconciledPurchases(user.id));
     }
 
+
+    @Get('purchases/reconciled/:id/receipt.pdf')
+    @ApiOperation({ summary: 'Download buyer-scoped recovered purchase record PDF (not VAT invoice)' })
+    @ApiProduces('application/pdf')
+    async reconciledPurchasePdf(
+        @CurrentUser() user: any,
+        @Param('id') id: string,
+        @Res() res: Response,
+    ) {
+        const pdf = await this.purchaseReceiptPdf.renderForReconciled(id, user.id);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.setHeader('Content-Disposition', `attachment; filename="carmazium-owner-confirmed-acquisition-${id.slice(0, 8)}.pdf"`);
+        res.setHeader('Content-Length', String(pdf.length));
+        res.end(pdf);
+    }
+
     @Get('purchases/reconciled/:id')
     @ApiOperation({ summary: 'Get one owner-confirmed recovered purchase' })
     async reconciledPurchaseDetail(
