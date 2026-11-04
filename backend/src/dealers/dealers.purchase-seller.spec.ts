@@ -91,6 +91,7 @@ describe('DealersService purchase seller details', () => {
             sellerPhone: '07123456789',
             sellerAddress: '1 Example Street, Manchester, M1 1AA',
             sellerAddressSource: 'VERIFIED_POSTAL',
+            sellerAccountReference: undefined,
         });
     });
 
