@@ -14,6 +14,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 import { BuyerCollectedButton } from "@/components/purchases/BuyerCollectedButton"
+import { PurchaseReceiptButton } from "@/components/purchases/PurchaseReceiptButton"
 import { useAuth } from "@/context/AuthContext"
 import { useDealerAccess } from "@/context/DealerAccessContext"
 import { apiClient } from "@/lib/apiClient"
@@ -190,6 +191,9 @@ export default function DealerPurchaseDetailPage() {
                                 <DetailRow label="Purchase stage" value={purchase.buyerCollectedAt ? "Collected" : purchase.purchaseStatus.replace(/_/g, " ")} />
                                 {purchase.buyerCollectedAt && (
                                     <DetailRow label="Buyer confirmed collection" value={formatDate(purchase.buyerCollectedAt)} />
+                                )}
+                                {purchase.buyerCollectedAt && (
+                                    <PurchaseReceiptButton saleId={purchase.id} className="pt-2" />
                                 )}
                                 {!purchase.buyerCollectedAt
                                     && ["AWAITING_CONFIRMATION", "REVIEWING_DOCS"].includes(purchase.purchaseStatus)

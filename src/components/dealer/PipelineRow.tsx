@@ -3,6 +3,7 @@
 import * as React from "react"
 import { buttonVariants } from "@/components/ui/buttonVariants"
 import { BuyerCollectedButton } from "@/components/purchases/BuyerCollectedButton"
+import { PurchaseReceiptButton } from "@/components/purchases/PurchaseReceiptButton"
 import Image from "next/image"
 import { createPortal } from "react-dom"
 import {
@@ -29,7 +30,10 @@ export interface PurchaseItem {
     purchasePrice: number
     purchaseDate: string
     /** From the authenticated purchase API; never infer channel from status. */
-    purchaseChannel?: "AUCTION" | "RETAIL"
+    purchaseChannel?: "AUCTION" | "RETAIL" | "RECONCILED"
+    reconciledPurchase?: boolean
+    originalListedAt?: string
+    purchasePriceUnrecorded?: boolean
     sellerName?: string
     sellerEmail?: string
     sellerPhone?: string
@@ -158,7 +162,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                         <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5 break-words md:truncate">{item.vehicleSubtitle}</p>
                     )}
                     <p className="text-xs text-[var(--text-muted)] mt-1 font-medium">
-                        Purchased {new Date(item.purchaseDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                        {item.reconciledPurchase ? "Collected" : "Purchased"} {new Date(item.purchaseDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
                     {onViewSummary && (
                         <button type="button" onClick={() => onViewSummary(item)}
@@ -167,7 +171,17 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                             View purchase details <ChevronRight size={13} aria-hidden="true" />
                         </button>
                     )}
-                    {item.sellerName && (
+                    {item.reconciledPurchase && item.sellerName && (
+                        <p className="mt-2 text-xs font-semibold text-[var(--text-secondary)]">
+                            Original auction seller: {item.sellerName}
+                        </p>
+                    )}
+                    {item.reconciledPurchase && item.originalListedAt && (
+                        <p className="mt-1 text-xs text-[var(--text-muted)]">
+                            Original listing: {new Date(item.originalListedAt + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
+                    )}
+                    {item.sellerName && !item.reconciledPurchase && (
                         <button
                             type="button"
                             onClick={() => onViewSeller?.(item)}
@@ -178,7 +192,9 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                             <ChevronRight size={13} aria-hidden="true" />
                         </button>
                     )}
-                    {item.retailSold ? (
+                    {item.reconciledPurchase ? (
+                        <p className="mt-2 text-xs font-semibold text-emerald-500">Purchased from original CarMazium auction listing · Owner confirmed</p>
+                    ) : item.retailSold ? (
                         <p className="mt-2 text-xs font-semibold text-emerald-400">
                             Retail sale recorded · No buyer fee
                         </p>
@@ -200,7 +216,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                 {/* Price */}
                 <div className="order-2 w-full md:order-none md:block md:w-auto text-left md:text-right shrink-0">
                     <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block">Price</span>
-                    <span className="text-lg font-black  tabular-nums">£{item.purchasePrice.toLocaleString()}</span>
+                    <span className="text-lg font-black tabular-nums">{item.purchasePriceUnrecorded ? "Not recorded" : `£${item.purchasePrice.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</span>
                 </div>
 
                 {/* Document Progress (if reviewing) */}
@@ -237,6 +253,10 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                     <span>{item.buyerCollectedAt ? "Collected" : config.label}</span>
                 </div>
 
+                {item.buyerCollectedAt && (
+                    <PurchaseReceiptButton saleId={item.id} reconciled={item.reconciledPurchase} className="order-5 w-full md:order-none md:w-auto" />
+                )}
+
                 {/* Context Menu */}
                 <div className="relative order-4 ml-auto shrink-0 md:order-none md:ml-0" ref={menuRef}>
                     <button
@@ -259,15 +279,15 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                                     Purchase Summary
                                     <ChevronRight size={12} className="ml-auto text-[var(--text-muted)]" />
                                 </button>
-                                <button
+                                {!item.reconciledPurchase && <button
                                     onClick={() => { onViewSeller?.(item); setMenuOpen(false) }}
                                     className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[var(--text-secondary)] hover:text-primary dark:hover:text-white hover:bg-[var(--bg-card)] transition-colors"
                                 >
                                     <User size={14} className="text-[var(--text-muted)]" />
                                     Full Seller Details
                                     <ChevronRight size={12} className="ml-auto text-[var(--text-muted)]" />
-                                </button>
-                                {onRequestCancellation && (
+                                </button>}
+                                {onRequestCancellation && !item.reconciledPurchase && (
                                     <button
                                         onClick={() => { onRequestCancellation(item); setMenuOpen(false) }}
                                         className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors"

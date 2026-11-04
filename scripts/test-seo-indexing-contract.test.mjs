@@ -44,3 +44,46 @@ test('sitemap remains paginated, bounded, and stays on canonical www host', () =
   assert.match(sitemap, /payload\.pagination\?\.totalPages/);
   assert.match(robots, /sitemap: \x60\$\{SITE_URL\}\/sitemap\.xml\x60/);
 });
+
+test('public retail search links are server-rendered and restricted to indexable stock', () => {
+  const layout = read('src/app/search/layout.tsx');
+  const discovery = read('src/components/seo/PublicRetailLinks.tsx');
+  const search = read('src/app/search/page.tsx');
+
+  // Keep the existing interactive filters and canonical search landing.
+  assert.match(layout, /canonical:\s*["']\/search["']/);
+  assert.match(search, /function SearchPageContent\(\)/);
+  assert.match(layout, /<Suspense fallback=\{null\}><PublicRetailLinks \/><\/Suspense>/);
+
+  // The server HTML must contain real anchors, without a client-side fetch.
+  assert.doesNotMatch(discovery, /^\s*["']use client["']/m);
+  assert.match(discovery, /export async function PublicRetailLinks\(\)/);
+  assert.match(discovery, /serverBackendFetch\(/);
+  assert.match(discovery, /href=\{"\/buy-cars\/" \+ listing\.slug\}/);
+
+  // Only currently ACTIVE, retail, non-test, well-formed vehicle links.
+  assert.match(discovery, /indexableRetail\(listing\)/);
+  assert.match(discovery, /\^\[a-z0-9\]/);
+  assert.match(discovery, /const MAX_DISCOVERY_LINKS = 24/);
+  assert.match(discovery, /limit=40&sortBy=newest/);
+  assert.match(discovery, /revalidate: 300/);
+});
+
+test('an upstream outage cannot produce an HTTP 200 partial sitemap snapshot', () => {
+  const source = read('src/app/sitemap.ts');
+  const start = source.indexOf('async function fetchSitemapRecords(');
+  const end = source.indexOf('export default async function sitemap()', start);
+  assert.ok(start !== -1 && end > start);
+  const fn = source.slice(start, end);
+
+  // No partial "success" if even a later API page fails or sends invalid JSON.
+  assert.match(fn, /if \(!response\.ok\) \{\s*throw new Error\("\[sitemap\] upstream HTTP " \+ response\.status\)/);
+  assert.match(fn, /if \(!Array\.isArray\(payload\.data\)\) \{\s*throw new Error\("\[sitemap\] unexpected pagination payload"\)/);
+  assert.match(fn, /catch \{\s*\/\/ Do not turn a transient API error into a cached, shortened 200 sitemap\./);
+  assert.match(fn, /throw new Error\("\[sitemap\] could not refresh complete " \+ kind \+ " segment"\)/);
+
+  // Existing caps and published-only rules must remain in place.
+  assert.match(fn, /row\.type !== "CLASSIFIED" \|\| row\.status !== "ACTIVE"/);
+  assert.match(fn, /row\.status !== "PUBLISHED" \|\| row\.noIndex === true/);
+  assert.match(source, /export const revalidate = 3600/);
+});

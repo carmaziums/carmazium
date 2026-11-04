@@ -15,6 +15,7 @@ import {
     HttpStatus,
     ParseIntPipe,
     DefaultValuePipe,
+    Res,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -23,9 +24,12 @@ import {
     ApiQuery,
     ApiResponse,
     ApiCookieAuth,
+    ApiProduces,
 } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DealersService } from './dealers.service';
+import { PurchaseReceiptPdfService } from './purchase-receipt-pdf.service';
 import { KycDocumentsService, isKycDocumentField } from './kyc-documents.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
@@ -44,6 +48,7 @@ import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dt
 export class DealersController {
     constructor(
         private readonly dealersService: DealersService,
+        private readonly purchaseReceiptPdf: PurchaseReceiptPdfService,
         private readonly kycDocuments: KycDocumentsService,
     ) {}
 
@@ -196,6 +201,39 @@ export class DealersController {
         return new PaginatedResponse(data, total, page!, limit!);
     }
 
+
+    @Get('purchases/reconciled')
+    @ApiOperation({ summary: 'Recovered completed purchases confirmed by dealership owner' })
+    async listReconciledPurchases(@CurrentUser() user: any): Promise<StandardResponse<any>> {
+        return new StandardResponse(await this.dealersService.getDealerReconciledPurchases(user.id));
+    }
+
+
+    @Get('purchases/reconciled/:id/receipt.pdf')
+    @ApiOperation({ summary: 'Download buyer-scoped recovered purchase record PDF (not VAT invoice)' })
+    @ApiProduces('application/pdf')
+    async reconciledPurchasePdf(
+        @CurrentUser() user: any,
+        @Param('id') id: string,
+        @Res() res: Response,
+    ) {
+        const pdf = await this.purchaseReceiptPdf.renderForReconciled(id, user.id);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.setHeader('Content-Disposition', `attachment; filename="carmazium-owner-confirmed-acquisition-${id.slice(0, 8)}.pdf"`);
+        res.setHeader('Content-Length', String(pdf.length));
+        res.end(pdf);
+    }
+
+    @Get('purchases/reconciled/:id')
+    @ApiOperation({ summary: 'Get one owner-confirmed recovered purchase' })
+    async reconciledPurchaseDetail(
+        @CurrentUser() user: any,
+        @Param('id') id: string,
+    ): Promise<StandardResponse<any>> {
+        return new StandardResponse(await this.dealersService.getDealerReconciledPurchaseDetail(user.id, id));
+    }
+
     @Get('purchases/listing-lookup')
     @ApiOperation({ summary: 'Find this dealer\'s recorded purchases for a set of auction listing IDs' })
     @ApiQuery({ name: 'listingIds', required: true, description: 'Comma-separated listing UUIDs (up to 50)' })
@@ -205,6 +243,24 @@ export class DealersController {
     ): Promise<StandardResponse<any>> {
         const ids = (listingIds || '').split(',');
         return new StandardResponse(await this.dealersService.getDealerPurchaseLookup(user.id, ids));
+    }
+
+    /** Collected sale record only. It is NOT a CarMazium VAT or payment invoice. */
+    @Get('purchases/:id/receipt.pdf')
+    @ApiOperation({ summary: 'Download collected vehicle purchase PDF for buyer accounting' })
+    @ApiParam({ name: 'id', description: 'Sale ID belonging to this buyer dealership' })
+    @ApiProduces('application/pdf')
+    async downloadPurchaseReceipt(
+        @CurrentUser() user: any,
+        @Param('id') id: string,
+        @Res() res: Response,
+    ) {
+        const pdf = await this.purchaseReceiptPdf.renderForPurchase(id, user.id);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.setHeader('Content-Disposition', `attachment; filename="carmazium-vehicle-purchase-${id.slice(0, 8)}.pdf"`);
+        res.setHeader('Content-Length', String(pdf.length));
+        res.end(pdf);
     }
 
     @Get('purchases/:id')

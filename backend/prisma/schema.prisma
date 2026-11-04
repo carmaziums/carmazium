@@ -438,6 +438,7 @@ model User {
   buyerLeads               Lead[]                  @relation("LeadBuyer")
   salesAsSeller            Sale[]                  @relation("SellerSales")
   purchasesAsBuyer         Sale[]                  @relation("BuyerPurchases")
+  recoveredPurchasesAsBuyer DealerPurchaseReconciliation[] @relation("RecoveredPurchasesBuyer")
   offersReceived           Offer[]                 @relation("SellerOffers")
   wonAuctions              Auction[]               @relation("AuctionWinner")
   deliveryRequestsAsBuyer  DeliveryRequest[]       @relation("DeliveryBuyer")
@@ -763,6 +764,8 @@ model Vehicle {
 }
 
 model Listing {
+  recoveredStockPurchases DealerPurchaseReconciliation[] @relation("RecoveredStockListing")
+  recoveredSourcePurchases DealerPurchaseReconciliation[] @relation("RecoveredSourceListing")
   id          String        @id @default(uuid())
   vehicleId   String?
   sellerId    String?
@@ -1957,6 +1960,35 @@ model Sale {
   @@index([sellerId])
   @@index([buyerId])
   @@map("sales")
+}
+
+// Owner-confirmed historic acquisitions recovered after missing Sale rows.
+// Separate from platform Sales so no auction win, fee, reward or payment is fabricated.
+model DealerPurchaseReconciliation {
+  id              String    @id @default(uuid())
+  buyerId         String
+  // A past retail stock upload is not the source of a dealer's purchase.
+  // Older records can retain a link for audit; corrected ones can leave it null.
+  stockListingId  String?
+  // The original seller's CarMazium auction listing is the purchase source.
+  sourceListingId String
+  vehicleVrm      String
+  collectedAt     DateTime  @db.Date
+  purchasePrice   Decimal?  @db.Decimal(12, 2)
+  provenance      String    @default("OWNER_CONFIRMED")
+  status          String    @default("COMPLETED")
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  buyer           User      @relation("RecoveredPurchasesBuyer", fields: [buyerId], references: [id], onDelete: Restrict)
+  stockListing    Listing? @relation("RecoveredStockListing", fields: [stockListingId], references: [id], onDelete: SetNull)
+  sourceListing   Listing  @relation("RecoveredSourceListing", fields: [sourceListingId], references: [id], onDelete: Restrict)
+
+  @@unique([buyerId, stockListingId], map: "dealer_purchase_reconciliations_buyer_stock_key")
+  @@unique([buyerId, sourceListingId], map: "dealer_purchase_reconciliations_buyer_source_key")
+  @@index([buyerId, collectedAt], map: "dealer_purchase_reconciliations_buyer_collected_idx")
+  @@map("dealer_purchase_reconciliations")
 }
 
 // Immutable copy of the advert a buyer committed to, taken when the Sale is

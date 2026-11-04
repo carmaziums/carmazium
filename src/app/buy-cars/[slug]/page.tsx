@@ -16,22 +16,28 @@ const SITE_URL = "https://www.carmazium.com"
 
 /**
  * Distinguish a confirmed missing vehicle from an upstream outage.
- * Next.js must serve an HTTP 404 for a backend-confirmed missing/deleted slug
- * rather than a 200 "Vehicle not found" page (a Google soft 404).
- * Do not mark the vehicle nonexistent when the API times out or returns 5xx.
+ * A backend-confirmed missing/deleted slug uses notFound() in Next.js;
+ * streamed responses may still have HTTP 200 but carry robots noindex.
+ * Do not turn timeouts or 5xx into a false absent-vehicle / noindex page.
  * The public listing endpoint can still return real SOLD/OFFER_ACCEPTED records;
  * their existing robots and UI states remain unchanged.
  */
 async function getListingBySlug(slug: string) {
-    try {
-        const res = await serverBackendFetch(`/listings/${slug}`, { next: { revalidate: 60 } })
-        if (res.status === 404 || res.status === 410) return { listing: null, missing: true } as const
-        if (!res.ok) return { listing: null, missing: false } as const
-        const json = await res.json()
-        return { listing: json.data ?? null, missing: false } as const
-    } catch {
-        return { listing: null, missing: false } as const
+    const res = await serverBackendFetch(`/listings/${slug}`, { next: { revalidate: 60 } })
+    if (res.status === 404 || res.status === 410) return { listing: null, missing: true } as const
+
+    // Trade-only inventory remains restricted; preserve its existing noindex
+    // fallback instead of exposing dealer details or masking a real timeout.
+    if (res.status === 401 || res.status === 403) return { listing: null, missing: false } as const
+
+    // Network errors, 5xx, and rate limits are temporary, not proof that
+    // a vehicle was removed. Do not cache an empty 200/noindex vehicle page.
+    if (!res.ok) throw new Error(`[retail] Listing lookup unavailable (HTTP ${res.status})`)
+    const json = await res.json()
+    if (!json?.data || typeof json.data !== "object" || Array.isArray(json.data)) {
+        throw new Error("[retail] Malformed listing lookup payload")
     }
+    return { listing: json.data, missing: false } as const
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {

@@ -113,6 +113,10 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Pr
     const { page: pageParam } = await searchParams
     const page = requestedPage(pageParam)
     const { data: posts, total, totalPages, loaded } = await getPosts(page)
+    // A temporary Fly/API outage must not become a 200 OK "No posts yet" page.
+    // Let the route error boundary handle it so crawlers can retry the real archive.
+    // A genuinely empty, successfully loaded archive keeps its existing UI.
+    if (!loaded) throw new Error("[blog] Archive feed temporarily unavailable")
     // Avoid creating indexable, infinite thin pages for non-existent page
     // numbers. An upstream outage is not evidence that articles are gone.
     if (loaded && page > 1 && (page > totalPages || posts.length === 0)) notFound()

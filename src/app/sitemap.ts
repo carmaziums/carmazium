@@ -82,8 +82,9 @@ function safeLastModified(value: string | null | undefined): Date | undefined {
  * flagged noIndex. Respect the editorial noIndex decision in this sitemap.
  *
  * Never query the authenticated trade auction feed or mutate customer records.
- * On a transient upstream error, keep the static routes and pages successfully
- * retrieved, and log which segment needs retrying during the next revalidation.
+ * Fail a regeneration if any upstream page cannot be read. Publishing a
+ * successful but incomplete sitemap could hide hundreds of valid articles and
+ * vehicles until the next refresh. ISR can retain the last successful sitemap.
  */
 async function fetchSitemapRecords(kind: "listings" | "blog", maxRecords: number): Promise<SitemapRecord[]> {
     const records: SitemapRecord[] = []
@@ -106,14 +107,12 @@ async function fetchSitemapRecords(kind: "listings" | "blog", maxRecords: number
                 { timeoutMs: 8_000, retries: 1 },
             )
             if (!response.ok) {
-                console.warn("[sitemap] upstream request failed", kind, page, response.status)
-                break
+                throw new Error("[sitemap] upstream HTTP " + response.status)
             }
 
             const payload = (await response.json()) as PagedResponse
             if (!Array.isArray(payload.data)) {
-                console.warn("[sitemap] unexpected pagination payload", kind, page)
-                break
+                throw new Error("[sitemap] unexpected pagination payload")
             }
 
             const rows: unknown[] = payload.data
@@ -146,8 +145,10 @@ async function fetchSitemapRecords(kind: "listings" | "blog", maxRecords: number
                 console.warn("[sitemap] page budget exhausted; add sitemap sharding", kind, pageCap)
             }
         } catch {
-            console.warn("[sitemap] upstream unavailable; will retry at revalidation", kind, page)
-            break
+            // Do not turn a transient API error into a cached, shortened 200 sitemap.
+            // On ISR revalidation, an exception preserves the last good version.
+            console.error("[sitemap] segment refresh failed; preserving last successful sitemap", kind, page)
+            throw new Error("[sitemap] could not refresh complete " + kind + " segment")
         }
     }
 
