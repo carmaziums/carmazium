@@ -292,7 +292,7 @@ function mirrorToMeta(type: string, payload: Record<string, unknown>): void {
             // again as a newly acquired seller listing.
             if (!isAdmin && payload.listing_id) {
                 trackMetaConfirmedListingEventOnce("AuctionListingCreated", {
-                    listing_id: payload.listing_id,
+                    ...payload,
                     listing_type: "auction",
                 })
             }
