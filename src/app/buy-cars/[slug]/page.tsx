@@ -37,7 +37,7 @@ async function getListingBySlug(slug: string) {
     if (!json?.data || typeof json.data !== "object" || Array.isArray(json.data)) {
         throw new Error("[retail] Malformed listing lookup payload")
     }
-    return { listing: json.data as Listing, missing: false } as const
+    return { listing: json.data, missing: false } as const
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
