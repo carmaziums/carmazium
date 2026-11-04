@@ -131,7 +131,7 @@ export type MainStackParamList = {
   Compare: { initialListing?: CarListing } | undefined;
   Settings: { section?: 'personal' | 'business' | 'verification' | 'notifications' | 'security' | 'payouts' } | undefined;
   DealerAnalytics: undefined;
-  DealerInventory: undefined;
+  DealerInventory: { status?: import('../screens/main/DealerInventoryScreen').FilterTab } | undefined;
   DealerLeads: undefined;
   DealerKYC: {
     businessType?: 'PRIVATE_LIMITED' | 'SOLE_PROPRIETORSHIP';

@@ -45,7 +45,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 type StatusTag = 'LIVE' | 'DRAFT' | 'REVIEW' | 'SALE_PENDING' | 'REJECTED' | 'SOLD' | 'OTHER';
-type FilterTab = 'All' | 'Live' | 'Under Review' | 'Rejected' | 'Draft' | 'Sold' | 'Sale pending' | 'Other';
+export type FilterTab = 'All' | 'Live' | 'Under Review' | 'Rejected' | 'Draft' | 'Sold' | 'Sale pending' | 'Other';
 
 interface Listing {
   id: string;
@@ -560,12 +560,18 @@ const InventoryGridCard: React.FC<{ listing: Listing; onPress: (id: string) => v
   );});
 
 // ─── MAIN INVENTORY SCREEN ───────────────────────────────────────────────────
-export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+export const DealerInventoryScreen: React.FC<{ navigation?: any; route?: any }> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
   const { hasPermission } = useDealerAccess(true);
   const canManageInventory = hasPermission('MANAGE_INVENTORY');
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
+  const requestedStatus: FilterTab | undefined = route?.params?.status;
+  const [activeFilter, setActiveFilter] = useState<FilterTab>(requestedStatus ?? 'All');
+  // Menu Stock › Live / Drafts / Sold… (website Stock submenu) re-targets the
+  // already-mounted tab, so follow the param whenever it changes.
+  useEffect(() => {
+    if (requestedStatus) setActiveFilter(requestedStatus);
+  }, [requestedStatus]);
   // One panel at a time below the header: every status, the sort orders, or
   // the two import actions. Replaces the sideways-scrolling status strip
   // whose later statuses were hidden off the right-hand edge.

@@ -11,6 +11,7 @@ const app = path => readFileSync(resolve(root, 'carmazium app/carmazium app/src/
 const web = path => readFileSync(resolve(root, path), 'utf8');
 const tabs = app('navigation/TabNavigator.tsx');
 const drawer = app('components/GlobalDrawer.tsx');
+const dealerHome = app('screens/main/DealerProfileScreen.tsx');
 const top = app('components/WebsiteTopBar.tsx');
 const hamburger = app('components/HamburgerButton.tsx');
 const logo = app('components/Logo.tsx');
@@ -43,8 +44,9 @@ test('More is a real toggle with active/expanded state, but not an extra route',
   assert.ok(tabs.includes('expanded: isDrawerOpen'));
   assert.ok(tabs.includes("isMore && isDrawerOpen ? 'close'"));
   assert.ok(tabs.includes('<Tab.Screen name="DealerMore" component={ProfileTabScreen} />'));
-  assert.ok(drawer.includes('visiblePrimaryDealerItems'));
-  assert.ok(drawer.includes("!['dealer-inventory', 'dealer-leads'].includes(item.id)"));
+  // More opens the website dealer sidebar (Dashboard › Sell › Buy › Business › Services).
+  assert.ok(drawer.includes('const dealerDashboard = ('));
+  assert.ok(drawer.includes("tabName: 'DealerStock'") && drawer.includes("tabName: 'DealerCustomers'"));
 });
 
 test('website-styled header uses the real asset, adapts logo to viewport and toggles menu', () => {
@@ -80,7 +82,9 @@ test('dealer route remains named and gated, including Block 6 website-canonical 
   for (const route of ['Home','Search','Live','Saved','Profile']) {
     assert.ok(tabs.includes('<Tab.Screen name="' + route + '"'));
   }
-  assert.ok(drawer.includes("setRole('buyer')") && drawer.includes("setRole('dealer')"));
+  // Buyer preview lives on the dealer dashboard (as on web); the menu keeps
+  // the one-tap way back into dealer mode.
+  assert.ok(dealerHome.includes("setRole('buyer')") && drawer.includes("setRole('dealer')"));
   assert.ok(drawer.includes("navigation.navigate('Main'"));
   assert.ok(!drawer.includes("const isActualDealer = role === 'dealer'"));
 });

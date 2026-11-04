@@ -90,7 +90,7 @@ export type TabParamList = {
   // Dealer-only mobile shortcuts, mirroring web DashboardSidebar mobile tabs.
   // Core routes above are retained for deep links and buyer-preview switching.
   DealerHome: undefined;
-  DealerStock: undefined;
+  DealerStock: { status?: import('../screens/main/DealerInventoryScreen').FilterTab } | undefined;
   DealerCustomers: undefined;
   DealerBuyBid: { initialSection?: 'live' | 'bids' } | undefined;
   DealerMore: undefined;

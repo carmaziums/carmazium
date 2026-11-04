@@ -38,7 +38,11 @@ test('web dealer bottom navigation and native route labels have the same informa
   assert.ok(dealerRoutes.includes('label: "Purchases"'));
   assert.ok(tabs.includes("initialRouteName={dealerMode ? 'DealerHome' : 'Home'}"));
   assert.ok(tabs.includes("openDrawer();"));
-  assert.ok(drawer.includes("dealerMode ? 'DEALER WORKSPACE' : 'BUY, SELL & EXPLORE'"));
+  // Website parity: dealer More = dashboard sidebar; elsewhere = header main menu.
+  assert.ok(drawer.includes('dealerMode ? dealerDashboard : userDashboard'));
+  for (const label of ['Buy Cars','Sell Cars','Get Valuation','TradeXchange','Compare','Pricing','About']) {
+    assert.ok(drawer.includes("label: '" + label + "'"), label);
+  }
 });
 
 test('role switching and permissions retain secured routes and consumer deep links', () => {
@@ -48,7 +52,7 @@ test('role switching and permissions retain secured routes and consumer deep lin
   for (const route of ['Home','Search','Live','Saved','Profile']) {
     assert.ok(tabs.includes('<Tab.Screen name="'+route+'"'));
   }
-  assert.ok(drawer.includes('visiblePrimaryDealerItems'));
+  assert.ok(drawer.includes('visibleDealerItems'));
   assert.ok(drawer.includes('hasDealerPermission(item.requiredPermission)'));
 });
 
