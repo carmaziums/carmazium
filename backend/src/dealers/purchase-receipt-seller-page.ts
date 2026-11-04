@@ -2,7 +2,7 @@ import { PDFDocument, PDFPage, PDFFont, StandardFonts, rgb } from 'pdf-lib';
 
 /**
  * The buyer-visible seller details from a completed purchase. Data come only
- * from seller contact/profile or verified postal address records. NEVER add
+ * from seller contact/profile or account-confirmed postal address records. NEVER add
  * KYC documents, seller bank details, raw identity proofs or guessed addresses.
  */
 export interface PurchaseReceiptSellerDetails {
@@ -12,7 +12,9 @@ export interface PurchaseReceiptSellerDetails {
     sellerEmail?: string | null;
     sellerPhone?: string | null;
     sellerAddress?: string | null;
-    sellerAddressSource?: 'BUSINESS' | 'VERIFIED_POSTAL' | null;
+    sellerAddressSource?: 'BUSINESS' | 'VERIFIED_POSTAL' | 'ACCOUNT_CONFIRMED_POSTAL' | null;
+    sellerDataCapturedAt?: string | null;
+    sellerDataSource?: 'RECORDED_NEAR_SALE' | 'CAPTURED_AFTER_SALE' | 'CURRENT_PROFILE' | null;
     sellerCompanyRegistrationNumber?: string | null;
     sellerVatNumber?: string | null;
     contactUnlocked: boolean;
@@ -86,6 +88,12 @@ export async function appendPurchaseSellerDetailsPage(
     };
 
     row('Purchase reference', purchaseReference);
+    row('Seller details source', seller.sellerDataSource === 'RECORDED_NEAR_SALE'
+        ? 'Private account snapshot near sale recording'
+        : seller.sellerDataSource === 'CAPTURED_AFTER_SALE'
+            ? 'Private account snapshot captured after sale'
+            : 'Current account information - not a historic snapshot');
+    row('Seller details captured', seller.sellerDataCapturedAt || 'Not captured historically');
     row('Seller full name', seller.sellerName);
     row('Business/trading name', seller.sellerCompany);
     row('Seller account reference', seller.sellerAccountReference);
@@ -93,7 +101,9 @@ export async function appendPurchaseSellerDetailsPage(
         row('Email on file', seller.sellerEmail);
         row('Telephone on file', seller.sellerPhone);
         row(seller.sellerAddressSource === 'BUSINESS' ? 'Business address on file'
-            : seller.sellerAddressSource === 'VERIFIED_POSTAL' ? 'Verified postal address' : 'Seller postal address',
+            : seller.sellerAddressSource === 'VERIFIED_POSTAL'
+                || seller.sellerAddressSource === 'ACCOUNT_CONFIRMED_POSTAL'
+                ? 'Account-confirmed postal address' : 'Seller postal address',
             seller.sellerAddress);
         row('Company registration no.', seller.sellerCompanyRegistrationNumber);
         row('VAT number on file', seller.sellerVatNumber);
@@ -104,8 +114,12 @@ export async function appendPurchaseSellerDetailsPage(
     // These details can be absent or changed after the transaction. Distinguish
     // current account data from a contemporaneous signed seller invoice.
     const footer = [
-        'These are the seller details currently recorded by CarMazium.',
-        'An on-file business address is not proof of a verified residential or collection address.',
+        seller.sellerDataSource === 'RECORDED_NEAR_SALE'
+            ? 'Identity details were captured near the sale record and may since have changed.'
+            : seller.sellerDataSource === 'CAPTURED_AFTER_SALE'
+                ? 'Identity details were captured after sale, not necessarily at the original handover.'
+                : 'Identity details are from the current seller account, not a historical snapshot.',
+        'Account-confirmed postal address means email-code confirmation, NOT verified residence.',
         'Account contact, company and VAT details are not independently certified by this PDF.',
         'If a field says "Not recorded", request it from the seller for your legal records.',
         'This is not a seller-issued invoice, a VAT invoice or independent proof of payment.',
