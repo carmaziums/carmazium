@@ -70,13 +70,15 @@ export class PurchaseReceiptPdfService {
             'The historic auction result was NOT changed by this reconciliation.',
             'Advertised price is the original listing value currently on file.',
             'It may have changed since listing or collection; it is not the final price.',
+            'Listing last updated: ' + new Date(purchase.advertisedPriceLastUpdatedAt)
+                .toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/London' }) + '.',
             'Final agreed price is shown only when separately recorded.',
             'CarMazium has not independently verified payment to the seller.',
             'This record is not a seller invoice, VAT invoice or proof of payment.',
             'Keep the original seller invoice and bank statement for your accounts.',
         ];
         notice.forEach((line, i) => page.drawText(line, {
-            x: 48, y: 263 - i * 23, size: 10, font: normal, color: grey,
+            x: 48, y: 265 - i * 21, size: 10, font: normal, color: grey,
         }));
         page.drawText('CarMazium - carmazium.com', {
             x: 48, y: 56, size: 10, font: normal, color: ink,
@@ -202,12 +204,15 @@ export class PurchaseReceiptPdfService {
                 ? 'from the advert snapshot recorded on the platform.'
                 : 'the listing price on file; it may not be the price at the date of sale.'),
             'Advertised price is NOT evidence of the final agreed or paid price.',
+            'Price source last recorded: ' + (purchase.advertisedPriceRecordedAt
+                ? date(purchase.advertisedPriceRecordedAt)
+                : 'Date unavailable') + '.',
             'Vehicle purchase money is paid directly by the buyer to the seller, not to CarMazium.',
             'This is not a seller-issued invoice, a VAT invoice, or independent proof of payment.',
             'Retain the seller\'s invoice and bank transfer evidence for your accounting records.',
         ];
         notes.forEach((line, i) => page.drawText(line, {
-            x: 48, y: 145 - i * 16, font: normal, size: 8.7, color: grey,
+            x: 48, y: 145 - i * 15, font: normal, size: 8.7, color: grey,
         }));
         page.drawText('Issued from CarMazium purchase records · carmazium.com', {
             x: 48, y: 43, font: normal, size: 9, color: grey,
