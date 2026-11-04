@@ -44,6 +44,15 @@ const money = (v: number | string | null | undefined) => {
   if (v == null || String(v).trim() === '' || !Number.isFinite(Number(v))) return '—';
   return '£' + Number(v).toLocaleString('en-GB', { maximumFractionDigits: 0 });
 };
+const TimeLeftText: React.FC<{ endTime: string; style?: any }> = React.memo(({ endTime, style }) => {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <Text style={style}>{timeLeft(endTime, now)}</Text>;
+});
+
 const timeLeft = (raw: string, now: number): string => {
   const ms = new Date(raw).getTime() - now;
   if (!Number.isFinite(ms) || ms <= 0) return 'Ending';
@@ -202,7 +211,6 @@ export function DealerActiveBidPositions({ navigation, header }: { navigation?: 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [now, setNow] = useState(Date.now());
   const fetchBids = useCallback(async (quiet = false) => {
     if (quiet) setRefreshing(true);
     else setLoading(true);
@@ -219,10 +227,8 @@ export function DealerActiveBidPositions({ navigation, header }: { navigation?: 
     }
   }, []);
   useFocusEffect(useCallback(() => { void fetchBids(); }, [fetchBids]));
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
+  // Each row's time-left text owns its own 1s tick (TimeLeftText); a
+  // list-wide 1s state re-rendered every bid card each second.
   // Same 20s read-only poll as website's My Auction Bids page.
   useEffect(() => {
     const id = setInterval(() => { void fetchBids(true); }, 20000);
@@ -266,7 +272,7 @@ export function DealerActiveBidPositions({ navigation, header }: { navigation?: 
                 { color: item.isLeading ? Colors.success : Colors.warning }]}>
                 {item.isLeading ? 'CURRENTLY LEADING' : 'OUTBID / ACTION NEEDED'}
               </Text>
-              <Text style={styles.meta}>{timeLeft(item.endTime, now)}</Text>
+              <TimeLeftText endTime={item.endTime} style={styles.meta} />
             </View>
           </View>
           <View style={styles.bidMetrics}>

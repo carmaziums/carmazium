@@ -103,6 +103,19 @@ function fmt(n: number) {
   return `£${n.toLocaleString('en-GB')}`;
 }
 
+/** Owns its own 1s tick so only these digits re-render. Nested in a Text. */
+const CountdownText: React.FC<{ target: Date }> = React.memo(({ target }) => {
+  const targetMs = target.getTime();
+  const [secs, setSecs] = useState(() => Math.max(0, Math.floor((targetMs - Date.now()) / 1000)));
+  useEffect(() => {
+    const tick = () => setSecs(Math.max(0, Math.floor((targetMs - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [targetMs]);
+  return <Text>{fmtCountdown(secs)}</Text>;
+});
+
 function fmtCountdown(totalSecs: number) {
   if (totalSecs <= 0) return '00:00:00';
   const h = Math.floor(totalSecs / 3600);
@@ -669,9 +682,15 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // ─── Countdown ────────────────────────────────────────────────────────────
 
   useEffect(() => {
+    // Re-render the (long) screen only when the phase changes — final 5
+    // minutes or ended. The ticking digits are <CountdownText>, which owns
+    // its own 1s timer; a screen-wide 1s state made scrolling judder.
+    const phaseOf = (secs: number) => (secs <= 0 ? 0 : secs <= 5 * 60 ? 1 : 2);
     const tick = () => {
       const target = auction?.status === 'ACTIVE' ? endTime : auction?.status === 'SCHEDULED' ? startTime : null;
-      if (target) setSecondsLeft(Math.max(0, Math.floor((target.getTime() - Date.now()) / 1000)));
+      if (!target) return;
+      const secs = Math.max(0, Math.floor((target.getTime() - Date.now()) / 1000));
+      setSecondsLeft(prev => (prev !== 0 && phaseOf(prev) === phaseOf(secs) ? prev : secs));
     };
     tick();
     const t = setInterval(tick, 1000);
@@ -1475,14 +1494,14 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   { fontFamily: FontFamily.mono },
                   isUnder5Min && { color: Colors.accentGlow },
                 ]}>
-                  {fmtCountdown(secondsLeft)}
+                  {endTime ? <CountdownText target={endTime} /> : fmtCountdown(secondsLeft)}
                 </Text>
               </Animated.View>
             )}
             {isScheduled && startTime && (
               <View style={[s.timerBox, { borderColor: Colors.infoBlueAlpha30 }]}>
                 <Text style={[s.timerBoxLabel, { color: Colors.infoLight }]}>STARTS IN</Text>
-                <Text style={[s.timerBoxValue, { color: Colors.infoBlueLight, fontFamily: FontFamily.mono }]}>{fmtCountdown(secondsLeft)}</Text>
+                <Text style={[s.timerBoxValue, { color: Colors.infoBlueLight, fontFamily: FontFamily.mono }]}><CountdownText target={startTime} /></Text>
               </View>
             )}
           </View>
