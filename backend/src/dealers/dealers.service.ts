@@ -1825,7 +1825,7 @@ export class DealersService {
                     select: {
                         id: true, title: true, images: true, vrm: true,
                         make: true, model: true, year: true, mileage: true, color: true,
-                        createdAt: true,
+                        createdAt: true, updatedAt: true, price: true,
                         seller: { select: { firstName: true, lastName: true } },
                         auction: { select: { id: true, status: true } },
                     },
@@ -1859,6 +1859,11 @@ export class DealersService {
                 sellerName: name || 'Original auction seller',
                 originalListedAt: l.createdAt.toISOString().slice(0, 10),
                 originalAuctionListingId: l.id,
+                advertisedPrice: Number(l.price),
+                // Historical price changes were not snapshotted for recovered
+                // purchases. Never claim this equals the price at collection.
+                advertisedPriceSource: 'CURRENT_ORIGINAL_LISTING' as const,
+                advertisedPriceLastUpdatedAt: l.updatedAt.toISOString(),
                 // Distinct from a system-recorded auction WIN; an historic
                 // cancelled/ended auction must not acquire a fabricated winner.
                 source: 'ORIGINAL_AUCTION_LISTING' as const,
@@ -2169,6 +2174,7 @@ export class DealersService {
                 listing: {
                     select: {
                         id: true, slug: true, type: true, status: true, location: true,
+                        price: true, updatedAt: true,
                         // Full advert record for inspection. Listing evidence
                         // only; seller contact stays behind /:id/seller.
                         ...LISTING_RECORD_SELECT,
@@ -2198,6 +2204,12 @@ export class DealersService {
             : null;
 
         const listing = sale.listing;
+        const advertisedSnapshot = snapshot?.data && typeof snapshot.data === 'object' && !Array.isArray(snapshot.data)
+            ? (snapshot.data as Record<string, unknown>).advertisedPrice
+            : undefined;
+        const advertisedPriceFromSnapshot = typeof advertisedSnapshot === 'number'
+            && Number.isFinite(advertisedSnapshot) && advertisedSnapshot >= 0
+            ? advertisedSnapshot : null;
         const auction = listing.auction;
         // Conversion from an un-won historic auction to a retail listing does
         // not create a new buyer-fee debt.
@@ -2244,6 +2256,11 @@ export class DealersService {
                 listedLocation: listing.location,
             },
             purchasePrice: Number(sale.soldPrice),
+            advertisedPrice: advertisedPriceFromSnapshot ?? Number(listing.price),
+            advertisedPriceSource: advertisedPriceFromSnapshot !== null
+                ? 'PURCHASE_SNAPSHOT' as const : 'CURRENT_LISTING' as const,
+            advertisedPriceRecordedAt: advertisedPriceFromSnapshot !== null
+                ? snapshot!.capturedAt.toISOString() : listing.updatedAt?.toISOString() ?? null,
             purchasedAt: sale.createdAt.toISOString(),
             purchaseStatus: sale.purchaseStatus,
             buyerCollectedAt: collectedEvent?.createdAt.toISOString() ?? null,
