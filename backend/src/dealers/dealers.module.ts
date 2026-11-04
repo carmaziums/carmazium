@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DealersService } from './dealers.service';
+import { PurchaseReceiptPdfService } from './purchase-receipt-pdf.service';
 import { KycDocumentsService } from './kyc-documents.service';
 import { DealersController } from './dealers.controller';
 import { PrismaModule } from '../prisma/prisma.module';
@@ -10,7 +11,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 @Module({
     imports: [PrismaModule, AuthModule, EmailModule, NotificationsModule],
     controllers: [DealersController],
-    providers: [DealersService, KycDocumentsService],
+    providers: [DealersService, KycDocumentsService, PurchaseReceiptPdfService],
     exports: [DealersService, KycDocumentsService],
 })
 export class DealersModule {}

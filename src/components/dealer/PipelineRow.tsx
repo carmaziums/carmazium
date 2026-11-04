@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { BuyerCollectedButton } from "@/components/purchases/BuyerCollectedButton"
+import { PurchaseReceiptButton } from "@/components/purchases/PurchaseReceiptButton"
 import Image from "next/image"
 import { createPortal } from "react-dom"
 import {
@@ -199,7 +200,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                 {/* Price */}
                 <div className="order-2 w-full md:order-none md:block md:w-auto text-left md:text-right shrink-0">
                     <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block">Price</span>
-                    <span className="text-lg font-black  tabular-nums">£{item.purchasePrice.toLocaleString()}</span>
+                    <span className="text-lg font-black  tabular-nums">£{item.purchasePrice.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
 
                 {/* Document Progress (if reviewing) */}
@@ -235,6 +236,10 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                     <StatusIcon size={12} />
                     <span>{item.buyerCollectedAt ? "Collected" : config.label}</span>
                 </div>
+
+                {item.buyerCollectedAt && (
+                    <PurchaseReceiptButton saleId={item.id} className="order-5 w-full md:order-none md:w-auto" />
+                )}
 
                 {/* Context Menu */}
                 <div className="relative order-4 ml-auto shrink-0 md:order-none md:ml-0" ref={menuRef}>
