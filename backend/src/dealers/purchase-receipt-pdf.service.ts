@@ -106,8 +106,11 @@ export class PurchaseReceiptPdfService {
         if (buyer.dealerProfile?.businessAddress) {
             row('Buyer business address', buyer.dealerProfile.businessAddress, 361);
         }
-        row('Seller', sellerName, buyer.dealerProfile?.businessAddress ? 336 : 361);
-        const priceY = buyer.dealerProfile?.businessAddress ? 290 : 315;
+        const sellerY = buyer.dealerProfile?.businessAddress ? 336 : 361;
+        row('Seller', sellerName, sellerY);
+        const sellerAddress = seller.contactUnlocked ? seller.sellerAddress : null;
+        if (sellerAddress) row('Seller address on file', sellerAddress, sellerY - 25);
+        const priceY = sellerY - (sellerAddress ? 25 : 0) - 46;
         heading('AGREED VEHICLE PRICE', priceY);
         page.drawRectangle({ x: 48, y: priceY - 63, width: width - 96, height: 48, color: pale });
         page.drawText(money(purchase.purchasePrice), { x: 63, y: priceY - 47, font: bold, size: 21, color: navy });
