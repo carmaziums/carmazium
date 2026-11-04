@@ -202,6 +202,37 @@ function trackMetaSellerLeadOnce(payload: Record<string, unknown>): void {
     }
 }
 
+// A qualified listing and a paid listing fee are distinct from a wizard
+// submission. Track them once per listing on a consented browser, even if a
+// seller revisits Stripe success or resubmits an auction after rejection.
+const META_CONFIRMED_LISTING_EVENT_PREFIX = "cm_meta_confirmed_listing_v1:"
+const metaConfirmedListingEventSessionDedupe = new Set<string>()
+
+function trackMetaConfirmedListingEventOnce(eventName: string, payload: Record<string, unknown>): void {
+    const listingId = String(payload.listing_id ?? "").trim()
+    if (!listingId || typeof window === "undefined" || !hasTrackingConsent()
+        || typeof window.fbq !== "function") return
+
+    const dedupeKey = `${META_CONFIRMED_LISTING_EVENT_PREFIX}${eventName}:${listingId}`
+    if (metaConfirmedListingEventSessionDedupe.has(dedupeKey)) return
+    try {
+        if (window.localStorage.getItem(dedupeKey) === "1") {
+            metaConfirmedListingEventSessionDedupe.add(dedupeKey)
+            return
+        }
+    } catch {
+        // In-memory dedupe still works when browser storage is unavailable.
+    }
+
+    trackMetaEvent(eventName, compact(payload), { eventID: `${eventName}:${listingId}` })
+    metaConfirmedListingEventSessionDedupe.add(dedupeKey)
+    try {
+        window.localStorage.setItem(dedupeKey, "1")
+    } catch {
+        // Tracking is fire-and-forget and must never block payment or listing.
+    }
+}
+
 function mirrorToMeta(type: string, payload: Record<string, unknown>): void {
     const isAdmin = String(payload.seller_role ?? "").toUpperCase() === "ADMIN"
 
@@ -257,8 +288,50 @@ function mirrorToMeta(type: string, payload: Record<string, unknown>): void {
             }
             return
         case SELLER_FUNNEL.AUCTION_SUBMITTED:
-            if (!isAdmin) trackMetaEvent("AuctionListingCreated", compact(payload))
+            // An auction may be resubmitted after moderation. Do not count it
+            // again as a newly acquired seller listing.
+            if (!isAdmin && payload.listing_id) {
+                trackMetaConfirmedListingEventOnce("AuctionListingCreated", {
+                    listing_id: payload.listing_id,
+                    listing_type: "auction",
+                })
+            }
             return
+        case SELLER_FUNNEL.LISTING_FEE_PAID:
+            // Retail submission happens before Stripe; only the confirmed
+            // £1 listing payment (not generic Purchase/other fees) qualifies.
+            if (!isAdmin && payload.listing_type === "retail"
+                && typeof payload.value === "number" && Number.isFinite(payload.value)
+                && payload.value >= 0 && payload.currency === "GBP") {
+                trackMetaConfirmedListingEventOnce("RetailListingFeePaid", {
+                    listing_id: payload.listing_id,
+                    listing_type: "retail",
+                    value: payload.value,
+                    currency: "GBP",
+                    content_name: "LISTING_FEE",
+                })
+            }
+            return
+        case SELLER_FUNNEL.QUALIFIED_SELLER_LISTING: {
+            // Confirmed auction-for-review OR verified paid retail listing:
+            // the strongest shared new-seller outcome for Meta optimisation.
+            const auctionQualified = payload.listing_type === "auction"
+                && payload.qualification === "auction_review"
+                && payload.outcome === "pending_review"
+            const retailQualified = payload.listing_type === "retail"
+                && payload.qualification === "retail_payment"
+                && payload.payment_status === "paid"
+            if (!isAdmin && payload.listing_id && (auctionQualified || retailQualified)) {
+                trackMetaConfirmedListingEventOnce("QualifiedSellerListing", {
+                    listing_id: payload.listing_id,
+                    listing_type: payload.listing_type,
+                    qualification: payload.qualification,
+                    value: 0,
+                    currency: "GBP",
+                })
+            }
+            return
+        }
         default:
             return
     }
