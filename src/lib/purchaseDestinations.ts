@@ -22,7 +22,7 @@ export const PURCHASE_DESTINATIONS = [
 export type PurchaseDestinationId = typeof PURCHASE_DESTINATIONS[number]["id"]
 
 /** Canonical server purchase channel (not an inference from a UI status). */
-export type PurchaseChannel = "AUCTION" | "RETAIL"
+export type PurchaseChannel = "AUCTION" | "RETAIL" | "RECONCILED"
 
 /** Retail sales still in progress count as retail; completed-only flags don't. */
 export function isRetailPurchase(p: { purchaseChannel?: PurchaseChannel; retailSold?: boolean }): boolean {

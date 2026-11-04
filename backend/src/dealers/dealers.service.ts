@@ -1807,6 +1807,63 @@ export class DealersService {
         return { success: true };
     }
 
+
+    /**
+     * Historic completed acquisitions that the dealer confirms were missed
+     * during the website build. These are NOT Sale rows or recorded auction wins.
+     * No auction fee, seller incentive, or vehicle payment is inferred.
+     */
+    async getDealerReconciledPurchases(userId: string) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        assertDealerPermission(actor, 'VIEW_PURCHASES');
+        const rows = await this.prisma.dealerPurchaseReconciliation.findMany({
+            where: { buyerId: actor.ownerUserId, status: 'COMPLETED' },
+            include: {
+                stockListing: {
+                    select: {
+                        id: true, title: true, images: true, vrm: true,
+                        make: true, model: true, year: true, mileage: true, color: true,
+                    },
+                },
+            },
+            orderBy: [{ collectedAt: 'desc' }, { createdAt: 'desc' }],
+            take: 2000,
+        });
+        return rows.map((r) => ({
+            id: r.id,
+            listingId: r.stockListingId,
+            sourceListingId: r.sourceListingId,
+            vehicleTitle: r.stockListing.title,
+            vehicleSubtitle: [
+                r.vehicleVrm,
+                r.stockListing.mileage != null ? `${r.stockListing.mileage.toLocaleString('en-GB')} mi` : null,
+                r.stockListing.color,
+            ].filter(Boolean).join(' · '),
+            imageUrl: r.stockListing.images[0] ?? null,
+            registration: r.vehicleVrm,
+            vehicleYear: r.stockListing.year,
+            vehicleMake: r.stockListing.make,
+            vehicleModel: r.stockListing.model,
+            purchasePrice: r.purchasePrice === null ? null : Number(r.purchasePrice),
+            // This is the confirmed COLLECTION date. The transaction date
+            // may be earlier; the source data does not establish that date.
+            collectedAt: r.collectedAt.toISOString().slice(0, 10),
+            buyerCollectedAt: r.collectedAt.toISOString().slice(0, 10),
+            purchaseDate: r.collectedAt.toISOString().slice(0, 10),
+            status: 'CHECKS_COMPLETE' as const,
+            purchaseChannel: 'RECONCILED' as const,
+            provenance: r.provenance,
+            notes: r.notes,
+        }));
+    }
+
+    async getDealerReconciledPurchaseDetail(userId: string, id: string) {
+        const records = await this.getDealerReconciledPurchases(userId);
+        const purchase = records.find((record) => record.id === id);
+        if (!purchase) throw new NotFoundException('Purchase not found');
+        return purchase;
+    }
+
     // ─── Purchases ────────────────────────────────────────────────────
 
     async getDealerPurchases(userId: string, page = 1, limit = 20) {

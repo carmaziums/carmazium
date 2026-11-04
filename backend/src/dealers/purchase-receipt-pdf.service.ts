@@ -15,6 +15,64 @@ export class PurchaseReceiptPdfService {
         private readonly prisma: PrismaService,
     ) {}
 
+    /**
+     * Owner-confirmed reconciliation PDF, intentionally distinct from a
+     * seller-issued receipt. It contains no fictional price or VAT claim.
+     */
+    async renderForReconciled(id: string, requesterId: string): Promise<Buffer> {
+        const purchase = await this.dealers.getDealerReconciledPurchaseDetail(requesterId, id);
+        const pdf = await PDFDocument.create();
+        pdf.setTitle('CarMazium owner-confirmed vehicle purchase record');
+        pdf.setAuthor('CarMazium');
+        pdf.setSubject('Owner-confirmed historic purchase and physical collection record');
+        const page = pdf.addPage([595.28, 841.89]);
+        const normal = await pdf.embedFont(StandardFonts.Helvetica);
+        const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+        const ink = rgb(0.10, 0.14, 0.21);
+        const red = rgb(0.76, 0.09, 0.16);
+        const grey = rgb(0.35, 0.38, 0.43);
+        const white = rgb(1, 1, 1);
+        const safe = (value: string) => value.normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7E\u00A0-\u00FF]/g, '-').slice(0, 88);
+        const date = new Date(purchase.collectedAt + 'T12:00:00Z').toLocaleDateString('en-GB', {
+            day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/London',
+        });
+        const price = purchase.purchasePrice === null ? 'Not recorded' :
+            '£' + purchase.purchasePrice.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        page.drawRectangle({ x: 0, y: 723, width: 595.28, height: 119, color: ink });
+        page.drawRectangle({ x: 48, y: 776, width: 6, height: 28, color: red });
+        page.drawText('CARMAZIUM', { x: 65, y: 781, size: 23, color: white, font: bold });
+        page.drawText('OWNER-CONFIRMED VEHICLE PURCHASE', { x: 48, y: 749, size: 13, color: white, font: bold });
+        const row = (label: string, value: string, y: number) => {
+            page.drawText(label, { x: 48, y, font: normal, size: 10, color: grey });
+            page.drawText(safe(value), { x: 210, y, font: bold, size: 11, color: ink });
+            page.drawLine({ start: { x: 48, y: y - 12 }, end: { x: 546, y: y - 12 }, thickness: 0.5, color: rgb(0.88,0.88,0.90) });
+        };
+        row('Reference', 'CMZ-REC-' + id.toUpperCase(), 683);
+        row('Purchase status', 'COMPLETED - owner confirmed', 645);
+        row('Collected', date, 607);
+        row('Registration', purchase.registration, 569);
+        row('Vehicle', purchase.vehicleTitle, 531);
+        row('Purchase price', price, 493);
+        page.drawText('RECONCILIATION NOTICE', { x: 48, y: 430, size: 13, font: bold, color: red });
+        const notice = [
+            'The buyer confirms purchasing and collecting this vehicle.',
+            'CarMazium recovered this missing record after website development.',
+            'The historic auction result was NOT changed by this reconciliation.',
+            'The purchase price is shown only if separately recorded and verified.',
+            'CarMazium has not independently verified payment to the seller.',
+            'This record is not a seller invoice, VAT invoice or proof of payment.',
+            'Keep the original seller invoice and bank statement for your accounts.',
+        ];
+        notice.forEach((line, i) => page.drawText(line, {
+            x: 48, y: 404 - i * 27, size: 10, font: normal, color: grey,
+        }));
+        page.drawText('CarMazium - carmazium.com', {
+            x: 48, y: 56, size: 10, font: normal, color: ink,
+        });
+        return Buffer.from(await pdf.save());
+    }
+
     async renderForPurchase(saleId: string, requesterId: string): Promise<Buffer> {
         const purchase = await this.dealers.getDealerPurchaseDetail(requesterId, saleId);
         if (!purchase.buyerCollectedAt) {

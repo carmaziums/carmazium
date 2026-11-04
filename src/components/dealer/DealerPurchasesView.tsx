@@ -56,6 +56,17 @@ const STATUS_LABELS: Record<PurchaseStatus, { label: string; icon: React.Compone
 }
 
 type RawPurchaseItem = Omit<PurchaseItem, "status"> & { status: string }
+type ReconciledPurchase = {
+    id: string
+    listingId: string
+    vehicleTitle: string
+    vehicleSubtitle?: string
+    imageUrl?: string | null
+    purchasePrice: number | null
+    purchaseDate: string
+    buyerCollectedAt: string
+    purchaseChannel: "RECONCILED"
+}
 
 type ViewMode = "list" | "kanban"
 type StatusFilter = "all" | "pending_retail" | PurchaseStatus
@@ -99,6 +110,7 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
     const [acceptedOffers, setAcceptedOffers] = React.useState<Offer[]>([])
     const [loadError, setLoadError] = React.useState<string | null>(null)
     const [offerLoadError, setOfferLoadError] = React.useState(false)
+    const [reconciledLoadError, setReconciledLoadError] = React.useState(false)
     const [refreshVersion, setRefreshVersion] = React.useState(0)
     const [query, setQuery] = React.useState("")
     const [statusFilter, setStatusFilter] = React.useState<StatusFilter>("all")
@@ -117,6 +129,7 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
         setLoading(true)
         setLoadError(null)
         setOfferLoadError(false)
+        setReconciledLoadError(false)
 
         // A retail counter-offer creates an accepted Offer before the seller
         // completes the transaction and creates a Sale. Both sources are needed
@@ -131,20 +144,37 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
             // A cancellation removes the Sale row. Keep the buyer's cancellation
             // record available in its own tab, not merely Purchase History.
             getMySaleCancellations("purchase-history"),
-        ]).then(([salesResult, offersResult, cancelledResult]) => {
+            apiClient<{ data: ReconciledPurchase[] }>("/dealers/purchases/reconciled", { cache: "no-store" }),
+        ]).then(([salesResult, offersResult, cancelledResult, reconciledResult]) => {
             if (!mounted) return
-            if (salesResult.status === "fulfilled") {
-                setTruncated(salesResult.value.truncated)
-                setPurchases(salesResult.value.data.map(item => ({
+            const regular: PurchaseItem[] = salesResult.status === "fulfilled"
+                ? salesResult.value.data.map(item => ({
                     ...item,
                     status: item.status === "AWAITING_CONFIRMATION" && item.retailSold
                         ? "sold"
                         : item.status === "AWAITING_CONFIRMATION" && item.offerAccepted
                             ? "sale_confirmed"
                             : (DB_STATUS_MAP[item.status] ?? "awaiting_confirmation"),
-                })))
+                }))
+                : []
+            const recovered: PurchaseItem[] = reconciledResult.status === "fulfilled"
+                ? reconciledResult.value.data.map(item => ({
+                    ...item,
+                    imageUrl: item.imageUrl ?? undefined,
+                    purchasePrice: item.purchasePrice ?? 0,
+                    purchasePriceUnrecorded: item.purchasePrice === null,
+                    reconciledPurchase: true,
+                    status: "checks_complete" as const,
+                }))
+                : []
+            setPurchases([...regular, ...recovered])
+            if (salesResult.status === "fulfilled") {
+                setTruncated(salesResult.value.truncated)
             } else {
                 setLoadError("Purchase records could not be loaded. Please retry.")
+            }
+            if (reconciledResult.status !== "fulfilled") {
+                setReconciledLoadError(true)
             }
 
             if (offersResult.status === "fulfilled") {
@@ -169,7 +199,9 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
     const [cancelItem, setCancelItem] = React.useState<PurchaseItem | null>(null)
 
     const openPurchaseDetail = (item: PurchaseItem) => {
-        router.push(`/dashboard/dealer/purchases/${encodeURIComponent(item.id)}`)
+        router.push(item.reconciledPurchase
+            ? `/dashboard/dealer/purchases/reconciled/${encodeURIComponent(item.id)}`
+            : `/dashboard/dealer/purchases/${encodeURIComponent(item.id)}`)
     }
     const openSellerDetails = (item: PurchaseItem) => {
         router.push(`/dashboard/dealer/purchases/${encodeURIComponent(item.id)}/seller`)
@@ -184,6 +216,7 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
     const visiblePurchases = React.useMemo(() => purchases.filter(p => {
         if (isRetail && !isRetailPurchase(p)) return false
         if (channel === "auction" && isRetailPurchase(p)) return false
+        if (channel === "auction" && p.reconciledPurchase) return false
         if (isCancelled) return false
         if (isHistory !== isPurchaseHistoryStatus(p.status)) return false
         if (statusFilter !== "all" && p.status !== statusFilter) return false
@@ -293,9 +326,9 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
                         </div>
                     )}
 
-                    {(loadError || offerLoadError) && !loading && (
+                    {(loadError || offerLoadError || reconciledLoadError) && !loading && (
                         <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-300">
-                            {loadError || "Pending retail offers could not be loaded. Please retry."}
+                            {loadError || (reconciledLoadError ? "Recovered purchases could not be loaded. Please retry." : "Pending retail offers could not be loaded. Please retry.")}
                         </div>
                     )}
 
