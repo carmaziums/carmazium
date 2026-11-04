@@ -15,11 +15,21 @@ test('legacy vehicle route gives real 404 only for definitive missing responses'
     for (const page of [legacy, modern]) {
         assert.match(page, /import \{ notFound(?:, permanentRedirect)? \} from "next\/navigation"/)
         assert.match(page, /if \(res\.status === 404 \|\| res\.status === 410\) return \{ listing: null, missing: true \} as const/)
-        assert.match(page, /if \(!res\.ok\) return \{ listing: null, missing: false \} as const/)
-        assert.match(page, /return \{ listing: json\.data \?\? null, missing: false \} as const/)
-        assert.match(page, /catch \{\s*return \{ listing: null, missing: false \} as const\s*\}/)
+
         assert.match(page, /if \(missing\) notFound\(\)/)
     }
+    // The legacy /vehicle route is separately noindex and retains its
+    // historical non-404 fallback (no user-facing change in this PR).
+    assert.match(legacy, /if \(!res\.ok\) return \{ listing: null, missing: false \} as const/)
+    assert.match(legacy, /return \{ listing: json\.data \?\? null, missing: false \} as const/)
+    assert.match(legacy, /catch \{\s*return \{ listing: null, missing: false \} as const\s*\}/)
+
+    // Only the public canonical /buy-cars route now avoids misclassifying
+    // upstream outages as empty 200/noindex vehicle detail responses.
+    assert.match(modern, /if \(res\.status === 401 \|\| res\.status === 403\) return \{ listing: null, missing: false \} as const/)
+    assert.match(modern, /if \(!res\.ok\) throw new Error\(/)
+    assert.match(modern, /return \{ listing: json\.data, missing: false \} as const/)
+    assert.doesNotMatch(modern, /catch\s*\{\s*return \{ listing: null, missing: false \} as const/)
     assert.match(legacy, /const \{ listing, missing \} = await getListingBySlug\(id\)/)
     assert.match(legacy, /const \{ listing: initialListing, missing \} = await getListingBySlug\(id\)/)
 })
