@@ -146,6 +146,11 @@ const USER_ITEMS: MenuItem[] = [
   { id: 'user-settings', section: 'Account', label: 'Account Settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings' },
 ];
 
+// ADMIN accounts: "Admin Control Panel" is the website user-dropdown label.
+const ADMIN_ITEMS: MenuItem[] = [
+  { id: 'admin-dashboard', label: 'Admin Control Panel', icon: 'shield-checkmark', iconLib: 'ion', stackScreen: 'AdminDashboard' },
+];
+
 // Grouped Sell, Buy, Business: the same groups and order as the website
 // dealer sidebar (src/config/dealerRouteConfig.ts DEALER_SECTION_ORDER).
 // Permissions are still filtered before the menu is rendered, so reordering
@@ -560,6 +565,29 @@ export const GlobalDrawer: React.FC = () => {
             <Text style={styles.moreToggleText}>{showMorePages ? 'Fewer pages' : dealerMode ? 'Marketplace & information' : 'More pages & information'}</Text>
             <Ionicons name={showMorePages ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textSecondary} />
           </TouchableOpacity>
+
+          {!isGuest && accountRole === 'admin' && (
+            <>
+              <View style={styles.divider} />
+              <Text style={[styles.groupLabel, styles.groupLabelSeller]}>ADMIN</Text>
+              {ADMIN_ITEMS.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.row}
+                  onPress={() => handleItem(item)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                >
+                  <View style={styles.bar} />
+                  <View style={[styles.iconWrap, styles.iconWrapBlue]}>
+                    {renderIcon(item, false, false, true)}
+                  </View>
+                  <Text style={styles.rowLabelSeller}>{item.label}</Text>
+                  <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
 
           {/* Unified Buyer/Seller toolset — web treats BUYER and SELLER as the
               same entity with one shared dashboard, so mobile does too now.

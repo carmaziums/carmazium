@@ -28,7 +28,7 @@ import { useDealerAccess } from '../hooks/useDealerAccess';
 import { withDealerGate } from '../components/DealerGate';
 import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScreen';
 import { BuyerDashboardScreen } from '../screens/buyer/BuyerDashboardScreen';
-import { AccountRoleHomeScreen } from '../screens/account/AccountRoleHomeScreen';
+import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
 import { LegacyPartnerDashboardScreen } from '../screens/account/LegacyPartnerDashboardScreen';
 import { DealerBuyBidScreen } from '../screens/main/DealerBuyBidScreen';
 import { PartnerDashboardScreen } from '../screens/main/PartnerDashboardScreen';
@@ -59,7 +59,9 @@ const ProfileTabScreen: React.FC<any> = React.memo((props) => {
   // Business/platform roles must never be silently presented as a personal
   // Buyer simply because the mobile preview role is intentionally narrower.
   // Route each operational role to the same backend-backed workspace it has
-  // on web. Admin remains intentionally web-only (product-parity.json).
+  // on web. Admin gets the native admin dashboard (phase 1: overview, listings
+  // review, dealer KYC, handovers, accounts read-only; other sections open
+  // the website — product-parity.json admin.operations).
   if (accountRole === 'contractor') {
     return <PartnerDashboardScreen {...props} />;
   }
@@ -67,7 +69,7 @@ const ProfileTabScreen: React.FC<any> = React.memo((props) => {
     return <LegacyPartnerDashboardScreen {...props} />;
   }
   if (accountRole === 'admin') {
-    return <AccountRoleHomeScreen {...props} />;
+    return <AdminDashboardScreen />;
   }
 
   // DEALER can deliberately preview the personal buyer experience via the
