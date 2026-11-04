@@ -22,6 +22,8 @@ describe('Owner-confirmed recovered purchases', () => {
         stockListing: { title: 'Dealer retail advert (must NEVER display)' },
         sourceListing: {
             id: 'old-auction-1',
+            price: 6500,
+            updatedAt: new Date('2026-10-07T12:00:00.000Z'),
             title: 'Nissan Qashqai 2016 - original seller advert',
             images: ['https://example.test/original-auction-seller-photo.jpg'],
             make: 'Nissan', model: 'Qashqai', year: 2016,
@@ -42,6 +44,19 @@ describe('Owner-confirmed recovered purchases', () => {
                 findMany: jest.fn().mockResolvedValue([record]),
                 create: jest.fn(),
                 update: jest.fn(),
+                findFirst: jest.fn().mockResolvedValue({
+                    sourceListing: {
+                        seller: {
+                            id: 'seller-original-1',
+                            firstName: 'Original', lastName: 'Seller',
+                            email: 'original@example.test',
+                            phone: '07123456789',
+                            isAddressVerified: true,
+                            dealerProfile: null,
+                            addressVerifications: [{ address: 'Original 44 Street, Manchester, M3 3AA' }],
+                        },
+                    },
+                }),
             },
             sale: { create: jest.fn(), update: jest.fn() },
             auction: { update: jest.fn() },
@@ -67,6 +82,8 @@ describe('Owner-confirmed recovered purchases', () => {
             collectedAt: '2026-09-26',
             buyerCollectedAt: '2026-09-26',
             purchasePrice: null,
+            advertisedPrice: 6500,
+            advertisedPriceSource: 'CURRENT_ORIGINAL_LISTING',
             provenance: 'OWNER_CONFIRMED',
         });
         expect(rows[0].vehicleSubtitle).toContain('92,000 mi');
@@ -97,7 +114,7 @@ describe('Owner-confirmed recovered purchases', () => {
         const bytes = await pdf.renderForReconciled('recovered-1', 'owner-1');
         expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
         const doc = await PDFDocument.load(bytes);
-        expect(doc.getPageCount()).toBe(1);
+        expect(doc.getPageCount()).toBe(2);
         expect(doc.getTitle()).toContain('owner-confirmed');
         expect(prisma.sale.create).not.toHaveBeenCalled();
     });

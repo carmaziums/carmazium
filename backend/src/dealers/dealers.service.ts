@@ -1825,7 +1825,7 @@ export class DealersService {
                     select: {
                         id: true, title: true, images: true, vrm: true,
                         make: true, model: true, year: true, mileage: true, color: true,
-                        createdAt: true,
+                        createdAt: true, updatedAt: true, price: true,
                         seller: { select: { firstName: true, lastName: true } },
                         auction: { select: { id: true, status: true } },
                     },
@@ -1859,6 +1859,11 @@ export class DealersService {
                 sellerName: name || 'Original auction seller',
                 originalListedAt: l.createdAt.toISOString().slice(0, 10),
                 originalAuctionListingId: l.id,
+                advertisedPrice: Number(l.price),
+                // Historical price changes were not snapshotted for recovered
+                // purchases. Never claim this equals the price at collection.
+                advertisedPriceSource: 'CURRENT_ORIGINAL_LISTING' as const,
+                advertisedPriceLastUpdatedAt: l.updatedAt.toISOString(),
                 // Distinct from a system-recorded auction WIN; an historic
                 // cancelled/ended auction must not acquire a fabricated winner.
                 source: 'ORIGINAL_AUCTION_LISTING' as const,
@@ -1880,6 +1885,67 @@ export class DealersService {
         const purchase = records.find((record) => record.id === id);
         if (!purchase) throw new NotFoundException('Purchase not found');
         return purchase;
+    }
+
+    /**
+     * Confidential original-seller details for an owner-confirmed recovered
+     * purchase. The purchase is buyer-scoped; sourceListing (not the dealer's
+     * later retail advert) supplies the seller. No KYC proofs/bank data.
+     * These rows are created through controlled admin reconciliation, not
+     * customer-submitted purchase assertions.
+     */
+    async getDealerReconciledPurchaseSellerDetails(userId: string, purchaseId: string) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        assertDealerPermission(actor, 'VIEW_PURCHASES');
+        const row = await this.prisma.dealerPurchaseReconciliation.findFirst({
+            where: { id: purchaseId, buyerId: actor.ownerUserId, status: 'COMPLETED' },
+            select: {
+                sourceListing: {
+                    select: {
+                        seller: {
+                            select: {
+                                id: true, firstName: true, lastName: true,
+                                email: true, phone: true, isAddressVerified: true,
+                                dealerProfile: {
+                                    select: {
+                                        companyName: true, businessAddress: true, phone: true,
+                                        registrationNumber: true, vatNumber: true,
+                                    },
+                                },
+                                addressVerifications: {
+                                    where: { consumedAt: { not: null } },
+                                    orderBy: { consumedAt: 'desc' },
+                                    take: 1,
+                                    select: { address: true },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (!row) throw new NotFoundException('Purchase not found');
+
+        const seller = row.sourceListing.seller;
+        const company = seller?.dealerProfile ?? null;
+        const businessAddress = company?.businessAddress?.trim() || null;
+        const postal = seller?.isAddressVerified
+            ? seller.addressVerifications[0]?.address?.trim() || null
+            : null;
+        const address = businessAddress || postal;
+        return {
+            sellerName: [seller?.firstName, seller?.lastName].filter(Boolean).join(' ').trim()
+                || company?.companyName || 'Not recorded',
+            sellerCompany: company?.companyName || null,
+            sellerAccountReference: seller?.id || null,
+            sellerEmail: seller?.email || null,
+            sellerPhone: seller?.phone || company?.phone || null,
+            sellerAddress: address,
+            sellerAddressSource: address ? (businessAddress ? 'BUSINESS' as const : 'VERIFIED_POSTAL' as const) : null,
+            sellerCompanyRegistrationNumber: company?.registrationNumber || null,
+            sellerVatNumber: company?.vatNumber || null,
+            contactUnlocked: true,
+        };
     }
 
     // ─── Purchases ────────────────────────────────────────────────────
@@ -2137,6 +2203,12 @@ export class DealersService {
             : null;
 
         const listing = sale.listing;
+        const advertisedSnapshot = snapshot?.data && typeof snapshot.data === 'object' && !Array.isArray(snapshot.data)
+            ? (snapshot.data as Record<string, unknown>).advertisedPrice
+            : undefined;
+        const advertisedPriceFromSnapshot = typeof advertisedSnapshot === 'number'
+            && Number.isFinite(advertisedSnapshot) && advertisedSnapshot >= 0
+            ? advertisedSnapshot : null;
         const auction = listing.auction;
         // Conversion from an un-won historic auction to a retail listing does
         // not create a new buyer-fee debt.
@@ -2183,6 +2255,11 @@ export class DealersService {
                 listedLocation: listing.location,
             },
             purchasePrice: Number(sale.soldPrice),
+            advertisedPrice: advertisedPriceFromSnapshot ?? Number(listing.price),
+            advertisedPriceSource: advertisedPriceFromSnapshot !== null
+                ? 'PURCHASE_SNAPSHOT' as const : 'CURRENT_LISTING' as const,
+            advertisedPriceRecordedAt: advertisedPriceFromSnapshot !== null
+                ? snapshot!.capturedAt.toISOString() : listing.updatedAt?.toISOString() ?? null,
             purchasedAt: sale.createdAt.toISOString(),
             purchaseStatus: sale.purchaseStatus,
             buyerCollectedAt: collectedEvent?.createdAt.toISOString() ?? null,
@@ -2282,6 +2359,7 @@ export class DealersService {
                 },
                 seller: {
                     select: {
+                        id: true,
                         firstName: true,
                         lastName: true,
                         email: true,
@@ -2292,6 +2370,8 @@ export class DealersService {
                                 companyName: true,
                                 businessAddress: true,
                                 phone: true,
+                                registrationNumber: true,
+                                vatNumber: true,
                             },
                         },
                         addressVerifications: {
@@ -2332,6 +2412,11 @@ export class DealersService {
             vehicleLocation: listing.location,
             sellerName,
             sellerCompany: seller.dealerProfile?.companyName || null,
+            sellerAccountReference: contactUnlocked ? seller.id : null,
+            sellerCompanyRegistrationNumber: contactUnlocked
+                ? seller.dealerProfile?.registrationNumber || null : null,
+            sellerVatNumber: contactUnlocked
+                ? seller.dealerProfile?.vatNumber || null : null,
             contactUnlocked,
             buyerFeeRequired: isAuctionPurchase,
             sellerEmail: contactUnlocked ? seller.email : null,
@@ -2341,7 +2426,7 @@ export class DealersService {
             // The buyer must confirm where to collect before travelling.
             sellerAddress: contactUnlocked ? address : null,
             sellerAddressSource: contactUnlocked && address
-                ? (businessAddress ? 'BUSINESS' : 'VERIFIED_POSTAL') : null,
+                ? (businessAddress ? 'BUSINESS' as const : 'VERIFIED_POSTAL' as const) : null,
         };
     }
 }

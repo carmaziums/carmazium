@@ -11,6 +11,8 @@ describe('PurchaseReceiptPdfService', () => {
         buyerCollectedAt: '2026-11-04T12:00:00.000Z',
         channel: 'RETAIL', buyerFee: { required: false, settled: true },
         purchasePrice: 4000.50,
+        advertisedPrice: 4500,
+        advertisedPriceSource: 'CURRENT_LISTING',
         payment: { route: 'DIRECT_TO_SELLER', sellerFundsConfirmedAt: null },
         vehicle: {
             title: 'Ford Focus 2017', make: 'Ford', model: 'Focus',
@@ -23,6 +25,13 @@ describe('PurchaseReceiptPdfService', () => {
             getDealerPurchaseDetail: jest.fn().mockResolvedValue(completed),
             getPurchaseSellerDetails: jest.fn().mockResolvedValue({
                 sellerCompany: null, sellerName: 'Chris Collins',
+                sellerEmail: 'chris@example.test',
+                sellerPhone: '07123456789',
+                sellerAddress: 'Full seller address 15 Example Street, Manchester, M1 1AA',
+                sellerAddressSource: 'VERIFIED_POSTAL',
+                sellerAccountReference: 'seller-original-1',
+                sellerCompanyRegistrationNumber: null,
+                sellerVatNumber: null,
                 contactUnlocked: true,
             }),
         };
@@ -68,8 +77,9 @@ describe('PurchaseReceiptPdfService', () => {
         const bytes = await service.renderForPurchase('sale-1', 'buyer-1');
         expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
         const pdf = await PDFDocument.load(bytes);
-        expect(pdf.getPageCount()).toBe(1);
+        expect(pdf.getPageCount()).toBe(2);
         expect(pdf.getTitle()).toBe('CarMazium vehicle purchase record');
+        expect(bytes.toString('latin1')).not.toContain('seller bank');
         expect(dealers.getDealerPurchaseDetail).toHaveBeenCalledWith('buyer-1', 'sale-1');
         expect(dealers.getPurchaseSellerDetails).toHaveBeenCalledWith('buyer-1', 'sale-1');
         expect(prisma.sale.findUnique).toHaveBeenCalledTimes(1);
