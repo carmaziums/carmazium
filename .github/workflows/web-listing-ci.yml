@@ -47,6 +47,7 @@ on:
       - "src/lib/dealerPurchaseDetail.ts"
       - "scripts/test-dealer-purchase-detail.test.mjs"
       - "scripts/test-purchase-receipt.test.mjs"
+      - "scripts/test-dealer-purchase-reconciliation.test.mjs"
       - "src/lib/purchaseDestinations.ts"
       - "src/components/dealer/PurchaseDestinations.tsx"
       - "src/components/dealer/DealerPurchasesView.tsx"
@@ -195,6 +196,9 @@ jobs:
 
       - name: Verify completed vehicle purchase receipt PDF, security gates and mobile UI
         run: node --test scripts/test-purchase-receipt.test.mjs
+
+      - name: Verify recovered owner-confirmed completed acquisitions and permissions
+        run: node --test scripts/test-dealer-purchase-reconciliation.test.mjs
 
       - name: Verify Auction Wins, All Purchases and Purchase History are separate on web and app
         run: node --test scripts/test-dealer-purchase-destinations.test.mjs
