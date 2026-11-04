@@ -201,7 +201,6 @@ export const GlobalDrawer: React.FC = () => {
   // tab bar on every screen.
   const sheetHiddenY = sheetHeight + dealerTabBarHeight + 48;
   const translateY = useSharedValue(sheetHiddenY);
-  const panelOpacity = useSharedValue(0);
   const backdropOpacity = useSharedValue(0);
 
   // Header ☰ = website main menu (SiteMenu); bottom More = dashboard sidebar.
@@ -213,7 +212,6 @@ export const GlobalDrawer: React.FC = () => {
     if (dashboardOpen) {
       if (dealerMode) {
         translateY.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 });
-        panelOpacity.value = withTiming(1, { duration: 120 });
       } else {
         translateX.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 });
       }
@@ -221,10 +219,9 @@ export const GlobalDrawer: React.FC = () => {
     } else {
       translateX.value = withTiming(DRAWER_WIDTH, { duration: 200 });
       translateY.value = withTiming(sheetHiddenY, { duration: 200 });
-      panelOpacity.value = withTiming(0, { duration: 200 });
       backdropOpacity.value = withTiming(0, { duration: 180 });
     }
-  }, [dashboardOpen, dealerMode, sheetHiddenY, translateX, translateY, panelOpacity, backdropOpacity]);
+  }, [dashboardOpen, dealerMode, sheetHiddenY, translateX, translateY, backdropOpacity]);
 
   // Dealer overlay is inline so the original bottom tab bar stays visible and
   // tappable. A Modal would intercept taps on More even with transparent pixels.
@@ -238,8 +235,12 @@ export const GlobalDrawer: React.FC = () => {
   }, [isOpen, closeDrawer]);
 
   const backdropStyle = useAnimatedStyle(() => ({ opacity: backdropOpacity.value }));
+  // The dealer sheet slides only — it is already fully off-screen when closed
+  // (sheetHiddenY clears the tab bar). Fading it as well left the sheet's
+  // contents undrawn on some Android devices after a cold start: the More
+  // sheet opened as an empty panel until the app was restarted.
   const panelStyle = useAnimatedStyle(() => (dealerMode
-    ? { transform: [{ translateY: translateY.value }], opacity: panelOpacity.value }
+    ? { transform: [{ translateY: translateY.value }], opacity: 1 }
     // Always set opacity: a Reanimated prop that was animated to 0 while in
     // dealer mode (closed sheet) otherwise stays 0 after switching to the
     // buyer side drawer, which then opened as an invisible panel behind a
@@ -530,7 +531,11 @@ export const GlobalDrawer: React.FC = () => {
         />
       </TouchableWithoutFeedback>
 
+      {/* Keyed by layout: switching buyer side panel <-> dealer bottom sheet
+          (e.g. while the account loads at start-up) creates a fresh native
+          view instead of reusing one with the other layout's stale props. */}
       <Animated.View
+        key={dealerMode ? 'dealer-sheet' : 'side-panel'}
         style={[
           styles.panel,
           dealerMode ? styles.dealerBottomSheet : styles.sidePanel,
@@ -671,7 +676,6 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.borderSubtle,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    overflow: 'hidden',
     shadowOffset: { width: 0, height: -6 },
   },
   sheetHandle: {
