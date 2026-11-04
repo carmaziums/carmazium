@@ -2013,6 +2013,25 @@ model PurchaseListingSnapshot {
   @@map("purchase_listing_snapshots")
 }
 
+// A separately restricted snapshot of minimal seller account/transaction
+// evidence. Captured only after privacy notice/retention workflow approval.
+// No foreign keys to avoid cascading personal seller changes into purchase
+// evidence; it must be reviewed for deletion/rectification legal requests.
+// App code is feature-gated with PURCHASE_SELLER_LEGAL_SNAPSHOTS_ENABLED.
+model PurchaseSellerLegalSnapshot {
+  id             String   @id @default(uuid())
+  saleId         String   @unique
+  listingId      String
+  buyerId        String
+  sellerId       String
+  saleRecordedAt DateTime
+  capturedAt     DateTime @default(now())
+  data           Json
+
+  @@index([buyerId, saleId], map: "purchase_seller_legal_snapshots_buyer_sale_idx")
+  @@map("purchase_seller_legal_snapshots")
+}
+
 // A dealer's own inspection findings for a purchased vehicle, recorded
 // against the original disclosure. Append-only. Never changes the Sale's
 // price or status; any price change still goes through the existing
