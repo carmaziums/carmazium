@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { BuyerCollectedButton } from "@/components/purchases/BuyerCollectedButton"
+import { PurchaseReceiptButton } from "@/components/purchases/PurchaseReceiptButton"
 import Image from "next/image"
 import { createPortal } from "react-dom"
 import {
@@ -235,6 +236,10 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                     <StatusIcon size={12} />
                     <span>{item.buyerCollectedAt ? "Collected" : config.label}</span>
                 </div>
+
+                {item.buyerCollectedAt && (
+                    <PurchaseReceiptButton saleId={item.id} className="order-5 w-full md:order-none md:w-auto" />
+                )}
 
                 {/* Context Menu */}
                 <div className="relative order-4 ml-auto shrink-0 md:order-none md:ml-0" ref={menuRef}>
