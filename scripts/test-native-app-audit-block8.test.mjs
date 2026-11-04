@@ -10,16 +10,16 @@ const file = p => readFileSync(resolve(root, p), 'utf8');
 const mobile = p => file('carmazium app/carmazium app/' + p);
 
 test('unified Account Settings shortcut is visible without scrolling through drawer tools', () => {
+  // Website parity: Account Settings sits in the header avatar dropdown,
+  // directly under "Signed in as", one tap from any screen.
+  const top = mobile('src/components/WebsiteTopBar.tsx');
+  const card = top.indexOf('{/* ── User card');
+  const shortcut = top.indexOf('{/* Settings belongs next to the account identity');
+  assert.ok(card !== -1 && shortcut > card, 'Settings shortcut must sit right under the account identity');
+  assert.ok(top.includes("navigation.navigate('Settings')"));
+  assert.ok(top.includes('accessibilityLabel="Open all account settings"'));
   const drawer = mobile('src/components/GlobalDrawer.tsx');
-  const card = drawer.indexOf('{/* ── User card');
-  const shortcut = drawer.indexOf('{/* Settings belongs next to the account identity');
-  const scroll = drawer.indexOf('<ScrollView',shortcut);
-  assert.ok(card !== -1 && shortcut > card && scroll > shortcut,
-    'Settings shortcut must sit between account card and scrollable menu');
-  assert.equal(drawer.split("id: 'account-settings'").length - 1, 1,
-    'Do not leave another buried Account Settings entry');
   assert.ok(drawer.includes("stackScreen: 'Settings'"));
-  assert.ok(drawer.includes('accessibilityLabel="Open all account settings"'));
   const settings = mobile('src/screens/main/SettingsScreen.tsx');
   for (const section of ['personal','verification','notifications','payouts','security']) {
     assert.ok(settings.includes("id: '" + section + "'"), 'Missing settings section: ' + section);

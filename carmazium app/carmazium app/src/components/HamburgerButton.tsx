@@ -14,13 +14,18 @@ export const HamburgerButton: React.FC<HamburgerButtonProps> = ({
   color = Colors.white,
   websiteStyle = false,
 }) => {
-  const { isOpen, openDrawer, closeDrawer } = useDrawer();
+  const { isOpen, openDrawer, closeDrawer, setSiteMenuTop } = useDrawer();
 
   return (
     <TouchableOpacity
       style={[styles.btn, websiteStyle && styles.websiteButton]}
       activeOpacity={0.7}
-      onPress={websiteStyle && isOpen ? closeDrawer : openDrawer}
+      onPress={websiteStyle && isOpen ? closeDrawer : () => {
+        // A ☰ outside the website header has no header to sit under, so the
+        // site menu opens full screen with its own close button.
+        if (!websiteStyle) setSiteMenuTop(0);
+        openDrawer('site');
+      }}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       accessibilityRole="button"
       accessibilityLabel={websiteStyle && isOpen ? "Close navigation menu" : "Open navigation menu"}

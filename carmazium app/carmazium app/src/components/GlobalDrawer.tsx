@@ -29,12 +29,13 @@ import { Colors } from '../constants/colors';
 import { getBottomTabBarHeight } from '../lib/nativeLayoutParity';
 import { FontFamily, FontSize } from '../constants/typography';
 import { useDealerAccess } from '../hooks/useDealerAccess';
-import { getThemePreference, promptThemeChange, resolveThemeMode } from '../lib/themePreference';
 import type { FilterTab as DealerStockStatus } from '../screens/main/DealerInventoryScreen';
 import type { DealerPermission } from '../lib/dealerAccessApi';
 
 import { IconButton } from './IconButton';
 import { openSignIn } from './SignInRequired';
+import { SiteMenu, SiteTarget } from './SiteMenu';
+import * as WebBrowser from 'expo-web-browser';
 import { Radius } from '../constants/spacing';
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -66,43 +67,6 @@ interface MenuItem {
    */
   section?: string;
 }
-
-// ─── Website main menu (src/components/layout/Header.tsx mobile menu) ───────
-// Same items, wording and order: Home, Buy Cars ▾, Sell Cars ▾, Get Valuation,
-// TradeXchange ▾, Compare, Pricing, About. A group expands in place, exactly
-// like the website accordion.
-interface NavGroup { id: string; label: string; item?: MenuItem; children?: MenuItem[] }
-const SITE_NAV: NavGroup[] = [
-  { id: 'home', label: 'Home', item: { id: 'home', label: 'Home', icon: 'home-outline', iconLib: 'ion', tabName: 'Home' } },
-  { id: 'buy', label: 'Buy Cars', children: [
-    { id: 'buy-retail', label: 'Retail Listings', icon: 'car-outline', iconLib: 'ion', tabName: 'Search' },
-    { id: 'buy-auctions', label: 'Live Auctions', icon: 'gavel', iconLib: 'mci', tabName: 'Live' },
-  ] },
-  { id: 'sell', label: 'Sell Cars', children: [
-    { id: 'sell-retail', label: 'Retail Listing', icon: 'pricetag-outline', iconLib: 'ion', stackScreen: 'SellCarFlow', stackParams: { listingType: 'CLASSIFIED' } },
-    { id: 'sell-auction', label: 'Auction Listing', icon: 'gavel', iconLib: 'mci', stackScreen: 'SellCarFlow', stackParams: { listingType: 'AUCTION' } },
-  ] },
-  { id: 'valuation', label: 'Get Valuation', item: { id: 'valuation', label: 'Get Valuation', icon: 'calculator-outline', iconLib: 'ion', stackScreen: 'SellLanding' } },
-  { id: 'trade', label: 'TradeXchange', children: [
-    { id: 'tx-overview', label: 'TradeXchange Overview', icon: 'grid-outline', iconLib: 'ion', stackScreen: 'Services' },
-    { id: 'tx-auctions', label: 'Vehicle Auctions', icon: 'gavel', iconLib: 'mci', stackScreen: 'HowItWorks' },
-    { id: 'tx-delivery', label: 'Delivery & Recovery', icon: 'car-sport-outline', iconLib: 'ion', stackScreen: 'CreateServiceJob', stackParams: { serviceType: 'DELIVERY' } },
-    { id: 'tx-inspection', label: 'Vehicle Inspection', icon: 'search-outline', iconLib: 'ion', stackScreen: 'CreateServiceJob', stackParams: { serviceType: 'INSPECTION' } },
-    { id: 'tx-finance', label: 'Vehicle Finance', icon: 'card-outline', iconLib: 'ion', stackScreen: 'Finance' },
-  ] },
-  { id: 'compare', label: 'Compare', item: { id: 'compare', label: 'Compare', icon: 'git-compare-outline', iconLib: 'ion', stackScreen: 'Compare' } },
-  { id: 'pricing', label: 'Pricing', item: { id: 'pricing', label: 'Pricing', icon: 'pricetag-outline', iconLib: 'ion', stackScreen: 'Pricing' } },
-  { id: 'about', label: 'About', item: { id: 'about', label: 'About', icon: 'information-circle-outline', iconLib: 'ion', stackScreen: 'About' } },
-];
-
-// Website footer links — one small line instead of a second menu.
-const FOOTER_LINKS: MenuItem[] = [
-  { id: 'f-how', label: 'How It Works', icon: '', iconLib: 'ion', stackScreen: 'HowItWorks' },
-  { id: 'f-reviews', label: 'Reviews', icon: '', iconLib: 'ion', stackScreen: 'Reviews' },
-  { id: 'f-contact', label: 'Contact', icon: '', iconLib: 'ion', stackScreen: 'Contact' },
-  { id: 'f-terms', label: 'Terms', icon: '', iconLib: 'ion', stackScreen: 'Terms' },
-  { id: 'f-privacy', label: 'Privacy', icon: '', iconLib: 'ion', stackScreen: 'PrivacyPolicy' },
-];
 
 // Website provider sidebar (DashboardSidebar.tsx `provider` links).
 const PROVIDER_ITEMS: MenuItem[] = [
@@ -172,25 +136,15 @@ const STOCK_SUBMENU: { label: string; status: DealerStockStatus }[] = [
   { label: 'Sold', status: 'Sold' },
 ];
 
-/** Screens that belong to the account dashboard, where web shows its sidebar. */
-const DASHBOARD_ROUTES = new Set<string>([
-  'Profile', ...USER_ITEMS.map(i => i.stackScreen).filter(Boolean) as string[],
-  ...PROVIDER_ITEMS.map(i => i.stackScreen).filter(Boolean) as string[],
-  'BuyerBids', 'BuyerDeliveryRequests', 'SellerListings',
-]);
-
 const ADD_VEHICLE: MenuItem = { id: 'add-vehicle', label: 'Add Vehicle', icon: 'add-circle-outline', iconLib: 'ion', stackScreen: 'SellCarFlow' };
 
 export const GlobalDrawer: React.FC = () => {
-  const { isOpen, closeDrawer } = useDrawer();
+  const { isOpen, mode, siteMenuTop, closeDrawer } = useDrawer();
   const user         = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isGuest = !isAuthenticated;
   const logout       = useAuthStore((s) => s.logout);
   const [supportLoading, setSupportLoading] = useState(false);
-  // 'site' = website main menu; 'dashboard' = website dashboard sidebar.
-  const [view, setView] = useState<'site' | 'dashboard'>('site');
-  const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [stockOpen, setStockOpen] = useState(false);
 
   const handleContactSupport = async () => {
@@ -250,8 +204,13 @@ export const GlobalDrawer: React.FC = () => {
   const panelOpacity = useSharedValue(0);
   const backdropOpacity = useSharedValue(0);
 
+  // Header ☰ = website main menu (SiteMenu); bottom More = dashboard sidebar.
+  // Guests have no dashboard, so they always get the main menu.
+  const showSite = mode === 'site' || isGuest;
+  const dashboardOpen = isOpen && !showSite;
+
   useEffect(() => {
-    if (isOpen) {
+    if (dashboardOpen) {
       if (dealerMode) {
         translateY.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 });
         panelOpacity.value = withTiming(1, { duration: 120 });
@@ -265,7 +224,7 @@ export const GlobalDrawer: React.FC = () => {
       panelOpacity.value = withTiming(0, { duration: 200 });
       backdropOpacity.value = withTiming(0, { duration: 180 });
     }
-  }, [isOpen, dealerMode, sheetHiddenY, translateX, translateY, panelOpacity, backdropOpacity]);
+  }, [dashboardOpen, dealerMode, sheetHiddenY, translateX, translateY, panelOpacity, backdropOpacity]);
 
   // Dealer overlay is inline so the original bottom tab bar stays visible and
   // tappable. A Modal would intercept taps on More even with transparent pixels.
@@ -333,14 +292,6 @@ export const GlobalDrawer: React.FC = () => {
   };
   const currentRoute = getCurrentRoute();
 
-  // Like the website: the dashboard sidebar inside the dashboard, the main
-  // site menu everywhere else. Dealers live in their dashboard.
-  useEffect(() => {
-    if (!isOpen) return;
-    setView(dealerMode || DASHBOARD_ROUTES.has(currentRoute) || DASHBOARD_ROUTES.has(activeTab) ? 'dashboard' : 'site');
-    setOpenGroup(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, dealerMode]);
 
   const handleItem = (item: MenuItem) => {
     closeDrawer();
@@ -389,6 +340,19 @@ export const GlobalDrawer: React.FC = () => {
     }, 220);
   };
 
+  const navigateSite = (target: SiteTarget) => {
+    closeDrawer();
+    setTimeout(() => {
+      if (target.web) {
+        void WebBrowser.openBrowserAsync(`https://www.carmazium.com${target.web}`);
+      } else if (target.tab) {
+        navigation.navigate('Main', { screen: 'Tabs', params: { screen: target.tab, params: target.tabParams } } as never);
+      } else if (target.screen) {
+        navigation.navigate('Main', { screen: target.screen, params: target.params } as never);
+      }
+    }, 120);
+  };
+
   // Confirm while the drawer is still open, then close and sign out. The
   // old order (close, then Alert 160ms later) raised the dialog while the
   // drawer Modal was dismissing, and on Android it could vanish with it, so
@@ -425,8 +389,6 @@ export const GlobalDrawer: React.FC = () => {
     : (isActualDealer || isDealerStaff || isProvider) ? 'PARTNER ACCOUNT'
     : 'BUYER/SELLER ACCOUNT';
 
-  const themeMode = resolveThemeMode(getThemePreference());
-  const toggleTheme = () => promptThemeChange(themeMode === 'dark' ? 'light' : 'dark');
 
   const renderRow = (item: MenuItem, opts: { active?: boolean; chevron?: boolean; onPress?: () => void } = {}) => (
     <TouchableOpacity
@@ -472,14 +434,6 @@ export const GlobalDrawer: React.FC = () => {
         ? <ActivityIndicator size="small" color={Colors.accent} />
         : <Ionicons name="help-buoy-outline" size={19} color={Colors.accent} />}
       <Text style={styles.supportText}>Contact CarMazium Support</Text>
-    </TouchableOpacity>
-  );
-
-  const switchViewRow = (label: string, icon: string, next: 'site' | 'dashboard') => (
-    <TouchableOpacity style={styles.switchRow} onPress={() => setView(next)} activeOpacity={0.8} accessibilityRole="button">
-      <Ionicons name={icon} size={18} color={Colors.textSecondary} />
-      <Text style={styles.switchText}>{label}</Text>
-      <Ionicons name="chevron-forward" size={15} color={Colors.iconMuted} />
     </TouchableOpacity>
   );
 
@@ -540,7 +494,6 @@ export const GlobalDrawer: React.FC = () => {
             <Text style={styles.addVehicleText}>Add Vehicle</Text>
           </TouchableOpacity>
         )}
-        {switchViewRow('Browse CarMazium', 'globe-outline', 'site')}
         {signOutButton}
       </View>
     </>
@@ -559,51 +512,7 @@ export const GlobalDrawer: React.FC = () => {
       )}
       <View style={styles.footerActions}>
         {supportRow}
-        {switchViewRow('Browse CarMazium', 'globe-outline', 'site')}
         {signOutButton}
-      </View>
-    </>
-  );
-
-  // ── Website main menu (Header mobile menu + avatar dropdown) ─────────────
-  const siteMenu = (
-    <>
-      {SITE_NAV.map(group => {
-        if (group.item) {
-          const active = !!group.item.tabName && group.item.tabName === activeTab;
-          return (
-            <TouchableOpacity key={group.id} style={styles.navRow} onPress={() => handleItem(group.item!)} accessibilityRole="button" accessibilityState={{ selected: active }}>
-              <Text style={[styles.navLabel, active && styles.navLabelActive]}>{group.label}</Text>
-            </TouchableOpacity>
-          );
-        }
-        const open = openGroup === group.id;
-        return (
-          <View key={group.id}>
-            <TouchableOpacity style={styles.navRow} onPress={() => setOpenGroup(open ? null : group.id)} accessibilityRole="button" accessibilityState={{ expanded: open }}>
-              <Text style={styles.navLabel}>{group.label}</Text>
-              <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textPrimary} />
-            </TouchableOpacity>
-            {open && (
-              <View style={styles.navGroupBody}>
-                {group.children!.map(child => renderRow(child))}
-              </View>
-            )}
-          </View>
-        );
-      })}
-      <View style={styles.footerActions}>
-        {!isGuest && (dealerMode || isActualDealer || isDealerStaff
-          ? switchViewRow('Dealer Dashboard', 'grid-outline', 'dashboard')
-          : switchViewRow('My Dashboard', 'grid-outline', 'dashboard'))}
-        {signOutButton}
-      </View>
-      <View style={styles.footerLinks}>
-        {FOOTER_LINKS.map(link => (
-          <TouchableOpacity key={link.id} onPress={() => handleItem(link)} accessibilityRole="link" hitSlop={6}>
-            <Text style={styles.footerLinkText}>{link.label}</Text>
-          </TouchableOpacity>
-        ))}
       </View>
     </>
   );
@@ -634,64 +543,24 @@ export const GlobalDrawer: React.FC = () => {
         {dealerMode && <View style={styles.sheetHandle} accessibilityElementsHidden />}
         <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.textPrimary} />} onPress={closeDrawer} accessibilityLabel="Close" />
 
-        {/* ── User card ──────────────────────────────────────────────────
-            Identity: website dashboard header / avatar dropdown. */}
-        {isGuest ? (
-          <View style={styles.accountShortcuts}>
-            <Text style={styles.signedInLabel}>WELCOME TO CARMAZIUM</Text>
-            <TouchableOpacity style={styles.guestPrimaryBtn} onPress={() => { closeDrawer(); setTimeout(() => openSignIn(navigation, 'Login'), 160); }} accessibilityRole="button">
-              <Text style={styles.guestPrimaryText}>Sign In</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.guestSecondaryBtn} onPress={() => { closeDrawer(); setTimeout(() => openSignIn(navigation, 'Signup'), 160); }} accessibilityRole="button">
-              <Text style={styles.guestSecondaryText}>Create Free Account</Text>
-            </TouchableOpacity>
+        {/* ── Identity: website dashboard sidebar header ─────────────── */}
+        <View style={styles.userCard}>
+          <View style={styles.avatar}><Text style={styles.avatarText}>{initials}</Text></View>
+          <View style={styles.userMeta}>
+            <Text style={styles.userName} numberOfLines={1}>{userName.toUpperCase()}</Text>
+            <Text style={styles.userEmail} numberOfLines={1}>{accountTypeLabel}</Text>
           </View>
-        ) : view === 'dashboard' ? (
-          <View style={styles.userCard}>
-            <View style={styles.avatar}><Text style={styles.avatarText}>{initials}</Text></View>
-            <View style={styles.userMeta}>
-              <Text style={styles.userName} numberOfLines={1}>{userName.toUpperCase()}</Text>
-              <Text style={styles.userEmail} numberOfLines={1}>{accountTypeLabel}</Text>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.accountShortcuts}>
-            <Text style={styles.signedInLabel}>SIGNED IN AS</Text>
-            <Text style={styles.signedInEmail} numberOfLines={1}>{userEmail || userName}</Text>
-            {/* Settings belongs next to the account identity, as in the
-                website avatar dropdown — never buried under menu tools. */}
-            <View style={styles.accountMenu}>
-              {renderRow({ id: 'acct-dashboard', label: 'Dashboard', icon: 'car-outline', iconLib: 'ion' }, { chevron: false, onPress: () => setView('dashboard') })}
-              <TouchableOpacity
-                style={styles.row}
-                onPress={() => handleItem({ id: 'account-settings', label: 'Account settings', icon: 'person-outline', iconLib: 'ion', stackScreen: 'Settings' })}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel="Open all account settings"
-                accessibilityHint="Personal details, dealership, verification, notifications, payouts and security in one place"
-              >
-                <View style={styles.iconWrap}><Ionicons name="person-outline" size={19} color={Colors.textSecondary} /></View>
-                <Text style={styles.rowLabel}>Account Settings</Text>
-              </TouchableOpacity>
-              {IS_QA_REVIEW_BUILD && (
-                <TouchableOpacity style={styles.row} onPress={handleShareQaFeedback} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Share QA screenshot and interface feedback" accessibilityHint="Opens the device share sheet with a build-specific feedback template. No information is sent automatically.">
-                  <View style={styles.iconWrap}><Ionicons name="share-social-outline" size={19} color={Colors.textSecondary} /></View>
-                  <Text style={styles.rowLabel}>Share QA feedback</Text>
-                </TouchableOpacity>
-              )}
-              {accountRole === 'admin' && renderRow(ADMIN_ITEMS[0], { chevron: false })}
-              <TouchableOpacity style={styles.row} onPress={toggleTheme} accessibilityRole="button" accessibilityLabel={`Theme: ${themeMode}. Tap to switch`}>
-                <View style={styles.iconWrap}><Ionicons name={themeMode === 'dark' ? 'moon-outline' : 'sunny-outline'} size={19} color={Colors.textSecondary} /></View>
-                <Text style={styles.rowLabel}>Theme</Text>
-                <View style={styles.themeChip}><Ionicons name={themeMode === 'dark' ? 'sunny-outline' : 'moon-outline'} size={17} color={Colors.textPrimary} /></View>
-              </TouchableOpacity>
-            </View>
-          </View>
+        </View>
+        {IS_QA_REVIEW_BUILD && (
+          <TouchableOpacity style={styles.row} onPress={handleShareQaFeedback} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Share QA screenshot and interface feedback" accessibilityHint="Opens the device share sheet with a build-specific feedback template. No information is sent automatically.">
+            <View style={styles.iconWrap}><Ionicons name="share-social-outline" size={19} color={Colors.textSecondary} /></View>
+            <Text style={styles.rowLabel}>Share QA feedback</Text>
+          </TouchableOpacity>
         )}
 
         <View style={styles.divider} />
 
-        <ScrollView key={`drawer-scroll-${role}-${view}`} style={styles.scroll} showsVerticalScrollIndicator={false} bounces={false}>
+        <ScrollView key={`drawer-scroll-${role}`} style={styles.scroll} showsVerticalScrollIndicator={false} bounces={false}>
           {/* A dealer previewing as a buyer keeps a one-tap way back. */}
           {!isGuest && isActualDealer && role !== 'dealer' && (
             <TouchableOpacity style={styles.switchRow} onPress={() => { closeDrawer(); setTimeout(() => setRole('dealer'), 160); }} accessibilityRole="button">
@@ -700,9 +569,7 @@ export const GlobalDrawer: React.FC = () => {
               <Ionicons name="chevron-forward" size={15} color={Colors.iconMuted} />
             </TouchableOpacity>
           )}
-          {view === 'site' || isGuest
-            ? siteMenu
-            : (dealerMode ? dealerDashboard : userDashboard)}
+          {dealerMode ? dealerDashboard : userDashboard}
         </ScrollView>
 
         {/* ── Footer brand ─────────────────────────────── */}
@@ -723,6 +590,26 @@ export const GlobalDrawer: React.FC = () => {
       pointerEvents={isOpen ? 'box-none' : 'none'}
     >
       {drawerContent}
+      {isOpen && showSite && (
+        <>
+          {siteMenuTop === 0 && (
+            // Opened from a ☰ that isn't in the website header: give the
+            // full-screen menu its own close control.
+            <View style={[styles.siteCloseBar, { paddingTop: insets.top + 8, height: insets.top + 64 }]}>
+              <IconButton style={styles.closeBtnInline} icon={<Ionicons name="close" size={24} color={Colors.textPrimary} />} onPress={closeDrawer} accessibilityLabel="Close menu" />
+            </View>
+          )}
+          <SiteMenu
+            top={siteMenuTop || insets.top + 64}
+            activeTab={activeTab}
+            dealerMode={dealerMode}
+            isGuest={isGuest}
+            onNavigate={navigateSite}
+            onSignIn={(screen) => { closeDrawer(); setTimeout(() => openSignIn(navigation, screen), 160); }}
+            onSignOut={handleSignOut}
+          />
+        </>
+      )}
     </View>
   );
 };
@@ -797,6 +684,8 @@ const styles = StyleSheet.create({
   },
 
   // Close button
+  siteCloseBar: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: 14, backgroundColor: Colors.bgElevated },
+  closeBtnInline: { width: 44, height: 44 },
   closeBtn: {
     alignSelf: 'flex-end',
     marginRight: 18,

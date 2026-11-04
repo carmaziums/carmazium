@@ -62,7 +62,9 @@ test('website-styled header uses the real asset, adapts logo to viewport and tog
   assert.ok(logo.includes("const width = overrideWidth ??"));
   assert.ok(hamburger.includes("name={isOpen ? 'close' : 'menu'}"));
   assert.ok(hamburger.includes("style={[styles.btn, websiteStyle && styles.websiteButton]}"));
-  assert.ok(hamburger.includes('websiteStyle && isOpen ? closeDrawer : openDrawer'));
+  // Header ☰ opens the website main menu; bottom More opens the dashboard.
+  assert.ok(hamburger.includes('websiteStyle && isOpen ? closeDrawer :'));
+  assert.ok(hamburger.includes("openDrawer('site')"));
   assert.ok(hamburger.includes('accessibilityState={websiteStyle ? { expanded: isOpen } : undefined}'));
   assert.ok(top.includes('<HamburgerButton websiteStyle />'));
   assert.ok(top.includes("navigation.navigate('Settings')"));

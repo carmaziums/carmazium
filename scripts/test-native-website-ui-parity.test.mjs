@@ -40,8 +40,9 @@ test('web dealer bottom navigation and native route labels have the same informa
   assert.ok(tabs.includes("openDrawer();"));
   // Website parity: dealer More = dashboard sidebar; elsewhere = header main menu.
   assert.ok(drawer.includes('dealerMode ? dealerDashboard : userDashboard'));
-  for (const label of ['Buy Cars','Sell Cars','Get Valuation','TradeXchange','Compare','Pricing','About']) {
-    assert.ok(drawer.includes("label: '" + label + "'"), label);
+  const siteMenu = readFileSync(new URL('../carmazium app/carmazium app/src/components/SiteMenu.tsx', import.meta.url), 'utf8');
+  for (const label of ['Buy Cars','Sell Cars','Get Valuation','TradeXchange','Compare','Pricing','About','Warranty','Post a Job','Find Jobs & Bid']) {
+    assert.ok(siteMenu.includes("label: '" + label + "'"), label);
   }
 });
 

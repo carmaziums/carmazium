@@ -121,8 +121,11 @@ const ListingDetail: React.FC<{
   onBack: () => void;
   navigation?: any;
   onSold: () => void;
+  onDeleted: () => void;
   canManageInventory: boolean;
-}> = ({ listing, onBack, navigation, onSold, canManageInventory }) => {
+  /** Height of the dealer tab bar when shown inside the Stock tab. */
+  bottomInset: number;
+}> = ({ listing, onBack, navigation, onSold, onDeleted, canManageInventory, bottomInset }) => {
   const insets = useSafeAreaInsets();
   const [selectedImg, setSelectedImg] = useState(0);
   const thumbW = (SCREEN_WIDTH - 48 - 12) / 3;
@@ -204,6 +207,32 @@ const ListingDetail: React.FC<{
     navigation?.navigate('SellCarFlow', { listingId: listing.id });
   };
 
+  // Delete — same soft delete as the website inventory (DELETE /listings/:id);
+  // the backend checks ownership and team permission.
+  const [deleting, setDeleting] = useState(false);
+  const handleDelete = () => {
+    if (!canManageInventory || deleting) return;
+    Alert.alert('Delete listing', `Delete ${listing.title}? It will be removed from CarMazium and your stock.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          setDeleting(true);
+          try {
+            await apiClient(`/listings/${listing.id}`, { method: 'DELETE' });
+            haptics.success();
+            onDeleted();
+          } catch (err: any) {
+            Alert.alert('Could not delete listing', err?.message ?? 'Please try again.');
+          } finally {
+            setDeleting(false);
+          }
+        },
+      },
+    ]);
+  };
+
   const statusS = STATUS_STYLE[listing.status];
 
   return (
@@ -216,9 +245,13 @@ const ListingDetail: React.FC<{
         end={{ x: 1, y: 0.5 }}
       />
 
+      {/* The page scrolls between the header and the action bar; the action
+          bar sits in normal flow above the tab bar, so nothing is hidden
+          behind it and the content can always scroll. */}
       <ScrollView
+        style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
       >
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <View style={[styles.detailHeader, { paddingTop: insets.top + 14 }]}>
@@ -232,7 +265,10 @@ const ListingDetail: React.FC<{
           </View>
           <IconButton style={styles.backBtn} icon={<Ionicons name="ellipsis-horizontal" size={20} color={Colors.white} />} onPress={() =>
               Alert.alert('Options', '', [
-                ...(canManageInventory ? [{ text: 'Edit listing', onPress: handleEditListing }] : []),
+                ...(canManageInventory ? [
+                  { text: 'Edit listing', onPress: handleEditListing },
+                  { text: 'Delete listing', style: 'destructive' as const, onPress: handleDelete },
+                ] : []),
                 { text: 'Cancel', style: 'cancel' },
               ])
             } accessibilityLabel="More options" />
@@ -321,10 +357,24 @@ const ListingDetail: React.FC<{
             <Text style={styles.detailRowValue}>{listing.daysListed} days</Text>
           </View>
         </View>
+        {canManageInventory && (
+          <TouchableOpacity
+            style={[styles.deleteListingBtn, deleting && { opacity: 0.6 }]}
+            onPress={handleDelete}
+            disabled={deleting}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+          >
+            {deleting
+              ? <ActivityIndicator color={Colors.accent} />
+              : <Ionicons name="trash-outline" size={17} color={Colors.accent} />}
+            <Text style={styles.deleteListingText}>Delete listing</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       {/* ── Bottom CTAs ─────────────────────────────────────────────────────── */}
-      <View style={[styles.detailFooterWrap, { paddingBottom: insets.bottom + 16 }]}>
+      <View style={[styles.detailFooterWrap, { paddingBottom: (bottomInset > 0 ? bottomInset : insets.bottom) + 14 }]}>
         {/* Put on Auction — only ACTIVE listings can be converted; the
             destination screen (SellerAuctionsScreen) re-validates eligibility
             itself, so this is a convenience shortcut, not the only gate. */}
@@ -673,7 +723,12 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any; route?: any }> 
         onBack={() => setSelectedListing(null)}
         navigation={navigation}
         canManageInventory={canManageInventory}
+        bottomInset={route?.name === 'DealerStock' ? getBottomTabBarHeight(fontScale, insets.bottom) : 0}
         onSold={() => {
+          setSelectedListing(null);
+          fetchListings();
+        }}
+        onDeleted={() => {
           setSelectedListing(null);
           fetchListings();
         }}
@@ -1640,10 +1695,6 @@ const styles = StyleSheet.create({
 
   // Footer CTAs
   detailFooterWrap: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     paddingHorizontal: 20,
     paddingTop: 14,
     gap: 10,
@@ -1655,6 +1706,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
+  deleteListingBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    marginHorizontal: 20, marginTop: 20, minHeight: 48,
+    borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha30,
+  },
+  deleteListingText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.base, color: Colors.accent },
   putOnAuctionBtn: {
     height: 48,
     borderRadius: Radius.card,
