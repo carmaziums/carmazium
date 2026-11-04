@@ -16,9 +16,9 @@ const SITE_URL = "https://www.carmazium.com"
 
 /**
  * Distinguish a confirmed missing vehicle from an upstream outage.
- * Next.js must serve an HTTP 404 for a backend-confirmed missing/deleted slug
- * rather than a 200 "Vehicle not found" page (a Google soft 404).
- * Do not mark the vehicle nonexistent when the API times out or returns 5xx.
+ * A backend-confirmed missing/deleted slug uses notFound() in Next.js;
+ * streamed responses may still have HTTP 200 but carry robots noindex.
+ * Do not turn timeouts or 5xx into a false absent-vehicle / noindex page.
  * The public listing endpoint can still return real SOLD/OFFER_ACCEPTED records;
  * their existing robots and UI states remain unchanged.
  */
