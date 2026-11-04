@@ -12,7 +12,7 @@ import type { PrismaService } from '../prisma/prisma.service';
 
 /** Prisma select for every field the record needs. */
 export const LISTING_RECORD_SELECT = {
-    title: true, images: true, year: true, make: true, model: true,
+    title: true, images: true, price: true, year: true, make: true, model: true,
     mileage: true, vrm: true,
     description: true, variant: true, fuelType: true,
     transmission: true, color: true, doors: true, seats: true,
@@ -38,6 +38,8 @@ const iso = (v: Dateish): string | null => (v == null ? null : v instanceof Date
 export function buildListingRecordData(listing: any) {
     return {
         title: listing.title ?? null,
+        // Captured only for new snapshots; historical snapshots remain unchanged.
+        advertisedPrice: listing.price == null ? null : Number(listing.price),
         year: listing.year ?? null, make: listing.make ?? null, model: listing.model ?? null,
         mileage: listing.mileage ?? null, registration: listing.vrm ?? null,
         images: Array.isArray(listing.images) ? [...listing.images] : [],
