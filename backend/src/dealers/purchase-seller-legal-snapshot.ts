@@ -93,7 +93,7 @@ export async function capturePurchaseSellerLegalSnapshot(
             create: {
                 saleId: sale.id, listingId: sale.listingId, buyerId: sale.buyerId,
                 sellerId: sale.sellerId, saleRecordedAt: sale.createdAt,
-                data: sellerData,
+                data: { ...sellerData },
             },
             update: {}, // first capture wins; subsequent profile changes never overwrite it
         });
