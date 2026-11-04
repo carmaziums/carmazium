@@ -13,6 +13,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProfileReviewDto } from './dto/create-profile-review.dto';
+import { computeReliabilityScore, loadResponseStats } from '../sellers/seller-reputation';
 
 const SERVICE_LABELS: Partial<Record<ServiceType, string>> = {
     [ServiceType.DELIVERY]: 'Delivery & Recovery',
@@ -92,19 +93,21 @@ export class ProfilesService {
         });
         if (!profile) return;
 
-        const reviewCount = profile.reviews.length;
-        const avgRating = reviewCount
-            ? profile.reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount
-            : 0;
-        const responseScore = (profile.responseRate / 100) * 5;
-        const salesRatio = profile.totalListings > 0 ? profile.totalSales / profile.totalListings : 0;
-        const salesScore = Math.min(salesRatio, 1) * 5;
-        const raw = avgRating * 0.5 + responseScore * 0.3 + salesScore * 0.2;
-        const reliabilityScore = Math.min(Math.max(Math.round(raw * 10) / 10, 0), 5);
+        const response = await loadResponseStats(this.prisma, profile.userId);
+        const reliabilityScore = computeReliabilityScore({
+            ratings: profile.reviews.map(r => r.rating),
+            responseRate: response.responseRate,
+            totalSales: profile.totalSales,
+            totalListings: profile.totalListings,
+        });
 
         await this.prisma.sellerProfile.update({
             where: { id: sellerProfileId },
-            data: { reliabilityScore },
+            data: {
+                reliabilityScore,
+                responseRate: response.responseRate ?? 0,
+                avgResponseHours: response.avgResponseHours,
+            },
         });
     }
 

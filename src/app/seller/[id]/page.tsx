@@ -31,7 +31,8 @@ interface SellerProfileStats {
     reliabilityScore: number
     totalSales: number
     totalListings: number
-    responseRate: number
+    /** null until the seller has had an offer to answer */
+    responseRate: number | null
     avgResponseHours: number | null
     createdAt: string
 }
@@ -318,7 +319,7 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
                                 <StatRow
                                     icon={<MessageCircle size={15} className="text-blue-400" />}
                                     label="Response Rate"
-                                    value={`${profile.responseRate.toFixed(0)}%`}
+                                    value={profile.responseRate == null ? "No offers yet" : `${profile.responseRate.toFixed(0)}%`}
                                 />
                                 {profile.avgResponseHours !== null && (
                                     <StatRow

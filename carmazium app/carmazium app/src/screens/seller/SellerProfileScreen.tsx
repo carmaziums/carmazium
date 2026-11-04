@@ -21,6 +21,7 @@ import {FontFamily, FontSize } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
 
 import { IconButton } from '../../components/IconButton';
+import { ProfileReviewForm } from '../../components/profile/ProfileReviewForm';
 import { Layout } from '../../constants/layout';
 // ─────────────────────────── interfaces ───────────────────────────
 
@@ -31,7 +32,8 @@ interface SellerProfileData {
     reliabilityScore: number;
     totalSales: number;
     totalListings: number;
-    responseRate: number;
+    /** null until the seller has had an offer to answer. */
+    responseRate: number | null;
     avgResponseHours: number | null;
     createdAt: string;
   };
@@ -269,11 +271,11 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
             <Text style={styles.statLabel}>LISTINGS</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{Math.round(stats.responseRate)}%</Text>
+            <Text style={styles.statValue}>{stats.responseRate == null ? '—' : `${Math.round(stats.responseRate)}%`}</Text>
             <Text style={styles.statLabel}>RESPONSE RATE</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{Math.round(stats.reliabilityScore)}</Text>
+            <Text style={styles.statValue}>{(stats.reliabilityScore ?? 0).toFixed(1)}/5</Text>
             <Text style={styles.statLabel}>RELIABILITY</Text>
           </View>
         </View>
@@ -341,6 +343,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
             ))}
           </View>
         )}
+        <ProfileReviewForm profileUserId={profile.profile.userId} onSaved={() => { void fetchData(); }} />
       </ScrollView>
     </View>
   );

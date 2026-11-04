@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSellerReviewDto } from './dto/create-seller-review.dto';
 import { canRevealListingContact } from '../core/listing-contact-visibility';
+import { computeReliabilityScore, loadResponseStats } from './seller-reputation';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -17,7 +18,8 @@ export interface SellerProfileResponse {
         reliabilityScore: number;
         totalSales: number;
         totalListings: number;
-        responseRate: number;
+        /** 0–100 from real offer replies; null until the seller has one to answer. */
+        responseRate: number | null;
         avgResponseHours: number | null;
         createdAt: Date;
     };
@@ -235,15 +237,37 @@ export class SellersService {
 
         const { reviews: _, ...profileWithoutReviews } = sellerProfile;
 
+        // Response figures and the reliability score are derived live from
+        // real offers and reviews, then written back so listing pages (which
+        // read the stored columns) agree with this profile.
+        const response = await loadResponseStats(this.prisma, sellerProfile.userId);
+        const reliabilityScore = computeReliabilityScore({
+            ratings: sellerProfile.reviews.map(r => r.rating),
+            responseRate: response.responseRate,
+            totalSales: profileWithoutReviews.totalSales,
+            totalListings: profileWithoutReviews.totalListings,
+        });
+        const storedRate = response.responseRate ?? 0;
+        if (
+            profileWithoutReviews.responseRate !== storedRate
+            || profileWithoutReviews.avgResponseHours !== response.avgResponseHours
+            || profileWithoutReviews.reliabilityScore !== reliabilityScore
+        ) {
+            await this.prisma.sellerProfile.update({
+                where: { id: profileWithoutReviews.id },
+                data: { responseRate: storedRate, avgResponseHours: response.avgResponseHours, reliabilityScore },
+            }).catch(() => undefined);
+        }
+
         return {
             profile: {
                 id: profileWithoutReviews.id,
                 userId: profileWithoutReviews.userId,
-                reliabilityScore: profileWithoutReviews.reliabilityScore,
+                reliabilityScore,
                 totalSales: profileWithoutReviews.totalSales,
                 totalListings: profileWithoutReviews.totalListings,
-                responseRate: profileWithoutReviews.responseRate,
-                avgResponseHours: profileWithoutReviews.avgResponseHours,
+                responseRate: response.responseRate,
+                avgResponseHours: response.avgResponseHours,
                 createdAt: profileWithoutReviews.createdAt,
             },
             user: profileWithoutReviews.user,
@@ -439,23 +463,21 @@ export class SellersService {
 
         if (!profile) return;
 
-        const reviewCount = profile.reviews.length;
-        const avgRating =
-            reviewCount > 0
-                ? profile.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount
-                : 0;
-
-        const responseScore = (profile.responseRate / 100) * 5;
-        const salesRatio =
-            profile.totalListings > 0 ? profile.totalSales / profile.totalListings : 0;
-        const salesScore = Math.min(salesRatio, 1) * 5;
-
-        const raw = avgRating * 0.5 + responseScore * 0.3 + salesScore * 0.2;
-        const reliabilityScore = Math.min(Math.max(Math.round(raw * 10) / 10, 0), 5);
+        const response = await loadResponseStats(this.prisma, profile.userId);
+        const reliabilityScore = computeReliabilityScore({
+            ratings: profile.reviews.map(r => r.rating),
+            responseRate: response.responseRate,
+            totalSales: profile.totalSales,
+            totalListings: profile.totalListings,
+        });
 
         await this.prisma.sellerProfile.update({
             where: { id: sellerProfileId },
-            data: { reliabilityScore },
+            data: {
+                reliabilityScore,
+                responseRate: response.responseRate ?? 0,
+                avgResponseHours: response.avgResponseHours,
+            },
         });
     }
 
