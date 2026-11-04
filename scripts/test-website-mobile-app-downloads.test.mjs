@@ -184,7 +184,16 @@ test('download page only offers clickable buttons with genuine validated destina
   assert.ok(page.includes('links.ios.href ? ('));
   assert.ok(page.includes('links.android.href ? ('));
   assert.ok(page.includes('links.androidApk.href && ('));
-  assert.ok(page.includes('coming soon'));
+  // Honest native-app status: the App Store link appears only after Apple approval.
+  assert.ok(page.includes('Our App Store link will appear here once Apple approves the app.'));
+  // No-store installs: the website itself as an installable app (manifest + browser install).
+  assert.ok(page.includes('<InstallWebAppButton platform="ios" />'));
+  assert.ok(page.includes('<InstallWebAppButton platform="windows" />'));
+  const manifest=read('src/app/manifest.ts');
+  assert.ok(manifest.includes('display: "standalone"') && manifest.includes('/pwa/icon-512.png') && manifest.includes('purpose: "maskable"'));
+  const sw=read('public/sw.js');
+  assert.ok(sw.includes("event.request.mode !== 'navigate'"), 'service worker must never cache live data');
+  assert.ok(!/cache\.put|addAll\(/.test(sw), 'service worker caches only the offline page');
   assert.ok(page.includes('Apple App Store'));
   assert.ok(page.includes('Google Play'));
   assert.ok(page.includes('SHA-256'));
