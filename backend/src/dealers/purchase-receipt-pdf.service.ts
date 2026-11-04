@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from 'pdf-lib';
 import { DealersService } from './dealers.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { appendPurchaseSellerDetailsPage } from './purchase-receipt-seller-page';
 
 /**
  * A buyer's account-keeping record of a collected vehicle, NOT a Carmazium
@@ -21,6 +22,7 @@ export class PurchaseReceiptPdfService {
      */
     async renderForReconciled(id: string, requesterId: string): Promise<Buffer> {
         const purchase = await this.dealers.getDealerReconciledPurchaseDetail(requesterId, id);
+        const seller = await this.dealers.getDealerReconciledPurchaseSellerDetails(requesterId, id);
         const pdf = await PDFDocument.create();
         pdf.setTitle('CarMazium owner-confirmed vehicle purchase record');
         pdf.setAuthor('CarMazium');
@@ -74,6 +76,7 @@ export class PurchaseReceiptPdfService {
         page.drawText('CarMazium - carmazium.com', {
             x: 48, y: 56, size: 10, font: normal, color: ink,
         });
+        await appendPurchaseSellerDetailsPage(pdf, seller, 'CMZ-REC-' + id.toUpperCase());
         return Buffer.from(await pdf.save());
     }
 
@@ -196,6 +199,7 @@ export class PurchaseReceiptPdfService {
         page.drawText('Issued from CarMazium purchase records · carmazium.com', {
             x: 48, y: 43, font: normal, size: 9, color: grey,
         });
+        await appendPurchaseSellerDetailsPage(pdf, seller, 'CMZ-' + saleId.toUpperCase());
         return Buffer.from(await pdf.save());
     }
 }
