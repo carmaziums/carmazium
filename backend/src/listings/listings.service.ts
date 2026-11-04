@@ -1,4 +1,5 @@
 import { capturePurchaseSnapshot } from '../dealers/purchase-listing-record';
+import { capturePurchaseSellerLegalSnapshot } from '../dealers/purchase-seller-legal-snapshot';
 import { buildFeatureConditions } from './feature-search';
 import { buildGradeSearchWhere } from './grade-search';
 import { summariseHistoricalQuotes, ArchivedValuationObservation, QUOTE_HISTORY_MONTHS } from './valuation-quote-history';
@@ -3582,7 +3583,7 @@ export class ListingsService {
         if (!['AWAITING_CONFIRMATION', 'REVIEWING_DOCS'].includes(sale.purchaseStatus))
             throw new BadRequestException('Purchase cannot be marked collected from its current stage');
 
-        return this.prisma.$transaction(async tx => {
+        const completion = await this.prisma.$transaction(async tx => {
             await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${sale.id}, 0))::text`;
             const pending = await tx.saleCancellationRequest.findFirst({
                 where: cancellationWhere, select: { id: true },
@@ -3606,6 +3607,13 @@ export class ListingsService {
             });
             return { saleId: sale.id, purchaseStatus: 'CHECKS_COMPLETE', buyerCollectedAt: audit.createdAt };
         });
+        // Backstop for older sales: capture the seller account details as of
+        // collection, with capturedAt showing that this was after the Sale.
+        // Never claim the historical seller profile was verified at sale time.
+        void capturePurchaseSellerLegalSnapshot(this.prisma, {
+            listingId: sale.listingId, buyerId: sale.buyerId,
+        });
+        return completion;
     }
 
     /** Shared completion used by the seller (Mark as Sold) and the buyer. */
