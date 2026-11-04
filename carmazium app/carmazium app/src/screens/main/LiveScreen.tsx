@@ -9,6 +9,8 @@ import {
   Dimensions,
   StatusBar,
   RefreshControl,
+  FlatList,
+  Platform,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -339,7 +341,130 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
 
       {dealerMode && !embeddedDealerHub && <WebsiteTopBar />}
-      <ScrollView
+      {/* Virtualised: only on-screen auction cards are mounted. A ScrollView
+          rendered every lot (photos, shadows, gradients) at once, so Live
+          Auctions kept juddering even after the per-card timer fix. */}
+      <FlatList
+        data={filteredActive}
+        keyExtractor={(auction) => String(auction.id)}
+        renderItem={({ item: auction }) => {
+          // Reserve is never shown to buyers — enforced server-side (Ground
+          // Rules). Show Buy It Now instead when the seller set one.
+
+          return (
+            <View style={styles.auctionCard}>
+              {/* Image Block */}
+              <View style={styles.imageBlock}>
+                <ImageCarousel
+                  images={auction.images}
+                  width={SCREEN_WIDTH - 48}
+                  height={196}
+                  onPress={() => navigation.navigate('LiveAuctionDetailed', { listing: auction })}
+                  // The bottom strip is already occupied by the make/model
+                  // name overlay below — showing the dots/counter there too
+                  // would collide with that text.
+                  showIndicator={false}
+                />
+                <View style={styles.imageGradient} pointerEvents="none" />
+
+                <View style={styles.liveBadge} pointerEvents="none">
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveBadgeText}>LIVE</Text>
+                </View>
+                <View style={styles.viewerBadge} pointerEvents="none">
+                  <Ionicons name="eye-outline" size={10} color={Colors.onAccentMuted} />
+                  <Text style={styles.viewerCount}>{auction.viewers}</Text>
+                </View>
+                <WishlistHeart listing={auction} />
+                {/* Trust badges sit below the LIVE pill, same left offset */}
+                <View style={{ position: 'absolute', top: 38, left: 12, right: 12 }} pointerEvents="none">
+                  <AuctionCardTrustBadges
+                    badgeTier={auction.badgeTier}
+                    isFeatured={auction.isFeatured}
+                    isDepartedSale={auction.isDepartedSale}
+                  />
+                </View>
+
+                <View style={styles.imageNameContainer} pointerEvents="none">
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.imageCarMake}>
+                      {auction.make.toUpperCase()}
+                    </Text>
+                    <GradeChip grade={auction.exteriorGrade} />
+                  </View>
+                  <Text style={styles.imageCarModel}>
+                    {auction.model} {auction.variant}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Meta chips — year / mileage / fuel / body / location / delivery */}
+              <View style={{ paddingHorizontal: 18, paddingTop: 14 }}>
+                <AuctionCardChips
+                  year={auction.year}
+                  mileage={auction.mileage}
+                  fuelType={auction.fuelType}
+                  transmission={auction.transmission}
+                  bodyType={auction.category}
+                  location={auction.location}
+                  deliveryAvailable={auction.deliveryAvailable}
+                />
+              </View>
+
+              {/* Stats Row */}
+              <View style={styles.statsRow}>
+                <View style={styles.statsLeft}>
+                  <Text style={styles.statsLabel}>{auction.totalBids > 0 ? 'CURRENT BID' : 'STARTING BID'}</Text>
+                  <Text style={styles.statsPrice}>
+                    {formatPrice(auction.totalBids > 0 ? auction.currentBid : auction.startingBid)}
+                  </Text>
+                  {auction.totalBids === 0 && (
+                    <View style={styles.statsSubRow}>
+                      <Text style={[styles.statsAboveReserve, { color: Colors.warning }]}>
+                        First offer from {formatPrice(getAuctionFirstOfferFloor(auction.startingBid, auction.reserve))}
+                      </Text>
+                    </View>
+                  )}
+                  {!!auction.buyItNowPrice && (
+                    <View style={styles.statsSubRow}>
+                      <Text style={styles.statsAboveReserve}>Buy it now: {formatPrice(auction.buyItNowPrice)}</Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.statsRight}>
+                  <Text style={styles.statsLabel}>ENDS IN</Text>
+                  <LiveFlipTimer endsAt={auction.endsAt} />
+                </View>
+              </View>
+
+              {/* BID NOW Button — was unconditional on every card, including
+                  the viewer's own auction. Not actually exploitable (the
+                  real seller/dealer-only gate lives on AuctionDetailScreen
+                  and the backend), but misleading (mobile-production-
+                  readiness-plan.md F36). */}
+              {(() => {
+                const isOwnAuction = !!currentUser?.id && auction.seller?.id === currentUser.id;
+                return (
+                  <TouchableOpacity
+                    style={[styles.bidNowBtn, isOwnAuction && styles.bidNowBtnOwn]}
+                    activeOpacity={0.8}
+                    onPress={() =>
+                      navigation.navigate('LiveAuctionDetailed', { listing: auction })
+                    }
+                  >
+                    <MaterialCommunityIcons name={isOwnAuction ? 'eye-outline' : 'gavel'} size={16} color={Colors.onAccent} style={styles.bidBtnIcon} />
+                    <Text style={styles.bidNowBtnText}>{isOwnAuction ? 'YOUR AUCTION' : 'BID NOW'}</Text>
+                    <Ionicons name="arrow-forward" size={15} color={Colors.onAccent} style={styles.bidBtnArrow} />
+                  </TouchableOpacity>
+                );
+              })()}
+            </View>
+          );
+        }}
+        initialNumToRender={3}
+        maxToRenderPerBatch={3}
+        windowSize={5}
+        removeClippedSubviews={Platform.OS === 'android'}
         contentContainerStyle={[styles.scrollContent, { paddingTop: headerContent ? 0 : dealerMode ? 12 : insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -350,7 +475,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
             colors={[Colors.accent]}
           />
         }
-      >
+        ListHeaderComponent={<>
         {/* Dealer hub heading (title, Create Auction) scrolls with the list
             instead of staying fixed above it. */}
         {headerContent}
@@ -501,120 +626,8 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
           />
         ) : null}
 
-        {filteredActive.map((auction) => {
-          // Reserve is never shown to buyers — enforced server-side (Ground
-          // Rules). Show Buy It Now instead when the seller set one.
-
-          return (
-            <View key={auction.id} style={styles.auctionCard}>
-              {/* Image Block */}
-              <View style={styles.imageBlock}>
-                <ImageCarousel
-                  images={auction.images}
-                  width={SCREEN_WIDTH - 48}
-                  height={196}
-                  onPress={() => navigation.navigate('LiveAuctionDetailed', { listing: auction })}
-                  // The bottom strip is already occupied by the make/model
-                  // name overlay below — showing the dots/counter there too
-                  // would collide with that text.
-                  showIndicator={false}
-                />
-                <View style={styles.imageGradient} pointerEvents="none" />
-
-                <View style={styles.liveBadge} pointerEvents="none">
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveBadgeText}>LIVE</Text>
-                </View>
-                <View style={styles.viewerBadge} pointerEvents="none">
-                  <Ionicons name="eye-outline" size={10} color={Colors.onAccentMuted} />
-                  <Text style={styles.viewerCount}>{auction.viewers}</Text>
-                </View>
-                <WishlistHeart listing={auction} />
-                {/* Trust badges sit below the LIVE pill, same left offset */}
-                <View style={{ position: 'absolute', top: 38, left: 12, right: 12 }} pointerEvents="none">
-                  <AuctionCardTrustBadges
-                    badgeTier={auction.badgeTier}
-                    isFeatured={auction.isFeatured}
-                    isDepartedSale={auction.isDepartedSale}
-                  />
-                </View>
-
-                <View style={styles.imageNameContainer} pointerEvents="none">
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={styles.imageCarMake}>
-                      {auction.make.toUpperCase()}
-                    </Text>
-                    <GradeChip grade={auction.exteriorGrade} />
-                  </View>
-                  <Text style={styles.imageCarModel}>
-                    {auction.model} {auction.variant}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Meta chips — year / mileage / fuel / body / location / delivery */}
-              <View style={{ paddingHorizontal: 18, paddingTop: 14 }}>
-                <AuctionCardChips
-                  year={auction.year}
-                  mileage={auction.mileage}
-                  fuelType={auction.fuelType}
-                  transmission={auction.transmission}
-                  bodyType={auction.category}
-                  location={auction.location}
-                  deliveryAvailable={auction.deliveryAvailable}
-                />
-              </View>
-
-              {/* Stats Row */}
-              <View style={styles.statsRow}>
-                <View style={styles.statsLeft}>
-                  <Text style={styles.statsLabel}>{auction.totalBids > 0 ? 'CURRENT BID' : 'STARTING BID'}</Text>
-                  <Text style={styles.statsPrice}>
-                    {formatPrice(auction.totalBids > 0 ? auction.currentBid : auction.startingBid)}
-                  </Text>
-                  {auction.totalBids === 0 && (
-                    <View style={styles.statsSubRow}>
-                      <Text style={[styles.statsAboveReserve, { color: Colors.warning }]}>
-                        First offer from {formatPrice(getAuctionFirstOfferFloor(auction.startingBid, auction.reserve))}
-                      </Text>
-                    </View>
-                  )}
-                  {!!auction.buyItNowPrice && (
-                    <View style={styles.statsSubRow}>
-                      <Text style={styles.statsAboveReserve}>Buy it now: {formatPrice(auction.buyItNowPrice)}</Text>
-                    </View>
-                  )}
-                </View>
-                <View style={styles.statsRight}>
-                  <Text style={styles.statsLabel}>ENDS IN</Text>
-                  <LiveFlipTimer endsAt={auction.endsAt} />
-                </View>
-              </View>
-
-              {/* BID NOW Button — was unconditional on every card, including
-                  the viewer's own auction. Not actually exploitable (the
-                  real seller/dealer-only gate lives on AuctionDetailScreen
-                  and the backend), but misleading (mobile-production-
-                  readiness-plan.md F36). */}
-              {(() => {
-                const isOwnAuction = !!currentUser?.id && auction.seller?.id === currentUser.id;
-                return (
-                  <TouchableOpacity
-                    style={[styles.bidNowBtn, isOwnAuction && styles.bidNowBtnOwn]}
-                    activeOpacity={0.8}
-                    onPress={() =>
-                      navigation.navigate('LiveAuctionDetailed', { listing: auction })
-                    }
-                  >
-                    <MaterialCommunityIcons name={isOwnAuction ? 'eye-outline' : 'gavel'} size={16} color={Colors.onAccent} style={styles.bidBtnIcon} />
-                    <Text style={styles.bidNowBtnText}>{isOwnAuction ? 'YOUR AUCTION' : 'BID NOW'}</Text>
-                    <Ionicons name="arrow-forward" size={15} color={Colors.onAccent} style={styles.bidBtnArrow} />
-                  </TouchableOpacity>
-                );
-              })()}
-            </View>
-          );
-        })}
+        </>}
+        ListFooterComponent={<>
 
         {/* ─── UPCOMING Section ─────────────────────────────────── */}
         <View style={styles.upcomingHeaderRow}>
@@ -752,7 +765,8 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
 
         {/* Bottom spacing so last element clears the tab bar */}
         <View style={{ height: Math.max(120, tabBarClearance) }} />
-      </ScrollView>
+        </>}
+      />
 
       <AuctionFilterSheet
         visible={filterSheetOpen}
