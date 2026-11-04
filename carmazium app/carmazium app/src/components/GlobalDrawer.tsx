@@ -480,17 +480,6 @@ export const GlobalDrawer: React.FC = () => {
             <Text style={styles.accountShortcutText}>Account settings</Text>
             <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
           </TouchableOpacity>
-          {/* Also at the top of the menu, not only at the end of a long list. */}
-          <TouchableOpacity
-            style={styles.accountShortcut}
-            onPress={handleSignOut}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityLabel="Sign out"
-          >
-            <Ionicons name="log-out-outline" size={20} color={Colors.accent} />
-            <Text style={[styles.accountShortcutText, { color: Colors.accent }]}>Sign Out</Text>
-          </TouchableOpacity>
           {IS_QA_REVIEW_BUILD && (
             <TouchableOpacity
               style={styles.accountShortcut}

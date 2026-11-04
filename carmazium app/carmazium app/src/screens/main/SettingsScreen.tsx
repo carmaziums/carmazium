@@ -729,22 +729,6 @@ export const SettingsScreen: React.FC = () => {
           })}
         </View>
 
-        {/* Sign Out where people look for it (owner: "can't find how to log
-            out"), like the website account menu. */}
-        <TouchableOpacity
-          style={styles.signOutButton}
-          onPress={() => Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Sign Out', style: 'destructive', onPress: () => { void logout(); } },
-          ])}
-          accessibilityRole="button"
-          accessibilityLabel="Sign out"
-          activeOpacity={0.8}
-        >
-          <Ionicons name="log-out-outline" size={19} color={Colors.accent} />
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
-
         {activeCategory === 'personal' && (
           <>
         {/* ── 1. PROFILE INFORMATION ── */}
@@ -1718,12 +1702,6 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, gap: 8 },
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
-  signOutButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    minHeight: 48, marginBottom: 16, borderRadius: Radius.inline,
-    borderWidth: 1.5, borderColor: Colors.accent, backgroundColor: Colors.bgCard,
-  },
-  signOutText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.accent },
   categoryButton: { flexGrow: 1, flexBasis: '46%', minHeight: 56, flexDirection: 'row', gap: 9, alignItems: 'center', backgroundColor: Colors.bgCardSolid, borderColor: Colors.borderHi, borderWidth: 1, borderRadius: Radius.inline, paddingHorizontal: 13, paddingVertical: 10 },
   categoryButtonSelected: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   themeOptions: { flexDirection: 'row', gap: 8 },
