@@ -2174,7 +2174,6 @@ export class DealersService {
                 listing: {
                     select: {
                         id: true, slug: true, type: true, status: true, location: true,
-                        price: true, updatedAt: true,
                         // Full advert record for inspection. Listing evidence
                         // only; seller contact stays behind /:id/seller.
                         ...LISTING_RECORD_SELECT,
@@ -2427,7 +2426,7 @@ export class DealersService {
             // The buyer must confirm where to collect before travelling.
             sellerAddress: contactUnlocked ? address : null,
             sellerAddressSource: contactUnlocked && address
-                ? (businessAddress ? 'BUSINESS' : 'VERIFIED_POSTAL') : null,
+                ? (businessAddress ? 'BUSINESS' as const : 'VERIFIED_POSTAL' as const) : null,
         };
     }
 }
