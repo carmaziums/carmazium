@@ -59,6 +59,8 @@ type RawPurchaseItem = Omit<PurchaseItem, "status"> & { status: string }
 type ReconciledPurchase = {
     id: string
     listingId: string
+    sellerName: string
+    originalListedAt: string
     vehicleTitle: string
     vehicleSubtitle?: string
     imageUrl?: string | null
@@ -216,7 +218,6 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
     const visiblePurchases = React.useMemo(() => purchases.filter(p => {
         if (isRetail && !isRetailPurchase(p)) return false
         if (channel === "auction" && isRetailPurchase(p)) return false
-        if (channel === "auction" && p.reconciledPurchase) return false
         if (isCancelled) return false
         if (isHistory !== isPurchaseHistoryStatus(p.status)) return false
         if (statusFilter !== "all" && p.status !== statusFilter) return false
