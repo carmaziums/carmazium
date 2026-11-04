@@ -200,7 +200,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                 {/* Price */}
                 <div className="order-2 w-full md:order-none md:block md:w-auto text-left md:text-right shrink-0">
                     <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block">Price</span>
-                    <span className="text-lg font-black  tabular-nums">£{item.purchasePrice.toLocaleString()}</span>
+                    <span className="text-lg font-black  tabular-nums">£{item.purchasePrice.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
 
                 {/* Document Progress (if reviewing) */}
