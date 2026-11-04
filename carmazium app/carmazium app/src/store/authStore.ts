@@ -630,13 +630,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Destroy the backend session first — otherwise the stale "sid" cookie
       // outlives this user and the next login on this device inherits their
       // session (wrong role/profile) because SessionAuthGuard prefers the
-      // cookie over the fresh Supabase bearer token.
+      // cookie over the fresh Supabase bearer token. Bounded so a slow or
+      // unreachable API can never hold the user signed in.
       try {
-        await apiClient('/auth/logout', { method: 'POST' });
+        await Promise.race([
+          apiClient('/auth/logout', { method: 'POST', timeoutMs: 4000 }),
+          new Promise((resolve) => setTimeout(resolve, 4500)),
+        ]);
       } catch (e) {
         console.warn('Backend logout failed:', e);
       }
-      await supabase.auth.signOut();
+      // 'local' always clears the session stored on this device, even when
+      // the network revoke fails; a failed global signOut used to leave the
+      // saved session in place, so the user was signed back in on reopen.
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      if (error) console.warn('Supabase local sign-out error:', error);
     } catch (e) {
       console.warn('Supabase logout error:', e);
     } finally {

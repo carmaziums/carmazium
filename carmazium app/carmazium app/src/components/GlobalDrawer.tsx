@@ -366,14 +366,22 @@ export const GlobalDrawer: React.FC = () => {
     }, 220);
   };
 
+  // Confirm while the drawer is still open, then close and sign out. The
+  // old order (close, then Alert 160ms later) raised the dialog while the
+  // drawer Modal was dismissing, and on Android it could vanish with it, so
+  // tapping Sign Out appeared to do nothing.
   const handleSignOut = () => {
-    closeDrawer();
-    setTimeout(() => {
-      Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: logout },
-      ]);
-    }, 160);
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: () => {
+          closeDrawer();
+          void logout();
+        },
+      },
+    ]);
   };
 
   // Always prefer the real authenticated user's data — never overwrite it with
