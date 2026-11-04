@@ -11,6 +11,9 @@ import { PurchaseReceiptButton } from "@/components/purchases/PurchaseReceiptBut
 type ReconciledPurchase = {
     id: string
     vehicleTitle: string
+    sellerName: string
+    originalListedAt: string
+    originalAuctionListingId: string
     registration: string
     imageUrl: string | null
     vehicleSubtitle: string
@@ -80,12 +83,21 @@ export default function ReconciledPurchasePage() {
                                     <dt>Registration</dt><dd className="font-bold">{purchase.registration}</dd>
                                 </div>
                                 <div className="flex justify-between gap-3 border-b border-[var(--border-default)] pb-2">
+                                    <dt>Original auction seller</dt><dd className="font-bold text-right">{purchase.sellerName}</dd>
+                                </div>
+                                <div className="flex justify-between gap-3 border-b border-[var(--border-default)] pb-2">
+                                    <dt>Original auction listed</dt><dd className="font-bold">{new Date(purchase.originalListedAt + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</dd>
+                                </div>
+                                <div className="flex justify-between gap-3 border-b border-[var(--border-default)] pb-2">
                                     <dt>Collection date</dt><dd className="font-bold">{formattedDate}</dd>
                                 </div>
                                 <div className="flex justify-between gap-3 border-b border-[var(--border-default)] pb-2">
                                     <dt>Agreed purchase price</dt>
                                     <dd className="font-bold">{purchase.purchasePrice === null ? "Not yet recorded"
                                         : purchase.purchasePrice.toLocaleString("en-GB", { style: "currency", currency: "GBP" })}</dd>
+                                </div>
+                                <div className="flex justify-between gap-3 border-b border-[var(--border-default)] pb-2">
+                                    <dt>Source</dt><dd className="font-semibold text-right">Original CarMazium auction listing</dd>
                                 </div>
                                 <div className="flex justify-between gap-3">
                                     <dt>Record reference</dt><dd className="font-semibold break-all">CMZ-REC-{purchase.id.slice(0, 8).toUpperCase()}</dd>
@@ -97,9 +109,9 @@ export default function ReconciledPurchasePage() {
                             <h2 className="flex items-center gap-2 font-bold"><FileText size={17} /> About this recovered record</h2>
                             <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
                                 You confirmed this vehicle was purchased and collected. This completed record was
-                                recovered after a missing transaction in CarMazium's earlier website workflow.
-                                It does not change the historic auction outcome, create a buyer fee, or mark
-                                your stock listing as sold.
+                                recovered against the original seller's CarMazium auction listing, including
+                                the original seller and photographs. It does not change the historic auction
+                                outcome, create a buyer fee, or mark any subsequent retail stock listing as sold.
                             </p>
                             <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
                                 A CarMazium purchase record is not a VAT invoice or independent proof of payment.
