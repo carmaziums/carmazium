@@ -60,7 +60,7 @@ test("completed history includes recovered vehicles without asserting payment or
     assert.match(row, /item\.purchasePriceUnrecorded/)
     assert.match(row, /reconciled=\{item\.reconciledPurchase\}/)
     assert.match(details, /Completed purchase record/)
-    assert.match(details, /does not change the historic auction outcome/)
+    assert.match(details, /does not change the historic auction\s+outcome/)
     assert.match(receipt, /reconciled.*\?/s)
     for (const [name, source] of [["history", history], ["row", row], ["details", details], ["receipt", receipt]]) {
         const output = ts.transpileModule(source, {
