@@ -20,6 +20,7 @@ import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
@@ -67,7 +68,18 @@ interface Listing {
   visibility: string;
   linkedListingId?: string | null;
   linkedAuctionStatus?: string | null;
+  /** Public URL slug (website /buy-cars/:slug) for "View listing". */
+  slug: string | null;
+  /** CLASSIFIED (retail) or AUCTION — website card actions depend on it. */
+  listingType: string;
+  /** The auction's linked retail listing, if any (website `linkedListing`). */
+  linkedListing: { id: string; status: string } | null;
 }
+
+/** Website stock card actions (dashboard/dealer/inventory/page.tsx). */
+export type StockAction =
+  | 'publish' | 'sold' | 'cancelSale' | 'edit' | 'view' | 'boost'
+  | 'putOnAuction' | 'alsoRetail' | 'linkedRetail' | 'delete';
 
 // ─── API mapping helper ──────────────────────────────────────────────────────
 const mapApiListing = (l: any): Listing => ({
@@ -98,6 +110,9 @@ const mapApiListing = (l: any): Listing => ({
       : 'OTHER'
   ) as StatusTag,
   linkedListingId: l.linkedListingId ?? null,
+  slug: l.slug ?? null,
+  listingType: String(l.type ?? l.listingType ?? 'CLASSIFIED').toUpperCase(),
+  linkedListing: l.linkedListing?.id ? { id: String(l.linkedListing.id), status: String(l.linkedListing.status ?? '') } : null,
   linkedAuctionStatus: l.linkedListing?.auction?.status ?? null,
   images: l.images || [],
   offersStatus: (l._count?.offers ?? 0) > 0 ? `${l._count.offers} received` : 'No offers yet',
@@ -125,7 +140,9 @@ const ListingDetail: React.FC<{
   canManageInventory: boolean;
   /** Height of the dealer tab bar when shown inside the Stock tab. */
   bottomInset: number;
-}> = ({ listing, onBack, navigation, onSold, onDeleted, canManageInventory, bottomInset }) => {
+  /** Card shortcut that opened this page (Mark sold / Boost), run once. */
+  initialAction?: 'sold' | 'boost' | null;
+}> = ({ listing, onBack, navigation, onSold, onDeleted, canManageInventory, bottomInset, initialAction }) => {
   const insets = useSafeAreaInsets();
   const [selectedImg, setSelectedImg] = useState(0);
   const thumbW = (SCREEN_WIDTH - 48 - 12) / 3;
@@ -233,7 +250,17 @@ const ListingDetail: React.FC<{
     ]);
   };
 
+  const initialActionDone = useRef(false);
+  useEffect(() => {
+    if (!initialAction || initialActionDone.current || !canManageInventory) return;
+    initialActionDone.current = true;
+    if (initialAction === 'sold') openMarkSold();
+    if (initialAction === 'boost') void handleBoost();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialAction]);
+
   const statusS = STATUS_STYLE[listing.status];
+  const canMarkSold = listing.status === 'LIVE' || listing.status === 'SALE_PENDING';
 
   return (
     <View style={styles.container}>
@@ -388,7 +415,14 @@ const ListingDetail: React.FC<{
             <Text style={styles.putOnAuctionBtnText}>PUT ON AUCTION</Text>
           </TouchableOpacity>
         )}
-        {canManageInventory && (
+        {canManageInventory && listing.status === 'DRAFT' && (
+          // Website: a draft's main action is Complete & Publish.
+          <TouchableOpacity style={[styles.putOnAuctionBtn, { backgroundColor: Colors.success }]} activeOpacity={0.85} onPress={handleEditListing}>
+            <Ionicons name="cloud-upload-outline" size={16} color={Colors.onAccent} style={{ marginRight: 6 }} />
+            <Text style={styles.putOnAuctionBtnText}>COMPLETE & PUBLISH</Text>
+          </TouchableOpacity>
+        )}
+        {canManageInventory && listing.status !== 'DRAFT' && (
         <View style={styles.detailFooter}>
         <TouchableOpacity
           style={[styles.boostBtn, boosting && { opacity: 0.6 }]}
@@ -407,13 +441,13 @@ const ListingDetail: React.FC<{
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.markSoldBtn, listing.status !== 'LIVE' && styles.markSoldBtnDim]}
+          style={[styles.markSoldBtn, !canMarkSold && styles.markSoldBtnDim]}
           activeOpacity={0.85}
-          onPress={listing.status === 'LIVE' ? openMarkSold : undefined}
+          onPress={canMarkSold ? openMarkSold : undefined}
         >
           <Ionicons name="checkmark-circle-outline" size={16} color={Colors.onAccent} style={{ marginRight: 6 }} />
           <Text style={styles.markSoldBtnText}>
-            {listing.status === 'LIVE' ? 'MARK SOLD' : STATUS_STYLE[listing.status].label}
+            {canMarkSold ? 'MARK SOLD' : STATUS_STYLE[listing.status].label}
           </Text>
         </TouchableOpacity>
         </View>
@@ -483,12 +517,13 @@ const InventoryRow: React.FC<{
   onPress: (id: string) => void;
   onPutOnAuction?: (id: string) => void;
   onOpenLinkedAuction?: (linkedId: string) => void;
+  onAction: (id: string, action: StockAction) => void;
   canManageInventory: boolean;
-}> = React.memo(({ listing, onPress, onPutOnAuction, onOpenLinkedAuction, canManageInventory }) => {
+}> = React.memo(({ listing, onPress, onOpenLinkedAuction, onAction, canManageInventory }) => {
   const s = STATUS_STYLE[listing.status];
+  const [menuOpen, setMenuOpen] = useState(false);
   const hasLinkedAuction = !!listing.linkedListingId;
   const linkedAuctionLive = listing.linkedAuctionStatus === 'ACTIVE';
-  const canPutOnAuction = canManageInventory && listing.status === 'LIVE' && !hasLinkedAuction;
   return (
     <TouchableOpacity
       style={styles.websiteStockCard}
@@ -548,8 +583,8 @@ const InventoryRow: React.FC<{
         </View>
       </View>
 
-      {/* Existing linked-auction and dealer-only actions stay on the card. */}
-      {hasLinkedAuction ? (
+      {/* Linked auction status (informational, opens the auction). */}
+      {hasLinkedAuction && (
         <TouchableOpacity style={[styles.rowCrossListChip, linkedAuctionLive && styles.rowCrossListChipLive]}
           onPress={() => listing.linkedListingId && onOpenLinkedAuction?.(listing.linkedListingId)}
           accessibilityRole="button" accessibilityLabel="Open linked auction" activeOpacity={0.8}>
@@ -559,18 +594,81 @@ const InventoryRow: React.FC<{
               (listing.linkedAuctionStatus ? ` · ${listing.linkedAuctionStatus}` : '')}
           </Text>
         </TouchableOpacity>
-      ) : canPutOnAuction && onPutOnAuction ? (
-        <TouchableOpacity style={styles.rowPutOnAuction}
-          onPress={() => onPutOnAuction(listing.id)}
-          accessibilityRole="button" accessibilityLabel="Also list on auction" activeOpacity={0.8}>
-          <Ionicons name="hammer-outline" size={13} color={Colors.accent} />
-          <Text style={styles.rowPutOnAuctionText}>Also list on auction</Text>
-        </TouchableOpacity>
-      ) : null}
-      <View style={styles.stockOpenRow}>
-        <Text style={styles.stockOpenText}>View details and actions</Text>
-        <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-      </View>
+      )}
+
+      {/* Website stock card: status-dependent primary action + Edit. */}
+      {canManageInventory && (
+        <View style={styles.cardActions}>
+          {listing.status === 'DRAFT' ? (
+            <TouchableOpacity style={styles.cardPrimary} onPress={() => onAction(listing.id, 'publish')} accessibilityRole="button" activeOpacity={0.85}>
+              <Ionicons name="cloud-upload-outline" size={17} color={Colors.onAccent} />
+              <Text style={styles.cardPrimaryText} numberOfLines={2}>Complete & Publish</Text>
+            </TouchableOpacity>
+          ) : listing.status === 'SOLD' ? (
+            <TouchableOpacity style={styles.cardDanger} onPress={() => onAction(listing.id, 'cancelSale')} accessibilityRole="button" activeOpacity={0.85}>
+              <Ionicons name="close-circle-outline" size={17} color={Colors.accent} />
+              <Text style={styles.cardDangerText}>Cancel sale</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.cardPrimary} onPress={() => onAction(listing.id, 'sold')} accessibilityRole="button" activeOpacity={0.85}>
+              <Ionicons name="checkmark-circle-outline" size={17} color={Colors.onAccent} />
+              <Text style={styles.cardPrimaryText}>Mark sold</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.cardSecondary} onPress={() => onAction(listing.id, 'edit')} accessibilityRole="button" activeOpacity={0.85}>
+            <Ionicons name="create-outline" size={17} color={Colors.textPrimary} />
+            <Text style={styles.cardSecondaryText}>Edit</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <TouchableOpacity style={styles.moreOptionsBtn} onPress={() => setMenuOpen(v => !v)} accessibilityRole="button" accessibilityState={{ expanded: menuOpen }}>
+        <Text style={styles.moreOptionsText}>{menuOpen ? 'Hide more options' : 'More options'}</Text>
+        <Ionicons name={menuOpen ? 'chevron-down' : 'chevron-forward'} size={15} color={Colors.textMuted} />
+      </TouchableOpacity>
+
+      {menuOpen && (
+        <View style={styles.moreOptions}>
+          {!!listing.slug && (
+            <TouchableOpacity style={styles.optionRow} onPress={() => onAction(listing.id, 'view')} accessibilityRole="button">
+              <Ionicons name="eye-outline" size={18} color={Colors.textPrimary} />
+              <Text style={styles.optionText}>View listing</Text>
+            </TouchableOpacity>
+          )}
+          {canManageInventory && (
+            <>
+              {listing.status === 'LIVE' && (
+                <TouchableOpacity style={[styles.optionRow, styles.optionAmber]} onPress={() => onAction(listing.id, 'boost')} accessibilityRole="button">
+                  <Ionicons name="trending-up-outline" size={18} color={Colors.warning} />
+                  <Text style={[styles.optionText, { color: Colors.warning }]}>Boost to featured</Text>
+                </TouchableOpacity>
+              )}
+              {listing.listingType === 'CLASSIFIED' && listing.status === 'LIVE' && !listing.linkedListingId && (
+                <TouchableOpacity style={[styles.optionRow, styles.optionAmber]} onPress={() => onAction(listing.id, 'putOnAuction')} accessibilityRole="button">
+                  <MaterialCommunityIcons name="gavel" size={18} color={Colors.warning} />
+                  <Text style={[styles.optionText, { color: Colors.warning }]}>Put to auction</Text>
+                </TouchableOpacity>
+              )}
+              {listing.listingType === 'AUCTION' && listing.status === 'LIVE' && !listing.linkedListing && (
+                <TouchableOpacity style={[styles.optionRow, styles.optionBlue]} onPress={() => onAction(listing.id, 'alsoRetail')} accessibilityRole="button">
+                  <Ionicons name="pricetag-outline" size={18} color={Colors.infoBlue} />
+                  <Text style={[styles.optionText, { color: Colors.infoBlue }]}>Also list for retail</Text>
+                </TouchableOpacity>
+              )}
+              {listing.listingType === 'AUCTION' && listing.status === 'LIVE' && listing.linkedListing?.status === 'DRAFT' && (
+                <TouchableOpacity style={[styles.optionRow, styles.optionAmber]} onPress={() => onAction(listing.id, 'linkedRetail')} accessibilityRole="button">
+                  <Ionicons name="pricetag-outline" size={18} color={Colors.warning} />
+                  <Text style={[styles.optionText, { color: Colors.warning }]}>Complete linked retail listing</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={[styles.optionRow, styles.optionRed]} onPress={() => onAction(listing.id, 'delete')} accessibilityRole="button">
+                <Ionicons name="trash-outline" size={18} color={Colors.accent} />
+                <Text style={[styles.optionText, { color: Colors.accent }]}>Delete listing</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      )}
     </TouchableOpacity>
   );});
 
@@ -693,6 +791,56 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any; route?: any }> 
     const l = listings.find((x) => x.id === id);
     if (l) setSelectedListing(l);
   }, [listings]);
+  const [detailAction, setDetailAction] = useState<'sold' | 'boost' | null>(null);
+  const [cancelSaleFor, setCancelSaleFor] = useState<Listing | null>(null);
+  // Website stock card actions, by status (dashboard/dealer/inventory/page.tsx).
+  const handleStockAction = useCallback((id: string, action: StockAction) => {
+    const l = listings.find((x) => x.id === id);
+    if (!l) return;
+    switch (action) {
+      case 'publish':
+      case 'edit':
+        navigation?.navigate('SellCarFlow', { listingId: l.id });
+        return;
+      case 'view':
+        if (l.slug) navigation?.navigate('VehicleDeepLink', { slug: l.slug });
+        return;
+      case 'sold':
+      case 'boost':
+        setDetailAction(action);
+        setSelectedListing(l);
+        return;
+      case 'cancelSale':
+        setCancelSaleFor(l);
+        return;
+      case 'putOnAuction':
+        navigation?.navigate('SellerAuctions', { preselectListingId: l.id });
+        return;
+      case 'alsoRetail':
+        navigation?.navigate('SellerAuctions', { alsoRetailListingId: l.id });
+        return;
+      case 'linkedRetail':
+        if (l.linkedListing) navigation?.navigate('SellCarFlow', { listingId: l.linkedListing.id });
+        return;
+      case 'delete':
+        Alert.alert('Delete listing', `Are you sure you want to delete ${l.title}?`, [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete', style: 'destructive', onPress: async () => {
+              try {
+                await apiClient(`/listings/${l.id}`, { method: 'DELETE' });
+                haptics.success();
+                fetchListings(true);
+              } catch (err: any) {
+                Alert.alert('Could not delete listing', err?.message ?? 'Please try again.');
+              }
+            },
+          },
+        ]);
+        return;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listings, navigation]);
   const handlePutOnAuction = useCallback((listingId: string) => {
     navigation?.navigate('SellerAuctions', { preselectListingId: listingId });
   }, [navigation]);
@@ -704,12 +852,12 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any; route?: any }> 
       <InventoryRow
         listing={item}
         onPress={handleRowPress}
-        onPutOnAuction={canManageInventory ? handlePutOnAuction : undefined}
         onOpenLinkedAuction={canManageInventory ? handleOpenLinkedAuction : undefined}
+        onAction={handleStockAction}
         canManageInventory={canManageInventory}
       />
     ),
-    [handleRowPress, handlePutOnAuction, handleOpenLinkedAuction, canManageInventory],
+    [handleRowPress, handleOpenLinkedAuction, handleStockAction, canManageInventory],
   );
   const renderInventoryGrid = useCallback(
     ({ item }: { item: Listing }) => <InventoryGridCard listing={item} onPress={handleRowPress} />,
@@ -720,7 +868,8 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any; route?: any }> 
     return (
       <ListingDetail
         listing={selectedListing}
-        onBack={() => setSelectedListing(null)}
+        initialAction={detailAction}
+        onBack={() => { setSelectedListing(null); setDetailAction(null); }}
         navigation={navigation}
         canManageInventory={canManageInventory}
         bottomInset={route?.name === 'DealerStock' ? getBottomTabBarHeight(fontScale, insets.bottom) : 0}
@@ -977,12 +1126,47 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any; route?: any }> 
           onImported={() => { setShowImportModal(false); /* fetchListings called by onClose */ }}
         />
       )}
+      {/* Website "Cancel sale" — the same reviewed cancellation request flow. */}
+      {cancelSaleFor && (
+        <SaleCancellationSheet
+          visible
+          listingId={cancelSaleFor.id}
+          vehicleTitle={cancelSaleFor.title}
+          onClose={() => setCancelSaleFor(null)}
+          onCreated={() => { setCancelSaleFor(null); fetchListings(true); }}
+        />
+      )}
     </View>
   );
 };
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
+  // Website stock card actions.
+  cardActions: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  cardPrimary: {
+    flex: 1, minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingHorizontal: 10, borderRadius: Radius.inline, backgroundColor: Colors.success,
+  },
+  cardPrimaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent, textAlign: 'center', flexShrink: 1 },
+  cardDanger: {
+    flex: 1, minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha30, backgroundColor: Colors.accentAlpha05,
+  },
+  cardDangerText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent },
+  cardSecondary: {
+    flex: 1, minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.border,
+  },
+  cardSecondaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textPrimary },
+  moreOptionsBtn: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 6 },
+  moreOptionsText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textMuted },
+  moreOptions: { gap: 8, marginTop: 4, paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.border },
+  optionRow: { minHeight: 46, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, borderRadius: Radius.inline },
+  optionText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textPrimary },
+  optionAmber: { backgroundColor: Colors.warningAlpha10 },
+  optionBlue: { backgroundColor: Colors.infoBlueAlpha10 },
+  optionRed: { backgroundColor: Colors.accentAlpha05 },
   container: {
     flex: 1,
     backgroundColor: Colors.bgPrimary,
