@@ -17,8 +17,8 @@ export function PurchaseReceiptButton({ saleId, className = "" }: {
         setError(null)
         try {
             await downloadAuthenticatedFile(
-                \`/dealers/purchases/\${encodeURIComponent(saleId)}/receipt.pdf\`,
-                \`carmazium-vehicle-purchase-\${saleId.slice(0, 8)}.pdf\`,
+                `/dealers/purchases/${encodeURIComponent(saleId)}/receipt.pdf`,
+                `carmazium-vehicle-purchase-${saleId.slice(0, 8)}.pdf`,
             )
         } catch (err) {
             if ((err as Error).message !== "AUTH_REDIRECT") {
