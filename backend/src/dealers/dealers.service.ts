@@ -1882,6 +1882,67 @@ export class DealersService {
         return purchase;
     }
 
+    /**
+     * Confidential original-seller details for an owner-confirmed recovered
+     * purchase. The purchase is buyer-scoped; sourceListing (not the dealer's
+     * later retail advert) supplies the seller. No KYC proofs/bank data.
+     * These rows are created through controlled admin reconciliation, not
+     * customer-submitted purchase assertions.
+     */
+    async getDealerReconciledPurchaseSellerDetails(userId: string, purchaseId: string) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        assertDealerPermission(actor, 'VIEW_PURCHASES');
+        const row = await this.prisma.dealerPurchaseReconciliation.findFirst({
+            where: { id: purchaseId, buyerId: actor.ownerUserId, status: 'COMPLETED' },
+            select: {
+                sourceListing: {
+                    select: {
+                        seller: {
+                            select: {
+                                id: true, firstName: true, lastName: true,
+                                email: true, phone: true, isAddressVerified: true,
+                                dealerProfile: {
+                                    select: {
+                                        companyName: true, businessAddress: true, phone: true,
+                                        registrationNumber: true, vatNumber: true,
+                                    },
+                                },
+                                addressVerifications: {
+                                    where: { consumedAt: { not: null } },
+                                    orderBy: { consumedAt: 'desc' },
+                                    take: 1,
+                                    select: { address: true },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (!row) throw new NotFoundException('Purchase not found');
+
+        const seller = row.sourceListing.seller;
+        const company = seller?.dealerProfile ?? null;
+        const businessAddress = company?.businessAddress?.trim() || null;
+        const postal = seller?.isAddressVerified
+            ? seller.addressVerifications[0]?.address?.trim() || null
+            : null;
+        const address = businessAddress || postal;
+        return {
+            sellerName: [seller?.firstName, seller?.lastName].filter(Boolean).join(' ').trim()
+                || company?.companyName || 'Not recorded',
+            sellerCompany: company?.companyName || null,
+            sellerAccountReference: seller?.id || null,
+            sellerEmail: seller?.email || null,
+            sellerPhone: seller?.phone || company?.phone || null,
+            sellerAddress: address,
+            sellerAddressSource: address ? (businessAddress ? 'BUSINESS' as const : 'VERIFIED_POSTAL' as const) : null,
+            sellerCompanyRegistrationNumber: company?.registrationNumber || null,
+            sellerVatNumber: company?.vatNumber || null,
+            contactUnlocked: true,
+        };
+    }
+
     // ─── Purchases ────────────────────────────────────────────────────
 
     async getDealerPurchases(userId: string, page = 1, limit = 20) {
@@ -2282,6 +2343,7 @@ export class DealersService {
                 },
                 seller: {
                     select: {
+                        id: true,
                         firstName: true,
                         lastName: true,
                         email: true,
@@ -2292,6 +2354,8 @@ export class DealersService {
                                 companyName: true,
                                 businessAddress: true,
                                 phone: true,
+                                registrationNumber: true,
+                                vatNumber: true,
                             },
                         },
                         addressVerifications: {
@@ -2332,6 +2396,11 @@ export class DealersService {
             vehicleLocation: listing.location,
             sellerName,
             sellerCompany: seller.dealerProfile?.companyName || null,
+            sellerAccountReference: contactUnlocked ? seller.id : null,
+            sellerCompanyRegistrationNumber: contactUnlocked
+                ? seller.dealerProfile?.registrationNumber || null : null,
+            sellerVatNumber: contactUnlocked
+                ? seller.dealerProfile?.vatNumber || null : null,
             contactUnlocked,
             buyerFeeRequired: isAuctionPurchase,
             sellerEmail: contactUnlocked ? seller.email : null,
