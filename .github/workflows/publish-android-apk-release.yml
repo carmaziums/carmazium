@@ -1,0 +1,83 @@
+name: Publish approved Android APK for website download
+# Manual, owner-approved step after "CarMazium Android release candidate".
+# Takes the exact signed APK that run staged, re-verifies it, and attaches it
+# to a GitHub Release. carmazium.com/downloads/<file>.apk serves it from there
+# (next.config.ts rewrite). Nothing is rebuilt or re-signed here.
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_run_id:
+        description: Run ID of the successful "CarMazium Android release candidate" run
+        type: string
+        required: true
+      approval:
+        description: Owner approval for customer download
+        type: choice
+        required: true
+        options: [NOT_APPROVED, OWNER_APPROVED_CUSTOMER_RELEASE]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: carmazium-android-apk-publish
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main' && inputs.approval == 'OWNER_APPROVED_CUSTOMER_RELEASE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Validate run id
+        env:
+          RUN_ID: ${{ inputs.candidate_run_id }}
+        run: |
+          [[ "$RUN_ID" =~ ^[0-9]{5,20}$ ]] || { echo "::error::candidate_run_id must be numeric"; exit 1; }
+      - name: Download staged APK from the candidate run
+        uses: actions/download-artifact@v4
+        with:
+          name: CarMazium-Android-STAGED-NOT-APPROVED
+          path: staged
+          run-id: ${{ inputs.candidate_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Re-verify package, signer and checksum
+        env:
+          PINNED_CERT: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256 }}
+        working-directory: staged
+        run: |
+          set -euo pipefail
+          sha256sum -c SHA256SUMS.txt
+          node -e '
+            const m = require("./staging-manifest.json");
+            const fail = (e) => { console.error("::error::" + e); process.exit(1); };
+            if (m.package_name !== "uk.carmazium.app") fail("wrong package " + m.package_name);
+            if (!/^CarMazium-\d+\.\d+\.\d+-v\d+\.apk$/.test(m.filename)) fail("unexpected file name");
+            const pinned = (process.env.PINNED_CERT || "").replace(/:/g, "").toLowerCase();
+            if (!pinned || m.signing_certificate_sha256.replace(/:/g, "").toLowerCase() !== pinned) fail("signer is not the pinned CarMazium release key");
+            require("fs").writeFileSync(process.env.GITHUB_ENV,
+              `APK_FILE=${m.filename}\nAPK_SHA256=${m.apk_sha256}\nAPK_TAG=${m.filename.replace(/\.apk$/, "")}\nSOURCE_SHA=${m.source_sha}\n`, { flag: "a" });
+          '
+          test -f "$APK_FILE"
+      - name: Create GitHub Release with the APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: staged
+        run: |
+          set -euo pipefail
+          if gh release view "$APK_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Release $APK_TAG already exists; bump version_code for a new release"; exit 1
+          fi
+          gh release create "$APK_TAG" "$APK_FILE" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$SOURCE_SHA" \
+            --title "CarMazium for Android ${APK_TAG#CarMazium-}" \
+            --notes "Signed CarMazium Android app for direct download from https://www.carmazium.com/download-app. SHA-256: $APK_SHA256"
+      - name: Website settings to enable the download button
+        run: |
+          {
+            echo "### Set in Vercel (Production), then redeploy"
+            echo '```'
+            echo "NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_RELEASE_APPROVED=true"
+            echo "NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_URL=https://www.carmazium.com/downloads/$APK_FILE"
+            echo "NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_SHA256=$APK_SHA256"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

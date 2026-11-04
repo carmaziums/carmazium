@@ -224,3 +224,16 @@ test('source docs must not promise App Store availability, unsupported iOS web s
     assert.ok(docs.toLowerCase().includes(term.toLowerCase()),term);
   }
 });
+
+test('signed APK is served from carmazium.com/downloads via an owner-approved GitHub Release only',()=>{
+  const cfg=read('next.config.ts');
+  assert.ok(cfg.includes("source: '/downloads/:name(CarMazium-\\\\d+\\\\.\\\\d+\\\\.\\\\d+-v\\\\d+).apk'"));
+  assert.ok(cfg.includes("destination: 'https://github.com/carmaziums/carmazium/releases/download/:name/:name.apk'"));
+  const wf=read('.github/workflows/publish-android-apk-release.yml');
+  assert.ok(wf.includes("inputs.approval == 'OWNER_APPROVED_CUSTOMER_RELEASE'"), 'needs explicit owner approval');
+  assert.ok(wf.includes("github.ref == 'refs/heads/main'"));
+  assert.ok(wf.includes('sha256sum -c SHA256SUMS.txt'), 'checksum re-verified');
+  assert.ok(wf.includes('CARMAZIUM_ANDROID_RELEASE_CERT_SHA256'), 'signer pinned to release key');
+  assert.ok(wf.includes('m.package_name !== "uk.carmazium.app"'), 'production package only');
+  assert.ok(!/assembleRelease|keystore/i.test(wf), 'publishing never rebuilds or re-signs');
+});
