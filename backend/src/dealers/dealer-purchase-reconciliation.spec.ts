@@ -18,10 +18,17 @@ describe('Owner-confirmed recovered purchases', () => {
         notes: null,
         collectedAt: new Date('2026-09-26T00:00:00.000Z'),
         createdAt: new Date('2026-11-04T13:00:00.000Z'),
-        stockListing: {
-            title: 'Nissan Qashqai 2016', images: [], make: 'Nissan',
-            model: 'Qashqai', year: 2016, mileage: 58000, color: 'Grey',
-            vrm: 'AB66XYZ',
+        // The retail stock record is intentionally absent from API results.
+        stockListing: { title: 'Dealer retail advert (must NEVER display)' },
+        sourceListing: {
+            id: 'old-auction-1',
+            title: 'Nissan Qashqai 2016 - original seller advert',
+            images: ['https://example.test/original-auction-seller-photo.jpg'],
+            make: 'Nissan', model: 'Qashqai', year: 2016,
+            mileage: 92000, color: 'Red', vrm: 'AB66XYZ',
+            createdAt: new Date('2026-09-18T16:00:00.000Z'),
+            seller: { firstName: 'Original', lastName: 'Seller' },
+            auction: { id: 'auction-1', status: 'CANCELLED' },
         },
     };
 
@@ -49,6 +56,12 @@ describe('Owner-confirmed recovered purchases', () => {
         expect(rows[0]).toMatchObject({
             id: 'recovered-1',
             registration: 'AB66XYZ',
+            listingId: 'old-auction-1',
+            sourceListingId: 'old-auction-1',
+            sellerName: 'Original Seller',
+            originalListedAt: '2026-09-18',
+            vehicleTitle: 'Nissan Qashqai 2016 - original seller advert',
+            imageUrl: 'https://example.test/original-auction-seller-photo.jpg',
             status: 'CHECKS_COMPLETE',
             purchaseChannel: 'RECONCILED',
             collectedAt: '2026-09-26',
@@ -56,11 +69,13 @@ describe('Owner-confirmed recovered purchases', () => {
             purchasePrice: null,
             provenance: 'OWNER_CONFIRMED',
         });
+        expect(rows[0].vehicleSubtitle).toContain('92,000 mi');
+        expect(JSON.stringify(rows[0])).not.toContain('Dealer retail advert');
         expect(prisma.dealerPurchaseReconciliation.findMany).toHaveBeenCalledWith(
             expect.objectContaining({ where: { buyerId: 'owner-1', status: 'COMPLETED' } }),
         );
         for (const model of ['sale','auction','listing']) {
-            expect(prisma[model].create || jest.fn()).not.toHaveBeenCalled();
+            if (prisma[model].create) expect(prisma[model].create).not.toHaveBeenCalled();
             expect(prisma[model].update).not.toHaveBeenCalled();
         }
     });

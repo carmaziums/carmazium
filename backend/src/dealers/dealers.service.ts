@@ -1819,42 +1819,60 @@ export class DealersService {
         const rows = await this.prisma.dealerPurchaseReconciliation.findMany({
             where: { buyerId: actor.ownerUserId, status: 'COMPLETED' },
             include: {
-                stockListing: {
+                // The SELLER'S ORIGINAL auction advert, never the buyer's later
+                // retail listing of the same registration/vehicle.
+                sourceListing: {
                     select: {
                         id: true, title: true, images: true, vrm: true,
                         make: true, model: true, year: true, mileage: true, color: true,
+                        createdAt: true,
+                        seller: { select: { firstName: true, lastName: true } },
+                        auction: { select: { id: true, status: true } },
                     },
                 },
             },
             orderBy: [{ collectedAt: 'desc' }, { createdAt: 'desc' }],
             take: 2000,
         });
-        return rows.map((r) => ({
-            id: r.id,
-            listingId: r.stockListingId,
-            sourceListingId: r.sourceListingId,
-            vehicleTitle: r.stockListing.title,
-            vehicleSubtitle: [
-                r.vehicleVrm,
-                r.stockListing.mileage != null ? `${r.stockListing.mileage.toLocaleString('en-GB')} mi` : null,
-                r.stockListing.color,
-            ].filter(Boolean).join(' · '),
-            imageUrl: r.stockListing.images[0] ?? null,
-            registration: r.vehicleVrm,
-            vehicleYear: r.stockListing.year,
-            vehicleMake: r.stockListing.make,
-            vehicleModel: r.stockListing.model,
-            purchasePrice: r.purchasePrice === null ? null : Number(r.purchasePrice),
-            // This is the confirmed COLLECTION date. The transaction date
-            // may be earlier; the source data does not establish that date.
-            collectedAt: r.collectedAt.toISOString().slice(0, 10),
-            buyerCollectedAt: r.collectedAt.toISOString().slice(0, 10),
-            purchaseDate: r.collectedAt.toISOString().slice(0, 10),
-            status: 'CHECKS_COMPLETE' as const,
-            purchaseChannel: 'RECONCILED' as const,
-            provenance: r.provenance,
-            notes: r.notes,
-        }));
+        return rows.map((r) => {
+            const l = r.sourceListing;
+            const name = [l.seller?.firstName, l.seller?.lastName]
+                .filter(Boolean).join(' ').trim();
+            return {
+                id: r.id,
+                // Original auction reference for details and accounting evidence.
+                listingId: r.sourceListingId,
+                sourceListingId: r.sourceListingId,
+                // Historical later retail listing ID is deliberately NOT exposed
+                // as the purchase source.
+                vehicleTitle: l.title,
+                vehicleSubtitle: [
+                    r.vehicleVrm,
+                    l.mileage != null ? `${l.mileage.toLocaleString('en-GB')} mi` : null,
+                    l.color,
+                ].filter(Boolean).join(' · '),
+                imageUrl: l.images[0] ?? null,
+                registration: r.vehicleVrm,
+                vehicleYear: l.year,
+                vehicleMake: l.make,
+                vehicleModel: l.model,
+                sellerName: name || 'Original auction seller',
+                originalListedAt: l.createdAt.toISOString().slice(0, 10),
+                originalAuctionListingId: l.id,
+                // Distinct from a system-recorded auction WIN; an historic
+                // cancelled/ended auction must not acquire a fabricated winner.
+                source: 'ORIGINAL_AUCTION_LISTING' as const,
+                purchasePrice: r.purchasePrice === null ? null : Number(r.purchasePrice),
+                // This is collection, not an invented payment/purchase date.
+                collectedAt: r.collectedAt.toISOString().slice(0, 10),
+                buyerCollectedAt: r.collectedAt.toISOString().slice(0, 10),
+                purchaseDate: r.collectedAt.toISOString().slice(0, 10),
+                status: 'CHECKS_COMPLETE' as const,
+                purchaseChannel: 'RECONCILED' as const,
+                provenance: r.provenance,
+                notes: r.notes,
+            };
+        });
     }
 
     async getDealerReconciledPurchaseDetail(userId: string, id: string) {

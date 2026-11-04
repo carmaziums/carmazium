@@ -54,10 +54,14 @@ export class PurchaseReceiptPdfService {
         row('Registration', purchase.registration, 569);
         row('Vehicle', purchase.vehicleTitle, 531);
         row('Purchase price', price, 493);
-        page.drawText('RECONCILIATION NOTICE', { x: 48, y: 430, size: 13, font: bold, color: red });
+        row('Original auction seller', purchase.sellerName, 455);
+        row('Original listing date', new Date(purchase.originalListedAt + 'T12:00:00Z')
+            .toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/London' }), 417);
+        row('Original listing ID', purchase.originalAuctionListingId, 379);
+        page.drawText('RECONCILIATION NOTICE', { x: 48, y: 335, size: 13, font: bold, color: red });
         const notice = [
-            'The buyer confirms purchasing and collecting this vehicle.',
-            'CarMazium recovered this missing record after website development.',
+            'The buyer confirms purchasing from the original CarMazium auction seller.',
+            'The original seller listing is the source, not the buyer\'s retail stock.',
             'The historic auction result was NOT changed by this reconciliation.',
             'The purchase price is shown only if separately recorded and verified.',
             'CarMazium has not independently verified payment to the seller.',
@@ -65,7 +69,7 @@ export class PurchaseReceiptPdfService {
             'Keep the original seller invoice and bank statement for your accounts.',
         ];
         notice.forEach((line, i) => page.drawText(line, {
-            x: 48, y: 404 - i * 27, size: 10, font: normal, color: grey,
+            x: 48, y: 307 - i * 27, size: 10, font: normal, color: grey,
         }));
         page.drawText('CarMazium - carmazium.com', {
             x: 48, y: 56, size: 10, font: normal, color: ink,
