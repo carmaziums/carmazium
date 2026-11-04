@@ -31,6 +31,7 @@ export interface PurchaseItem {
     /** From the authenticated purchase API; never infer channel from status. */
     purchaseChannel?: "AUCTION" | "RETAIL" | "RECONCILED"
     reconciledPurchase?: boolean
+    originalListedAt?: string
     purchasePriceUnrecorded?: boolean
     sellerName?: string
     sellerEmail?: string
@@ -169,6 +170,16 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                             View purchase details <ChevronRight size={13} aria-hidden="true" />
                         </button>
                     )}
+                    {item.reconciledPurchase && item.sellerName && (
+                        <p className="mt-2 text-xs font-semibold text-[var(--text-secondary)]">
+                            Original auction seller: {item.sellerName}
+                        </p>
+                    )}
+                    {item.reconciledPurchase && item.originalListedAt && (
+                        <p className="mt-1 text-xs text-[var(--text-muted)]">
+                            Original listing: {new Date(item.originalListedAt + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
+                    )}
                     {item.sellerName && !item.reconciledPurchase && (
                         <button
                             type="button"
@@ -181,7 +192,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                         </button>
                     )}
                     {item.reconciledPurchase ? (
-                        <p className="mt-2 text-xs font-semibold text-emerald-500">Owner-confirmed completed purchase · Historic record restored</p>
+                        <p className="mt-2 text-xs font-semibold text-emerald-500">Purchased from original CarMazium auction listing · Owner confirmed</p>
                     ) : item.retailSold ? (
                         <p className="mt-2 text-xs font-semibold text-emerald-400">
                             Retail sale recorded · No buyer fee
