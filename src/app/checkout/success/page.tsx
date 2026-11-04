@@ -60,6 +60,10 @@ function CheckoutSuccessContent() {
                     return
                 }
                 setConfirmationPending(false)
+                // Payment and a successfully submitted listing are different
+                // milestones. Paid revenue is recorded even when publication
+                // needs attention, but qualified-seller acquisition is not.
+                let retailSubmittedForReview = false
                 // Webhook fallback: submit a confirmed paid Retail listing for review.
                 // If publication fails, tell the seller instead of silently displaying success.
                 if (data?.metadata?.type === 'LISTING_FEE') {
@@ -68,7 +72,8 @@ function CheckoutSuccessContent() {
                     } else {
                         try {
                             const result = await publishListing(data.metadata.listingId)
-                            setListingSubmissionError(!result.pendingReview && !result.activated)
+                            retailSubmittedForReview = Boolean(result.pendingReview || result.activated)
+                            setListingSubmissionError(!retailSubmittedForReview)
                         } catch {
                             setListingSubmissionError(true)
                         }
@@ -122,10 +127,11 @@ function CheckoutSuccessContent() {
                             // only Google Ads receives this for Enhanced Conversions.
                             googleAdsUserData: { email: data.customerEmail || undefined },
                         })
-                        // Only confirmed paid retail listings qualify. The
-                        // listing ID prevents another Ads conversion for the
-                        // same vehicle on re-payment, refresh or channel switch.
-                        if (data.metadata?.listingId && profile?.role !== 'ADMIN') {
+                        // The payment is confirmed, but qualified seller
+                        // acquisition requires successfully submitted inventory,
+                        // not a paid checkout that failed to submit the listing.
+                        // The listing ID prevents re-payment/reload duplication.
+                        if (data.metadata?.listingId && retailSubmittedForReview && profile?.role !== 'ADMIN') {
                             trackEvent(SELLER_FUNNEL.QUALIFIED_SELLER_LISTING, {
                                 listing_id: data.metadata.listingId,
                                 listing_type: 'retail',

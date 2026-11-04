@@ -86,6 +86,10 @@ on:
       - "src/lib/cardImageUrl.ts"
       - "src/components/features/CardImageCarousel.tsx"
       - "src/lib/googleAds.ts"
+      - "src/components/analytics/MetaPixel.tsx"
+      - "scripts/test-meta-lead-currency.test.mjs"
+      - "src/hooks/useAnalytics.ts"
+      - "scripts/test-meta-qualified-listings.test.mjs"
       - "src/lib/gtm.ts"
       - "src/app/checkout/success/page.tsx"
       - "scripts/test-google-ads-qualified-seller.test.mjs"
@@ -151,6 +155,12 @@ jobs:
 
       - name: Qualified seller Google Ads tracking regression suite
         run: node --test scripts/test-google-ads-qualified-seller.test.mjs
+
+      - name: Meta Lead event GBP, consent and qualification regression suite
+        run: node --test scripts/test-meta-lead-currency.test.mjs
+
+      - name: Meta verified auction and paid retail conversion regression suite
+        run: node --test scripts/test-meta-qualified-listings.test.mjs
 
       - name: Verify 3D damage upload, buyer evidence and safe navigation
         run: node --test scripts/test-web-damage-release.test.mjs
@@ -247,7 +257,7 @@ jobs:
             exit 0
           fi
 
-          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E '^src/(components/(listing/|features/ImportListingModal\.tsx|dashboard/ListingEditModal\.tsx)|app/(pricing/|dashboard/(seller/auctions/|dealer/inventory/))|lib/(listingApi|pricingConfig|auctionApi|auctionPricing|sellerVehicleSpecs|pendingSellerHandoff|sellerDraftIsolation|sellerDeclarationValidation|sellerAuctionDraft|googleAds|gtm|dvlaApi|apiClient|fetchWithRetry)\.ts)|^src/app/checkout/success/page\.tsx' || true)"
+          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E '^src/(components/(listing/|features/ImportListingModal\.tsx|dashboard/ListingEditModal\.tsx)|app/(pricing/|dashboard/(seller/auctions/|dealer/inventory/))|lib/(listingApi|pricingConfig|auctionApi|auctionPricing|sellerVehicleSpecs|pendingSellerHandoff|sellerDraftIsolation|sellerDeclarationValidation|sellerAuctionDraft|googleAds|gtm|dvlaApi|apiClient|fetchWithRetry)\.ts)|^src/hooks/useAnalytics\.ts|^src/components/analytics/MetaPixel\.tsx|^src/app/checkout/success/page\.tsx' || true)"
 
           if [ -n "$LISTING_ERRORS" ]; then
             echo

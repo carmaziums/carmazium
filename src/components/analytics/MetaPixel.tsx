@@ -69,17 +69,33 @@ export function trackMetaEvent(
             ? "VehicleEnquiry"
             : eventName
 
+    // A seller Lead is not a paid transaction. Supply GBP and a truthful
+    // zero monetary value until an explicitly approved lead-value model exists.
+    // This resolves Meta's missing-currency diagnostic without claiming the
+    // £1 retail fee has been earned before checkout succeeds.
+    const eventParams = normalisedEventName === "Lead"
+        ? {
+            ...params,
+            value: typeof params?.value === "number" && Number.isFinite(params.value) && params.value >= 0
+                ? params.value
+                : 0,
+            currency: typeof params?.currency === "string" && /^[A-Z]{3}$/.test(params.currency)
+                ? params.currency
+                : "GBP",
+        }
+        : params
+
     const command = META_STANDARD_EVENTS.has(normalisedEventName) ? "trackSingle" : "trackSingleCustom"
-    const hasParams = Boolean(params && Object.keys(params).length > 0)
+    const hasParams = Boolean(eventParams && Object.keys(eventParams).length > 0)
 
     // Meta uses eventID to deduplicate a browser Pixel event against a future
     // server-side Conversions API copy of the same event. Supplying it now is
     // harmless for browser-only tracking and gives us a stable contract for
     // CAPI when the server token is provisioned.
     if (options.eventID) {
-        window.fbq(command, META_PIXEL_ID, normalisedEventName, hasParams ? params : {}, { eventID: options.eventID })
+        window.fbq(command, META_PIXEL_ID, normalisedEventName, hasParams ? eventParams : {}, { eventID: options.eventID })
     } else if (hasParams) {
-        window.fbq(command, META_PIXEL_ID, normalisedEventName, params)
+        window.fbq(command, META_PIXEL_ID, normalisedEventName, eventParams)
     } else {
         window.fbq(command, META_PIXEL_ID, normalisedEventName)
     }

@@ -175,7 +175,8 @@ test('retail goal only follows verified Stripe LISTING_FEE payment, and retains 
     assert.match(checkoutSource, /trackEvent\(SELLER_FUNNEL\.LISTING_FEE_PAID/)
     assert.match(checkoutSource, /googleAdsUserData: \{ email: data\.customerEmail \|\| undefined \}/)
     assert.match(checkoutSource, /listingFeeTrackingId\(data\.metadata\?\.listingId\)/)
-    assert.match(checkoutSource, /if \(data\.metadata\?\.listingId && profile\?\.role !== 'ADMIN'\)/)
+    assert.match(checkoutSource, /retailSubmittedForReview = Boolean\(result\.pendingReview \|\| result\.activated\)/)
+    assert.match(checkoutSource, /if \(data\.metadata\?\.listingId && retailSubmittedForReview && profile\?\.role !== 'ADMIN'\)/)
     assert.match(checkoutSource, /trackEvent\(SELLER_FUNNEL\.QUALIFIED_SELLER_LISTING/)
 })
 
