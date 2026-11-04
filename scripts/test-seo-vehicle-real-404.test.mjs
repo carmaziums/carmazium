@@ -34,7 +34,7 @@ test("backend outage or invalid 200 payload must not create an empty indexable v
     assert.match(fn, /if \(!res\.ok\) throw new Error\(/)
     assert.match(fn, /if \(!json\?\.data \|\| typeof json\.data !== "object" \|\| Array\.isArray\(json\.data\)\)/)
     assert.match(fn, /throw new Error\("\[retail\] Malformed listing lookup payload"\)/)
-    assert.match(fn, /return \{ listing: json\.data as Listing, missing: false \} as const/)
+    assert.match(fn, /return \{ listing: json\.data, missing: false \} as const/)
 
     assert.doesNotMatch(fn, /catch\s*\{|if \(!res\.ok\) return|json\.data \?\? null/)
     // Restricted listings retain their existing nonindexable fallback.
