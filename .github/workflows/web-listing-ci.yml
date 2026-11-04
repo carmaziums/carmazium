@@ -47,6 +47,7 @@ on:
       - "src/lib/dealerPurchaseDetail.ts"
       - "scripts/test-dealer-purchase-detail.test.mjs"
       - "scripts/test-purchase-receipt.test.mjs"
+      - "scripts/test-purchase-legal-snapshot.test.mjs"
       - "scripts/test-dealer-purchase-reconciliation.test.mjs"
       - "src/lib/purchaseDestinations.ts"
       - "src/components/dealer/PurchaseDestinations.tsx"
@@ -196,6 +197,9 @@ jobs:
 
       - name: Verify completed vehicle purchase receipt PDF, security gates and mobile UI
         run: node --test scripts/test-purchase-receipt.test.mjs
+
+      - name: Verify private seller legal evidence, provenance, and privacy gates
+        run: node --test scripts/test-purchase-legal-snapshot.test.mjs
 
       - name: Verify recovered owner-confirmed completed acquisitions and permissions
         run: node --test scripts/test-dealer-purchase-reconciliation.test.mjs
