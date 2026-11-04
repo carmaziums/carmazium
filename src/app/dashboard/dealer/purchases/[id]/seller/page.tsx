@@ -179,7 +179,7 @@ export default function PurchaseSellerDetailsPage() {
                                                 <p className="text-xs text-[var(--text-muted)]">
                                                     {details.sellerAddressSource === "BUSINESS"
                                                         ? "Business address on file"
-                                                        : "Verified postal address on file"}
+                                                        : "Account-confirmed postal address (not independently residence-verified)"}
                                                 </p>
                                                 <a
                                                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(details.sellerAddress)}`}
