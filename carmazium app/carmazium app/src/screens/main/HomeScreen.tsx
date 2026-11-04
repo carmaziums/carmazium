@@ -1013,7 +1013,7 @@ const s = StyleSheet.create({
 
   // Empty state
   emptyState: { width: 240, minHeight: 100, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.bgCard, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.border, ...Elevation.card },
-  emptyStateText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.midBlue_505060 },
+  emptyStateText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.textMuted },
 
   // Sell CTA — the one accent-filled hero action on this screen (CDS restraint
   // rule: at most one primary accent-filled action per view). Accent wash

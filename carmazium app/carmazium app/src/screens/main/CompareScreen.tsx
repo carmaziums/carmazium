@@ -968,7 +968,7 @@ const styles = StyleSheet.create({
     color: Colors.lightBlue_0084ff,
   },
   textMagenta: {
-    color: Colors.midPink,
+    color: Colors.accentGlow,
   },
   textGreen: {
     color: Colors.accentGreen,

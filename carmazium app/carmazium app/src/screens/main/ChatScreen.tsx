@@ -2057,7 +2057,8 @@ const styles = StyleSheet.create({
   payOverlayBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
-    color: Colors.bgPrimary,
+    // Dark text on the amber pay button in both themes.
+    color: Colors.black,
     letterSpacing: 1,
   },
   refreshOverlayBtn: {
