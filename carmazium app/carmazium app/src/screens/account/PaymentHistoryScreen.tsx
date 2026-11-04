@@ -17,7 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
 
 import { IconButton } from '../../components/IconButton';
@@ -288,11 +288,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontSize: FontSize.base,
@@ -306,9 +308,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 18,
     borderRadius: Radius.card,
-    backgroundColor: Colors.glassBg,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.cardHi,
   },
   summaryLabel: {
     fontSize: FontSize.size10,
@@ -338,13 +341,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 999,
-    backgroundColor: Colors.whiteAlpha05,
+    backgroundColor: Colors.bgCard,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha08,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
   },
   filterChipActive: {
     backgroundColor: Colors.accent,
     borderColor: Colors.accent,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   filterChipText: {
     fontSize: FontSize.size12,
@@ -361,9 +367,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.glassBg,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   txThumb: {
     width: 48,

@@ -9,6 +9,7 @@ import { Image } from 'expo-image';
 import { DealerActiveBidPositions, DealerAuctionShortlist } from './DealerAuctionBuyingSections';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Colors } from '../../constants/colors';
+import { Button } from '../../components/Button';
 import { FontFamily } from '../../constants/typography';
 import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
@@ -265,9 +266,7 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
                   {error && (
                     <View style={styles.errorBox}>
                       <Text style={styles.errorText}>{error}</Text>
-                      <TouchableOpacity accessibilityRole="button" onPress={() => { void fetchOwned(true); }}>
-                        <Text style={styles.retryText}>Retry</Text>
-                      </TouchableOpacity>
+                      <Button label="Retry" onPress={() => { void fetchOwned(true); }} variant="outline" size="sm" />
                     </View>
                   )}
                   {!loading && !error && (
@@ -289,9 +288,7 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
                 <View style={styles.sectionHeading}>
                   <Text style={styles.sectionTitle}>My Auctions</Text>
                   {canManageInventory && (
-                    <TouchableOpacity accessibilityRole="button" onPress={openManager}>
-                      <Text style={styles.manageLink}>Manage Auctions</Text>
-                    </TouchableOpacity>
+                    <Button label="Manage Auctions" onPress={openManager} variant="outline" size="sm" />
                   )}
                 </View>
               </>

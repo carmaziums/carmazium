@@ -14,6 +14,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { CarListing, formatPrice } from '../data/listings';
 import { Colors } from '../constants/colors';
+import { Elevation } from '../constants/spacing';
 import { FontFamily, FontSize } from '../constants/typography';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -288,6 +289,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   ctaText: {
     fontFamily: FontFamily.semiBold,

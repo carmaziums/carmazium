@@ -25,7 +25,7 @@ import { fetchAllMyListings } from '../../lib/myListingsApi';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors, themeMode, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ImportListingModal } from '../../components/ImportListingModal';
@@ -1041,11 +1041,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha07,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
@@ -1061,6 +1063,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 8,
     flexDirection: 'row',
+    paddingVertical: 6,
   },
   tab: {
     flexDirection: 'row',
@@ -1069,13 +1072,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: Radius.card,
-    backgroundColor: Colors.whiteAlpha05,
+    backgroundColor: Colors.bgCard,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha08,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
   },
   tabActive: {
     backgroundColor: Colors.accent,
     borderColor: Colors.accent,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   tabLabel: {
     fontFamily: FontFamily.bold,
@@ -1149,13 +1155,14 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.inline,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
     padding: 12,
     gap: 12,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   thumb: {
     width: 64,
@@ -1306,9 +1313,14 @@ const styles = StyleSheet.create({
   },
   soldCancelBtn: {
     marginHorizontal: 20,
-    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 44,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.borderHi,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   soldCancelBtnText: {
     fontFamily: FontFamily.semiBold,

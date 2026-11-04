@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { BODY_TYPE_ICONS } from '../../constants/bodyTypes';
 import { VEHICLE_FEATURE_GROUPS } from '../../data/vehicleFeatures';
@@ -4380,7 +4380,7 @@ const s = StyleSheet.create({
 
   // Header
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 12 },
-  backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCard, borderColor: Colors.border, borderBottomWidth: 2, ...Elevation.card },
   headerCenter: { alignItems: 'center' },
   headerSub: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.accent, letterSpacing: 1.5, marginBottom: 3 },
   headerTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.md, color: Colors.white },
@@ -4394,7 +4394,7 @@ const s = StyleSheet.create({
   methodChoiceSelected: { borderColor: Colors.accent, backgroundColor: Colors.accentAlpha06 },
   methodTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 5 },
   methodDescription: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 18 },
-  optionalSectionToggle: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 66, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgSecondaryAlt, marginBottom: 12 },
+  optionalSectionToggle: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 66, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderHi, marginBottom: 12, backgroundColor: Colors.bgCard, borderBottomWidth: 3, ...Elevation.card },
   optionalSectionTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 4 },
   optionalSectionHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 17 },
   stepperSummary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
@@ -4404,7 +4404,7 @@ const s = StyleSheet.create({
   stepperSegment: { flex: 1, backgroundColor: Colors.whiteAlpha12, borderRadius: 4 },
   stepperSegmentComplete: { backgroundColor: Colors.accent },
   freshActionRow: { alignItems: 'flex-end', paddingHorizontal: 16, marginTop: -6, marginBottom: 10 },
-  freshActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha25, backgroundColor: Colors.accentAlpha05 },
+  freshActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: Radius.inline, backgroundColor: Colors.bgCard, borderWidth: 1.5, borderBottomWidth: 3, borderColor: Colors.accent, minHeight: 34 },
   freshActionText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.accent, letterSpacing: 0.8 },
   stepperContainer: { paddingHorizontal: 16, marginBottom: 16 },
   stepItem: { alignItems: 'center', width: 56 },
@@ -4418,8 +4418,8 @@ const s = StyleSheet.create({
   stepLineActive: { backgroundColor: Colors.accent },
 
   // Section Box
-  sectionBox: { backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha06, marginBottom: 12 },
-  sectionBoxHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha05, borderLeftWidth: 3, borderLeftColor: Colors.whiteAlpha15, borderTopLeftRadius: 14, borderTopRightRadius: 14 },
+  sectionBox: { borderWidth: 1, marginBottom: 12, backgroundColor: Colors.bgCard, borderRadius: Radius.card, borderColor: Colors.border, ...Elevation.card },
+  sectionBoxHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderLeftWidth: 3, borderLeftColor: Colors.accent, borderBottomColor: Colors.border, borderTopLeftRadius: Radius.card - 1, borderTopRightRadius: Radius.card - 1 },
   sectionBoxTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 1, flex: 1 },
   sectionBoxBody: { padding: 14 },
 
@@ -4569,7 +4569,7 @@ const s = StyleSheet.create({
 
   // Review
   reviewHeading: { fontFamily: FontFamily.extraBold, fontSize: FontSize.size22, color: Colors.white, marginBottom: 16 },
-  reviewEditBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  reviewEditBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 30, paddingHorizontal: 10, borderRadius: Radius.chip, borderWidth: 1.5, borderBottomWidth: 3, borderColor: Colors.accent, backgroundColor: Colors.bgCard },
   reviewEditText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accent },
   reviewGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 0 },
   reviewCell: { width: '50%', paddingVertical: 8, paddingRight: 8 },
@@ -4598,9 +4598,9 @@ const s = StyleSheet.create({
 
   // Bottom Bar
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingTop: 12, backgroundColor: Colors.bgPrimary, borderTopWidth: 1, borderTopColor: Colors.whiteAlpha05, flexDirection: 'row', gap: 10 },
-  backBtnSm: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, height: 52, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.whiteAlpha05 },
+  backBtnSm: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, borderRadius: Radius.inline, borderWidth: 1, minHeight: 52, backgroundColor: Colors.bgCard, borderColor: Colors.borderHi, borderBottomWidth: 3, ...Elevation.card },
   backBtnSmText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white },
-  nextBtn: { flex: 1, backgroundColor: Colors.accent, borderRadius: Radius.inline, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  nextBtn: { flex: 1, backgroundColor: Colors.accent, borderRadius: Radius.inline, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon, minHeight: 52 },
   nextBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent, letterSpacing: 0.8 },
-  publishBtn: { backgroundColor: Colors.accentGreen },
+  publishBtn: { backgroundColor: Colors.accentGreen, borderBottomColor: Colors.blackAlpha45 },
 });

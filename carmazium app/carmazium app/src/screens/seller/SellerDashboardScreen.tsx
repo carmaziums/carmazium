@@ -24,11 +24,12 @@ import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { CarListing } from '../../data/listings';
 import { PRICING } from '../../constants/pricing';
 
 import { IconButton } from '../../components/IconButton';
+import { Button } from '../../components/Button';
 import { HamburgerButton } from '../../components/HamburgerButton';
 // ─────────────────────────── interfaces ───────────────────────────
 
@@ -503,9 +504,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Latest offers</Text>
-            <TouchableOpacity activeOpacity={0.75} onPress={() => navigation?.navigate('SellerOffers')}>
-              <Text style={styles.sectionSeeAll}>See all</Text>
-            </TouchableOpacity>
+            <Button label="See all" onPress={() => navigation?.navigate('SellerOffers')} variant="outline" size="sm" />
           </View>
 
           {recentOffers.length === 0 ? (
@@ -691,7 +690,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
 // ═══════════════════════════ STYLES ════════════════════════════════
 
 const CARD_BG = Colors.bgCard;
-const CARD_BORDER = Colors.whiteAlpha08;
+const CARD_BORDER = Colors.border;
 
 const styles = StyleSheet.create({
   // ── base ──
@@ -736,11 +735,11 @@ const styles = StyleSheet.create({
   },
   periodToggle: {
     flexDirection: 'row',
-    backgroundColor: Colors.whiteAlpha07,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     padding: 2,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
   },
   periodToggleBtn: {
     paddingHorizontal: 10,
@@ -749,6 +748,9 @@ const styles = StyleSheet.create({
   },
   periodToggleBtnActive: {
     backgroundColor: Colors.accent,
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   periodToggleText: {
     fontFamily: FontFamily.bold,
@@ -762,20 +764,23 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.whiteAlpha07,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
 
   // ── hero card ──
   heroCard: {
     backgroundColor: CARD_BG,
     borderWidth: 1,
-    borderColor: CARD_BORDER,
     borderRadius: Radius.card,
     overflow: 'hidden',
+    borderColor: Colors.border,
+    ...Elevation.cardHi,
   },
   heroImageArea: {
     height: 150,
@@ -869,26 +874,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderWidth: 1,
+    ...Elevation.card,
   },
   statCardViews: {
     backgroundColor: Colors.bgCard,
-    borderColor: Colors.whiteAlpha06,
+    borderColor: Colors.border,
   },
   statCardSaves: {
     backgroundColor: Colors.bgCard,
-    borderColor: Colors.whiteAlpha06,
+    borderColor: Colors.border,
   },
   statCardOffers: {
-    backgroundColor: Colors.warningAlpha08,
     borderColor: Colors.warningAlpha25,
+    backgroundColor: Colors.bgCard,
   },
   statCardSold: {
-    backgroundColor: Colors.successAlpha08,
     borderColor: Colors.successAlpha25,
+    backgroundColor: Colors.bgCard,
   },
   statCardRevenue: {
-    backgroundColor: Colors.accentGreenAlpha08,
     borderColor: Colors.accentGreenAlpha20,
+    backgroundColor: Colors.bgCard,
   },
   statValue: {
     fontFamily: FontFamily.mono,
@@ -913,9 +919,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    height: 52,
     borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
+    minHeight: 52,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   ctaButtonText: {
     fontFamily: FontFamily.bold,
@@ -957,11 +966,12 @@ const styles = StyleSheet.create({
   offersEmpty: {
     backgroundColor: Colors.bgCard,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha05,
     borderRadius: Radius.card,
     padding: 20,
     alignItems: 'center',
     gap: 8,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   offersEmptyTitle: {
     fontFamily: FontFamily.bold,
@@ -985,9 +995,10 @@ const styles = StyleSheet.create({
     width: '47.5%',
     backgroundColor: Colors.bgCard,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     borderRadius: Radius.card,
     padding: 16,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   quickIconWrap: {
     width: 32,
@@ -1011,9 +1022,11 @@ const styles = StyleSheet.create({
 
   // ── listing cards ──
   listingCardSkeleton: {
-    height: 76,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.whiteAlpha04,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    minHeight: 76,
   },
   listingCard: {
     flexDirection: 'row',
@@ -1021,9 +1034,10 @@ const styles = StyleSheet.create({
     backgroundColor: CARD_BG,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: CARD_BORDER,
     padding: 18,
     gap: 14,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   listingThumbContainer: {
     width: 64,
@@ -1101,12 +1115,15 @@ const styles = StyleSheet.create({
   },
   emptyCtaBtn: {
     marginTop: 8,
-    height: 48,
     paddingHorizontal: 28,
     borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 48,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   emptyCtaBtnText: {
     fontFamily: FontFamily.bold,

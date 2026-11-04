@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
+import { Button } from '../Button';
 import { Colors } from '../../constants/colors';
 import { Radius } from '../../constants/spacing';
 import { FontFamily, FontSize, TextPresets, Type } from '../../constants/typography';
@@ -67,15 +68,16 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
 
       {showCta ? (
-        <TouchableOpacity
-          style={[styles.cta, accent ? styles.ctaAccent : styles.ctaQuiet]}
-          onPress={onCtaPress}
-          activeOpacity={0.85}
-          accessibilityRole="button"
+        // Shared raised 3D button: primary (red gradient + glow) for an
+        // invitation, outline (solid raised surface) for informational states.
+        <Button
+          label={ctaLabel}
+          onPress={onCtaPress as () => void}
+          variant={accent ? 'primary' : 'outline'}
+          size="sm"
           accessibilityLabel={ctaLabel}
-        >
-          <Text style={[styles.ctaLabel, !accent && styles.ctaLabelQuiet]}>{ctaLabel}</Text>
-        </TouchableOpacity>
+          style={styles.cta}
+        />
       ) : null}
     </View>
   );
@@ -138,32 +140,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   cta: {
-    paddingHorizontal: 20,
-    paddingVertical: 11,
-    borderRadius: Radius.inline,
-  },
-  ctaAccent: {
-    backgroundColor: Colors.accent,
-    shadowColor: Colors.accent,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 6,
-  },
-  ctaQuiet: {
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.borderHi,
-  },
-  ctaLabel: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size12,
-    color: Colors.white,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  ctaLabelQuiet: {
-    color: Colors.textSecondary,
+    minWidth: 160,
   },
 });
 

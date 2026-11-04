@@ -23,7 +23,7 @@ import { searchListings } from '../../lib/listingsApi';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
@@ -591,11 +591,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.whiteAlpha04,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitleContainer: {
     alignItems: 'center',
@@ -616,11 +618,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.whiteAlpha04,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   // Toggle Switch Container
   toggleContainer: {
@@ -681,12 +685,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   carCard: {
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.card,
     borderWidth: 1,
     overflow: 'hidden',
     position: 'relative',
     height: 180,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   carCardA: {
     borderColor: Colors.accentAlpha30,
@@ -750,11 +756,12 @@ const styles = StyleSheet.create({
     height: 180,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.01)',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   emptyCardText: {
     fontFamily: FontFamily.bold,
@@ -771,13 +778,14 @@ const styles = StyleSheet.create({
   },
   capsuleCard: {
     flex: 1,
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.inline,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha08,
     overflow: 'hidden',
     position: 'relative',
     height: 80,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   capsuleImg: {
     width: '100%',
@@ -968,12 +976,13 @@ const styles = StyleSheet.create({
   // Verdict Card
   verdictCard: {
     marginHorizontal: 24,
-    backgroundColor: Colors.deepPurple,
     borderWidth: 1,
-    borderColor: Colors.darkPink_3b1e2b,
     borderRadius: Radius.card,
     padding: 16,
     marginBottom: 20,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   verdictHeader: {
     flexDirection: 'row',
@@ -1005,14 +1014,16 @@ const styles = StyleSheet.create({
   addThirdBtn: {
     marginHorizontal: 24,
     flexDirection: 'row',
-    height: 48,
     borderRadius: Radius.inline,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha12,
-    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
+    minHeight: 48,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderHi,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   addThirdText: {
     fontFamily: FontFamily.bold,
@@ -1035,18 +1046,22 @@ const styles = StyleSheet.create({
   },
   footerBtn: {
     flex: 1,
-    height: 48,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 48,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   footerBtnDark: {
-    backgroundColor: Colors.deepBlue_1c1d26,
     borderWidth: 1,
-    borderColor: Colors.darkBlue_2a2e3d,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderHi,
+    borderBottomColor: Colors.borderHi,
   },
   footerBtnRed: {
     backgroundColor: Colors.accent,
+    borderBottomColor: Colors.accentDark,
   },
   onAccentText: { color: Colors.onAccent },
   footerBtnText: {

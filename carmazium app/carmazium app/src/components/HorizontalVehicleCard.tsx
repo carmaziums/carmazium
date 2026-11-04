@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 // expo-image over react-native's Image: caching/recycling for cards rendered
 // repeatedly in horizontal scroll lists (see VehicleCard.tsx for rationale).
@@ -19,6 +20,7 @@ import { CarListing, formatPrice, formatMileage, getNativeListingPrice } from '.
 import { useWatchlistStore } from '../store/watchlistStore';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
+import { Elevation, Radius } from '../constants/spacing';
 import { useLocation } from '../context/LocationContext';
 import { haversineDistanceMiles } from '../lib/distance';
 import { ImageCarousel } from './ImageCarousel';
@@ -181,14 +183,19 @@ export const HorizontalVehicleCard = React.memo(HorizontalVehicleCardBase);
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.bgCardSolid,
+    backgroundColor: Colors.bgCard,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    borderRadius: 16,
-    overflow: 'hidden',
+    borderColor: Colors.border,
+    borderRadius: Radius.card,
+    // Raised result card. iOS clips its own shadow to overflow:'hidden', so
+    // only Android clips here; the photo rounds its own top corners instead.
+    overflow: Platform.OS === 'ios' ? 'visible' : 'hidden',
+    ...Elevation.card,
   },
   imageContainer: {
     position: 'relative',
+    borderTopLeftRadius: Radius.card - 1,
+    borderTopRightRadius: Radius.card - 1,
     width: '100%',
     height: 196,
     overflow: 'hidden',
@@ -298,10 +305,19 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
   },
+  // Visual "button" affordance (the whole card is the tap target): a raised
+  // outline chip rather than bare accent text.
   viewDetails: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: Radius.inline,
+    borderWidth: 1.5,
+    borderBottomWidth: 3,
+    borderColor: Colors.accent,
+    backgroundColor: Colors.bgCard,
   },
   viewDetailsText: {
     fontFamily: FontFamily.bold,

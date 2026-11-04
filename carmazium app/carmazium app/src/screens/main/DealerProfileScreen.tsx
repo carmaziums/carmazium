@@ -19,7 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { DealerWebParityOverview, type DealerHomeDestination } from './DealerWebParityOverview';
@@ -32,6 +32,7 @@ type NavProp = NativeStackNavigationProp<MainStackParamList>;
 import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
+import { Button } from '../../components/Button';
 import { useTabBarClearance } from '../../hooks/useTabBarClearance';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -238,9 +239,7 @@ export const DealerProfileScreen: React.FC = () => {
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>TOP LISTINGS • 7D</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('DealerInventory')}>
-              <Text style={styles.sectionActionText}>See all</Text>
-            </TouchableOpacity>
+            <Button label="See all" onPress={() => navigation.navigate('DealerInventory')} variant="outline" size="sm" />
           </View>
 
           {topListings.length > 0 ? (
@@ -872,7 +871,6 @@ const styles = StyleSheet.create({
   phoneBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.warningAlpha05,
     borderWidth: 1,
     borderColor: Colors.warningAlpha30,
     borderRadius: Radius.inline,
@@ -880,6 +878,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    backgroundColor: Colors.bgCard,
+    ...Elevation.card,
   },
   phoneBannerTitle: {
     fontFamily: FontFamily.bold,
@@ -895,13 +895,14 @@ const styles = StyleSheet.create({
   },
   tabToggleRow: {
     flexDirection: 'row',
-    backgroundColor: Colors.whiteAlpha02,
     borderRadius: Radius.sheet,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha05,
     padding: 3,
     marginHorizontal: 24,
     marginBottom: 20,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   tabToggleBtn: {
     flex: 1,
@@ -911,6 +912,9 @@ const styles = StyleSheet.create({
   },
   tabToggleBtnActive: {
     backgroundColor: Colors.accent,
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   tabToggleText: {
     fontFamily: FontFamily.bold,
@@ -940,12 +944,13 @@ const styles = StyleSheet.create({
 
   // Today View - Inventory Snapshot
   card: {
-    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     padding: 20,
     marginHorizontal: 24,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   snapshotHeader: {
     flexDirection: 'row',
@@ -1028,13 +1033,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   emptyCard: {
-    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     paddingVertical: 28,
     paddingHorizontal: 20,
     alignItems: 'center',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   emptyCardText: {
     fontFamily: FontFamily.medium,
@@ -1145,16 +1151,17 @@ const styles = StyleSheet.create({
 
   // This Week View - Revenue Sales Card
   salesCard: {
-    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     padding: 24,
     marginHorizontal: 24,
     overflow: 'hidden',
     position: 'relative',
     height: 110,
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   salesLabel: {
     fontFamily: FontFamily.bold,
@@ -1203,11 +1210,12 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     width: (SCREEN_WIDTH - 58) / 2,
-    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     padding: 14,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   metricHeader: {
     flexDirection: 'row',
@@ -1257,11 +1265,12 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   funnelCard: {
-    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     padding: 20,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   funnelItem: {
     marginBottom: 14,
@@ -1318,13 +1327,15 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     height: 48,
     borderRadius: Radius.card,
-    borderStyle: 'dashed',
     borderWidth: 1.5,
-    borderColor: Colors.whiteAlpha12,
-    backgroundColor: 'rgba(255, 255, 255, 0.01)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
+    backgroundColor: Colors.bgCard,
+    borderStyle: 'solid',
+    borderColor: Colors.borderHi,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   switchProfileText: {
     fontFamily: FontFamily.bold,

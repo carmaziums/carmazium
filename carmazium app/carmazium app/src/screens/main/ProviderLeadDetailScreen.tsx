@@ -17,7 +17,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import {
   ServiceLead,
   formatPence,
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   center: { alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingVertical: 12 },
-  headerButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
+  headerButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderBottomWidth: 2, ...Elevation.card },
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted, marginTop: 2 },
   statusPill: { borderRadius: 999, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 9, paddingVertical: 6 },
@@ -449,14 +449,14 @@ const styles = StyleSheet.create({
   expiredText: { color: Colors.errorLight },
   content: { padding: 18, gap: 12 },
   centerCard: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 28 },
-  card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.bgSecondary, padding: 16, gap: 12 },
+  card: { borderRadius: Radius.card, borderWidth: 1, padding: 16, gap: 12, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
   cardTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.base },
   bodyText: { fontFamily: FontFamily.regular, color: Colors.textSecondary, fontSize: FontSize.size12, lineHeight: 19 },
   privacyText: { fontFamily: FontFamily.regular, color: Colors.textMuted, fontSize: FontSize.size10, lineHeight: 16 },
   infoLine: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha08, paddingBottom: 9 },
   infoLabel: { fontFamily: FontFamily.medium, color: Colors.textMuted, fontSize: FontSize.xs },
   infoValue: { flex: 1, fontFamily: FontFamily.medium, color: Colors.white, fontSize: FontSize.xs, textAlign: 'right' },
-  contactRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 34 },
+  contactRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 34, paddingHorizontal: 12, borderRadius: Radius.inline, borderWidth: 1, borderBottomWidth: 3, borderColor: Colors.borderHi, backgroundColor: Colors.bgCard, alignSelf: 'flex-start', ...Elevation.card },
   contactText: { fontFamily: FontFamily.medium, color: Colors.accent, fontSize: FontSize.size12 },
   notesBox: { borderTopWidth: 1, borderTopColor: Colors.whiteAlpha08, paddingTop: 12, gap: 7 },
   label: { fontFamily: FontFamily.bold, color: Colors.textMuted, fontSize: FontSize.size10, letterSpacing: 0.8 },
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
   errorText: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.paleRed_fca5a5, lineHeight: 18 },
   successCard: { flexDirection: 'row', gap: 8, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.successAlpha25, backgroundColor: Colors.successAlpha10, padding: 12 },
   successText: { flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.accentGreen },
-  primaryButton: { minHeight: 46, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  primaryButton: { minHeight: 46, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   primaryText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: FontSize.xs, letterSpacing: 0.7 },
   disabled: { opacity: 0.55 },
 });

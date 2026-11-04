@@ -28,7 +28,7 @@ import {
   matchesAuctionFilters,
 } from '../../components/filters/auctionFilters';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { getActiveAuctions, getAllScheduledAuctions, AuctionDetail } from '../../lib/auctionApi';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -400,7 +400,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
             <Ionicons
               name="options-outline"
               size={15}
-              color={activeFilterCount > 0 ? Colors.accent : Colors.textSecondary}
+              color={activeFilterCount > 0 ? Colors.onAccent : Colors.textSecondary}
             />
             <Text
               style={[styles.filterBtnText, activeFilterCount > 0 && styles.filterBtnTextActive]}
@@ -420,6 +420,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
 
           {activeFilterCount > 0 && (
             <TouchableOpacity
+              style={styles.clearFiltersBtn}
               onPress={() => setFilters({ ...INITIAL_AUCTION_FILTERS, sortBy: filters.sortBy })}
               activeOpacity={0.7}
               accessibilityRole="button"
@@ -768,8 +769,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: Radius.inline,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
     alignItems: 'center',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderHi,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   gateSecondaryText: {
     fontFamily: FontFamily.semiBold,
@@ -789,13 +793,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: Radius.pill,
-    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
     borderColor: Colors.border,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   filterBtnActive: {
-    backgroundColor: Colors.accentAlpha12,
+    backgroundColor: Colors.accent,
     borderColor: Colors.accent,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   filterBtnText: {
     fontFamily: FontFamily.bold,
@@ -803,27 +811,38 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   filterBtnTextActive: {
-    color: Colors.accent,
+    color: Colors.onAccent,
   },
   filterCountBadge: {
     minWidth: 18,
     height: 18,
     borderRadius: 9,
     paddingHorizontal: 5,
-    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.onAccent,
   },
   filterCountText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size9,
-    color: Colors.onAccent,
+    color: Colors.accent,
   },
   sortLabel: {
     flex: 1,
     fontFamily: FontFamily.medium,
     fontSize: FontSize.size11_5,
     color: Colors.textMuted,
+  },
+  // Raised outline chip: "Clear" is an action, not a link.
+  clearFiltersBtn: {
+    minHeight: 34,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    borderRadius: Radius.pill,
+    borderWidth: 1.5,
+    borderBottomWidth: 3,
+    borderColor: Colors.accent,
+    backgroundColor: Colors.bgCard,
   },
   clearFiltersText: {
     fontFamily: FontFamily.bold,
@@ -881,14 +900,15 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
     paddingHorizontal: 16,
     gap: 10,
     marginBottom: 14,
+    minHeight: 48,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   searchInput: {
     flex: 1,
@@ -902,14 +922,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
-    borderColor: Colors.warningAlpha25,
-    borderRadius: Radius.inline,
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 14,
     gap: 10,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.warning,
+    borderRadius: Radius.card,
+    ...Elevation.card,
   },
   auctionCtaLeft: {
     flexDirection: 'row',
@@ -933,14 +954,15 @@ const styles = StyleSheet.create({
   alertBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.deepPurple,
     borderWidth: 1,
-    borderColor: Colors.darkPink_3b1e2b,
     borderRadius: Radius.inline,
     paddingHorizontal: 16,
     paddingVertical: 13,
     marginBottom: 28,
     gap: 10,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderAccent,
+    ...Elevation.card,
   },
   alertDot: {
     width: 6,
@@ -972,11 +994,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 36,
     gap: 10,
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     marginBottom: 24,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   emptyUpcomingText: {
     fontFamily: FontFamily.medium,
@@ -988,12 +1011,13 @@ const styles = StyleSheet.create({
 
   // ─── Auction Card ───────────────────────────────────────────────
   auctionCard: {
-    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
     borderRadius: Radius.card,
     overflow: 'hidden',
     marginBottom: 24,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
 
   // Image block

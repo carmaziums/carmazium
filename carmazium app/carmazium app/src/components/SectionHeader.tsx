@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Button } from './Button';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
 
@@ -18,14 +19,12 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
 }) => (
   <View style={styles.container}>
     <View style={styles.titleRow}>
-      <View>
+      <View style={styles.titleCol}>
         {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
         <Text style={styles.title}>{title}</Text>
       </View>
       {showSeeAll && onSeeAll && (
-        <Text style={styles.seeAll} onPress={onSeeAll}>
-          See all →
-        </Text>
+        <Button label="See all" onPress={onSeeAll} variant="outline" size="sm" />
       )}
     </View>
   </View>
@@ -39,6 +38,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
+    gap: 12,
+  },
+  titleCol: {
+    flex: 1,
   },
   subtitle: {
     fontFamily: FontFamily.medium,
@@ -53,11 +56,5 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xl,
     color: Colors.textPrimary,
     letterSpacing: -0.3,
-  },
-  seeAll: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    letterSpacing: 0.3,
   },
 });

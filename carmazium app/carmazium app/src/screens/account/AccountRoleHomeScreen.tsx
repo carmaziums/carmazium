@@ -15,7 +15,7 @@ import { HamburgerButton } from '../../components/HamburgerButton';
 import { useAuthStore, AccountRole } from '../../store/authStore';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 
 const ACCOUNT_COPY: Record<
   Extract<AccountRole, 'contractor' | 'finance_partner' | 'insurance_partner' | 'admin'>,
@@ -181,10 +181,11 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    backgroundColor: Colors.bgSecondary,
     padding: 18,
     marginBottom: 18,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   cardTitle: {
     fontFamily: FontFamily.bold,
@@ -200,13 +201,16 @@ const styles = StyleSheet.create({
   },
   actions: { gap: 10 },
   primaryAction: {
-    height: 52,
     borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
     flexDirection: 'row',
     gap: 9,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 52,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   primaryActionText: {
     fontFamily: FontFamily.bold,
@@ -214,15 +218,17 @@ const styles = StyleSheet.create({
     color: Colors.onAccent,
   },
   secondaryAction: {
-    height: 52,
     borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
-    backgroundColor: Colors.bgSecondary,
     flexDirection: 'row',
     gap: 9,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 52,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   secondaryActionText: {
     fontFamily: FontFamily.bold,

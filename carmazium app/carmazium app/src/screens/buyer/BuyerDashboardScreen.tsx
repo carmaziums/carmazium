@@ -21,12 +21,13 @@ import type { CarListing } from '../../data/listings';
 import { getUnreadCount } from '../../lib/notificationsApi';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { Logo } from '../../components/Logo';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { Skeleton } from '../../components/ui/Skeleton';
 
 import { IconButton } from '../../components/IconButton';
+import { Button } from '../../components/Button';
 import { useTabBarClearance } from '../../hooks/useTabBarClearance';
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -405,9 +406,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
         <View style={styles.activitySection}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.activitySectionTitle}>RECENT ACTIVITY</Text>
-            <TouchableOpacity activeOpacity={0.7} onPress={() => navigation?.navigate('Notifications')}>
-              <Text style={styles.seeAllText}>See all</Text>
-            </TouchableOpacity>
+            <Button label="See all" onPress={() => navigation?.navigate('Notifications')} variant="outline" size="sm" />
           </View>
 
           <View style={styles.activityCard}>
@@ -598,7 +597,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const CARD_BG = Colors.bgCard;
-const CARD_BORDER = Colors.whiteAlpha06;
+const CARD_BORDER = Colors.border;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
@@ -608,7 +607,7 @@ const styles = StyleSheet.create({
   // Header
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 16 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  bellBtn: { width: 38, height: 38, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: Colors.whiteAlpha10, alignItems: 'center', justifyContent: 'center' },
+  bellBtn: { width: 38, height: 38, borderRadius: Radius.inline, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderBottomWidth: 2, ...Elevation.card },
   bellDot: { position: 'absolute', top: 8, right: 8, width: 7, height: 7, borderRadius: 3.5, backgroundColor: Colors.accent, borderWidth: 1.5, borderColor: Colors.bgPrimary },
 
   // Greeting
@@ -617,19 +616,19 @@ const styles = StyleSheet.create({
   greetingHeadline: { fontFamily: FontFamily.extraBold, fontSize: FontSize['3xl'], color: Colors.white, letterSpacing: -0.5, marginBottom: 2 },
   greetingSubtitle: { fontFamily: FontFamily.regular, fontSize: FontSize.size14, color: Colors.textMuted },
   buyerJourneyRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 24, marginBottom: 22 },
-  buyerJourneyBuy: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.accent, borderRadius: Radius.inline, paddingHorizontal: 10 },
-  buyerJourneySaved: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.inline, paddingHorizontal: 10 },
+  buyerJourneyBuy: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.accent, borderRadius: Radius.inline, paddingHorizontal: 10, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
+  buyerJourneySaved: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.inline, paddingHorizontal: 10, borderBottomWidth: 3, borderBottomColor: Colors.blackAlpha45, ...Elevation.card },
   onAccentText: { color: Colors.onAccent },
   buyerJourneyLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
-  periodPillRow: { flexDirection: 'row', gap: 6, backgroundColor: Colors.whiteAlpha04, borderRadius: 10, padding: 3 },
+  periodPillRow: { flexDirection: 'row', gap: 6, borderRadius: 10, padding: 3, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border },
   periodPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  periodPillActive: { backgroundColor: Colors.accent },
+  periodPillActive: { backgroundColor: Colors.accent, borderBottomWidth: 2, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   periodPillText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.iconMuted, letterSpacing: 0.4 },
   periodPillTextActive: { color: Colors.onAccent },
 
   // KPI Grid
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingHorizontal: 24, marginBottom: 28 },
-  kpiCard: { width: '47.5%', backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: CARD_BORDER, padding: 18, overflow: 'hidden', position: 'relative' },
+  kpiCard: { width: '47.5%', backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: CARD_BORDER, padding: 18, overflow: 'hidden', position: 'relative', ...Elevation.card },
   kpiCardFull: { width: '100%' },
   kpiIconChip: { width: 30, height: 30, borderRadius: Radius.chip, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   kpiIconTint: { opacity: 0.14 },
@@ -642,14 +641,14 @@ const styles = StyleSheet.create({
 
   // Hot Deal
   hotDealSection: { marginBottom: 28, paddingHorizontal: 24 },
-  hotDealCard: { backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderSubtle, flexDirection: 'row', padding: 16, gap: 14, alignItems: 'center' },
+  hotDealCard: { backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderSubtle, flexDirection: 'row', padding: 16, gap: 14, alignItems: 'center', ...Elevation.card },
   hotDealImage: { width: 96, height: 76, borderRadius: 12 },
   hotDealImagePlaceholder: { backgroundColor: Colors.whiteAlpha06 },
   hotDealInfo: { flex: 1 },
   hotDealTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 8 },
   hotDealPriceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   hotDealPrice: { fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.white, letterSpacing: -0.32 },
-  hotDealCta: { backgroundColor: Colors.accent, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
+  hotDealCta: { backgroundColor: Colors.accent, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   hotDealCtaText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent, letterSpacing: 0.3 },
 
   // Section headers
@@ -659,8 +658,7 @@ const styles = StyleSheet.create({
   // Activity
   activitySection: { paddingHorizontal: 24, marginBottom: 28 },
   activitySectionTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 1, textTransform: 'uppercase' },
-  seeAllText: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.accent },
-  activityCard: { backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: CARD_BORDER, overflow: 'hidden' },
+  activityCard: { backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: CARD_BORDER, overflow: 'hidden', ...Elevation.card },
   activityRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 17, gap: 14 },
   activityRowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha06 },
   activityIcon: { width: 36, height: 36, borderRadius: Radius.inline, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
@@ -675,14 +673,14 @@ const styles = StyleSheet.create({
   // 3-column grid: five tiles squeezed into one row broke every label one
   // letter per line on phones with a larger font size.
   quickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  quickTile: { flexBasis: '30%', flexGrow: 1, minWidth: 96, backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: CARD_BORDER, paddingVertical: 16, paddingHorizontal: 8, alignItems: 'center', gap: 8, position: 'relative' },
+  quickTile: { flexBasis: '30%', flexGrow: 1, minWidth: 96, backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: CARD_BORDER, paddingVertical: 16, paddingHorizontal: 8, alignItems: 'center', gap: 8, position: 'relative', ...Elevation.card },
   quickIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   quickLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 0.2, textAlign: 'center' },
   quickBadge: { position: 'absolute', top: 8, right: 8, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   quickBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.onAccent },
 
   // Profile Card
-  profileCard: { marginHorizontal: 24, marginTop: 8, flexDirection: 'row', alignItems: 'center', backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: CARD_BORDER, padding: 20, gap: 16 },
+  profileCard: { marginHorizontal: 24, marginTop: 8, flexDirection: 'row', alignItems: 'center', backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: CARD_BORDER, padding: 20, gap: 16, ...Elevation.card },
   profileAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   profileAvatarText: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.onAccent },
   profileInfo: { flex: 1 },

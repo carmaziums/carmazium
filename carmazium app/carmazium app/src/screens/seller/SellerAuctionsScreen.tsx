@@ -27,7 +27,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 import { Colors, themeMode, themeStatusBarStyle } from '../../constants/colors';
 import {FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -2227,8 +2227,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderTopWidth: 1,
     borderTopColor: Colors.borderSubtle,
+    gap: 8,
+    padding: 10,
   },
-  wonAction: { flex: 1, minHeight: 44, justifyContent: 'center', paddingHorizontal: 14 },
+  wonAction: { flex: 1, minHeight: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 10, borderRadius: Radius.inline, borderWidth: 1.5, borderBottomWidth: 3, borderColor: Colors.borderHi, backgroundColor: Colors.bgCard, ...Elevation.card },
   wonActionText: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: FontSize.sm },
   wonActionTextMuted: { color: Colors.textMuted, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm },
   container: {
@@ -2245,12 +2247,14 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 38,
     height: 38,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
@@ -2266,13 +2270,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: Radius.card,
-    backgroundColor: Colors.whiteAlpha04,
+    backgroundColor: Colors.bgCard,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha08,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
   },
   tabActive: {
     backgroundColor: Colors.accent,
     borderColor: Colors.accent,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   tabText: {
     fontFamily: FontFamily.bold,
@@ -2312,12 +2319,13 @@ const styles = StyleSheet.create({
 
   // ── Card ──
   card: {
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.inline,
     borderWidth: 1,
     borderLeftWidth: 3,
-    borderColor: Colors.whiteAlpha06,
     padding: 12,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   cardRow: {
     flexDirection: 'row',
@@ -2388,9 +2396,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: Radius.card,
-    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
+    borderColor: Colors.borderHi,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   resultsBtnText: {
     fontFamily: FontFamily.bold,
@@ -2579,11 +2589,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 42,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
+    borderColor: Colors.borderHi,
+    minHeight: 42,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   resultsViewBtnText: {
     fontFamily: FontFamily.bold,
@@ -2730,7 +2742,7 @@ const styles = StyleSheet.create({
   retailPriceRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.inputBg, borderWidth: 1, borderColor: Colors.inputBorder, borderRadius: Radius.inline, paddingHorizontal: 12 },
   retailCurrency: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.textMuted, marginRight: 4 },
   retailInput: { flex: 1, fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.textPrimary, paddingVertical: 12 },
-  retailPlanCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.whiteAlpha08, borderRadius: Radius.inline, padding: 12 },
+  retailPlanCard: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: Radius.inline, padding: 12, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
   retailPlanRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: Colors.whiteAlpha20, alignItems: 'center', justifyContent: 'center' },
   retailPlanLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, flex: 1 },
   retailPlanPrice: { fontFamily: FontFamily.mono, fontSize: FontSize.base, flexShrink: 0 },
@@ -2774,21 +2786,25 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   modalCloseBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   stepIndicator: {
     flexDirection: 'row',
@@ -2845,11 +2861,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.inline,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha08,
     padding: 12,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   listingPickThumb: {
     width: 60,

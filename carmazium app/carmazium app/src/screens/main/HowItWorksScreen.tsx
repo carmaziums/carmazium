@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
@@ -251,11 +251,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
@@ -281,22 +283,26 @@ const styles = StyleSheet.create({
   // ── Toggle ──
   toggleRow: {
     flexDirection: 'row',
-    backgroundColor: Colors.whiteAlpha04,
     borderRadius: Radius.inline,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha08,
     padding: 4,
     gap: 4,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   toggleBtn: {
     flex: 1,
-    height: 40,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 40,
   },
   toggleBtnActive: {
     backgroundColor: Colors.accent,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   toggleText: {
     fontFamily: FontFamily.bold,
@@ -310,12 +316,13 @@ const styles = StyleSheet.create({
 
   // ── Step card ──
   stepCard: {
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     padding: 18,
     gap: 8,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   stepTopRow: {
     flexDirection: 'row',
@@ -448,12 +455,13 @@ const styles = StyleSheet.create({
   },
   peaceCard: {
     width: '48%',
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.inline,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     padding: 14,
     gap: 6,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   peaceTitle: {
     fontFamily: FontFamily.bold,

@@ -17,9 +17,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
+import { Button } from '../../components/Button';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { useAuthStore } from '../../store/authStore';
 import {
   SERVICE_LABELS,
@@ -272,9 +273,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                   <Text style={styles.sectionTitle}>Your services</Text>
                   <Text style={styles.sectionSub}>Adding one service never removes another.</Text>
                 </View>
-                <TouchableOpacity onPress={() => navigation.navigate('ProviderCapabilities')}>
-                  <Text style={styles.linkText}>MANAGE</Text>
-                </TouchableOpacity>
+                <Button label="Manage" onPress={() => navigation.navigate('ProviderCapabilities')} variant="outline" size="sm" />
               </View>
 
               {SERVICE_ORDER.map((type) => {
@@ -410,7 +409,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12 },
-  headerButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
+  headerButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderBottomWidth: 2, ...Elevation.card },
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   content: { padding: 18, gap: 14 },
   hero: { paddingVertical: 8 },
@@ -421,24 +420,24 @@ const styles = StyleSheet.create({
   eyebrow: { fontFamily: FontFamily.bold, color: Colors.accent, fontSize: FontSize.size10, letterSpacing: 1.6 },
   title: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.xl, marginTop: 6 },
   sub: { fontFamily: FontFamily.regular, color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 21, marginTop: 8 },
-  card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCardSolid, padding: 16, gap: 12 },
+  card: { borderRadius: Radius.card, borderWidth: 1, padding: 16, gap: 12, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
   cardTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.base },
   cardText: { fontFamily: FontFamily.regular, color: Colors.textSecondary, fontSize: FontSize.size12, lineHeight: 19 },
   input: { borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.bgTertiary, borderRadius: Radius.inline, paddingHorizontal: 13, paddingVertical: 12, color: Colors.white, fontFamily: FontFamily.regular, fontSize: FontSize.sm },
-  primaryButton: { minHeight: 46, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  primaryButton: { minHeight: 46, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   primaryText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: FontSize.size12, letterSpacing: 0.7 },
-  secondaryButton: { minHeight: 46, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, flexDirection: 'row', gap: 8 },
+  secondaryButton: { minHeight: 46, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, flexDirection: 'row', gap: 8, backgroundColor: Colors.bgCard, borderBottomWidth: 3, ...Elevation.card },
   secondaryText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size12 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 8 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 8, gap: 12 },
   sectionTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.lg },
   sectionSub: { fontFamily: FontFamily.regular, color: Colors.textMuted, fontSize: FontSize.size12, marginTop: 3 },
   linkText: { fontFamily: FontFamily.bold, color: Colors.accent, fontSize: FontSize.xs },
-  serviceCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCardSolid, borderRadius: Radius.card, padding: 14 },
+  serviceCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: Radius.card, padding: 14, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
   serviceIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
   serviceTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.sm },
   serviceStatus: { fontFamily: FontFamily.medium, color: Colors.textMuted, fontSize: FontSize.xs, marginTop: 3 },
   reviewNote: { fontFamily: FontFamily.regular, color: Colors.paleRed_fca5a5, fontSize: FontSize.size10, marginTop: 3 },
-  smallButton: { minWidth: 72, minHeight: 44, borderRadius: 10, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
+  smallButton: { minWidth: 72, minHeight: 44, borderRadius: 10, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   smallButtonText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: FontSize.size10 },
   smallOutline: { minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: Colors.borderHi, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
   smallOutlineText: { fontFamily: FontFamily.bold, color: Colors.textSecondary, fontSize: FontSize.size10 },

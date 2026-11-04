@@ -23,7 +23,7 @@ import { getAuction } from '../../lib/auctionApi';
 import { useAuthStore } from '../../store/authStore';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { haptics } from '../../lib/haptics';
@@ -735,11 +735,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
@@ -797,13 +799,16 @@ const styles = StyleSheet.create({
   },
   emptyCtaBtn: {
     marginTop: 16,
-    height: 40,
     paddingHorizontal: 20,
     borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 40,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   emptyCtaBtnText: {
     fontFamily: FontFamily.bold,
@@ -814,14 +819,15 @@ const styles = StyleSheet.create({
 
   // ── Bid card ──
   bidCard: {
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
 
   // Left
@@ -880,6 +886,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.blackAlpha45,
+    ...Elevation.card,
   },
   wonCtaBtnText: {
     fontFamily: FontFamily.bold,
@@ -896,20 +905,24 @@ const styles = StyleSheet.create({
   wonCallBtn: {
     width: 44,
     borderRadius: Radius.chip,
-    backgroundColor: Colors.accentGreenAlpha15,
     borderWidth: 1,
     borderColor: Colors.accentGreenAlpha30,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   wonChatBtn: {
     width: 44,
     borderRadius: 8,
-    backgroundColor: Colors.accentGreenAlpha15,
     borderWidth: 1,
     borderColor: 'rgba(16,185,129,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
 
   // ── Cancel bid ──
@@ -932,6 +945,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: Colors.accent,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   cancelBtnText: {
     fontFamily: FontFamily.bold,
@@ -952,9 +968,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
+    borderColor: Colors.borderHi,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   pageBtnDisabled: {
     opacity: 0.4,

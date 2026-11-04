@@ -23,7 +23,7 @@ import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 
 import { IconButton } from '../../components/IconButton';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
@@ -409,11 +409,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 50,
     borderRadius: Radius.inline,
     borderWidth: 1,
     borderColor: Colors.whiteAlpha08,
-    backgroundColor: Colors.bgSecondary,
+    minHeight: 50,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   socialBtnDisabled: {
     opacity: 0.6,

@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  Platform,
 } from 'react-native';
 // expo-image (not react-native's Image): gives disk+memory caching, recycling
 // and progressive loading for free — these cards render in long scrollable
@@ -255,11 +256,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgCard,
     borderWidth: 1,
     borderColor: Colors.border,
-    overflow: 'hidden',
+    // iOS clips a view's own shadow to overflow:'hidden', so on iOS the card
+    // stays unclipped and the image container rounds its own top corners.
+    // Android elevation isn't clipped, so it keeps the simple clipping path.
+    overflow: Platform.OS === 'ios' ? 'visible' : 'hidden',
     ...Elevation.card,
   },
   imageContainer: {
     position: 'relative',
+    borderTopLeftRadius: Radius.card - 1,
+    borderTopRightRadius: Radius.card - 1,
     overflow: 'hidden',
     backgroundColor: Colors.bgTertiary,
   },

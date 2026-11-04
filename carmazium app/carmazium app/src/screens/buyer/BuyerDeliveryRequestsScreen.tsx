@@ -17,7 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import {
@@ -375,11 +375,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
@@ -392,13 +394,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   card: {
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
     padding: 14,
     gap: 10,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   cardTop: {
     flexDirection: 'row',
@@ -479,17 +482,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    height: 40,
     borderRadius: Radius.inline,
     borderWidth: 1,
+    minHeight: 40,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderHi,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   actionBtnDestructive: {
     borderColor: 'rgba(248,113,113,0.4)',
-    backgroundColor: 'rgba(248,113,113,0.08)',
+    backgroundColor: Colors.bgCard,
   },
   actionBtnPrimary: {
     backgroundColor: Colors.success,
     borderColor: Colors.success,
+    borderBottomColor: Colors.blackAlpha45,
   },
   actionBtnText: {
     fontFamily: FontFamily.bold,

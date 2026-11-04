@@ -1622,7 +1622,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   <TouchableOpacity key={url + index} accessibilityRole="link"
                     accessibilityLabel={`Open seller vehicle video ${index + 1}`}
                     onPress={() => { void Linking.openURL(url).catch(() => Alert.alert('Cannot open video', 'This video link is currently unavailable.')); }}
-                    style={{ paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.borderSubtle }}>
+                    style={s.videoRow}>
                     <Text style={{ color: Colors.infoBlue, fontFamily: FontFamily.bold }}>View video {index + 1}</Text>
                     <Text numberOfLines={1} style={{ color: Colors.textMuted, fontSize: 11 }}>{url}</Text>
                   </TouchableOpacity>
@@ -2403,9 +2403,12 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: Radius.chip,
-    backgroundColor: Colors.accentAlpha12,
-    borderWidth: 1,
-    borderColor: Colors.accentAlpha30,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1.5,
+    borderBottomWidth: 3,
+    borderColor: Colors.accent,
+    minHeight: 34,
+    justifyContent: 'center',
   },
   contactActionText: {
     fontFamily: FontFamily.bold,
@@ -2426,7 +2429,7 @@ const s = StyleSheet.create({
 
   // Header
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 10, backgroundColor: Colors.bgPrimary, zIndex: 10 },
-  iconBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCard, borderColor: Colors.border, borderBottomWidth: 2, ...Elevation.card },
   headerCenter: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, maxWidth: SW - 160 },
   watcherChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.whiteAlpha05, borderRadius: Radius.inline, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
@@ -2448,7 +2451,7 @@ const s = StyleSheet.create({
   bannerAmber: { backgroundColor: Colors.warningAlpha08, borderBottomWidth: 1, borderBottomColor: Colors.warningAlpha15 },
   bannerDark: { backgroundColor: Colors.whiteAlpha02, borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha05 },
   bannerText: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, lineHeight: 18, flex: 1 },
-  bannerBtn: { backgroundColor: Colors.accent, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignSelf: 'center' },
+  bannerBtn: { backgroundColor: Colors.accent, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignSelf: 'center', borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon, minHeight: 32, justifyContent: 'center' },
   bannerBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent },
 
   // Anti-snipe
@@ -2458,7 +2461,7 @@ const s = StyleSheet.create({
   antiSnipeBarText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.warning, flex: 1 },
 
   // Hero image
-  heroWrap: { height: 240, borderRadius: Radius.card, overflow: 'hidden', marginBottom: 14, position: 'relative', backgroundColor: Colors.bgSecondary },
+  heroWrap: { height: 240, borderRadius: Radius.card, overflow: 'hidden', marginBottom: 14, position: 'relative', backgroundColor: Colors.bgSecondary, ...Elevation.cardHi },
   heroImg: { width: '100%', height: '100%' },
   heroTopLeft: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', gap: 6, zIndex: 2 },
   heroTopRight: { position: 'absolute', top: 12, right: 12, gap: 6, alignItems: 'flex-end', zIndex: 2 },
@@ -2480,19 +2483,19 @@ const s = StyleSheet.create({
   timerBoxValue: { fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.onAccent },
 
   // Tabs
-  tabs: { flexDirection: 'row', backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, marginBottom: 14, padding: 3 },
-  tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
-  tabActive: { backgroundColor: Colors.accent },
+  tabs: { flexDirection: 'row', borderRadius: Radius.inline, marginBottom: 14, padding: 3, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, ...Elevation.card },
+  tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8, minHeight: 36, justifyContent: 'center' },
+  tabActive: { backgroundColor: Colors.accent, borderBottomWidth: 2, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   tabText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 0.8 },
   tabTextActive: { color: Colors.onAccent },
 
   // Card
-  card: { backgroundColor: Colors.bgCard, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.border, padding: 16, marginBottom: 0 },
+  card: { backgroundColor: Colors.bgCard, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.border, padding: 16, marginBottom: 0, ...Elevation.card },
   cardSectionTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 1, marginBottom: 12, borderLeftWidth: 2, borderLeftColor: Colors.accent, paddingLeft: 8 },
 
   // Stats row
   statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 0 },
-  statBox: { flexBasis: '47%', flexGrow: 1, minHeight: 63, backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderSubtle, padding: 10, alignItems: 'center', justifyContent: 'center' },
+  statBox: { flexBasis: '47%', flexGrow: 1, minHeight: 63, borderRadius: Radius.inline, borderWidth: 1, padding: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgSurface, borderColor: Colors.border },
   statLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.textMuted, letterSpacing: 0.6, marginBottom: 4 },
   statValue: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, textAlign: 'center', flexShrink: 1 },
 
@@ -2536,18 +2539,18 @@ const s = StyleSheet.create({
   bidStateText: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
   currentBidVal: { fontFamily: FontFamily.mono, fontSize: FontSize.size22, color: Colors.white },
   minNextBid: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
-  quickBidBtn: { flex: 1, backgroundColor: Colors.whiteAlpha04, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, paddingVertical: 10, alignItems: 'center', gap: 2, minHeight: 52, justifyContent: 'center' },
+  quickBidBtn: { flex: 1, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, paddingVertical: 10, alignItems: 'center', gap: 2, minHeight: 52, justifyContent: 'center', backgroundColor: Colors.bgCard, borderBottomWidth: 3, ...Elevation.card },
   quickBidSelected: { backgroundColor: Colors.accentAlpha10, borderColor: Colors.accent },
   bidHelpText: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 18 },
   quickBidLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted },
   quickBidAmt: { fontFamily: FontFamily.mono, fontSize: FontSize.size12, color: Colors.white },
   quickBidBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, letterSpacing: 0.5 },
-  customBidWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.whiteAlpha04, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 12 },
+  customBidWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', borderRadius: Radius.inline, borderWidth: 1, paddingHorizontal: 12, backgroundColor: Colors.bgSurface, borderColor: Colors.borderHi },
   customBidCurrency: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.iconMuted, marginRight: 4 },
   customBidInput: { flex: 1, fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.white, paddingVertical: 10 },
   // Place Bid is the primary action of the whole screen — the design system's
   // red glow belongs here and nowhere else on it.
-  bidBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: Colors.accent, borderRadius: Radius.inline, paddingHorizontal: 20, paddingVertical: 12, ...Elevation.neon },
+  bidBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: Colors.accent, borderRadius: Radius.inline, paddingHorizontal: 20, paddingVertical: 12, ...Elevation.neon, borderBottomWidth: 3, borderBottomColor: Colors.accentDark },
   bidBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent, letterSpacing: 0.8 },
   feeNotice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.warningAlpha06, borderWidth: 1, borderColor: Colors.warningAlpha15, borderRadius: Radius.inline, paddingHorizontal: 12, paddingVertical: 8 },
   feeNoticeLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.warning, letterSpacing: 1 },
@@ -2578,11 +2581,13 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.accentAlpha40,
-    backgroundColor: Colors.accentAlpha08,
     minWidth: 44,
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1.5,
+    borderBottomWidth: 3,
+    borderColor: Colors.accent,
+    minHeight: 34,
   },
   sellerCloseBtnText: {
     fontFamily: FontFamily.bold,
@@ -2599,6 +2604,10 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 52,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
+    minHeight: 32,
   },
   acceptBidBtnText: {
     fontFamily: FontFamily.bold,
@@ -2617,23 +2626,30 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 80,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
+    minHeight: 32,
   },
   cancelBidBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent },
 
+  // Seller video rows: raised tappable rows rather than bare links.
+  videoRow: { paddingVertical: 10, paddingHorizontal: 12, marginBottom: 8, borderRadius: Radius.inline, borderWidth: 1, borderBottomWidth: 3, borderColor: Colors.infoBlue, backgroundColor: Colors.bgSurface },
   // Error/retry
-  retryBtn: { backgroundColor: Colors.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.inline },
+  retryBtn: { backgroundColor: Colors.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.inline, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   retryBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent },
 
   // ── Buy It Now (buyer) ──
   binPanel: {
-    backgroundColor: Colors.accentAlpha06,
     borderWidth: 1,
-    borderColor: Colors.accentAlpha25,
-    borderRadius: Radius.inline,
     padding: 14,
     marginHorizontal: 14,
     marginBottom: 14,
     gap: 12,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderAccent,
+    borderRadius: Radius.card,
+    ...Elevation.card,
   },
   binPanelRow: {
     flexDirection: 'row',
@@ -2663,9 +2679,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 46,
     borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
+    minHeight: 46,
   },
   binBtnText: {
     fontFamily: FontFamily.bold,
@@ -2700,11 +2719,12 @@ const s = StyleSheet.create({
   binSellerPanel: {
     marginHorizontal: 14,
     marginBottom: 4,
-    backgroundColor: Colors.warningAlpha08,
     borderWidth: 1,
-    borderColor: Colors.warningAlpha30,
-    borderRadius: Radius.inline,
     padding: 14,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.warningAlpha30,
+    borderRadius: Radius.card,
+    ...Elevation.card,
   },
   binSellerTitle: {
     fontFamily: FontFamily.bold,
@@ -2719,12 +2739,15 @@ const s = StyleSheet.create({
   },
   binSellerDeclineBtn: {
     flex: 1,
-    height: 40,
     borderRadius: Radius.inline,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha20,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 40,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderHi,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   binSellerDeclineText: {
     fontFamily: FontFamily.bold,
@@ -2733,12 +2756,15 @@ const s = StyleSheet.create({
   },
   binSellerConfirmBtn: {
     flex: 2,
-    height: 40,
     borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
+    minHeight: 40,
   },
   binSellerConfirmText: {
     fontFamily: FontFamily.bold,
