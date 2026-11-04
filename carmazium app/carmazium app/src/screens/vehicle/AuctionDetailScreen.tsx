@@ -10,6 +10,7 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ImageCarousel } from '../../components/ImageCarousel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Animated, {
@@ -221,6 +222,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // ── Auction state ──
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [heroWidth, setHeroWidth] = useState(0);
   const [auction, setAuction] = useState<AuctionDetail | null>(null);
   const [dealerAccess, setDealerAccess] = useState<DealerAccess | null>(null);
   const [dealerAccessLoading, setDealerAccessLoading] = useState(false);
@@ -363,7 +365,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     backgroundColor: interpolateColor(
       pulse.value,
       [0, 1],
-      [Colors.bgTertiary, Colors.accentDark],
+      [Colors.blackAlpha75, Colors.accentDark],
     ),
   }));
 
@@ -1180,10 +1182,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
 
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <View style={s.watcherChip}>
-            <Ionicons name="eye-outline" size={11} color={Colors.accent} />
-            <Text style={s.watcherText}>{watchers}</Text>
-          </View>
+          {/* No viewer/watcher count: nobody sees how many people are in an auction. */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <View style={[s.connDot, { backgroundColor: connected ? Colors.accentGreen : Colors.accent }]} />
           </View>
@@ -1447,12 +1446,23 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       <ScrollView scrollEnabled={!scrollLocked} showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
         {/* Hero image */}
-        <View style={s.heroWrap}>
-          <Image source={{ uri: image || 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=900' }} style={s.heroImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-          <LinearGradient colors={['transparent', 'rgba(10,10,12,0.9)']} style={[StyleSheet.absoluteFillObject, { top: '40%' }]} />
+        <View style={s.heroWrap} onLayout={(e) => setHeroWidth(e.nativeEvent.layout.width)}>
+          {/* Swipe left/right through every photo (thumbnails below stay in sync). */}
+          {heroWidth > 0 && (
+            <ImageCarousel
+              images={photoGallery.length ? photoGallery : (image ? [image] : [])}
+              width={heroWidth}
+              height={240}
+              maxImages={Math.max(photoGallery.length, 1)}
+              showIndicator={false}
+              activeIndex={activePhotoIndex}
+              onIndexChange={setActivePhotoIndex}
+            />
+          )}
+          <LinearGradient pointerEvents="none" colors={['transparent', 'rgba(10,10,12,0.9)']} style={[StyleSheet.absoluteFillObject, { top: '40%' }]} />
 
           {/* Image overlays */}
-          <View style={s.heroTopLeft}>
+          <View style={s.heroTopLeft} pointerEvents="none">
             {isActive && (
               <View style={s.livePill}>
                 <View style={s.liveDot} />
@@ -1472,7 +1482,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             )}
           </View>
 
-          <View style={s.heroTopRight}>
+          <View style={s.heroTopRight} pointerEvents="none">
             {isActive && isWinning && !isSeller && (
               <View style={s.winningBadge}>
                 <Ionicons name="checkmark-circle" size={11} color={Colors.accentGreen} />
@@ -1506,7 +1516,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             )}
           </View>
 
-          <View style={s.heroBottom}>
+          <View style={s.heroBottom} pointerEvents="none">
             <View style={{ flex: 1 }}>
               <Text style={s.heroBidLabel}>
                 {isEnded ? (hasRealBids ? 'FINAL BID' : 'NO BIDS') : isScheduled || !hasRealBids ? 'STARTING BID' : 'CURRENT BID'}
@@ -1530,7 +1540,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         {photoGallery.length > 1 && (
           <View style={{ gap: 8, marginTop: 10 }}>
             <Text style={{ color: Colors.textSecondary, fontSize: 12, paddingHorizontal: 14 }}>
-              Photo {Math.min(activePhotoIndex + 1, photoGallery.length)} of {photoGallery.length} — select a thumbnail
+              Photo {Math.min(activePhotoIndex + 1, photoGallery.length)} of {photoGallery.length} — swipe or select a thumbnail
             </Text>
             <ScrollView horizontal
         style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 14, gap: 9 }}>
@@ -1546,6 +1556,363 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </ScrollView>
           </View>
         )}
+
+        {/* ── Bid console — scrolls with the page, like the website ── */}
+        <View style={s.bidConsole}>
+          {isCancelled ? (
+            <View style={s.bidStateBox}>
+              <Ionicons name="ban-outline" size={20} color={Colors.iconMuted} />
+              <Text style={s.bidStateText}>Auction Cancelled</Text>
+            </View>
+          ) : isEnded ? (
+            <View style={s.bidStateBox}>
+              <Ionicons name="hammer-outline" size={20} color={Colors.iconMuted} />
+              <Text style={s.bidStateText}>{userWon ? 'You Won!' : 'Auction Ended'}</Text>
+              {userWon && auction?.buyerFeePaid && (
+                <TouchableOpacity
+                  style={[s.bidBtn, { backgroundColor: Colors.accentGreen, marginTop: 8 }]}
+                  disabled={connectingChat}
+                  activeOpacity={0.8}
+                  onPress={async () => {
+                    const sellerId = auction?.listing?.sellerId;
+                    if (!sellerId) return;
+                    setConnectingChat(true);
+                    try {
+                      const room = await createChatRoom(sellerId, auction?.listingId);
+                      navigation.navigate('ChatScreen' as any, { threadId: room.id });
+                    } catch {
+                      navigation.navigate('Messages' as any);
+                    } finally { setConnectingChat(false); }
+                  }}
+                >
+                  {connectingChat
+                    ? <ActivityIndicator color={Colors.onAccent} size="small" />
+                    : <>
+                        <Ionicons name="chatbubble-outline" size={15} color={Colors.onAccent} />
+                        <Text style={s.bidBtnText}>Message Seller</Text>
+                      </>
+                  }
+                </TouchableOpacity>
+              )}
+              {userWon
+                && auction?.buyerFeePaid
+                && !auction?.sellerBonusReleased
+                && !auction?.buyerRefusedAt && (
+                <TouchableOpacity
+                  style={[s.quickBidBtn, { marginTop: 8, borderWidth: 1, borderColor: Colors.warningAlpha30 }]}
+                  disabled={inspectionLoading}
+                  activeOpacity={0.8}
+                  onPress={() => void handleArrangeInspection()}
+                >
+                  {inspectionLoading
+                    ? <ActivityIndicator color={Colors.warning} size="small" />
+                    : <Ionicons name="search-outline" size={15} color={Colors.warning} />}
+                  <Text style={[s.quickBidBtnText, { color: Colors.warning }]}>
+                    Inspect Before Handover
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {userWon && auction?.buyerRefusedAt && (
+                <View style={[s.banner, s.bannerAmber, { marginTop: 8 }]}>
+                  <Ionicons name="checkmark-circle-outline" size={13} color={Colors.warning} />
+                  <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
+                    This auction purchase was refused after a verified inspection.
+                  </Text>
+                </View>
+              )}
+              {userWon && !auction?.buyerFeePaid && (
+                <View style={[s.banner, s.bannerAmber, { marginTop: 8 }]}>
+                  <Ionicons name="time-outline" size={13} color={Colors.warning} />
+                  <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
+                    £125 fee: {formatBuyerFeeRemaining(auction?.buyerFeeDeadlineAt, nowMs)
+                      || 'Due within 72h of recorded win; refresh for exact deadline.'}
+                  </Text>
+                </View>
+              )}
+              {userWon && !auction?.buyerFeePaid && (
+                canPayAuctionFee ? (
+                  <TouchableOpacity
+                    style={[s.bidBtn, { backgroundColor: Colors.accent, marginTop: 8 }]}
+                    activeOpacity={0.8}
+                    onPress={() =>
+                      navigation.navigate('PurchaseFlow' as any, {
+                        listingId: auction?.listingId,
+                        salePrice: 0,
+                        buyerFee: 125,
+                        listingTitle: auction?.listing?.title ?? 'Vehicle',
+                        listingImage: auction?.listing?.images?.[0],
+                        sellerName: auction?.listing?.seller
+                          ? `${auction.listing.seller.firstName ?? ''} ${auction.listing.seller.lastName ?? ''}`.trim()
+                          : undefined,
+                        paymentType: 'COMMISSION',
+                        auctionId: auction?.id,
+                      })
+                    }
+                  >
+                    <Ionicons name="lock-closed-outline" size={15} color={Colors.onAccent} />
+                    <Text style={s.bidBtnText}>Pay £125 Fee to Unlock Chat</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={[s.banner, s.bannerAmber, { marginTop: 8 }]}>
+                    <Ionicons name="lock-closed-outline" size={13} color={Colors.warning} />
+                    <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
+                      The £125 buyer fee must be paid by a dealership Owner, Admin or Finance Manager.
+                    </Text>
+                  </View>
+                )
+              )}
+            </View>
+          ) : isScheduled ? (
+            <View style={s.bidStateBox}>
+              <Ionicons name="calendar-outline" size={20} color={Colors.infoBlue} />
+              <Text style={[s.bidStateText, { color: Colors.infoBlueLight }]}>Bidding Opens Soon</Text>
+              {startTime && <Text style={s.muted}>{fmtDate(startTime.toISOString())}</Text>}
+            </View>
+          ) : auctionClockExpired ? (
+            <View style={s.bidStateBox}>
+              <Ionicons name="time-outline" size={20} color={Colors.warning} />
+              <Text style={[s.bidStateText, { color: Colors.warning }]}>Auction time ended</Text>
+              <Text style={s.muted}>Bidding is closed while CarMazium finalises the auction result.</Text>
+            </View>
+          ) : isSeller ? (
+            <View style={{ gap: 10 }}>
+              {/* Seller context row */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="briefcase-outline" size={16} color={Colors.warning} />
+                <Text style={[s.bidStateText, { color: Colors.warning, flex: 1 }]}>You are the seller</Text>
+                <Text style={s.muted}>{bidHistory.length} bid{bidHistory.length !== 1 ? 's' : ''}</Text>
+              </View>
+
+              {/* Reserve status */}
+              <View style={[s.antiSnipeBar, { borderColor: reserveMet ? Colors.accentGreenAlpha30 : Colors.warningAlpha30, backgroundColor: reserveMet ? Colors.accentGreenAlpha08 : Colors.warningAlpha08 }]}>
+                <Ionicons
+                  name={reserveMet ? 'shield-checkmark-outline' : 'shield-outline'}
+                  size={13}
+                  color={reserveMet ? Colors.accentGreen : Colors.warning}
+                />
+                <Text style={[s.antiSnipeBarText, { color: reserveMet ? Colors.accentGreen : Colors.warning }]}>
+                  {reserveMet
+                    ? `Reserve met — current bid ${fmt(currentBid)}`
+                    : `Reserve not yet met — need ${fmt(reservePrice)}`}
+                </Text>
+              </View>
+
+              {/* Seller action buttons.
+                  There was a RESERVE button here that opened an "Adjust Reserve
+                  Price" prompt and, on confirm, showed "Reserve Updated — your
+                  reserve price has been updated." It made **no API call**: the
+                  seller's reserve was never touched, and they were told it was.
+                  It could not have worked where it sat either — `PATCH
+                  /auctions/:id` rejects anything not SCHEDULED
+                  (`auctions.service.ts:434-436`) and this panel only renders on a
+                  live auction. Removed rather than wired (AUC-016, decision P-4).
+                  The reserve status bar above it stays — that part is real, reads
+                  from live state, and web has no equivalent. */}
+              {canManageSellerAuction ? (
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    style={[s.quickBidBtn, { flex: 1, backgroundColor: Colors.accentAlpha10, borderColor: Colors.accentAlpha25, borderWidth: 1 }, (closingEarly || reserveMet) && { opacity: 0.6 }]}
+                    activeOpacity={0.8}
+                    onPress={handleCloseEarly}
+                    disabled={closingEarly || reserveMet}
+                  >
+                    {closingEarly
+                      ? <ActivityIndicator size="small" color={Colors.accent} />
+                      : <Text style={[s.quickBidBtnText, { color: Colors.accent }]}>{reserveMet ? 'RUNNING TO END' : 'CLOSE NOW'}</Text>
+                    }
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={[s.banner, s.bannerBlue]}>
+                  <Ionicons name="eye-outline" size={13} color={Colors.infoBlueLight} />
+                  <Text style={[s.bannerText, { color: Colors.infoLight }]}>
+                    You can monitor this dealership auction, but your role cannot change or close it.
+                  </Text>
+                </View>
+              )}
+            </View>
+          ) : !currentUser ? (
+            <View style={s.bidStateBox}>
+              <Text style={s.muted}>Sign in to place bids in live auctions.</Text>
+              <Button
+                label="Sign In to Bid"
+                size="sm"
+                style={{ marginTop: 8 }}
+                onPress={() => navigation.navigate('Login' as any)}
+              />
+            </View>
+          ) : role !== 'dealer' ? (
+            <View style={s.bidStateBox}>
+              <Text style={s.muted}>Only verified dealers can bid in auctions.</Text>
+            </View>
+          ) : dealerAccessLoading ? (
+            <View style={s.bidStateBox}>
+              <ActivityIndicator size="small" color={Colors.accent} />
+              <Text style={s.muted}>Checking dealership permissions…</Text>
+            </View>
+          ) : !canPlaceBid ? (
+            <View style={s.bidStateBox}>
+              <Ionicons name="eye-outline" size={20} color={Colors.infoBlue} />
+              <Text style={[s.bidStateText, { color: Colors.infoBlueLight }]}>View-only auction access</Text>
+              <Text style={s.muted}>Your dealership role can follow auctions but cannot place or cancel bids.</Text>
+            </View>
+          ) : !isDealerVerified ? (
+            <View style={s.bidStateBox}>
+              <Text style={s.muted}>
+                {dealerAccess?.isOwner
+                  ? 'Verify your dealership to place bids.'
+                  : 'The dealership owner must complete verification before staff can bid.'}
+              </Text>
+              {dealerAccess?.isOwner && (
+                <Button
+                  label="Complete KYC"
+                  size="sm"
+                  style={{ marginTop: 8 }}
+                  onPress={() => navigation.navigate('DealerKYC')}
+                />
+              )}
+            </View>
+          ) : (
+            <View style={{ gap: 10 }}>
+              {/* Current bid / zero-bid first-offer info */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.specKey}>{hasRealBids ? 'CURRENT BID' : 'NO BIDS YET'}</Text>
+                  <Text style={[s.currentBidVal, { fontFamily: FontFamily.mono }]}>
+                    {hasRealBids ? fmt(currentBid) : `Starting ${fmt(startingBidAmount)}`}
+                  </Text>
+                </View>
+                <Text style={[s.minNextBid, !hasRealBids && { color: Colors.warning }]}>
+                  {hasRealBids ? 'Min next: ' : 'First offer from: '}
+                  <Text style={{ color: hasRealBids ? Colors.white : Colors.warning, fontFamily: FontFamily.mono }}>
+                    {fmt(minimumAllowedBid)}
+                  </Text>
+                </Text>
+              </View>
+
+              {/* Quick amounts only fill the input: a separate Place Bid action
+                  mirrors web and prevents accidental one-tap bids. */}
+              <Text style={s.bidHelpText}>Choose an amount or enter your own, then tap Place Bid.</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {quickBidAmounts.map((targetAmount, index) => {
+                  const delta = hasRealBids ? targetAmount - currentBid : targetAmount - minimumAllowedBid;
+                  return (
+                    <TouchableOpacity
+                      key={targetAmount}
+                      style={[s.quickBidBtn, Number(bidAmount) === targetAmount && s.quickBidSelected]}
+                      onPress={() => { setBidAmount(String(targetAmount)); setBidError(null); }}
+                      disabled={bidLoading || targetAmount < minimumAllowedBid}
+                      activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: Number(bidAmount) === targetAmount }}
+                      accessibilityLabel={`Select bid amount ${fmt(targetAmount)}`}
+                    >
+                      <Text style={s.quickBidLabel}>
+                        {!hasRealBids && index === 0
+                          ? 'MIN'
+                          : `+${delta >= 1000 ? `£${delta / 1000}k` : `£${delta}`}`}
+                      </Text>
+                      <Text style={[s.quickBidAmt, { fontFamily: FontFamily.mono }]}>{fmt(targetAmount)}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Custom + bid button */}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={s.customBidWrap}>
+                  <Text style={s.customBidCurrency}>£</Text>
+                  <TextInput
+                    style={s.customBidInput}
+                    value={bidAmount}
+                    onChangeText={t => { setBidAmount(t); setBidError(null); }}
+                    placeholder="Custom amount"
+                    placeholderTextColor={Colors.inputPlaceholder}
+                    keyboardType="number-pad"
+                    onSubmitEditing={() => Keyboard.dismiss()}
+                  />
+                </View>
+                <TouchableOpacity
+                  style={[s.bidBtn, bidLoading && { opacity: 0.6 }]}
+                  onPress={() => handleBid(bidAmount)}
+                  disabled={bidLoading}
+                  activeOpacity={0.8}
+                >
+                  {bidLoading
+                    ? <ActivityIndicator color={Colors.onAccent} size="small" />
+                    : <>
+                        <Ionicons name="hammer-outline" size={15} color={Colors.onAccent} />
+                        <Text style={s.bidBtnText}>Place Bid</Text>
+                      </>
+                  }
+                </TouchableOpacity>
+              </View>
+
+              {bidError && (
+                <View style={[s.banner, s.bannerRed, { marginTop: -4 }]}>
+                  <Ionicons name="alert-circle-outline" size={12} color={Colors.accent} />
+                  <Text style={[s.bannerText, { color: Colors.paleRed_fca5a5 }]} numberOfLines={2} ellipsizeMode="tail">{bidError}</Text>
+                </View>
+              )}
+              {bidJustAccepted != null && !bidError && (
+                <View style={[s.banner, { marginTop: -4, backgroundColor: Colors.accentGreen + '18', borderColor: Colors.accentGreen + '55', borderWidth: 1 }]}>
+                  <Ionicons name="checkmark-circle" size={12} color={Colors.accentGreen} />
+                  <Text style={[s.bannerText, { color: Colors.accentGreen }]} numberOfLines={1}>
+                    Bid accepted — {fmt(bidJustAccepted)}
+                  </Text>
+                </View>
+              )}
+
+              {!reserveMet && bidHistory.length > 0 && (
+                <View style={[s.banner, s.bannerAmber, { marginTop: -4 }]}>
+                  <Ionicons name="information-circle-outline" size={12} color={Colors.warning} />
+                  <Text style={[s.bannerText, { color: Colors.lightYellow }]} numberOfLines={3}>
+                    The current highest bid is also an offer to the seller. They can accept it now, or keep the auction open while dealers continue bidding.
+                  </Text>
+                </View>
+              )}
+
+              {/* Cancel bid countdown banners — one per own bid still within the
+                  24h cancel window (there can be more than one, since being
+                  outbid no longer clears eligibility). */}
+              {isBiddingOpen && cancelableBids.map(bid => {
+                const remaining = BID_CANCEL_WINDOW_MS - (nowMs - new Date(bid.createdAt).getTime());
+                return (
+                  <View key={bid.id} style={[s.banner, s.bannerRed, s.cancelBidBanner]}>
+                    <Ionicons name="timer-outline" size={12} color={Colors.accent} />
+                    <Text style={[s.bannerText, { color: Colors.paleRed_fca5a5, flex: 1 }]} numberOfLines={1}>
+                      {`Bid of ${fmt(bid.amount)} — `}
+                      <Text style={{ fontFamily: FontFamily.mono }}>
+                        {formatCancelWindowRemaining(remaining)}
+                      </Text>
+                      {' left to cancel'}
+                    </Text>
+                    <TouchableOpacity
+                      style={s.cancelBidBtn}
+                      onPress={() => handleCancelBid(bid.id)}
+                      disabled={cancelLoadingId === bid.id}
+                      activeOpacity={0.8}
+                    >
+                      {cancelLoadingId === bid.id
+                        ? <ActivityIndicator size="small" color={Colors.onAccent} />
+                        : <Text style={s.cancelBidBtnText}>Cancel Bid</Text>
+                      }
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+
+              {/* Buyer fee notice */}
+              <View style={s.feeNotice}>
+                <View style={{ flex: 1, paddingRight: 12 }}>
+                  <Text style={s.feeNoticeLabel}>BUYER FEE</Text>
+                  <Text style={s.feeNoticeHint}>Only payable if you win. Pay the vehicle seller directly after inspection and agreement.</Text>
+                </View>
+                <Text style={[s.feeNoticeAmt, { fontFamily: FontFamily.mono }]}>£125</Text>
+              </View>
+            </View>
+          )}
+        </View>
 
         {/* Anti-snipe alert */}
         {antiSnipeActive && isActive && (
@@ -2021,366 +2388,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           )
         )}
 
-        {/* Spacer for sticky bid console */}
-        <View style={{ height: 180 }} />
+        <View style={{ height: insets.bottom + 24 }} />
       </ScrollView>
 
-      {/* ── Sticky Bid Console ── */}
-      <View style={[s.bidConsole, { paddingBottom: insets.bottom || 16 }]}>
-        {isCancelled ? (
-          <View style={s.bidStateBox}>
-            <Ionicons name="ban-outline" size={20} color={Colors.iconMuted} />
-            <Text style={s.bidStateText}>Auction Cancelled</Text>
-          </View>
-        ) : isEnded ? (
-          <View style={s.bidStateBox}>
-            <Ionicons name="hammer-outline" size={20} color={Colors.iconMuted} />
-            <Text style={s.bidStateText}>{userWon ? 'You Won!' : 'Auction Ended'}</Text>
-            {userWon && auction?.buyerFeePaid && (
-              <TouchableOpacity
-                style={[s.bidBtn, { backgroundColor: Colors.accentGreen, marginTop: 8 }]}
-                disabled={connectingChat}
-                activeOpacity={0.8}
-                onPress={async () => {
-                  const sellerId = auction?.listing?.sellerId;
-                  if (!sellerId) return;
-                  setConnectingChat(true);
-                  try {
-                    const room = await createChatRoom(sellerId, auction?.listingId);
-                    navigation.navigate('ChatScreen' as any, { threadId: room.id });
-                  } catch {
-                    navigation.navigate('Messages' as any);
-                  } finally { setConnectingChat(false); }
-                }}
-              >
-                {connectingChat
-                  ? <ActivityIndicator color={Colors.onAccent} size="small" />
-                  : <>
-                      <Ionicons name="chatbubble-outline" size={15} color={Colors.onAccent} />
-                      <Text style={s.bidBtnText}>Message Seller</Text>
-                    </>
-                }
-              </TouchableOpacity>
-            )}
-            {userWon
-              && auction?.buyerFeePaid
-              && !auction?.sellerBonusReleased
-              && !auction?.buyerRefusedAt && (
-              <TouchableOpacity
-                style={[s.quickBidBtn, { marginTop: 8, borderWidth: 1, borderColor: Colors.warningAlpha30 }]}
-                disabled={inspectionLoading}
-                activeOpacity={0.8}
-                onPress={() => void handleArrangeInspection()}
-              >
-                {inspectionLoading
-                  ? <ActivityIndicator color={Colors.warning} size="small" />
-                  : <Ionicons name="search-outline" size={15} color={Colors.warning} />}
-                <Text style={[s.quickBidBtnText, { color: Colors.warning }]}>
-                  Inspect Before Handover
-                </Text>
-              </TouchableOpacity>
-            )}
-            {userWon && auction?.buyerRefusedAt && (
-              <View style={[s.banner, s.bannerAmber, { marginTop: 8 }]}>
-                <Ionicons name="checkmark-circle-outline" size={13} color={Colors.warning} />
-                <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
-                  This auction purchase was refused after a verified inspection.
-                </Text>
-              </View>
-            )}
-            {userWon && !auction?.buyerFeePaid && (
-              <View style={[s.banner, s.bannerAmber, { marginTop: 8 }]}>
-                <Ionicons name="time-outline" size={13} color={Colors.warning} />
-                <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
-                  £125 fee: {formatBuyerFeeRemaining(auction?.buyerFeeDeadlineAt, nowMs)
-                    || 'Due within 72h of recorded win; refresh for exact deadline.'}
-                </Text>
-              </View>
-            )}
-            {userWon && !auction?.buyerFeePaid && (
-              canPayAuctionFee ? (
-                <TouchableOpacity
-                  style={[s.bidBtn, { backgroundColor: Colors.accent, marginTop: 8 }]}
-                  activeOpacity={0.8}
-                  onPress={() =>
-                    navigation.navigate('PurchaseFlow' as any, {
-                      listingId: auction?.listingId,
-                      salePrice: 0,
-                      buyerFee: 125,
-                      listingTitle: auction?.listing?.title ?? 'Vehicle',
-                      listingImage: auction?.listing?.images?.[0],
-                      sellerName: auction?.listing?.seller
-                        ? `${auction.listing.seller.firstName ?? ''} ${auction.listing.seller.lastName ?? ''}`.trim()
-                        : undefined,
-                      paymentType: 'COMMISSION',
-                      auctionId: auction?.id,
-                    })
-                  }
-                >
-                  <Ionicons name="lock-closed-outline" size={15} color={Colors.onAccent} />
-                  <Text style={s.bidBtnText}>Pay £125 Fee to Unlock Chat</Text>
-                </TouchableOpacity>
-              ) : (
-                <View style={[s.banner, s.bannerAmber, { marginTop: 8 }]}>
-                  <Ionicons name="lock-closed-outline" size={13} color={Colors.warning} />
-                  <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
-                    The £125 buyer fee must be paid by a dealership Owner, Admin or Finance Manager.
-                  </Text>
-                </View>
-              )
-            )}
-          </View>
-        ) : isScheduled ? (
-          <View style={s.bidStateBox}>
-            <Ionicons name="calendar-outline" size={20} color={Colors.infoBlue} />
-            <Text style={[s.bidStateText, { color: Colors.infoBlueLight }]}>Bidding Opens Soon</Text>
-            {startTime && <Text style={s.muted}>{fmtDate(startTime.toISOString())}</Text>}
-          </View>
-        ) : auctionClockExpired ? (
-          <View style={s.bidStateBox}>
-            <Ionicons name="time-outline" size={20} color={Colors.warning} />
-            <Text style={[s.bidStateText, { color: Colors.warning }]}>Auction time ended</Text>
-            <Text style={s.muted}>Bidding is closed while CarMazium finalises the auction result.</Text>
-          </View>
-        ) : isSeller ? (
-          <View style={{ gap: 10 }}>
-            {/* Seller context row */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Ionicons name="briefcase-outline" size={16} color={Colors.warning} />
-              <Text style={[s.bidStateText, { color: Colors.warning, flex: 1 }]}>You are the seller</Text>
-              <Text style={s.muted}>{bidHistory.length} bid{bidHistory.length !== 1 ? 's' : ''}</Text>
-            </View>
 
-            {/* Reserve status */}
-            <View style={[s.antiSnipeBar, { borderColor: reserveMet ? Colors.accentGreenAlpha30 : Colors.warningAlpha30, backgroundColor: reserveMet ? Colors.accentGreenAlpha08 : Colors.warningAlpha08 }]}>
-              <Ionicons
-                name={reserveMet ? 'shield-checkmark-outline' : 'shield-outline'}
-                size={13}
-                color={reserveMet ? Colors.accentGreen : Colors.warning}
-              />
-              <Text style={[s.antiSnipeBarText, { color: reserveMet ? Colors.accentGreen : Colors.warning }]}>
-                {reserveMet
-                  ? `Reserve met — current bid ${fmt(currentBid)}`
-                  : `Reserve not yet met — need ${fmt(reservePrice)}`}
-              </Text>
-            </View>
-
-            {/* Seller action buttons.
-                There was a RESERVE button here that opened an "Adjust Reserve
-                Price" prompt and, on confirm, showed "Reserve Updated — your
-                reserve price has been updated." It made **no API call**: the
-                seller's reserve was never touched, and they were told it was.
-                It could not have worked where it sat either — `PATCH
-                /auctions/:id` rejects anything not SCHEDULED
-                (`auctions.service.ts:434-436`) and this panel only renders on a
-                live auction. Removed rather than wired (AUC-016, decision P-4).
-                The reserve status bar above it stays — that part is real, reads
-                from live state, and web has no equivalent. */}
-            {canManageSellerAuction ? (
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity
-                  style={[s.quickBidBtn, { flex: 1, backgroundColor: Colors.accentAlpha10, borderColor: Colors.accentAlpha25, borderWidth: 1 }, (closingEarly || reserveMet) && { opacity: 0.6 }]}
-                  activeOpacity={0.8}
-                  onPress={handleCloseEarly}
-                  disabled={closingEarly || reserveMet}
-                >
-                  {closingEarly
-                    ? <ActivityIndicator size="small" color={Colors.accent} />
-                    : <Text style={[s.quickBidBtnText, { color: Colors.accent }]}>{reserveMet ? 'RUNNING TO END' : 'CLOSE NOW'}</Text>
-                  }
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={[s.banner, s.bannerBlue]}>
-                <Ionicons name="eye-outline" size={13} color={Colors.infoBlueLight} />
-                <Text style={[s.bannerText, { color: Colors.infoLight }]}>
-                  You can monitor this dealership auction, but your role cannot change or close it.
-                </Text>
-              </View>
-            )}
-          </View>
-        ) : !currentUser ? (
-          <View style={s.bidStateBox}>
-            <Text style={s.muted}>Sign in to place bids in live auctions.</Text>
-            <Button
-              label="Sign In to Bid"
-              size="sm"
-              style={{ marginTop: 8 }}
-              onPress={() => navigation.navigate('Login' as any)}
-            />
-          </View>
-        ) : role !== 'dealer' ? (
-          <View style={s.bidStateBox}>
-            <Text style={s.muted}>Only verified dealers can bid in auctions.</Text>
-          </View>
-        ) : dealerAccessLoading ? (
-          <View style={s.bidStateBox}>
-            <ActivityIndicator size="small" color={Colors.accent} />
-            <Text style={s.muted}>Checking dealership permissions…</Text>
-          </View>
-        ) : !canPlaceBid ? (
-          <View style={s.bidStateBox}>
-            <Ionicons name="eye-outline" size={20} color={Colors.infoBlue} />
-            <Text style={[s.bidStateText, { color: Colors.infoBlueLight }]}>View-only auction access</Text>
-            <Text style={s.muted}>Your dealership role can follow auctions but cannot place or cancel bids.</Text>
-          </View>
-        ) : !isDealerVerified ? (
-          <View style={s.bidStateBox}>
-            <Text style={s.muted}>
-              {dealerAccess?.isOwner
-                ? 'Verify your dealership to place bids.'
-                : 'The dealership owner must complete verification before staff can bid.'}
-            </Text>
-            {dealerAccess?.isOwner && (
-              <Button
-                label="Complete KYC"
-                size="sm"
-                style={{ marginTop: 8 }}
-                onPress={() => navigation.navigate('DealerKYC')}
-              />
-            )}
-          </View>
-        ) : (
-          <View style={{ gap: 10 }}>
-            {/* Current bid / zero-bid first-offer info */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.specKey}>{hasRealBids ? 'CURRENT BID' : 'NO BIDS YET'}</Text>
-                <Text style={[s.currentBidVal, { fontFamily: FontFamily.mono }]}>
-                  {hasRealBids ? fmt(currentBid) : `Starting ${fmt(startingBidAmount)}`}
-                </Text>
-              </View>
-              <Text style={[s.minNextBid, !hasRealBids && { color: Colors.warning }]}>
-                {hasRealBids ? 'Min next: ' : 'First offer from: '}
-                <Text style={{ color: hasRealBids ? Colors.white : Colors.warning, fontFamily: FontFamily.mono }}>
-                  {fmt(minimumAllowedBid)}
-                </Text>
-              </Text>
-            </View>
-
-            {/* Quick amounts only fill the input: a separate Place Bid action
-                mirrors web and prevents accidental one-tap bids. */}
-            <Text style={s.bidHelpText}>Choose an amount or enter your own, then tap Place Bid.</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {quickBidAmounts.map((targetAmount, index) => {
-                const delta = hasRealBids ? targetAmount - currentBid : targetAmount - minimumAllowedBid;
-                return (
-                  <TouchableOpacity
-                    key={targetAmount}
-                    style={[s.quickBidBtn, Number(bidAmount) === targetAmount && s.quickBidSelected]}
-                    onPress={() => { setBidAmount(String(targetAmount)); setBidError(null); }}
-                    disabled={bidLoading || targetAmount < minimumAllowedBid}
-                    activeOpacity={0.7}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: Number(bidAmount) === targetAmount }}
-                    accessibilityLabel={`Select bid amount ${fmt(targetAmount)}`}
-                  >
-                    <Text style={s.quickBidLabel}>
-                      {!hasRealBids && index === 0
-                        ? 'MIN'
-                        : `+${delta >= 1000 ? `£${delta / 1000}k` : `£${delta}`}`}
-                    </Text>
-                    <Text style={[s.quickBidAmt, { fontFamily: FontFamily.mono }]}>{fmt(targetAmount)}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Custom + bid button */}
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={s.customBidWrap}>
-                <Text style={s.customBidCurrency}>£</Text>
-                <TextInput
-                  style={s.customBidInput}
-                  value={bidAmount}
-                  onChangeText={t => { setBidAmount(t); setBidError(null); }}
-                  placeholder="Custom amount"
-                  placeholderTextColor={Colors.inputPlaceholder}
-                  keyboardType="number-pad"
-                  onSubmitEditing={() => Keyboard.dismiss()}
-                />
-              </View>
-              <TouchableOpacity
-                style={[s.bidBtn, bidLoading && { opacity: 0.6 }]}
-                onPress={() => handleBid(bidAmount)}
-                disabled={bidLoading}
-                activeOpacity={0.8}
-              >
-                {bidLoading
-                  ? <ActivityIndicator color={Colors.onAccent} size="small" />
-                  : <>
-                      <Ionicons name="hammer-outline" size={15} color={Colors.onAccent} />
-                      <Text style={s.bidBtnText}>Place Bid</Text>
-                    </>
-                }
-              </TouchableOpacity>
-            </View>
-
-            {bidError && (
-              <View style={[s.banner, s.bannerRed, { marginTop: -4 }]}>
-                <Ionicons name="alert-circle-outline" size={12} color={Colors.accent} />
-                <Text style={[s.bannerText, { color: Colors.paleRed_fca5a5 }]} numberOfLines={2} ellipsizeMode="tail">{bidError}</Text>
-              </View>
-            )}
-            {bidJustAccepted != null && !bidError && (
-              <View style={[s.banner, { marginTop: -4, backgroundColor: Colors.accentGreen + '18', borderColor: Colors.accentGreen + '55', borderWidth: 1 }]}>
-                <Ionicons name="checkmark-circle" size={12} color={Colors.accentGreen} />
-                <Text style={[s.bannerText, { color: Colors.accentGreen }]} numberOfLines={1}>
-                  Bid accepted — {fmt(bidJustAccepted)}
-                </Text>
-              </View>
-            )}
-
-            {!reserveMet && bidHistory.length > 0 && (
-              <View style={[s.banner, s.bannerAmber, { marginTop: -4 }]}>
-                <Ionicons name="information-circle-outline" size={12} color={Colors.warning} />
-                <Text style={[s.bannerText, { color: Colors.lightYellow }]} numberOfLines={3}>
-                  The current highest bid is also an offer to the seller. They can accept it now, or keep the auction open while dealers continue bidding.
-                </Text>
-              </View>
-            )}
-
-            {/* Cancel bid countdown banners — one per own bid still within the
-                24h cancel window (there can be more than one, since being
-                outbid no longer clears eligibility). */}
-            {isBiddingOpen && cancelableBids.map(bid => {
-              const remaining = BID_CANCEL_WINDOW_MS - (nowMs - new Date(bid.createdAt).getTime());
-              return (
-                <View key={bid.id} style={[s.banner, s.bannerRed, s.cancelBidBanner]}>
-                  <Ionicons name="timer-outline" size={12} color={Colors.accent} />
-                  <Text style={[s.bannerText, { color: Colors.paleRed_fca5a5, flex: 1 }]} numberOfLines={1}>
-                    {`Bid of ${fmt(bid.amount)} — `}
-                    <Text style={{ fontFamily: FontFamily.mono }}>
-                      {formatCancelWindowRemaining(remaining)}
-                    </Text>
-                    {' left to cancel'}
-                  </Text>
-                  <TouchableOpacity
-                    style={s.cancelBidBtn}
-                    onPress={() => handleCancelBid(bid.id)}
-                    disabled={cancelLoadingId === bid.id}
-                    activeOpacity={0.8}
-                  >
-                    {cancelLoadingId === bid.id
-                      ? <ActivityIndicator size="small" color={Colors.onAccent} />
-                      : <Text style={s.cancelBidBtnText}>Cancel Bid</Text>
-                    }
-                  </TouchableOpacity>
-                </View>
-              );
-            })}
-
-            {/* Buyer fee notice */}
-            <View style={s.feeNotice}>
-              <View style={{ flex: 1, paddingRight: 12 }}>
-                <Text style={s.feeNoticeLabel}>BUYER FEE</Text>
-                <Text style={s.feeNoticeHint}>Only payable if you win. Pay the vehicle seller directly after inspection and agreement.</Text>
-              </View>
-              <Text style={[s.feeNoticeAmt, { fontFamily: FontFamily.mono }]}>£125</Text>
-            </View>
-          </View>
-        )}
-      </View>
     </ScreenWrapper>
   );
 };
@@ -2487,17 +2498,17 @@ const s = StyleSheet.create({
   importedPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FACC15', borderWidth: 1, borderColor: '#FDE68A', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   importedPillText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: '#111827', letterSpacing: 0.5 },
   heroBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 14, zIndex: 2 },
-  heroBidLabel: { ...TextPresets.eyebrow, fontSize: FontSize.size9, color: Colors.textSecondary, marginBottom: 4 },
+  heroBidLabel: { ...TextPresets.eyebrow, fontSize: FontSize.size9, color: Colors.onAccentMuted, marginBottom: 4 },
   // The live bid is the focal figure of this screen and was rendering in
   // Poppins. Prices, bids and countdowns are mono at heavy weight throughout
   // the brand — the kit's auction screen sets exactly this pairing (mono bid
   // beside a mono countdown).
-  heroBid: { ...TextPresets.monoPrice, fontSize: FontSize['4xl'], color: Colors.white },
+  heroBid: { ...TextPresets.monoPrice, fontSize: FontSize['4xl'], color: Colors.onAccent },
   winningBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accentGreenAlpha20, borderWidth: 1, borderColor: Colors.accentGreenAlpha30, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   winningBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.accentGreen },
   outbidBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.accentAlpha20, borderWidth: 1, borderColor: Colors.accentAlpha30, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   outbidBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.accent },
-  timerBox: { backgroundColor: Colors.blackAlpha55, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.inline, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
+  timerBox: { backgroundColor: Colors.blackAlpha75, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.inline, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
   timerBoxLabel: { ...TextPresets.eyebrow, fontSize: FontSize.size9, color: Colors.onAccentMuted, marginBottom: 2 },
   timerBoxValue: { fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.onAccent },
 
@@ -2553,7 +2564,7 @@ const s = StyleSheet.create({
   sellerName: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
 
   // Bid console
-  bidConsole: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: Colors.bgPrimary, borderTopWidth: 1, borderTopColor: Colors.borderHi, paddingHorizontal: 14, paddingTop: 12 },
+  bidConsole: { marginTop: 14, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.card, padding: 14, ...Elevation.card },
   bidStateBox: { alignItems: 'center', paddingVertical: 12, gap: 6 },
   bidStateText: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
   currentBidVal: { fontFamily: FontFamily.mono, fontSize: FontSize.size22, color: Colors.white },

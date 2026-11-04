@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
@@ -366,14 +367,12 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
                   showIndicator={false}
                 />
                 <View style={styles.imageGradient} pointerEvents="none" />
+                {/* Darker band behind the make/model so it reads on any photo. */}
+                <LinearGradient colors={['transparent', 'rgba(0,0,0,0.72)']} style={styles.imageNameScrim} pointerEvents="none" />
 
                 <View style={styles.liveBadge} pointerEvents="none">
                   <View style={styles.liveDot} />
                   <Text style={styles.liveBadgeText}>LIVE</Text>
-                </View>
-                <View style={styles.viewerBadge} pointerEvents="none">
-                  <Ionicons name="eye-outline" size={10} color={Colors.onAccentMuted} />
-                  <Text style={styles.viewerCount}>{auction.viewers}</Text>
                 </View>
                 <WishlistHeart listing={auction} />
                 {/* Trust badges sit below the LIVE pill, same left offset */}
@@ -1099,6 +1098,7 @@ const styles = StyleSheet.create({
   },
 
   // Car name overlay on image
+  imageNameScrim: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '55%' },
   imageNameContainer: {
     position: 'absolute',
     bottom: 14,
@@ -1108,14 +1108,17 @@ const styles = StyleSheet.create({
   imageCarMake: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size10,
-    color: Colors.paleGrey_c0c0c8,
+    color: Colors.onAccentMuted,
+    textShadowColor: Colors.blackAlpha75, textShadowRadius: 6, textShadowOffset: { width: 0, height: 1 },
     letterSpacing: 1.2,
     marginBottom: 2,
   },
   imageCarModel: {
     fontFamily: FontFamily.extraBold,
     fontSize: FontSize.xl,
-    color: Colors.white,
+    // Fixed white: this text sits on the photo in both themes.
+    color: Colors.onAccent,
+    textShadowColor: Colors.blackAlpha75, textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 },
     letterSpacing: -0.3,
   },
 
