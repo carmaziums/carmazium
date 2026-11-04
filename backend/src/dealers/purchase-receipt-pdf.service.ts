@@ -3,6 +3,7 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont } from 'pdf-lib';
 import { DealersService } from './dealers.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { appendPurchaseSellerDetailsPage } from './purchase-receipt-seller-page';
+import { readPurchaseSellerLegalSnapshot } from './purchase-seller-legal-snapshot';
 
 /**
  * A buyer's account-keeping record of a collected vehicle, NOT a Carmazium
@@ -100,6 +101,7 @@ export class PurchaseReceiptPdfService {
         const sale = await this.prisma.sale.findUnique({
             where: { id: saleId },
             select: {
+                buyerId: true,
                 buyer: {
                     select: {
                         firstName: true, lastName: true, email: true,
@@ -110,11 +112,28 @@ export class PurchaseReceiptPdfService {
                 },
             },
         });
-        if (!sale?.buyer) throw new NotFoundException('Purchase not found');
+        if (!sale?.buyer || !sale.buyerId) throw new NotFoundException('Purchase not found');
+        // Fee/VIEW_PURCHASES restrictions above run BEFORE any private snapshot read.
+        const frozen = await readPurchaseSellerLegalSnapshot(this.prisma, saleId, sale.buyerId);
+        const sellerForPdf = frozen && seller.contactUnlocked
+            ? { ...seller, ...frozen, contactUnlocked: true,
+                sellerDataCapturedAt: frozen.capturedAt,
+                sellerDataSource: frozen.capturedAtSource }
+            : { ...seller, sellerDataCapturedAt: null,
+                sellerDataSource: 'CURRENT_PROFILE' as const };
+        const advertisedPriceAtCapture = frozen?.advertisedPriceAtCapture;
+        const displayAdvertisedPrice = purchase.advertisedPriceSource === 'PURCHASE_SNAPSHOT'
+            ? purchase.advertisedPrice
+            : advertisedPriceAtCapture ?? purchase.advertisedPrice;
+        const displayAdvertisedSource = purchase.advertisedPriceSource === 'PURCHASE_SNAPSHOT'
+            ? 'PURCHASE_SNAPSHOT'
+            : advertisedPriceAtCapture !== null && advertisedPriceAtCapture !== undefined
+                ? frozen?.capturedAtSource || 'RECORDED_NEAR_SALE'
+                : 'CURRENT_LISTING';
 
         const buyer = sale.buyer;
         const buyerName = [buyer.firstName, buyer.lastName].filter(Boolean).join(' ') || buyer.email;
-        const sellerName = seller.sellerCompany || seller.sellerName;
+        const sellerName = sellerForPdf.sellerCompany || sellerForPdf.sellerName;
         const registration = purchase.vehicle.registration || 'Not recorded';
         const pdf = await PDFDocument.create();
         pdf.setTitle('CarMazium vehicle purchase record');
@@ -188,7 +207,7 @@ export class PurchaseReceiptPdfService {
         page.drawText('Final agreed purchase price', { x: 63, y: priceY - 29, font: bold, size: 9, color: grey });
         page.drawText(money(purchase.purchasePrice), { x: 63, y: priceY - 51, font: bold, size: 18, color: navy });
         page.drawText('Advertisement price on file', { x: 290, y: priceY - 29, font: bold, size: 9, color: grey });
-        page.drawText(purchase.advertisedPrice == null ? 'Not recorded' : money(purchase.advertisedPrice), {
+        page.drawText(displayAdvertisedPrice == null ? 'Not recorded' : money(displayAdvertisedPrice), {
             x: 290, y: priceY - 51, font: bold, size: 18, color: navy,
         });
 
@@ -200,9 +219,13 @@ export class PurchaseReceiptPdfService {
         });
         page.drawLine({ start: { x: 48, y: 164 }, end: { x: width - 48, y: 164 }, thickness: 0.8, color: grey });
         const notes = [
-            'Advertised price is ' + (purchase.advertisedPriceSource === 'PURCHASE_SNAPSHOT'
-                ? 'from the advert snapshot recorded on the platform.'
-                : 'the listing price on file; it may not be the price at the date of sale.'),
+            'Advertised price is ' + (displayAdvertisedSource === 'PURCHASE_SNAPSHOT'
+                ? 'from the retained advert snapshot.'
+                : displayAdvertisedSource === 'RECORDED_NEAR_SALE'
+                    ? 'from a seller evidence snapshot captured near sale recording.'
+                    : displayAdvertisedSource === 'CAPTURED_AFTER_SALE'
+                        ? 'from a later snapshot; it may differ from the price at sale.'
+                        : 'the current listing value; it may differ from the price at sale.'),
             'Advertised price is NOT evidence of the final agreed or paid price.',
             'Price source last recorded: ' + (purchase.advertisedPriceRecordedAt
                 ? date(purchase.advertisedPriceRecordedAt)
@@ -217,7 +240,7 @@ export class PurchaseReceiptPdfService {
         page.drawText('Issued from CarMazium purchase records · carmazium.com', {
             x: 48, y: 43, font: normal, size: 9, color: grey,
         });
-        await appendPurchaseSellerDetailsPage(pdf, seller, 'CMZ-' + saleId.toUpperCase());
+        await appendPurchaseSellerDetailsPage(pdf, sellerForPdf, 'CMZ-' + saleId.toUpperCase());
         return Buffer.from(await pdf.save());
     }
 }
