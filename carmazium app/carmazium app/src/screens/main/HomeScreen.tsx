@@ -372,6 +372,8 @@ export const HomeScreen: React.FC = () => {
   const tabBarClearance = useTabBarClearance();
   const navigation = useNavigation<NavProp>();
   const role = useAuthStore((s) => s.role);
+  // Signed-out visitors never see how many auctions are running (website rule too).
+  const isSignedIn = useAuthStore((s) => s.isAuthenticated);
   // Deliberately does NOT subscribe to the watchlist store — ListingCard owns
   // its own saved state (see its selector). Subscribing here re-rendered the
   // entire Home screen, every rail included, whenever any listing was saved.
@@ -592,7 +594,7 @@ export const HomeScreen: React.FC = () => {
             {liveAuctions.length > 0 && (
               <View style={s.statChip}>
                 <View style={s.liveDot} />
-                <Text style={s.statChipText}>{liveAuctions.length} Live now</Text>
+                <Text style={s.statChipText}>{isSignedIn ? `${liveAuctions.length} Live now` : 'Live now'}</Text>
               </View>
             )}
             {upcomingAuctions.length > 0 && (
@@ -690,7 +692,7 @@ export const HomeScreen: React.FC = () => {
         {/* ── LIVE AUCTIONS ── */}
         <Section
           title="LIVE AUCTIONS"
-          badge={liveAuctions.length > 0 ? `${liveAuctions.length} LIVE` : undefined}
+          badge={liveAuctions.length > 0 ? (isSignedIn ? `${liveAuctions.length} LIVE` : 'LIVE') : undefined}
           onSeeAll={() => navigation.navigate('Tabs', { screen: 'Live' })}
         >
           <Rail
@@ -849,7 +851,9 @@ export const HomeScreen: React.FC = () => {
                     <View style={s.auctionLiveDot} />
                   </View>
                   <Text style={s.utilityRowText} numberOfLines={1}>
-                    {liveAuctions.length} live auction{liveAuctions.length !== 1 ? 's' : ''} right now
+                    {isSignedIn
+                      ? `${liveAuctions.length} live auction${liveAuctions.length !== 1 ? 's' : ''} right now`
+                      : 'Live auctions happening now'}
                   </Text>
                   <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>

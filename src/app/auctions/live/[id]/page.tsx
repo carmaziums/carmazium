@@ -1002,10 +1002,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 <CountdownTimer targetDate={startTime} minimal />
                             </div>
                         )}
-                        <div className="flex items-center gap-1.5 bg-[var(--bg-input)] border border-[var(--border-default)] px-3 py-1.5 rounded-full">
-                            <Users size={11} className="text-primary" />
-                            <span className="text-xs font-bold">{watchers}</span>
-                        </div>
+                        {/* Watcher count removed: nobody sees how many people are in an auction. */}
                         <div className="flex items-center gap-1.5">
                             <span className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-emerald-500" : "bg-red-500"}`} />
                             <span className="text-[9px] text-[var(--text-muted)] hidden sm:inline">{connected ? "Live" : "Offline"}</span>
@@ -1877,9 +1874,6 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                         <div className="px-4 py-3 border-b border-[var(--border-default)] flex items-center justify-between bg-[var(--bg-input)] shrink-0">
                             <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">
                                 <Flame size={12} className="text-primary" /> Live Feed
-                                {bidCount > 0 && (
-                                    <span className="text-[9px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-black">{bidCount}</span>
-                                )}
                             </div>
                             <div className="flex items-center gap-1.5">
                                 {connected
@@ -1890,7 +1884,14 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                         </div>
 
                         <div ref={feedRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5">
-                            {bidHistory.length === 0 ? (
+                            {!user ? (
+                                // Signed-out visitors don't see bidding activity.
+                                <div className="h-full flex flex-col items-center justify-center gap-3 text-[var(--text-muted)]">
+                                    <Gavel size={20} />
+                                    <p className="text-xs text-center leading-relaxed">Sign in to follow live bidding.</p>
+                                    <Link href="/auth/login" className={buttonVariants({ size: "sm" })}>Sign in</Link>
+                                </div>
+                            ) : bidHistory.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center gap-2 text-[var(--text-muted)]">
                                     <Gavel size={20} />
                                     <p className="text-xs text-center leading-relaxed">

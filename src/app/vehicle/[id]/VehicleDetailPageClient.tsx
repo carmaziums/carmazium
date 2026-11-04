@@ -150,7 +150,6 @@ function BidModal({
 
     // Simulated current auction state (in production these come from the bidding API)
     const [currentBid, setCurrentBid] = React.useState(() => Math.floor(askingPrice * 0.85))
-    const [bidCount, setBidCount] = React.useState(7)
     const [bidHistory, setBidHistory] = React.useState<BidEntry[]>(() => {
         const base = Math.floor(askingPrice * 0.7)
         const entries: BidEntry[] = []
@@ -208,7 +207,6 @@ function BidModal({
             }
             setBidHistory(prev => [...prev, newEntry])
             setCurrentBid(bidAmount)
-            setBidCount(prev => prev + 1)
 
             onSuccess(offer as unknown as LatestOffer)
         } catch (err: any) {
@@ -263,8 +261,9 @@ function BidModal({
                             <p className="text-2xl font-black tabular-nums">£{currentBid.toLocaleString('en-GB')}</p>
                         </div>
                         <div>
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">Bids</p>
-                            <p className="text-sm font-bold text-[var(--text-secondary)] tabular-nums">{bidCount}</p>
+                            {/* Number of bids is never shown publicly. */}
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">Bidding</p>
+                            <p className="text-sm font-bold text-[var(--text-secondary)]">Open</p>
                         </div>
                     </div>
                     {/* Increment notice */}

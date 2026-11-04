@@ -762,8 +762,9 @@ export default function AuctionsBrowsePage() {
                             className="flex flex-wrap items-center gap-x-8 gap-y-3"
                         >
                             {[
-                                { icon: Flame, label: `${visibleLiveAuctions.length} Live`, color: "text-red-400" },
-                                { icon: Calendar, label: `${scheduledAuctions.length} Upcoming`, color: "text-slate-400" },
+                                // Signed-out visitors don't see how many auctions are running.
+                                { icon: Flame, label: user ? `${visibleLiveAuctions.length} Live` : "Live auctions", color: "text-red-400" },
+                                { icon: Calendar, label: user ? `${scheduledAuctions.length} Upcoming` : "Upcoming auctions", color: "text-slate-400" },
                                 { icon: Timer, label: "24-Hour Auctions", color: "text-slate-400" },
                                 { icon: Zap, label: "Anti-Snipe Rule", color: "text-amber-400" },
                                 { icon: CheckCircle, label: "Free to List", color: "text-emerald-400" },

@@ -493,7 +493,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {liveAuctions.map((auction, i) => {
               const currentBid = getCurrentBid(auction)
-              const bidCount = getBidCount(auction)
+              const bidCount = getBidCount(auction) // label only; never displayed
               const image = auction.listing.images?.[0] ?? "/assets/images/featured-sports.webp"
               const vehicle = `${auction.listing.year ?? ""} ${auction.listing.make ?? ""} ${auction.listing.model ?? ""}`.trim()
               return (
@@ -510,9 +510,6 @@ export default function HomeClient({ initialListings, latestRetailListings, late
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/20 to-transparent" />
                       <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 bg-red-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(220,38,38,0.5)]">
                         <Flame size={9} /> LIVE
-                      </div>
-                      <div className="absolute top-2.5 right-2.5 flex items-center gap-1 bg-black/50 backdrop-blur text-white text-[10px] font-bold px-2 py-1 rounded-full">
-                        <Users size={9} /> {bidCount}
                       </div>
                     </div>
                     <div className="p-3.5 space-y-2.5">

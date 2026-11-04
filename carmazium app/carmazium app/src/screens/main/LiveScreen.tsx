@@ -482,7 +482,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
         {/* ─── Header ──────────────────────────────────────────────── */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.headerMeta}>{activeList.length} LIVE NOW · UPCOMING</Text>
+            <Text style={styles.headerMeta}>{currentUser ? `${activeList.length} LIVE NOW · UPCOMING` : 'LIVE NOW · UPCOMING'}</Text>
             <Text style={styles.headerTitle}>Live Auctions</Text>
           </View>
           {!dealerMode && <HamburgerButton />}
