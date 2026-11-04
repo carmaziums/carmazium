@@ -73,7 +73,6 @@ export class PurchaseReceiptPdfService {
         return Buffer.from(await pdf.save());
     }
 
-    async renderForPurchase(
     async renderForPurchase(saleId: string, requesterId: string): Promise<Buffer> {
         const purchase = await this.dealers.getDealerPurchaseDetail(requesterId, saleId);
         if (!purchase.buyerCollectedAt) {
