@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import type { PrismaService } from '../prisma/prisma.service';
+import { capturePurchaseSellerLegalSnapshot } from './purchase-seller-legal-snapshot';
 
 /**
  * The advert a buyer committed to: photos, description, specification,
@@ -133,7 +134,11 @@ export async function capturePurchaseSnapshot(
     input: { listingId: string; buyerId: string | null | undefined },
     delays: readonly number[] = RETRY_DELAYS_MS,
 ): Promise<void> {
-    if (!purchaseSnapshotsEnabled() || !input.buyerId) return;
+    if (!input.buyerId) return;
+    // Seller account details have separate permissions/retention from the
+    // listing evidence. Feature is independently gated until privacy review.
+    await capturePurchaseSellerLegalSnapshot(prisma, input);
+    if (!purchaseSnapshotsEnabled()) return;
     for (let attempt = 0; attempt <= delays.length; attempt++) {
         try {
             if (await captureOnce(prisma, input.listingId, input.buyerId)) return;
