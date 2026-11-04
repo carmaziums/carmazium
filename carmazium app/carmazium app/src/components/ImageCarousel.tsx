@@ -95,13 +95,21 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = React.memo(({
       >
         {data.map((item, i) => (
           <Pressable key={`${item}-${i}`} onPress={() => onPress?.(i)} style={{ width, height }}>
-            <Image
-              source={{ uri: item }}
-              style={{ width, height }}
-              contentFit="cover"
-              transition={200}
-              cachePolicy="memory-disk"
-            />
+            {/* Only the visible photo and its neighbours are decoded. Mounting
+                every page (up to 8 per card × every card on Home/Live) made
+                scrolling those screens judder. */}
+            {Math.abs(i - index) <= 1 ? (
+              <Image
+                source={{ uri: item }}
+                style={{ width, height }}
+                contentFit="cover"
+                transition={150}
+                cachePolicy="memory-disk"
+                recyclingKey={item}
+              />
+            ) : (
+              <View style={{ width, height, backgroundColor: Colors.bgSecondary }} />
+            )}
           </Pressable>
         ))}
       </ScrollView>

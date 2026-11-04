@@ -24,7 +24,10 @@ test('actual website dealer bottom More panel is matched by native dealer mode o
   assert.ok(drawer.includes('borderTopLeftRadius: 20'));
   assert.ok(drawer.includes('translateY: translateY.value'));
   assert.ok(drawer.includes('translateX: translateX.value'));
-  assert.ok(drawer.includes('onRequestClose={closeDrawer}'));
+  // Drawer is always mounted (no Modal, so opening is instant); the Android
+  // back button closes it in every mode via BackHandler.
+  assert.ok(drawer.includes('if (!isOpen) return;'));
+  assert.ok(!drawer.includes('<Modal'));
   assert.ok(drawer.includes('<TouchableWithoutFeedback onPress={closeDrawer}>'));
   assert.ok(drawer.includes('height: sheetHeight'));
   assert.ok(drawer.includes('dealerTabBarHeight = getBottomTabBarHeight(fontScale, insets.bottom)'));

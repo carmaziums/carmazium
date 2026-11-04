@@ -103,7 +103,7 @@ const LiveFlipTimer: React.FC<{ endsAt: Date | string }> = React.memo(({ endsAt 
   return <FlipTimer seconds={secs} />;
 });
 
-export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embeddedDealerHub = false }) => {
+export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?: React.ReactNode }> = ({ embeddedDealerHub = false, headerContent }) => {
   // Clear the floating tab bar, which grows with the system font size.
   const tabBarClearance = useTabBarClearance();
   const insets = useSafeAreaInsets();
@@ -340,7 +340,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
 
       {dealerMode && !embeddedDealerHub && <WebsiteTopBar />}
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: dealerMode ? 12 : insets.top + 16 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: headerContent ? 0 : dealerMode ? 12 : insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -351,6 +351,9 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
           />
         }
       >
+        {/* Dealer hub heading (title, Create Auction) scrolls with the list
+            instead of staying fixed above it. */}
+        {headerContent}
         {/* ─── Header ──────────────────────────────────────────────── */}
         <View style={styles.header}>
           <View>

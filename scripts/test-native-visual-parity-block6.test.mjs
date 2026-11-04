@@ -54,8 +54,10 @@ test('seller creation and won workflow reuse existing native authorised route/st
 });
 
 test('native Live keeps all existing auction cards, filters, buyer preview and permissions',()=>{
-  assert.ok(hub.includes('<LiveScreen embeddedDealerHub />'));
-  assert.ok(live.includes("export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }>"));
+  // The hub heading is passed in so it scrolls with the auctions (owner: the
+  // fixed heading + Create Auction limited the page view).
+  assert.ok(hub.includes('<LiveScreen\n            embeddedDealerHub\n            headerContent={'));
+  assert.ok(live.includes("export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?: React.ReactNode }>"));
   assert.ok(live.includes('{dealerMode && !embeddedDealerHub && <WebsiteTopBar />}'));
   assert.ok(live.includes("hasPermission('MANAGE_INVENTORY')"));
   assert.ok(live.includes("hasPermission('PLACE_BID')"));

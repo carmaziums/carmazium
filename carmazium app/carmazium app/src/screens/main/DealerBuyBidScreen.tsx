@@ -198,15 +198,19 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
   return (
     <View style={styles.screen}>
       <WebsiteTopBar />
-      {section === 'live' && pageHeading}
       {section === 'live' ? (
         <View style={styles.liveContainer}>
-          {!accessLoading && !canPlaceBid && (
-            <Text style={styles.permissionNotice}>
-              You can browse auctions. Placing bids requires dealer bidding permission.
-            </Text>
-          )}
-          <LiveScreen embeddedDealerHub />
+          <LiveScreen
+            embeddedDealerHub
+            headerContent={<>
+              {pageHeading}
+              {!accessLoading && !canPlaceBid && (
+                <Text style={styles.permissionNotice}>
+                  You can browse auctions. Placing bids requires dealer bidding permission.
+                </Text>
+              )}
+            </>}
+          />
         </View>
       ) : section === 'shortlisted' ? (
         <DealerAuctionShortlist navigation={navigation} header={pageHeading} />

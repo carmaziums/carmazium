@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Modal,
   TouchableOpacity,
   TouchableWithoutFeedback,
   Dimensions,
@@ -278,13 +277,13 @@ export const GlobalDrawer: React.FC = () => {
   // Dealer overlay is inline so the original bottom tab bar stays visible and
   // tappable. A Modal would intercept taps on More even with transparent pixels.
   useEffect(() => {
-    if (!dealerMode || !isOpen) return;
+    if (!isOpen) return;
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       closeDrawer();
       return true;
     });
     return () => subscription.remove();
-  }, [dealerMode, isOpen, closeDrawer]);
+  }, [isOpen, closeDrawer]);
 
   const backdropStyle = useAnimatedStyle(() => ({ opacity: backdropOpacity.value }));
   const panelStyle = useAnimatedStyle(() => (dealerMode
@@ -788,23 +787,16 @@ export const GlobalDrawer: React.FC = () => {
     </>
   );
 
-  return dealerMode ? (
+  // Always mounted, never a Modal: a Modal re-created the whole menu (~50 rows
+  // of SVG icons) on every open, so tapping the menu felt like the app hung.
+  // Now opening only animates. Closed = invisible and untouchable.
+  return (
     <View
       style={styles.dealerOverlay}
       pointerEvents={isOpen ? 'box-none' : 'none'}
     >
       {drawerContent}
     </View>
-  ) : (
-    <Modal
-      visible={isOpen}
-      transparent
-      animationType="none"
-      statusBarTranslucent
-      onRequestClose={closeDrawer}
-    >
-      {drawerContent}
-    </Modal>
   );
 };
 
@@ -830,6 +822,8 @@ const styles = StyleSheet.create({
   dealerOverlay: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 100,
+    // Above the elevated tab bar/cards on Android, which order by elevation.
+    elevation: 50,
   },
 
   // Backdrop
