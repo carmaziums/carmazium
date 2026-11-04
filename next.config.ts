@@ -12,6 +12,13 @@ const nextConfig: NextConfig = {
         source: '/.well-known/apple-app-site-association',
         destination: '/api/app-links/apple',
       },
+      // Signed Android APK for direct download. The file is attached to a
+      // GitHub Release by publish-android-apk-release.yml; customers always
+      // use the carmazium.com URL shown on /download-app.
+      {
+        source: '/downloads/:name(CarMazium-\\d+\\.\\d+\\.\\d+-v\\d+).apk',
+        destination: 'https://github.com/carmaziums/carmazium/releases/download/:name/:name.apk',
+      },
     ];
   },
   async redirects() {
