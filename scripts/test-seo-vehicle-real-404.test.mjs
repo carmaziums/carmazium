@@ -2,7 +2,6 @@
 // SEO route regression: notFound only after a definitive backend 404/410.
 import { test } from "node:test"
 import vm from "node:vm"
-import ts from "typescript"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
@@ -61,12 +60,16 @@ function makeVehicleLookup(fetchImpl) {
     const start = source.indexOf("async function getListingBySlug(")
     const end = source.indexOf("export async function generateMetadata(", start)
     assert.ok(start !== -1 && end > start)
-    const isolated = source.slice(start, end) + "\nexports.lookup = getListingBySlug;\n"
-    const compiled = ts.transpileModule(isolated, {
-        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-    }).outputText
+    // The isolated helper has only these three TypeScript annotations.
+    // Remove them for a dependency-free Node runtime simulation; some SEO CI
+    // jobs intentionally run without npm installing TypeScript.
+    const isolated = source.slice(start, end)
+        .replace("slug: string", "slug")
+        .replaceAll(" as const", "")
+        .replaceAll(" as Listing", "")
+        + "\nexports.lookup = getListingBySlug;\n"
     const context = { exports: {}, serverBackendFetch: fetchImpl }
-    vm.runInNewContext(compiled, context, { filename: "retail-lookup.js" })
+    vm.runInNewContext(isolated, context, { filename: "retail-lookup.js" })
     return context.exports.lookup
 }
 
