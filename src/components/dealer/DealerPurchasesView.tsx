@@ -215,7 +215,8 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
     // stages only; search and the Status filter narrow either view.
     const visiblePurchases = React.useMemo(() => purchases.filter(p => {
         if (isRetail && !isRetailPurchase(p)) return false
-        if (channel === "auction" && (isRetailPurchase(p) || p.reconciledPurchase)) return false
+        if (channel === "auction" && isRetailPurchase(p)) return false
+        if (channel === "auction" && p.reconciledPurchase) return false
         if (isCancelled) return false
         if (isHistory !== isPurchaseHistoryStatus(p.status)) return false
         if (statusFilter !== "all" && p.status !== statusFilter) return false
@@ -414,8 +415,8 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
                                                         key={item.id}
                                                         item={item}
                                                         onViewSummary={openPurchaseDetail}
-                                                        onViewSeller={item.reconciledPurchase ? undefined : openSellerDetails}
-                                                        onRequestCancellation={item.reconciledPurchase ? undefined : setCancelItem}
+                                                        onViewSeller={openSellerDetails}
+                                                        onRequestCancellation={setCancelItem}
                                                         onCollected={() => setRefreshVersion(v => v + 1)}
                                                     />
                                                 ))}
