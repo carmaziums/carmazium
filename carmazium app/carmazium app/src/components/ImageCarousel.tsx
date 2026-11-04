@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,10 @@ interface ImageCarouselProps {
   /** Max images to page through — web parity caps this at 8 (4 interior + 4 exterior). */
   maxImages?: number;
   showIndicator?: boolean;
+  /** Controlled page (e.g. synced with a thumbnail strip). */
+  activeIndex?: number;
+  /** Called when the user swipes to another page. */
+  onIndexChange?: (index: number) => void;
 }
 
 // Native FlatList paging carousel — deliberately not a JS pointer-drag
@@ -39,17 +43,29 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = React.memo(({
   onPress,
   maxImages = 8,
   showIndicator = true,
+  activeIndex,
+  onIndexChange,
 }) => {
   const data = images.slice(0, maxImages);
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(activeIndex ?? 0);
+  const scrollRef = useRef<ScrollView>(null);
 
   const onMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const i = Math.round(e.nativeEvent.contentOffset.x / width);
-      setIndex(Math.max(0, Math.min(i, data.length - 1)));
+      const i = Math.max(0, Math.min(Math.round(e.nativeEvent.contentOffset.x / width), data.length - 1));
+      setIndex(i);
+      onIndexChange?.(i);
     },
-    [width, data.length],
+    [width, data.length, onIndexChange],
   );
+
+  // Follow an externally chosen page (thumbnail tap).
+  useEffect(() => {
+    if (activeIndex == null || activeIndex === index || activeIndex >= data.length) return;
+    setIndex(activeIndex);
+    scrollRef.current?.scrollTo({ x: activeIndex * width, animated: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex]);
 
   if (data.length === 0) {
     // Empty media must never be replaced with a stock photo of a different car.
@@ -84,6 +100,7 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = React.memo(({
           photo rendered underneath the first, over the card's details. With at
           most `maxImages` (8) pages there is nothing to virtualise. */}
       <ScrollView
+        ref={scrollRef}
         horizontal
         pagingEnabled
         nestedScrollEnabled

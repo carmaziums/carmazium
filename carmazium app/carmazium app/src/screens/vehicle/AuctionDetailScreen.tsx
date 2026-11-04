@@ -10,6 +10,7 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ImageCarousel } from '../../components/ImageCarousel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Animated, {
@@ -221,6 +222,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // ── Auction state ──
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [heroWidth, setHeroWidth] = useState(0);
   const [auction, setAuction] = useState<AuctionDetail | null>(null);
   const [dealerAccess, setDealerAccess] = useState<DealerAccess | null>(null);
   const [dealerAccessLoading, setDealerAccessLoading] = useState(false);
@@ -1444,12 +1446,23 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       <ScrollView scrollEnabled={!scrollLocked} showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
         {/* Hero image */}
-        <View style={s.heroWrap}>
-          <Image source={{ uri: image || 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=900' }} style={s.heroImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-          <LinearGradient colors={['transparent', 'rgba(10,10,12,0.9)']} style={[StyleSheet.absoluteFillObject, { top: '40%' }]} />
+        <View style={s.heroWrap} onLayout={(e) => setHeroWidth(e.nativeEvent.layout.width)}>
+          {/* Swipe left/right through every photo (thumbnails below stay in sync). */}
+          {heroWidth > 0 && (
+            <ImageCarousel
+              images={photoGallery.length ? photoGallery : (image ? [image] : [])}
+              width={heroWidth}
+              height={240}
+              maxImages={Math.max(photoGallery.length, 1)}
+              showIndicator={false}
+              activeIndex={activePhotoIndex}
+              onIndexChange={setActivePhotoIndex}
+            />
+          )}
+          <LinearGradient pointerEvents="none" colors={['transparent', 'rgba(10,10,12,0.9)']} style={[StyleSheet.absoluteFillObject, { top: '40%' }]} />
 
           {/* Image overlays */}
-          <View style={s.heroTopLeft}>
+          <View style={s.heroTopLeft} pointerEvents="none">
             {isActive && (
               <View style={s.livePill}>
                 <View style={s.liveDot} />
@@ -1469,7 +1482,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             )}
           </View>
 
-          <View style={s.heroTopRight}>
+          <View style={s.heroTopRight} pointerEvents="none">
             {isActive && isWinning && !isSeller && (
               <View style={s.winningBadge}>
                 <Ionicons name="checkmark-circle" size={11} color={Colors.accentGreen} />
@@ -1503,7 +1516,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             )}
           </View>
 
-          <View style={s.heroBottom}>
+          <View style={s.heroBottom} pointerEvents="none">
             <View style={{ flex: 1 }}>
               <Text style={s.heroBidLabel}>
                 {isEnded ? (hasRealBids ? 'FINAL BID' : 'NO BIDS') : isScheduled || !hasRealBids ? 'STARTING BID' : 'CURRENT BID'}
@@ -1527,7 +1540,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         {photoGallery.length > 1 && (
           <View style={{ gap: 8, marginTop: 10 }}>
             <Text style={{ color: Colors.textSecondary, fontSize: 12, paddingHorizontal: 14 }}>
-              Photo {Math.min(activePhotoIndex + 1, photoGallery.length)} of {photoGallery.length} — select a thumbnail
+              Photo {Math.min(activePhotoIndex + 1, photoGallery.length)} of {photoGallery.length} — swipe or select a thumbnail
             </Text>
             <ScrollView horizontal
         style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 14, gap: 9 }}>
