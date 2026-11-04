@@ -34,6 +34,7 @@ export const GUEST_ROUTES = new Set<string>([
   'Finance',
   'SellLanding',
   'SellerProfile',
+  'SellerAllListings',
 ]);
 
 /** Bottom tabs a guest can use. Saved and Dashboard need an account. */

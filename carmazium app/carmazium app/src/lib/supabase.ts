@@ -19,7 +19,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // interface, never the split.
 const SECURE_SESSION_FIELDS = ['access_token', 'refresh_token'] as const;
 
-const hybridStorageAdapter = {
+export const hybridStorageAdapter = {
   getItem: async (key: string): Promise<string | null> => {
     const [securePart, restPart] = await Promise.all([
       SecureStore.getItemAsync(key),

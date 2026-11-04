@@ -13,6 +13,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Button } from '../../components/Button';
 import { apiClient } from '../../lib/apiClient';
 import { mapApiListingToCarListing, ApiListing, BackendPaginatedResponse } from '../../lib/listingsApi';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
@@ -120,6 +121,8 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
 
   const [profile, setProfile] = useState<SellerProfileData | null>(null);
   const [listings, setListings] = useState<ApiListing[]>([]);
+  // Real active-listing count; the strip below previews only the first 6.
+  const [listingsTotal, setListingsTotal] = useState<number | null>(null);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [contactPhone, setContactPhone] = useState<ContactPhone | null>(null);
   const [loading, setLoading] = useState(true);
@@ -148,6 +151,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
 
       if (listingsRes.status === 'fulfilled' && Array.isArray(listingsRes.value?.data)) {
         setListings(listingsRes.value.data);
+        setListingsTotal(listingsRes.value.pagination?.total ?? listingsRes.value.data.length);
       }
       if (reviewsRes.status === 'fulfilled' && Array.isArray(reviewsRes.value?.data)) {
         setReviews(reviewsRes.value.data);
@@ -300,6 +304,17 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
             ))}
           </ScrollView>
         )}
+        {listings.length > 0 && (
+          <View style={styles.viewAllWrap}>
+            <Button
+              label={listingsTotal && listingsTotal > listings.length ? `View all ${listingsTotal.toLocaleString('en-GB')} listings` : 'View all listings'}
+              variant="outline"
+              size="sm"
+              fullWidth
+              onPress={() => navigation?.navigate('SellerAllListings', { sellerId, sellerName: getName(user) || undefined })}
+            />
+          </View>
+        )}
 
         {/* Reviews */}
         <View style={styles.sectionHeaderRow}>
@@ -334,6 +349,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
 // ═══════════════════════════ STYLES ═══════════════════════════════
 
 const styles = StyleSheet.create({
+  viewAllWrap: { paddingHorizontal: 20, marginTop: 14 },
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   centerFill: { alignItems: 'center', justifyContent: 'center', gap: 12 },
 
