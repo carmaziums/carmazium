@@ -41,6 +41,8 @@ export class PurchaseReceiptPdfService {
         });
         const price = purchase.purchasePrice === null ? 'Not recorded' :
             '£' + purchase.purchasePrice.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const advertised = purchase.advertisedPrice == null ? 'Not recorded'
+            : '£' + purchase.advertisedPrice.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         page.drawRectangle({ x: 0, y: 723, width: 595.28, height: 119, color: ink });
         page.drawRectangle({ x: 48, y: 776, width: 6, height: 28, color: red });
         page.drawText('CARMAZIUM', { x: 65, y: 781, size: 23, color: white, font: bold });
@@ -55,23 +57,26 @@ export class PurchaseReceiptPdfService {
         row('Collected', date, 607);
         row('Registration', purchase.registration, 569);
         row('Vehicle', purchase.vehicleTitle, 531);
-        row('Purchase price', price, 493);
-        row('Original auction seller', purchase.sellerName, 455);
+        row('Final agreed price', price, 493);
+        row('Advertised price on file', advertised, 455);
+        row('Original auction seller', purchase.sellerName, 417);
         row('Original listing date', new Date(purchase.originalListedAt + 'T12:00:00Z')
-            .toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/London' }), 417);
-        row('Original listing ID', purchase.originalAuctionListingId, 379);
-        page.drawText('RECONCILIATION NOTICE', { x: 48, y: 335, size: 13, font: bold, color: red });
+            .toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/London' }), 379);
+        row('Original listing ID', purchase.originalAuctionListingId, 341);
+        page.drawText('RECONCILIATION NOTICE', { x: 48, y: 289, size: 13, font: bold, color: red });
         const notice = [
             'The buyer confirms purchasing from the original CarMazium auction seller.',
             'The original seller listing is the source, not the buyer\'s retail stock.',
             'The historic auction result was NOT changed by this reconciliation.',
-            'The purchase price is shown only if separately recorded and verified.',
+            'Advertised price is the original listing value currently on file.',
+            'It may have changed since listing or collection; it is not the final price.',
+            'Final agreed price is shown only when separately recorded.',
             'CarMazium has not independently verified payment to the seller.',
             'This record is not a seller invoice, VAT invoice or proof of payment.',
             'Keep the original seller invoice and bank statement for your accounts.',
         ];
         notice.forEach((line, i) => page.drawText(line, {
-            x: 48, y: 307 - i * 27, size: 10, font: normal, color: grey,
+            x: 48, y: 263 - i * 23, size: 10, font: normal, color: grey,
         }));
         page.drawText('CarMazium - carmazium.com', {
             x: 48, y: 56, size: 10, font: normal, color: ink,
@@ -173,28 +178,36 @@ export class PurchaseReceiptPdfService {
         }
         const sellerY = buyer.dealerProfile?.businessAddress ? 336 : 361;
         row('Seller', sellerName, sellerY);
-        const sellerAddress = seller.contactUnlocked ? seller.sellerAddress : null;
-        if (sellerAddress) row('Seller address on file', sellerAddress, sellerY - 25);
-        const priceY = sellerY - (sellerAddress ? 25 : 0) - 46;
-        heading('AGREED VEHICLE PRICE', priceY);
-        page.drawRectangle({ x: 48, y: priceY - 63, width: width - 96, height: 48, color: pale });
-        page.drawText(money(purchase.purchasePrice), { x: 63, y: priceY - 47, font: bold, size: 21, color: navy });
+        // Full seller contact and postal address are on page 2. This first
+        // page shows both the actual deal and the distinct advertisement.
+        const priceY = sellerY - 47;
+        heading('VEHICLE PRICES (SEPARATE AMOUNTS)', priceY);
+        page.drawRectangle({ x: 48, y: priceY - 91, width: width - 96, height: 78, color: pale });
+        page.drawText('Final agreed purchase price', { x: 63, y: priceY - 29, font: bold, size: 9, color: grey });
+        page.drawText(money(purchase.purchasePrice), { x: 63, y: priceY - 51, font: bold, size: 18, color: navy });
+        page.drawText('Advertisement price on file', { x: 290, y: priceY - 29, font: bold, size: 9, color: grey });
+        page.drawText(purchase.advertisedPrice == null ? 'Not recorded' : money(purchase.advertisedPrice), {
+            x: 290, y: priceY - 51, font: bold, size: 18, color: navy,
+        });
 
         const paymentNote = purchase.payment.sellerFundsConfirmedAt
             ? 'Seller funds confirmation recorded: ' + date(purchase.payment.sellerFundsConfirmedAt) + '.'
             : 'CarMazium has not independently verified vehicle payment.';
         page.drawText(oneLine(paymentNote, normal, 9, width - 96), {
-            x: 48, y: 187, font: normal, size: 9, color: grey,
+            x: 48, y: 185, font: normal, size: 9, color: grey,
         });
-        page.drawLine({ start: { x: 48, y: 165 }, end: { x: width - 48, y: 165 }, thickness: 0.8, color: grey });
+        page.drawLine({ start: { x: 48, y: 164 }, end: { x: width - 48, y: 164 }, thickness: 0.8, color: grey });
         const notes = [
-            'This document records a sale and the buyer\'s collection confirmation on CarMazium.',
+            'Advertised price is ' + (purchase.advertisedPriceSource === 'PURCHASE_SNAPSHOT'
+                ? 'from the advert snapshot recorded on the platform.'
+                : 'the listing price on file; it may not be the price at the date of sale.'),
+            'Advertised price is NOT evidence of the final agreed or paid price.',
             'Vehicle purchase money is paid directly by the buyer to the seller, not to CarMazium.',
             'This is not a seller-issued invoice, a VAT invoice, or independent proof of payment.',
             'Retain the seller\'s invoice and bank transfer evidence for your accounting records.',
         ];
         notes.forEach((line, i) => page.drawText(line, {
-            x: 48, y: 146 - i * 16, font: normal, size: 8.7, color: grey,
+            x: 48, y: 145 - i * 16, font: normal, size: 8.7, color: grey,
         }));
         page.drawText('Issued from CarMazium purchase records · carmazium.com', {
             x: 48, y: 43, font: normal, size: 9, color: grey,
