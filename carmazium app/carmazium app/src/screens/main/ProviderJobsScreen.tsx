@@ -16,7 +16,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import {
   SERVICE_LABELS,
   ServiceJob,
@@ -340,15 +340,19 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha06,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted, marginTop: 2 },
-  tabs: { flexDirection: 'row', marginHorizontal: 18, marginTop: 4, borderRadius: Radius.inline, backgroundColor: Colors.bgSecondary, padding: 4 },
+  tabs: { flexDirection: 'row', marginHorizontal: 18, marginTop: 4, borderRadius: Radius.inline, padding: 4, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, ...Elevation.card },
   tab: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
-  tabActive: { backgroundColor: Colors.accent },
+  tabActive: { backgroundColor: Colors.accent, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   tabText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.textMuted, letterSpacing: 0.7 },
   tabTextActive: { color: Colors.onAccent },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 18, paddingVertical: 12 },
@@ -362,7 +366,7 @@ const styles = StyleSheet.create({
   emptyList: { flexGrow: 1, padding: 18 },
   // Header rows carry their own 18pt gutters inside the padded list.
   listHeaderBleed: { marginHorizontal: -18, marginTop: -18, marginBottom: 6 },
-  card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCardSolid, padding: 16, gap: 12 },
+  card: { borderRadius: Radius.card, borderWidth: 1, padding: 16, gap: 12, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   typeRow: { flex: 1, flexDirection: 'row', gap: 10 },
   iconBox: { width: 38, height: 38, borderRadius: 11, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
@@ -380,6 +384,6 @@ const styles = StyleSheet.create({
   centerCard: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
   emptyTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, textAlign: 'center' },
   emptyText: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textMuted, textAlign: 'center', lineHeight: 19, maxWidth: 340 },
-  primaryButton: { marginTop: 5, minHeight: 44, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
+  primaryButton: { marginTop: 5, minHeight: 44, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   primaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent, letterSpacing: 0.7 },
 });

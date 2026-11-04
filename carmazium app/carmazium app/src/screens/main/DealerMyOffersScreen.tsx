@@ -17,7 +17,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { CounterLedger } from '../../components/offers/CounterLedger';
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
@@ -575,11 +575,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
@@ -645,12 +647,15 @@ const styles = StyleSheet.create({
   },
   emptyCtaBtn: {
     marginTop: 8,
-    height: 44,
     paddingHorizontal: 28,
     borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 44,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   emptyCtaBtnText: {
     fontFamily: FontFamily.bold,
@@ -660,13 +665,14 @@ const styles = StyleSheet.create({
 
   // ── Offer card ──
   offerCard: {
-    backgroundColor: Colors.bgSecondary,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
     borderLeftWidth: 3,
     padding: 16,
     gap: 10,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -771,16 +777,20 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   actionBtn: {
-    height: 36,
     borderRadius: Radius.inline,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     paddingHorizontal: 14,
+    minHeight: 36,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderHi,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   actionBtnWithdraw: {
-    backgroundColor: 'transparent',
     borderColor: Colors.whiteAlpha15,
+    backgroundColor: Colors.bgCard,
   },
   actionBtnWithdrawText: {
     fontFamily: FontFamily.bold,
@@ -789,13 +799,14 @@ const styles = StyleSheet.create({
   },
   actionBtnDeclineCounter: {
     flex: 1,
-    backgroundColor: 'transparent',
     borderColor: Colors.accent,
+    backgroundColor: Colors.bgCard,
   },
   actionBtnAcceptCounter: {
     flex: 1,
     backgroundColor: Colors.success,
     borderColor: Colors.success,
+    borderBottomColor: Colors.blackAlpha45,
   },
   actionBtnText: {
     fontFamily: FontFamily.bold,

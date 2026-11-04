@@ -19,7 +19,7 @@ import { useChat } from '../../context/ChatContext';
 import { ChatRoom } from '../../lib/chatApi';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
 
@@ -244,7 +244,7 @@ export const ProviderMessagesScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12 },
-  headerButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
+  headerButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderBottomWidth: 2, ...Elevation.card },
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   headerMeta: { fontFamily: FontFamily.medium, color: Colors.textMuted, fontSize: FontSize.size10, marginTop: 1 },
   hero: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 14 },
@@ -256,8 +256,8 @@ const styles = StyleSheet.create({
   list: { padding: 18, paddingTop: 8, paddingBottom: 48, gap: 12, flexGrow: 1 },
   // Header rows carry their own 18pt gutters inside the padded list.
   listHeaderBleed: { marginHorizontal: -18, marginTop: -8 },
-  card: { borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.bgSecondary, borderRadius: Radius.card, padding: 15, gap: 9 },
-  cardUnread: { borderColor: Colors.accentAlpha25, backgroundColor: Colors.accentAlpha04 },
+  card: { borderWidth: 1, borderRadius: Radius.card, padding: 15, gap: 9, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
+  cardUnread: { borderColor: Colors.accentAlpha25, backgroundColor: Colors.bgCard },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   serviceChip: { borderRadius: 8, backgroundColor: Colors.infoBlueAlpha10, paddingHorizontal: 8, paddingVertical: 5 },
   serviceChipText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size10, letterSpacing: 0.7 },

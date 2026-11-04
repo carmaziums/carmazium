@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import {
   ContractorCapability,
   SERVICE_LABELS,
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12 },
-  headerButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
+  headerButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderBottomWidth: 2, ...Elevation.card },
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   content: { padding: 18, gap: 14 },
   title: { fontFamily: FontFamily.bold, fontSize: FontSize.xl, color: Colors.white },
@@ -209,16 +209,16 @@ const styles = StyleSheet.create({
   quickActionText: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
   sub: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, lineHeight: 21, color: Colors.textSecondary },
   payoutCard: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.warningAlpha30, backgroundColor: Colors.warningAlpha08, padding: 15 },
-  card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCardSolid, padding: 15, gap: 11 },
+  card: { borderRadius: Radius.card, borderWidth: 1, padding: 15, gap: 11, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
   row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 },
   icon: { width: 42, height: 42, borderRadius: 12, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
   cardTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
   cardText: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, lineHeight: 19, color: Colors.textSecondary },
   status: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, marginTop: 3 },
-  smallButton: { minHeight: 44, minWidth: 80, borderRadius: 10, backgroundColor: Colors.accent, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+  smallButton: { minHeight: 44, minWidth: 80, borderRadius: 10, backgroundColor: Colors.accent, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   smallButtonText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: FontSize.size10 },
   actions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  actionButton: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: 10, paddingHorizontal: 11, backgroundColor: Colors.bgElevated },
+  actionButton: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: 10, paddingHorizontal: 11, backgroundColor: Colors.bgCard, borderBottomWidth: 3, ...Elevation.card },
   actionText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size10 },
   error: { fontFamily: FontFamily.regular, color: Colors.paleRed_fca5a5, fontSize: FontSize.size12, lineHeight: 18 },
   warning: { fontFamily: FontFamily.medium, color: Colors.warning, fontSize: FontSize.xs },

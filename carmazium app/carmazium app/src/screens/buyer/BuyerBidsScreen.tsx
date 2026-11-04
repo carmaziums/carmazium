@@ -969,7 +969,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
+    borderColor: Colors.borderHi,
     backgroundColor: Colors.bgCard,
     borderBottomWidth: 3,
     ...Elevation.card,

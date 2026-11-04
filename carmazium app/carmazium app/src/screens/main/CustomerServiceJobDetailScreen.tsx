@@ -18,7 +18,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import {
   SERVICE_LABELS,
   ServiceJob,
@@ -580,7 +580,7 @@ const Info = ({ icon, label, value }: { icon: string; label: string; value: stri
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   nextStepCard: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 15, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgCardSolid },
-  auctionLink: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, alignSelf: 'flex-start' },
+  auctionLink: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, paddingHorizontal: 12, borderRadius: Radius.inline, borderWidth: 1.5, borderBottomWidth: 3, borderColor: Colors.accent, backgroundColor: Colors.bgCard, alignSelf: 'flex-start', ...Elevation.card },
   auctionLinkText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent },
   center: { alignItems: 'center', justifyContent: 'center' },
   header: {
@@ -590,26 +590,35 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: Colors.whiteAlpha10,
     alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   refreshButton: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center',
+    width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
   content: { padding: 18, gap: 12, paddingBottom: 70 },
   card: {
-    backgroundColor: Colors.bgSecondaryAlt,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha08,
     padding: 16,
     gap: 12,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
-  warningCard: { borderColor: Colors.warningAlpha30, backgroundColor: Colors.warningAlpha08 },
-  successCard: { borderColor: Colors.accentGreenAlpha30, backgroundColor: Colors.accentGreenAlpha08 },
+  warningCard: { borderColor: Colors.warning, backgroundColor: Colors.bgCard },
+  successCard: { borderColor: Colors.accentGreen, backgroundColor: Colors.bgCard },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   serviceIcon: {
     width: 44, height: 44, borderRadius: 14,
@@ -639,23 +648,32 @@ const styles = StyleSheet.create({
     minHeight: 44, borderRadius: 11, paddingHorizontal: 14, paddingVertical: 11,
     backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center',
     flexDirection: 'row', gap: 7,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   primaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent },
   secondaryButton: {
     minHeight: 42, borderRadius: 11, paddingHorizontal: 14, paddingVertical: 10,
-    borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.whiteAlpha04,
+    borderWidth: 1, borderColor: Colors.borderHi,
     alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
   },
   secondaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent },
   dangerButton: {
     minHeight: 46, borderRadius: 11, paddingHorizontal: 14, paddingVertical: 11,
     backgroundColor: Colors.accent, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', gap: 8,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   dangerText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent },
   disabled: { opacity: 0.6 },
   actionRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-  cancelButton: { alignSelf: 'center', flexDirection: 'row', gap: 7, alignItems: 'center', padding: 12 },
+  cancelButton: { alignSelf: 'center', flexDirection: 'row', gap: 7, alignItems: 'center', padding: 12, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.borderHi, borderBottomWidth: 3, ...Elevation.card },
   cancelText: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textMuted },
   notice: {
     flexDirection: 'row', gap: 8, alignItems: 'flex-start',

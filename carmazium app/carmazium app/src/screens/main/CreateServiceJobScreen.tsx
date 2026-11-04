@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, Text, TextInp
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { Elevation } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CreateServiceJob'>;
@@ -109,6 +110,6 @@ const styles = StyleSheet.create({
   label: { color: Colors.white, fontSize: 14, fontWeight: '600' },
   input: { borderColor: Colors.borderSubtle, borderWidth: 1, borderRadius: 12, color: Colors.white, backgroundColor: Colors.bgCardSolid, padding: 14, minHeight: 50 },
   toggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  submit: { borderRadius: 12, backgroundColor: Colors.accent, padding: 17, alignItems: 'center' },
+  submit: { borderRadius: 12, backgroundColor: Colors.accent, padding: 17, alignItems: 'center', borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   submitText: { color: Colors.onAccent, fontWeight: '700' },
 });

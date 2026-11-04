@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
@@ -136,11 +136,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha06,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: {
     fontFamily: FontFamily.bold,
@@ -169,13 +171,14 @@ const styles = StyleSheet.create({
   },
 
   sectionCard: {
-    backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
-    borderColor: Colors.borderSubtle,
     borderRadius: Radius.card,
     padding: 18,
     marginBottom: 16,
     gap: 12,
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.border,
+    ...Elevation.card,
   },
   sectionTitle: {
     fontFamily: FontFamily.bold,
@@ -233,6 +236,9 @@ const styles = StyleSheet.create({
     padding: 18,
     gap: 12,
     marginBottom: 12,
+    borderBottomWidth: 3,
+    borderBottomColor: Colors.accentDark,
+    ...Elevation.neon,
   },
   ctaTitle: {
     fontFamily: FontFamily.bold,
@@ -252,6 +258,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 14,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 3,
+    ...Elevation.card,
+    borderRadius: Radius.inline,
+    borderWidth: 1.5,
+    borderColor: Colors.accent,
   },
   secondaryCtaText: {
     fontFamily: FontFamily.semiBold,

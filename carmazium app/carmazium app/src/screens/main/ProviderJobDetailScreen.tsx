@@ -18,7 +18,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import {
   SERVICE_LABELS,
   ServiceJob,
@@ -665,9 +665,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.whiteAlpha06,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderBottomWidth: 2,
+    ...Elevation.card,
   },
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted, marginTop: 2 },
@@ -675,7 +679,7 @@ const styles = StyleSheet.create({
   statusText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.textSecondary },
   content: { padding: 18, gap: 12 },
   centerCard: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 28 },
-  card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCardSolid, padding: 16, gap: 12 },
+  card: { borderRadius: Radius.card, borderWidth: 1, padding: 16, gap: 12, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
   nextStepCard: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.card, backgroundColor: Colors.bgCardSolid, padding: 15 },
   nextStepLabel: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: FontSize.xs, marginBottom: 5 },
   noticeCard: { borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.whiteAlpha06, padding: 14 },
@@ -707,13 +711,13 @@ const styles = StyleSheet.create({
   payoutHint: { fontFamily: FontFamily.regular, color: Colors.textMuted, fontSize: FontSize.size10, lineHeight: 16 },
   payoutAmount: { fontFamily: FontFamily.bold, color: Colors.accentGreen, fontSize: FontSize.xl },
   customerName: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.sm },
-  contactRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 36 },
+  contactRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 36, paddingHorizontal: 12, borderRadius: Radius.inline, borderWidth: 1, borderBottomWidth: 3, borderColor: Colors.borderHi, backgroundColor: Colors.bgCard, alignSelf: 'flex-start', ...Elevation.card },
   contactText: { fontFamily: FontFamily.medium, color: Colors.accent, fontSize: FontSize.size12 },
-  primaryButton: { minHeight: 46, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  primaryButton: { minHeight: 46, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   primaryText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: FontSize.xs, letterSpacing: 0.7 },
-  secondaryButton: { minHeight: 44, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 16 },
+  secondaryButton: { minHeight: 44, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 16, backgroundColor: Colors.bgCard, borderBottomWidth: 3, ...Elevation.card },
   secondaryText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.xs },
-  dangerButton: { minHeight: 42, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha25, alignItems: 'center', justifyContent: 'center' },
+  dangerButton: { minHeight: 42, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha25, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCard, borderBottomWidth: 3, ...Elevation.card },
   dangerText: { fontFamily: FontFamily.bold, color: Colors.accent, fontSize: FontSize.xs },
   disabled: { opacity: 0.55 },
   choiceRow: { flexDirection: 'row', gap: 8 },

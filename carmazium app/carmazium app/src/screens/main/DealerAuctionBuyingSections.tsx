@@ -8,6 +8,8 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
+import { Elevation, Radius } from '../../constants/spacing';
+import { Button } from '../../components/Button';
 import { FontFamily } from '../../constants/typography';
 
 // Canonical sources: src/app/dashboard/dealer/auctions/shortlisted/page.tsx
@@ -61,9 +63,7 @@ function Thumbnail({ uri }: { uri?: string }) {
 function ErrorText({ message, onRetry }: { message: string; onRetry: () => void }) {
   return <View style={styles.error}>
     <Text style={styles.errorText}>{message}</Text>
-    <TouchableOpacity onPress={onRetry} accessibilityRole="button">
-      <Text style={styles.retry}>Retry</Text>
-    </TouchableOpacity>
+    <Button label="Retry" onPress={onRetry} variant="outline" size="sm" style={styles.retryBtn} />
   </View>;
 }
 
@@ -181,12 +181,12 @@ export function DealerAuctionShortlist({ navigation, header }: { navigation?: Na
         }
         ListFooterComponent={!error && !loading && totalPages > 1 ? (
           <View style={styles.pageRow}>
-            <TouchableOpacity onPress={() => setPage(x=>Math.max(1,x-1))}
+            <TouchableOpacity style={[styles.pageBtn, page===1 && styles.pageBtnDisabled]} onPress={() => setPage(x=>Math.max(1,x-1))}
               disabled={page===1} accessibilityRole="button">
               <Text style={styles.pageLink}>Previous</Text>
             </TouchableOpacity>
             <Text style={styles.meta}>{page} / {totalPages}</Text>
-            <TouchableOpacity onPress={()=>setPage(x=>Math.min(totalPages,x+1))}
+            <TouchableOpacity style={[styles.pageBtn, page>=totalPages && styles.pageBtnDisabled]} onPress={()=>setPage(x=>Math.min(totalPages,x+1))}
               disabled={page>=totalPages} accessibilityRole="button">
               <Text style={styles.pageLink}>Next</Text>
             </TouchableOpacity>
@@ -347,5 +347,11 @@ const styles = StyleSheet.create({
   mainAction:{minHeight:44,backgroundColor:Colors.accent,borderRadius:11,
     alignItems:'center',justifyContent:'center',marginTop:6},
   mainActionText:{fontFamily:FontFamily.bold,color:Colors.onAccent,fontSize:12},
-  historyLink:{paddingTop:15,paddingBottom:15,alignItems:'center'},
+  // Raised outline buttons (were bare accent text links).
+  historyLink:{marginTop:15,marginBottom:15,minHeight:44,paddingHorizontal:14,paddingVertical:10,alignItems:'center',justifyContent:'center',
+    borderRadius:Radius.inline,borderWidth:1.5,borderBottomWidth:3,borderColor:Colors.accent,backgroundColor:Colors.bgCard,...Elevation.card},
+  pageBtn:{minHeight:38,paddingHorizontal:14,justifyContent:'center',borderRadius:Radius.inline,borderWidth:1,borderBottomWidth:3,
+    borderColor:Colors.borderHi,backgroundColor:Colors.bgCard,...Elevation.card},
+  pageBtnDisabled:{opacity:0.45},
+  retryBtn:{alignSelf:'flex-start',marginTop:8},
 });

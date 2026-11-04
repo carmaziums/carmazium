@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { Radius } from '../../constants/spacing';
+import { Elevation, Radius } from '../../constants/spacing';
 import { SERVICE_LABELS, getMyCapabilities } from '../../lib/servicesApi';
 import {
   CapabilityEvidenceType,
@@ -299,32 +299,32 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12 },
-  headerButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
+  headerButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderBottomWidth: 2, ...Elevation.card },
   headerTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.lg },
   content: { padding: 18, gap: 13 },
   title: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.xl },
   sub: { fontFamily: FontFamily.regular, color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 },
-  summaryCard: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.bgSecondary, borderRadius: Radius.card, padding: 16 },
+  summaryCard: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: Radius.card, padding: 16, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
   summaryStatus: { fontFamily: FontFamily.bold, fontSize: FontSize.base, marginTop: 4 },
   label: { fontFamily: FontFamily.bold, color: Colors.textMuted, fontSize: FontSize.size10, letterSpacing: 1 },
   sectionTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.base, marginTop: 4 },
   requirement: { flexDirection: 'row', gap: 11, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.bgSecondary, borderRadius: Radius.card, padding: 14 },
   requirementSelected: { borderColor: Colors.accentAlpha25, backgroundColor: Colors.accentAlpha10 },
-  card: { borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.bgSecondary, borderRadius: Radius.card, padding: 15, gap: 10 },
+  card: { borderWidth: 1, borderRadius: Radius.card, padding: 15, gap: 10, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
   cardTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.sm },
   cardText: { fontFamily: FontFamily.regular, color: Colors.textSecondary, fontSize: FontSize.xs, lineHeight: 18 },
   stateText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, marginTop: 4 },
   warningCard: { flexDirection: 'row', gap: 10, borderWidth: 1, borderColor: Colors.warningAlpha30, backgroundColor: Colors.warningAlpha08, borderRadius: Radius.inline, padding: 13 },
   warningText: { flex: 1, fontFamily: FontFamily.regular, color: Colors.lightYellow, fontSize: FontSize.xs, lineHeight: 18 },
-  fileButton: { minHeight: 44, borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.whiteAlpha06, borderRadius: Radius.inline, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  fileButton: { minHeight: 44, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.inline, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, backgroundColor: Colors.bgCard, borderBottomWidth: 3, ...Elevation.card },
   fileButtonText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.xs },
   input: { borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.bgTertiary, borderRadius: Radius.inline, color: Colors.white, paddingHorizontal: 13, paddingVertical: 11, fontFamily: FontFamily.regular, fontSize: FontSize.sm },
-  primaryButton: { minHeight: 46, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
+  primaryButton: { minHeight: 46, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   primaryText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: FontSize.xs },
   empty: { borderWidth: 1, borderStyle: 'dashed', borderColor: Colors.whiteAlpha10, borderRadius: Radius.card, padding: 24, alignItems: 'center' },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   actions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  actionButton: { minHeight: 35, borderWidth: 1, borderColor: Colors.whiteAlpha10, borderRadius: 9, justifyContent: 'center', paddingHorizontal: 10 },
+  actionButton: { minHeight: 35, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: 9, justifyContent: 'center', paddingHorizontal: 10, backgroundColor: Colors.bgCard, borderBottomWidth: 3, ...Elevation.card },
   actionText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size10 },
   error: { fontFamily: FontFamily.regular, color: Colors.paleRed_fca5a5, fontSize: FontSize.size12 },
 });
