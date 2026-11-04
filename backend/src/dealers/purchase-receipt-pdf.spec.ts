@@ -38,6 +38,7 @@ describe('PurchaseReceiptPdfService', () => {
         prisma = {
             sale: {
                 findUnique: jest.fn().mockResolvedValue({
+                    buyerId: 'buyer-1',
                     buyer: {
                         firstName: 'Test', lastName: 'Buyer',
                         email: 'buyer@example.test',
@@ -83,6 +84,39 @@ describe('PurchaseReceiptPdfService', () => {
         expect(dealers.getDealerPurchaseDetail).toHaveBeenCalledWith('buyer-1', 'sale-1');
         expect(dealers.getPurchaseSellerDetails).toHaveBeenCalledWith('buyer-1', 'sale-1');
         expect(prisma.sale.findUnique).toHaveBeenCalledTimes(1);
+    });
+
+    it('uses only an authorised frozen seller snapshot and preserves the distinct advertised price', async () => {
+        const previous = process.env.PURCHASE_SELLER_LEGAL_SNAPSHOTS_ENABLED;
+        process.env.PURCHASE_SELLER_LEGAL_SNAPSHOTS_ENABLED = 'true';
+        try {
+            prisma.purchaseSellerLegalSnapshot = {
+                findFirst: jest.fn().mockResolvedValue({
+                    capturedAt: new Date('2026-11-04T12:01:00Z'),
+                    saleRecordedAt: new Date('2026-11-04T11:00:00Z'),
+                    data: {
+                        sellerName: 'Seller at collection',
+                        sellerCompany: null,
+                        sellerAccountReference: 'seller-original',
+                        sellerEmail: 'historic-seller@example.test',
+                        sellerPhone: '07123456789',
+                        sellerAddress: null,
+                        sellerAddressSource: null,
+                        sellerCompanyRegistrationNumber: null,
+                        sellerVatNumber: null,
+                        advertisedPriceAtCapture: 4200,
+                    },
+                }),
+            };
+            const bytes = await service.renderForPurchase('sale-1', 'buyer-1');
+            expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
+            expect(prisma.purchaseSellerLegalSnapshot.findFirst).toHaveBeenCalledWith(
+                expect.objectContaining({ where: { saleId: 'sale-1', buyerId: 'buyer-1' } }),
+            );
+        } finally {
+            if (previous === undefined) delete process.env.PURCHASE_SELLER_LEGAL_SNAPSHOTS_ENABLED;
+            else process.env.PURCHASE_SELLER_LEGAL_SNAPSHOTS_ENABLED = previous;
+        }
     });
 
     it('does not invent a buyer when the sale is missing', async () => {
