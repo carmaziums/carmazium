@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -10,7 +10,7 @@ import { Colors } from '../../constants/colors';
 import { Elevation, Radius } from '../../constants/spacing';
 import { FontFamily, FontSize } from '../../constants/typography';
 import {
-  AppStats, ProblemReport, getAppStats, getProblemReports, setProblemReportStatus,
+  AppStats, OnlineNow, ProblemReport, getAppStats, getOnlineNow, getProblemReports, setProblemReportStatus,
 } from '../../lib/appInsights';
 import type { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { AdminHeader, fmtDateTime } from './adminShared';
@@ -32,6 +32,16 @@ export const AdminAppInsightsScreen: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [online, setOnline] = useState<OnlineNow | null>(null);
+
+  // Online now refreshes every 30 seconds while this screen is open.
+  useEffect(() => {
+    let alive = true;
+    const refresh = () => { getOnlineNow().then(o => { if (alive) setOnline(o); }).catch(() => {}); };
+    refresh();
+    const t = setInterval(refresh, 30_000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
 
   const load = useCallback(async (which = filter) => {
     setError(null);
@@ -71,6 +81,24 @@ export const AdminAppInsightsScreen: React.FC<Props> = ({ navigation }) => {
 
   const header = (
     <View>
+      <Text style={styles.section}>ONLINE NOW</Text>
+      <View style={styles.onlineCard}>
+        <View style={styles.onlineCol}>
+          <Text style={styles.onlineValue}>{n(online?.web.total)}</Text>
+          <Text style={styles.tileLabel}>On the website</Text>
+          <Text style={styles.tileSub}>{online ? `${online.web.desktop} desktop · ${online.web.mobile} mobile · ${online.web.installed} installed` : '—'}</Text>
+        </View>
+        <View style={styles.onlineDivider} />
+        <View style={styles.onlineCol}>
+          <Text style={styles.onlineValue}>{n(online?.app.total)}</Text>
+          <Text style={styles.tileLabel}>In the app</Text>
+          <Text style={styles.tileSub}>{online ? `${online.app.android} Android · ${online.app.ios} iPhone` : '—'}</Text>
+        </View>
+      </View>
+      <Text style={styles.onlineNote}>
+        {online ? `${n(online.total)} people online · ${n(online.web.signedIn + online.app.signedIn)} signed in · updates every 30 seconds` : 'Loading…'}
+      </Text>
+
       <Text style={styles.section}>APP DOWNLOADS</Text>
       <View style={styles.grid}>
         {tiles.map(t => (
@@ -129,7 +157,7 @@ export const AdminAppInsightsScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <AdminHeader title="App & problem reports" subtitle="Downloads, installs and customer reports" onBack={() => navigation.goBack()} />
+      <AdminHeader title="App & problem reports" subtitle="Online now, downloads and customer reports" onBack={() => navigation.goBack()} />
       <FlatList
         data={reports}
         keyExtractor={r => r.id}
@@ -148,6 +176,14 @@ export const AdminAppInsightsScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   list: { paddingHorizontal: 16, paddingBottom: 48, gap: 12 },
+  onlineCard: {
+    flexDirection: 'row', padding: 16, borderRadius: Radius.card, backgroundColor: Colors.bgCard,
+    borderWidth: 1, borderColor: Colors.border, ...Elevation.card,
+  },
+  onlineCol: { flex: 1 },
+  onlineDivider: { width: 1, backgroundColor: Colors.border, marginHorizontal: 14 },
+  onlineValue: { fontFamily: FontFamily.mono, fontSize: FontSize['3xl'], color: Colors.success },
+  onlineNote: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 8 },
   section: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, letterSpacing: 1.4, color: Colors.textMuted, marginTop: 12, marginBottom: 10 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tile: {

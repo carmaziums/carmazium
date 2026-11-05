@@ -105,3 +105,29 @@ export const getProblemReports = (status: 'open' | 'resolved' | 'all' = 'open', 
 
 export const setProblemReportStatus = (id: string, status: 'new' | 'resolved') =>
   apiClient(`/analytics/problem-reports/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+
+// ── Online now (admin count) ─────────────────────────────────────────────────
+// In-memory id for this app session only — nothing is stored on the device.
+const sessionVisitorId = randomId();
+
+/** "Still here" ping while the app is in the foreground (about once a minute). */
+export async function sendOnlineHeartbeat(signedIn: boolean): Promise<void> {
+  try {
+    await apiClient('/analytics/heartbeat', {
+      method: 'POST',
+      body: JSON.stringify({ visitorId: sessionVisitorId, surface: 'app', platform: appPlatform(), signedIn }),
+      timeoutMs: 8000,
+    });
+  } catch {
+    // Best effort only.
+  }
+}
+
+export interface OnlineNow {
+  total: number;
+  web: { total: number; signedIn: number; desktop: number; mobile: number; installed: number };
+  app: { total: number; signedIn: number; android: number; ios: number };
+  updatedAt: string;
+}
+
+export const getOnlineNow = () => apiClient<OnlineNow>('/analytics/online');

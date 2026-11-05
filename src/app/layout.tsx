@@ -16,6 +16,7 @@ import { ChatProvider } from "@/context/ChatContext";
 import { CompareProvider } from "@/context/CompareContext";
 import { LocationProvider } from "@/context/LocationContext";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
+import { OnlineHeartbeat } from "@/components/analytics/OnlineHeartbeat";
 import { GoogleConsentMode } from "@/components/analytics/GoogleConsentMode";
 import { GoogleTagManager } from "@/components/analytics/GoogleTagManager";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
@@ -130,6 +131,7 @@ export default function RootLayout({
                 <CompareProvider>
                   <LocationProvider>
                     <PageViewTracker />
+                    <OnlineHeartbeat />
                     <div className="flex flex-col min-h-screen">
                       {/* Above the header on purpose: on staging this must be
                           the first thing seen, before anything that looks like
