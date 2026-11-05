@@ -20,7 +20,7 @@ type MenuItem = {
   label: string;
   icon: string;
   /** Native destination. */
-  screen?: 'AdminListingsReview' | 'AdminHandovers' | 'AdminAccounts' | 'AdminDealerKyc' | 'SellCarFlow';
+  screen?: 'AdminListingsReview' | 'AdminHandovers' | 'AdminAccounts' | 'AdminDealerKyc' | 'SellCarFlow' | 'AdminAppInsights';
   /** Website admin path, opened in the in-app browser. */
   webPath?: string;
 };
@@ -65,6 +65,7 @@ const MENU: { section: string; items: MenuItem[] }[] = [
   {
     section: 'Content & insights',
     items: [
+      { label: 'App & problem reports', icon: 'phone-portrait-outline', screen: 'AdminAppInsights' },
       { label: 'Analytics', icon: 'trending-up', webPath: '/dashboard/admin/analytics' },
       { label: 'AI Reports', icon: 'sparkles', webPath: '/dashboard/admin/ai-reports' },
       { label: 'Marketing Popup', icon: 'megaphone-outline', webPath: '/dashboard/admin/marketing-popup' },

@@ -700,6 +700,13 @@ export const SettingsScreen: React.FC = () => {
               </Text>
               <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
             </TouchableOpacity>
+            <TouchableOpacity style={[styles.accountToolButton, singleColumnSettings && styles.fullWidthTool]} accessibilityRole="button"
+              accessibilityLabel="Report a problem"
+              onPress={() => navigation.navigate('ReportProblem', { fromScreen: 'Settings' })}>
+              <Ionicons name="bug-outline" size={19} color={Colors.accent} />
+              <Text style={styles.accountToolLabel}>Report a problem</Text>
+              <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
+            </TouchableOpacity>
           </View>
         </View>
 

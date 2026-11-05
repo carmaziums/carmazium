@@ -1,4 +1,6 @@
-import { Controller, Post, Get, Body, Query, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Param, Body, Query, UseGuards, Req, BadRequestException } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import type { ProblemReportInput } from './app-insights';
 import { Request } from 'express';
 import { AnalyticsService } from './analytics.service';
 import { ValuationHistoryService } from './valuation-history.service';
@@ -71,6 +73,57 @@ export class AnalyticsController {
         }
         await this.analyticsService.trackEvent(dto);
         return { ok: true };
+    }
+
+    /**
+     * Customer "Report a problem" (app and website). Guests may report too;
+     * a signed-in reporter is identified from the verified token only.
+     */
+    @Post('problem-report')
+    @UseGuards(ThrottlerGuard)
+    @Throttle({ default: { limit: 5, ttl: 600_000 } })
+    async reportProblem(@Body() body: ProblemReportInput, @Req() req: Request) {
+        if (!body || typeof body !== 'object') throw new BadRequestException('Invalid report');
+        const header = req.headers.authorization;
+        const bearer = header?.startsWith('Bearer ') ? header.slice(7) : null;
+        let user = (req as Request & { user?: { id?: string } }).user;
+        if (bearer) {
+            try { user = (await this.authService.verifySupabaseToken(bearer)) ?? undefined; } catch { user = undefined; }
+        }
+        const result = await this.analyticsService.submitProblemReport(body, typeof user?.id === 'string' ? user.id : undefined);
+        return { ok: true, ...result };
+    }
+
+    // ─── Admin: app downloads & problem reports ────────────────────────────────
+
+    @Get('app-stats')
+    @UseGuards(SessionAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
+    async getAppStats() {
+        return this.analyticsService.getAppStats();
+    }
+
+    @Get('problem-reports')
+    @UseGuards(SessionAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
+    async getProblemReports(
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+        @Query('status') status?: string,
+    ) {
+        return this.analyticsService.getProblemReports(
+            page ? parseInt(page) || 1 : 1,
+            limit ? parseInt(limit) || 30 : 30,
+            status === 'open' || status === 'resolved' ? status : undefined,
+        );
+    }
+
+    @Patch('problem-reports/:id/status')
+    @UseGuards(SessionAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
+    async setProblemReportStatus(@Param('id') id: string, @Body() body: { status?: string }) {
+        if (body?.status !== 'new' && body?.status !== 'resolved') throw new BadRequestException('Status must be new or resolved');
+        return this.analyticsService.setProblemReportStatus(id, body.status);
     }
 
     @Post('email')

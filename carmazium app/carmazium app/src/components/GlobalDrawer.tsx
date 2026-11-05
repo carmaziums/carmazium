@@ -429,6 +429,13 @@ export const GlobalDrawer: React.FC = () => {
     </TouchableOpacity>
   );
 
+  const reportProblemRow = (
+    <TouchableOpacity style={styles.supportRow} onPress={() => handleItem({ id: 'report-problem', label: 'Report a problem', icon: 'bug-outline', iconLib: 'ion', stackScreen: 'ReportProblem' })} activeOpacity={0.7} accessibilityRole="button">
+      <Ionicons name="bug-outline" size={19} color={Colors.textSecondary} />
+      <Text style={[styles.supportText, { color: Colors.textPrimary }]}>Report a problem</Text>
+    </TouchableOpacity>
+  );
+
   const supportRow = !isGuest && (
     <TouchableOpacity style={styles.supportRow} onPress={handleContactSupport} activeOpacity={0.7} disabled={supportLoading} accessibilityRole="button">
       {supportLoading
@@ -489,6 +496,7 @@ export const GlobalDrawer: React.FC = () => {
       )}
       <View style={styles.footerActions}>
         {supportRow}
+        {reportProblemRow}
         {canAddVehicle && (
           <TouchableOpacity style={styles.addVehicleBtn} onPress={() => handleItem(ADD_VEHICLE)} activeOpacity={0.85} accessibilityRole="button">
             <Ionicons name="add-circle-outline" size={18} color={Colors.onAccent} />
@@ -513,6 +521,7 @@ export const GlobalDrawer: React.FC = () => {
       )}
       <View style={styles.footerActions}>
         {supportRow}
+        {reportProblemRow}
         {signOutButton}
       </View>
     </>

@@ -62,7 +62,7 @@ const GUEST_READABLE_GET: RegExp[] = [
 
 // Unguarded, rate-limited POSTs the website also lets visitors use: MaziuM
 // AI search/chat and reporting an unsafe AI answer.
-const GUEST_POST = [/^\/ai\/search$/, /^\/ai\/chat$/, /^\/ai\/report$/];
+const GUEST_POST = [/^\/ai\/search$/, /^\/ai\/chat$/, /^\/ai\/report$/, /^\/analytics\/event$/, /^\/analytics\/problem-report$/];
 
 export function isGuestReadable(endpoint: string, method = 'GET'): boolean {
   const m = method.toUpperCase();

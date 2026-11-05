@@ -20,6 +20,8 @@ const BACKEND_ONLY_EVENT_TYPES = new Set([
     'listing_approved',
     'listing_rejected',
     'admin_draft_auction_relist',
+    // Written only by POST /analytics/problem-report after validation.
+    'app_problem_report',
 ]);
 
 export function assertPublicAnalyticsEvent(dto: CreateEventDto): void {

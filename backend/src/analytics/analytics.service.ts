@@ -1,4 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { fetchApkReleaseDownloads, normaliseProblemReport, ProblemReportInput, summariseAppEvents } from './app-insights';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { CaptureEmailDto } from './dto/capture-email.dto';
@@ -25,6 +27,63 @@ export class AnalyticsService {
             this.logger.warn(`Failed to track event: ${error}`);
             return null;
         }
+    }
+
+    // ─── App installs & problem reports ──────────────────────────────────────
+
+    async submitProblemReport(input: ProblemReportInput, userId?: string) {
+        const payload = normaliseProblemReport(input);
+        const row = await this.prisma.analyticsEvent.create({
+            data: { type: 'app_problem_report', payload, userId: userId ?? null },
+        });
+        return { id: row.id };
+    }
+
+    async getAppStats() {
+        const since30 = new Date(Date.now() - 30 * 86_400_000);
+        const [rows, openReports, totalReports, apkDownloads] = await Promise.all([
+            this.prisma.analyticsEvent.findMany({
+                where: { type: { in: ['app_download_click', 'app_web_installed', 'app_first_open'] } },
+                select: { type: true, payload: true, createdAt: true },
+            }),
+            this.prisma.analyticsEvent.count({
+                where: { type: 'app_problem_report', NOT: { payload: { path: ['status'], equals: 'resolved' } } },
+            }),
+            this.prisma.analyticsEvent.count({ where: { type: 'app_problem_report' } }),
+            fetchApkReleaseDownloads(),
+        ]);
+        return {
+            ...summariseAppEvents(rows, since30),
+            apkDownloads: apkDownloads?.total ?? null,
+            apkDownloadsByVersion: apkDownloads?.byVersion ?? {},
+            problemReports: { open: openReports, total: totalReports },
+        };
+    }
+
+    async getProblemReports(page = 1, limit = 30, status?: 'open' | 'resolved') {
+        const where: Prisma.AnalyticsEventWhereInput = { type: 'app_problem_report' };
+        if (status === 'resolved') where.payload = { path: ['status'], equals: 'resolved' };
+        if (status === 'open') where.NOT = { payload: { path: ['status'], equals: 'resolved' } };
+        const safeLimit = Math.min(Math.max(limit, 1), 100);
+        const [reports, total] = await Promise.all([
+            this.prisma.analyticsEvent.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                skip: (Math.max(page, 1) - 1) * safeLimit,
+                take: safeLimit,
+                include: { user: { select: { id: true, firstName: true, lastName: true, email: true, role: true } } },
+            }),
+            this.prisma.analyticsEvent.count({ where }),
+        ]);
+        return { reports, total, page, limit: safeLimit, pages: Math.ceil(total / safeLimit) };
+    }
+
+    async setProblemReportStatus(id: string, status: 'new' | 'resolved') {
+        const row = await this.prisma.analyticsEvent.findFirst({ where: { id, type: 'app_problem_report' } });
+        if (!row) throw new NotFoundException('Problem report not found');
+        const payload = { ...((row.payload as Record<string, unknown>) ?? {}), status, statusUpdatedAt: new Date().toISOString() };
+        await this.prisma.analyticsEvent.update({ where: { id }, data: { payload } });
+        return { id, status };
     }
 
     // ─── Capture Email ────────────────────────────────────────────────────────

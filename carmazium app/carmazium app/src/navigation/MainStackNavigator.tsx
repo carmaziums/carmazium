@@ -76,6 +76,8 @@ import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
 import { AdminListingsReviewScreen } from '../screens/admin/AdminListingsReviewScreen';
 import { AdminDealerKycScreen } from '../screens/admin/AdminDealerKycScreen';
 import { AdminHandoversScreen } from '../screens/admin/AdminHandoversScreen';
+import { AdminAppInsightsScreen } from '../screens/admin/AdminAppInsightsScreen';
+import { ReportProblemScreen } from '../screens/main/ReportProblemScreen';
 import { AdminAccountsScreen } from '../screens/admin/AdminAccountsScreen';
 import { AdminAccountDetailScreen } from '../screens/admin/AdminAccountDetailScreen';
 import { withAdminGate } from '../screens/admin/adminShared';
@@ -111,6 +113,7 @@ const GatedAdminDashboardScreen = withAdminGate(AdminDashboardScreen);
 const GatedAdminListingsReviewScreen = withAdminGate(AdminListingsReviewScreen);
 const GatedAdminDealerKycScreen = withAdminGate(AdminDealerKycScreen);
 const GatedAdminHandoversScreen = withAdminGate(AdminHandoversScreen);
+const GatedAdminAppInsightsScreen = withAdminGate(AdminAppInsightsScreen);
 const GatedAdminAccountsScreen = withAdminGate(AdminAccountsScreen);
 const GatedAdminAccountDetailScreen = withAdminGate(AdminAccountDetailScreen);
 
@@ -233,6 +236,8 @@ export type MainStackParamList = {
   AdminListingsReview: undefined;
   AdminDealerKyc: undefined;
   AdminHandovers: undefined;
+  AdminAppInsights: undefined;
+  ReportProblem: { fromScreen?: string } | undefined;
   AdminAccounts: undefined;
   AdminAccountDetail: { userId: string };
 };
@@ -465,6 +470,8 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="AdminListingsReview" component={GatedAdminListingsReviewScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="AdminDealerKyc" component={GatedAdminDealerKycScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="AdminHandovers" component={GatedAdminHandoversScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="AdminAppInsights" component={GatedAdminAppInsightsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ReportProblem" component={ReportProblemScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="AdminAccounts" component={GatedAdminAccountsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="AdminAccountDetail" component={GatedAdminAccountDetailScreen} options={{ animation: 'slide_from_right' }} />
     </Stack.Navigator>
