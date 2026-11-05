@@ -431,14 +431,8 @@ export function Header() {
 
                 {/* Action Buttons */}
                 <div className="flex-1 flex items-center justify-end gap-2 lg:gap-3">
-                    <Link
-                        href="/download-app"
-                        className="hidden min-[1800px]:inline-flex shrink-0 items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-bold text-primary transition-colors hover:bg-primary hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                        aria-label="Get the CarMazium app for iPhone or Android"
-                    >
-                        <Smartphone size={17} aria-hidden="true" />
-                        Get the App
-                    </Link>
+                    {/* "Get the App" lives in the account menu, the mobile menu and the
+                        footer — the desktop bar has no room for it at every zoom level. */}
                     <div className="hidden lg:block">
                         <ThemeToggle />
                     </div>
@@ -500,6 +494,14 @@ export function Header() {
                                         style={{ color: 'var(--text-secondary)' }}
                                     >
                                         <UserIcon size={16} /> Account Settings
+                                    </Link>
+                                    <Link
+                                        href="/download-app"
+                                        onClick={() => setIsUserMenuOpen(false)}
+                                        className="flex items-center gap-3 px-4 py-2 hover:bg-primary/5 text-sm transition-colors"
+                                        style={{ color: 'var(--text-secondary)' }}
+                                    >
+                                        <Smartphone size={16} /> Get the App
                                     </Link>
                                     <div
                                         className="lg:hidden flex items-center justify-between px-4 py-2 text-sm"
