@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { OnlineNowCard } from "@/components/admin/OnlineNowCard"
+import { AppInstallsCard } from "@/components/admin/AppInstallsCard"
 import Link from "next/link"
 import { Button } from "@/components/ui/Button"
 import {
@@ -599,6 +600,7 @@ export default function AdminDashboard() {
 
                     {/* People on the website and in the app right now. */}
                     <OnlineNowCard />
+                    <AppInstallsCard />
 
                     {error && (
                         <div className="p-4 bg-red-500/10 dark:bg-red-500/20 border border-red-500/40 rounded-2xl text-red-700 dark:text-red-200 shadow-[0_12px_30px_rgba(239,68,68,0.10)]">
