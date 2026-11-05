@@ -97,12 +97,14 @@ export default function AdminAppPage() {
 
   const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split("@")[0] || "Admin")
   // All-time totals — these only ever go up.
+  // One number per platform, all time — these only ever go up.
+  const android = (stats?.apkDownloads ?? 0) + (stats?.installs.androidWebApp ?? 0)
+  const total = android + (stats?.installs.ios ?? 0) + (stats?.installs.windows ?? 0)
   const tiles = stats ? [
-    { label: "Total installs", value: n(stats.installsTotal), sub: "Android + iPhone + Windows, all time", icon: <Download className="h-5 w-5" /> },
-    { label: "Android installs", value: n(stats.installs.android), sub: `${n(stats.installs.androidApp)} app · ${n(stats.installs.androidWebApp)} web app`, icon: <FaAndroid className="h-5 w-5" /> },
-    { label: "iPhone installs", value: n(stats.installs.ios), sub: "Added to Home Screen and opened", icon: <FaApple className="h-5 w-5" /> },
-    { label: "Windows installs", value: n(stats.installs.windows), sub: "Installed from Edge or Chrome", icon: <Monitor className="h-5 w-5" /> },
-    { label: "Android app downloads", value: n(stats.apkDownloads), sub: "Downloads of the Android app file", icon: <Smartphone className="h-5 w-5" /> },
+    { label: "Total installs", value: n(total), sub: "Android + iPhone + Windows, all time", icon: <Download className="h-5 w-5" /> },
+    { label: "Android", value: n(android), sub: `${n(stats.installs.androidApp)} opened the app so far`, icon: <FaAndroid className="h-5 w-5" /> },
+    { label: "iPhone", value: n(stats.installs.ios), sub: "Added to Home Screen and opened", icon: <FaApple className="h-5 w-5" /> },
+    { label: "Windows", value: n(stats.installs.windows), sub: "Installed from Edge or Chrome", icon: <Monitor className="h-5 w-5" /> },
     { label: "Open problem reports", value: n(stats.problemReports.open), sub: `${n(stats.problemReports.total)} reports in total`, icon: <AlertCircle className="h-5 w-5" /> },
   ] : []
 

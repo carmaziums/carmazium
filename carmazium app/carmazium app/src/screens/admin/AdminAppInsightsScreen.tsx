@@ -70,13 +70,14 @@ export const AdminAppInsightsScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  // All-time totals — these only ever go up.
+  // One number per platform, all time — these only ever go up.
+  const android = (stats?.apkDownloads ?? 0) + (stats?.installs.androidWebApp ?? 0);
+  const total = android + (stats?.installs.ios ?? 0) + (stats?.installs.windows ?? 0);
   const tiles = stats ? [
-    { label: 'Total installs', value: n(stats.installsTotal), sub: 'All devices, all time', icon: 'download-outline' },
-    { label: 'Android installs', value: n(stats.installs.android), sub: `${n(stats.installs.androidApp)} app · ${n(stats.installs.androidWebApp)} web app`, icon: 'logo-android' },
-    { label: 'iPhone installs', value: n(stats.installs.ios), sub: 'Added to Home Screen', icon: 'logo-apple' },
-    { label: 'Windows installs', value: n(stats.installs.windows), sub: 'Installed from Edge or Chrome', icon: 'desktop-outline' },
-    { label: 'Android app downloads', value: n(stats.apkDownloads), sub: 'Downloads of the app file', icon: 'phone-portrait-outline' },
+    { label: 'Total installs', value: n(total), sub: 'All devices, all time', icon: 'download-outline' },
+    { label: 'Android', value: n(android), sub: `${n(stats.installs.androidApp)} opened the app`, icon: 'logo-android' },
+    { label: 'iPhone', value: n(stats.installs.ios), sub: 'Added to Home Screen', icon: 'logo-apple' },
+    { label: 'Windows', value: n(stats.installs.windows), sub: 'Installed from Edge or Chrome', icon: 'desktop-outline' },
     { label: 'Open problem reports', value: n(stats.problemReports.open), sub: `${n(stats.problemReports.total)} in total`, icon: 'alert-circle-outline' },
   ] : [];
 
