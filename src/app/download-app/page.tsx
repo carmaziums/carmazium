@@ -7,7 +7,7 @@ import { ArrowDownToLine, ArrowRight, CheckCircle2, ExternalLink, ShieldCheck } 
 import { FaAndroid, FaApple, FaGooglePlay, FaWindows } from "react-icons/fa"
 import { AppPromoShowcase, appPromoButtonClass } from "@/components/features/AppPromoShowcase"
 import { getMobileAppLinks } from "@/lib/mobileAppDownloads"
-import { InstallWebAppButton } from "@/components/pwa/InstallWebAppButton"
+import { DeviceRecommendedBadge, InstallWebAppButton } from "@/components/pwa/InstallWebAppButton"
 
 // Availability follows approved release settings, not placeholder store URLs.
 export const dynamic = "force-dynamic"
@@ -28,6 +28,25 @@ function UnavailableNotice({ children }: { children: ReactNode }) {
     </p>
   )
 }
+
+function FeatureList({ items }: { items: string[] }) {
+  return (
+    <ul className="mt-5 space-y-2.5">
+      {items.map((item) => (
+        <li key={item} className="flex items-start gap-2.5 text-sm font-semibold leading-6 text-blue-50">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" aria-hidden="true" />
+          {item}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+const FEATURES = {
+  ios: ["Home Screen icon, opens full screen", "Live auctions, search, chat and selling", "Always the latest version, no updates to install"],
+  android: ["Native CarMazium app for Android", "Signed by CarMazium with a published checksum", "No Google Play account needed"],
+  windows: ["Its own window, Start menu and taskbar icon", "Manage stock and bids on a big screen", "Always the latest version, no updates to install"],
+} as const
 
 export default function DownloadAppPage() {
   const links = getMobileAppLinks()
@@ -93,15 +112,17 @@ export default function DownloadAppPage() {
               className="relative scroll-mt-28 overflow-hidden rounded-3xl border border-blue-300/30 bg-[linear-gradient(145deg,#203a79_0%,#1a2454_54%,#48227d_100%)] p-6 shadow-2xl sm:p-8">
               <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-fuchsia-500/20 blur-3xl" />
               <div className="relative">
+                <DeviceRecommendedBadge platform="ios" />
                 <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-white/10 shadow-lg">
                   <FaApple className="h-9 w-9" aria-hidden="true" />
                 </div>
                 <h3 id="iphone-app-title" className="text-2xl font-black">CarMazium for iPhone</h3>
-                <p className="mt-3 min-h-20 text-sm leading-6 text-blue-100">
+                <p className="mt-3 text-sm leading-6 text-blue-100">
                   {links.ios.href || links.iosTestFlight.href
                     ? "Install CarMazium on your iPhone or iPad."
                     : "Add CarMazium to your iPhone or iPad Home Screen in two taps. It opens full screen, like an app — no App Store needed."}
                 </p>
+                <FeatureList items={[...FEATURES.ios]} />
                 {links.ios.href ? (
                   <a href={links.ios.href} className={installButtonClass} aria-label="Install CarMazium from Apple App Store">
                     <FaApple className="h-5 w-5" aria-hidden="true" />
@@ -133,15 +154,17 @@ export default function DownloadAppPage() {
               className="relative scroll-mt-28 overflow-hidden rounded-3xl border border-emerald-300/25 bg-[linear-gradient(145deg,#123f61_0%,#18325d_55%,#203b78_100%)] p-6 shadow-2xl sm:p-8">
               <div aria-hidden="true" className="pointer-events-none absolute -right-12 top-5 h-48 w-48 rounded-full bg-emerald-400/15 blur-3xl" />
               <div className="relative">
+                <DeviceRecommendedBadge platform="android" />
                 <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-emerald-300/30 bg-emerald-400/10 text-lime-300 shadow-lg">
                   <FaAndroid className="h-10 w-10" aria-hidden="true" />
                 </div>
                 <h3 id="android-app-title" className="text-2xl font-black">CarMazium for Android</h3>
-                <p className="mt-3 min-h-20 text-sm leading-6 text-blue-100">
+                <p className="mt-3 text-sm leading-6 text-blue-100">
                   {androidHref
                     ? "Install CarMazium using the option below."
                     : "Once approved, download the signed CarMazium Android APK directly from this website. Google Play is not required."}
                 </p>
+                <FeatureList items={[...FEATURES.android]} />
                 {links.android.href ? (
                   <a href={links.android.href} className={installButtonClass}
                     aria-label="Install CarMazium from Google Play">
@@ -177,15 +200,17 @@ export default function DownloadAppPage() {
               className="relative scroll-mt-28 overflow-hidden rounded-3xl border border-sky-300/25 bg-[linear-gradient(145deg,#123768_0%,#1a265f_55%,#332173_100%)] p-6 shadow-2xl sm:p-8">
               <div aria-hidden="true" className="pointer-events-none absolute -right-12 top-5 h-48 w-48 rounded-full bg-blue-400/20 blur-3xl" />
               <div className="relative">
+                <DeviceRecommendedBadge platform="windows" />
                 <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-sky-300/30 bg-sky-400/15 text-cyan-200 shadow-lg">
                   <FaWindows className="h-9 w-9" aria-hidden="true" />
                 </div>
                 <h3 id="windows-heading" className="text-2xl font-black">CarMazium for Windows</h3>
-                <p className="mt-3 min-h-20 text-sm leading-6 text-blue-100">
+                <p className="mt-3 text-sm leading-6 text-blue-100">
                   {windowsHref
                     ? "Install CarMazium from the Microsoft Store."
                     : "Install CarMazium on your Windows PC from Microsoft Edge or Google Chrome. It gets its own window, Start menu and taskbar icon — no Microsoft Store needed."}
                 </p>
+                <FeatureList items={[...FEATURES.windows]} />
                 {windowsHref ? (
                   <a href={windowsHref} className={installButtonClass}
                     aria-label="Get CarMazium from Microsoft Store">
