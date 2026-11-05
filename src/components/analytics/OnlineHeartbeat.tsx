@@ -2,6 +2,10 @@
 
 import { useEffect, useRef } from "react"
 import { useAuth } from "@/context/AuthContext"
+import { countAppEvent } from "@/lib/appInstallCounter"
+import { detectDevicePlatform } from "@/components/pwa/InstallWebAppButton"
+
+const INSTALL_COUNTED_KEY = "cm_app_install_counted"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 const INTERVAL_MS = 60_000
@@ -38,6 +42,21 @@ export function OnlineHeartbeat() {
         body: JSON.stringify({ visitorId: idRef.current, surface: "web", platform: platform(), signedIn: signedInRef.current }),
       }).catch(() => {})
     }
+    // Count an installed web app (iPhone Home Screen, Windows/Android install)
+    // once, on its first launch. Only a yes/no marker is kept on the device —
+    // no id or personal data.
+    const standalone = window.matchMedia?.("(display-mode: standalone)").matches
+      || (navigator as Navigator & { standalone?: boolean }).standalone === true
+    if (standalone) {
+      try {
+        if (!localStorage.getItem(INSTALL_COUNTED_KEY)) {
+          const device = detectDevicePlatform()
+          if (device) countAppEvent("app_web_installed", device)
+          localStorage.setItem(INSTALL_COUNTED_KEY, "1")
+        }
+      } catch { /* storage unavailable: skip counting */ }
+    }
+
     beat()
     const timer = window.setInterval(beat, INTERVAL_MS)
     const onVisible = () => { if (document.visibilityState === "visible") beat() }
