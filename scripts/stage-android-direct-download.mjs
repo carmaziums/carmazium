@@ -118,7 +118,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     if (!apkPath || !evidencePath || !outputDirectory) throw new Error('Usage: node scripts/stage-android-direct-download.mjs <REVIEW-ONLY.apk> <release-evidence.json> <NEW-staging-dir>');
     const result = await stageAndroidDirectDownload({
       apkPath, evidencePath, outputDirectory,
-      ownerPinnedCertificateSha256: process.env.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256,
+      ownerPinnedCertificateSha256: String(process.env.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256 ?? '').replace(/^\s*SHA-?256\s*:?/i, '').replace(/[\s:]/g, '').toLowerCase(),
     });
     console.log(`Validated and staged ${result.filename}. This is NOT customer release approval.`);
     console.log(`SHA-256: ${result.apk_sha256}`);

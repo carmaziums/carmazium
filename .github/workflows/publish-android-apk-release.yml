@@ -51,7 +51,7 @@ jobs:
             const fail = (e) => { console.error("::error::" + e); process.exit(1); };
             if (m.package_name !== "uk.carmazium.app") fail("wrong package " + m.package_name);
             if (!/^CarMazium-\d+\.\d+\.\d+-v\d+\.apk$/.test(m.filename)) fail("unexpected file name");
-            const pinned = (process.env.PINNED_CERT || "").replace(/:/g, "").toLowerCase();
+            const pinned = (process.env.PINNED_CERT || "").replace(/^\s*SHA-?256\s*:?/i, "").replace(/[\s:]/g, "").toLowerCase();
             if (!pinned || m.signing_certificate_sha256.replace(/:/g, "").toLowerCase() !== pinned) fail("signer is not the pinned CarMazium release key");
             require("fs").writeFileSync(process.env.GITHUB_ENV,
               `APK_FILE=${m.filename}\nAPK_SHA256=${m.apk_sha256}\nAPK_TAG=${m.filename.replace(/\.apk$/, "")}\nSOURCE_SHA=${m.source_sha}\n`, { flag: "a" });

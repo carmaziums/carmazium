@@ -11,7 +11,9 @@ import { fileURLToPath } from 'node:url';
 
 const SHA256 = /^[a-f0-9]{64}$/i;
 
-export function validateReleaseCertificate(pem, expectedDigest, now = new Date()) {
+export function validateReleaseCertificate(pem, expectedDigestInput, now = new Date()) {
+  // keytool prints AB:CD:...; accept that form too.
+  const expectedDigest = typeof expectedDigestInput === 'string' ? expectedDigestInput.replace(/^\s*SHA-?256\s*:?/i, '').replace(/[\s:]/g, '').toLowerCase() : expectedDigestInput;
   if (typeof expectedDigest !== 'string' || !SHA256.test(expectedDigest))
     throw new Error('Missing valid owner-pinned signing certificate SHA-256');
   const cert = new X509Certificate(pem);
@@ -49,7 +51,7 @@ export function verifyAndroidReleaseKeystore(env = process.env) {
     CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS: alias,
     CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD: env.CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD,
     CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD: env.CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD,
-    CARMAZIUM_ANDROID_RELEASE_CERT_SHA256: env.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256,
+    CARMAZIUM_ANDROID_RELEASE_CERT_SHA256: String(env.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256 ?? '').replace(/^\s*SHA-?256\s*:?/i, '').replace(/[\s:]/g, ''),
   })) {
     if (typeof value !== 'string' || !value.trim() || /[\r\n]/.test(value))
       throw new Error('Signing preflight is missing or has malformed secret: ' + name);

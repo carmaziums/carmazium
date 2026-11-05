@@ -18,7 +18,8 @@ const VERSION = /^[1-9][0-9]{0,9}$/;
 function expectedInputs(env) {
   const sha = env.GITHUB_SHA;
   const requested = env.CARMAZIUM_CANDIDATE_SOURCE_SHA;
-  const cert = env.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256;
+  // keytool prints AB:CD:...; accept that form too.
+  const cert = String(env.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256 ?? '').replace(/^\s*SHA-?256\s*:?/i, '').replace(/[\s:]/g, '').toLowerCase();
   const rawVersion = env.CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE;
   if (!SHA40.test(sha || '') || !SHA40.test(requested || '') ||
       sha.toLowerCase() !== requested.toLowerCase())
