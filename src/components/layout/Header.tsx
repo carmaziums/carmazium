@@ -433,7 +433,7 @@ export function Header() {
                 <div className="flex-1 flex items-center justify-end gap-2 lg:gap-3">
                     <Link
                         href="/download-app"
-                        className="hidden 2xl:inline-flex shrink-0 items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-bold text-primary transition-colors hover:bg-primary hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        className="hidden min-[1800px]:inline-flex shrink-0 items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-bold text-primary transition-colors hover:bg-primary hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         aria-label="Get the CarMazium app for iPhone or Android"
                     >
                         <Smartphone size={17} aria-hidden="true" />
