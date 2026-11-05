@@ -67,11 +67,12 @@ jobs:
           if gh release view "$APK_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "::error::Release $APK_TAG already exists; bump version_code for a new release"; exit 1
           fi
+          # Tag the current main (the token may not create tags on older
+          # commits whose workflow files differ); the build commit is in the notes.
           gh release create "$APK_TAG" "$APK_FILE" \
             --repo "$GITHUB_REPOSITORY" \
-            --target "$SOURCE_SHA" \
             --title "CarMazium for Android ${APK_TAG#CarMazium-}" \
-            --notes "Signed CarMazium Android app for direct download from https://www.carmazium.com/download-app. SHA-256: $APK_SHA256"
+            --notes "Signed CarMazium Android app for direct download from https://www.carmazium.com/download-app. SHA-256: $APK_SHA256. Built from commit $SOURCE_SHA."
       - name: Website settings to enable the download button
         run: |
           {
