@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 }
 
 const installButtonClass =
-  "mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-blue-700/20 transition hover:from-blue-500 hover:to-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+  "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-blue-700/20 transition hover:from-blue-500 hover:to-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
 
 function UnavailableNotice({ children }: { children: ReactNode }) {
   return (
@@ -43,9 +43,9 @@ function FeatureList({ items }: { items: string[] }) {
 }
 
 const FEATURES = {
-  ios: ["Home Screen icon, opens full screen", "Live auctions, search, chat and selling", "Always the latest version, no updates to install"],
-  android: ["Native CarMazium app for Android", "Signed by CarMazium with a published checksum", "No Google Play account needed"],
-  windows: ["Its own window, Start menu and taskbar icon", "Manage stock and bids on a big screen", "Always the latest version, no updates to install"],
+  ios: ["Home Screen icon, opens full screen", "Live auctions, search and chat", "Always up to date"],
+  android: ["The full CarMazium app", "Official app from CarMazium", "No Google Play needed"],
+  windows: ["Its own window and taskbar icon", "Manage stock on a big screen", "Always up to date"],
 } as const
 
 export default function DownloadAppPage() {
@@ -109,129 +109,97 @@ export default function DownloadAppPage() {
 
           <div className="grid gap-5 lg:grid-cols-3">
             <section id="iphone" aria-labelledby="iphone-app-title"
-              className="relative scroll-mt-28 overflow-hidden rounded-3xl border border-blue-300/30 bg-[linear-gradient(145deg,#203a79_0%,#1a2454_54%,#48227d_100%)] p-6 shadow-2xl sm:p-8">
+              className="relative flex scroll-mt-28 flex-col overflow-hidden rounded-3xl border border-blue-300/30 bg-[linear-gradient(145deg,#203a79_0%,#1a2454_54%,#48227d_100%)] p-6 shadow-2xl sm:p-8">
               <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-fuchsia-500/20 blur-3xl" />
-              <div className="relative">
+              <div className="relative flex flex-1 flex-col">
                 <DeviceRecommendedBadge platform="ios" />
                 <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-white/10 shadow-lg">
                   <FaApple className="h-9 w-9" aria-hidden="true" />
                 </div>
                 <h3 id="iphone-app-title" className="text-2xl font-black">CarMazium for iPhone</h3>
-                <p className="mt-3 text-sm leading-6 text-blue-100">
-                  {links.ios.href || links.iosTestFlight.href
-                    ? "Install CarMazium on your iPhone or iPad."
-                    : "Add CarMazium to your iPhone or iPad Home Screen in two taps. It opens full screen, like an app — no App Store needed."}
-                </p>
+                <p className="mt-3 text-sm leading-6 text-blue-100">Add CarMazium to your Home Screen. It opens full screen, just like an app.</p>
                 <FeatureList items={[...FEATURES.ios]} />
-                {links.ios.href ? (
-                  <a href={links.ios.href} className={installButtonClass} aria-label="Install CarMazium from Apple App Store">
-                    <FaApple className="h-5 w-5" aria-hidden="true" />
-                    Download on the App Store <ExternalLink className="h-4 w-4" aria-hidden="true" />
-                  </a>
-                ) : links.iosTestFlight.href ? (
-                  <div>
+                <div className="mt-auto pt-6">
+                  {links.ios.href ? (
+                    <a href={links.ios.href} className={installButtonClass} aria-label="Install CarMazium from Apple App Store">
+                      <FaApple className="h-5 w-5" aria-hidden="true" />
+                      Download on the App Store <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                    </a>
+                  ) : links.iosTestFlight.href ? (
                     <a href={links.iosTestFlight.href} className={installButtonClass}
                       aria-label="Join the approved CarMazium TestFlight beta">
                       <FaApple className="h-5 w-5" aria-hidden="true" />
                       Install iPhone Beta via TestFlight <ExternalLink className="h-4 w-4" aria-hidden="true" />
                     </a>
-                    <p className="mt-3 text-xs leading-5 text-blue-100">
-                      TestFlight is operated by Apple. Beta invitations can expire and places may be limited.
-                    </p>
-                  </div>
-                ) : (
-                  <>
+                  ) : (
                     <InstallWebAppButton platform="ios" />
-                    <p className="mt-3 text-xs leading-5 text-blue-100">
-                      Apple only allows native iPhone apps through the App Store. Our App Store link will appear here once Apple approves the app.
-                    </p>
-                  </>
-                )}
+                  )}
+                </div>
               </div>
             </section>
 
             <section id="android" aria-labelledby="android-app-title"
-              className="relative scroll-mt-28 overflow-hidden rounded-3xl border border-emerald-300/25 bg-[linear-gradient(145deg,#123f61_0%,#18325d_55%,#203b78_100%)] p-6 shadow-2xl sm:p-8">
+              className="relative flex scroll-mt-28 flex-col overflow-hidden rounded-3xl border border-emerald-300/25 bg-[linear-gradient(145deg,#123f61_0%,#18325d_55%,#203b78_100%)] p-6 shadow-2xl sm:p-8">
               <div aria-hidden="true" className="pointer-events-none absolute -right-12 top-5 h-48 w-48 rounded-full bg-emerald-400/15 blur-3xl" />
-              <div className="relative">
+              <div className="relative flex flex-1 flex-col">
                 <DeviceRecommendedBadge platform="android" />
                 <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-emerald-300/30 bg-emerald-400/10 text-lime-300 shadow-lg">
                   <FaAndroid className="h-10 w-10" aria-hidden="true" />
                 </div>
                 <h3 id="android-app-title" className="text-2xl font-black">CarMazium for Android</h3>
-                <p className="mt-3 text-sm leading-6 text-blue-100">
-                  {androidHref
-                    ? "Install CarMazium using the option below."
-                    : "Once approved, download the signed CarMazium Android APK directly from this website. Google Play is not required."}
-                </p>
+                <p className="mt-3 text-sm leading-6 text-blue-100">Download the CarMazium app straight to your Android phone.</p>
                 <FeatureList items={[...FEATURES.android]} />
-                {links.android.href ? (
-                  <a href={links.android.href} className={installButtonClass}
-                    aria-label="Install CarMazium from Google Play">
-                    <FaGooglePlay className="h-5 w-5" aria-hidden="true" />
-                    Get it on Google Play <ExternalLink className="h-4 w-4" aria-hidden="true" />
-                  </a>
-                ) : !links.androidApk.href ? (
-                  <>
-                    <UnavailableNotice>The signed Android app download is being finalised. Meanwhile you can install CarMazium from Chrome:</UnavailableNotice>
-                    <InstallWebAppButton platform="android" />
-                  </>
-                ) : null}
-                {links.androidApk.href && (
-                  <div className="mt-4">
-                    <a href={links.androidApk.href} download className={installButtonClass}
-                      aria-label="Download approved signed CarMazium Android APK">
-                      <ArrowDownToLine className="h-5 w-5" aria-hidden="true" />
-                      Download Android APK <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                <div className="mt-auto pt-6">
+                  {links.android.href ? (
+                    <a href={links.android.href} className={installButtonClass}
+                      aria-label="Install CarMazium from Google Play">
+                      <FaGooglePlay className="h-5 w-5" aria-hidden="true" />
+                      Get it on Google Play <ExternalLink className="h-4 w-4" aria-hidden="true" />
                     </a>
-                    <p className="mt-3 break-all text-xs leading-5 text-blue-100">
-                      Verified release SHA-256: {links.androidApk.sha256}
-                    </p>
-                    <p className="mt-2 text-xs leading-5 text-blue-100">
-                      Android may ask for permission to install apps outside Google Play.
-                      Only use the approved file on the official CarMazium domain.
-                    </p>
-                  </div>
-                )}
+                  ) : links.androidApk.href ? (
+                    <a href={links.androidApk.href} download className={installButtonClass}
+                      aria-label="Download the CarMazium Android app">
+                      <ArrowDownToLine className="h-5 w-5" aria-hidden="true" />
+                      Download for Android
+                    </a>
+                  ) : (
+                    <InstallWebAppButton platform="android" />
+                  )}
+                </div>
               </div>
             </section>
 
             <section id="windows" aria-labelledby="windows-heading"
-              className="relative scroll-mt-28 overflow-hidden rounded-3xl border border-sky-300/25 bg-[linear-gradient(145deg,#123768_0%,#1a265f_55%,#332173_100%)] p-6 shadow-2xl sm:p-8">
+              className="relative flex scroll-mt-28 flex-col overflow-hidden rounded-3xl border border-sky-300/25 bg-[linear-gradient(145deg,#123768_0%,#1a265f_55%,#332173_100%)] p-6 shadow-2xl sm:p-8">
               <div aria-hidden="true" className="pointer-events-none absolute -right-12 top-5 h-48 w-48 rounded-full bg-blue-400/20 blur-3xl" />
-              <div className="relative">
+              <div className="relative flex flex-1 flex-col">
                 <DeviceRecommendedBadge platform="windows" />
                 <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-sky-300/30 bg-sky-400/15 text-cyan-200 shadow-lg">
                   <FaWindows className="h-9 w-9" aria-hidden="true" />
                 </div>
                 <h3 id="windows-heading" className="text-2xl font-black">CarMazium for Windows</h3>
-                <p className="mt-3 text-sm leading-6 text-blue-100">
-                  {windowsHref
-                    ? "Install CarMazium from the Microsoft Store."
-                    : "Install CarMazium on your Windows PC from Microsoft Edge or Google Chrome. It gets its own window, Start menu and taskbar icon — no Microsoft Store needed."}
-                </p>
+                <p className="mt-3 text-sm leading-6 text-blue-100">Install CarMazium on your PC from Microsoft Edge or Google Chrome.</p>
                 <FeatureList items={[...FEATURES.windows]} />
-                {windowsHref ? (
-                  <a href={windowsHref} className={installButtonClass}
-                    aria-label="Get CarMazium from Microsoft Store">
-                    <FaWindows className="h-5 w-5" aria-hidden="true" />
-                    Get it from Microsoft Store <ExternalLink className="h-4 w-4" aria-hidden="true" />
-                  </a>
-                ) : (
-                  <InstallWebAppButton platform="windows" />
-                )}
-                <Link href="/search" className={buttonVariants({ variant: "dark", className: "mt-5" })}>
-                  Open the website <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
+                <div className="mt-auto pt-6">
+                  {windowsHref ? (
+                    <a href={windowsHref} className={installButtonClass}
+                      aria-label="Get CarMazium from Microsoft Store">
+                      <FaWindows className="h-5 w-5" aria-hidden="true" />
+                      Get it from Microsoft Store <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                    </a>
+                  ) : (
+                    <InstallWebAppButton platform="windows" />
+                  )}
+                </div>
               </div>
             </section>
           </div>
 
           <div className="mt-8 grid gap-5 rounded-3xl border border-white/15 bg-white/[0.06] p-6 sm:grid-cols-3 sm:p-8">
             {[
-              { icon: ShieldCheck, heading: "Official installation only", detail: "Install only from carmazium.com or an official store. The Android download is our signed release." },
+              { icon: ShieldCheck, heading: "Official installation only", detail: "Only install CarMazium from carmazium.com or an official app store." },
               { icon: CheckCircle2, heading: "One CarMazium account", detail: "Use your existing CarMazium account on supported devices." },
-              { icon: ArrowRight, heading: "Always up to date", detail: "The installed iPhone and Windows app is CarMazium itself, so it always has the latest cars, auctions and features." },
+              { icon: ArrowRight, heading: "Always up to date", detail: "The latest cars, auctions and features, every time you open it." },
             ].map(({ icon: Icon, heading, detail }) => (
               <div key={heading} className="flex gap-3">
                 <Icon className="mt-0.5 h-6 w-6 shrink-0 text-cyan-300" aria-hidden="true" />

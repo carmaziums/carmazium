@@ -15,6 +15,7 @@ test('Android APK download remains gated by owner approval, release checksum and
   assert.match(links, /NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_SHA256/);
   assert.match(links, /NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_URL/);
   assert.match(links, /\["carmazium\.com", "www\.carmazium\.com"\]/);
-  assert.match(page, /\{links\.androidApk\.href && \(/);
-  assert.match(page, /Verified release SHA-256:/);
+  // The button only renders once the gated link resolves (approval + checksum + URL).
+  assert.match(page, /links\.androidApk\.href \? \(/);
+  assert.match(page, /href=\{links\.androidApk\.href\}/);
 });
