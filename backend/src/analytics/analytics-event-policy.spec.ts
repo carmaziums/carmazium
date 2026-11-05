@@ -30,7 +30,7 @@ describe('Analytics public telemetry integrity', () => {
     function setup(user: { id: string } | undefined = undefined, tokenUser: { id: string } | null = null) {
         const analytics = { trackEvent: jest.fn().mockResolvedValue({ id: 'tracked' }) };
         const auth = { verifySupabaseToken: jest.fn().mockResolvedValue(tokenUser) };
-        const controller = new AnalyticsController(analytics as any, {} as any, auth as any);
+        const controller = new AnalyticsController(analytics as any, {} as any, auth as any, {} as any);
         const request: { headers: { authorization?: string }; ip: string; user?: { id: string } } = {
             headers: {}, ip: '203.0.113.1', user,
         };

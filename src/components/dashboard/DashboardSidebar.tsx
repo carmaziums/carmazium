@@ -268,7 +268,7 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
             { href: "/dashboard/admin/dealer-verification", label: "Dealer KYC", icon: Shield, section: "Accounts & partners" },
             { href: "/dashboard/admin/services", label: "Trade Services", icon: Briefcase, section: "Accounts & partners" },
 
-            { href: "/dashboard/admin/app", label: "App & Problem Reports", icon: Smartphone, section: "Content & insights" },
+            { href: "/dashboard/admin/app", label: "Online, App & Reports", icon: Smartphone, section: "Content & insights" },
             { href: "/dashboard/admin/analytics", label: "Analytics", icon: TrendingUp, section: "Content & insights" },
             { href: "/dashboard/admin/ai-reports", label: "AI Reports", icon: Sparkles, section: "Content & insights" },
             { href: "/dashboard/admin/marketing-popup", label: "Marketing Popup", icon: Megaphone, section: "Content & insights" },

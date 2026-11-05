@@ -1,6 +1,7 @@
 import { Controller, Post, Get, Patch, Param, Body, Query, UseGuards, Req, BadRequestException } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { ProblemReportInput } from './app-insights';
+import { OnlinePresenceService, type HeartbeatInput } from './online-presence.service';
 import { Request } from 'express';
 import { AnalyticsService } from './analytics.service';
 import { ValuationHistoryService } from './valuation-history.service';
@@ -35,6 +36,7 @@ export class AnalyticsController {
         private readonly analyticsService: AnalyticsService,
         private readonly valuationHistory: ValuationHistoryService,
         private readonly authService: AuthService,
+        private readonly presence: OnlinePresenceService,
     ) { }
 
     // ─── Public Endpoints ──────────────────────────────────────────────────────
@@ -92,6 +94,26 @@ export class AnalyticsController {
         }
         const result = await this.analyticsService.submitProblemReport(body, typeof user?.id === 'string' ? user.id : undefined);
         return { ok: true, ...result };
+    }
+
+    /**
+     * "Still here" heartbeat from an open website tab or app (about once a
+     * minute while visible). Feeds the admin "Online now" count only; nothing
+     * is stored in the database.
+     */
+    @Post('heartbeat')
+    @UseGuards(ThrottlerGuard)
+    @Throttle({ default: { limit: 12, ttl: 60_000 } })
+    async heartbeat(@Body() body: HeartbeatInput & { signedIn?: unknown }) {
+        await this.presence.heartbeat(body ?? {}, body?.signedIn === true);
+        return { ok: true };
+    }
+
+    @Get('online')
+    @UseGuards(SessionAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
+    async getOnline() {
+        return this.presence.online();
     }
 
     // ─── Admin: app downloads & problem reports ────────────────────────────────

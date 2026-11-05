@@ -65,7 +65,7 @@ const MENU: { section: string; items: MenuItem[] }[] = [
   {
     section: 'Content & insights',
     items: [
-      { label: 'App & problem reports', icon: 'phone-portrait-outline', screen: 'AdminAppInsights' },
+      { label: 'Online now, app & problem reports', icon: 'pulse-outline', screen: 'AdminAppInsights' },
       { label: 'Analytics', icon: 'trending-up', webPath: '/dashboard/admin/analytics' },
       { label: 'AI Reports', icon: 'sparkles', webPath: '/dashboard/admin/ai-reports' },
       { label: 'Marketing Popup', icon: 'megaphone-outline', webPath: '/dashboard/admin/marketing-popup' },

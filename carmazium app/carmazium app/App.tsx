@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { reportFirstOpenOnce } from './src/lib/appInsights';
+import { reportFirstOpenOnce, sendOnlineHeartbeat } from './src/lib/appInsights';
+import { AppState } from 'react-native';
 import { Alert } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
@@ -177,6 +178,18 @@ export default function App() {
       });
     }
   }, [fontAssetsSettled, initializeAuth]);
+
+  // "Online now" for the admin dashboard: ping about once a minute while the
+  // app is in the foreground; nothing is sent in the background.
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const beat = () => { void sendOnlineHeartbeat(useAuthStore.getState().isAuthenticated); };
+    const start = () => { if (!timer) { beat(); timer = setInterval(beat, 60_000); } };
+    const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+    if (AppState.currentState === 'active') start();
+    const sub = AppState.addEventListener('change', (state) => (state === 'active' ? start() : stop()));
+    return () => { stop(); sub.remove(); };
+  }, []);
 
   // One app-wide Supabase auth subscription (AUTH-013). Mounted here rather
   // than inside a screen so it observes a remote sign-out or a failed token

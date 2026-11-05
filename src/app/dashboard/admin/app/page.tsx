@@ -8,6 +8,7 @@ import { FaAndroid, FaApple } from "react-icons/fa"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { OnlineNowCard } from "@/components/admin/OnlineNowCard"
 
 type AppStats = {
   androidAppInstalls: number
@@ -112,12 +113,14 @@ export default function AdminAppPage() {
           </Link>
           <header>
             <h1 className="text-2xl font-black tracking-tight flex items-center gap-3">
-              <Smartphone className="text-primary" size={24} /> App & problem reports
+              <Smartphone className="text-primary" size={24} /> Online now, app & problem reports
             </h1>
             <p className="text-sm text-[var(--text-muted)] mt-1.5 max-w-2xl">
               How many people downloaded and installed CarMazium, and the problems customers have reported from the app and website.
             </p>
           </header>
+
+          <OnlineNowCard />
 
           {error && <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</p>}
 
