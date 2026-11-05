@@ -73,6 +73,8 @@ export async function submitProblemReport(input: {
 
 // ── Admin ────────────────────────────────────────────────────────────────────
 export interface AppStats {
+  installs: { android: number; androidApp: number; androidWebApp: number; ios: number; windows: number };
+  installsTotal: number;
   androidAppInstalls: number;
   androidAppInstalls30d: number;
   webInstalls: Record<string, number>;

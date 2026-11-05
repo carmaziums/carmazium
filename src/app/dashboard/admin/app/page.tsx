@@ -11,6 +11,8 @@ import { apiClient } from "@/lib/apiClient"
 import { OnlineNowCard } from "@/components/admin/OnlineNowCard"
 
 type AppStats = {
+  installs: { android: number; androidApp: number; androidWebApp: number; ios: number; windows: number }
+  installsTotal: number
   androidAppInstalls: number
   androidAppInstalls30d: number
   webInstalls: Record<string, number>
@@ -94,12 +96,13 @@ export default function AdminAppPage() {
   if (!user || profile?.role !== "ADMIN") return null
 
   const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split("@")[0] || "Admin")
+  // All-time totals — these only ever go up.
   const tiles = stats ? [
-    { label: "Android downloads", value: n(stats.apkDownloads), sub: "Signed app file downloads", icon: <FaAndroid className="h-5 w-5" /> },
-    { label: "Android installs", value: n(stats.androidAppInstalls), sub: `${n(stats.androidAppInstalls30d)} in the last 30 days`, icon: <Smartphone className="h-5 w-5" /> },
-    { label: "iPhone install guides", value: n(stats.downloadClicks.ios), sub: "iPhone visitors who opened Add to Home Screen", icon: <FaApple className="h-5 w-5" /> },
-    { label: "Windows installs", value: n(stats.webInstalls.windows), sub: "Installed from Edge or Chrome", icon: <Monitor className="h-5 w-5" /> },
-    { label: "Download button taps", value: n(stats.downloadClicksTotal), sub: `${n(stats.downloadClicks30d)} in the last 30 days`, icon: <Download className="h-5 w-5" /> },
+    { label: "Total installs", value: n(stats.installsTotal), sub: "Android + iPhone + Windows, all time", icon: <Download className="h-5 w-5" /> },
+    { label: "Android installs", value: n(stats.installs.android), sub: `${n(stats.installs.androidApp)} app · ${n(stats.installs.androidWebApp)} web app`, icon: <FaAndroid className="h-5 w-5" /> },
+    { label: "iPhone installs", value: n(stats.installs.ios), sub: "Added to Home Screen and opened", icon: <FaApple className="h-5 w-5" /> },
+    { label: "Windows installs", value: n(stats.installs.windows), sub: "Installed from Edge or Chrome", icon: <Monitor className="h-5 w-5" /> },
+    { label: "Android app downloads", value: n(stats.apkDownloads), sub: "Downloads of the Android app file", icon: <Smartphone className="h-5 w-5" /> },
     { label: "Open problem reports", value: n(stats.problemReports.open), sub: `${n(stats.problemReports.total)} reports in total`, icon: <AlertCircle className="h-5 w-5" /> },
   ] : []
 

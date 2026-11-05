@@ -44,6 +44,8 @@ describe('summariseAppEvents', () => {
         expect(s.webInstalls30d).toBe(1);
         expect(s.downloadClicks).toMatchObject({ android: 1, unknown: 1 });
         expect(s.downloadClicksTotal).toBe(2);
+        expect(s.installs).toEqual({ android: 2, androidApp: 2, androidWebApp: 0, ios: 1, windows: 1 });
+        expect(s.installsTotal).toBe(4);
     });
 });
 

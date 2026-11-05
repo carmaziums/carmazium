@@ -93,7 +93,17 @@ export function summariseAppEvents(rows: EventRow[], since30: Date) {
         }
     }
     const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
+    // All-time installs per operating system (never reset).
+    const installs = {
+        android: installIds.size + webInstalls.android,
+        androidApp: installIds.size,
+        androidWebApp: webInstalls.android,
+        ios: webInstalls.ios,
+        windows: webInstalls.windows + webInstalls.web,
+    };
     return {
+        installs,
+        installsTotal: installs.android + installs.ios + installs.windows,
         androidAppInstalls: installIds.size,
         androidAppInstalls30d: installIds30.size,
         webInstalls,

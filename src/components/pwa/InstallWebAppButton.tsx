@@ -50,9 +50,7 @@ export function InstallWebAppButton({ platform }: { platform: DevicePlatform }) 
     const onPrompt = (e: Event) => { e.preventDefault(); setPromptEvent(e as BeforeInstallPromptEvent) }
     const onInstalled = () => {
       setInstalled(true); setPromptEvent(null)
-      // Count the install once (the event fires on each card's listener).
-      const d = detectDevicePlatform()
-      if (d === platform) countAppEvent("app_web_installed", d)
+      // Installs are counted on the app's first launch (see OnlineHeartbeat).
     }
     window.addEventListener("beforeinstallprompt", onPrompt)
     window.addEventListener("appinstalled", onInstalled)

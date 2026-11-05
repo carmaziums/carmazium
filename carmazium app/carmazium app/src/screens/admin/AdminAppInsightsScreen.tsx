@@ -70,13 +70,14 @@ export const AdminAppInsightsScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  // All-time totals — these only ever go up.
   const tiles = stats ? [
-    { label: 'Android downloads', value: n(stats.apkDownloads), sub: 'Signed APK downloads', icon: 'logo-android' },
-    { label: 'Android installs', value: n(stats.androidAppInstalls), sub: `${n(stats.androidAppInstalls30d)} in last 30 days`, icon: 'phone-portrait-outline' },
-    { label: 'iPhone install guides', value: n(stats.downloadClicks.ios), sub: 'Opened Add to Home Screen', icon: 'logo-apple' },
-    { label: 'Windows installs', value: n(stats.webInstalls.windows), sub: 'Installed from the browser', icon: 'desktop-outline' },
-    { label: 'Download button taps', value: n(stats.downloadClicksTotal), sub: `${n(stats.downloadClicks30d)} in last 30 days`, icon: 'download-outline' },
-    { label: 'Open problem reports', value: n(stats.problemReports.open), sub: `${n(stats.problemReports.total)} total`, icon: 'alert-circle-outline' },
+    { label: 'Total installs', value: n(stats.installsTotal), sub: 'All devices, all time', icon: 'download-outline' },
+    { label: 'Android installs', value: n(stats.installs.android), sub: `${n(stats.installs.androidApp)} app · ${n(stats.installs.androidWebApp)} web app`, icon: 'logo-android' },
+    { label: 'iPhone installs', value: n(stats.installs.ios), sub: 'Added to Home Screen', icon: 'logo-apple' },
+    { label: 'Windows installs', value: n(stats.installs.windows), sub: 'Installed from Edge or Chrome', icon: 'desktop-outline' },
+    { label: 'Android app downloads', value: n(stats.apkDownloads), sub: 'Downloads of the app file', icon: 'phone-portrait-outline' },
+    { label: 'Open problem reports', value: n(stats.problemReports.open), sub: `${n(stats.problemReports.total)} in total`, icon: 'alert-circle-outline' },
   ] : [];
 
   const header = (
@@ -99,7 +100,7 @@ export const AdminAppInsightsScreen: React.FC<Props> = ({ navigation }) => {
         {online ? `${n(online.total)} people online · ${n(online.web.signedIn + online.app.signedIn)} signed in · updates every 30 seconds` : 'Loading…'}
       </Text>
 
-      <Text style={styles.section}>APP DOWNLOADS</Text>
+      <Text style={styles.section}>INSTALLS (ALL TIME)</Text>
       <View style={styles.grid}>
         {tiles.map(t => (
           <View key={t.label} style={styles.tile}>
