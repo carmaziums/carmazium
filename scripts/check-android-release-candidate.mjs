@@ -13,6 +13,8 @@ import { fileURLToPath } from 'node:url';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const sha40=/^[0-9a-f]{40}$/i;
 const certSha256=/^[0-9a-f]{64}$/i;
+// keytool prints the fingerprint as AB:CD:...; accept that form too.
+const normalizeCertSha256=v=>String(v ?? '').replace(/^\s*SHA-?256\s*:?/i, '').replace(/[\s:]/g, '').toLowerCase();
 
 export function checkReleaseCandidate({app,eas,env,commitSha,requestedSha}){
   const errors=[];
@@ -56,7 +58,7 @@ export function checkReleaseCandidate({app,eas,env,commitSha,requestedSha}){
   }
   if(/^(androiddebugkey|debug)$/i.test(env.CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS||''))
     errors.push('Android debug signing key alias must not be used for customer release');
-  if(!certSha256.test(env.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256||''))
+  if(!certSha256.test(normalizeCertSha256(env.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256)))
     errors.push('Expected signing certificate SHA-256 must be a 64-character digest');
   if(!/^[A-Za-z0-9+\/=]+$/.test(env.CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64||''))
     errors.push('Keystore input must be base64');
