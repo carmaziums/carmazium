@@ -56,13 +56,14 @@ jobs:
             require("fs").writeFileSync(process.env.GITHUB_ENV,
               `APK_FILE=${m.filename}\nAPK_SHA256=${m.apk_sha256}\nAPK_TAG=${m.filename.replace(/\.apk$/, "")}\nSOURCE_SHA=${m.source_sha}\n`, { flag: "a" });
           '
-          test -f "$APK_FILE"
       - name: Create GitHub Release with the APK
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: staged
         run: |
           set -euo pipefail
+          # Values from the previous step (GITHUB_ENV is only visible to later steps).
+          test -f "$APK_FILE"
           if gh release view "$APK_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "::error::Release $APK_TAG already exists; bump version_code for a new release"; exit 1
           fi
