@@ -28,8 +28,11 @@ export function AppInstallsCard() {
   }, [])
 
   const v = (x: number | null | undefined) => (x == null ? "—" : x.toLocaleString("en-GB"))
+  // One number per platform. Android = app downloads (+ web-app installs).
+  const android = data ? (data.apkDownloads ?? 0) + (data.installs?.androidWebApp ?? 0) : null
+  const total = data ? (android ?? 0) + (data.installs?.ios ?? 0) + (data.installs?.windows ?? 0) : null
   const items = [
-    { label: "Android", value: v(data?.installs?.android), icon: <FaAndroid className="h-4 w-4 text-lime-500" /> },
+    { label: "Android", value: v(android), icon: <FaAndroid className="h-4 w-4 text-lime-500" /> },
     { label: "iPhone", value: v(data?.installs?.ios), icon: <FaApple className="h-4 w-4" /> },
     { label: "Windows", value: v(data?.installs?.windows), icon: <Monitor className="h-4 w-4 text-sky-500" /> },
   ]
@@ -45,7 +48,7 @@ export function AppInstallsCard() {
       <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div>
           <p className="text-xs font-bold text-[var(--text-muted)]">Total</p>
-          <p className="mt-1 font-mono text-3xl font-black text-primary">{v(data?.installsTotal)}</p>
+          <p className="mt-1 font-mono text-3xl font-black text-primary">{v(total)}</p>
         </div>
         {items.map(i => (
           <div key={i.label}>
@@ -55,7 +58,7 @@ export function AppInstallsCard() {
         ))}
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-default)] pt-3">
-        <p className="text-xs text-[var(--text-muted)]">Android app file downloads: <strong>{v(data?.apkDownloads)}</strong></p>
+        <p className="text-xs text-[var(--text-muted)]">All time · <strong>{v(data?.installs?.androidApp)}</strong> Android phones have opened the app</p>
         <Link href="/dashboard/admin/app" className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline">
           Details & problem reports <ArrowRight className="h-3.5 w-3.5" />
         </Link>
