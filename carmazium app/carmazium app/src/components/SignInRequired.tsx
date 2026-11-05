@@ -29,6 +29,7 @@ export const GUEST_ROUTES = new Set<string>([
   'HowItWorks',
   'About',
   'Contact',
+  'ReportProblem',
   'Pricing',
   'Reviews',
   'Finance',

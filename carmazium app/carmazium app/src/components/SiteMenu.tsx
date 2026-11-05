@@ -84,6 +84,7 @@ const FOOTER: { label: string; target: SiteTarget }[] = [
   { label: 'Contact', target: { screen: 'Contact' } },
   { label: 'Terms', target: { screen: 'Terms' } },
   { label: 'Privacy', target: { screen: 'PrivacyPolicy' } },
+  { label: 'Report a problem', target: { screen: 'ReportProblem' } },
 ];
 
 export const SiteMenu: React.FC<{

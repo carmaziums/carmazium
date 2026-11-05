@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { CheckCircle2, ChevronDown, Download, Share, SquarePlus } from "lucide-react"
+import { countAppEvent } from "@/lib/appInstallCounter"
 
 /**
  * Installs carmazium.com as an app without any app store.
@@ -47,7 +48,12 @@ export function InstallWebAppButton({ platform }: { platform: DevicePlatform }) 
       || (navigator as Navigator & { standalone?: boolean }).standalone === true
     if (standalone) setInstalled(true)
     const onPrompt = (e: Event) => { e.preventDefault(); setPromptEvent(e as BeforeInstallPromptEvent) }
-    const onInstalled = () => { setInstalled(true); setPromptEvent(null) }
+    const onInstalled = () => {
+      setInstalled(true); setPromptEvent(null)
+      // Count the install once (the event fires on each card's listener).
+      const d = detectDevicePlatform()
+      if (d === platform) countAppEvent("app_web_installed", d)
+    }
     window.addEventListener("beforeinstallprompt", onPrompt)
     window.addEventListener("appinstalled", onInstalled)
     return () => {
@@ -101,7 +107,11 @@ export function InstallWebAppButton({ platform }: { platform: DevicePlatform }) 
       <button
         type="button"
         className={buttonClass}
-        onClick={() => setShowSteps(v => !v)}
+        onClick={() => {
+          // iPhone has no install event, so count opening the steps on the iPhone card itself.
+          if (!showSteps && onThisDevice && platform === "ios") countAppEvent("app_download_click", "ios")
+          setShowSteps(v => !v)
+        }}
         aria-expanded={showSteps}
       >
         <Download className="h-5 w-5" aria-hidden="true" />

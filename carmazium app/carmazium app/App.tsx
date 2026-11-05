@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { reportFirstOpenOnce } from './src/lib/appInsights';
 import { Alert } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
@@ -171,6 +172,8 @@ export default function App() {
     if (fontAssetsSettled) {
       initializeAuth().finally(() => {
         void SplashScreen.hideAsync();
+        // Counts this installation once (anonymous install id) for admin stats.
+        void reportFirstOpenOnce();
       });
     }
   }, [fontAssetsSettled, initializeAuth]);

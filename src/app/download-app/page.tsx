@@ -8,6 +8,7 @@ import { FaAndroid, FaApple, FaGooglePlay, FaWindows } from "react-icons/fa"
 import { AppPromoShowcase, appPromoButtonClass } from "@/components/features/AppPromoShowcase"
 import { getMobileAppLinks } from "@/lib/mobileAppDownloads"
 import { DeviceRecommendedBadge, InstallWebAppButton } from "@/components/pwa/InstallWebAppButton"
+import { TrackedDownloadLink } from "@/components/pwa/TrackedDownloadLink"
 
 // Availability follows approved release settings, not placeholder store URLs.
 export const dynamic = "force-dynamic"
@@ -157,11 +158,11 @@ export default function DownloadAppPage() {
                       Get it on Google Play <ExternalLink className="h-4 w-4" aria-hidden="true" />
                     </a>
                   ) : links.androidApk.href ? (
-                    <a href={links.androidApk.href} download className={installButtonClass}
-                      aria-label="Download the CarMazium Android app">
+                    <TrackedDownloadLink href={links.androidApk.href} platform="android" className={installButtonClass}
+                      ariaLabel="Download the CarMazium Android app">
                       <ArrowDownToLine className="h-5 w-5" aria-hidden="true" />
                       Download for Android
-                    </a>
+                    </TrackedDownloadLink>
                   ) : (
                     <InstallWebAppButton platform="android" />
                   )}
