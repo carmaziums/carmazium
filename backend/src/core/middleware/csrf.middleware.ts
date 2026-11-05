@@ -36,6 +36,10 @@ export class CsrfMiddleware implements NestMiddleware {
             // must not inherit this exemption.
             '/dvla/lookup',
             '/analytics/event',
+            // Anonymous by design: online heartbeat (no account data) and the
+            // customer problem report (reporter taken only from a Bearer token).
+            '/analytics/heartbeat',
+            '/analytics/problem-report',
             '/analytics/email',
             '/payments/webhook',
         ];
