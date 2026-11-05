@@ -86,9 +86,11 @@ export class AnalyticsController {
     @Throttle({ default: { limit: 5, ttl: 600_000 } })
     async reportProblem(@Body() body: ProblemReportInput, @Req() req: Request) {
         if (!body || typeof body !== 'object') throw new BadRequestException('Invalid report');
+        // Identify the reporter only from an explicit Bearer token — never a
+        // cookie session — so another site cannot file reports in a user's name.
         const header = req.headers.authorization;
         const bearer = header?.startsWith('Bearer ') ? header.slice(7) : null;
-        let user = (req as Request & { user?: { id?: string } }).user;
+        let user: { id?: string } | undefined;
         if (bearer) {
             try { user = (await this.authService.verifySupabaseToken(bearer)) ?? undefined; } catch { user = undefined; }
         }
