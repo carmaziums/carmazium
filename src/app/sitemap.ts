@@ -40,6 +40,10 @@ const STATIC_ROUTES = [
     "/auctions",
     "/auctions/how-it-works",
     "/compare",
+    "/app-support",
+    "/privacy-policy",
+    "/terms",
+    "/cookie-policy",
 ] as const
 
 interface SitemapRecord {
