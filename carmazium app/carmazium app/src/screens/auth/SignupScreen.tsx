@@ -13,6 +13,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';
 import { Ionicons, GoogleIcon, AppleIcon } from '@/components/BrandIcon';
+import { useOAuthProviders } from '../../hooks/useOAuthProviders';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { useAuthStore } from '../../store/authStore';
@@ -53,6 +54,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const { signup, isLoading } = useAuthStore();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isAppleLoading, setIsAppleLoading] = useState(false);
+  const oauth = useOAuthProviders();
   const [formError, setFormError] = useState<string | null>(null);
 
   const passwordsMatch = confirmPassword.length > 0 && confirmPassword === password;
@@ -410,6 +412,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.googleBtnText}>CONTINUE WITH GOOGLE</Text>
             </TouchableOpacity>
 
+            {oauth.apple && (
             <TouchableOpacity
               style={[styles.googleBtn, isAppleLoading && styles.googleBtnDisabled]}
               activeOpacity={0.8}
@@ -423,6 +426,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               )}
               <Text style={styles.googleBtnText}>CONTINUE WITH APPLE</Text>
             </TouchableOpacity>
+            )}
 
             {/* Login Link */}
             <View style={styles.loginRow}>

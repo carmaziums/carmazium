@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { ArrowLeft, Building2, Eye, EyeOff, Loader2, RefreshCw, ShieldAlert, LogOut, ArrowRight } from "lucide-react"
+import { useOAuthProviders } from "@/hooks/useOAuthProviders"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/context/AuthContext"
 
@@ -26,6 +27,7 @@ function LoginContent() {
     const [loading, setLoading] = React.useState(false)
     const [googleLoading, setGoogleLoading] = React.useState(false)
     const [appleLoading, setAppleLoading] = React.useState(false)
+    const oauth = useOAuthProviders()
     const [error, setError] = React.useState<string | null>(null)
     const [showPassword, setShowPassword] = React.useState(false)
     const [retryingProfile, setRetryingProfile] = React.useState(false)
@@ -238,6 +240,7 @@ function LoginContent() {
                         {googleLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Image src="/assets/images/google-icon.png" alt="Google" width={20} height={20} className="w-5 h-5" />}
                         <span className="text-sm font-medium">Google</span>
                     </Button>
+                    {oauth.apple && (
                     <Button
                         type="button"
                         variant="outline"
@@ -248,6 +251,7 @@ function LoginContent() {
                         {appleLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <AppleLogo />}
                         <span className="text-sm font-medium">Apple</span>
                     </Button>
+                    )}
                 </div>
 
                 <div className="mt-8 text-center text-sm text-gray-300">Don't have an account? <Link href="/auth/signup" className="text-primary font-bold hover:text-red-400">Sign Up</Link></div>
