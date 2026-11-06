@@ -87,8 +87,12 @@ on:
       - "src/components/features/CardImageCarousel.tsx"
       - "src/lib/googleAds.ts"
       - "src/lib/gtm.ts"
+      - "src/hooks/useAnalytics.ts"
+      - "src/components/analytics/MetaPixel.tsx"
       - "src/app/checkout/success/page.tsx"
+      - "src/app/sell/auction-submitted/page.tsx"
       - "scripts/test-google-ads-qualified-seller.test.mjs"
+      - "scripts/test-meta-seller-conversions.test.mjs"
       - "src/lib/dvlaApi.ts"
       - "src/lib/apiClient.ts"
       - "src/app/api/account-profile/**"
@@ -151,6 +155,9 @@ jobs:
 
       - name: Qualified seller Google Ads tracking regression suite
         run: node --test scripts/test-google-ads-qualified-seller.test.mjs
+
+      - name: Verify Meta tracks exactly auction review and paid £1 retail outcomes once
+        run: node --test scripts/test-meta-seller-conversions.test.mjs
 
       - name: Verify 3D damage upload, buyer evidence and safe navigation
         run: node --test scripts/test-web-damage-release.test.mjs
