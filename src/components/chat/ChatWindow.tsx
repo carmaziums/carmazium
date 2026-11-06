@@ -521,16 +521,21 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                 status: 'DRAFT' | 'HUMAN_REVIEW';
                 text?: string;
                 reason?: string;
+                careful?: boolean;
             } }>(`/ai/admin/support-draft/${encodeURIComponent(room.id)}`, {
                 method: 'POST',
             })
             if (response.data.status === 'DRAFT' && response.data.text) {
                 // Explicit human review: insert into composer, never auto-send.
                 setNewMessage(response.data.text)
-                setSupportDraftNotice('MaziuM draft added. Check facts and edit before sending.')
+                setSupportDraftNotice(response.data.careful
+                    ? 'MaziuM draft added. This is a sensitive topic (money, account or complaint): check every fact and edit before sending.'
+                    : 'MaziuM draft added. Check facts and edit before sending.')
                 inputRef.current?.focus()
             } else {
-                setSupportDraftNotice('Human review required. MaziuM did not prepare a reply.')
+                setSupportDraftNotice(response.data.reason === 'CONVERSATION_CHANGED'
+                    ? 'A new message arrived. Tap Suggest MaziuM reply again.'
+                    : 'MaziuM could not prepare a reply this time. Please write one yourself.')
             }
         } catch (error: any) {
             setSupportDraftNotice(error?.message || 'Could not prepare a support draft.')

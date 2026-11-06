@@ -50,7 +50,8 @@ export class AiController {
         @Param('roomId') roomId: string,
         @CurrentUser() user: { id: string },
     ) {
-        if (this.configService.get<string>('MAZIUM_SUPPORT_DRAFT_ENABLED') !== 'true') {
+        // Admin-only, never sent automatically: on unless explicitly switched off.
+        if (this.configService.get<string>('MAZIUM_SUPPORT_DRAFT_ENABLED') === 'false') {
             throw new BadRequestException('MaziuM support drafts are disabled.');
         }
         await this.rateLimit.consumeMessage(user.id);
@@ -66,48 +67,41 @@ export class AiController {
         const supportAccountId = room.initiator?.role === UserRole.ADMIN
             ? room.initiatorId
             : room.participant?.role === UserRole.ADMIN ? room.participantId : '';
-        const customerId = supportAccountId === room.initiatorId ? room.participantId : room.initiatorId;
-        const latestIsCustomer = !!latest && isInboundCustomerSupportMessage({
+        const isCustomer = (m: any) => isInboundCustomerSupportMessage({
             context: room.context,
-            senderId: latest.senderId,
+            senderId: m.senderId,
             initiatorId: room.initiatorId,
             participantId: room.participantId,
             officialSupportAccountId: supportAccountId,
-            senderIsAutomated: Boolean(latest.clientMessageId?.startsWith('mazium-support-')),
+            senderIsAutomated: Boolean(m.clientMessageId?.startsWith('mazium-support-')),
         });
-        if (!latest || !latestIsCustomer || latest.attachmentPath || !latest.content?.trim() || room.supportAiOptedOutAt || room.supportHumanTakeoverAt) {
-            throw new BadRequestException('No unanswered customer message to draft.');
+        // The admin reviews and edits every draft before sending it, so a draft
+        // is still offered after a human takeover, after the customer asks for a
+        // person, or after the admin has sent a holding reply.
+        const lastCustomer = [...messages].reverse().find(isCustomer);
+        if (!latest || !lastCustomer) {
+            throw new BadRequestException('No customer message to reply to yet.');
         }
-        const classification = classifySupportMessage(latest.content);
-        if (classification.action === 'ESCALATE') {
-            return { success: true, data: { status: 'HUMAN_REVIEW', reason: classification.reason } };
-        }
+        const sensitive = [...messages].slice(-4).some((m: any) =>
+            isCustomer(m) && classifySupportMessage(m.content).action === 'ESCALATE');
         const draft = await this.aiService.draftSupportReply(messages.map((m: any) => ({
-            role: m.senderId === supportAccountId || m.clientMessageId?.startsWith('mazium-support-') ? 'assistant' as const : 'user' as const,
+            role: isCustomer(m) ? 'user' as const : 'assistant' as const,
             content: m.content,
         })));
-        const outputDecision = draft ? classifySupportMessage(draft) : null;
-        // Never offer a draft if the generation returned a human-handoff
-        // request or otherwise sensitive wording.
-        if (draft && outputDecision?.action !== 'DRAFT') {
-            return { success: true, data: { status: 'HUMAN_REVIEW', reason: 'DRAFT_REQUIRES_REVIEW' } };
+        if (!draft) {
+            return { success: true, data: { status: 'HUMAN_REVIEW', reason: 'DRAFT_UNAVAILABLE' } };
         }
-        // Do not offer a draft for a message that was answered or superseded
-        // while the external model was generating its response.
+        // Do not offer a draft for a conversation that moved on while the
+        // external model was generating its response.
         const current = await this.chatService.getRoomMessages(roomId, user.id, 1, 1);
         const latestNow = current.data[current.data.length - 1];
-        const refreshedRoom = await this.chatService.getRoom(roomId, user.id);
-        if (!latestNow || latestNow.id !== latest.id || latestNow.senderId !== customerId || refreshedRoom.supportClosedAt || refreshedRoom.deletedAt || refreshedRoom.supportAiOptedOutAt || refreshedRoom.supportHumanTakeoverAt) {
+        if (!latestNow || latestNow.id !== latest.id) {
             return { success: true, data: { status: 'HUMAN_REVIEW', reason: 'CONVERSATION_CHANGED' } };
         }
-        if (outputDecision?.action === 'ESCALATE') {
-            return { success: true, data: { status: 'HUMAN_REVIEW', reason: 'DRAFT_REQUIRES_REVIEW' } };
-        }
+        const careful = sensitive || classifySupportMessage(draft).action !== 'DRAFT';
         return {
             success: true,
-            data: draft
-                ? { status: 'DRAFT', text: draft, sourceMessageId: latest.id, requiresHumanApproval: true }
-                : { status: 'HUMAN_REVIEW', reason: 'DRAFT_UNAVAILABLE' },
+            data: { status: 'DRAFT', text: draft, sourceMessageId: lastCustomer.id, requiresHumanApproval: true, careful },
         };
     }
 
