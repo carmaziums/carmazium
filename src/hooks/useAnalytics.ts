@@ -170,6 +170,19 @@ function trackMetaSellerConversionOnce(
             metaSellerConversionSessionDedupe.add(dedupeKey)
             return
         }
+
+        // Before the November 2026 repair, the browser saved a different
+        // dedupe key for each seller listing Lead. Reusing that listing after
+        // deployment (e.g. a rejected auction resubmitted for review) must NOT
+        // count the same auction seller a second time just because the key
+        // format changed. Only the Lead event inherits this legacy guard;
+        // Retail Purchase is a genuinely different, verified business outcome.
+        const legacyLeadKey = `cm_meta_seller_lead_v1:${listingId}`
+        if (eventName === "Lead" && window.localStorage.getItem(legacyLeadKey) === "1") {
+            metaSellerConversionSessionDedupe.add(dedupeKey)
+            window.localStorage.setItem(dedupeKey, "1")
+            return
+        }
     } catch {
         // Private browsing can deny localStorage; in-memory deduplication remains.
     }
