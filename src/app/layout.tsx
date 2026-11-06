@@ -25,6 +25,7 @@ import { TikTokPixel } from "@/components/analytics/TikTokPixel";
 import { CookieConsentBanner } from "@/components/analytics/CookieConsentBanner";
 import { ConsentProvider } from "@/context/ConsentContext";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
+import { WebUpdateBanner } from "@/components/pwa/WebUpdateBanner";
 
 // Canonical SEO origin. The apex domain permanently redirects to this host.
 const SITE_URL = "https://www.carmazium.com";
@@ -155,6 +156,7 @@ export default function RootLayout({
           </ThemeProvider>
         </ConsentProvider>
         <ServiceWorkerRegister />
+        <WebUpdateBanner />
       </body>
     </html>
   );
