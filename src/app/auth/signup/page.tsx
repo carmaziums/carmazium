@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { ArrowLeft, Building2, Car, Eye, EyeOff, Loader2 } from "lucide-react"
-import { useOAuthProviders } from "@/hooks/useOAuthProviders"
 import { supabase } from "@/lib/supabase"
 import { friendlyAuthError } from "@/lib/authErrors"
 import { safeSellReturnPath } from "@/lib/sellPricingIntent"
@@ -55,7 +54,6 @@ function SignupForm() {
     const [loading, setLoading] = React.useState(false)
     const [googleLoading, setGoogleLoading] = React.useState(false)
     const [appleLoading, setAppleLoading] = React.useState(false)
-    const oauth = useOAuthProviders()
     const [error, setError] = React.useState<string | null>(null)
     const [showPassword, setShowPassword] = React.useState(false)
     const registrationStartedRef = React.useRef(false)
@@ -281,7 +279,6 @@ function SignupForm() {
                         {googleLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Image src="/assets/images/google-icon.png" alt="Google" width={20} height={20} className="w-5 h-5" />}
                         <span className="text-sm font-medium">Google</span>
                     </Button>
-                    {oauth.apple && (
                     <Button
                         type="button"
                         variant="outline"
@@ -298,7 +295,6 @@ function SignupForm() {
                         {appleLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <AppleLogo />}
                         <span className="text-sm font-medium">Apple</span>
                     </Button>
-                    )}
                 </div>
 
                 <p className="mt-5 text-center text-xs leading-5 text-gray-400">
