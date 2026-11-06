@@ -59,6 +59,24 @@ test('one completed auction and one paid retail conversion per listing, even aft
     assert.equal(refreshed.sent.length, 2, 'new vehicles are new conversions')
 })
 
+test('an auction previously counted with the old Lead key is never recounted after upgrade', () => {
+    const listingId = 'legacy-auction-11'
+    const storage = new Map([[`cm_meta_seller_lead_v1:${listingId}`, '1']])
+    const newVersion = createTrackingHarness({ storage })
+    newVersion.fire('Lead', listingId, { content_category: 'auction_listing_submitted' })
+    assert.equal(newVersion.sent.length, 0, 'legacy Lead counts must survive the upgrade')
+    assert.equal(storage.get(`cm_meta_verified_seller_v2:Lead:${listingId}`), '1')
+
+    // A paid Retail listing is a different verified event and must not be
+    // suppressed because the old (overbroad) Lead event was recorded.
+    newVersion.fire('Purchase', listingId, { value: 1, currency: 'GBP' })
+    assert.deepEqual(newVersion.sent.map(x => x.name), ['Purchase'])
+    const freshBrowser = createTrackingHarness({ storage })
+    freshBrowser.fire('Lead', listingId, {})
+    freshBrowser.fire('Purchase', listingId, {})
+    assert.equal(freshBrowser.sent.length, 0)
+})
+
 test('no consent or no pixel delivery does not consume the conversion', () => {
     const storage = new Map()
     createTrackingHarness({ storage, consent: false }).fire('Lead', 'auction-003', {})
