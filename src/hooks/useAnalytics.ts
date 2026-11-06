@@ -142,63 +142,48 @@ function googleEventParams(type: string, payload: Record<string, unknown>): Reco
     return compact({ ...payload, query: undefined, search_term: searchTerm || undefined })
 }
 
-const META_SELLER_LEAD_STORAGE_PREFIX = "cm_meta_seller_lead_v1:"
-const metaSellerLeadSessionDedupe = new Set<string>()
+const META_SELLER_CONVERSION_STORAGE_PREFIX = "cm_meta_verified_seller_v2:"
+const metaSellerConversionSessionDedupe = new Set<string>()
 
 /**
- * Meta's standard Lead event is the optimisation signal for seller acquisition.
+ * Only two business outcomes are Meta seller conversions:
+ * - Lead: an auction successfully submitted to the real review queue
+ * - Purchase: a verified £1 Retail listing fee payment
  *
- * A listing can pass through several legitimate submission branches over its
- * lifetime (Stripe return, HPI resume, admin rejection/resubmission, edit and
- * republish). Those are useful lifecycle events, but they must not make one
- * vehicle look like several newly acquired seller leads.
- *
- * Persist the dedupe by listing id so the same browser cannot train Meta more
- * than once for the same listing across reloads or later resubmissions. We only
- * consume the dedupe key after consent is granted and fbq is actually present;
- * otherwise a visitor who accepts cookies later would incorrectly lose the
- * conversion before it was ever sent.
+ * De-duplicate by event type + listing ID across React effects, refreshes,
+ * Stripe returns and later resubmissions in this browser. Event IDs are also
+ * stable for a future browser/server Conversions API pairing. PageView or a
+ * general wizard submission must never substitute for either conversion.
  */
-function trackMetaSellerLeadOnce(payload: Record<string, unknown>): void {
-    const params = compact({ ...payload, content_category: "seller_listing_submitted" })
-    const listingId = String(payload.listing_id ?? "").trim()
+function trackMetaSellerConversionOnce(
+    eventName: "Lead" | "Purchase",
+    listingId: unknown,
+    params: Record<string, unknown>,
+): void {
+    if (typeof listingId !== "string" || !/^[A-Za-z0-9_-]{1,48}$/.test(listingId)) return
+    if (typeof window === "undefined" || !hasTrackingConsent() || typeof window.fbq !== "function") return
 
-    // listing_submitted should always have an id. Preserve the old behaviour if
-    // a future call site violates that contract rather than silently dropping it.
-    if (!listingId) {
-        trackMetaEvent("Lead", params)
-        return
-    }
-
-    if (
-        typeof window === "undefined" ||
-        !hasTrackingConsent() ||
-        typeof window.fbq !== "function"
-    ) {
-        return
-    }
-
-    const dedupeKey = `${META_SELLER_LEAD_STORAGE_PREFIX}${listingId}`
-    if (metaSellerLeadSessionDedupe.has(dedupeKey)) return
-
+    const dedupeKey = `${META_SELLER_CONVERSION_STORAGE_PREFIX}${eventName}:${listingId}`
+    if (metaSellerConversionSessionDedupe.has(dedupeKey)) return
     try {
         if (window.localStorage.getItem(dedupeKey) === "1") {
-            metaSellerLeadSessionDedupe.add(dedupeKey)
+            metaSellerConversionSessionDedupe.add(dedupeKey)
             return
         }
     } catch {
-        // Storage can be blocked independently of consent. The in-memory set
-        // below still prevents duplicate sends during this page lifetime.
+        // Private browsing can deny localStorage; in-memory deduplication remains.
     }
 
-    trackMetaEvent("Lead", params, { eventID: `seller_listing:${listingId}` })
-    metaSellerLeadSessionDedupe.add(dedupeKey)
+    const sent = trackMetaEvent(eventName, params, {
+        eventID: `seller_${eventName.toLowerCase()}:${listingId}`,
+    })
+    if (!sent) return // Never consume a conversion when consent/pixel is missing.
 
+    metaSellerConversionSessionDedupe.add(dedupeKey)
     try {
         window.localStorage.setItem(dedupeKey, "1")
     } catch {
-        // The event has already been sent. Do not let storage failure affect
-        // the seller flow; in-memory dedupe still covers the current page.
+        // The conversion has already been dispatched.
     }
 }
 
@@ -245,19 +230,38 @@ function mirrorToMeta(type: string, payload: Record<string, unknown>): void {
             }
             return
         case SELLER_FUNNEL.LISTING_SUBMITTED:
-            if (!isAdmin) {
-                // Meta's standard Lead means a seller actually completed the
-                // listing wizard. Count each listing id once for optimisation:
-                // edits, payment returns and rejection/resubmission flows can
-                // legitimately emit listing_submitted again for the same car.
-                trackMetaSellerLeadOnce(payload)
-                // Keep the custom lifecycle event on every genuine submission
-                // so reporting can still measure resubmissions separately.
-                trackMetaEvent("SellerCompleteListing", compact(payload))
+        case SELLER_FUNNEL.AUCTION_SUBMITTED:
+            // Funnel reporting continues in GA4/first-party analytics. These
+            // intermediate events are NOT Meta seller conversions: Retail has
+            // not paid, and auction submission has not been verified here.
+            return
+        case SELLER_FUNNEL.QUALIFIED_SELLER_LISTING:
+            if (!isAdmin
+                && payload.listing_type === "auction"
+                && payload.qualification === "auction_review"
+                && payload.outcome === "pending_review") {
+                trackMetaSellerConversionOnce("Lead", payload.listing_id, {
+                    content_type: "vehicle",
+                    content_category: "auction_listing_submitted",
+                    content_ids: [payload.listing_id],
+                })
             }
             return
-        case SELLER_FUNNEL.AUCTION_SUBMITTED:
-            if (!isAdmin) trackMetaEvent("AuctionListingCreated", compact(payload))
+        case SELLER_FUNNEL.LISTING_FEE_PAID:
+            // Stripe's server-verified payment status, not a success-page
+            // PageView, must be the source. Only the £1 BASIC Retail listing
+            // fee is counted; other paid services are not seller conversions.
+            if (!isAdmin && payload.listing_type === "retail"
+                && payload.currency === "GBP" && Number(payload.value) === 1) {
+                trackMetaSellerConversionOnce("Purchase", payload.listing_id, {
+                    value: 1,
+                    currency: "GBP",
+                    content_type: "product",
+                    content_category: "retail_listing_fee_paid",
+                    content_name: "LISTING_FEE",
+                    content_ids: [payload.listing_id],
+                })
+            }
             return
         default:
             return

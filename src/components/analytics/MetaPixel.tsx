@@ -60,8 +60,8 @@ export function trackMetaEvent(
     params?: Record<string, unknown>,
     options: MetaEventOptions = {},
 ) {
-    if (!META_PIXEL_ID || !hasTrackingConsent()) return
-    if (typeof window === "undefined" || typeof window.fbq !== "function") return
+    if (!META_PIXEL_ID || !hasTrackingConsent()) return false
+    if (typeof window === "undefined" || typeof window.fbq !== "function") return false
 
     const contentCategory = String(params?.content_category ?? "")
     const normalisedEventName =
@@ -83,6 +83,7 @@ export function trackMetaEvent(
     } else {
         window.fbq(command, META_PIXEL_ID, normalisedEventName)
     }
+    return true
 }
 
 
