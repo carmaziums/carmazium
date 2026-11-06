@@ -398,6 +398,10 @@ export class AiService {
                         ].join(' '),
                     },
                     ...context,
+                    {
+                        role: 'system',
+                        content: 'Write the next CarMazium support reply to the customer. A human support agent will review, edit and send it, so write as CarMazium support and do not mention AI or MaziuM. If the customer asked for a person, reply as that person.',
+                    },
                 ],
             });
             const draft = completion.choices[0]?.message?.content?.trim();
