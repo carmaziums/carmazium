@@ -836,7 +836,8 @@ export class PaymentsService {
                 badgeTier: chargeTier,
                 type: 'LISTING_FEE',
             },
-            success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+            // `type=retail-listing` marks this return URL for marketing trackers.
+            success_url: `${baseUrl}/checkout/success?type=retail-listing&session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${baseUrl}/dashboard/user?tab=inventory`,
         });
 

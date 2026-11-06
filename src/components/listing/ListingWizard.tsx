@@ -17,6 +17,9 @@ import Link from "next/link"
 import { buttonVariants } from "@/components/ui/buttonVariants"
 import { ImageUpload } from "@/components/listing/ImageUpload"
 import { PendingReviewModal } from "@/components/listing/PendingReviewModal"
+
+/** Confirmation page after an auction submission (has its own URL for trackers). */
+const AUCTION_SUBMITTED_URL = "/sell/auction-submitted"
 import {
     createListing, formatPrice, getDamageRecords,
     type CreateListingRequest, type ListingMotHistoryEntry, type BodyTypeValue,
@@ -1967,9 +1970,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 setFormData(INITIAL_FORM)
                 setCurrentStep(1)
                 setSellingMethod(null)
+                if (payload.listingType === 'AUCTION') {
+                    // Full page load so every tracker sees the confirmation URL.
+                    window.location.assign(AUCTION_SUBMITTED_URL)
+                    return
+                }
                 setPendingReview({
                     title: payload.title,
-                    onContinue: () => router.push(payload.listingType === 'AUCTION' ? '/dashboard/seller/auctions' : '/dashboard/seller/listings'),
+                    onContinue: () => router.push('/dashboard/seller/listings'),
                 })
             } else {
                 // Brand-new auctions carry their schedule in this same POST /listings
@@ -2110,6 +2118,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 // paid-tier checkout-success flow before sending them onward.
                 const auctionSubmission = await publishListing(newListingId)
                 trackListingSubmitted(payload, newListingId, auctionSubmission.pendingReview ? 'pending_review' : 'published')
+                if (payload.listingType === 'AUCTION') {
+                    localStorage.removeItem(draftKeys.draft)
+                    localStorage.removeItem(draftKeys.auctionSchedule)
+                    localStorage.removeItem(draftKeys.step)
+                    // Full page load so every tracker sees the confirmation URL.
+                    window.location.assign(AUCTION_SUBMITTED_URL)
+                    return
+                }
                 setPendingReview({
                     title: payload.title,
                     onContinue: () => {

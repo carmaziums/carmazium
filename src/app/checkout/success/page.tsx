@@ -234,7 +234,7 @@ function CheckoutSuccessContent() {
                             : sessionData?.metadata?.type === 'LISTING_FEE'
                             ? (listingSubmissionError
                                 ? 'Your payment is confirmed, but the listing could not be submitted for review automatically. Please contact CarMazium support with your payment reference. Do not pay again.'
-                                : "Payment confirmed. Your vehicle details are now under review and will be listed shortly — we'll notify you once it's approved.")
+                                : "Thank you for paying. Your vehicle has been sent to our team for approval and will be listed shortly — we'll notify you once it's approved.")
                             : sessionData?.metadata?.type === 'COMMISSION'
                             ? 'Your £125 buyer fee is confirmed. Submit your handover proof to release the seller payout.'
                             : sessionData?.metadata?.type === 'KYC_VERIFICATION'
