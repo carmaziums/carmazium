@@ -102,21 +102,17 @@ function CheckoutSuccessContent() {
                         fee_type: data.metadata?.type,
                         listing_id: data.metadata?.listingId,
                     })
-                    // Fee-specific events own advertising conversion semantics.
+                    // Verified Stripe payment is the one source for Retail's
+                    // Meta Purchase conversion. useAnalytics deduplicates the
+                    // confirmed £1 listing payment by listing ID across reloads.
                     if (data.metadata?.type === 'LISTING_FEE') {
-                        trackMetaEvent("Purchase", {
-                            value,
-                            currency,
-                            content_type: "product",
-                            content_ids: data.metadata?.listingId ? [data.metadata.listingId] : undefined,
-                            content_name: "LISTING_FEE",
-                        })
                         trackEvent(SELLER_FUNNEL.LISTING_FEE_PAID, {
                             transaction_id: listingFeeTrackingId(data.metadata?.listingId) || undefined,
                             value,
                             currency,
                             listing_type: 'retail',
                             listing_id: data.metadata?.listingId,
+                            seller_role: profile?.role || 'UNKNOWN',
                         }, {
                             // Keep first-party identifiers out of GA4/dataLayer;
                             // only Google Ads receives this for Enhanced Conversions.
