@@ -113,11 +113,13 @@ export const setProblemReportStatus = (id: string, status: 'new' | 'resolved') =
 const sessionVisitorId = randomId();
 
 /** "Still here" ping while the app is in the foreground (about once a minute). */
-export async function sendOnlineHeartbeat(signedIn: boolean): Promise<void> {
+export async function sendOnlineHeartbeat(_signedIn: boolean): Promise<void> {
   try {
     await apiClient('/analytics/heartbeat', {
       method: 'POST',
-      body: JSON.stringify({ visitorId: sessionVisitorId, surface: 'app', platform: appPlatform(), signedIn }),
+      // The server verifies the Authorization token supplied by apiClient.
+      // It never trusts a self-reported signed-in flag.
+      body: JSON.stringify({ visitorId: sessionVisitorId, surface: 'app', platform: appPlatform() }),
       timeoutMs: 8000,
     });
   } catch {
