@@ -102,6 +102,7 @@ const webSignup = read('src/app/auth/signup/page.tsx');
 const mobilePrivacy = read('carmazium app/carmazium app/src/screens/main/PrivacyPolicyScreen.tsx');
 const mobileSignup = read('carmazium app/carmazium app/src/screens/auth/SignupScreen.tsx');
 const mobileDrawer = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
+const mobileSiteMenu = read('carmazium app/carmazium app/src/components/SiteMenu.tsx');
 const mobileSettings = read('carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx');
 const accountDeletionService = read('backend/src/users/users.service.ts');
 const deletionRetention = read('docs/privacy/ACCOUNT_DELETION_RETENTION.md');
@@ -132,7 +133,10 @@ if (
   !webDelete.includes('DeleteAccountPortal') ||
   !mobileSettings.includes("method: 'DELETE'") ||
   !mobileSignup.includes("navigation.navigate('PrivacyPolicy')") ||
-  !mobileDrawer.includes("stackScreen: 'PrivacyPolicy'") ||
+  !mobileDrawer.includes('<SiteMenu') ||
+  !mobileDrawer.includes('onNavigate={navigateSite}') ||
+  !mobileDrawer.includes('screen: target.screen') ||
+  !mobileSiteMenu.includes("label: 'Privacy', target: { screen: 'PrivacyPolicy' }") ||
   !mobilePrivacy.includes('https://www.carmazium.com/privacy-policy')
 ) {
   fail('Native/web privacy or account-deletion access regressed');
@@ -418,11 +422,14 @@ const androidReleaseScript = read('carmazium app/carmazium app/scripts/release-a
 if (
   !androidReleaseScript.includes("'bundleRelease'") ||
   !androidReleaseScript.includes("'bundle', 'release', 'app-release.aab'") ||
-  androidReleaseScript.includes("['assembleRelease'")
+  !androidReleaseScript.includes("const BUILD_APK = process.argv.includes('--apk')") ||
+  !/BUILD_APK\s*\?\s*\['assembleRelease'[\s\S]*?:\s*\['bundleRelease'/.test(androidReleaseScript) ||
+  !androidReleaseScript.includes('if (!existsSync(AAB_OUTPUT))') ||
+  !androidReleaseScript.includes('if (!existsSync(APK_OUTPUT))')
 ) {
-  fail('Guarded Android release command must produce a signed Play Store AAB, not an APK');
+  fail('Guarded Android release must default to a signed AAB and require --apk for a direct-install APK');
 } else {
-  ok('Guarded Android release command produces a signed Play Store AAB');
+  ok('Guarded Android release defaults to a signed Play Store AAB; --apk selects the direct-install build');
 }
 
 const appPlugins = JSON.stringify(app.plugins ?? []);

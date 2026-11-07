@@ -4,7 +4,7 @@ import { VehicleDetailsPageClient } from "./VehicleDetailsPageClient"
 import { formatPrice } from "@/lib/listingApi"
 import { VehicleViewTracker } from "@/components/analytics/VehicleViewTracker"
 import { serverBackendFetch } from "@/lib/serverBackendFetch"
-import { RetailVehicleJsonLd, retailDescription, indexableRetail } from "@/components/seo/RetailVehicleJsonLd"
+import { RetailVehicleJsonLd, retailDescription, retailTitle, indexableRetail } from "@/components/seo/RetailVehicleJsonLd"
 import type { Listing } from "@/lib/listingApi"
 
 const SITE_URL = "https://www.carmazium.com"
@@ -56,7 +56,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     // brand suffix added explicitly.
     const title = listing.type === "AUCTION"
         ? `${listing.title} — ${listing.auction?.startingBid != null ? `Starting bid ${formatPrice(listing.auction.startingBid)}` : "Auction listing"}`
-        : `${listing.title} — ${formatPrice(listing.price)}`
+        : indexableRetail(listing as Listing) ? retailTitle(listing as Listing) : listing.title
     const socialTitle = `${title} | CarMazium`
     // Canonicalise direct UUID/legacy detail links to the published listing slug.
     const url = `${SITE_URL}/buy-cars/${listing.slug || slug}`
