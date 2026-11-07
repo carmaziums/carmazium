@@ -32,6 +32,7 @@ describe('summariseAppEvents', () => {
             { type: 'app_first_open', payload: { platform: 'android', installId: 'device-aaaa-1' }, createdAt: now },
             { type: 'app_first_open', payload: { platform: 'android', installId: 'device-bbbb-2' }, createdAt: old },
             { type: 'app_first_open', payload: { platform: 'android', installId: 'x' }, createdAt: now },
+            { type: 'app_first_open', payload: { platform: 'ios', installId: 'ios-device-1234' }, createdAt: now },
             { type: 'app_web_installed', payload: { platform: 'ios' }, createdAt: now },
             { type: 'app_web_installed', payload: { platform: 'windows' }, createdAt: old },
             { type: 'app_download_click', payload: { platform: 'android' }, createdAt: now },
@@ -39,13 +40,14 @@ describe('summariseAppEvents', () => {
         ], since30);
         expect(s.androidAppInstalls).toBe(2);
         expect(s.androidAppInstalls30d).toBe(1);
+        expect(s.iosAppFirstOpens).toBe(1);
         expect(s.webInstalls).toMatchObject({ ios: 1, windows: 1 });
         expect(s.webInstallsTotal).toBe(2);
         expect(s.webInstalls30d).toBe(1);
         expect(s.downloadClicks).toMatchObject({ android: 1, unknown: 1 });
         expect(s.downloadClicksTotal).toBe(2);
-        expect(s.installs).toEqual({ android: 2, androidApp: 2, androidWebApp: 0, ios: 1, windows: 1 });
-        expect(s.installsTotal).toBe(4);
+        expect(s.installs).toEqual({ android: 2, androidApp: 2, androidWebApp: 0, ios: 2, iosApp: 1, iosWebApp: 1, windows: 1 });
+        expect(s.installsTotal).toBe(5);
     });
 });
 
