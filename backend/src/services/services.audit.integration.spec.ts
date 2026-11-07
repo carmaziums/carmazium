@@ -138,4 +138,34 @@ integration('TradeXchange: real PostgreSQL transactions, synthetic Stripe only',
     await db.serviceJob.create({ data: { ...data, serviceType: 'DELIVERY' } }); await db.serviceJob.create({ data: { ...data, serviceType: 'INSPECTION' } });
     await expect(db.serviceJob.create({ data: { ...data, serviceType: 'INSPECTION' } })).rejects.toThrow();
   });
+  it('a refund webhook finalizes pending funds once, with no second refund', async () => {
+    const { j, p } = await job('DISPUTED'); const id = `re_${randomUUID()}`;
+    stripe.refunds.create.mockImplementation(async (args: any) => ({ id, status: 'pending', ...args }));
+    await expect(service.adminResolveDispute(customer.id, j.id, { outcome: 'REFUND' })).rejects.toThrow();
+    stripe.refunds.retrieve.mockResolvedValue({ id, status: 'succeeded', amount: 10000, payment_intent: p.stripePaymentIntentId });
+    const event = { id, metadata: { serviceJobId: j.id, servicePaymentId: p.id } };
+    await service.reconcileSettlementEvent('refund.updated', event); await service.reconcileSettlementEvent('refund.updated', event);
+    expect((await current(j.id)).payment?.status).toBe('REFUNDED'); expect(stripe.refunds.create).toHaveBeenCalledTimes(1);
+  });
+  it('canonical bank disputes freeze settlement and repeated notifications cannot release funds', async () => {
+    const { j, p } = await job(); stripe.disputes.retrieve.mockResolvedValue({ id: 'dp_synthetic', payment_intent: p.stripePaymentIntentId, status: 'needs_response' });
+    await service.reconcileSettlementEvent('charge.dispute.created', { id: 'dp_synthetic' });
+    await service.reconcileSettlementEvent('charge.dispute.updated', { id: 'dp_synthetic' });
+    await expect(service.adminResolveDispute(customer.id, j.id, { outcome: 'RELEASE' })).rejects.toThrow('bank dispute');
+    expect((await current(j.id)).status).toBe('DISPUTED'); expect(stripe.transfers.create).not.toHaveBeenCalled();
+  });
+  it('an unrelated refund cannot finalize this payment', async () => {
+    const { j, p } = await job('DISPUTED'); stripe.refunds.create.mockRejectedValue(new Error('timeout'));
+    await expect(service.adminResolveDispute(customer.id, j.id, { outcome: 'REFUND' })).rejects.toThrow();
+    stripe.refunds.retrieve.mockResolvedValue({ id: 're_wrong', status: 'succeeded', amount: 10000, payment_intent: 'pi_other' });
+    await service.reconcileSettlementEvent('refund.updated', { id: 're_wrong', metadata: { serviceJobId: j.id, servicePaymentId: p.id } });
+    expect((await current(j.id)).payment?.status).toBe('PAID'); expect((await current(j.id)).payment?.stripeRefundId).toBeNull();
+  });
+  it('withdrawal during acceptance cannot leave an accepted withdrawn quote', async () => {
+    const { j } = await job('OPEN'); await db.servicePayment.deleteMany({ where: { jobId: j.id } });
+    const quote = await db.serviceQuote.create({ data: { jobId: j.id, contractorId: provider.id, submittedById: providerUser.id, amountPence: 10000 } });
+    payments.refreshConnectAccountReadiness.mockImplementationOnce(async () => { await service.withdrawQuote(provider.id, j.id); return { ready: true, accountId: 'acct_synthetic' }; });
+    await expect(service.acceptQuote(customer.id, j.id, quote.id)).rejects.toThrow('quote changed'); expect((await current(j.id)).status).toBe('OPEN'); expect((await current(j.id)).payment).toBeNull();
+  });
+
 });

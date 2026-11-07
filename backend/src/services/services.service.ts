@@ -811,8 +811,8 @@ export class ServicesService {
         let listing: any = null;
         let vehicle: { registration?: string | null; make?: string | null; model?: string | null; year?: number | null } | null = null;
         const sourceWhere = dto.offerId
-            ? { sourceOfferId: dto.offerId }
-            : { sourceAuctionId: dto.auctionId! };
+            ? { sourceOfferId: dto.offerId, serviceType: ServiceType.DELIVERY }
+            : { sourceAuctionId: dto.auctionId!, serviceType: ServiceType.DELIVERY };
 
         if (dto.offerId) {
             const offer = await this.prisma.offer.findUnique({
