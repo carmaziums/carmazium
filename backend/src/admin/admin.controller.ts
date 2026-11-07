@@ -359,8 +359,10 @@ export class AdminController {
     async getAllTransactions(
         @Query('page') page = 1,
         @Query('limit') limit = 20,
+        @Query('q') q?: string, @Query('status') status?: string, @Query('type') type?: string,
+        @Query('from') from?: string, @Query('to') to?: string,
     ): Promise<PaginatedResponse<any>> {
-        const { data, total } = await this.adminService.getAllTransactions(Number(page), Number(limit));
+        const { data, total } = await this.adminService.getAllTransactions(Number(page), Number(limit), { q, status, type, from, to });
         return new PaginatedResponse(data, total, Number(page), Number(limit));
     }
 
@@ -402,8 +404,9 @@ export class AdminController {
     async getAllDealersKycArchive(
         @Query('page') page = 1,
         @Query('limit') limit = 20,
+        @Query('q') q?: string, @Query('status') status?: string,
     ): Promise<PaginatedResponse<any>> {
-        const { data, total } = await this.adminService.getAllDealersKycArchive(Number(page), Number(limit));
+        const { data, total } = await this.adminService.getAllDealersKycArchive(Number(page), Number(limit), { q, status });
         const hydrated = await Promise.all(
             data.map((kyc: any) => this.kycDocuments.hydrateDocuments(kyc)),
         );

@@ -96,24 +96,27 @@ function Field({ label, value, onChange, type = 'text', options, mono, span, dis
     span?: boolean
     disabled?: boolean
 }) {
+    const fieldId = React.useId()
     return (
         <div className={span ? "col-span-2 md:col-span-3" : undefined}>
-            <label className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">{label}</label>
+            <label htmlFor={fieldId} className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">{label}</label>
             {type === 'select' ? (
-                <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} className={`${fieldInputClass} disabled:cursor-not-allowed disabled:opacity-60`}>
+                <select id={fieldId} value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} className={`${fieldInputClass} disabled:cursor-not-allowed disabled:opacity-60`}>
                     <option value="">—</option>
-                    {options?.map(v => <option key={v} value={v}>{v}</option>)}
+                    {value && !options?.includes(value) && <option value={value}>{value.replaceAll('_', ' ')} (legacy)</option>}
+                    {options?.map(v => <option key={v} value={v}>{v === 'CLASSIFIED' ? 'Retail' : v.startsWith('CAT_') && label === 'Condition' ? `${v.replace('_', ' ')} (legacy condition — review Write-Off Category)` : v.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</option>)}
                 </select>
             ) : type === 'boolean' ? (
-                <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} className={`${fieldInputClass} disabled:cursor-not-allowed disabled:opacity-60`}>
+                <select id={fieldId} value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} className={`${fieldInputClass} disabled:cursor-not-allowed disabled:opacity-60`}>
                     <option value="">—</option>
                     <option value="true">Yes</option>
                     <option value="false">No</option>
                 </select>
             ) : type === 'textarea' ? (
-                <textarea value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} rows={8} className={`${fieldInputClass} resize-y disabled:cursor-not-allowed disabled:opacity-60`} />
+                <textarea id={fieldId} value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} rows={8} className={`${fieldInputClass} resize-y disabled:cursor-not-allowed disabled:opacity-60`} />
             ) : (
                 <input
+                    id={fieldId}
                     type={type}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}

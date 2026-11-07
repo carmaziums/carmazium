@@ -400,6 +400,7 @@ export default function AdminProviderReviewPage() {
                                             <p className="font-bold text-sm">{a.label || "Verification evidence"}</p>
                                             <p className="text-xs text-[var(--text-muted)] mt-1">{a.evidenceType || "Unclassified"}{a.evidenceIssuer ? " · " + a.evidenceIssuer : ""}{a.evidenceReference ? " · " + a.evidenceReference : ""}</p>
                                             <p className="text-xs text-[var(--text-muted)] mt-1">Uploaded {new Date(a.createdAt).toLocaleString("en-GB")}{a.evidenceExpiresAt ? " · Expires " + new Date(a.evidenceExpiresAt).toLocaleDateString("en-GB") : ""}</p>
+                                            {a.evidenceType?.includes('INSURANCE') && a.evidenceExpiresAt && new Date(a.evidenceExpiresAt).getTime() > Date.now() + 5 * 366 * 86400000 && <p className="mt-2 text-sm text-amber-600">Check the insurance document: this expiry is more than five years away. Correct it to the date on the policy if needed.</p>}
                                             {a.submittedByRole && <p className="text-[11px] text-[var(--text-muted)] mt-1">Uploaded by {a.submittedByRole === "ADMIN" ? "CarMazium admin" : a.submittedByEmail || a.submittedByRole}</p>}
                                             {a.evidenceReviewNote && <p className="text-xs mt-2">Review note: {a.evidenceReviewNote}</p>}
                                         </div>

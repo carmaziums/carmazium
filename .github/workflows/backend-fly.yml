@@ -91,7 +91,7 @@ jobs:
       - name: Prepare disposable PostgreSQL schema only
         run: npx prisma db push --skip-generate
       - name: Test owner, outsider, photo and dealer role with real transactions
-        run: npm test -- --runInBand src/damage/damage.integration.spec.ts src/services/services.audit.integration.spec.ts
+        run: npm test -- --runInBand src/damage/damage.integration.spec.ts src/services/services.audit.integration.spec.ts src/analytics/valuation-reliability.integration.spec.ts
 
   deploy:
     name: Deploy backend to Fly.io

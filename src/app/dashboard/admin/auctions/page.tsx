@@ -306,7 +306,8 @@ export default function AdminAuctionsPage() {
                                                     <span className="w-1.5 h-1.5 rounded-full bg-current" />
                                                     {a.status}
                                                 </span>
-                                                {a.listing?.status && a.listing.status !== 'ACTIVE' && (
+                                                {a.listing?.recoveredSourcePurchases?.map((purchase: any) => <p key={purchase.id} className="mt-2 text-xs text-emerald-600">Owner-confirmed purchase: {purchase.status.toLowerCase()} · Collected {new Date(purchase.collectedAt).toLocaleDateString('en-GB')}<span className="block text-[var(--text-muted)]">Separate reconciliation; original auction and fee history retained.</span></p>)}
+                                                {a.listing?.status && ['PENDING_REVIEW', 'REJECTED'].includes(a.listing.status) && (
                                                     <Link
                                                         href="/dashboard/admin/listings"
                                                         title="This auction's listing hasn't cleared admin review yet — it can't go live until approved"

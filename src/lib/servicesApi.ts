@@ -508,6 +508,8 @@ export async function adminReviewCapability(id: string, input: { status: Capabil
   const r = await apiClient<{ data: ContractorCapability }>(`/admin/services/capabilities/${id}`, { method: 'PATCH', body: JSON.stringify(input) }); return r.data;
 }
 export interface AdminJobFilters {
+  page?: number;
+  limit?: number;
   status?: ServiceJobStatus;
   serviceType?: Extract<ServiceType, 'DELIVERY' | 'INSPECTION'>;
   q?: string;
@@ -517,6 +519,8 @@ export async function adminGetJobs(
 ): Promise<ServiceJob[]> {
   const filters = typeof input === 'string' ? { status: input } : (input ?? {});
   const q = new URLSearchParams();
+  if (filters.page) q.set('page', String(filters.page));
+  if (filters.limit) q.set('limit', String(filters.limit));
   if (filters.status) q.set('status', filters.status);
   if (filters.serviceType) q.set('serviceType', filters.serviceType);
   if (filters.q?.trim()) q.set('q', filters.q.trim());
@@ -528,6 +532,8 @@ export async function adminGetDisputes(
   input?: Omit<AdminJobFilters, 'status'>,
 ): Promise<ServiceJob[]> {
   const q = new URLSearchParams();
+  if (input?.page) q.set('page', String(input.page));
+  if (input?.limit) q.set('limit', String(input.limit));
   if (input?.serviceType) q.set('serviceType', input.serviceType);
   if (input?.q?.trim()) q.set('q', input.q.trim());
   const suffix = q.toString() ? `?${q.toString()}` : '';

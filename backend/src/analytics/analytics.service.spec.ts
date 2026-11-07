@@ -110,6 +110,13 @@ describe('AnalyticsService live valuation analytics', () => {
                         approved_live: true,
                         rejected: false,
                     },
+                ])
+                .mockResolvedValueOnce([])
+                .mockResolvedValueOnce([])
+                .mockResolvedValueOnce([])
+                .mockResolvedValueOnce([
+                    { date: '2026-09-20', attempts: 10, successes: 8, failures: 1, pending: 1, unmatched: 0 },
+                    { date: '2026-09-21', attempts: 20, successes: 17, failures: 2, pending: 1, unmatched: 0 },
                 ]),
         };
 
@@ -130,6 +137,8 @@ describe('AnalyticsService live valuation analytics', () => {
             withoutFigures: 2,
             confirmedNoFigures: 2,
             figureSuccessRate: 85,
+            pendingOutcomes: 1,
+            unmatchedOutcomes: 0,
             valuationJourneys: 13,
             listingStarted: 8,
             listingCreated: 5,
@@ -157,6 +166,8 @@ describe('AnalyticsService live valuation analytics', () => {
             withoutFigures: 2,
             confirmedNoFigures: 2,
             figureSuccessRate: 85,
+            pendingOutcomes: 1,
+            unmatchedOutcomes: 0,
             valuationJourneys: 13,
             listingStarted: 8,
             listingCreated: 5,

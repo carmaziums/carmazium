@@ -228,6 +228,7 @@ export default function AdminUsersPage() {
                                             ) : (
                                                 <select
                                                     className="flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] text-xs px-2 py-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary"
+                                                    aria-label={`Account role for ${u.firstName || u.email}`}
                                                     value={u.role}
                                                     onChange={(e) => handleRoleChange(u.id, e.target.value)}
                                                     disabled={isSelf}
@@ -243,16 +244,16 @@ export default function AdminUsersPage() {
                                             )}
                                             {!isSelf && !isSelfDeleted && (
                                                 <div className="flex gap-1">
-                                                    <button onClick={() => handleMessageUser(u.id)} className="p-2.5 bg-primary/10 rounded-lg text-primary"><MessageCircle size={14} /></button>
+                                                    <button aria-label={`Message ${u.firstName || u.email}`} onClick={() => handleMessageUser(u.id)} className="p-2.5 bg-primary/10 rounded-lg text-primary"><MessageCircle size={14} /></button>
                                                     {isBanned ? (
                                                         <button onClick={() => handleUserAction(u.id, 'unban')} className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400 text-xs font-bold">Unban</button>
                                                     ) : isLocked ? (
                                                         <button onClick={() => handleUserAction(u.id, 'unlock')} className="p-2 bg-blue-500/10 rounded-lg text-blue-400 text-xs font-bold">Unlock</button>
                                                     ) : (
                                                         <>
-                                                            <button onClick={() => handleUserAction(u.id, 'lock')} className="p-2.5 bg-yellow-500/10 rounded-lg text-yellow-400"><LockKeyhole size={14} /></button>
+                                                            <button aria-label={`Lock ${u.firstName || u.email}`} onClick={() => handleUserAction(u.id, 'lock')} className="p-2.5 bg-yellow-500/10 rounded-lg text-yellow-400"><LockKeyhole size={14} /></button>
                                                             {u.role !== 'ADMIN' && (
-                                                                <button onClick={() => { if (window.confirm(`Ban ${u.firstName || u.email}?`)) handleUserAction(u.id, 'ban') }} className="p-2.5 bg-red-500/10 rounded-lg text-red-400"><Ban size={14} /></button>
+                                                                <button aria-label={`Ban ${u.firstName || u.email}`} onClick={() => { if (window.confirm(`Ban ${u.firstName || u.email}?`)) handleUserAction(u.id, 'ban') }} className="p-2.5 bg-red-500/10 rounded-lg text-red-400"><Ban size={14} /></button>
                                                             )}
                                                         </>
                                                     )}
@@ -324,7 +325,8 @@ export default function AdminUsersPage() {
                                                     ) : (
                                                         <select
                                                             className="bg-[var(--bg-input)] border-[var(--border-default)] text-xs px-2 py-1 rounded focus:outline-none focus:ring-1 focus:ring-primary"
-                                                            value={u.role}
+                                                            aria-label={`Account role for ${u.firstName || u.email}`}
+                                                    value={u.role}
                                                             onChange={(e) => handleRoleChange(u.id, e.target.value)}
                                                             disabled={isSelf}
                                                         >
@@ -380,6 +382,7 @@ export default function AdminUsersPage() {
                                                     {!isSelf && !isSelfDeleted && (
                                                         <div className="relative inline-block" ref={openMenu === u.id ? menuRef : undefined}>
                                                             <button
+                                                                aria-label={`Actions for ${u.firstName || u.email}`} aria-expanded={openMenu === u.id}
                                                                 onClick={() => setOpenMenu(openMenu === u.id ? null : u.id)}
                                                                 className="p-2 hover:bg-white/10 rounded-lg transition-colors text-[var(--text-muted)] hover:text-primary dark:hover:"
                                                             >
