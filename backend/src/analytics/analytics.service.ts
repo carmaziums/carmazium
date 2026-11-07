@@ -1,3 +1,4 @@
+import { VALUATION_RELIABILITY_SQL, ValuationReliabilityRow, reliabilityMetrics } from './valuation-reliability';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { fetchApkReleaseDownloads, normaliseProblemReport, ProblemReportInput, summariseAppEvents } from './app-insights';
@@ -257,6 +258,7 @@ export class AnalyticsService {
             serverOnlyRecentRaw,
             serverOnlyDailyRaw,
             serverOnlyHourlyRaw,
+            reliabilityRaw,
         ] = await Promise.all([
             this.prisma.$queryRawUnsafe<Array<{
                 requests: string;
@@ -710,6 +712,7 @@ export class AnalyticsService {
                   AND COALESCE((s.payload#>>'{valuation,retail,suggestedAsking}')::numeric, 0) > 0
                 GROUP BY date_trunc('hour', s."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London')
             `),
+            this.prisma.$queryRawUnsafe<ValuationReliabilityRow[]>(VALUATION_RELIABILITY_SQL),
         ]);
 
         const overview = overviewRaw[0] ?? {
@@ -740,10 +743,8 @@ export class AnalyticsService {
         const todayConvertedJourneys = Number(todayFunnel?.converted_journeys ?? 0);
         const todayReachedReview = Number(todayFunnel?.reached_review ?? 0);
         const todayApprovedLive = Number(todayFunnel?.approved_live ?? 0);
-        const todayValuationAttempts = Number(overview.valuation_attempts ?? 0);
-        const todayFiguresReturned = Number(overview.figures_returned ?? 0);
-        const todayConfirmedNoFigures = Number(overview.confirmed_no_figures ?? 0);
-        const todayWithoutFigures = todayConfirmedNoFigures;
+        const reliability = reliabilityRaw ?? [];
+        const todayReliability = reliabilityMetrics(reliability.find(row => row.date === todayDate));
 
         return {
             timezone: 'Europe/London',
@@ -762,13 +763,7 @@ export class AnalyticsService {
                 anonymousSessions: Number(overview.anonymous_sessions ?? 0),
                 auctionRequests: Number(overview.auction_requests ?? 0),
                 retailRequests: Number(overview.retail_requests ?? 0),
-                valuationAttempts: todayValuationAttempts,
-                figuresReturned: todayFiguresReturned,
-                withoutFigures: todayWithoutFigures,
-                confirmedNoFigures: todayConfirmedNoFigures,
-                figureSuccessRate: todayValuationAttempts > 0
-                    ? Math.round((todayFiguresReturned / todayValuationAttempts) * 1000) / 10
-                    : 0,
+                ...todayReliability,
                 valuationJourneys: todayValuationJourneys,
                 listingStarted: Number(todayFunnel?.started_journeys ?? 0),
                 listingCreated: todayConvertedJourneys,
@@ -807,22 +802,12 @@ export class AnalyticsService {
                 const funnel = funnelDailyRaw.find((item) => item.date === row.date);
                 const journeys = Number(funnel?.valuation_journeys ?? 0) + serverOnlyCount(row.date);
                 const converted = Number(funnel?.converted_journeys ?? 0);
-                const valuationAttempts = Number(row.valuation_attempts ?? 0);
-                const figuresReturned = Number(row.figures_returned ?? 0);
-                const confirmedNoFigures = Number(row.confirmed_no_figures ?? 0);
-                const withoutFigures = confirmedNoFigures;
                 return {
                     date: row.date,
                     requests: Number(row.requests) + serverOnlyCount(row.date),
                     serverOnlyQuotes: serverOnlyCount(row.date),
                     sessions: Number(row.sessions),
-                    valuationAttempts,
-                    figuresReturned,
-                    withoutFigures,
-                    confirmedNoFigures,
-                    figureSuccessRate: valuationAttempts > 0
-                        ? Math.round((figuresReturned / valuationAttempts) * 1000) / 10
-                        : 0,
+                    ...reliabilityMetrics(reliability.find(item => item.date === row.date)),
                     valuationJourneys: journeys,
                     listingStarted: Number(funnel?.started_journeys ?? 0),
                     listingCreated: converted,

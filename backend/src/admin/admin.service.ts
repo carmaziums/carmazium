@@ -1,3 +1,4 @@
+import { LedgerFilters, DealerArchiveFilters, ledgerWhere, dealerArchiveWhere } from './admin-list-filters';
 import { Injectable, Optional, Logger, NotFoundException, BadRequestException, BadGatewayException, ConflictException } from '@nestjs/common';
 import { isSelfDeletedAccount } from '../users/account-deletion';
 import { PrismaService } from '../prisma/prisma.service';
@@ -1642,6 +1643,7 @@ export class AdminService {
                     year: true,
                     vrm: true,
                     status: true,
+                    recoveredSourcePurchases: { select: { id: true, collectedAt: true, status: true, provenance: true } },
                     seller: {
                         select: {
                             id: true, email: true, firstName: true, lastName: true, phone: true,
@@ -2683,13 +2685,15 @@ export class AdminService {
         return this.prisma.auction.findUnique({ where: { id: auctionId } });
     }
 
-    async getAllTransactions(page = 1, limit = 20) {
+    async getAllTransactions(page = 1, limit = 20, filters: LedgerFilters = {}) {
+        const where = ledgerWhere(filters);
         const skip = (page - 1) * limit;
         const [data, total] = await Promise.all([
             this.prisma.transaction.findMany({
+                where,
                 skip,
                 take: limit,
-                orderBy: { createdAt: 'desc' },
+                orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
                 include: {
                     user: {
                         select: {
@@ -2703,13 +2707,13 @@ export class AdminService {
                     // there rather than going looking for the listing.
                     listing: {
                         select: {
-                            id: true, title: true, slug: true, make: true, model: true, year: true,
+                            id: true, title: true, slug: true, make: true, model: true, year: true, vrm: true,
                             hpiReport: { select: { status: true, isClear: true, pdfUploadedAt: true, preparedAt: true } },
                         },
                     },
                 },
             }),
-            this.prisma.transaction.count(),
+            this.prisma.transaction.count({ where }),
         ]);
         return { data, total };
     }
@@ -2843,10 +2847,12 @@ export class AdminService {
      * (including document URLs) becomes permanently unreachable in the admin
      * panel the moment it's approved. This is the archive that fixes that.
      */
-    async getAllDealersKycArchive(page = 1, limit = 20) {
+    async getAllDealersKycArchive(page = 1, limit = 20, filters: DealerArchiveFilters = {}) {
+        const where = dealerArchiveWhere(filters);
         const skip = (page - 1) * limit;
         const [data, total] = await Promise.all([
             this.prisma.dealerKyc.findMany({
+                where,
                 skip,
                 take: limit,
                 include: {
@@ -2858,7 +2864,7 @@ export class AdminService {
                 },
                 orderBy: { submittedAt: 'desc' },
             }),
-            this.prisma.dealerKyc.count(),
+            this.prisma.dealerKyc.count({ where }),
         ]);
         return { data, total };
     }

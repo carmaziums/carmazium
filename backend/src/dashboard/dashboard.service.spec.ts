@@ -59,7 +59,10 @@ describe('DashboardService — period filter', () => {
   });
 
   it('DASH-FILTER-01-default: buyer won/spend metrics default to 30 days', async () => {
-    const before = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000 - 1000);
+    // Dashboard periods use local calendar days, which can cross a DST change.
+    const before = new Date();
+    before.setDate(before.getDate() - 30);
+    before.setTime(before.getTime() - 1000);
     await (service as any).getBuyerDashboard('user-1');
 
     const saleArg = mockPrisma.sale.aggregate.mock.calls[0][0];
@@ -101,7 +104,10 @@ describe('DashboardService — period filter', () => {
   });
 
   it('DASH-FILTER-02: getSellerDashboard with 30d passes createdAt gte ~30 days ago to offer.count', async () => {
-    const before = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000 - 1000);
+    // Dashboard periods use local calendar days, which can cross a DST change.
+    const before = new Date();
+    before.setDate(before.getDate() - 30);
+    before.setTime(before.getTime() - 1000);
     await (service as any).getSellerDashboard('user-1', '30d');
     const callArg = mockPrisma.offer.count.mock.calls[0][0];
     expect(callArg.where.createdAt.gte.getTime()).toBeGreaterThan(before.getTime());

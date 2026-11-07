@@ -51,4 +51,21 @@ describe('Twelve-month quotation archive', () => {
         expect(offset).toBe(9900);
         expect(result.rows).toEqual([]);
     });
+    it('coalesces simultaneous archive requests, expires cached results, and retries failures', async () => {
+        const prisma: any = { $queryRawUnsafe: jest.fn().mockResolvedValue([]) };
+        const service = new ValuationHistoryService(prisma);
+        const clock = jest.spyOn(Date, 'now').mockReturnValue(1000);
+        try {
+            await Promise.all([service.getHistory(' BMW ', 1), service.getHistory('BMW', 1)]);
+            expect(prisma.$queryRawUnsafe).toHaveBeenCalledTimes(2);
+            await service.getHistory('BMW', 1);
+            expect(prisma.$queryRawUnsafe).toHaveBeenCalledTimes(2);
+            clock.mockReturnValue(32000);
+            prisma.$queryRawUnsafe.mockRejectedValueOnce(new Error('temporary database failure'));
+            await expect(service.getHistory('BMW', 1)).rejects.toThrow('temporary database failure');
+            await expect(service.getHistory('BMW', 1)).resolves.toMatchObject({ rows: [] });
+            expect(prisma.$queryRawUnsafe).toHaveBeenCalledTimes(5);
+        } finally { clock.mockRestore(); }
+    });
+
 });

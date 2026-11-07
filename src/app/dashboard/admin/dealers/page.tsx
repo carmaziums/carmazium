@@ -24,6 +24,8 @@ export default function AdminDealersPage() {
     const [page, setPage] = React.useState(1)
     const [total, setTotal] = React.useState(0)
     const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
+    const [search, setSearch] = React.useState("")
+    const [filters, setFilters] = React.useState({ q: "", status: "" })
     const limit = 20
 
     React.useEffect(() => {
@@ -35,15 +37,17 @@ export default function AdminDealersPage() {
 
     React.useEffect(() => {
         if (profile?.role !== 'ADMIN') return
+        let active = true
         setLoading(true)
         setError(null)
-        getAdminDealersKycArchive(page, limit)
-            .then(r => { setRecords(r.data || []); setTotal(r.pagination?.total || 0) })
-            .catch(err => setError(err.message || 'Failed to load dealers'))
-            .finally(() => setLoading(false))
-    }, [profile, page])
+        getAdminDealersKycArchive(page, limit, filters)
+            .then(r => { if (active) { setRecords(r.data || []); setTotal(r.pagination?.total || 0) } })
+            .catch(err => { if (active) setError(err.message || 'Failed to load dealers') })
+            .finally(() => { if (active) setLoading(false) })
+        return () => { active = false }
+    }, [profile, page, filters])
 
-    if (authLoading || (user && !profile) || (loading && records.length === 0)) {
+    if (authLoading || (user && !profile) || (loading && records.length === 0 && !filters.q && !filters.status)) {
         return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
     }
     if (!user || profile?.role !== 'ADMIN') return null
@@ -67,6 +71,15 @@ export default function AdminDealersPage() {
                         <p className="text-[var(--text-muted)] mt-1 text-sm">{total} dealer KYC records — every status, nothing drops off once approved</p>
                     </div>
 
+                    <form onSubmit={e => { e.preventDefault(); setPage(1); setFilters(v => ({ ...v, q: search.trim() })) }} className="flex flex-wrap gap-3">
+                        <input aria-label="Search dealers" placeholder="Company, contact name or email" value={search} onChange={e => setSearch(e.target.value)} className="rounded-lg border p-3 bg-[var(--bg-input)] flex-1" />
+                        <select aria-label="KYC status" value={filters.status} onChange={e => { setPage(1); setFilters(v => ({ ...v, status: e.target.value })) }} className="rounded-lg border p-3 bg-[var(--bg-input)]">
+                            <option value="">All statuses</option><option value="DRAFT">Draft / awaiting payment</option><option value="READY">Ready for review</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option>
+                        </select>
+                        <button type="submit" className="rounded-lg bg-primary text-white px-4">Search</button>
+                    </form>
+                    <p className="text-sm text-[var(--text-muted)]">Pending applications enter the Dealer KYC review queue after payment or payment evidence is recorded. Open a dealer's details to inspect their account and documents.</p>
+                    {!loading && records.length === 0 && <p>No dealers match these filters.</p>}
                     {error && <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200"><strong>Error:</strong> {error}</div>}
 
                     <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
@@ -87,10 +100,11 @@ export default function AdminDealersPage() {
                                                 <p className="text-xs text-[var(--text-muted)] truncate">{u?.email}</p>
                                             </div>
                                             <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold border shrink-0 ${STATUS_STYLES[r.status] || STATUS_STYLES.PENDING}`}>
-                                                {r.status}
+                                                {r.status === 'PENDING' ? (r.stripeChargedAt || r.paymentReference || r.paymentScreenshot || r.paymentScreenshotPath ? 'Ready for review' : 'Draft / awaiting payment') : r.status}
                                             </span>
                                         </div>
                                         <p className="text-xs text-[var(--text-muted)] mt-1">{u?.phone || 'No phone on file'} · Submitted {new Date(r.submittedAt).toLocaleDateString()}</p>
+                                        {u?.id && <button type="button" onClick={e => { e.stopPropagation(); setSelectedUserId(u.id) }} className="text-primary mt-2 underline">Open dealer details</button>}
                                     </div>
                                 )
                             })}
@@ -116,7 +130,7 @@ export default function AdminDealersPage() {
                                             <tr key={r.id} className="hover:bg-[var(--bg-card)] transition-colors cursor-pointer group" onClick={() => u?.id && setSelectedUserId(u.id)}>
                                                 <td className="px-6 py-4">
                                                     <p className="font-bold text-sm flex items-center gap-1.5 group-hover:text-primary transition-colors">
-                                                        {dp?.companyName || r.companyHouseName}
+                                                        <button type="button" onClick={e => { e.stopPropagation(); if (u?.id) setSelectedUserId(u.id) }} className="text-primary underline" aria-label={`Open dealer details for ${dp?.companyName || r.companyHouseName}`}>{dp?.companyName || r.companyHouseName}</button>
                                                         {dp?.isVerified && <BadgeCheck size={14} className="text-blue-400" />}
                                                     </p>
                                                     <p className="text-xs text-[var(--text-muted)]">VAT {r.vatNumber}</p>
@@ -128,7 +142,7 @@ export default function AdminDealersPage() {
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
                                                     <span className={`inline-flex px-2 py-1 rounded border text-xs font-bold ${STATUS_STYLES[r.status] || STATUS_STYLES.PENDING}`}>
-                                                        {r.status}
+                                                        {r.status === 'PENDING' ? (r.stripeChargedAt || r.paymentReference || r.paymentScreenshot || r.paymentScreenshotPath ? 'Ready for review' : 'Draft / awaiting payment') : r.status}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-right text-xs text-[var(--text-muted)]">

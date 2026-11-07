@@ -48,6 +48,16 @@ integration('TradeXchange: real PostgreSQL transactions, synthetic Stripe only',
   const current = (id: string) => db.serviceJob.findUniqueOrThrow({ where: { id }, include: { payment: true } });
   function gate() { let resolve!: () => void; const promise = new Promise<void>(r => { resolve = r; }); return { promise, resolve }; }
 
+  it('admin list returns vehicles, searches registrations and paginates matching jobs', async () => {
+    const { j } = await job('OPEN');
+    const registration = `QA${randomUUID().slice(0,8)}`;
+    await db.serviceJobVehicle.create({ data: { jobId: j.id, registration, make: 'Test', model: 'Admin' } });
+    const rows = await service.adminListJobs({ q: registration, page: 1, limit: 1 });
+    expect(rows).toHaveLength(1); expect(rows[0].id).toBe(j.id);
+    expect(rows[0].vehicles).toEqual(expect.arrayContaining([expect.objectContaining({ registration })]));
+    expect(await service.adminListJobs({ q: registration, page: 2, limit: 1 })).toHaveLength(0);
+    await expect(service.adminListJobs({ page: 0 })).rejects.toThrow('positive page');
+  });
   it('a dispute blocks customer and automatic payout', async () => {
     const { j } = await job(); await service.openDispute(customer.id, j.id, 'Work incomplete');
     await expect(service.confirmCompletion(customer.id, j.id)).rejects.toThrow();

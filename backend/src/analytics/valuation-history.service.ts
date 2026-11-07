@@ -13,7 +13,28 @@ import { QUOTE_HISTORY_MONTHS } from '../listings/valuation-quote-history';
 export class ValuationHistoryService {
     constructor(private readonly prisma: PrismaService) {}
 
+    private readonly cache = new Map<string, { until: number; value: Awaited<ReturnType<ValuationHistoryService['queryHistory']>> }>();
+    private readonly inFlight = new Map<string, ReturnType<ValuationHistoryService['queryHistory']>>();
+
     async getHistory(search = '', page = 1) {
+        const term = search.trim().slice(0, 60);
+        const safePage = Number.isFinite(page) ? Math.max(1, Math.min(100, Math.floor(page))) : 1;
+        const key = JSON.stringify([term, safePage]);
+        const cached = this.cache.get(key);
+        if (cached && cached.until > Date.now()) return cached.value;
+        const running = this.inFlight.get(key);
+        if (running) return running;
+        const pending = this.queryHistory(term, safePage);
+        this.inFlight.set(key, pending);
+        try {
+            const value = await pending;
+            if (this.cache.size >= 20) this.cache.delete(this.cache.keys().next().value!);
+            this.cache.set(key, { until: Date.now() + 30000, value });
+            return value;
+        } finally { this.inFlight.delete(key); }
+    }
+
+    private async queryHistory(search = '', page = 1) {
         const safePage = Number.isFinite(page) ? Math.max(1, Math.min(100, Math.floor(page))) : 1;
         const term = search.trim().slice(0, 60);
         const cutoff = new Date();

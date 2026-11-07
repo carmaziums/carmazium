@@ -116,10 +116,11 @@ export async function apiClient<T>(
         // HTTP 503 without retrying *any* listing/payment mutation or optional
         // paid live-web specification research.
         const isReadOnlyDvlaLookup = method === 'POST' && endpoint === '/dvla/lookup';
+        const isQuoteHistory = method === 'GET' && endpoint.startsWith('/analytics/valuations/history?');
         if (method === 'GET' || method === 'HEAD' || isReadOnlyDvlaLookup) {
             response = await fetchWithRetry(requestUrl, config, {
-                timeoutMs: isReadOnlyDvlaLookup ? 18000 : 10000,
-                retries: isReadOnlyDvlaLookup ? 1 : 2,
+                timeoutMs: isReadOnlyDvlaLookup ? 18000 : isQuoteHistory ? 30000 : 10000,
+                retries: isReadOnlyDvlaLookup || isQuoteHistory ? 1 : 2,
                 retryDelayMs: 400,
                 retryReadOnlyPost: isReadOnlyDvlaLookup,
             });

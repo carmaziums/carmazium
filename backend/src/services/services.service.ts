@@ -2036,12 +2036,17 @@ export class ServicesService {
     }
 
     async adminListJobs(
-        input?: ServiceJobStatus | { status?: ServiceJobStatus; serviceType?: ServiceType; q?: string },
+        input?: ServiceJobStatus | { status?: ServiceJobStatus; serviceType?: ServiceType; q?: string; page?: number; limit?: number },
     ) {
-        const filters: { status?: ServiceJobStatus; serviceType?: ServiceType; q?: string } =
+        const filters: { status?: ServiceJobStatus; serviceType?: ServiceType; q?: string; page?: number; limit?: number } =
             typeof input === 'string' ? { status: input as ServiceJobStatus } : (input ?? {});
         const { status, serviceType } = filters;
         const q = filters.q?.trim().slice(0, 100) || undefined;
+        const page = filters.page ?? 1;
+        const limit = filters.limit ?? 200;
+        if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(limit) || limit < 1 || limit > 200) {
+            throw new BadRequestException('Use a positive page and a limit between 1 and 200.');
+        }
 
         if (status && !Object.values(ServiceJobStatus).includes(status)) {
             throw new BadRequestException(`Unknown status "${status}"`);
@@ -2058,6 +2063,11 @@ export class ServicesService {
                     OR: [
                         { title: { contains: q, mode: 'insensitive' } },
                         { description: { contains: q, mode: 'insensitive' } },
+                        { vehicles: { some: { OR: [
+                            { registration: { contains: q.replace(/\s/g, ''), mode: 'insensitive' } },
+                            { make: { contains: q, mode: 'insensitive' } },
+                            { model: { contains: q, mode: 'insensitive' } },
+                        ] } } },
                         {
                             customer: {
                                 is: {
@@ -2092,11 +2102,13 @@ export class ServicesService {
                     ],
                 } : {}),
             },
-            orderBy: { updatedAt: 'desc' },
-            take: 200,
+            orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+            skip: (page - 1) * limit,
+            take: limit,
             include: {
                 customer: { select: CUSTOMER_PRIVATE },
                 contractor: { select: CONTRACTOR_PRIVATE },
+                vehicles: { orderBy: { id: 'asc' } },
                 payment: true,
                 _count: { select: { quotes: true, vehicles: true } },
             },

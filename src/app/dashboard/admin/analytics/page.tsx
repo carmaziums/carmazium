@@ -522,9 +522,11 @@ export default function AdminAnalyticsPage() {
                                     </div>
                                     <div className="p-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
                                         <StatCard label="Applied for Valuation" value={valuationLive.today.valuationAttempts} icon={Car} color="bg-blue-500/20" />
-                                        <StatCard label="Got Figures (Browser)" value={valuationLive.today.figuresReturned} icon={CheckCircle2} color="bg-emerald-500/20" />
-                                        <StatCard label="No Figures Returned (Browser)" value={valuationLive.today.withoutFigures} icon={AlertTriangle} color="bg-rose-500/20" />
+                                        <StatCard label="Matched Successful Attempts" value={valuationLive.today.figuresReturned} icon={CheckCircle2} color="bg-emerald-500/20" />
+                                        <StatCard label="Matched Failed Attempts" value={valuationLive.today.withoutFigures} icon={AlertTriangle} color="bg-rose-500/20" />
                                         <StatCard label="Recovered Backend Quotes" value={valuationLive.today.serverOnlyQuotes ?? 0} icon={ShieldCheck} color="bg-amber-500/20" />
+                                        <StatCard label="Outcome Not Yet Recorded" value={valuationLive.today.pendingOutcomes ?? 0} icon={AlertTriangle} color="bg-slate-500/20" />
+                                        <StatCard label="Unmatched Browser Outcomes" value={valuationLive.today.unmatchedOutcomes ?? 0} icon={AlertTriangle} color="bg-amber-500/20" />
                                         <StatCard label="Browser Tracking Success Rate" value={`${valuationLive.today.figureSuccessRate.toFixed(1)}%`} icon={TrendingUp} color="bg-yellow-500/20" />
                                     </div>
                                     <div className="overflow-x-auto border-t border-[var(--border-default)]">
@@ -552,7 +554,7 @@ export default function AdminAnalyticsPage() {
                                         </table>
                                     </div>
                                     <div className="px-5 py-3 border-t border-[var(--border-default)] text-[11px] leading-5 text-[var(--text-muted)]">
-                                        Reliability tracking starts with this release. “No Figures Returned” counts confirmed customer-visible no-figure results. Very recent attempts can temporarily appear in Applied before their result event arrives.
+                                        Success rate measures successful outcomes from the same attempted journeys, attributed to the attempt date. The latest outcome within 24 hours is used. Unmatched outcomes are shown separately and excluded from the rate. Failed attempts have a recorded no-figure outcome. Attempts without an outcome remain pending; recovered backend quotes are separate.
                                     </div>
                                 </div>
 

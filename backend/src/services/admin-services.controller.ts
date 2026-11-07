@@ -58,11 +58,15 @@ export class AdminServicesController {
         @Query('status') status?: string,
         @Query('serviceType') serviceType?: string,
         @Query('q') q?: string,
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
     ) {
         return new StandardResponse(await this.services.adminListJobs({
             status: status as ServiceJobStatus | undefined,
             serviceType: serviceType as ServiceType | undefined,
             q,
+            page: page === undefined ? undefined : Number(page),
+            limit: limit === undefined ? undefined : Number(limit),
         }));
     }
 
@@ -70,11 +74,13 @@ export class AdminServicesController {
     @ApiQuery({ name: 'serviceType', enum: [ServiceType.DELIVERY, ServiceType.INSPECTION], required: false })
     @ApiQuery({ name: 'q', required: false, description: 'Disputed job, customer, provider or email search' })
     @ApiOperation({ summary: 'Disputed jobs for the authoritative operations settlement workflow' })
-    async disputes(@Query('serviceType') serviceType?: string, @Query('q') q?: string) {
+    async disputes(@Query('serviceType') serviceType?: string, @Query('q') q?: string, @Query('page') page?: string, @Query('limit') limit?: string) {
         return new StandardResponse(await this.services.adminListJobs({
             status: ServiceJobStatus.DISPUTED,
             serviceType: serviceType as ServiceType | undefined,
             q,
+            page: page === undefined ? undefined : Number(page),
+            limit: limit === undefined ? undefined : Number(limit),
         }));
     }
 

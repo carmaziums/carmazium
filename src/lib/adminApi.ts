@@ -770,8 +770,8 @@ export async function getAdminUserDetail(id: string) {
   return result.data;
 }
 
-export async function getAdminDealersKycArchive(page = 1, limit = 20) {
-  const result = await apiClient<any>(`/admin/dealers/kyc-archive?page=${page}&limit=${limit}`);
+export async function getAdminDealersKycArchive(page = 1, limit = 20, filters: { q?: string; status?: string } = {}) {
+  const result = await apiClient<any>(`/admin/dealers/kyc-archive?${new URLSearchParams({ page: String(page), limit: String(limit), ...filters })}`);
   return result;
 }
 
@@ -925,8 +925,8 @@ export async function assignAuctionWinner(auctionId: string, dealerId: string) {
   return result;
 }
 
-export async function getAdminTransactions(page = 1, limit = 20) {
-  const result = await apiClient<any>(`/admin/transactions?page=${page}&limit=${limit}`);
+export async function getAdminTransactions(page = 1, limit = 20, filters: { q?: string; status?: string; type?: string; from?: string; to?: string } = {}) {
+  const result = await apiClient<any>(`/admin/transactions?${new URLSearchParams({ page: String(page), limit: String(limit), ...filters })}`);
   return result;
 }
 
@@ -1127,6 +1127,8 @@ export interface ValuationLiveAnalytics {
     withoutFigures: number;
     confirmedNoFigures: number;
     figureSuccessRate: number;
+    pendingOutcomes?: number;
+    unmatchedOutcomes?: number;
     valuationJourneys: number;
     listingStarted: number;
     listingCreated: number;
@@ -1158,6 +1160,8 @@ export interface ValuationLiveAnalytics {
     withoutFigures: number;
     confirmedNoFigures: number;
     figureSuccessRate: number;
+    pendingOutcomes?: number;
+    unmatchedOutcomes?: number;
     valuationJourneys: number;
     listingStarted: number;
     listingCreated: number;

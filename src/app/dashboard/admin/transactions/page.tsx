@@ -127,10 +127,12 @@ export default function AdminTransactionsPage() {
     const [hpiUploadTarget, setHpiUploadTarget] = React.useState<{ id: string; title: string; hasPdf: boolean } | null>(null)
     const [hpiFormTarget, setHpiFormTarget] = React.useState<{ id: string; title: string; hasPdf: boolean } | null>(null)
     const [hpiSuccess, setHpiSuccess] = React.useState<string | null>(null)
+    const [filterDraft, setFilterDraft] = React.useState({ q: "", status: "", type: "", from: "", to: "" })
+    const [filters, setFilters] = React.useState(filterDraft)
     const limit = 20
 
     function reloadTransactions() {
-        getAdminTransactions(page, limit)
+        getAdminTransactions(page, limit, filters)
             .then(result => {
                 setTransactions(result.data || [])
                 setTotal(result.pagination?.total || 0)
@@ -153,18 +155,21 @@ export default function AdminTransactionsPage() {
 
     React.useEffect(() => {
         if (profile?.role !== "ADMIN") return
+        let active = true
         setLoading(true)
         setError(null)
-        getAdminTransactions(page, limit)
+        getAdminTransactions(page, limit, filters)
             .then(result => {
+                if (!active) return
                 setTransactions(result.data || [])
                 setTotal(result.pagination?.total || 0)
             })
-            .catch(fetchError => setError(fetchError.message || "Failed to load transactions"))
-            .finally(() => setLoading(false))
-    }, [profile, page])
+            .catch(fetchError => { if (active) setError(fetchError.message || "Failed to load transactions") })
+            .finally(() => { if (active) setLoading(false) })
+        return () => { active = false }
+    }, [profile, page, filters])
 
-    if (authLoading || (user && !profile) || (loading && transactions.length === 0)) {
+    if (authLoading || (user && !profile) || (loading && transactions.length === 0 && !Object.values(filters).some(Boolean))) {
         return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
     }
     if (!user || profile?.role !== "ADMIN") return null
@@ -185,6 +190,23 @@ export default function AdminTransactionsPage() {
                     </Link>
 
                     <PageHeader title="Transaction Ledger" subHeader={`${total} transaction records, including unpaid checkout attempts · only Completed payments are received`} />
+
+                    <form className="mb-5 flex flex-wrap gap-3" onSubmit={e => { e.preventDefault(); setPage(1); setFilters({ ...filterDraft, q: filterDraft.q.trim() }) }}>
+                        <input aria-label="Search transactions" placeholder="Registration, customer, payment reference" value={filterDraft.q} onChange={e => setFilterDraft(v => ({ ...v, q: e.target.value }))} className="rounded-lg border p-2 bg-[var(--bg-input)] flex-1 min-w-48" />
+                        <select aria-label="Payment status" value={filterDraft.status} onChange={e => setFilterDraft(v => ({ ...v, status: e.target.value }))} className="rounded-lg border p-2 bg-[var(--bg-input)]"><option value="">All statuses</option>{Object.keys(STATUS_STYLES).map(k => <option key={k}>{k}</option>)}</select>
+                        <select aria-label="Payment type" value={filterDraft.type} onChange={e => setFilterDraft(v => ({ ...v, type: e.target.value }))} className="rounded-lg border p-2 bg-[var(--bg-input)]"><option value="">All types</option>{Object.entries(TYPE_LABELS).map(([k,v]) => <option value={k} key={k}>{v}</option>)}</select>
+                        <label className="text-xs">From (UTC)<input type="date" aria-label="From date UTC" value={filterDraft.from} onChange={e => setFilterDraft(v => ({ ...v, from: e.target.value }))} className="block rounded-lg border p-2 bg-[var(--bg-input)]" /></label>
+                        <label className="text-xs">To (UTC)<input type="date" aria-label="To date UTC" value={filterDraft.to} onChange={e => setFilterDraft(v => ({ ...v, to: e.target.value }))} className="block rounded-lg border p-2 bg-[var(--bg-input)]" /></label>
+                        <Button type="submit" disabled={loading}>Apply filters</Button>
+                        <Button type="button" variant="outline" onClick={() => { const empty = { q: "", status: "", type: "", from: "", to: "" }; setFilterDraft(empty); setFilters(empty); setPage(1) }}>Clear</Button>
+                        <Button type="button" variant="outline" disabled={loading || !transactions.length} onClick={() => {
+                            const cell = (v: unknown) => '"' + String(v ?? '').replace(/^(?:[\t\r\n]|\s*[=+@-])/, "'$&").replace(/"/g, '""') + '"';
+                            const rows = [['Transaction ID','Date UTC','Registration','Type','Status','Amount GBP','Stripe reference'], ...transactions.map(t => [t.id,t.createdAt,t.listing?.vrm,t.type,t.status,t.amount,t.stripePaymentId])];
+                            const url = URL.createObjectURL(new Blob(['\ufeff' + rows.map(r => r.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+                            const link = document.createElement('a'); link.href=url; link.download=`carmazium-transactions-page-${page}.csv`; link.click(); URL.revokeObjectURL(url);
+                        }}>Export this page</Button>
+                    </form>
+                    {!loading && transactions.length === 0 && <p className="mb-4">No transactions match these filters.</p>}
 
                     {hpiSuccess && (
                         <div className="mb-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300">{hpiSuccess}</div>

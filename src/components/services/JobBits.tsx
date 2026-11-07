@@ -77,7 +77,9 @@ export function JobTiming({ job }: { job: ServiceJob }) {
     )
 }
 
-export function JobVehicles({ vehicles, compact = false }: { vehicles: JobVehicle[]; compact?: boolean }) {
+export function JobVehicles({ vehicles: input, compact = false }: { vehicles?: JobVehicle[] | null; compact?: boolean }) {
+    const vehicles = Array.isArray(input) ? input : [];
+    if (!vehicles.length) return <p className="text-sm text-[var(--text-muted)]">Vehicle details not recorded</p>;
     if (compact) {
         return (
             <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">

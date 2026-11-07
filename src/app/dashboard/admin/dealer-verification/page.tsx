@@ -409,7 +409,7 @@ export default function AdminDealerVerificationPage() {
                 </div>
                 <h3 className="text-lg font-extrabold uppercase font-heading">All Caught Up!</h3>
                 <p className="text-[var(--text-muted)] text-xs mt-2 max-w-sm">
-                  No dealer registrations require document verification at this moment.
+                  No paid or payment-evidenced dealer applications are waiting in this review queue. Unpaid drafts remain visible in All Dealers.
                 </p>
               </div>
             ) : (

@@ -300,6 +300,7 @@ const toolGroups: ToolGroup[] = [
             { href: "/sell", title: "Create Listing", description: "Add a CarMazium vehicle listing.", icon: Plus },
             { href: "/dashboard/admin/listings", title: "Listings", description: "Review and manage every listing.", icon: Car },
             { href: "/dashboard/admin/auctions", title: "Auctions", description: "Monitor scheduled, live and ended auctions.", icon: Gavel },
+            { href: "/dashboard/admin/cancellations", title: "Sale Cancellations", description: "Review requests to cancel completed sales.", icon: Shield },
             { href: "/dashboard/admin/handovers", title: "Handovers", description: "Review seller handover proof and payouts.", icon: Handshake },
         ],
     },
@@ -342,6 +343,7 @@ const toolGroups: ToolGroup[] = [
         tileClass: "hover:border-amber-400/40 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)]",
         accentClass: "bg-amber-400",
         tools: [
+            { href: "/dashboard/admin/app", title: "Online, App & Reports", description: "View app usage and reported problems.", icon: Users },
             { href: "/dashboard/admin/analytics", title: "Analytics", description: "Review platform and traffic performance.", icon: TrendingUp },
             { href: "/dashboard/admin/ai-reports", title: "AI Reports", description: "Review user-flagged MaziuM AI responses.", icon: Sparkles },
             { href: "/dashboard/admin/marketing-popup", title: "Marketing Popup", description: "Control the website marketing popup.", icon: Megaphone },
