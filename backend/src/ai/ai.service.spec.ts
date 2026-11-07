@@ -53,6 +53,18 @@ describe('AiService safety and reporting', () => {
         return { service, prisma, moderationCreate, completionCreate };
     }
 
+    it('normalizes AI search filters before caching or returning the card', async () => {
+        const { service, completionCreate } = build();
+        completionCreate.mockResolvedValue({ choices: [{ message: { content: JSON.stringify({ text: 'Use these filters.', filterCard: {
+            label: 'Pickup under £20k', params: { bodyType: 'PICKUP', maxPrice: 20000, maxEngineSize: '1600', isImported: false, fakeField: 'ignored' },
+        } }) } }] });
+        const result = await service.searchRecommendation('pickup under £20k');
+        expect(result.filterCard?.params).toEqual({ bodyType: 'PICKUP_TRUCK', maxPrice: '20000', maxEngine: '1600', isImported: 'false' });
+        expect(completionCreate.mock.calls[0][0].messages[0].content).toContain('maxEngine');
+        expect(await service.searchRecommendation('pickup under £20k')).toEqual(result);
+        expect(completionCreate).toHaveBeenCalledTimes(1);
+    });
+
     it('blocks a local high-confidence credential theft request before generation', async () => {
         const { service, completionCreate } = build();
 

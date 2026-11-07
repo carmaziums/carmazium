@@ -33,6 +33,11 @@ on:
       - "src/lib/listingApi.ts"
       - "scripts/test-listing-filter-serialization.test.mjs"
       - "scripts/test-search-postcode.test.mjs"
+      - "scripts/test-search-app-parity.test.mjs"
+      - "scripts/test-native-search-postcode.test.mjs"
+      - "carmazium app/carmazium app/src/screens/main/SearchScreen.tsx"
+      - "carmazium app/carmazium app/src/context/LocationContext.tsx"
+      - "src/lib/vehicleSearchOptions.ts"
       - "src/context/LocationContext.tsx"
       - "src/app/HomeClient.tsx"
       - "src/app/dashboard/dealer/purchases/**"
@@ -148,7 +153,7 @@ jobs:
         run: npm run test:seller-specs
 
       - name: Buyer filter request serialization
-        run: node --test scripts/test-listing-filter-serialization.test.mjs scripts/test-search-postcode.test.mjs
+        run: node --test scripts/test-listing-filter-serialization.test.mjs scripts/test-search-postcode.test.mjs scripts/test-search-app-parity.test.mjs scripts/test-native-search-postcode.test.mjs
 
       - name: Retail and auction DVLA timeout regression tests
         run: node --test scripts/test-dvla-retail-lookup.test.mjs

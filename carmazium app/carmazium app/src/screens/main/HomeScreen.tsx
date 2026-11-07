@@ -466,6 +466,7 @@ export const HomeScreen: React.FC = () => {
     if (!(await ensureHomeAiSearchConsent())) return;
     setAiLoading(true);
     setAiError(null);
+    setAiResult(null);
     try {
       const result = await naturalLanguageSearch(query);
       setAiResult(result);

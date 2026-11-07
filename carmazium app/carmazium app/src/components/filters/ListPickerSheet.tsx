@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
   SectionList,
@@ -26,6 +26,7 @@ export interface ListPickerSheetProps {
   /** Selected values (multi) or a single selected value. */
   selected: string[];
   multi?: boolean;
+  allowCustom?: boolean;
   /** Optional counts keyed by lower-case option label. */
   counts?: Record<string, number>;
   allLabel?: string;
@@ -47,6 +48,7 @@ export const ListPickerSheet: React.FC<ListPickerSheetProps> = ({
   options,
   selected,
   multi = false,
+  allowCustom = false,
   counts,
   allLabel = 'All',
   searchPlaceholder = 'Search',
@@ -55,6 +57,7 @@ export const ListPickerSheet: React.FC<ListPickerSheetProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
+  useEffect(() => { if (visible) setQuery(''); }, [visible, title]);
   const listRef = useRef<SectionList<string, Section>>(null);
 
   const sections = useMemo<Section[]>(() => {
@@ -128,6 +131,12 @@ export const ListPickerSheet: React.FC<ListPickerSheetProps> = ({
           )}
         </View>
 
+        {allowCustom && query.trim() && !options.some(o => o.toLowerCase() === query.trim().toLowerCase()) && (
+          <TouchableOpacity style={styles.row} accessibilityRole="button"
+            onPress={() => { onChange(multi ? [...new Set([...selected, query.trim()])] : [query.trim()]); onClose(); }}>
+            <Text style={styles.title}>Use “{query.trim()}”</Text>
+          </TouchableOpacity>
+        )}
         <View style={styles.body}>
           <SectionList
             ref={listRef}

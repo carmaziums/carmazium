@@ -1,3 +1,4 @@
+import type { VehicleSearchOption } from '../data/vehicleSearchOptions';
 import type { OfficialVehicleData } from '../data/listings';
 import { apiClient } from './apiClient';
 import { CarListing, type NativeMotTest } from '../data/listings';
@@ -762,4 +763,12 @@ export async function getMakeCounts(): Promise<Record<string, number>> {
   } catch {
     return {};
   }
+}
+
+/** Add live inventory options without losing the offline manufacturer catalogue. */
+export async function getVehicleSearchOptions(): Promise<VehicleSearchOption[]> {
+    try {
+        const res = await apiClient<{ data?: VehicleSearchOption[] }>('/listings/facets/search-options');
+        return Array.isArray(res?.data) ? res.data.filter(row => typeof row.make === 'string') : [];
+    } catch { return []; }
 }

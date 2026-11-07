@@ -1,6 +1,6 @@
 import { capturePurchaseSnapshot } from '../dealers/purchase-listing-record';
 import { applyHistoryFilters } from './history-search';
-import { modelSearchWhere } from './model-search';
+import { modelSearchWhere, makeSearchWhere } from './model-search';
 import { buildFeatureConditions } from './feature-search';
 import { buildGradeSearchWhere } from './grade-search';
 import { summariseHistoricalQuotes, ArchivedValuationObservation, QUOTE_HISTORY_MONTHS } from './valuation-quote-history';
@@ -2056,6 +2056,15 @@ export class ListingsService {
      * Same base visibility as the public catalogue (ACTIVE, not deleted,
      * CLASSIFIED only). Aggregate counts only — no listing data is exposed.
      */
+    async getSearchOptions(vehicleType?: string) {
+        return this.prisma.listing.findMany({
+            where: { deletedAt: null, status: 'ACTIVE', type: 'CLASSIFIED', ...(vehicleType ? { vehicleType: vehicleType as any } : {}) },
+            distinct: ['make', 'model', 'variant', 'vehicleType'],
+            select: { make: true, model: true, variant: true, vehicleType: true },
+            orderBy: [{ make: 'asc' }, { model: 'asc' }],
+        });
+    }
+
     async getMakeCounts(): Promise<{ make: string; count: number }[]> {
         const rows = await this.prisma.listing.groupBy({
             by: ['make'],
@@ -2103,9 +2112,9 @@ export class ListingsService {
         // ─── Make / Model ───────────────────────────────────────────────────
         if (makes?.length) {
             // An AND-nested OR means text searching cannot overwrite the selected makes.
-            where.AND = [...(where.AND || []), { OR: makes.map(m => ({ make: { equals: m, mode: 'insensitive' } })) }];
-        } else if (make) where.make = { contains: make, mode: 'insensitive' };
-        if (model?.trim()) where.AND = [...(where.AND || []), modelSearchWhere(model)];
+            where.AND = [...(where.AND || []), { OR: makes.map(m => makeSearchWhere(m)) }];
+        } else if (make) where.AND = [...(where.AND || []), makeSearchWhere(make)];
+        if (model?.trim()) where.AND = [...(where.AND || []), modelSearchWhere(model, make || (makes?.length === 1 ? makes[0] : undefined))];
         if (variant) where.variant = { contains: variant, mode: 'insensitive' };
 
         // ─── Year range ─────────────────────────────────────────────────────

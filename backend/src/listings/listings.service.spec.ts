@@ -2498,8 +2498,8 @@ describe('ListingsService', () => {
             expect(candidateQuery.where.latitude).toEqual(expect.objectContaining({ gte: expect.any(Number), lte: expect.any(Number) }));
             expect(candidateQuery.where.AND).toEqual(expect.arrayContaining([
                 expect.objectContaining({ OR: expect.arrayContaining([
-                    { make: { equals: 'Toyota', mode: 'insensitive' } },
-                    { make: { equals: 'Honda', mode: 'insensitive' } },
+                    { OR: [{ make: { equals: 'Toyota', mode: 'insensitive' } }] },
+                    { OR: [{ make: { equals: 'Honda', mode: 'insensitive' } }] },
                 ]) }),
             ]));
             expect(candidateQuery.where.OR).toEqual(expect.arrayContaining([
@@ -2545,6 +2545,17 @@ describe('ListingsService', () => {
             const defaultOrder = prisma.listing.findMany.mock.calls[0][0].orderBy;
             expect(defaultOrder[0]).toEqual({ isFeatured: 'desc' });
         });
+        it('exposes only distinct public active retail make/model/trim options', async () => {
+            prisma.listing.findMany.mockResolvedValue([{ make: 'Kia', model: 'Ceed', variant: 'GT', vehicleType: 'CAR' }]);
+            await service.getSearchOptions('CAR');
+            expect(prisma.listing.findMany).toHaveBeenCalledWith({
+                where: { deletedAt: null, status: 'ACTIVE', type: 'CLASSIFIED', vehicleType: 'CAR' },
+                distinct: ['make', 'model', 'variant', 'vehicleType'],
+                select: { make: true, model: true, variant: true, vehicleType: true },
+                orderBy: [{ make: 'asc' }, { model: 'asc' }],
+            });
+        });
+
         it('intersects model families with keyword search, makes, false filters and pagination', async () => {
             prisma.listing.findMany.mockResolvedValue([]);
             prisma.listing.count.mockResolvedValue(0);
@@ -2552,7 +2563,7 @@ describe('ListingsService', () => {
                 isImported: false, ulezCompliant: false, maxEngine: 1600, maxCo2: 120,
                 page: 2, limit: 10 } as any);
             const query = prisma.listing.findMany.mock.calls[0][0];
-            expect(query.where.make).toEqual({ contains: 'Kia', mode: 'insensitive' });
+            expect(query.where.AND).toContainEqual({ OR: [{ make: { equals: 'Kia', mode: 'insensitive' } }] });
             expect(query.where.AND).toEqual(expect.arrayContaining([expect.objectContaining({
                 OR: expect.arrayContaining([{ model: { equals: 'Ceed', mode: 'insensitive' } }]),
             })]));

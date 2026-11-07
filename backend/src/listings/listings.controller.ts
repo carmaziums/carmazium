@@ -208,6 +208,12 @@ export class ListingsController {
      * Live retail listing counts per make (public, aggregate only).
      * Declared before ':slug' so the static path is not treated as a slug.
      */
+    @Get('facets/search-options')
+    @ApiOperation({ summary: 'Make, model and trim options from active public retail stock' })
+    async getSearchOptions(@Query() filters: ListingFilterDto) {
+        return new StandardResponse(await this.listingsService.getSearchOptions(filters.vehicleType));
+    }
+
     @Get('facets/makes')
     @ApiOperation({ summary: 'Live retail listing counts per make' })
     async getMakeCounts(): Promise<StandardResponse<{ make: string; count: number }[]>> {

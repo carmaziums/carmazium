@@ -202,6 +202,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Describe the car you want"
                 placeholder="Ask AI: e.g. red SUV under £30k..."
                 className="flex-1 min-w-0 bg-transparent px-8 py-4 text-white placeholder:text-[var(--text-muted)] focus:outline-none text-lg truncate"
               />
