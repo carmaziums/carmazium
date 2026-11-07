@@ -68,6 +68,9 @@ export interface ServiceReview {
 }
 
 export interface ServicePayment {
+  refundAmountPence?: number;
+  stripeRefundStatus?: string | null;
+  externalDisputeStatus?: string | null;
   id: string;
   grossPence: number;
   platformFeePence: number;
@@ -79,7 +82,16 @@ export interface ServicePayment {
   refundedAt: string | null;
 }
 
+export interface ServiceJobChange {
+  kind: 'CANNOT_ATTEND' | 'NOT_COMPLETED' | 'CANCEL' | 'RESCHEDULE' | 'OTHER';
+  reason: string;
+  requestedFor?: string | null;
+  requestedByRole?: 'customer' | 'provider';
+  resolved?: boolean;
+}
+
 export interface ServiceJob {
+  changeRequest?: ServiceJobChange | null;
   id: string;
   customerId?: string | null;
   serviceType: ServiceType;
@@ -523,7 +535,7 @@ export async function adminGetDisputes(
   return r.data;
 }
 /** Compatibility wrapper: all admin dispute settlement goes through the authoritative operations route. */
-export async function adminResolveDispute(id: string, input: { outcome: 'RELEASE' | 'REFUND'; note?: string }): Promise<void> {
+export async function adminResolveDispute(id: string, input: { outcome: 'RELEASE' | 'REFUND' | 'PARTIAL_REFUND'; note?: string; refundAmountPence?: number }): Promise<void> {
   await apiClient(`/admin/services/operations/jobs/${id}/resolve`, { method: 'POST', body: JSON.stringify(input) });
 }
 export async function adminRematchServiceLead(id: string): Promise<{ added: number; recipientCount: number; recipientLimit: number }> {
@@ -541,4 +553,17 @@ export async function adminGetServiceLeads(
   if (query?.trim()) q.set('q', query.trim());
   const suffix = q.toString() ? `?${q.toString()}` : '';
   const r = await apiClient<{ data: ServiceLead[] }>(`/admin/services/leads${suffix}`); return r.data;
+}
+
+export async function requestServiceJobChange(id: string, input: ServiceJobChange): Promise<void> {
+  await apiClient(`/services/jobs/${encodeURIComponent(id)}/change-request`, { method: 'POST', body: JSON.stringify(input) });
+}
+export async function acceptServiceReschedule(id: string): Promise<void> {
+  await apiClient(`/services/jobs/${encodeURIComponent(id)}/reschedule/accept`, { method: 'POST' });
+}
+export async function addServiceCaseNote(id: string, note: string): Promise<void> {
+  await apiClient(`/services/operations/jobs/${encodeURIComponent(id)}/case-note`, { method: 'POST', body: JSON.stringify({ note }) });
+}
+export async function uploadServiceCaseEvidence(id: string, body: FormData): Promise<void> {
+  await apiClient(`/services/operations/jobs/${encodeURIComponent(id)}/evidence`, { method: 'POST', body });
 }

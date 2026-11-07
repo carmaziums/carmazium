@@ -1258,7 +1258,7 @@ describe('PaymentsService — TradeXchange SERVICE_JOB webhook', () => {
             type: 'checkout.session.completed',
             data: {
                 object: {
-                    id: 'cs_service_1',
+                    id: 'cs_service_1', payment_status: 'paid',
                     payment_intent: 'pi_service_1',
                     metadata: {
                         type: 'SERVICE_JOB',
@@ -1289,7 +1289,7 @@ describe('PaymentsService — TradeXchange SERVICE_JOB webhook', () => {
             type: 'checkout.session.completed',
             data: {
                 object: {
-                    id: 'cs_service_retry',
+                    id: 'cs_service_retry', payment_status: 'paid',
                     payment_intent: 'pi_service_retry',
                     metadata: {
                         type: 'SERVICE_JOB',

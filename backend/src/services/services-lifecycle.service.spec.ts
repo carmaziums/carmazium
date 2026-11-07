@@ -45,9 +45,10 @@ describe('ServicesLifecycleService TradeXchange unpaid acceptance timeout', () =
         prisma = {
             servicePayment: {
                 findMany: jest.fn(),
+                findUnique: jest.fn().mockImplementation(async () => candidate()),
                 delete: jest.fn().mockResolvedValue({}),
             },
-            serviceJob: { update: jest.fn().mockResolvedValue({}) },
+            serviceJob: { update: jest.fn().mockResolvedValue({}), updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
             serviceQuote: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
             contractorProfile: {
                 findUnique: jest.fn().mockResolvedValue({ userId: 'provider-user' }),
@@ -56,7 +57,7 @@ describe('ServicesLifecycleService TradeXchange unpaid acceptance timeout', () =
                 findMany: jest.fn().mockResolvedValue([]),
                 updateMany: jest.fn().mockResolvedValue({ count: 1 }),
             },
-            $transaction: jest.fn().mockImplementation(async (ops: Promise<unknown>[]) => Promise.all(ops)),
+            $transaction: jest.fn().mockImplementation(async (ops: any) => typeof ops === 'function' ? ops(prisma) : Promise.all(ops)),
         };
         lifecycle = new ServicesLifecycleService(services, prisma, payments, notifications);
     });

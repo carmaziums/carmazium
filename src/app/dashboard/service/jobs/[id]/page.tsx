@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { ServiceJobChanges } from "@/components/services/ServiceJobChanges"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { Loader2, ArrowLeft, AlertCircle, CheckCircle, Phone, Mail, MapPin, Play, Flag, Trash2, PoundSterling, MessageSquare } from "lucide-react"
@@ -84,6 +85,7 @@ export default function ContractorJobPage() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="provider" userName={userName} userType="Service Provider" />
                 <main className="flex-1 max-w-4xl">
+            {job && isMine && <ServiceJobChanges job={job} role="provider" onChange={load} />}
                     <Link href="/dashboard/service/jobs" className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] hover:text-primary mb-6"><ArrowLeft size={14} /> Jobs</Link>
 
                     {flash && <div className="mb-6 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 text-sm flex items-start gap-3"><CheckCircle size={18} className="shrink-0 mt-0.5" /> {flash}</div>}

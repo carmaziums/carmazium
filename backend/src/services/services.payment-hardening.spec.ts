@@ -204,7 +204,7 @@ describe('TradeXchange payment hardening', () => {
         let finishTransfer!: (value: { id: string }) => void;
         stripe.transfers.create.mockImplementation(() => new Promise((resolve) => { finishTransfer = resolve; }));
 
-        const release = (service as any).release('job-1', 'admin resolution');
+        const release = (service as any).release('job-1', 'admin resolution', true);
         await Promise.resolve();
         await Promise.resolve();
 
@@ -233,7 +233,7 @@ describe('TradeXchange payment hardening', () => {
                 id: 'pay-1',
                 jobId: 'job-1',
                 status: ServicePaymentStatus.PAID,
-                contractorPence: 15_470,
+                grossPence: 17000, refundAmountPence: 0, contractorPence: 15_470,
                 stripePaymentIntentId: 'pi_1',
                 stripeTransferId: null,
             },

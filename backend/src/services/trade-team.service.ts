@@ -165,7 +165,7 @@ export class TradeTeamService {
                                 contractorProfile: {
                                     include: {
                                         capabilities: {
-                                            where: { status: CapabilityStatus.APPROVED },
+                                            where: { OR: [{ status: CapabilityStatus.APPROVED }, { status: CapabilityStatus.PENDING, verificationStatus: 'REVERIFICATION_REQUIRED' }] },
                                             select: { serviceType: true },
                                         },
                                     },
@@ -222,7 +222,7 @@ export class TradeTeamService {
             where: { userId },
             include: {
                 capabilities: {
-                    where: { status: CapabilityStatus.APPROVED },
+                    where: { OR: [{ status: CapabilityStatus.APPROVED }, { status: CapabilityStatus.PENDING, verificationStatus: 'REVERIFICATION_REQUIRED' }] },
                     select: { serviceType: true },
                 },
                 user: { select: { id: true } },

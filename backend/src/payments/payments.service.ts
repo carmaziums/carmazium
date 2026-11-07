@@ -1255,6 +1255,20 @@ export class PaymentsService {
         }
 
         switch (event.type) {
+            case 'refund.created':
+            case 'refund.updated':
+            case 'refund.failed':
+            case 'transfer.created':
+            case 'transfer.updated':
+            case 'transfer.reversed':
+            case 'charge.dispute.created':
+            case 'charge.dispute.updated':
+            case 'charge.dispute.closed': {
+                const { ServicesService } = await import('../services/services.service');
+                const services = this.moduleRef.get(ServicesService, { strict: false });
+                await services.reconcileSettlementEvent(event.type, event.data.object);
+                break;
+            }
             case 'checkout.session.completed':
             case 'checkout.session.async_payment_succeeded': {
                 const session = event.data.object;
@@ -1283,6 +1297,10 @@ export class PaymentsService {
                 // Funds are held on the platform; the contractor is paid by a
                 // Connect transfer when the job is confirmed complete.
                 if (type === 'SERVICE_JOB' && session.metadata.jobId && session.metadata.paymentId) {
+                    if (session.payment_status !== 'paid' || typeof session.payment_intent !== 'string') {
+                        this.logger.warn('Keeping unverified service payment pending: ' + session.id);
+                        break;
+                    }
                     await this.markServiceJobPaid(
                         session.metadata.jobId,
                         session.metadata.paymentId,

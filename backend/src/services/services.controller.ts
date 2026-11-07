@@ -13,7 +13,7 @@ import { TradeTeamService } from './trade-team.service';
 import { ACCEPTED_PAYMENT_TIMEOUT_MINUTES } from './services-lifecycle.service';
 import { serviceAvailabilitySnapshot } from './service-availability';
 import {
-    CreateJobDto, JobFromPurchaseDto, InspectionFromAuctionDto, CompleteJobDto, CancelJobDto, UpsertQuoteDto, ApplyCapabilityDto,
+    ServiceJobChangeDto, CreateJobDto, JobFromPurchaseDto, InspectionFromAuctionDto, CompleteJobDto, CancelJobDto, UpsertQuoteDto, ApplyCapabilityDto,
     UpdateLeadMatchingDto, UpdateJobMatchingDto, ServiceListQueryDto, ServiceJobFeedQueryDto, CreateServiceReviewDto,
 } from './dto';
 
@@ -239,6 +239,22 @@ export class ServicesController {
     @ApiOperation({ summary: 'Freeze a paid job for admin review' })
     async dispute(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: CancelJobDto) {
         return new StandardResponse(await this.services.openDispute(user.id, id, dto.reason));
+    }
+
+    @Post('jobs/:id/change-request')
+    async requestChange(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: ServiceJobChangeDto) {
+        const actor = await this.tradeTeam.tryResolveActor(user.id);
+        const job = await this.services.getJob({ userId: user.id, role: user.role, contractorProfileId: actor?.contractorProfileId }, id);
+        if (job.customerId !== user.id && actor) await this.tradeTeam.assertJobPermission(actor, id, 'manage');
+        return new StandardResponse(await this.services.requestJobChange(user.id, actor?.contractorProfileId ?? null, id, dto));
+    }
+
+    @Post('jobs/:id/reschedule/accept')
+    async acceptReschedule(@CurrentUser() user: any, @Param('id') id: string) {
+        const actor = await this.tradeTeam.tryResolveActor(user.id);
+        const job = await this.services.getJob({ userId: user.id, role: user.role, contractorProfileId: actor?.contractorProfileId }, id);
+        if (job.customerId !== user.id && actor) await this.tradeTeam.assertJobPermission(actor, id, 'manage');
+        return new StandardResponse(await this.services.acceptReschedule(user.id, actor?.contractorProfileId ?? null, id));
     }
 
     @Post('jobs/:id/review')
