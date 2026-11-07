@@ -9,6 +9,9 @@ on:
       - 'carmazium app/carmazium app/**'
       - 'product-parity.json'
       - 'scripts/check-product-parity.mjs'
+      - 'scripts/lib/dealer-menu-parity.mjs'
+      - 'scripts/test-product-navigation-parity.test.mjs'
+      - 'scripts/test-release-readiness-current-contract.test.mjs'
       - 'scripts/check-release-readiness.mjs'
       - 'scripts/check-release-candidate-evidence.mjs'
       - 'scripts/test-admin-analytics-mobile-qa.test.mjs'
@@ -199,6 +202,8 @@ jobs:
           java-version: '17'
       - name: Verify Android signing preflight with temporary synthetic CI fixture
         run: node --test scripts/test-verify-android-release-keystore.test.mjs
+      - name: Verify release gates follow current navigation and distinct AAB/APK commands
+        run: node --test scripts/test-product-navigation-parity.test.mjs scripts/test-release-readiness-current-contract.test.mjs
       - name: Check signed APK evidence and tamper rejection with synthetic bytes
         run: node --test scripts/test-android-apk-release-evidence.test.mjs
       - name: Test first-party hosted APK verification without external requests

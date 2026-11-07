@@ -5,9 +5,23 @@ export const indexableRetail = (l: Listing) =>
     l.type === "CLASSIFIED" && l.status === "ACTIVE" &&
     !/(^|-)(undefined|test\d*|aaa|qqq|www)(-|$)/i.test(l.slug || "")
 
+export function retailVehicleName(l: Listing): string {
+    const name = [l.year, l.make, l.model].filter(Boolean).join(" ").trim() || l.title.trim()
+    const variant = l.variant?.trim()
+    return variant && !name.toLowerCase().includes(variant.toLowerCase()) ? `${name} ${variant}` : name
+}
+
+export function retailTitle(l: Listing): string {
+    const transmission = l.transmission?.replace(/_/g, " ").toLowerCase()
+    const name = retailVehicleName(l)
+    const gearbox = transmission && !name.toLowerCase().includes(transmission) ? ` ${transmission}` : ""
+    const location = l.location?.trim().split(",")[0].trim()
+    return `${name}${gearbox} for sale${location ? ` in ${location}` : ""}`
+}
+
 export function retailDescription(l: Listing): string {
     const specs = [
-        l.year, l.make, l.model, l.bodyType, l.fuelType, l.transmission,
+        retailVehicleName(l), l.fuelType?.replace(/_/g, " "), l.transmission?.replace(/_/g, " "),
         typeof l.mileage === "number" ? l.mileage.toLocaleString("en-GB") + " miles" : null,
     ].filter(Boolean).join(" · ")
     const amount = Number(l.price)
@@ -49,7 +63,7 @@ export function RetailVehicleJsonLd({ listing: l }: { listing: Listing }) {
         "@context": "https://schema.org",
         "@graph": [
             {
-                "@type": "ItemPage", "@id": url + "#webpage", url, name: l.title,
+                "@type": "ItemPage", "@id": url + "#webpage", url, name: retailVehicleName(l),
                 description: retailDescription(l), inLanguage: "en-GB",
                 isPartOf: { "@id": SITE + "/#website" },
                 breadcrumb: { "@id": url + "#breadcrumb" },
@@ -66,7 +80,7 @@ export function RetailVehicleJsonLd({ listing: l }: { listing: Listing }) {
             {
                 "@type": l.vehicleType === "MOTORCYCLE" || l.vehicleType === "HGV"
                     ? ["Vehicle", "Product"] : ["Car", "Product"],
-                "@id": url + "#vehicle", name: l.title, url,
+                "@id": url + "#vehicle", name: retailVehicleName(l), url,
                 description: retailDescription(l), sku: l.slug,
                 ...(photos.length ? { image: photos } : {}),
                 ...(l.make ? { brand: { "@type": "Brand", name: l.make }, manufacturer: { "@type": "Organization", name: l.make } } : {}),

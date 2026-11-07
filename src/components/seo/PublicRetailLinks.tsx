@@ -75,6 +75,8 @@ export async function PublicRetailLinks() {
                     </ul>
                 )}
                 <p className="mt-6 text-sm text-[var(--text-secondary)]">
+                    <Link href="/used-cars" className="font-semibold text-primary underline-offset-4 hover:underline">Browse all active retail cars</Link>
+                    {" · "}
                     Looking for a different style of car?{" "}
                     <Link href="/used-car-types" className="font-semibold text-primary underline-offset-4 hover:underline">
                         Compare used-car body types

@@ -13,6 +13,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { dealerMenuSectionOrders, dealerMenuSectionsMatch } from './lib/dealer-menu-parity.mjs';
 
 const root = process.cwd();
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
@@ -81,7 +82,7 @@ const privateDashboard = read('src/app/dashboard/user/page.tsx');
 if (
   !privateWeb.includes('label: "My cars"') ||
   !privateWeb.includes('label: "Purchases"') ||
-  !privateNative.includes("label: 'My cars'") ||
+  !privateNative.includes("label: 'My Cars'") ||
   !privateNative.includes("label: 'Purchases'") ||
   !myCarsNative.includes("fetchAllMyAuctions") ||
   !myCarsNative.includes("fetchAllMyListings") ||
@@ -996,17 +997,14 @@ if (
 }
 
 // Dealer menu groups: the website sidebar and the app drawer show the same
-// groups in the same order (Sell, Buy, Business).
+// groups in the same order, including Dashboard and Services. Read only each
+// item's top-level section, never stackParams.section (e.g. business settings).
 {
-  const webOrder = (webDealerRoutes.match(/DEALER_SECTION_ORDER = \[([^\]]*)\]/)?.[1] || '')
-    .match(/"([^"]+)"/g)?.map(x => x.slice(1, -1)).filter(x => ['Sell', 'Buy', 'Business'].includes(x)) || [];
-  const nativeSections = [...(mobileDealerDrawer.split('const DEALER_ITEMS')[1] || '').split('];')[0]
-    .matchAll(/section: '([A-Za-z]+)'/g)].map(m => m[1]);
-  const nativeOrder = nativeSections.filter((x, i) => x !== nativeSections[i - 1]);
-  if (webOrder.join(',') !== 'Sell,Buy,Business' || nativeOrder.join(',') !== webOrder.join(',')) {
+  const { web: webOrder, native: nativeOrder } = dealerMenuSectionOrders(webDealerRoutes, mobileDealerDrawer);
+  if (!dealerMenuSectionsMatch(webDealerRoutes, mobileDealerDrawer)) {
     fail(`Dealer menu groups differ between web (${webOrder.join(', ')}) and app (${nativeOrder.join(', ')})`);
   } else {
-    ok('Dealer menu groups match on web and app: Sell, Buy, Business');
+    ok('Dealer menu groups match on web and app: Dashboard, Sell, Buy, Business, Services');
   }
 }
 
@@ -1047,7 +1045,8 @@ if (
   !mobileDealerDrawer.includes("label: 'Bids & Offers'") ||
   !mobileDealerDrawer.includes("label: 'Saved'") ||
   !mobileDealerDrawer.includes("label: 'Live Auctions'") ||
-  !mobileDealerDrawer.includes("label: 'Finance'") ||
+  !webDealerRoutes.includes('label: "Finance Applications"') ||
+  !mobileDealerDrawer.includes("label: 'Finance Applications'") ||
   !mobileDealerCustomers.includes('>Customers</Text>') ||
   !mobileDealerOffers.includes('>Offers Received</Text>') ||
   !mobilePartnerDashboard.includes('>Service Jobs</Text>') ||
