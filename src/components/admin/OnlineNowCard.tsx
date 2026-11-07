@@ -11,7 +11,7 @@ type OnlineNow = {
   updatedAt: string
 }
 
-/** Admin "Online now": people on the website vs in the app, refreshed every 30s. */
+/** Estimated recently active clients, with server-verified signed-in identities. */
 export function OnlineNowCard() {
   const [data, setData] = React.useState<OnlineNow | null>(null)
   const [failed, setFailed] = React.useState(false)
@@ -32,19 +32,16 @@ export function OnlineNowCard() {
     <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-[var(--text-muted)]">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-          </span>
-          Online now
+          <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          Recently active (estimated)
         </h2>
-        <span className="text-xs text-[var(--text-muted)]">{failed ? "Couldn’t refresh" : "Updates every 30 seconds"}</span>
+        <span className="text-xs text-[var(--text-muted)]">{failed ? "Couldn’t refresh" : "Last 2 min · refreshes every 30s"}</span>
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
         <div>
-          <p className="flex items-center gap-2 text-xs font-bold text-[var(--text-muted)]"><Users className="h-4 w-4" /> Total</p>
+          <p className="flex items-center gap-2 text-xs font-bold text-[var(--text-muted)]"><Users className="h-4 w-4" /> Active visitor signals</p>
           <p className="mt-1 font-mono text-3xl font-black">{v(data?.total)}</p>
-          <p className="text-xs text-[var(--text-muted)]">{data ? `${v(data.web.signedIn + data.app.signedIn)} signed in` : " "}</p>
+          <p className="text-xs text-[var(--text-muted)]">{data ? `${v(data.web.signedIn + data.app.signedIn)} verified signed-in accounts (per platform)` : " "}</p>
         </div>
         <div>
           <p className="flex items-center gap-2 text-xs font-bold text-[var(--text-muted)]"><Globe className="h-4 w-4" /> On the website</p>
@@ -57,6 +54,9 @@ export function OnlineNowCard() {
           <p className="text-xs text-[var(--text-muted)]">{data ? `${data.app.android} Android · ${data.app.ios} iPhone` : " "}</p>
         </div>
       </div>
+      <p className="mt-4 border-t border-[var(--border-default)] pt-3 text-xs text-[var(--text-muted)]">
+        Counts are recent website/app heartbeats, not a live connection count. Signed-in identities are verified and deduplicated per platform; guest browser tabs and automated traffic may be counted separately.
+      </p>
     </section>
   )
 }
