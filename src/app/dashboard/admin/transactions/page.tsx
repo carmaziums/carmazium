@@ -9,6 +9,8 @@ import { PageHeader } from "@/components/dashboard/PageHeader"
 import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import { HpiPdfUpload } from "@/components/admin/HpiPdfUpload"
 import { HpiReportForm } from "@/components/admin/HpiReportForm"
+import { LedgerCsvExport } from "@/components/admin/LedgerCsvExport"
+import { transactionCsv } from "@/lib/transactionCsv"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminTransactions } from "@/lib/adminApi"
@@ -129,6 +131,7 @@ export default function AdminTransactionsPage() {
     const [hpiSuccess, setHpiSuccess] = React.useState<string | null>(null)
     const [filterDraft, setFilterDraft] = React.useState({ q: "", status: "", type: "", from: "", to: "" })
     const [filters, setFilters] = React.useState(filterDraft)
+    const [exportSnapshot, setExportSnapshot] = React.useState<{ csv: string; page: number } | null>(null)
     const limit = 20
 
     function reloadTransactions() {
@@ -199,16 +202,9 @@ export default function AdminTransactionsPage() {
                         <label className="text-xs">To (UTC)<input type="date" aria-label="To date UTC" value={filterDraft.to} onChange={e => setFilterDraft(v => ({ ...v, to: e.target.value }))} className="block rounded-lg border p-2 bg-[var(--bg-input)]" /></label>
                         <Button type="submit" disabled={loading}>Apply filters</Button>
                         <Button type="button" variant="outline" onClick={() => { const empty = { q: "", status: "", type: "", from: "", to: "" }; setFilterDraft(empty); setFilters(empty); setPage(1) }}>Clear</Button>
-                        <Button type="button" variant="outline" disabled={loading || !transactions.length} onClick={() => {
-                            const cell = (v: unknown) => '"' + String(v ?? '').replace(/^(?:[\t\r\n]|\s*[=+@-])/, "'$&").replace(/"/g, '""') + '"';
-                            const rows = [['Transaction ID','Date UTC','Registration','Type','Status','Amount GBP','Stripe reference'], ...transactions.map(t => [t.id,t.createdAt,t.listing?.vrm,t.type,t.status,t.amount,t.stripePaymentId])];
-                            const url = URL.createObjectURL(new Blob(['\ufeff' + rows.map(r => r.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
-                            const link = document.createElement('a'); link.href=url; link.download=`carmazium-transactions-page-${page}.csv`;
-                            document.body.appendChild(link); link.click(); link.remove();
-                            // Keep the blob available while the browser starts the download.
-                            window.setTimeout(() => URL.revokeObjectURL(url), 30000);
-                        }}>Export this page</Button>
+                        <Button type="button" variant="outline" disabled={loading || !transactions.length} onClick={() => setExportSnapshot({ csv: transactionCsv(transactions), page })}>Export this page</Button>
                     </form>
+                    {exportSnapshot && <LedgerCsvExport key={exportSnapshot.csv + exportSnapshot.page} csv={exportSnapshot.csv} page={exportSnapshot.page} onClose={() => setExportSnapshot(null)} />}
                     {!loading && transactions.length === 0 && <p className="mb-4">No transactions match these filters.</p>}
 
                     {hpiSuccess && (
