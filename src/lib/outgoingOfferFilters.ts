@@ -6,7 +6,7 @@ export const OUTGOING_OFFER_VIEWS: ReadonlyArray<{
     label: string
     heading: string
 }> = [
-    { value: "current", label: "Current", heading: "Current Bids" },
+    { value: "current", label: "Current", heading: "Current Offers" },
     { value: "history", label: "History", heading: "Offer History" },
     { value: "all", label: "All", heading: "All Offers" },
     { value: "accepted", label: "Accepted", heading: "Accepted Offers" },
@@ -43,7 +43,7 @@ export function filterOutgoingOffers<T extends { status: string }>(
 
 export function outgoingOfferEmptyMessage(view: OutgoingOfferView): string {
     switch (view) {
-        case "current": return "No current bids."
+        case "current": return "No current offers."
         case "history": return "No closed offer history yet."
         case "accepted": return "No accepted offers yet."
         case "rejected": return "No rejected offers."

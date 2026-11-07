@@ -162,6 +162,7 @@ function UnifiedUserDashboardContent() {
             const unified = await getUnifiedDashboard()
             setDashboardData(unified)
         } catch (err: any) {
+            setDashboardData(null)
             console.error('Failed to fetch dashboard stats:', err)
             setDashboardError(err?.message || 'We could not load your dashboard summary. Check your connection and try again.')
         }
@@ -292,7 +293,7 @@ function OverviewTab({
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard 
-                    label="My Listings" 
+                    label="Live Listings"
                     value={data?.seller?.activeListings || 0} 
                     icon={Car} 
                     color="text-primary" 
@@ -1474,7 +1475,7 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <MetricCard label="Current Bids" value={currentOffers.length} icon={Gavel} color="text-violet-400" bg="bg-violet-500/10" border="border-violet-500/20" statusLabel="Active" loading={loading} />
+                <MetricCard label="Current Offers" value={currentOffers.length} icon={Gavel} color="text-violet-400" bg="bg-violet-500/10" border="border-violet-500/20" statusLabel="Active" loading={loading} />
                 <MetricCard label="Action Required" value={needsActionCount} icon={RefreshCw} color="text-blue-400" bg="bg-blue-500/10" border="border-blue-500/20" statusLabel="Counter" loading={loading} />
                 <MetricCard label="Accepted Offers" value={acceptedCount} icon={CheckCircle2} color="text-emerald-400" bg="bg-emerald-500/10" border="border-emerald-500/20" statusLabel="Closed" loading={loading} />
             </div>
@@ -1820,9 +1821,16 @@ function StatsTab() {
     const [performance, setPerformance] = React.useState<PerformanceStats | null>(null)
     const [loading, setLoading] = React.useState(true)
 
-    React.useEffect(() => {
-        getSellerPerformance().then(setPerformance).finally(() => setLoading(false))
+    const [error, setError] = React.useState<string | null>(null)
+    const load = React.useCallback(async () => {
+        setLoading(true)
+        setError(null)
+        try { setPerformance(await getSellerPerformance('personal')) }
+        catch { setPerformance(null); setError('Your listing performance could not be loaded. Please retry.') }
+        finally { setLoading(false) }
     }, [])
+    React.useEffect(() => { void load() }, [load])
+    if (error && !loading) return <ErrorState message={error} onRetry={load} />
 
     const maxViews = Math.max(...(performance?.recentListingViews?.map(l => l.views) || [1]), 1)
 
@@ -1835,7 +1843,7 @@ function StatsTab() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard label="Conversion Rate" value={`${performance?.conversionRate || 0}%`} icon={Target} color="text-amber-400" bg="bg-amber-500/10" border="border-amber-500/20" loading={loading} />
-                <MetricCard label="Active Listings" value={performance?.totalListings || 0} icon={Car} color="text-primary" bg="bg-primary/10" border="border-primary/20" loading={loading} />
+                <MetricCard label="Total Listings" value={performance?.totalListings || 0} icon={Car} color="text-primary" bg="bg-primary/10" border="border-primary/20" loading={loading} />
                 <MetricCard
                     label="Avg Response Time"
                     value={performance?.avgResponseHours != null
@@ -1855,7 +1863,7 @@ function StatsTab() {
             </div>
 
             <div className="glass-card p-8 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
-                <h3 className="text-lg font-black font-heading uppercase tracking-tight mb-8">Top Performing Vehicles</h3>
+                <h3 className="text-lg font-black font-heading uppercase tracking-tight mb-8">Recent Vehicle Views</h3>
                 {!performance?.recentListingViews?.length ? (
                     <div className="text-center py-10 text-[var(--text-secondary)] italic">No listing data available.</div>
                 ) : (
@@ -1905,14 +1913,21 @@ function EarningsTab() {
     const [loading, setLoading] = React.useState(true)
     const [exporting, setExporting] = React.useState(false)
 
-    React.useEffect(() => {
-        getEarnings().then(setData).finally(() => setLoading(false))
+    const [error, setError] = React.useState<string | null>(null)
+    const load = React.useCallback(async () => {
+        setLoading(true)
+        setError(null)
+        try { setData(await getEarnings('personal')) }
+        catch { setData(null); setError('Your sales history could not be loaded. Please retry.') }
+        finally { setLoading(false) }
     }, [])
+    React.useEffect(() => { void load() }, [load])
+    if (error && !loading) return <ErrorState message={error} onRetry={load} />
 
     const handleExport = async () => {
         setExporting(true)
         try {
-            await exportEarningsCsv()
+            await exportEarningsCsv('personal')
         } catch (err: any) {
             alert(err.message || 'Failed to export ledger')
         } finally {

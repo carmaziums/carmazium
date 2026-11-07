@@ -123,7 +123,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
     if (isRefresh) setRefreshing(true);
     try {
       const [res] = await Promise.allSettled([
-        apiClient<EarningsResponse>('/listings/earnings'),
+        apiClient<EarningsResponse>('/listings/earnings?scope=personal'),
       ]);
       if (res.status === 'fulfilled' && res.value?.success) {
         const d = res.value.data;
@@ -162,7 +162,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
       // Use raw fetch — apiClient calls response.json() which fails on CSV text
       const token = await getAccessToken();
       const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
-      const response = await fetch(`${API_URL}/listings/earnings/export`, {
+      const response = await fetch(`${API_URL}/listings/earnings/export?scope=personal`, {
         headers: {
           Accept: 'text/csv',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),

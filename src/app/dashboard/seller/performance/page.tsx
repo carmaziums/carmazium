@@ -20,7 +20,7 @@ function SellerPerformancePage() {
             try {
                 setLoading(true)
                 setError(null)
-                const data = await getSellerPerformance()
+                const data = await getSellerPerformance('personal')
                 setPerformance(data)
             } catch (err) {
                 console.error("Failed to fetch performance:", err)

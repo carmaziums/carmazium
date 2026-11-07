@@ -4406,8 +4406,8 @@ export class ListingsService {
      *
      * Revenue is sourced from the `Sale` table for consistency with other dashboards.
      */
-    async getSellerPerformance(userId: string) {
-        const sellerId = await this.resolveOwnerId(userId);
+    async getSellerPerformance(userId: string, personal = false) {
+        const sellerId = personal ? userId : await this.resolveOwnerId(userId);
         const baseWhere = { sellerId, deletedAt: null };
 
         const [totalListings, soldCount, viewsAggregate, recentListings, salesAggregate, sellerProfile, reviewAggregate, respondedOffers] = await Promise.all([
@@ -4489,15 +4489,16 @@ export class ListingsService {
     /**
      * Get earnings history for a seller or dealer
      */
-    async getEarnings(userId: string, page = 1, limit = 20) {
-        // Handle staff/owner logic
+    async getEarnings(userId: string, page = 1, limit = 20, personal = false) {
+        // Personal screens must not silently switch to the staff member's employer.
+        // Existing dealer callers retain their dealership scope.
         let targetOwnerId = userId;
-        const staffRecord = await this.prisma.dealerStaff.findFirst({
-            where: { userId, isActive: true },
-            select: { dealerProfile: { select: { userId: true } } }
-        });
-        if (staffRecord) {
-            targetOwnerId = staffRecord.dealerProfile.userId;
+        if (!personal) {
+            const staffRecord = await this.prisma.dealerStaff.findFirst({
+                where: { userId, isActive: true },
+                select: { dealerProfile: { select: { userId: true } } },
+            });
+            if (staffRecord) targetOwnerId = staffRecord.dealerProfile.userId;
         }
 
         const skip = (page - 1) * limit;

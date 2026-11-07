@@ -39,7 +39,7 @@ function EarningsPage() {
             if (!user) return
             try {
                 setLoading(true)
-                const res = await getEarnings()
+                const res = await getEarnings('personal')
                 setData(res)
             } catch (err) {
                 console.error('Failed to fetch earnings:', err)
@@ -88,7 +88,7 @@ function EarningsPage() {
                             disabled={exporting}
                             onClick={async () => {
                                 setExporting(true)
-                                try { await exportEarningsCsv() } catch { alert('Export failed') } finally { setExporting(false) }
+                                try { await exportEarningsCsv('personal') } catch { alert('Export failed') } finally { setExporting(false) }
                             }}
                         >
                             {exporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} Export CSV

@@ -204,7 +204,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
     if (actionBusy) return;
     setActionBusy(true);
     try {
-      const res = await apiClient<{ success: boolean; data: any }>('/listings/performance');
+      const res = await apiClient<{ success: boolean; data: any }>('/listings/performance?scope=personal');
       const perf = res?.data;
       Alert.alert(
         'Listing Insights',

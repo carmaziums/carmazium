@@ -989,6 +989,40 @@ describe('ListingsService', () => {
         });
     });
 
+    describe('personal and dealership report scopes', () => {
+        it.each([true, false])('scopes sales and auction earnings consistently (personal=%s)', async (personal) => {
+            prisma.dealerStaff.findFirst.mockResolvedValue({ dealerProfile: { userId: 'employer-1' } });
+            prisma.sale.findMany.mockResolvedValue([]);
+            prisma.sale.count.mockResolvedValue(0);
+            prisma.sale.aggregate.mockResolvedValue({ _sum: { soldPrice: 0 } });
+            prisma.auction.findMany.mockResolvedValue([]);
+            await service.getEarnings('staff-1', 1, 20, personal);
+            const sellerId = personal ? 'staff-1' : 'employer-1';
+            expect(prisma.sale.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { sellerId } }));
+            expect(prisma.sale.aggregate).toHaveBeenCalledWith({ where: { sellerId }, _sum: { soldPrice: true } });
+            expect(prisma.auction.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ listing: { sellerId } }) }));
+            if (personal) expect(prisma.dealerStaff.findFirst).not.toHaveBeenCalled();
+        });
+
+        it.each([true, false])('scopes performance, rating and responses consistently (personal=%s)', async (personal) => {
+            prisma.dealerStaff.findFirst.mockResolvedValue({ dealerProfile: { userId: 'employer-1' } });
+            prisma.listing.count.mockResolvedValue(2);
+            prisma.listing.aggregate.mockResolvedValue({ _sum: { viewCount: 10 } });
+            prisma.listing.findMany.mockResolvedValue([]);
+            prisma.sale.count.mockResolvedValue(0);
+            prisma.sale.aggregate.mockResolvedValue({ _sum: { soldPrice: 0 } });
+            prisma.sellerProfile = { findUnique: jest.fn().mockResolvedValue(null) };
+            prisma.sellerReview = { aggregate: jest.fn().mockResolvedValue({ _avg: { rating: null }, _count: { id: 0 } }) };
+            prisma.offer.findMany = jest.fn().mockResolvedValue([]);
+            await service.getSellerPerformance('staff-1', personal);
+            const sellerId = personal ? 'staff-1' : 'employer-1';
+            expect(prisma.listing.count).toHaveBeenCalledWith({ where: { sellerId, deletedAt: null } });
+            expect(prisma.sellerProfile.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: sellerId } }));
+            expect(prisma.offer.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ listing: { sellerId, deletedAt: null } }) }));
+            if (personal) expect(prisma.dealerStaff.findFirst).not.toHaveBeenCalled();
+        });
+    });
+
     describe('publishListing retail payment gate', () => {
         const tenImages = Array.from({ length: 10 }, (_, i) => `image-${i}`);
         const submissionReady = {

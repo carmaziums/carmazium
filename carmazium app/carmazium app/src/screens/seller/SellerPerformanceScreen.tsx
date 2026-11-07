@@ -115,7 +115,7 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
     if (isRefresh) setRefreshing(true);
     setError(null);
     try {
-      const res = await apiClient<{ success: boolean; data: SellerPerformanceData }>('/listings/performance');
+      const res = await apiClient<{ success: boolean; data: SellerPerformanceData }>('/listings/performance?scope=personal');
       if (res?.success && res.data) {
         setData(res.data);
         setError(null);

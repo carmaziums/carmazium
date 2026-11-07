@@ -123,6 +123,16 @@ describe('DashboardService — period filter', () => {
     expect(result.seller.soldListings).toBe(4);
   });
 
+  it('keeps unified personal statistics on the signed-in seller even when they are dealer staff', async () => {
+    mockPrisma.dealerStaff.findFirst.mockResolvedValueOnce({ dealerProfile: { userId: 'employer-1' } });
+    await service.getUnifiedDashboard('personal-1');
+    expect(mockPrisma.dealerStaff.findFirst).not.toHaveBeenCalled();
+    expect(mockPrisma.listing.count).toHaveBeenCalledWith({ where: { sellerId: 'personal-1', deletedAt: null } });
+    expect(mockPrisma.sale.aggregate).toHaveBeenCalledWith({ where: { sellerId: 'personal-1' }, _sum: { soldPrice: true } });
+    expect(mockPrisma.offer.count).toHaveBeenCalledWith({ where: { listing: { sellerId: 'personal-1' }, status: 'PENDING' } });
+    mockPrisma.dealerStaff.findFirst.mockReset().mockResolvedValue(null);
+  });
+
   it('SELLER-KPI-01: seller dashboard returns selected-period sales, revenue, views and 0% sale fee', async () => {
     mockPrisma.listing.count.mockResolvedValueOnce(3);
     mockPrisma.auction.count.mockResolvedValueOnce(1);
