@@ -203,7 +203,10 @@ export default function AdminTransactionsPage() {
                             const cell = (v: unknown) => '"' + String(v ?? '').replace(/^(?:[\t\r\n]|\s*[=+@-])/, "'$&").replace(/"/g, '""') + '"';
                             const rows = [['Transaction ID','Date UTC','Registration','Type','Status','Amount GBP','Stripe reference'], ...transactions.map(t => [t.id,t.createdAt,t.listing?.vrm,t.type,t.status,t.amount,t.stripePaymentId])];
                             const url = URL.createObjectURL(new Blob(['\ufeff' + rows.map(r => r.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
-                            const link = document.createElement('a'); link.href=url; link.download=`carmazium-transactions-page-${page}.csv`; link.click(); URL.revokeObjectURL(url);
+                            const link = document.createElement('a'); link.href=url; link.download=`carmazium-transactions-page-${page}.csv`;
+                            document.body.appendChild(link); link.click(); link.remove();
+                            // Keep the blob available while the browser starts the download.
+                            window.setTimeout(() => URL.revokeObjectURL(url), 30000);
                         }}>Export this page</Button>
                     </form>
                     {!loading && transactions.length === 0 && <p className="mb-4">No transactions match these filters.</p>}

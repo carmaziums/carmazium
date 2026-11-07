@@ -34,9 +34,10 @@ test('only read-only DVLA POST receives a bounded Fly connection retry', () => {
   const client = readFileSync(new URL('../src/lib/apiClient.ts', import.meta.url), 'utf8');
   const retry = readFileSync(new URL('../src/lib/fetchWithRetry.ts', import.meta.url), 'utf8');
   assert.match(client, /const isReadOnlyDvlaLookup = method === 'POST' && endpoint === '\/dvla\/lookup'/);
-  assert.match(client, /timeoutMs: isReadOnlyDvlaLookup \? 18000 : isQuoteHistory \? 30000 : 10000/);
-  assert.match(client, /retries: isReadOnlyDvlaLookup \|\| isQuoteHistory \? 1 : 2/);
+  assert.match(client, /timeoutMs: isReadOnlyDvlaLookup \? 18000 : \(isQuoteHistory \|\| isValuationReport\) \? 30000 : 10000/);
+  assert.match(client, /retries: isReadOnlyDvlaLookup \|\| isQuoteHistory \|\| isValuationReport \? 1 : 2/);
   assert.match(client, /const isQuoteHistory = method === 'GET' && endpoint.startsWith\('\/analytics\/valuations\/history\?'\)/);
+  assert.match(client, /const isValuationReport = method === 'GET' && endpoint === '\/analytics\/valuations\/live'/);
   assert.match(client, /retryReadOnlyPost: isReadOnlyDvlaLookup/);
   assert.match(retry, /\(retryReadOnlyPost && method === 'POST'\)/);
   assert.doesNotMatch(client, /endpoint === '\/dvla\/enrich' && .*retry/);
