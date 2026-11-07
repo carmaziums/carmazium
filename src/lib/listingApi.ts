@@ -1038,8 +1038,8 @@ export interface PerformanceStats {
 /**
  * Get seller performance analytics (authenticated)
  */
-export async function getSellerPerformance(): Promise<PerformanceStats> {
-    const data = await apiClient<{ data: PerformanceStats }>('/listings/performance', {
+export async function getSellerPerformance(scope?: "personal"): Promise<PerformanceStats> {
+    const data = await apiClient<{ data: PerformanceStats }>(`/listings/performance${scope === 'personal' ? '?scope=personal' : ''}`, {
         method: 'GET',
         cache: 'no-store',
     })
@@ -1241,19 +1241,19 @@ export interface EarningsResponse {
     totalAuctionBonus: number
 }
 
-export async function getEarnings(): Promise<EarningsResponse> {
-    const data = await apiClient<{ data: EarningsResponse }>('/listings/earnings', {
+export async function getEarnings(scope?: "personal"): Promise<EarningsResponse> {
+    const data = await apiClient<{ data: EarningsResponse }>(`/listings/earnings${scope === 'personal' ? '?scope=personal' : ''}`, {
         method: 'GET',
         cache: 'no-store',
     })
     return data.data
 }
 
-export async function exportEarningsCsv(): Promise<void> {
+export async function exportEarningsCsv(scope?: "personal"): Promise<void> {
     const { getAccessToken } = await import('./supabase')
     const token = await getAccessToken()
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev'
-    const res = await fetch(`${API_URL}/listings/earnings/export`, {
+    const res = await fetch(`${API_URL}/listings/earnings/export${scope === 'personal' ? '?scope=personal' : ''}`, {
         credentials: 'include',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
     })

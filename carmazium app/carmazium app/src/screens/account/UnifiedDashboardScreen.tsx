@@ -295,7 +295,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
         <View style={styles.statsRow}>
           <View style={styles.statCell}>
             {loading ? <Skeleton w={32} h={22} /> : <Text style={styles.statValue}>{seller.activeListings}</Text>}
-            <Text style={styles.statName}>Listings</Text>
+            <Text style={styles.statName}>Live listings</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statCell}>

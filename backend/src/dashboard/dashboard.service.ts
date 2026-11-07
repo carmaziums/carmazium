@@ -183,19 +183,9 @@ export class DashboardService {
     }
 
     async getUnifiedDashboard(userId: string) {
-        // Handle staff/owner logic to show dealership stats to staff
-        let targetOwnerId = userId;
-        try {
-            const staffRecord = await this.prisma.dealerStaff.findFirst({
-                where: { userId, isActive: true },
-                select: { dealerProfile: { select: { userId: true } } }
-            });
-            if (staffRecord) {
-                targetOwnerId = staffRecord.dealerProfile.userId;
-            }
-        } catch (err) {
-            console.error('Staff lookup failed, falling back to user ID:', err.message);
-        }
+        // This endpoint serves the personal buyer/seller dashboard on web and app.
+        // Team members use the dedicated dealer dashboard for business statistics.
+        const targetOwnerId = userId;
 
         const [
             activeBidListings,
@@ -233,7 +223,7 @@ export class DashboardService {
             // Buyer: seller countered — needs accept/decline in My Offers
             this.prisma.offer.count({ where: { buyerId: userId, status: 'COUNTERED' } }),
             
-            // Seller/Dealer stats (Aggregated for the dealership if staff)
+            // Personal seller statistics
             // Phase 10: include SOLD in total count — no status filter intentional (DRAFT + ACTIVE + SOLD all count)
             this.prisma.listing.count({ where: { sellerId: targetOwnerId, deletedAt: null } }),
             // Phase 10: activeListings intentionally ACTIVE only — this is the current live inventory count
@@ -246,7 +236,7 @@ export class DashboardService {
                 _sum: { viewCount: true }
             }),
             
-            // Revenue tracking (Aggregated for the dealership if staff)
+            // Personal sales revenue
             this.prisma.sale.aggregate({
                 where: { sellerId: targetOwnerId },
                 _sum: { soldPrice: true }

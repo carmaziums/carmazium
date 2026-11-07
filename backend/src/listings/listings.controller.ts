@@ -303,8 +303,9 @@ export class ListingsController {
     })
     async getSellerPerformance(
         @CurrentUser() user: any,
+        @Query('scope') scope?: string,
     ): Promise<StandardResponse<any>> {
-        const performance = await this.listingsService.getSellerPerformance(user.id);
+        const performance = await this.listingsService.getSellerPerformance(user.id, scope === 'personal');
         return new StandardResponse(performance);
     }
 
@@ -326,8 +327,9 @@ export class ListingsController {
         @CurrentUser() user: any,
         @Query('page') page = '1',
         @Query('limit') limit = '20',
+        @Query('scope') scope?: string,
     ): Promise<StandardResponse<any>> {
-        const earnings = await this.listingsService.getEarnings(user.id, +page, +limit);
+        const earnings = await this.listingsService.getEarnings(user.id, +page, +limit, scope === 'personal');
         return new StandardResponse(earnings);
     }
 
@@ -338,9 +340,10 @@ export class ListingsController {
     async exportEarnings(
         @CurrentUser() user: any,
         @Res() res: Response,
+        @Query('scope') scope?: string,
     ): Promise<void> {
         // Fetch all records for CSV export (no pagination cap)
-        const earnings = await this.listingsService.getEarnings(user.id, 1, 9999);
+        const earnings = await this.listingsService.getEarnings(user.id, 1, 9999, scope === 'personal');
         const rows: string[] = ['Date,Channel,Vehicle,VRM,Buyer,Listed Price,Sold Price,Carmazium Bonus'];
         for (const sale of earnings.sales) {
             const date = new Date(sale.createdAt).toLocaleDateString('en-GB');
