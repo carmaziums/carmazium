@@ -13,6 +13,7 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { getCompletePrivateListings } from "@/lib/privateCarsListings"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { getDealerRoute } from "@/config/dealerRouteConfig"
 import { createChatRoom } from "@/lib/chatApi"
@@ -89,15 +90,17 @@ function AddLeadModal({
     // Load dealer's listings for linking
     React.useEffect(() => {
         setLoadingListings(true)
-        apiClient<{ data: any[] }>('/listings/my?limit=50')
-            .then(res => setListings(res?.data ?? []))
-            .catch(() => setListings([]))
+        getCompletePrivateListings()
+            .then(rows => setListings(rows.filter(row => row.status !== 'SOLD')))
+            .catch(() => { setListings([]); setError('Your vehicle list could not be loaded. Close and reopen this form to retry.') })
             .finally(() => setLoadingListings(false))
     }, [])
 
     const filteredListings = listings.filter(l =>
         l.title?.toLowerCase().includes(listingSearch.toLowerCase()) ||
-        l.make?.toLowerCase().includes(listingSearch.toLowerCase())
+        l.make?.toLowerCase().includes(listingSearch.toLowerCase()) ||
+        l.model?.toLowerCase().includes(listingSearch.toLowerCase()) ||
+        l.vrm?.replace(/\s/g, '').toLowerCase().includes(listingSearch.replace(/\s/g, '').toLowerCase())
     )
 
     const set = (k: string, v: string) => setForm(prev => ({ ...prev, [k]: v }))
@@ -131,10 +134,10 @@ function AddLeadModal({
 
     return (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl p-8 w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl p-5 sm:p-8 w-full max-w-lg max-h-[90dvh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-black">Add Lead</h2>
-                    <button onClick={onClose} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors">
+                    <h2 className="text-xl font-black">Add Customer</h2>
+                    <button aria-label="Close customer form" onClick={onClose} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors">
                         <X size={20} />
                     </button>
                 </div>
@@ -142,8 +145,8 @@ function AddLeadModal({
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Buyer Name */}
                     <div>
-                        <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Buyer Name *</label>
-                        <input
+                        <label htmlFor="customer-buyerName" className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Buyer Name *</label>
+                        <input id="customer-buyerName"
                             type="text"
                             value={form.buyerName}
                             onChange={e => set('buyerName', e.target.value)}
@@ -155,8 +158,8 @@ function AddLeadModal({
                     {/* Email + Phone */}
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Email</label>
-                            <input
+                            <label htmlFor="customer-buyerEmail" className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Email</label>
+                            <input id="customer-buyerEmail"
                                 type="email"
                                 value={form.buyerEmail}
                                 onChange={e => set('buyerEmail', e.target.value)}
@@ -165,8 +168,8 @@ function AddLeadModal({
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Phone</label>
-                            <input
+                            <label htmlFor="customer-buyerPhone" className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Phone</label>
+                            <input id="customer-buyerPhone"
                                 type="tel"
                                 value={form.buyerPhone}
                                 onChange={e => set('buyerPhone', e.target.value)}
@@ -178,8 +181,8 @@ function AddLeadModal({
 
                     {/* Source */}
                     <div>
-                        <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Lead Source</label>
-                        <select
+                        <label htmlFor="customer-source" className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Lead Source</label>
+                        <select id="customer-source"
                             value={form.source}
                             onChange={e => set('source', e.target.value)}
                             className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary/50 transition-colors appearance-none cursor-pointer"
@@ -196,7 +199,7 @@ function AddLeadModal({
                         {selectedListing ? (
                             <div className="flex items-center justify-between bg-[var(--bg-input)] border border-primary/30 rounded-xl px-4 py-2.5">
                                 <span className="text-sm font-medium truncate">{selectedListing.title}</span>
-                                <button type="button" onClick={() => setSelectedListing(null)} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white ml-2 shrink-0">
+                                <button type="button" aria-label="Clear linked vehicle" onClick={() => setSelectedListing(null)} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white ml-2 shrink-0">
                                     <X size={14} />
                                 </button>
                             </div>
@@ -204,6 +207,7 @@ function AddLeadModal({
                             <div className="relative">
                                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                                 <input
+                                    aria-label="Search your listings by vehicle or registration"
                                     type="text"
                                     value={listingSearch}
                                     onChange={e => setListingSearch(e.target.value)}
@@ -234,8 +238,8 @@ function AddLeadModal({
 
                     {/* Notes */}
                     <div>
-                        <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Notes</label>
-                        <textarea
+                        <label htmlFor="customer-notes" className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Notes</label>
+                        <textarea id="customer-notes"
                             value={form.notes}
                             onChange={e => set('notes', e.target.value)}
                             rows={2}
@@ -254,7 +258,7 @@ function AddLeadModal({
                         </Button>
                         <Button type="submit" className="flex-1 shadow-neon" disabled={submitting}>
                             {submitting ? <Loader2 size={15} className="animate-spin mr-2" /> : <PlusCircle size={15} className="mr-2" />}
-                            Add Lead
+                            Add Customer
                         </Button>
                     </div>
                 </form>
@@ -636,6 +640,7 @@ export default function DealerCRMPage() {
                                                             {updatingLeadId === lead.id && <Loader2 size={10} className="animate-spin text-primary" />}
                                                         </div>
                                                         <select
+                                                            aria-label={`Customer stage for ${lead.buyerName}`}
                                                             value={lead.status}
                                                             disabled={updatingLeadId === lead.id}
                                                             onChange={e => updateLeadStatus(lead.id, e.target.value)}

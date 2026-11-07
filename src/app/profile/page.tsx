@@ -421,6 +421,7 @@ export default function ProfilePage() {
 
     return (
         <div className="max-w-5xl mx-auto pt-24 pb-12 px-4">
+            <Link href="/dashboard" className="inline-flex min-h-11 items-center text-sm font-semibold text-primary mb-3">Back to dashboard</Link>
             <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
                 <div><h1 className="text-3xl font-bold font-heading">Account Settings</h1><p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>{isPartner ? 'One place for your profile, business, notifications, payouts and security.' : 'Manage your personal profile, notifications, payouts and security.'}</p></div>
                 {profile?.id && <Link href={`/profile/${profile.id}`}><Button variant="outline">View Public Profile</Button></Link>}
@@ -660,7 +661,7 @@ export default function ProfilePage() {
                         <p className="text-sm" style={{ color: "var(--text-muted)" }}>Vehicle buyers pay sellers directly. These details are for eligible CarMazium incentive payments, not collecting vehicle purchase money.</p>
                         <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--border-default)] p-4">
                             <div><strong className="block">Stripe payout connection</strong><p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>{stripeStatus?.payoutsEnabled ? "Payouts enabled" : stripeStatus?.connected ? "Connection needs attention or additional onboarding" : stripeStatusFailed ? "We couldn't check your payout status. Refresh the page before connecting." : "Not connected"}</p></div>
-                            <Button variant="outline" onClick={connectStripe} disabled={stripeLoading || !!stripeStatus?.payoutsEnabled}>{stripeLoading ? <Loader2 size={16} className="animate-spin" /> : <ExternalLink size={16} className="mr-2" />}{stripeStatus?.connected ? "Complete onboarding" : "Connect payout account"}</Button>
+                            <Button variant="outline" onClick={connectStripe} disabled={stripeLoading || !!stripeStatus?.payoutsEnabled}>{stripeLoading ? <Loader2 size={16} className="animate-spin" /> : <ExternalLink size={16} className="mr-2" />}{stripeStatus?.payoutsEnabled ? "Payouts enabled" : stripeStatus?.connected ? "Complete onboarding" : "Connect payout account"}</Button>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <Field label="Account holder name" value={bankName} onChange={setBankName} />
@@ -677,9 +678,9 @@ export default function ProfilePage() {
                     <h3 className="text-xl font-bold mb-5">Password & account security</h3>
                     <form onSubmit={changePassword} className="glass-card p-5 sm:p-7 space-y-5">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            <div className="sm:col-span-2"><label className="text-sm font-semibold block mb-2">Current password</label><input type="password" autoComplete="current-password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] p-3" /></div>
-                            <div><label className="text-sm font-semibold block mb-2">New password</label><input type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] p-3" /></div>
-                            <div><label className="text-sm font-semibold block mb-2">Confirm password</label><input type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] p-3" /></div>
+                            <div className="sm:col-span-2"><label htmlFor="current-password" className="text-sm font-semibold block mb-2">Current password</label><input id="current-password" type="password" autoComplete="current-password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] p-3" /></div>
+                            <div><label htmlFor="new-password" className="text-sm font-semibold block mb-2">New password</label><input id="new-password" type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] p-3" /></div>
+                            <div><label htmlFor="confirm-password" className="text-sm font-semibold block mb-2">Confirm password</label><input id="confirm-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] p-3" /></div>
                         </div>
                         <Button type="submit" disabled={passwordSaving}>{passwordSaving && <Loader2 size={16} className="animate-spin mr-2" />}Change password</Button>
                     </form>

@@ -258,7 +258,7 @@ export default function PartnerDashboardPage() {
                             <p className="text-xs uppercase tracking-widest text-[var(--text-muted)] font-bold">Partner business</p>
                             <h2 className="text-xl font-black font-heading mt-1">{partnerBusiness.companyName}</h2>
                         </div>
-                        <Link href="/profile"><Button variant="outline">Edit business details</Button></Link>
+                        <Link href="/profile?section=business"><Button variant="outline">Edit business details</Button></Link>
                     </section>
 
                     <section>

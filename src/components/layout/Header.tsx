@@ -174,8 +174,10 @@ export function Header() {
                                         type="button"
                                         aria-expanded={isBuyMenuOpen}
                                         aria-haspopup="menu"
-                                        onClick={() => {
-                                            setIsBuyMenuOpen(open => !open)
+                                        onClick={event => {
+                                            cancelDesktopMenuClose()
+                                            // Mouse entry already opens this menu; clicking must not immediately close it.
+                                            setIsBuyMenuOpen(open => event.detail === 0 ? !open : true)
                                             setIsSellMenuOpen(false)
                                             setIsTradeMenuOpen(false)
                                         }}
@@ -261,8 +263,10 @@ export function Header() {
                                         type="button"
                                         aria-expanded={isSellMenuOpen}
                                         aria-haspopup="menu"
-                                        onClick={() => {
-                                            setIsSellMenuOpen(open => !open)
+                                        onClick={event => {
+                                            cancelDesktopMenuClose()
+                                            // Mouse entry already opens this menu; clicking must not immediately close it.
+                                            setIsSellMenuOpen(open => event.detail === 0 ? !open : true)
                                             setIsBuyMenuOpen(false)
                                             setIsTradeMenuOpen(false)
                                         }}
@@ -341,8 +345,10 @@ export function Header() {
                                         type="button"
                                         aria-expanded={isTradeMenuOpen}
                                         aria-haspopup="menu"
-                                        onClick={() => {
-                                            setIsTradeMenuOpen(open => !open)
+                                        onClick={event => {
+                                            cancelDesktopMenuClose()
+                                            // Mouse entry already opens this menu; clicking must not immediately close it.
+                                            setIsTradeMenuOpen(open => event.detail === 0 ? !open : true)
                                             setIsBuyMenuOpen(false)
                                             setIsSellMenuOpen(false)
                                         }}

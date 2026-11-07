@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
+import { ErrorState } from "@/components/ui/AsyncState"
 import {
     Users, PlusCircle, Loader2, Shield, Briefcase,
     DollarSign, Mail, MoreVertical, UserX, ShieldCheck, Activity, Star
@@ -16,9 +17,9 @@ import { MetricCard } from "@/components/dashboard/MetricCard"
 import { TradeExchangeTeamAccess } from "@/components/dealer/TradeExchangeTeamAccess"
 
 const ROLE_CONFIG: Record<string, { label: string; icon: any; color: string; bg: string }> = {
-    ADMIN: { label: "Executive Admin", icon: Shield, color: "text-primary", bg: "bg-primary/10" },
-    SALES_AGENT: { label: "Sales Consultant", icon: Briefcase, color: "text-blue-400", bg: "bg-blue-500/10" },
-    FINANCE_MANAGER: { label: "Capital Director", icon: DollarSign, color: "text-emerald-400", bg: "bg-emerald-500/10" },
+    ADMIN: { label: "Team Admin", icon: Shield, color: "text-primary", bg: "bg-primary/10" },
+    SALES_AGENT: { label: "Sales Agent", icon: Briefcase, color: "text-blue-400", bg: "bg-blue-500/10" },
+    FINANCE_MANAGER: { label: "Finance Manager", icon: DollarSign, color: "text-emerald-400", bg: "bg-emerald-500/10" },
 }
 
 export default function DealerTeamPage() {
@@ -26,6 +27,8 @@ export default function DealerTeamPage() {
     const [staff, setStaff] = React.useState<any[]>([])
     const [pendingInvites, setPendingInvites] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
+    const [loadError, setLoadError] = React.useState<string | null>(null)
+    const [actionError, setActionError] = React.useState<string | null>(null)
     const [showInvite, setShowInvite] = React.useState(false)
     const [inviteEmail, setInviteEmail] = React.useState("")
     const [inviteRole, setInviteRole] = React.useState("SALES_AGENT")
@@ -40,12 +43,14 @@ export default function DealerTeamPage() {
 
     async function fetchStaff() {
         setLoading(true)
+        setLoadError(null)
         try {
             const res = await apiClient<{ data: { active: any[], pending: any[] } }>('/dealers/staff')
             setStaff(res?.data?.active ?? [])
             setPendingInvites(res?.data?.pending ?? [])
         } catch (err) {
             console.error('Failed to load staff:', err)
+            setLoadError('We could not load your team. Please try again.')
             setStaff([])
             setPendingInvites([])
         } finally {
@@ -54,30 +59,35 @@ export default function DealerTeamPage() {
     }
 
     async function handleRemove(staffId: string) {
+        if (!window.confirm("Remove this team member's access to your dealership?")) return
+        setActionError(null)
         setRemovingId(staffId)
         try {
             await apiClient(`/dealers/staff/${staffId}`, { method: 'DELETE' })
             setStaff(prev => prev.filter(s => s.id !== staffId))
         } catch (err) {
             console.error('Failed to remove staff:', err)
+            setActionError(err instanceof Error ? err.message : 'Could not remove this team member. Please try again.')
         } finally {
             setRemovingId(null)
         }
     }
 
     async function handleInvite() {
-        if (!inviteEmail) return
+        if (!inviteEmail.trim()) return
+        setActionError(null)
         setInviting(true)
         try {
             await apiClient('/dealers/staff', {
                 method: 'POST',
-                body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+                body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
             })
             setInviteEmail("")
             setShowInvite(false)
             fetchStaff()
         } catch (err) {
             console.error('Failed to invite staff:', err)
+            setActionError(err instanceof Error ? err.message : 'Could not send the invitation. Please try again.')
         } finally {
             setInviting(false)
         }
@@ -98,10 +108,11 @@ export default function DealerTeamPage() {
                         subHeader={getDealerRoute("/dashboard/dealer/team").subHeader}
                     >
                         <Button onClick={() => setShowInvite(!showInvite)} className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-all">
-                            <PlusCircle size={18} /> Add Personnel
+                            <PlusCircle size={18} /> Invite team member
                         </Button>
                     </PageHeader>
 
+                    {actionError && <p role="alert" className="rounded-xl border border-red-500/30 p-4 text-red-500">{actionError}</p>}
                     {/* Invite Form */}
                     {showInvite && (
                         <div className="dealer-glass-card p-8 animate-in fade-in slide-in-from-top-2 duration-300 bg-[var(--bg-card)] border-primary/20 ring-1 ring-primary/10">
@@ -109,11 +120,12 @@ export default function DealerTeamPage() {
                                 <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
                                     <PlusCircle size={18} className="text-primary" />
                                 </div>
-                                <h3 className="font-black uppercase tracking-widest text-sm">Authorize New Personnel</h3>
+                                <h3 className="font-black uppercase tracking-widest text-sm">Invite a team member</h3>
                             </div>
                             <div className="flex flex-col lg:flex-row gap-4">
                                 <Input
-                                    placeholder="Direct corporate email address"
+                                    aria-label="Team member email address"
+                                    placeholder="Email address"
                                     type="email"
                                     value={inviteEmail}
                                     onChange={e => setInviteEmail(e.target.value)}
@@ -121,20 +133,21 @@ export default function DealerTeamPage() {
                                 />
                                 <div className="relative group">
                                     <select
+                                        aria-label="Team member role"
                                         value={inviteRole}
                                         onChange={e => setInviteRole(e.target.value)}
                                         className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-5 py-3 text-xs font-black uppercase tracking-widest h-12 min-w-[200px] appearance-none cursor-pointer focus:ring-1 focus:ring-primary/40"
                                     >
-                                        <option value="SALES_AGENT">Sales Consultant</option>
-                                        <option value="FINANCE_MANAGER">Capital Director</option>
-                                        <option value="ADMIN">Executive Admin</option>
+                                        <option value="SALES_AGENT">Sales Agent</option>
+                                        <option value="FINANCE_MANAGER">Finance Manager</option>
+                                        <option value="ADMIN">Team Admin</option>
                                     </select>
                                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
                                         <Activity size={12} />
                                     </div>
                                 </div>
-                                <Button onClick={handleInvite} disabled={inviting} className="h-12 px-8 whitespace-nowrap bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-gray-200 rounded-xl transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-                                    {inviting ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Mail size={16} className="mr-2" />} {inviting ? 'AUTHORIZING…' : 'DISPATCH INVITE'}
+                                <Button onClick={handleInvite} disabled={inviting || !inviteEmail.trim()} className="h-12 px-8 whitespace-nowrap bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-gray-200 rounded-xl transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                                    {inviting ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Mail size={16} className="mr-2" />} {inviting ? 'SENDING…' : 'Send invitation'}
                                 </Button>
                             </div>
                         </div>
@@ -168,6 +181,8 @@ export default function DealerTeamPage() {
                         <div className="flex items-center justify-center py-16">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
+                    ) : loadError ? (
+                        <ErrorState message={loadError} onRetry={fetchStaff} />
                     ) : !staff.length && !pendingInvites.length ? (
                         <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-2xl p-16 text-center">
                             <Users className="h-14 w-14 text-gray-700 mx-auto mb-4" />
@@ -188,11 +203,12 @@ export default function DealerTeamPage() {
                                         const roleConfig = ROLE_CONFIG[member.role] || ROLE_CONFIG.SALES_AGENT
                                         return (
                                             <div key={member.id} className="dealer-glass-card p-6 group relative overflow-hidden bg-[var(--bg-card)] border-[var(--border-default)] hover:translate-y-[-4px] transition-all">
-                                                <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="absolute top-0 right-0 p-4 sm:opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
                                                         className="h-8 w-8 p-0 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg"
+                                                        aria-label={`Remove ${member.user?.firstName || "team member"} from the team`}
                                                         onClick={() => handleRemove(member.id)}
                                                         disabled={removingId === member.id}
                                                     >

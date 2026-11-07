@@ -234,9 +234,9 @@ export default function DealerDashboard() {
             show: canManageCrm,
         },
         {
-            href: "/dashboard/dealer/auctions",
+            href: "/auctions/browse",
             title: "Buy & bid",
-            description: "Live auctions, your bids and completed purchases.",
+            description: "Browse live auctions and find your next vehicle.",
             icon: Gavel,
             show: canViewTrade,
         },
