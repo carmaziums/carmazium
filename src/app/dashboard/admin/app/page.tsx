@@ -96,15 +96,13 @@ export default function AdminAppPage() {
   if (!user || profile?.role !== "ADMIN") return null
 
   const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split("@")[0] || "Admin")
-  // All-time totals — these only ever go up.
-  // One number per platform, all time — these only ever go up.
-  const android = (stats?.apkDownloads ?? 0) + (stats?.installs.androidWebApp ?? 0)
-  const total = android + (stats?.installs.ios ?? 0) + (stats?.installs.windows ?? 0)
+  // Different events cannot be added together as verified "installs".
   const tiles = stats ? [
-    { label: "Total installs", value: n(total), sub: "Android + iPhone + Windows, all time", icon: <Download className="h-5 w-5" /> },
-    { label: "Android", value: n(android), sub: `${n(stats.installs.androidApp)} opened the app so far`, icon: <FaAndroid className="h-5 w-5" /> },
-    { label: "iPhone", value: n(stats.installs.ios), sub: "Added to Home Screen and opened", icon: <FaApple className="h-5 w-5" /> },
-    { label: "Windows", value: n(stats.installs.windows), sub: "Installed from Edge or Chrome", icon: <Monitor className="h-5 w-5" /> },
+    { label: "Android native first opens", value: n(stats.installs.androidApp), sub: "Distinct reported native first-open IDs, not verified hardware installations", icon: <FaAndroid className="h-5 w-5" /> },
+    { label: "APK downloads", value: n(stats.apkDownloads), sub: "GitHub release APK download requests, not installations", icon: <Download className="h-5 w-5" /> },
+    { label: "Android web-app opens", value: n(stats.installs.androidWebApp), sub: "First reported standalone website launches", icon: <FaAndroid className="h-5 w-5" /> },
+    { label: "iPhone web-app opens", value: n(stats.installs.ios), sub: "First reported Home Screen website launches", icon: <FaApple className="h-5 w-5" /> },
+    { label: "Windows web-app opens", value: n(stats.installs.windows), sub: "First reported installed website launches", icon: <Monitor className="h-5 w-5" /> },
     { label: "Open problem reports", value: n(stats.problemReports.open), sub: `${n(stats.problemReports.total)} reports in total`, icon: <AlertCircle className="h-5 w-5" /> },
   ] : []
 
@@ -121,7 +119,7 @@ export default function AdminAppPage() {
               <Smartphone className="text-primary" size={24} /> Online now, app & problem reports
             </h1>
             <p className="text-sm text-[var(--text-muted)] mt-1.5 max-w-2xl">
-              How many people downloaded and installed CarMazium, and the problems customers have reported from the app and website.
+              Separate download requests from reported first opens of the native app and installed website, alongside customer problem reports. These are event counts, not verified installation totals.
             </p>
           </header>
 
