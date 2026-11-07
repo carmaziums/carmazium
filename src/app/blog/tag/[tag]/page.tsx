@@ -18,7 +18,8 @@ async function getPostsByTag(tag: string, page: number): Promise<{ data: BlogPos
         const json = await res.json()
         // A malformed or partial upstream response must not turn existing
         // archives into 404 pages. Only valid pagination is authoritative.
-        if (!Array.isArray(json.data) || !Number.isSafeInteger(json.pagination?.totalPages) || json.pagination.totalPages < 0) {
+        if (!Array.isArray(json.data) || !Number.isSafeInteger(json.pagination?.totalPages) || json.pagination.totalPages < 0
+            || !Number.isSafeInteger(json.pagination?.total) || json.pagination.total < json.data.length) {
             return { data: [], total: 0, totalPages: 1, loaded: false }
         }
         return { data: json.data as BlogPost[], total: json.pagination?.total ?? 0, totalPages: json.pagination.totalPages, loaded: true }
@@ -43,10 +44,17 @@ export async function generateMetadata({
     const decoded = decodeURIComponent(tag)
     const page = requestedPage(pageParam)
     const base = `${SITE_URL}/blog/tag/${tag}`
+    const { data: posts, total, totalPages, loaded } = await getPostsByTag(decoded, page)
+    // Decide from the whole archive, not the number of cards on its last page.
+    // An API outage must not accidentally remove a useful archive from search.
+    if (!loaded) throw new Error("[blog] Tag archive feed temporarily unavailable")
+    if (posts.length === 0 || page > totalPages) notFound()
+    const index = total > 1
     return {
         title: page === 1 ? `"${decoded}" — Blog` : `"${decoded}" — Blog Page ${page}`,
         description: `Articles tagged "${decoded}" on the CarMazium blog.`,
         alternates: { canonical: page === 1 ? base : `${base}?page=${page}` },
+        robots: { index, follow: true, googleBot: { index, follow: true } },
     }
 }
 

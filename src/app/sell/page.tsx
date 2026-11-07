@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { SELL_FAQS } from "@/lib/sellFaqs"
+import { SellerGuideLinks } from "@/components/blog/SellerGuideLinks"
 import { Suspense } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
@@ -809,6 +810,8 @@ function SellerEducation() {
                         </article>
                     ))}
                 </div>
+
+                <SellerGuideLinks compact />
 
                 <div className="mx-auto max-w-3xl">
                     <h2 className="mb-6 text-center text-2xl font-black text-[var(--text-primary)] md:text-3xl">Selling your car: common questions</h2>

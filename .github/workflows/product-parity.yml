@@ -60,6 +60,8 @@ jobs:
         run: node --test scripts/test-retired-page-redirects.test.mjs
       - name: Verify website audit fixes (images, SEO metadata, dead buttons, copy)
         run: node --test scripts/test-website-audit-20261031.test.mjs
+      - name: Verify thin tag indexing and blog crawl error handling
+        run: node --test scripts/test-blog-tag-indexing.test.mjs scripts/test-seo-blog-outage-safe-404.test.mjs scripts/test-seo-pagination-and-search-claims.test.mjs
       - name: Verify hero headline stays visible before hydration
         run: node --test scripts/test-home-hero-visibility.test.mjs
       - name: Verify search cards defer gallery photos until swipe
