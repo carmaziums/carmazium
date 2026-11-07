@@ -7,7 +7,7 @@ import { FaAndroid, FaApple } from "react-icons/fa"
 import { apiClient } from "@/lib/apiClient"
 
 type AppStats = {
-  installs: { android: number; androidApp: number; androidWebApp: number; ios: number; windows: number }
+  installs: { android: number; androidApp: number; androidWebApp: number; ios: number; iosApp: number; iosWebApp: number; windows: number }
   installsTotal: number
   apkDownloads: number | null
 }
@@ -34,7 +34,7 @@ export function AppInstallsCard() {
     { label: "Android native first opens", value: v(data?.installs?.androidApp), icon: <FaAndroid className="h-4 w-4 text-lime-500" /> },
     { label: "APK downloads", value: v(data?.apkDownloads), icon: <Download className="h-4 w-4 text-primary" /> },
     { label: "Android web-app opens", value: v(data?.installs?.androidWebApp), icon: <FaAndroid className="h-4 w-4 text-lime-500" /> },
-    { label: "iPhone web-app opens", value: v(data?.installs?.ios), icon: <FaApple className="h-4 w-4" /> },
+    { label: "iPhone web-app opens", value: v(data?.installs?.iosWebApp), icon: <FaApple className="h-4 w-4" /> },
   ]
 
   return (
@@ -54,7 +54,7 @@ export function AppInstallsCard() {
         ))}
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-default)] pt-3">
-        <p className="text-xs text-[var(--text-muted)]">All time · Windows web-app first opens: <strong>{v(data?.installs?.windows)}</strong>. Downloads do not prove installation; native first opens are reported by the app.</p>
+        <p className="text-xs text-[var(--text-muted)]">All time · iPhone native first opens: <strong>{v(data?.installs?.iosApp)}</strong> · Windows web-app first opens: <strong>{v(data?.installs?.windows)}</strong>. Downloads do not prove installation; first opens are reported events.</p>
         <Link href="/dashboard/admin/app" className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline">
           Details & problem reports <ArrowRight className="h-3.5 w-3.5" />
         </Link>
