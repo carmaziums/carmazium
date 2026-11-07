@@ -11,7 +11,7 @@ import { apiClient } from "@/lib/apiClient"
 import { OnlineNowCard } from "@/components/admin/OnlineNowCard"
 
 type AppStats = {
-  installs: { android: number; androidApp: number; androidWebApp: number; ios: number; windows: number }
+  installs: { android: number; androidApp: number; androidWebApp: number; ios: number; iosApp: number; iosWebApp: number; windows: number }
   installsTotal: number
   androidAppInstalls: number
   androidAppInstalls30d: number
@@ -101,7 +101,8 @@ export default function AdminAppPage() {
     { label: "Android native first opens", value: n(stats.installs.androidApp), sub: "Distinct reported native first-open IDs, not verified hardware installations", icon: <FaAndroid className="h-5 w-5" /> },
     { label: "APK downloads", value: n(stats.apkDownloads), sub: "GitHub release APK download requests, not installations", icon: <Download className="h-5 w-5" /> },
     { label: "Android web-app opens", value: n(stats.installs.androidWebApp), sub: "First reported standalone website launches", icon: <FaAndroid className="h-5 w-5" /> },
-    { label: "iPhone web-app opens", value: n(stats.installs.ios), sub: "First reported Home Screen website launches", icon: <FaApple className="h-5 w-5" /> },
+    { label: "iPhone web-app opens", value: n(stats.installs.iosWebApp), sub: "First reported Home Screen website launches", icon: <FaApple className="h-5 w-5" /> },
+    { label: "iPhone native first opens", value: n(stats.installs.iosApp), sub: "Distinct reported native first-open IDs", icon: <FaApple className="h-5 w-5" /> },
     { label: "Windows web-app opens", value: n(stats.installs.windows), sub: "First reported installed website launches", icon: <Monitor className="h-5 w-5" /> },
     { label: "Open problem reports", value: n(stats.problemReports.open), sub: `${n(stats.problemReports.total)} reports in total`, icon: <AlertCircle className="h-5 w-5" /> },
   ] : []
