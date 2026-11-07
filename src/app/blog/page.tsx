@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/buttonVariants"
 import type { BlogPost } from "@/lib/blogApi"
 import { serverBackendFetch } from "@/lib/serverBackendFetch"
 import { GooglePreferredSourceButton } from "@/components/blog/GooglePreferredSourceButton"
+import { SellerGuideLinks } from "@/components/blog/SellerGuideLinks"
 
 // Canonical SEO origin. The apex domain permanently redirects to www.
 const SITE_URL = "https://www.carmazium.com"
@@ -154,6 +155,8 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Pr
                     </div>
                 </section>
 
+                {page === 1 && <SellerGuideLinks />}
+
                 {page === 1 && (
                     <div className="mb-10 md:mb-12">
                         <GooglePreferredSourceButton />
@@ -245,6 +248,11 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Pr
                         {totalPages > 1 && (
                             <nav aria-label="Blog pagination" className="flex flex-wrap justify-center items-center gap-3 mt-14">
                                 {page > 1 && <Link href={`/blog?page=${page - 1}`} className={buttonVariants({ variant: "outline" })}>Previous</Link>}
+                                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                    .filter(number => totalPages <= 9 || number === 1 || number === totalPages || Math.abs(number - page) <= 3)
+                                    .map(number => (
+                                        <Link key={number} href={number === 1 ? "/blog" : `/blog?page=${number}`} aria-label={`Page ${number}`} aria-current={number === page ? "page" : undefined} className={buttonVariants({ variant: number === page ? "default" : "outline" })}>{number}</Link>
+                                    ))}
                                 <span className="text-sm text-[var(--text-muted)] px-2">Page {page} of {totalPages}</span>
                                 {page < totalPages && <Link href={`/blog?page=${page + 1}`} className={buttonVariants({ variant: "outline" })}>Next</Link>}
                             </nav>
