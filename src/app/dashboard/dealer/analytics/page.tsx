@@ -88,6 +88,8 @@ export default function DealerAnalyticsPage() {
             setAnalytics(res.data)
         } catch (err) {
             console.error("Failed to load analytics:", err)
+            // Never present the previous period's results under a new date range.
+            setAnalytics(null)
         } finally {
             setLoading(false)
         }

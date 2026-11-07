@@ -15,6 +15,7 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { getCompletePrivateListings } from "@/lib/privateCarsListings"
 import { alsoListRetail } from "@/lib/listingApi"
 import { useDealerAccess } from "@/context/DealerAccessContext"
 import { PageHeader } from "@/components/dashboard/PageHeader"
@@ -130,18 +131,16 @@ export default function DealerInventoryPage() {
     const [soldModalLoading,     setSoldModalLoading]     = React.useState(false)
 
     React.useEffect(() => {
-        if (!authLoading && user) fetchListings(searchQuery)
-    }, [user, authLoading, searchQuery])
+        if (!authLoading && user) fetchListings()
+    }, [user, authLoading])
 
-    async function fetchListings(search = "") {
+    async function fetchListings() {
         setLoading(true)
         setLoadError(null)
         try {
-            const query = new URLSearchParams()
-            if (search.trim()) query.set("search", search.trim())
-            query.set("includeSold", "true")
-            const res = await apiClient<{ data: any[] }>(`/listings/my?${query.toString()}`)
-            setListings(res?.data ?? [])
+            // Search, status counts and sorting must cover every owner-scoped
+            // page, including sold stock, rather than the API's first 20 rows.
+            setListings(await getCompletePrivateListings())
         } catch (err: any) {
             console.error('Failed to load listings:', err)
             setListings([])
@@ -163,7 +162,7 @@ export default function DealerInventoryPage() {
         if (!window.confirm("Are you sure you want to delete this listing?")) return
         try {
             await apiClient(`/listings/${id}`, { method: 'DELETE' })
-            fetchListings(searchQuery)
+            fetchListings()
         } catch (err) {
             console.error('Failed to delete listing:', err)
             alert('Failed to delete listing. Please try again.')
@@ -186,7 +185,7 @@ export default function DealerInventoryPage() {
                 body: JSON.stringify({ status: 'SOLD', buyerPostcode: postcode || undefined }),
             })
             setSoldModal(null)
-            fetchListings(searchQuery)
+            fetchListings()
         } catch (err) {
             console.error('Failed to mark sold:', err)
         } finally {
@@ -299,6 +298,7 @@ export default function DealerInventoryPage() {
                         <div className="relative flex-1 w-full lg:min-w-[200px] lg:max-w-md">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={18} />
                             <Input
+                                aria-label="Search stock by make, model or registration"
                                 placeholder="Search by make, model, VRM..."
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
@@ -361,6 +361,10 @@ export default function DealerInventoryPage() {
                         </label>
                     </div>
 
+                    {!loading && !loadError && <p role="status" className="text-sm text-[var(--text-muted)]">
+                        Showing {filteredListings.length} of {listings.length} vehicles
+                    </p>}
+
                     {/* Table */}
                     <div className="dealer-glass-card overflow-hidden">
 
@@ -369,7 +373,7 @@ export default function DealerInventoryPage() {
                             {loading ? (
                                 <LoadingState label="Loading inventory…" className="py-12" />
                             ) : loadError ? (
-                                <ErrorState message={loadError} onRetry={() => fetchListings(searchQuery)} className="m-4" />
+                                <ErrorState message={loadError} onRetry={() => fetchListings()} className="m-4" />
                             ) : !filteredListings.length ? (
                                 <EmptyState
                                     icon={Car}
@@ -575,7 +579,7 @@ export default function DealerInventoryPage() {
                                     ) : loadError ? (
                                         <tr>
                                             <td colSpan={6} className="p-4">
-                                                <ErrorState message={loadError} onRetry={() => fetchListings(searchQuery)} />
+                                                <ErrorState message={loadError} onRetry={() => fetchListings()} />
                                             </td>
                                         </tr>
                                     ) : !filteredListings.length ? (
@@ -688,6 +692,8 @@ export default function DealerInventoryPage() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
+                                                                    aria-label={`Actions for ${listing.title || listing.vrm || "vehicle"}`}
+                                                                    aria-expanded={activeDropdown === listing.id}
                                                                     onClick={(e) => {
                                                                         e.preventDefault(); e.stopPropagation()
                                                                         const rect = e.currentTarget.getBoundingClientRect()
@@ -696,7 +702,7 @@ export default function DealerInventoryPage() {
                                                                     }}
                                                                     className="bg-[var(--bg-card)] hover:bg-white/10 text-[var(--text-muted)] hover:text-primary dark:hover:text-white border border-[var(--border-default)]"
                                                                 >
-                                                                    <MoreVertical size={16} />
+                                                                    <MoreVertical size={16} aria-hidden="true" />
                                                                 </Button>
 
                                                                 {activeDropdown === listing.id && (
@@ -861,7 +867,7 @@ export default function DealerInventoryPage() {
                     listingId={cancelListing.id}
                     vehicleTitle={cancelListing.title}
                     onClose={() => setCancelListing(null)}
-                    onCreated={() => void fetchListings(searchQuery)}
+                    onCreated={() => void fetchListings()}
                 />
             )}
 

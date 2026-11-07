@@ -144,7 +144,7 @@ export default function DealerEarningsPage() {
                             loading={loading}
                         />
                         <MetricCard
-                            label="Avg. Unit Margin"
+                            label="Average Sale Price"
                             value={formatPrice(data?.totalSales ? (data.totalRevenue / data.totalSales) : 0)}
                             icon={ArrowUpRight}
                             color="text-blue-400"
@@ -264,23 +264,22 @@ export default function DealerEarningsPage() {
                                     <tr>
                                         <th className="px-8 py-6">Asset Details</th>
                                         <th className="px-8 py-6">Buyer Identity</th>
-                                        <th className="px-8 py-6 text-right">MSRP</th>
-                                        <th className="px-8 py-6 text-right">Closing Price</th>
-                                        <th className="px-8 py-6 text-right">Net Value</th>
+                                        <th className="px-8 py-6 text-right">Listed Price</th>
+                                        <th className="px-8 py-6 text-right">Sold Price</th>
                                         <th className="px-8 py-6 text-center">Transaction Date</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[var(--border-default)] text-[var(--text-secondary)]">
                                     {loading ? (
                                         <tr>
-                                            <td colSpan={6} className="px-8 py-20 text-center">
+                                            <td colSpan={5} className="px-8 py-20 text-center">
                                                 <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
                                                 <p className="mt-4 text-[var(--text-muted)] font-bold uppercase tracking-widest text-xs">Loading sales data...</p>
                                             </td>
                                         </tr>
                                     ) : filteredSales.length === 0 ? (
                                         <tr>
-                                            <td colSpan={6} className="px-8 py-32 text-center">
+                                            <td colSpan={5} className="px-8 py-32 text-center">
                                                 <div className="flex flex-col items-center gap-4 text-[var(--text-muted)]">
                                                     <div className="w-24 h-24 bg-[var(--bg-card)] rounded-3xl flex items-center justify-center mb-2 border border-[var(--border-default)] shadow-inner">
                                                         <Car size={48} className="opacity-10" />
@@ -347,12 +346,6 @@ export default function DealerEarningsPage() {
                                                                 <ArrowDownRight size={10} /> -{formatPrice(Number(sale.listedPrice) - Number(sale.soldPrice))}
                                                             </span>
                                                         )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6 text-right">
-                                                    <div className="inline-flex flex-col items-end px-4 py-2 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
-                                                        <span className="text-emerald-400 font-black text-lg leading-none">{formatPrice(sale.soldPrice)}</span>
-                                                        <span className="text-xs text-emerald-500/60 font-black uppercase tracking-widest mt-1">Net Realized</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6 text-center">

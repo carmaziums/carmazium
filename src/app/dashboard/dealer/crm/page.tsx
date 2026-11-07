@@ -13,6 +13,7 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { getCompletePrivateListings } from "@/lib/privateCarsListings"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { getDealerRoute } from "@/config/dealerRouteConfig"
 import { createChatRoom } from "@/lib/chatApi"
@@ -89,15 +90,17 @@ function AddLeadModal({
     // Load dealer's listings for linking
     React.useEffect(() => {
         setLoadingListings(true)
-        apiClient<{ data: any[] }>('/listings/my?limit=50')
-            .then(res => setListings(res?.data ?? []))
-            .catch(() => setListings([]))
+        getCompletePrivateListings()
+            .then(rows => setListings(rows.filter(row => row.status !== 'SOLD')))
+            .catch(() => { setListings([]); setError('Your vehicle list could not be loaded. Close and reopen this form to retry.') })
             .finally(() => setLoadingListings(false))
     }, [])
 
     const filteredListings = listings.filter(l =>
         l.title?.toLowerCase().includes(listingSearch.toLowerCase()) ||
-        l.make?.toLowerCase().includes(listingSearch.toLowerCase())
+        l.make?.toLowerCase().includes(listingSearch.toLowerCase()) ||
+        l.model?.toLowerCase().includes(listingSearch.toLowerCase()) ||
+        l.vrm?.replace(/\s/g, '').toLowerCase().includes(listingSearch.replace(/\s/g, '').toLowerCase())
     )
 
     const set = (k: string, v: string) => setForm(prev => ({ ...prev, [k]: v }))

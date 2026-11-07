@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import * as React from "react"
+import { ErrorState } from "@/components/ui/AsyncState"
 import { Button } from "@/components/ui/Button"
 import { DollarSign, FileText, Loader2, Clock, CheckCircle, XCircle, AlertCircle, ShieldCheck, TrendingUp, Activity, BarChart3 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -21,6 +22,7 @@ export default function DealerFinancePage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [applications, setApplications] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
+    const [loadError, setLoadError] = React.useState<string | null>(null)
     const [updatingId, setUpdatingId] = React.useState<string | null>(null)
     const [toast, setToast] = React.useState<string | null>(null)
 
@@ -32,11 +34,13 @@ export default function DealerFinancePage() {
 
     async function fetchFinance() {
         setLoading(true)
+        setLoadError(null)
         try {
             const res = await apiClient<{ data: any[] }>('/finance/my')
             setApplications(res?.data ?? [])
         } catch {
             setApplications([])
+            setLoadError('We could not load finance applications. Please try again.')
         } finally {
             setLoading(false)
         }
@@ -134,6 +138,8 @@ export default function DealerFinancePage() {
                                                 <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
                                             </td>
                                         </tr>
+                                    ) : loadError ? (
+                                        <tr><td colSpan={6}><ErrorState message={loadError} onRetry={fetchFinance} /></td></tr>
                                     ) : !applications.length ? (
                                         <tr>
                                             <td colSpan={6} className="px-6 py-16 text-center">

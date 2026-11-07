@@ -78,6 +78,7 @@ export default function ProviderLeadInboxPage() {
                             </p>
                         </div>
                         <select
+                            aria-label="Filter enquiries by service"
                             className={`${inputCls} sm:w-48`}
                             value={type}
                             onChange={e => setType(e.target.value as "" | "FINANCE" | "WARRANTY")}
@@ -88,7 +89,17 @@ export default function ProviderLeadInboxPage() {
                         </select>
                     </div>
 
-                    {error && !loading && <ErrorState message={error} onRetry={load} />}
+                    {error && !loading && (
+                        <div>
+                            <ErrorState message={error} onRetry={load} />
+                            <p className="mt-3 text-sm text-[var(--text-muted)]">
+                                Finance and warranty enquiries require approval for the relevant service.{' '}
+                                <Link href="/dashboard/service/capabilities" className="text-primary underline">
+                                    View your service approvals
+                                </Link>
+                            </p>
+                        </div>
+                    )}
 
                     {loading && <LoadingState label="Loading matched enquiries…" />}
 
