@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type, Transform } from 'class-transformer';
+import { Type, Transform, TransformFnParams } from 'class-transformer';
 import { IsInt, IsNumber, IsOptional, IsString, Min, IsEnum, IsBoolean, IsArray, IsIn, Max } from 'class-validator';
 import {
     FuelType,
@@ -9,6 +9,13 @@ import {
     EuroStandard,
     VehicleType,
 } from './create-listing.dto';
+
+// Implicit conversion runs before @Transform and Boolean('false') is true.
+// Read the original query value so false stays false and invalid input is rejected.
+function queryBoolean({ obj, key }: TransformFnParams): unknown {
+    const raw = obj[key];
+    return raw === 'true' ? true : raw === 'false' ? false : raw;
+}
 
 export class ListingFilterDto {
     // ─── Price ────────────────────────────────────────────────────────────────
@@ -230,7 +237,7 @@ export class ListingFilterDto {
     writeOffCategories?: string[];
 
     @ApiPropertyOptional({ description: 'Filter by ULEZ / CAZ compliance', example: true })
-    @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+    @Transform(queryBoolean)
     @IsBoolean()
     @IsOptional()
     ulezCompliant?: boolean;
@@ -242,13 +249,13 @@ export class ListingFilterDto {
 
     // ─── Imported / Export status ────────────────────────────────────────────
     @ApiPropertyOptional({ description: 'Filter by whether the vehicle is an import', example: true })
-    @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+    @Transform(queryBoolean)
     @IsBoolean()
     @IsOptional()
     isImported?: boolean;
 
     @ApiPropertyOptional({ description: 'Filter by whether the vehicle is marked for export', example: true })
-    @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+    @Transform(queryBoolean)
     @IsBoolean()
     @IsOptional()
     markedForExport?: boolean;
@@ -324,7 +331,7 @@ export class ListingFilterDto {
         description: 'Include SOLD listings in the result set (used by /listings/my for offer dashboards)',
         example: false,
     })
-    @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+    @Transform(queryBoolean)
     @IsBoolean()
     @IsOptional()
     includeSold?: boolean;
@@ -346,13 +353,13 @@ export class ListingFilterDto {
 
     // ─── Saved DVLA status snapshot ───────────────────────────────────────────
     @ApiPropertyOptional({ description: 'Only vehicles whose saved MOT status is Valid', example: true })
-    @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+    @Transform(queryBoolean)
     @IsBoolean()
     @IsOptional()
     motValid?: boolean;
 
     @ApiPropertyOptional({ description: 'Only vehicles whose saved tax status is Taxed', example: true })
-    @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+    @Transform(queryBoolean)
     @IsBoolean()
     @IsOptional()
     taxedOnly?: boolean;
@@ -375,7 +382,7 @@ export class ListingFilterDto {
 
     // ─── Delivery availability ─────────────────────────────────────────────────
     @ApiPropertyOptional({ description: 'Filter by delivery availability', example: true })
-    @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+    @Transform(queryBoolean)
     @IsBoolean()
     @IsOptional()
     deliveryAvailable?: boolean;
