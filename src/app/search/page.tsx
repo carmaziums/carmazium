@@ -12,12 +12,12 @@ import {
     Search, Filter, X, Gavel, AlertTriangle, Loader2,
     RotateCcw, ChevronDown, ShieldCheck, Star, ArrowRight, MapPin, Truck, EyeOff,
 } from "lucide-react"
-import { getListings, getFeaturedListings, getMakeCounts, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type WriteOffSearchValue, type EuroStandardValue } from "@/lib/listingApi"
+import { getListings, getFeaturedListings, getMakeCounts, getVehicleSearchOptions, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type WriteOffSearchValue, type EuroStandardValue } from "@/lib/listingApi"
 import { EXTERIOR_GRADE_OPTIONS } from "@/lib/exteriorGrade"
 import { haversineDistanceMiles } from "@/lib/distance"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useLocation } from "@/context/LocationContext"
-import { CAR_MAKES, getModelsForMake, getVariantsForModel } from "@/lib/carData"
+import { searchMakes, searchModels, searchVariants, type VehicleSearchOption } from "@/lib/vehicleSearchOptions"
 import { VEHICLE_FEATURE_GROUPS } from "@/lib/vehicleFeatures"
 import { useAnalytics } from "@/hooks/useAnalytics"
 
@@ -95,6 +95,7 @@ const PAGE_SIZE = 10
 interface FilterState {
     search: string
     make: string
+    makes: string[]
     model: string
     variant: string
     minPrice: string
@@ -137,7 +138,7 @@ interface FilterState {
 }
 
 const INITIAL_FILTERS: FilterState = {
-    search: '', make: '', model: '', variant: '',
+    search: '', make: '', makes: [], model: '', variant: '',
     minPrice: '', maxPrice: '',
     minYear: '', maxYear: '',
     minMileage: '', maxMileage: '',
@@ -227,6 +228,8 @@ function SearchPageContent() {
     const { location: userLocation, setPostcode } = useLocation()
     const { trackEvent } = useAnalytics()
     const [isFilterOpen, setIsFilterOpen] = React.useState(false)
+    const [stockOptions, setStockOptions] = React.useState<VehicleSearchOption[]>([])
+    React.useEffect(() => { void getVehicleSearchOptions().then(setStockOptions) }, [])
     const [modelManualEntry, setModelManualEntry] = React.useState(false)
     const [makeManualEntry, setMakeManualEntry] = React.useState(false)
     const [makeQuery, setMakeQuery] = React.useState("")
@@ -253,13 +256,13 @@ function SearchPageContent() {
         const oldConditions = searchParams.get('conditions')?.split(',').filter(Boolean) || (p('condition') ? [p('condition')] : [])
         const oldWriteOffs = oldConditions.filter(c => WRITE_OFF_OPTIONS.some(opt => opt.value === c))
         return {
-            search: p('search'), make: p('make'), model: p('model'), variant: p('variant'),
+            search: p('search'), make: p('make'), makes: p('makes').split(',').filter(Boolean), model: p('model'), variant: p('variant'),
             minPrice: p('minPrice'), maxPrice: p('maxPrice'),
             minYear: p('minYear'), maxYear: p('maxYear'),
             minMileage: p('minMileage'), maxMileage: p('maxMileage'),
-            fuelTypes: searchParams.get('fuelTypes')?.split(',').filter(Boolean)
+            fuelTypes: searchParams.get('fuelTypes')?.split(',').filter(Boolean).map(value => REVERSE_FUEL_MAP[value] || value)
                 || (searchParams.get('fuelType') ? [REVERSE_FUEL_MAP[searchParams.get('fuelType')!] || searchParams.get('fuelType')!] : []),
-            transmissions: searchParams.get('transmissions')?.split(',').filter(Boolean)
+            transmissions: searchParams.get('transmissions')?.split(',').filter(Boolean).map(value => REVERSE_TRANS_MAP[value] || value)
                 || (searchParams.get('transmission') ? [REVERSE_TRANS_MAP[searchParams.get('transmission')!] || searchParams.get('transmission')!] : []),
             bodyType: p('bodyType'), color: p('color'),
             minDoors: p('minDoors'), minSeats: p('minSeats'),
@@ -269,7 +272,7 @@ function SearchPageContent() {
             exteriorGrades: (searchParams.get('exteriorGrades')?.split(',') || []).map(Number).filter(g => Number.isInteger(g) && g >= 1 && g <= 5),
             writeOffCategories: Array.from(new Set([...(searchParams.get('writeOffCategories')?.split(',') || []), ...oldWriteOffs]
                 .filter(c => WRITE_OFF_OPTIONS.some(opt => opt.value === c)))) as WriteOffSearchValue[],
-            ulezCompliant: (p('ulezCompliant') as 'yes' | 'no') || '',
+            ulezCompliant: p('ulezCompliant') === 'true' ? 'yes' : p('ulezCompliant') === 'false' ? 'no' : (p('ulezCompliant') as 'yes' | 'no') || '',
             euroStandard: (p('euroStandard') as EuroStandardValue) || '',
             vehicleType: p('vehicleType') || 'CAR',
             minBhp: p('minBhp'), maxBhp: p('maxBhp'),
@@ -279,7 +282,7 @@ function SearchPageContent() {
             features: searchParams.get('features')?.split(',').filter(Boolean) || [],
             maxDistanceMi: searchParams.get('maxDistanceMi') ? Number(searchParams.get('maxDistanceMi')) : null,
             deliveryAvailable: p('deliveryAvailable') === 'true',
-            isImported: (p('isImported') as 'yes' | 'no') || '',
+            isImported: p('isImported') === 'true' ? 'yes' : p('isImported') === 'false' ? 'no' : (p('isImported') as 'yes' | 'no') || '',
             motValid: p('motValid') === 'true',
             taxedOnly: p('taxedOnly') === 'true',
             serviceHistories: (searchParams.get('serviceHistories')?.split(',') || [])
@@ -299,6 +302,7 @@ function SearchPageContent() {
     const lastQs = React.useRef(currentQs)
     const didInitialHydrate = React.useRef(false)
 
+    const makeOptions = React.useMemo(() => searchMakes(stockOptions, filters.vehicleType), [stockOptions, filters.vehicleType])
     // Ref holding latest state for the unmount-save without re-subscribing effects
     const searchCacheRef = React.useRef({ listings, totalCount, currentPage, totalPages, filters: appliedFilters })
     React.useEffect(() => {
@@ -353,7 +357,7 @@ function SearchPageContent() {
     const activeFilterCount = React.useMemo(() => {
         let count = 0
         if (appliedFilters.search.trim()) count++
-        if (appliedFilters.make) count++
+        if (appliedFilters.make || appliedFilters.makes.length) count++
         if (appliedFilters.model) count++
         if (appliedFilters.variant) count++
         if (appliedFilters.minPrice || appliedFilters.maxPrice) count++
@@ -392,7 +396,8 @@ function SearchPageContent() {
     const buildApiFilters = React.useCallback((state: FilterState): ListingFilters => {
         const f: ListingFilters = { limit: PAGE_SIZE }
         if (state.search) f.search = state.search
-        if (state.make) f.make = state.make
+        if (state.makes.length) f.makes = state.makes
+        else if (state.make) f.make = state.make
         if (state.model) f.model = state.model
         if (state.variant) f.variant = state.variant
         if (state.minPrice) f.minPrice = parseFloat(state.minPrice)
@@ -683,7 +688,7 @@ function SearchPageContent() {
                                         const active = filters.vehicleType === opt.value
                                         return (
                                             <button key={opt.value} type="button"
-                                                onClick={() => setFilters(prev => ({ ...prev, vehicleType: opt.value, bodyType: '', make: '', model: '', variant: '' }))}
+                                                onClick={() => setFilters(prev => ({ ...prev, vehicleType: opt.value, bodyType: '', make: '', makes: [], model: '', variant: '' }))}
                                                 className={`py-2.5 rounded-lg border text-sm font-semibold transition-all text-center ${
                                                     active
                                                         ? 'border-primary bg-primary/10 text-primary shadow-[0_0_12px_rgba(237,28,36,0.15)]'
@@ -723,15 +728,16 @@ function SearchPageContent() {
                                     <Input type="search" aria-label="Find vehicle make" placeholder="Find a make (BMW, Toyota, MG…)"
                                         value={makeQuery} onChange={e => setMakeQuery(e.target.value)}
                                         className="h-10 text-sm" />
-                                    <p className="text-xs text-[var(--text-muted)]">Browse all {CAR_MAKES.length} manufacturers — type to narrow the list.</p>
+                                    <p className="text-xs text-[var(--text-muted)]">Browse all {makeOptions.length} manufacturers — type to narrow the list.</p>
                                     {/* Native select works reliably on Android/iOS and exposes the full A–Z catalogue. */}
                                     <select
                                         aria-label="Vehicle make"
-                                        value={makeManualEntry || (filters.make && !CAR_MAKES.includes(filters.make)) ? '__other__' : filters.make}
+                                        value={makeManualEntry || (filters.make && !makeOptions.includes(filters.make)) ? '__other__' : filters.make}
                                         onChange={(e) => {
                                             const value = e.target.value
                                             setMakeManualEntry(value === '__other__')
                                             set('make', value === '__other__' ? '' : value)
+                                            set('makes', [])
                                             set('model', '')
                                             set('variant', '')
                                             setModelQuery('')
@@ -741,20 +747,29 @@ function SearchPageContent() {
                                         className="h-10 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm text-[var(--text-primary)] focus:border-primary focus:outline-none"
                                     >
                                         <option value="">All makes</option>
-                                        {CAR_MAKES.filter(m => !makeQuery.trim() || m.toLowerCase().includes(makeQuery.trim().toLowerCase()) || m === filters.make).map(m => {
+                                        {makeOptions.filter(m => !makeQuery.trim() || m.toLowerCase().includes(makeQuery.trim().toLowerCase()) || m === filters.make).map(m => {
                                             const count = makeCounts[m.toLowerCase()]
                                             return <option key={m} value={m}>{count ? `${m} (${count.toLocaleString('en-GB')})` : m}</option>
                                         })}
                                         <option value="__other__">Other make (type manually)</option>
                                     </select>
-                                    {(makeManualEntry || (filters.make && !CAR_MAKES.includes(filters.make))) && (
+                                    {(makeManualEntry || (filters.make && !makeOptions.includes(filters.make))) && (
                                         <Input placeholder="Enter unlisted make" value={filters.make}
-                                            onChange={e => { set('make', e.target.value); set('model', ''); set('variant', ''); setModelQuery('') }}
+                                            onChange={e => { set('make', e.target.value); set('makes', []); set('model', ''); set('variant', ''); setModelQuery('') }}
                                             className="h-9 text-sm" />
                                     )}
+                                    {(filters.make || filters.makes.length > 0) && (
+                                        <select aria-label="Include another make" value=""
+                                            className="h-10 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm"
+                                            onChange={e => { if (e.target.value) { set('makes', Array.from(new Set([...(filters.makes.length ? filters.makes : [filters.make]), e.target.value]))); set('make', ''); set('model', ''); set('variant', '') } }}>
+                                            <option value="">Include another make…</option>
+                                            {makeOptions.filter(m => m !== filters.make && !filters.makes.includes(m)).map(m => <option key={m} value={m}>{m}</option>)}
+                                        </select>
+                                    )}
+                                    {filters.makes.length > 0 && <p className="text-xs">Selected makes: {filters.makes.join(', ')}</p>}
                                     {/* Model — inline scrollable list when make is known, text input otherwise */}
                                     {(() => {
-                                        const models = getModelsForMake(filters.make)
+                                        const models = searchModels(stockOptions, filters.make, filters.vehicleType)
                                         if (models.length === 0 || modelManualEntry) {
                                             return (
                                                 <div className="space-y-1.5">
@@ -819,7 +834,7 @@ function SearchPageContent() {
                                                 className="h-9 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm focus:border-primary focus:outline-none"
                                             />
                                             <datalist id="variant-options">
-                                                {getVariantsForModel(filters.make, filters.model).map(variant => <option key={variant} value={variant} />)}
+                                                {searchVariants(stockOptions, filters.make, filters.model, filters.vehicleType).map(variant => <option key={variant} value={variant} />)}
                                             </datalist>
                                         </div>
                                     )}
@@ -1286,7 +1301,8 @@ function SearchPageContent() {
                                 <FilterTag label={BODY_TYPE_LABELS[appliedFilters.bodyType]} onRemove={() => clearFilter({ bodyType: '' })} />
                             )}
                             {appliedFilters.search.trim() && <FilterTag label={`Search: ${appliedFilters.search.trim()}`} onRemove={() => clearFilter({ search: '' })} />}
-                            {appliedFilters.make && <FilterTag label={`Make: ${appliedFilters.make}`} onRemove={() => clearFilter({ make: '', model: '', variant: '' })} />}
+                            {appliedFilters.make && <FilterTag label={`Make: ${appliedFilters.make}`} onRemove={() => clearFilter({ make: '', makes: [], model: '', variant: '' })} />}
+                            {appliedFilters.makes.map(make => <FilterTag key={make} label={`Make: ${make}`} onRemove={() => clearFilter({ makes: appliedFilters.makes.filter(m => m !== make), model: '', variant: '' })} />)}
                             {appliedFilters.model && <FilterTag label={`Model: ${appliedFilters.model}`} onRemove={() => clearFilter({ model: '', variant: '' })} />}
                             {appliedFilters.variant && <FilterTag label={`Variant: ${appliedFilters.variant}`} onRemove={() => clearFilter({ variant: '' })} />}
                             {(appliedFilters.minPrice || appliedFilters.maxPrice) && (

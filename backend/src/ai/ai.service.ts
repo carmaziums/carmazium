@@ -1,3 +1,4 @@
+import { normalizeAiSearchFilters, SEARCH_FILTER_GUIDANCE } from './search-filter-contract';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
@@ -73,24 +74,12 @@ You MUST respond with valid JSON in this exact format:
   "filterCard": {
     "label": "Human-readable label for the filter, e.g. 'Red SUV · Under £30,000'",
     "params": {
-      // Only include parameters that the user mentioned or implied. Available params:
-      // "make": car manufacturer (e.g. "BMW", "Audi", "Toyota")
-      // "model": car model (e.g. "3 Series", "A4")
-      // "bodyType": one of SEDAN, HATCHBACK, SUV, COUPE, CONVERTIBLE, ESTATE, MPV, PICKUP, VAN
-      // "fuelType": one of PETROL, DIESEL, HYBRID, ELECTRIC, PLUGIN_HYBRID, LPG, HYDROGEN_CELL
-      // "transmission": one of MANUAL, AUTOMATIC, SEMI_AUTOMATIC, CVT
-      // "color": colour name (e.g. "Red", "Black", "White")
-      // "minPrice": minimum price as string number
-      // "maxPrice": maximum price as string number
-      // "minYear": minimum year as string number
-      // "maxYear": maximum year as string number
-      // "minMileage": minimum mileage as string number
-      // "maxMileage": maximum mileage as string number
-      // "minDoors": minimum doors as string number
-      // "minSeats": minimum seats as string number
+      "maxPrice": "10000"
     }
   }
 }
+
+${SEARCH_FILTER_GUIDANCE}
 
 If the user's query doesn't contain enough information for filters, still provide a helpful recommendation and omit the filterCard. Keep your text warm and helpful. Always respond in JSON only — no markdown wrappers.`;
 
@@ -274,8 +263,8 @@ export class AiService {
                     { role: 'system', content: SEARCH_SYSTEM_PROMPT },
                     { role: 'user', content: query },
                 ],
-                temperature: 0.7,
-                max_tokens: 500,
+                temperature: 0.1,
+                max_tokens: 800,
                 response_format: { type: 'json_object' },
             });
 
@@ -286,6 +275,12 @@ export class AiService {
 
             const cleanContent = content.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
             const parsed = JSON.parse(cleanContent) as AiSearchResult;
+            if (parsed.filterCard) {
+                const params = normalizeAiSearchFilters(parsed.filterCard.params);
+                parsed.filterCard = Object.keys(params).length ? {
+                    label: typeof parsed.filterCard.label === 'string' ? parsed.filterCard.label : 'View matching cars', params,
+                } : undefined;
+            }
             const safe = await this.safeResult(parsed) as AiSearchResult;
             this.searchCache.set(cacheKey, { result: safe, expiresAt: Date.now() + SEARCH_CACHE_TTL_MS });
             return safe;

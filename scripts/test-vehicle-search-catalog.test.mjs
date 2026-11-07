@@ -64,7 +64,7 @@ test('model variant selections are queryable across backend, website and native 
     assert.ok(read(file).includes('variant'), `${file} must serialize variant`);
   }
   for (const file of ['src/app/search/page.tsx', 'carmazium app/carmazium app/src/screens/main/SearchScreen.tsx']) {
-    assert.ok(read(file).includes('getVariantsForModel'), `${file} must display variant selection`);
+    assert.ok(read(file).includes('searchVariants'), `${file} must display variant selection`);
   }
 });
 

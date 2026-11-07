@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import * as SecureStore from 'expo-secure-store';
@@ -70,15 +71,18 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     longitude: null,
   });
   const [loading, setLoading] = useState(true);
+  const requestRef = useRef(0);
+  const persistenceRef = useRef(Promise.resolve());
 
   // Hydrate from SecureStore on mount so postcode + geocoded coords survive
   // an app relaunch — one of Stage 3's explicit acceptance criteria.
   useEffect(() => {
     let cancelled = false;
+    const request = requestRef.current;
     (async () => {
       try {
         const raw = await SecureStore.getItemAsync(STORAGE_KEY);
-        if (!cancelled && raw) {
+        if (!cancelled && raw && request === requestRef.current) {
           const parsed = JSON.parse(raw) as UserLocation;
           setState({
             postcode: parsed.postcode ?? null,
@@ -94,42 +98,39 @@ export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     })();
     return () => {
       cancelled = true;
+      ++requestRef.current;
     };
   }, []);
 
-  const persist = useCallback(async (next: UserLocation) => {
-    try {
-      await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // Non-fatal — user just won't have persistence.
-    }
+  // Serialize storage writes so a slow old save cannot overwrite a newer postcode/clear.
+  const persist = useCallback((next: UserLocation, request: number) => {
+    persistenceRef.current = persistenceRef.current.catch(() => {}).then(async () => {
+      if (request !== requestRef.current) return;
+      if (next.postcode) await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(next));
+      else await SecureStore.deleteItemAsync(STORAGE_KEY);
+    }).catch(() => {});
+    return persistenceRef.current;
   }, []);
 
-  const setPostcode = useCallback(
-    async (raw: string) => {
-      const postcode = normalizePostcode(raw);
-      if (!postcode) return;
-      const geo = await geocode(postcode);
-      const next: UserLocation = {
-        postcode,
-        latitude: geo.latitude,
-        longitude: geo.longitude,
-      };
-      setState(next);
-      await persist(next);
-    },
-    [persist],
-  );
+  const setPostcode = useCallback(async (raw: string) => {
+    const request = ++requestRef.current;
+    const postcode = normalizePostcode(raw);
+    const pending: UserLocation = { postcode: postcode || null, latitude: null, longitude: null };
+    setState(pending);
+    void persist(pending, request);
+    const geo = postcode ? await geocode(postcode) : { latitude: null, longitude: null };
+    if (request !== requestRef.current) return;
+    const next: UserLocation = { postcode: postcode || null, ...geo };
+    setState(next);
+    await persist(next, request);
+  }, [persist]);
 
   const clear = useCallback(async () => {
+    const request = ++requestRef.current;
     const next: UserLocation = { postcode: null, latitude: null, longitude: null };
     setState(next);
-    try {
-      await SecureStore.deleteItemAsync(STORAGE_KEY);
-    } catch {
-      // Non-fatal.
-    }
-  }, []);
+    await persist(next, request);
+  }, [persist]);
 
   const value = useMemo<LocationContextValue>(
     () => ({

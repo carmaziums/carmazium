@@ -1,3 +1,4 @@
+import type { VehicleSearchOption } from './vehicleSearchOptions';
 /**
  * API Client for Listing Operations
  */
@@ -1558,4 +1559,12 @@ export async function importFromUrl(params: {
  */
 export async function completePurchaseAsBuyer(listingId: string): Promise<void> {
     await apiClient(`/listings/${encodeURIComponent(listingId)}/complete-purchase`, { method: 'POST' })
+}
+
+/** Add live inventory options without losing the offline manufacturer catalogue. */
+export async function getVehicleSearchOptions(): Promise<VehicleSearchOption[]> {
+    try {
+        const res = await apiClient<{ data?: VehicleSearchOption[] }>('/listings/facets/search-options');
+        return Array.isArray(res?.data) ? res.data.filter(row => typeof row.make === 'string') : [];
+    } catch { return []; }
 }

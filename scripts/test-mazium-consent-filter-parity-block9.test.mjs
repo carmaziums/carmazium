@@ -52,17 +52,15 @@ test('native Mazium filter card routes through real nested Search tab and preser
   assert.doesNotMatch(native, /CommonActions\.navigate\(\{ name: 'Search'/);
   for (const field of ['make', 'model', 'bodyType', 'fuelType', 'transmission',
     'color', 'maxPrice', 'minPrice', 'minYear', 'maxYear', 'minDoors', 'minSeats']) {
-    assert.match(search, new RegExp('if \\(f\\.' + field + '\\)'), field);
+    assert.match(search, new RegExp('if \\(f\\.' + field + '(?: != null)?\\)'), field);
   }
 });
 
-test('Search screen does not clear accepted AI model, price, year and transmission filters immediately', () => {
-  assert.match(search, /if \(!p\.make && !p\.aiFilters\?\.make\) setSelectedMakes\(\[\]\)/);
-  assert.match(search, /if \(!p\.aiFilters\?\.minPrice\) setMinPrice\(0\)/);
-  assert.match(search, /if \(!p\.maxPrice && !p\.aiFilters\?\.maxPrice\) setMaxPrice\(150000\)/);
-  assert.match(search, /if \(!p\.aiFilters\?\.minYear\) setMinYear\('Any'\)/);
-  assert.match(search, /if \(!p\.aiFilters\?\.transmission\) setTransmissions\(\[\]\)/);
-  assert.match(search, /if \(p\.aiFilters\) \{/);
+test('Search navigation and AI modal share a fresh filter application path', () => {
+  assert.match(search, /applySearchParams\(p.aiFilters \?\? p\)/);
+  assert.match(search, /function applySearchParams[\s\S]*?resetFilters\(\)/);
+  assert.match(search, /applySearchParams\(f\)/);
+  for (const field of ['minMileage', 'maxMileage', 'maxEngine', 'maxCo2']) assert.ok(search.includes(`f.${field}`));
 });
 
 test('screen reader navigation and privacy actions retain sensible target size', () => {

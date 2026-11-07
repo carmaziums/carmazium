@@ -10,9 +10,9 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CarListing } from '../../data/listings';
-import { CAR_MAKES, getModelsForMake, getVariantsForModel } from '../../data/carData';
+import { searchMakes, searchModels, searchVariants, VehicleSearchOption } from '../../data/vehicleSearchOptions';
 import { VEHICLE_FEATURE_GROUPS } from '../../data/vehicleFeatures';
-import { searchListings, getMakeCounts } from '../../lib/listingsApi';
+import { searchListings, getMakeCounts, getVehicleSearchOptions } from '../../lib/listingsApi';
 import { ListPickerSheet } from '../../components/filters/ListPickerSheet';
 import { EXTERIOR_GRADE_OPTIONS } from '../../lib/exteriorGrade';
 import { naturalLanguageSearch } from '../../lib/aiApi';
@@ -198,16 +198,14 @@ export const SearchScreen: React.FC = () => {
   const [selectedMakes, setSelectedMakes] = useState<string[]>([]);
   const [makeQuery, setMakeQuery] = useState('');
   const [picker, setPicker] = useState<null | 'make' | 'model' | 'variant'>(null);
+  const [stockOptions, setStockOptions] = useState<VehicleSearchOption[]>([]);
+  useEffect(() => { void getVehicleSearchOptions().then(setStockOptions); }, []);
   const [makeCounts, setMakeCounts] = useState<Record<string, number>>({});
   useEffect(() => { void getMakeCounts().then(setMakeCounts); }, []);
   const [showAllMakes, setShowAllMakes] = useState(false);
   const [featureQuery, setFeatureQuery] = useState('');
-  const makeQueryTrimmed = makeQuery.trim().toLowerCase();
-  const visibleMakes = makeQueryTrimmed
-    ? CAR_MAKES.filter(m => m.toLowerCase().includes(makeQueryTrimmed))
-    : showAllMakes ? CAR_MAKES : Array.from(new Set([...POPULAR_MAKES, ...selectedMakes]));
   const [minPrice, setMinPrice] = useState(0);
-  const [maxPrice, setMaxPrice] = useState(route.params?.maxPrice ? Number(route.params.maxPrice) : 150000);
+  const [maxPrice, setMaxPrice] = useState<number | null>(route.params?.maxPrice != null ? Number(route.params.maxPrice) : null);
   const [selectedBody, setSelectedBody] = useState<string>(route.params?.bodyType ?? '');
   const [selectedFuels, setSelectedFuels] = useState<string[]>(
     route.params?.fuelType ? [route.params.fuelType] : []
@@ -237,6 +235,7 @@ export const SearchScreen: React.FC = () => {
   const [sellerType, setSellerType] = useState<'' | 'DEALER' | 'PRIVATE'>('');
   // Public marketplace defaults to Cars on both web and mobile.
   const [vehicleType, setVehicleType] = useState<'' | 'CAR' | 'HGV' | 'MOTORCYCLE'>('CAR');
+  const makeOptions = React.useMemo(() => searchMakes(stockOptions, vehicleType), [stockOptions, vehicleType]);
   const [locationFilter, setLocationFilter] = useState('');
   const [modelFilter, setModelFilter] = useState('');
   const [variantFilter, setVariantFilter] = useState('');
@@ -305,43 +304,8 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => {
     const p = route.params as any;
     if (!p?._t) return;
-    let hasNew = false;
-    // AI filters from HomeScreen's inline search ("View matching cars") —
-    // same mapping this screen's own AI Search modal already applies (keys
-    // per ai.service.ts's SEARCH_SYSTEM_PROMPT).
-    if (p.aiFilters) {
-      const f = p.aiFilters;
-      if (f.make) { setSelectedMakes([f.make]); hasNew = true; }
-      if (f.fuelType) { setSelectedFuels([f.fuelType]); hasNew = true; }
-      if (f.bodyType) { setSelectedBody(f.bodyType); hasNew = true; }
-      if (f.maxPrice) { setMaxPrice(parseInt(f.maxPrice)); hasNew = true; }
-      if (f.minPrice) { setMinPrice(parseInt(f.minPrice)); hasNew = true; }
-      if (f.minYear) { setMinYear(f.minYear); hasNew = true; }
-      if (f.maxYear) { setMaxYear(f.maxYear); hasNew = true; }
-      if (f.transmission) { setTransmissions([f.transmission]); hasNew = true; }
-      if (f.model) { setModelFilter(f.model); setVariantFilter(''); hasNew = true; }
-      if (f.color) { setColorFilter(f.color); hasNew = true; }
-      if (f.minDoors) { setMinDoors(f.minDoors); hasNew = true; }
-      if (f.minSeats) { setMinSeats(f.minSeats); hasNew = true; }
-      if (p.aiExplanation) setAiExplanation(p.aiExplanation);
-    }
-    if (p.fuelType !== undefined) { setSelectedFuels([p.fuelType]); hasNew = true; }
-    if (p.bodyType !== undefined) { setSelectedBody(p.bodyType); hasNew = true; }
-    if (p.maxPrice != null) { setMaxPrice(Number(p.maxPrice)); hasNew = true; }
-    if (p.sortBy !== undefined) { setSortId(p.sortBy); hasNew = true; }
-    if (p.make !== undefined) { setSelectedMakes([p.make]); setModelFilter(''); setVariantFilter(''); hasNew = true; }
-    if (hasNew) {
-      setQuickFilter('custom');
-      setQuery('');
-      // Do not immediately erase filters received from Mazium's card.
-      // Reset only dimensions that were NOT supplied in this navigation.
-      if (!p.make && !p.aiFilters?.make) setSelectedMakes([]);
-      if (!p.aiFilters?.minPrice) setMinPrice(0);
-      if (!p.maxPrice && !p.aiFilters?.maxPrice) setMaxPrice(150000);
-      if (!p.aiFilters?.minYear) setMinYear('Any');
-      setMaxMiles('Any');
-      if (!p.aiFilters?.transmission) setTransmissions([]);
-    }
+    applySearchParams(p.aiFilters ?? p);
+    setAiExplanation(p.aiExplanation ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [(route.params as any)?._t]);
 
@@ -349,9 +313,10 @@ export const SearchScreen: React.FC = () => {
 
   function buildParams(p = 1) {
     const qf = QUICK_FILTERS.find(f => f.id === quickFilter);
-    const parseMi = (s: string) => {
-      if (s === 'Any') return undefined;
-      return parseInt(s.replace('k', ''), 10) * 1000;
+    const parseMi = (value: string) => {
+      if (!value || value === 'Any') return undefined;
+      const number = Number(value.replace(/k$/i, '')) * (/k$/i.test(value) ? 1000 : 1);
+      return Number.isFinite(number) && number >= 0 ? number : undefined;
     };
     return {
       search: query.trim() || undefined,
@@ -361,7 +326,7 @@ export const SearchScreen: React.FC = () => {
       variant: variantFilter.trim() || undefined,
       vehicleType: vehicleType || undefined,
       location: locationFilter.trim() || undefined,
-      maxPrice: maxPrice < 150000 ? maxPrice : qf?.params.maxPrice,
+      maxPrice: maxPrice ?? qf?.params.maxPrice,
       minPrice: minPrice > 0 ? minPrice : undefined,
       bodyType: selectedBody || qf?.params.bodyType,
       // Was selectedFuels[0] — selecting 2+ fuel chips silently ignored
@@ -382,7 +347,7 @@ export const SearchScreen: React.FC = () => {
       originLongitude: maxDistanceMi != null && userLat != null && userLng != null ? userLng : undefined,
       exteriorGrades: exteriorGrades.length ? exteriorGrades : undefined,
       writeOffCategories: writeOffCategories.length ? writeOffCategories : undefined,
-      transmissions: transmissions.length ? transmissions : undefined,
+      transmissions: transmissions.length ? transmissions : qf?.params.transmission ? [qf.params.transmission] : undefined,
       ulezCompliant: ulezCompliant === 'yes' ? true : ulezCompliant === 'no' ? false : undefined,
       minBhp: minBhp ? parseInt(minBhp) : undefined,
       maxBhp: maxBhp ? parseInt(maxBhp) : undefined,
@@ -418,7 +383,7 @@ export const SearchScreen: React.FC = () => {
     try {
       if (reset) setSearchError(null);
       if (maxDistanceMi != null && (userLat == null || userLng == null)) {
-        if (reset) { setListings([]); setTotal(0); setHasMore(false); }
+        if (reset) { setListings([]); setTotal(0); setHasMore(false); setSearchError('Enter a valid postcode to use the distance filter.'); }
         return;
       }
       const { listings: items, total: t } = await searchListings({ ...buildParams(p), strictErrors: true });
@@ -473,8 +438,9 @@ export const SearchScreen: React.FC = () => {
 
   // Active filter count
   const filterCount = [
+    !!query.trim(),
     selectedMakes.length > 0,
-    minPrice > 0 || maxPrice < 150000,
+    minPrice > 0 || maxPrice != null,
     !!selectedBody,
     selectedFuels.length > 0,
     minYear !== 'Any',
@@ -520,9 +486,16 @@ export const SearchScreen: React.FC = () => {
   ].filter(Boolean).length;
 
   const resetFilters = () => {
+    setQuery('');
+    setQuickFilter('all');
+    setSortId('newest');
+    setAiExplanation(null);
+    setMakeQuery('');
+    setFeatureQuery('');
+    setShowAllMakes(false);
     setSelectedMakes([]);
     setMinPrice(0);
-    setMaxPrice(150000);
+    setMaxPrice(null);
     setSelectedBody('');
     setSelectedFuels([]);
     setMinYear('Any');
@@ -573,18 +546,59 @@ export const SearchScreen: React.FC = () => {
   };
 
   const applyQuickFilter = (id: string) => {
+    resetFilters();
     setQuickFilter(id);
-    // Reset manual filters when switching quick filters
-    if (id !== 'custom') {
-      setSelectedMakes([]);
-      setMinPrice(0);
-      setMaxPrice(150000);
-      setSelectedBody('');
-      setSelectedFuels([]);
-      setMinYear('Any');
-      setMaxMiles('Any');
-    }
   };
+
+  function applySearchParams(f: Record<string, any>) {
+    resetFilters();
+    setQuickFilter('custom');
+    if (f.search) setQuery(String(f.search));
+    if (f.make) setSelectedMakes([String(f.make)]);
+    if (f.makes) setSelectedMakes(String(f.makes).split(','));
+    if (f.model) setModelFilter(String(f.model));
+    if (f.variant) setVariantFilter(String(f.variant));
+    const fuelLabel = (v: string) => Object.entries(FUEL_MAP).find(([, code]) => code === v)?.[0] ?? v;
+    if (f.fuelType) setSelectedFuels([fuelLabel(String(f.fuelType))]);
+    if (f.fuelTypes) setSelectedFuels(String(f.fuelTypes).split(',').map(fuelLabel));
+    if (f.bodyType) setSelectedBody(String(f.bodyType));
+    if (f.transmission) setTransmissions([String(f.transmission)]);
+    if (f.transmissions) setTransmissions(String(f.transmissions).split(','));
+    if (f.maxPrice != null) setMaxPrice(Number(f.maxPrice));
+    if (f.minPrice != null) setMinPrice(Number(f.minPrice));
+    if (f.minYear) setMinYear(String(f.minYear));
+    if (f.maxYear) setMaxYear(String(f.maxYear));
+    if (f.minMileage != null) setMinMiles(String(f.minMileage));
+    if (f.maxMileage != null) setMaxMiles(String(f.maxMileage));
+    if (f.color) setColorFilter(String(f.color));
+    if (f.minDoors) setMinDoors(String(f.minDoors));
+    if (f.minSeats) setMinSeats(String(f.minSeats));
+    if (f.minEngine != null) setMinEngine(String(f.minEngine));
+    if (f.maxEngine != null) setMaxEngine(String(f.maxEngine));
+    if (f.maxCo2 != null) setMaxCo2(String(f.maxCo2));
+    if (f.minBhp != null) setMinBhp(String(f.minBhp));
+    if (f.maxBhp != null) setMaxBhp(String(f.maxBhp));
+    if (f.minCombinedMpg != null) setMinCombinedMpg(String(f.minCombinedMpg));
+    if (f.maxZeroTo60Mph != null) setMaxZeroTo60Mph(String(f.maxZeroTo60Mph));
+    if (f.driveType) setDriveTypeFilter(String(f.driveType));
+    if (f.location) setLocationFilter(String(f.location));
+    if (f.vehicleType) setVehicleType(f.vehicleType);
+    if (f.sellerType) setSellerType(f.sellerType);
+    if (f.sortBy) setSortId(String(f.sortBy));
+    const yesNo = (v: any): '' | 'yes' | 'no' => v === true || v === 'true' || v === 'yes' ? 'yes' : v === false || v === 'false' || v === 'no' ? 'no' : '';
+    setUlezCompliant(yesNo(f.ulezCompliant));
+    setIsImported(yesNo(f.isImported));
+    setDeliveryAvailable(yesNo(f.deliveryAvailable) === 'yes');
+    setMotValid(yesNo(f.motValid) === 'yes');
+    setTaxedOnly(yesNo(f.taxedOnly) === 'yes');
+    if (f.euroStandard) setEuroStandard(String(f.euroStandard));
+    if (f.maxOwners != null) setMaxOwners(Number(f.maxOwners));
+    if (f.conditions) setConditions(String(f.conditions).split(','));
+    if (f.exteriorGrades) setExteriorGrades(String(f.exteriorGrades).split(',').map(Number));
+    if (f.writeOffCategories) setWriteOffCategories(String(f.writeOffCategories).split(','));
+    if (f.serviceHistories) setServiceHistories(String(f.serviceHistories).split(','));
+    if (f.features) setSelectedFeatures(String(f.features).split(','));
+  }
 
   const sortLabel = SORT_OPTIONS.find(s => s.id === sortId)?.label ?? 'Sort';
 
@@ -635,25 +649,12 @@ export const SearchScreen: React.FC = () => {
     try {
       const result = await naturalLanguageSearch(aiQuery.trim());
       const f = result.filterCard?.params ?? {};
-      // Apply whatever filter params the AI returned. Keys must match
-      // ai.service.ts's SEARCH_SYSTEM_PROMPT exactly (make, model, bodyType,
-      // fuelType, transmission, color, min/maxPrice, min/maxYear,
-      // min/maxMileage, minDoors, minSeats) — sellerType/vehicleType/
-      // location/ulezCompliant/deliveryAvailable are NOT
-      // extracted by the AI and were dead branches here.
-      if (f.make) setSelectedMakes([f.make]);
-      if (f.fuelType) setSelectedFuels([f.fuelType]);
-      if (f.bodyType) setSelectedBody(f.bodyType);
-      if (f.maxPrice) setMaxPrice(parseInt(f.maxPrice));
-      if (f.minPrice) setMinPrice(parseInt(f.minPrice));
-      if (f.minYear)  setMinYear(f.minYear);
-      if (f.maxYear)  setMaxYear(f.maxYear);
-      if (f.transmission) setTransmissions([f.transmission]);
-      if (f.model)        setModelFilter(f.model);
-      if (f.color)        setColorFilter(f.color);
-      if (f.minDoors)     setMinDoors(f.minDoors);
-      if (f.minSeats)     setMinSeats(f.minSeats);
-      setQuickFilter('custom');
+      if (!Object.keys(f).length) {
+        setAiExplanation(result.text ?? 'Please describe the cars you want to search for.');
+        setAiModalVisible(false);
+        return;
+      }
+      applySearchParams(f);
       setAiExplanation(result.text ?? null);
       setAiModalVisible(false);
       setAiQuery('');
@@ -932,7 +933,8 @@ export const SearchScreen: React.FC = () => {
         visible={picker === 'make'}
         title="Select makes"
         multi
-        options={CAR_MAKES}
+        allowCustom
+        options={makeOptions}
         counts={makeCounts}
         selected={selectedMakes}
         allLabel="All makes"
@@ -943,7 +945,8 @@ export const SearchScreen: React.FC = () => {
       <ListPickerSheet
         visible={picker === 'model'}
         title={selectedMakes[0] ? `${selectedMakes[0]} models` : 'Models'}
-        options={selectedMakes.length === 1 ? getModelsForMake(selectedMakes[0]) : []}
+        allowCustom
+        options={selectedMakes.length === 1 ? searchModels(stockOptions, selectedMakes[0], vehicleType) : []}
         selected={modelFilter ? [modelFilter] : []}
         allLabel="All models"
         searchPlaceholder="Search models"
@@ -953,7 +956,8 @@ export const SearchScreen: React.FC = () => {
       <ListPickerSheet
         visible={picker === 'variant'}
         title={modelFilter ? `${modelFilter} variants` : 'Variants'}
-        options={selectedMakes.length === 1 && modelFilter ? getVariantsForModel(selectedMakes[0], modelFilter) : []}
+        allowCustom
+        options={selectedMakes.length === 1 && modelFilter ? searchVariants(stockOptions, selectedMakes[0], modelFilter, vehicleType) : []}
         selected={variantFilter ? [variantFilter] : []}
         allLabel="All variants"
         searchPlaceholder="Search variants"
@@ -1037,8 +1041,8 @@ export const SearchScreen: React.FC = () => {
                   <Text style={s.inputBoxLabel}>MAX</Text>
                   <TextInput
                     style={s.inputBoxValue}
-                    value={maxPrice < 150000 ? `£${maxPrice.toLocaleString()}` : ''}
-                    onChangeText={t => setMaxPrice(parseInt(t.replace(/[^0-9]/g, '') || '150000'))}
+                    value={maxPrice != null ? `£${maxPrice.toLocaleString()}` : ''}
+                    onChangeText={t => { const digits = t.replace(/[^0-9]/g, ''); setMaxPrice(digits ? Number(digits) : null); }}
                     placeholder="£ Any"
                     placeholderTextColor={Colors.inputPlaceholder}
                     keyboardType="number-pad"
@@ -1129,6 +1133,10 @@ export const SearchScreen: React.FC = () => {
               <Text style={s.filterLabel}>MILEAGE RANGE</Text>
               <View style={s.inputBox}>
                 <Text style={s.inputBoxLabel}>MIN MILES</Text>
+                  <TextInput accessibilityLabel="Min Miles" style={s.inputBoxValue}
+                    value={minMiles === 'Any' ? '' : minMiles}
+                    onChangeText={v => setMinMiles(v.replace(/[^0-9]/g, '') || 'Any')}
+                    placeholder="Any mileage" placeholderTextColor={Colors.inputPlaceholder} keyboardType="number-pad" />
                 <ScrollView horizontal
         style={Layout.hScroll} showsHorizontalScrollIndicator={false}>
                   <View style={{ flexDirection: 'row', gap: 6 }}>
@@ -1143,6 +1151,10 @@ export const SearchScreen: React.FC = () => {
               <View style={{ marginTop: 10 }}>
                 <View style={s.inputBox}>
                   <Text style={s.inputBoxLabel}>MAX MILES</Text>
+                  <TextInput accessibilityLabel="Max Miles" style={s.inputBoxValue}
+                    value={maxMiles === 'Any' ? '' : maxMiles}
+                    onChangeText={v => setMaxMiles(v.replace(/[^0-9]/g, '') || 'Any')}
+                    placeholder="Any mileage" placeholderTextColor={Colors.inputPlaceholder} keyboardType="number-pad" />
                   <ScrollView horizontal
         style={Layout.hScroll} showsHorizontalScrollIndicator={false}>
                     <View style={{ flexDirection: 'row', gap: 6 }}>
@@ -1368,7 +1380,7 @@ export const SearchScreen: React.FC = () => {
                   <TouchableOpacity
                     key={opt.id}
                     style={[s.segmentBtn, vehicleType === opt.id && s.segmentBtnActive]}
-                    onPress={() => setVehicleType(opt.id)}
+                    onPress={() => { setVehicleType(opt.id); setSelectedBody(''); setSelectedMakes([]); setModelFilter(''); setVariantFilter(''); }}
                     activeOpacity={0.7}
                   >
                     <Text style={[s.segmentBtnText, vehicleType === opt.id && s.segmentBtnTextActive]}>{opt.label}</Text>
