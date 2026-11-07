@@ -72,8 +72,10 @@ export function summariseAppEvents(rows: EventRow[], since30: Date) {
     const blank = () => ({ android: 0, ios: 0, windows: 0, web: 0, unknown: 0 } as Record<AppPlatform | 'unknown', number>);
     const downloadClicks = blank();
     const webInstalls = blank();
-    const installIds = new Set<string>();
-    const installIds30 = new Set<string>();
+    const androidNativeIds = new Set<string>();
+    const iosNativeIds = new Set<string>();
+    const androidNativeIds30 = new Set<string>();
+    const iosNativeIds30 = new Set<string>();
     let downloadClicks30 = 0;
     let webInstalls30 = 0;
     for (const row of rows) {
@@ -87,25 +89,35 @@ export function summariseAppEvents(rows: EventRow[], since30: Date) {
         } else if (row.type === 'app_first_open') {
             const id = (row.payload as { installId?: unknown } | null)?.installId;
             if (typeof id === 'string' && id.length >= 8 && id.length <= 64) {
-                installIds.add(id);
-                if (recent) installIds30.add(id);
+                const platform = platformOf(row.payload);
+                if (platform === 'android') {
+                    androidNativeIds.add(id);
+                    if (recent) androidNativeIds30.add(id);
+                } else if (platform === 'ios') {
+                    iosNativeIds.add(id);
+                    if (recent) iosNativeIds30.add(id);
+                }
             }
         }
     }
     const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
     // All-time installs per operating system (never reset).
     const installs = {
-        android: installIds.size + webInstalls.android,
-        androidApp: installIds.size,
+        android: androidNativeIds.size + webInstalls.android,
+        androidApp: androidNativeIds.size,
         androidWebApp: webInstalls.android,
-        ios: webInstalls.ios,
+        ios: iosNativeIds.size + webInstalls.ios,
+        iosApp: iosNativeIds.size,
+        iosWebApp: webInstalls.ios,
         windows: webInstalls.windows + webInstalls.web,
     };
     return {
         installs,
         installsTotal: installs.android + installs.ios + installs.windows,
-        androidAppInstalls: installIds.size,
-        androidAppInstalls30d: installIds30.size,
+        androidAppInstalls: androidNativeIds.size,
+        androidAppInstalls30d: androidNativeIds30.size,
+        iosAppFirstOpens: iosNativeIds.size,
+        iosAppFirstOpens30d: iosNativeIds30.size,
         webInstalls,
         webInstallsTotal: sum(webInstalls),
         webInstalls30d: webInstalls30,
