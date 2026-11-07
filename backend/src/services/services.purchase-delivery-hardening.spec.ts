@@ -168,7 +168,7 @@ describe('TradeXchange purchase-to-delivery integrity', () => {
         }));
         expect(prisma.serviceJob.findFirst).toHaveBeenCalledWith({
             where: {
-                customerId: 'buyer-1',
+                customerId: 'buyer-1', serviceType: ServiceType.DELIVERY,
                 sourceOfferId: 'offer-1',
                 status: { notIn: [ServiceJobStatus.CANCELLED, ServiceJobStatus.EXPIRED] },
             },

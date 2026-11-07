@@ -671,7 +671,7 @@ describe('ServicesService TradeXchange hardening regressions', () => {
 
             await service.markPaid('job-1', 'payment-1', 'pi_1');
 
-            expect(prisma.serviceJob.updateMany).not.toHaveBeenCalled();
+            expect(prisma.serviceJob.updateMany).not.toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: ServiceJobStatus.PAID }) }));
             expect(notifications.create).not.toHaveBeenCalled();
             expect(prisma.serviceJob.findUnique).not.toHaveBeenCalled();
         });
@@ -751,18 +751,18 @@ describe('ServicesService TradeXchange hardening regressions', () => {
             customerId: 'customer-1',
             contractorId: null,
             payment: {
-                id: 'payment-1',
+                id: 'payment-1', grossPence: 10000, refundAmountPence: 0,
                 status: ServicePaymentStatus.PAID,
                 stripePaymentIntentId: 'pi_1',
                 stripeTransferId: null,
             },
         });
-        stripe.refunds.create.mockResolvedValue({ id: 're_1' });
+        stripe.refunds.create.mockResolvedValue({ id: 're_1', status: 'succeeded', amount: 10000, payment_intent: 'pi_1' });
 
         await service.adminResolveDispute('admin-1', 'job-1', { outcome: 'REFUND' } as any);
 
         expect(stripe.refunds.create).toHaveBeenCalledWith(
-            { payment_intent: 'pi_1' },
+            { payment_intent: 'pi_1', amount: 10000, metadata: { serviceJobId: 'job-1', servicePaymentId: 'payment-1' } },
             { idempotencyKey: 'service-job-refund-payment-1' },
         );
     });
@@ -807,7 +807,7 @@ describe('ServicesService TradeXchange hardening regressions', () => {
                 currency: 'gbp',
                 destination: 'acct_1',
                 source_transaction: 'ch_1',
-                transfer_group: 'service-job-job-1',
+                transfer_group: 'service-job-job-1', metadata: { serviceJobId: 'job-1', servicePaymentId: 'payment-1' },
             },
             { idempotencyKey: 'service-job-release-payment-1' },
         );
@@ -858,7 +858,7 @@ describe('ServicesService TradeXchange hardening regressions', () => {
             .rejects.toThrow('no verifiable Stripe charge');
 
         expect(stripe.transfers.create).not.toHaveBeenCalled();
-        expect(prisma.servicePayment.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+        expect(prisma.servicePayment.updateMany).not.toHaveBeenCalledWith(expect.objectContaining({
             where: expect.objectContaining({
                 id: 'payment-unfunded',
                 status: ServicePaymentStatus.PAID,

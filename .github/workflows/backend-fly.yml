@@ -55,7 +55,7 @@ jobs:
         run: npm run build
 
   integration-security:
-    name: Disposable PostgreSQL damage authorization
+    name: Disposable PostgreSQL authorization and TradeXchange payments
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -78,6 +78,7 @@ jobs:
       DATABASE_URL: postgresql://qa:qa_isolated_only@127.0.0.1:5432/carmazium_damage_qa?schema=public
       DIRECT_URL: postgresql://qa:qa_isolated_only@127.0.0.1:5432/carmazium_damage_qa?schema=public
       DAMAGE_POSTGRES_TEST: '1'
+      TRADE_POSTGRES_TEST: '1'
       SUPABASE_URL: https://synthetic-damage-qa.supabase.co
     steps:
       - uses: actions/checkout@v4
@@ -90,7 +91,7 @@ jobs:
       - name: Prepare disposable PostgreSQL schema only
         run: npx prisma db push --skip-generate
       - name: Test owner, outsider, photo and dealer role with real transactions
-        run: npm test -- --runInBand src/damage/damage.integration.spec.ts
+        run: npm test -- --runInBand src/damage/damage.integration.spec.ts src/services/services.audit.integration.spec.ts
 
   deploy:
     name: Deploy backend to Fly.io

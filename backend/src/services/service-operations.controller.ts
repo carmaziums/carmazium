@@ -16,6 +16,9 @@ import {
     type CapabilityEvidenceUploadInput,
     type ServiceCaseEntryInput,
 } from './service-operations.service';
+import { TradeTeamService } from './trade-team.service';
+import { ServicesService } from './services.service';
+import { ForbiddenException } from '@nestjs/common';
 import { ResolveDisputeDto } from './dto';
 
 @ApiTags('Trade Exchange provider verification')
@@ -23,7 +26,28 @@ import { ResolveDisputeDto } from './dto';
 @Controller('services/operations')
 @UseGuards(SessionAuthGuard)
 export class ServiceOperationsController {
-    constructor(private readonly operations: ServiceOperationsService) { }
+    constructor(private readonly operations: ServiceOperationsService, private readonly services: ServicesService, private readonly tradeTeam: TradeTeamService) { }
+
+    private async assertParticipant(user: any, id: string) {
+        const actor = await this.tradeTeam.tryResolveActor(user.id);
+        const job = await this.services.getJob({ userId: user.id, role: user.role, contractorProfileId: actor?.contractorProfileId }, id);
+        if (job.customerId === user.id) return;
+        if (!actor || job.contractorId !== actor.contractorProfileId) throw new ForbiddenException('Only the customer or assigned provider can add case evidence.');
+        await this.tradeTeam.assertJobPermission(actor, id, 'manage');
+    }
+
+    @Post('jobs/:id/case-note')
+    async addCaseNote(@CurrentUser() user: any, @Param('id') id: string, @Body() body: { note: string }) {
+        await this.assertParticipant(user, id);
+        return new StandardResponse(await this.operations.adminAddDisputeEntry(user.id, id, { kind: 'NOTE', note: body.note }));
+    }
+
+    @Post('jobs/:id/evidence')
+    @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+    async addCaseEvidence(@CurrentUser() user: any, @Param('id') id: string, @UploadedFile() file: any, @Body() body: { label?: string }) {
+        await this.assertParticipant(user, id);
+        return new StandardResponse(await this.operations.adminUploadDisputeDocument(user.id, id, file, body?.label));
+    }
 
     @Get('capabilities/:id/attachments')
     @ApiOperation({ summary: 'Verification documents attached to one of the caller’s service applications' })

@@ -62,7 +62,7 @@ const DEFAULTS: Record<string, () => Row> = {
     contractorProfile: () => ({ rating: 0, totalReviews: 0, serviceTypes: [], certifications: [], businessName: null, phone: null, serviceArea: null }),
     serviceJob: () => ({ status: 'OPEN', isRecovery: false, acceptedQuoteId: null, contractorId: null, agreedAmountPence: null, platformFeeRate: null, platformFeePence: null, contractorAmountPence: null, sourceOfferId: null, sourceAuctionId: null, acceptedAt: null, startedAt: null, completedAt: null, confirmedAt: null, cancelledAt: null, cancelReason: null, description: null, pickupAddress: null, deliveryAddress: null, servicePostcode: null, serviceAddress: null, requestedFor: null }),
     serviceQuote: () => ({ status: 'ACTIVE', message: null, validUntil: null }),
-    servicePayment: () => ({ status: 'PENDING', stripeCheckoutSessionId: null, stripePaymentIntentId: null, stripeTransferId: null, paidAt: null, releasedAt: null, refundedAt: null }),
+    servicePayment: () => ({ refundAmountPence: 0, settlementStartedAt: null, settlementTransferId: null, stripeRefundId: null, stripeRefundStatus: null, originalTransferId: null, stripeReversalId: null, externalDisputeId: null, externalDisputeStatus: null, status: 'PENDING', stripeCheckoutSessionId: null, stripePaymentIntentId: null, stripeTransferId: null, paidAt: null, releasedAt: null, refundedAt: null }),
     serviceJobVehicle: () => ({ registration: null, make: null, model: null, year: null, notes: null, listingId: null }),
     serviceCaseEntry: () => ({
         scope: 'CAPABILITY',
@@ -620,10 +620,10 @@ describe('Delivery & Recovery — end to end', () => {
         expect(db.one('serviceJob', { id: j.id })!.status).toBe('DISPUTED');
         expect(notificationsTo(ADMIN.id)).toContain('SERVICE_JOB_DISPUTED');
 
-        refundsCreate.mockResolvedValueOnce({ id: 're_1' });
+        refundsCreate.mockResolvedValueOnce({ id: 're_1', status: 'succeeded', payment_intent: 'pi_d', amount: pay.grossPence });
         await svc.adminResolveDispute(ADMIN.id, j.id, { outcome: 'REFUND', note: 'Photos confirm damage' } as any);
         expect(refundsCreate).toHaveBeenCalledWith(
-            { payment_intent: 'pi_d' },
+            { payment_intent: 'pi_d', amount: pay.grossPence, metadata: { serviceJobId: j.id, servicePaymentId: pay.id } },
             { idempotencyKey: `service-job-refund-${pay.id}` },
         );
         expect(db.one('servicePayment', { jobId: j.id })!.status).toBe('REFUNDED');

@@ -229,9 +229,13 @@ export class ReviewCapabilityDto {
 }
 
 export class ResolveDisputeDto {
-    @ApiProperty({ enum: ['RELEASE', 'REFUND'] })
-    @IsEnum(['RELEASE', 'REFUND'])
-    outcome: 'RELEASE' | 'REFUND';
+    @ApiProperty({ enum: ['RELEASE', 'REFUND', 'PARTIAL_REFUND'] })
+    @IsEnum(['RELEASE', 'REFUND', 'PARTIAL_REFUND'])
+    outcome: 'RELEASE' | 'REFUND' | 'PARTIAL_REFUND';
+
+    @ApiPropertyOptional({ description: 'Customer refund in pence for a partial settlement' })
+    @IsOptional() @IsInt() @Min(1)
+    refundAmountPence?: number;
 
     @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(1000)
     note?: string;
@@ -245,4 +249,13 @@ export class CreateServiceReviewDto {
     @ApiPropertyOptional({ maxLength: 2000 })
     @IsOptional() @IsString() @MaxLength(2000)
     comment?: string;
+}
+
+export class ServiceJobChangeDto {
+    @IsIn(['CANNOT_ATTEND', 'NOT_COMPLETED', 'CANCEL', 'RESCHEDULE', 'OTHER'])
+    kind: 'CANNOT_ATTEND' | 'NOT_COMPLETED' | 'CANCEL' | 'RESCHEDULE' | 'OTHER';
+    @IsString() @IsNotEmpty() @MaxLength(2000)
+    reason: string;
+    @IsOptional() @IsDateString()
+    requestedFor?: string;
 }

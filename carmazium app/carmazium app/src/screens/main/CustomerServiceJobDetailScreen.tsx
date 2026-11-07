@@ -1,3 +1,4 @@
+import { ServiceJobChanges } from '../../components/ServiceJobChanges';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -532,14 +533,6 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
                 ? <ActivityIndicator size="small" color={Colors.onAccent} />
                 : <Text style={styles.primaryText}>CONFIRM COMPLETION</Text>}
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={disputeJob}
-              disabled={busy === 'dispute'}
-            >
-              <Ionicons name="alert-circle-outline" size={16} color={Colors.warning} />
-              <Text style={[styles.secondaryText, { color: Colors.warning }]}>RAISE DISPUTE</Text>
-            </TouchableOpacity>
           </View>
         ) : null}
 
@@ -562,6 +555,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
         ) : null}
 
         <View style={{ height: 60 }} />
+        {<ServiceJobChanges job={job} role="customer" onChange={load} />}
       </ScrollView>
     </View>
   );

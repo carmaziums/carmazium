@@ -1079,7 +1079,7 @@ export class ServiceOperationsService {
     private async ensureResolutionCaseEntry(
         adminId: string,
         jobId: string,
-        outcome: 'RELEASE' | 'REFUND',
+        outcome: 'RELEASE' | 'REFUND' | 'PARTIAL_REFUND',
         note?: string | null,
     ) {
         const existing = await this.prisma.$queryRaw<any[]>(Prisma.sql`
@@ -1088,13 +1088,14 @@ export class ServiceOperationsService {
             WHERE "scope" = 'DISPUTE'
               AND "entityId" = ${jobId}
               AND "kind" = 'RESOLUTION'
+              AND "note" = ${[outcome === 'RELEASE' ? 'Released payment to provider.' : outcome === 'PARTIAL_REFUND' ? 'Partially refunded customer and settled remaining service value.' : 'Refunded customer in full.', this.cleanText(note, 4000)].filter(Boolean).join(' ')}
             LIMIT 1
         `);
         if (existing.length) return;
 
         const decision = outcome === 'RELEASE'
             ? 'Released payment to provider.'
-            : 'Refunded customer in full.';
+            : outcome === 'PARTIAL_REFUND' ? 'Partially refunded customer and settled remaining service value.' : 'Refunded customer in full.';
         await this.insertEntry(
             'DISPUTE',
             jobId,
@@ -1110,10 +1111,10 @@ export class ServiceOperationsService {
     async adminResolveDispute(
         adminId: string,
         jobId: string,
-        input: { outcome: 'RELEASE' | 'REFUND'; note?: string },
+        input: { outcome: 'RELEASE' | 'REFUND' | 'PARTIAL_REFUND'; note?: string; refundAmountPence?: number },
     ) {
-        if (input.outcome !== 'RELEASE' && input.outcome !== 'REFUND') {
-            throw new BadRequestException('Resolution must be RELEASE or REFUND.');
+        if (!['RELEASE', 'REFUND', 'PARTIAL_REFUND'].includes(input.outcome)) {
+            throw new BadRequestException('Resolution must be RELEASE, REFUND or PARTIAL_REFUND.');
         }
 
         const note = this.cleanText(input.note, 4000);
@@ -1133,8 +1134,13 @@ export class ServiceOperationsService {
             LIMIT 1
         `);
         const prior = existing[0];
+        const matchesOutcome = (snapshot: any) => input.outcome === 'REFUND'
+            ? snapshot?.status === ServiceJobStatus.CANCELLED && snapshot?.payment?.status === ServicePaymentStatus.REFUNDED
+            : snapshot?.status === ServiceJobStatus.RELEASED && snapshot?.payment?.status === ServicePaymentStatus.RELEASED
+                && (input.outcome === 'RELEASE' || (snapshot.payment.refundAmountPence === input.refundAmountPence && snapshot.payment.stripeRefundStatus === 'succeeded'));
 
-        if (prior?.status === 'SUCCEEDED') {
+
+        if (prior?.status === 'SUCCEEDED' && matchesOutcome(job)) {
             try {
                 await this.ensureResolutionCaseEntry(adminId, jobId, input.outcome, note);
             } catch (error: any) {
@@ -1148,16 +1154,13 @@ export class ServiceOperationsService {
             };
         }
 
-        const terminalMatchesOutcome =
-            input.outcome === 'RELEASE'
-                ? job.status === ServiceJobStatus.RELEASED && job.payment.status === ServicePaymentStatus.RELEASED
-                : job.status === ServiceJobStatus.CANCELLED && job.payment.status === ServicePaymentStatus.REFUNDED;
+        const terminalMatchesOutcome = matchesOutcome(job);
 
         if (!terminalMatchesOutcome) {
             if (job.status !== ServiceJobStatus.DISPUTED) {
                 throw new BadRequestException('Job is not disputed.');
             }
-            if (job.payment.status !== ServicePaymentStatus.PAID) {
+            if (![ServicePaymentStatus.PAID, ServicePaymentStatus.RELEASED].includes(job.payment.status as any)) {
                 throw new BadRequestException('No held payment to resolve.');
             }
         }
@@ -1180,17 +1183,17 @@ export class ServiceOperationsService {
                 "adminId" = EXCLUDED."adminId",
                 "note" = EXCLUDED."note",
                 "status" = CASE
-                    WHEN "service_settlement_operations"."status" = 'SUCCEEDED'
+                    WHEN "service_settlement_operations"."status" = 'SUCCEEDED' AND ${job.status !== ServiceJobStatus.DISPUTED}
                         THEN 'SUCCEEDED'
                     ELSE 'STARTED'
                 END,
                 "error" = CASE
-                    WHEN "service_settlement_operations"."status" = 'SUCCEEDED'
+                    WHEN "service_settlement_operations"."status" = 'SUCCEEDED' AND ${job.status !== ServiceJobStatus.DISPUTED}
                         THEN "service_settlement_operations"."error"
                     ELSE NULL
                 END,
                 "attemptCount" = CASE
-                    WHEN "service_settlement_operations"."status" = 'SUCCEEDED'
+                    WHEN "service_settlement_operations"."status" = 'SUCCEEDED' AND ${job.status !== ServiceJobStatus.DISPUTED}
                         THEN "service_settlement_operations"."attemptCount"
                     ELSE "service_settlement_operations"."attemptCount" + 1
                 END,
@@ -1231,6 +1234,7 @@ export class ServiceOperationsService {
             const result = await this.services.adminResolveDispute(adminId, jobId, {
                 outcome: input.outcome,
                 note: note ?? undefined,
+                refundAmountPence: input.refundAmountPence,
             } as any);
             const externalReference =
                 (result as any)?.transferId
@@ -1264,13 +1268,8 @@ export class ServiceOperationsService {
                 include: { payment: true },
             });
             const claim = current?.payment?.stripeTransferId;
-            const expectedClaim = `claim:${input.outcome.toLowerCase()}:${job.payment.id}`;
-            const recoveredSuccess =
-                input.outcome === 'RELEASE'
-                    ? current?.status === ServiceJobStatus.RELEASED
-                        && current?.payment?.status === ServicePaymentStatus.RELEASED
-                    : current?.status === ServiceJobStatus.CANCELLED
-                        && current?.payment?.status === ServicePaymentStatus.REFUNDED;
+            const expectedClaim = `claim:${input.outcome === 'RELEASE' ? 'release' : 'refund'}:${job.payment.id}`;
+            const recoveredSuccess = matchesOutcome(current);
             const status = recoveredSuccess
                 ? 'SUCCEEDED'
                 : claim === expectedClaim

@@ -2243,6 +2243,7 @@ model ServiceJob {
   completedAt       DateTime? /// contractor marked complete
   inspectionOutcome InspectionOutcome?
   inspectionSummary String?
+  changeRequest Json?
   confirmedAt       DateTime? /// customer confirmed (or auto after 48h)
   cancelledAt  DateTime?
   cancelReason String?
@@ -2330,6 +2331,16 @@ model ServicePayment {
   stripeCheckoutSessionId String? @unique
   stripePaymentIntentId   String? @unique
   stripeTransferId        String? @unique
+  /// Durable settlement evidence; claims survive uncertain Stripe responses.
+  settlementStartedAt DateTime?
+  settlementTransferId String?
+  stripeRefundId String? @unique
+  stripeRefundStatus String?
+  refundAmountPence Int @default(0)
+  originalTransferId String?
+  stripeReversalId String?
+  externalDisputeId String?
+  externalDisputeStatus String?
 
   paidAt     DateTime?
   releasedAt DateTime?

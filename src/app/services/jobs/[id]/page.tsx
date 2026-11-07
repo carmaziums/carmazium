@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { ServiceJobChanges } from "@/components/services/ServiceJobChanges"
 import Link from "next/link"
 import { buttonVariants } from "@/components/ui/buttonVariants"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
@@ -119,6 +120,7 @@ function JobDetail() {
 
     return (
         <div className="container mx-auto px-5 py-10 max-w-5xl">
+            <ServiceJobChanges job={job} role="customer" onChange={load} />
             <Link href="/services/jobs" className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] hover:text-primary mb-6">
                 <ArrowLeft size={14} /> My jobs
             </Link>

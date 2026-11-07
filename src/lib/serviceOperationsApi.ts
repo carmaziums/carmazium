@@ -329,7 +329,7 @@ export async function adminDeleteDisputeCaseEntry(id: string, entryId: string): 
 
 export async function adminResolveDisputeWithCase(
   id: string,
-  input: { outcome: 'RELEASE' | 'REFUND'; note?: string },
+  input: { outcome: 'RELEASE' | 'REFUND' | 'PARTIAL_REFUND'; note?: string; refundAmountPence?: number },
 ): Promise<{
   success: boolean;
   settlementOperationId?: string;

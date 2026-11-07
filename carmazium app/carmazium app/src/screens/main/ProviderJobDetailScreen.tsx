@@ -1,3 +1,4 @@
+import { ServiceJobChanges } from '../../components/ServiceJobChanges';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -639,6 +640,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
         ) : null}
 
         <View style={{ height: 36 }} />
+        {isMine && <ServiceJobChanges job={job} role="provider" onChange={load} />}
       </ScrollView>
     </View>
   );

@@ -25,7 +25,7 @@ import { EmailService } from '../email/email.service';
 import { PaymentsService } from '../payments/payments.service';
 import { resolveFrontendUrl } from '../core/frontend-url';
 import {
-    CreateJobDto, JobFromPurchaseDto, InspectionFromAuctionDto, CompleteJobDto, CancelJobDto, UpsertQuoteDto,
+    ServiceJobChangeDto, CreateJobDto, JobFromPurchaseDto, InspectionFromAuctionDto, CompleteJobDto, CancelJobDto, UpsertQuoteDto,
     ApplyCapabilityDto, UpdateLeadMatchingDto, UpdateJobMatchingDto, ReviewCapabilityDto, ResolveDisputeDto, CreateServiceReviewDto, JOB_SERVICE_TYPES,
 } from './dto';
 import { assertServiceAcceptingNewRequests } from './service-availability';
@@ -811,8 +811,8 @@ export class ServicesService {
         let listing: any = null;
         let vehicle: { registration?: string | null; make?: string | null; model?: string | null; year?: number | null } | null = null;
         const sourceWhere = dto.offerId
-            ? { sourceOfferId: dto.offerId }
-            : { sourceAuctionId: dto.auctionId! };
+            ? { sourceOfferId: dto.offerId, serviceType: ServiceType.DELIVERY }
+            : { sourceAuctionId: dto.auctionId!, serviceType: ServiceType.DELIVERY };
 
         if (dto.offerId) {
             const offer = await this.prisma.offer.findUnique({
@@ -1245,6 +1245,8 @@ export class ServicesService {
             const claimedQuote = await tx.serviceQuote.updateMany({
                 where: {
                     id: quote.id,
+                    amountPence: quote.amountPence,
+                    updatedAt: quote.updatedAt,
                     jobId,
                     contractorId: quote.contractorId,
                     status: ServiceQuoteStatus.ACTIVE,
@@ -1380,6 +1382,8 @@ export class ServicesService {
         }
 
         const transitioned = await this.prisma.$transaction(async (tx) => {
+            const locked = await tx.serviceJob.updateMany({ where: { id: jobId, status: ServiceJobStatus.ACCEPTED }, data: { updatedAt: new Date() } });
+            if (locked.count !== 1) return false;
             const paid = await tx.servicePayment.updateMany({
                 where: {
                     id: paymentId,
@@ -1450,7 +1454,7 @@ export class ServicesService {
 
     async openDispute(customerId: string, jobId: string, reason?: string) {
         const job = await this.ownJob(customerId, jobId);
-        const disputable: ServiceJobStatus[] = [ServiceJobStatus.PAID, ServiceJobStatus.IN_PROGRESS, ServiceJobStatus.COMPLETED];
+        const disputable: ServiceJobStatus[] = [ServiceJobStatus.PAID, ServiceJobStatus.IN_PROGRESS, ServiceJobStatus.COMPLETED, ServiceJobStatus.RELEASED];
         if (!disputable.includes(job.status)) {
             throw new BadRequestException('Only a paid job can be disputed.');
         }
@@ -1460,21 +1464,119 @@ export class ServicesService {
         // deterministic release/refund claim token during Stripe settlement;
         // requiring it to be null makes dispute vs payout/refund races fail
         // closed instead of allowing both external money operations to run.
-        const frozen = await this.prisma.serviceJob.updateMany({
-            where: {
-                id: jobId,
-                customerId,
-                status: { in: disputable },
-                payment: { is: { status: ServicePaymentStatus.PAID, stripeTransferId: null } },
-            },
-            data: { status: ServiceJobStatus.DISPUTED, cancelReason: reason?.trim() || null },
+        await this.prisma.$transaction(async tx => {
+            const locked = await tx.serviceJob.updateMany({
+                where: { id: jobId, customerId, status: { in: disputable } }, data: { updatedAt: new Date() },
+            });
+            if (locked.count !== 1) throw new ConflictException('Job is no longer disputable.');
+            const payment = await tx.servicePayment.findUnique({ where: { jobId } });
+            if (!payment || ![ServicePaymentStatus.PAID, ServicePaymentStatus.RELEASED].includes(payment.status as any)
+                || payment.stripeTransferId?.startsWith('claim:')) {
+                throw new ConflictException('Settlement is already in progress; contact support to review the payment.');
+            }
+            await tx.serviceJob.updateMany({
+                where: { id: jobId, customerId, status: { in: disputable } },
+                data: { status: ServiceJobStatus.DISPUTED, cancelReason: reason?.trim() || null },
+            });
         });
-        if (frozen.count !== 1) {
-            throw new ConflictException('This job is already being settled or is no longer disputable.');
-        }
 
         await this.notifyAdmins('SERVICE_JOB_DISPUTED', 'Service job disputed',
             `"${job.title}" was disputed by the customer.${reason ? ` Reason: ${reason}` : ''}`, `/dashboard/admin/services?tab=disputes`);
+        return { success: true };
+    }
+
+    async requestJobChange(userId: string, contractorId: string | null, jobId: string, dto: ServiceJobChangeDto) {
+        const job = await this.prisma.serviceJob.findUnique({ where: { id: jobId }, include: { payment: true, contractor: true } });
+        if (!job) throw new NotFoundException('Job not found.');
+        const customer = job.customerId === userId;
+        if (!customer && (!contractorId || contractorId !== job.contractorId)) throw new ForbiddenException('Not a participant in this job.');
+        const reason = dto.reason?.trim();
+        if (!reason || reason.length < 3) throw new BadRequestException('Explain what needs to change.');
+        if (job.status === ServiceJobStatus.ACCEPTED && ['CANCEL', 'CANNOT_ATTEND'].includes(dto.kind)) {
+            return this.cancelUnpaidAcceptance(job, customer, reason);
+        }
+        if (![ServiceJobStatus.PAID, ServiceJobStatus.IN_PROGRESS, ServiceJobStatus.COMPLETED, ServiceJobStatus.RELEASED].includes(job.status as any)) {
+            throw new BadRequestException('This job already has a case open or is not eligible. Add evidence to an open case instead.');
+        }
+        const requestedFor = dto.kind === 'RESCHEDULE' ? parseFutureRequestedFor(dto.requestedFor) : null;
+        if (dto.kind === 'RESCHEDULE' && (!requestedFor || job.status === ServiceJobStatus.RELEASED)) {
+            throw new BadRequestException('Choose a future date for work that has not been paid out.');
+        }
+        const change = { kind: dto.kind, reason, requestedFor: requestedFor?.toISOString() ?? null,
+            requestedById: userId, requestedByRole: customer ? 'customer' : 'provider', previousStatus: job.status,
+            createdAt: new Date().toISOString(), resolved: false };
+        await this.prisma.$transaction(async tx => {
+            const locked = await tx.serviceJob.updateMany({ where: { id: jobId, status: job.status }, data: { updatedAt: new Date() } });
+            if (locked.count !== 1) throw new ConflictException('Job state changed. Reload and try again.');
+            const payment = await tx.servicePayment.findUnique({ where: { jobId } });
+            if (!payment || payment.stripeTransferId?.startsWith('claim:')) throw new ConflictException('Payment settlement is in progress. Contact support for review.');
+            await tx.serviceJob.update({ where: { id: jobId }, data: { status: ServiceJobStatus.DISPUTED, cancelReason: reason, changeRequest: change } });
+        });
+        await this.notifyAdmins('SERVICE_JOB_CHANGE_REQUESTED', 'Service job needs review',
+            `${job.title}: ${dto.kind}. ${reason}`, '/dashboard/admin/services?tab=disputes');
+        const otherId = customer ? job.contractor?.userId : job.customerId;
+        if (otherId) await this.notify(otherId, 'SERVICE_JOB_CHANGE_REQUESTED', 'Job change requested',
+            `${job.title}: ${reason}. Any unreleased payment is held while this is resolved.`, customer ? `/dashboard/service/jobs/${jobId}` : `/services/jobs/${jobId}`);
+        return { success: true };
+    }
+
+    async acceptReschedule(userId: string, contractorId: string | null, jobId: string) {
+        await this.prisma.$transaction(async tx => {
+            const locked = await tx.serviceJob.updateMany({ where: { id: jobId, status: ServiceJobStatus.DISPUTED }, data: { updatedAt: new Date() } });
+            if (locked.count !== 1) throw new ConflictException('No open change request.');
+            const job = await tx.serviceJob.findUnique({ where: { id: jobId }, include: { payment: true } });
+            const request = job?.changeRequest as any;
+            if (!job || (job.customerId !== userId && (!contractorId || contractorId !== job.contractorId))) throw new ForbiddenException('Not your job.');
+            const role = job.customerId === userId ? 'customer' : 'provider';
+            if (!request || request.kind !== 'RESCHEDULE' || request.resolved || request.requestedByRole === role) throw new BadRequestException('Only the other party can accept this reschedule.');
+            if (job.payment?.status !== ServicePaymentStatus.PAID || job.payment.stripeTransferId || job.payment.externalDisputeId) throw new ConflictException('Payment requires review before rescheduling.');
+            const date = parseFutureRequestedFor(request.requestedFor);
+            await tx.serviceJob.update({ where: { id: jobId }, data: {
+                status: job.startedAt ? ServiceJobStatus.IN_PROGRESS : ServiceJobStatus.PAID,
+                completedAt: null, confirmedAt: null, requestedFor: date,
+                changeRequest: { ...request, resolved: true, acceptedById: userId, acceptedAt: new Date().toISOString() },
+            } });
+        });
+        const job = await this.prisma.serviceJob.findUnique({ where: { id: jobId }, include: { contractor: true } });
+        for (const id of [job?.customerId, job?.contractor?.userId].filter(Boolean) as string[]) {
+            await this.notify(id, 'SERVICE_JOB_RESCHEDULED', 'New service date agreed',
+                `The new date for "${job?.title}" is agreed.`, id === job?.customerId ? `/services/jobs/${jobId}` : `/dashboard/service/jobs/${jobId}`);
+        }
+        return { success: true };
+    }
+
+    private async cancelUnpaidAcceptance(job: any, customer: boolean, reason: string) {
+        if (!job.payment || job.payment.status !== ServicePaymentStatus.PENDING) throw new ConflictException('Payment state changed. Reload the job.');
+        const stripe = await this.payments.getStripeClient();
+        if (!job.payment.stripeCheckoutSessionId) throw new ConflictException('Checkout creation is in progress. Try again shortly.');
+        const session = await stripe.checkout.sessions.retrieve(job.payment.stripeCheckoutSessionId);
+        if (session.payment_status === 'paid') {
+            await this.markPaid(job.id, job.payment.id, typeof session.payment_intent === 'string' ? session.payment_intent : null);
+            throw new ConflictException('Payment was received. Reload and report the problem so the funds can be held for review.');
+        }
+        if (session.status === 'open') {
+            const expired = await stripe.checkout.sessions.expire(session.id);
+            if (expired.status !== 'expired') throw new ConflictException('Payment is processing. Please wait for confirmation.');
+        } else if (session.status !== 'expired') throw new ConflictException('Payment is processing. Please wait for confirmation.');
+        await this.prisma.$transaction(async tx => {
+            const locked = await tx.serviceJob.updateMany({ where: { id: job.id, status: ServiceJobStatus.ACCEPTED }, data: { updatedAt: new Date() } });
+            if (locked.count !== 1) throw new ConflictException('Job state changed.');
+            const payment = await tx.servicePayment.findUnique({ where: { id: job.payment.id } });
+            if (payment?.status !== ServicePaymentStatus.PENDING) throw new ConflictException('Payment is no longer unpaid.');
+            await tx.serviceJob.update({ where: { id: job.id }, data: {
+                status: customer ? ServiceJobStatus.CANCELLED : ServiceJobStatus.OPEN,
+                acceptedQuoteId: null, contractorId: null, agreedAmountPence: null,
+                platformFeeRate: null, platformFeePence: null, contractorAmountPence: null, acceptedAt: null,
+                cancelledAt: customer ? new Date() : null, cancelReason: reason,
+                expiresAt: new Date(Math.max(new Date(job.expiresAt).getTime(), Date.now() + 86400000)),
+            } });
+            await tx.serviceQuote.updateMany({ where: { jobId: job.id, status: ServiceQuoteStatus.ACCEPTED }, data: { status: ServiceQuoteStatus.WITHDRAWN } });
+            if (!customer) await tx.serviceQuote.updateMany({ where: { jobId: job.id, status: ServiceQuoteStatus.DECLINED,
+                OR: [{ validUntil: null }, { validUntil: { gt: new Date() } }] }, data: { status: ServiceQuoteStatus.ACTIVE } });
+            await tx.servicePayment.delete({ where: { id: payment!.id } });
+        });
+        await this.notify(job.customerId, 'SERVICE_JOB_CHANGED', customer ? 'Unpaid job cancelled' : 'Provider cannot attend',
+            customer ? reason : `${reason}. Your unpaid job is open again for another provider.`, `/services/jobs/${job.id}`);
         return { success: true };
     }
 
@@ -1651,7 +1753,13 @@ export class ServicesService {
         });
         const isNew = !existing || existing.status === ServiceQuoteStatus.WITHDRAWN;
 
-        const quote = await this.prisma.serviceQuote.upsert({
+        const quote = await this.prisma.$transaction(async (tx) => {
+            const locked = await tx.serviceJob.updateMany({
+                where: { id: jobId, status: ServiceJobStatus.OPEN, expiresAt: { gt: new Date() } },
+                data: { updatedAt: new Date() },
+            });
+            if (locked.count !== 1) throw new ConflictException('This job is no longer open for quotes.');
+            return tx.serviceQuote.upsert({
             where: { jobId_contractorId: { jobId, contractorId: contractorProfileId } },
             create: {
                 jobId, contractorId: contractorProfileId, submittedById: userId,
@@ -1663,6 +1771,7 @@ export class ServicesService {
                 validUntil,
                 status: ServiceQuoteStatus.ACTIVE, submittedById: userId,
             },
+            });
         });
 
         const profile = await this.prisma.contractorProfile.findUnique({ where: { id: contractorProfileId }, select: { businessName: true } });
@@ -1683,7 +1792,17 @@ export class ServicesService {
         });
         if (!q) throw new NotFoundException('No quote to withdraw');
         if (q.status !== ServiceQuoteStatus.ACTIVE) throw new BadRequestException('Only an active quote can be withdrawn.');
-        await this.prisma.serviceQuote.update({ where: { id: q.id }, data: { status: ServiceQuoteStatus.WITHDRAWN } });
+        await this.prisma.$transaction(async (tx) => {
+            const locked = await tx.serviceJob.updateMany({
+                where: { id: jobId, status: ServiceJobStatus.OPEN }, data: { updatedAt: new Date() },
+            });
+            if (locked.count !== 1) throw new ConflictException('The job has already been accepted or closed.');
+            const changed = await tx.serviceQuote.updateMany({
+                where: { id: q.id, status: ServiceQuoteStatus.ACTIVE },
+                data: { status: ServiceQuoteStatus.WITHDRAWN },
+            });
+            if (changed.count !== 1) throw new ConflictException('The quote changed before withdrawal.');
+        });
         return { success: true };
     }
 
@@ -1986,86 +2105,135 @@ export class ServicesService {
 
     async adminResolveDispute(adminId: string, jobId: string, dto: ResolveDisputeDto) {
         const job = await this.prisma.serviceJob.findUnique({ where: { id: jobId }, include: { payment: true } });
-        if (!job) throw new NotFoundException('Job not found');
+        if (!job?.payment) throw new BadRequestException('No payment to resolve.');
         if (job.status !== ServiceJobStatus.DISPUTED) throw new BadRequestException('Job is not disputed.');
-        if (!job.payment || job.payment.status !== ServicePaymentStatus.PAID) {
-            throw new BadRequestException('No held payment to resolve.');
+        if (job.payment.externalDisputeId && !['won', 'warning_closed'].includes(job.payment.externalDisputeStatus || '')) {
+            throw new ConflictException('A bank dispute is open or lost. Reconcile it with Stripe before settling this case.');
         }
-
         if (dto.outcome === 'RELEASE') {
-            return this.release(jobId, `admin ${adminId} resolved dispute in favour of the provider`);
-        }
-
-        if (!job.payment.stripePaymentIntentId) throw new BadRequestException('No payment intent on record to refund.');
-
-        // A deterministic token in the otherwise-null transfer field acts as
-        // an atomic settlement claim. It blocks a simultaneous RELEASE from
-        // starting while this REFUND is in flight and is recoverable after a
-        // process/DB failure because retries use the same token/idempotency key.
-        const claimToken = `claim:refund:${job.payment.id}`;
-        if (job.payment.stripeTransferId && job.payment.stripeTransferId !== claimToken) {
-            throw new ConflictException('This payment is already being released.');
-        }
-        if (!job.payment.stripeTransferId) {
-            const claimed = await this.prisma.servicePayment.updateMany({
-                where: {
-                    id: job.payment.id,
-                    status: ServicePaymentStatus.PAID,
-                    stripeTransferId: null,
-                    job: { is: { status: ServiceJobStatus.DISPUTED } },
-                },
-                data: { stripeTransferId: claimToken },
-            });
-            if (claimed.count !== 1) {
-                throw new ConflictException('This payment is already being settled.');
+            if (job.payment.status === ServicePaymentStatus.RELEASED && !job.payment.stripeTransferId?.startsWith('claim:')) {
+                if (!job.payment.stripeTransferId) throw new ConflictException('Missing provider transfer. Reconcile before closing this case.');
+                const stripe = await this.payments.getStripeClient();
+                const transfer = await stripe.transfers.retrieve(job.payment.stripeTransferId);
+                if (transfer.amount - (transfer.amount_reversed || 0) !== job.payment.contractorPence) throw new ConflictException('Provider transfer was reversed or adjusted. Reconcile before closing this case.');
+                await this.prisma.serviceJob.updateMany({ where: { id: jobId, status: ServiceJobStatus.DISPUTED }, data: { status: ServiceJobStatus.RELEASED } });
+                return { success: true, transferId: job.payment.stripeTransferId };
             }
+            return this.release(jobId, `admin ${adminId} resolved dispute in favour of the provider`, true);
         }
-
+        const amount = dto.outcome === 'PARTIAL_REFUND' ? dto.refundAmountPence : job.payment.grossPence;
+        if (!Number.isSafeInteger(amount) || amount! <= 0 || amount! > job.payment.grossPence
+            || (dto.outcome === 'PARTIAL_REFUND' && amount === job.payment.grossPence)) {
+            throw new BadRequestException('Enter a refund amount in pence, smaller than the full payment for a partial refund.');
+        }
+        const payment = job.payment;
+        if (!payment.stripePaymentIntentId) throw new BadRequestException('Missing payment intent; reconcile before refunding.');
+        if (![ServicePaymentStatus.PAID, ServicePaymentStatus.RELEASED].includes(payment.status as any)) {
+            throw new BadRequestException('Payment is not available for settlement.');
+        }
+        if (payment.refundedAt) throw new ConflictException('This payment already has a confirmed refund. Further adjustments require Stripe reconciliation; do not create another refund blindly.');
+        const claimToken = `claim:refund:${payment.id}`;
+        if (payment.stripeTransferId?.startsWith('claim:') && payment.stripeTransferId !== claimToken) {
+            throw new ConflictException('Another settlement is unresolved.');
+        }
+        if (payment.stripeTransferId === claimToken && payment.refundAmountPence !== amount) {
+            throw new ConflictException('An unresolved refund cannot change amount. Retry the original resolution.');
+        }
+        const startedAt = payment.stripeTransferId === claimToken ? payment.settlementStartedAt : new Date();
+        if (!startedAt) throw new ConflictException('Legacy refund requires reconciliation.');
+        const originalTransfer = payment.originalTransferId
+            ?? (payment.status === ServicePaymentStatus.RELEASED && !payment.stripeTransferId?.startsWith('claim:') ? payment.stripeTransferId : null);
+        if (payment.stripeTransferId !== claimToken) {
+            await this.prisma.$transaction(async tx => {
+                const locked = await tx.serviceJob.updateMany({ where: { id: jobId, status: ServiceJobStatus.DISPUTED }, data: { updatedAt: new Date() } });
+                if (locked.count !== 1) throw new ConflictException('Job state changed.');
+                const claimed = await tx.servicePayment.updateMany({
+                    where: { id: payment.id, status: payment.status, stripeTransferId: payment.stripeTransferId, refundAmountPence: 0, OR: [{ externalDisputeStatus: null }, { externalDisputeStatus: { in: ['won', 'warning_closed'] } }] },
+                    data: { stripeTransferId: claimToken, settlementStartedAt: new Date(), refundAmountPence: amount, originalTransferId: originalTransfer, settlementTransferId: null },
+                });
+                if (claimed.count !== 1) throw new ConflictException('Payment already has a settlement or refund.');
+            });
+        }
         const stripe = await this.payments.getStripeClient();
-        let refund: { id: string };
-        try {
-            refund = await stripe.refunds.create(
-                { payment_intent: job.payment.stripePaymentIntentId },
-                { idempotencyKey: `service-job-refund-${job.payment.id}` },
-            );
-        } catch (e) {
-            // Stripe never accepted the refund, so release the DB claim and
-            // leave the held payment available for a clean retry/admin choice.
-            await this.prisma.servicePayment.updateMany({
-                where: { id: job.payment.id, status: ServicePaymentStatus.PAID, stripeTransferId: claimToken },
-                data: { stripeTransferId: null },
-            });
-            throw e;
+        const remaining = payment.grossPence - amount!;
+        const split = this.split(remaining);
+        // A post-payout refund first recovers the provider share. A failed/unknown
+        // reversal keeps the case locked rather than spending another customer's funds.
+        if (originalTransfer && !payment.stripeReversalId) {
+            this.assertSettlementRetryWindow(startedAt);
+            const reversal = await stripe.transfers.createReversal(originalTransfer, {
+                amount: payment.contractorPence - split.contractorPence,
+                metadata: { serviceJobId: jobId, servicePaymentId: payment.id },
+            }, { idempotencyKey: `service-job-reversal-${payment.id}` });
+            await this.prisma.servicePayment.update({ where: { id: payment.id }, data: { stripeReversalId: reversal.id } });
         }
-
-        // Do not clear the claim if this DB finalization fails after Stripe has
-        // refunded successfully. A retry will recover using Stripe idempotency
-        // instead of making the same funds eligible for a provider release.
-        await this.prisma.$transaction(async (tx) => {
-            const paymentFinalized = await tx.servicePayment.updateMany({
-                where: { id: job.payment!.id, status: ServicePaymentStatus.PAID, stripeTransferId: claimToken },
-                data: { status: ServicePaymentStatus.REFUNDED, refundedAt: new Date(), stripeTransferId: null },
+        let refund;
+        if (payment.stripeRefundId) {
+            refund = await stripe.refunds.retrieve(payment.stripeRefundId);
+        } else {
+            this.assertSettlementRetryWindow(startedAt);
+            refund = await stripe.refunds.create({
+                payment_intent: payment.stripePaymentIntentId,
+                amount: amount!,
+                metadata: { serviceJobId: jobId, servicePaymentId: payment.id },
+            }, { idempotencyKey: `service-job-refund-${payment.id}` });
+        }
+        const refundIntent = typeof refund.payment_intent === 'string' ? refund.payment_intent : refund.payment_intent?.id;
+        if (refundIntent !== payment.stripePaymentIntentId || refund.amount !== amount) throw new ConflictException('Stripe refund does not match the claimed payment and amount.');
+        await this.prisma.servicePayment.update({ where: { id: payment.id }, data: { stripeRefundId: refund.id, stripeRefundStatus: refund.status ?? 'unknown' } });
+        if (refund.status !== 'succeeded') {
+            throw new ConflictException(`Refund is ${refund.status || 'unconfirmed'}. Funds remain locked pending reconciliation.`);
+        }
+        let transferId = originalTransfer;
+        if (remaining > 0 && !originalTransfer) {
+            if (!payment.settlementTransferId) this.assertSettlementRetryWindow(startedAt);
+            const provider = await this.prisma.contractorProfile.findUnique({ where: { id: payment.contractorId }, include: { user: true } });
+            const destination = provider?.user.stripeConnectAccountId;
+            const charge = await this.chargeForPaymentIntent(stripe, payment.stripePaymentIntentId);
+            if (!destination || !charge) throw new ConflictException('Refund succeeded; remaining provider payment requires reconciliation.');
+            const transfer = payment.settlementTransferId
+                ? await stripe.transfers.retrieve(payment.settlementTransferId)
+                : await stripe.transfers.create({
+                amount: split.contractorPence, currency: 'gbp', destination,
+                source_transaction: charge, transfer_group: `service-job-${jobId}`,
+                metadata: { serviceJobId: jobId, servicePaymentId: payment.id, settlement: 'partial-refund' },
+            }, { idempotencyKey: `service-job-partial-release-${payment.id}` });
+            transferId = transfer.id;
+            await this.prisma.servicePayment.update({ where: { id: payment.id }, data: { settlementTransferId: transfer.id } });
+        }
+        await this.prisma.$transaction(async tx => {
+            const finalized = await tx.servicePayment.updateMany({
+                where: { id: payment.id, stripeTransferId: claimToken },
+                data: {
+                    status: remaining > 0 ? ServicePaymentStatus.RELEASED : ServicePaymentStatus.REFUNDED,
+                    stripeTransferId: transferId, refundedAt: new Date(),
+                    releasedAt: remaining > 0 ? new Date() : payment.releasedAt,
+                    contractorPence: split.contractorPence, platformFeePence: split.platformFeePence,
+                },
             });
-            if (paymentFinalized.count !== 1) {
-                throw new ConflictException('Refund finalization lost its payment claim.');
-            }
-
-            const jobFinalized = await tx.serviceJob.updateMany({
+            if (finalized.count !== 1) throw new ConflictException('Refund finalization lost its claim.');
+            const closed = await tx.serviceJob.updateMany({
                 where: { id: jobId, status: ServiceJobStatus.DISPUTED },
-                data: { status: ServiceJobStatus.CANCELLED, cancelledAt: new Date(), cancelReason: dto.note?.trim() || 'Refunded after dispute' },
+                data: { status: remaining > 0 ? ServiceJobStatus.RELEASED : ServiceJobStatus.CANCELLED,
+                    confirmedAt: remaining > 0 ? new Date() : job.confirmedAt,
+                    cancelledAt: remaining > 0 ? null : new Date(), cancelReason: dto.note?.trim() || 'Resolved after review' },
             });
-            if (jobFinalized.count !== 1) {
-                throw new ConflictException('Refund finalization lost its job state.');
-            }
+            if (closed.count !== 1) throw new ConflictException('Case state changed during settlement.');
         });
-        this.logger.log(`Service job ${jobId} refunded (${refund.id}) by admin ${adminId}`);
+        await this.notify(job.customerId, 'SERVICE_JOB_REFUNDED', 'Refund confirmed',
+            `${gbp(amount!)} refunded for "${job.title}".`, `/services/jobs/${jobId}`);
+        const provider = await this.prisma.contractorProfile.findUnique({ where: { id: payment.contractorId }, select: { userId: true } });
+        if (provider) await this.notify(provider.userId, 'SERVICE_JOB_REFUNDED', 'Case resolved',
+            `"${job.title}": customer refund ${gbp(amount!)}, provider share ${gbp(split.contractorPence)}.`, `/dashboard/service/jobs/${jobId}`);
+        return { success: true, refundId: refund.id, transferId: remaining > 0 ? transferId : undefined };
+    }
 
-        await this.notify(job.customerId, 'SERVICE_JOB_REFUNDED', 'Refund issued',
-            `"${job.title}" has been refunded.`, `/services/jobs/${jobId}`);
-        const c = job.contractorId ? await this.prisma.contractorProfile.findUnique({ where: { id: job.contractorId }, select: { userId: true } }) : null;
-        if (c) await this.notify(c.userId, 'SERVICE_JOB_REFUNDED', 'Dispute resolved',
-            `"${job.title}" was refunded to the customer.${dto.note ? ` ${dto.note}` : ''}`, `/dashboard/service/jobs/${jobId}`);
-        return { success: true, refundId: refund.id };
+    private assertSettlementRetryWindow(startedAt: Date) {
+        // Stripe v1 may prune idempotency keys after 24h. Never blind-retry an
+        // old unresolved financial request; reconcile its external reference first.
+        if (Date.now() - new Date(startedAt).getTime() >= 23 * 3_600_000) {
+            throw new ConflictException('Settlement requires Stripe reconciliation; its safe retry window has elapsed.');
+        }
     }
 
     async expireOpenJobs(): Promise<number> {
@@ -2119,14 +2287,15 @@ export class ServicesService {
         return released;
     }
 
-    private async release(jobId: string, why: string) {
+    private async release(jobId: string, why: string, adminResolution = false) {
         const job = await this.prisma.serviceJob.findUnique({
             where: { id: jobId },
             include: { payment: true, contractor: { include: { user: true } }, customer: true },
         });
         if (!job?.payment || !job.contractor) throw new BadRequestException('Nothing to release.');
+        if (job.payment.externalDisputeId && !['won', 'warning_closed'].includes(job.payment.externalDisputeStatus || '')) throw new ConflictException('Bank dispute requires reconciliation.');
         if (job.payment.status !== ServicePaymentStatus.PAID) throw new BadRequestException('Payment is not in a releasable state.');
-        if (job.status !== ServiceJobStatus.COMPLETED && job.status !== ServiceJobStatus.DISPUTED) {
+        if (job.status !== (adminResolution ? ServiceJobStatus.DISPUTED : ServiceJobStatus.COMPLETED)) {
             throw new BadRequestException('This job is not in a releasable state.');
         }
         if (
@@ -2147,18 +2316,20 @@ export class ServicesService {
             throw new ConflictException('This payment is already being refunded or released.');
         }
         if (!job.payment.stripeTransferId) {
-            const claimed = await this.prisma.servicePayment.updateMany({
-                where: {
-                    id: job.payment.id,
-                    status: ServicePaymentStatus.PAID,
-                    stripeTransferId: null,
-                    job: { is: { status: job.status } },
-                },
-                data: { stripeTransferId: claimToken },
+            await this.prisma.$transaction(async tx => {
+                const locked = await tx.serviceJob.updateMany({
+                    where: { id: jobId, status: job.status }, data: { updatedAt: new Date() },
+                });
+                if (locked.count !== 1) throw new ConflictException('The job was disputed or changed before release.');
+                const claimed = await tx.servicePayment.updateMany({
+                    where: { id: job.payment!.id, status: ServicePaymentStatus.PAID, stripeTransferId: null, OR: [{ externalDisputeStatus: null }, { externalDisputeStatus: { in: ['won', 'warning_closed'] } }] },
+                    data: { stripeTransferId: claimToken, settlementStartedAt: new Date() },
+                });
+                if (claimed.count !== 1) throw new ConflictException('Payment already has a settlement in progress.');
             });
-            if (claimed.count !== 1) {
-                throw new ConflictException('This payment is already being settled or the job state changed.');
-            }
+        } else {
+            if (!job.payment.settlementStartedAt) throw new ConflictException('Legacy settlement requires reconciliation.');
+            if (!job.payment.settlementTransferId) this.assertSettlementRetryWindow(job.payment.settlementStartedAt);
         }
 
         const stripe = await this.payments.getStripeClient();
@@ -2177,27 +2348,28 @@ export class ServicesService {
             if (!sourceTransaction) {
                 throw new BadRequestException('This service payment has no verifiable Stripe charge. Contact CarMazium support before releasing funds.');
             }
-            transfer = await stripe.transfers.create(
+            transfer = job.payment.settlementTransferId
+                ? await stripe.transfers.retrieve(job.payment.settlementTransferId)
+                : await stripe.transfers.create(
                 {
                     amount: job.payment.contractorPence,
                     currency: 'gbp',
                     destination: account,
                     source_transaction: sourceTransaction,
                     transfer_group: `service-job-${job.id}`,
+                    metadata: { serviceJobId: job.id, servicePaymentId: job.payment.id },
                 },
                 { idempotencyKey: `service-job-release-${job.payment.id}` },
             );
         } catch (e) {
-            // Stripe did not accept the transfer. Release the claim so the
-            // customer can dispute or the payout can be retried safely.
-            await this.prisma.servicePayment.updateMany({
-                where: { id: job.payment.id, status: ServicePaymentStatus.PAID, stripeTransferId: claimToken },
-                data: { stripeTransferId: null },
-            });
+            // Network/5xx failures do not prove rejection. Keep the claim and
+            // original idempotency key until the remote outcome is reconciled.
+            this.logger.error(`Service settlement ${job.payment.id} needs reconciliation`);
             throw e;
         }
 
         const transferId = transfer.id;
+        await this.prisma.servicePayment.update({ where: { id: job.payment.id }, data: { settlementTransferId: transferId } });
         this.logger.log(`Service job ${jobId}: transferred ${job.payment.contractorPence}p to ${account} (${transferId}) — ${why}`);
 
         // If this DB finalization fails after Stripe accepted the transfer, the
@@ -2231,6 +2403,85 @@ export class ServicesService {
         await this.notify(job.customerId, 'SERVICE_JOB_RELEASED', 'Job complete',
             `"${job.title}" is done and your provider has been paid. Thanks for using TradeXchange.`, `/services/jobs/${jobId}`);
         return { success: true, transferId };
+    }
+
+    /** Reconcile from canonical Stripe objects, never from browser redirects. */
+    async reconcileSettlementEvent(type: string, object: any) {
+        const stripe = await this.payments.getStripeClient();
+        if (type.startsWith('charge.dispute.')) {
+            const dispute = await stripe.disputes.retrieve(object.id);
+            const intent = typeof dispute.payment_intent === 'string' ? dispute.payment_intent : dispute.payment_intent?.id;
+            if (!intent) return;
+            const payment = await this.prisma.servicePayment.findUnique({ where: { stripePaymentIntentId: intent } });
+            if (!payment) return;
+            await this.prisma.$transaction(async tx => {
+                await tx.serviceJob.updateMany({ where: { id: payment.jobId, status: { notIn: [ServiceJobStatus.CANCELLED, ServiceJobStatus.EXPIRED] } },
+                    data: { status: ServiceJobStatus.DISPUTED, cancelReason: `Bank payment dispute: ${dispute.status}` } });
+                await tx.servicePayment.update({ where: { id: payment.id }, data: { externalDisputeId: dispute.id, externalDisputeStatus: dispute.status } });
+            });
+            await this.notifyAdmins('SERVICE_BANK_DISPUTE', 'Bank payment dispute requires review',
+                `Service job ${payment.jobId}: ${dispute.status}. Check Stripe evidence deadlines and provider transfers.`, '/dashboard/admin/services?tab=disputes');
+            return;
+        }
+        const paymentId = object.metadata?.servicePaymentId;
+        if (!paymentId) return;
+        const payment = await this.prisma.servicePayment.findUnique({ where: { id: paymentId }, include: { contractor: { include: { user: true } } } });
+        if (!payment || object.metadata?.serviceJobId !== payment.jobId) return;
+        if (type.startsWith('refund.')) {
+            const refund = await stripe.refunds.retrieve(object.id);
+            const intent = typeof refund.payment_intent === 'string' ? refund.payment_intent : refund.payment_intent?.id;
+            if (intent !== payment.stripePaymentIntentId || refund.amount !== payment.refundAmountPence
+                || payment.stripeTransferId !== `claim:refund:${payment.id}`) return;
+            await this.prisma.servicePayment.update({ where: { id: payment.id }, data: { stripeRefundId: refund.id, stripeRefundStatus: refund.status ?? 'unknown' } });
+        } else if (type === 'transfer.created' || type === 'transfer.updated') {
+            const transfer = await stripe.transfers.retrieve(object.id);
+            const destination = typeof transfer.destination === 'string' ? transfer.destination : transfer.destination?.id;
+            const partial = transfer.metadata?.settlement === 'partial-refund';
+            const expected = partial ? this.split(payment.grossPence - payment.refundAmountPence).contractorPence : payment.contractorPence;
+            const claim = `claim:${partial ? 'refund' : 'release'}:${payment.id}`;
+            if (payment.stripeTransferId !== claim || transfer.amount !== expected || transfer.currency !== 'gbp'
+                || destination !== payment.contractor.user.stripeConnectAccountId || transfer.reversed) return;
+            await this.prisma.servicePayment.update({ where: { id: payment.id }, data: { settlementTransferId: transfer.id } });
+        } else if (type === 'transfer.reversed') {
+            const transfer = await stripe.transfers.retrieve(object.id);
+            if (![payment.originalTransferId, payment.stripeTransferId, payment.settlementTransferId].includes(transfer.id)) return;
+            const reversal = transfer.reversals?.data.find(r => r.metadata?.servicePaymentId === payment.id && r.metadata?.serviceJobId === payment.jobId);
+            const expected = payment.contractorPence - this.split(payment.grossPence - payment.refundAmountPence).contractorPence;
+            if (payment.stripeTransferId === `claim:refund:${payment.id}` && reversal && reversal.amount === expected) {
+                await this.prisma.servicePayment.update({ where: { id: payment.id }, data: { stripeReversalId: reversal.id } });
+            } else {
+                await this.prisma.serviceJob.updateMany({ where: { id: payment.jobId, status: { notIn: [ServiceJobStatus.CANCELLED, ServiceJobStatus.EXPIRED] } }, data: { status: ServiceJobStatus.DISPUTED, cancelReason: 'Provider transfer reversed; reconcile the Stripe settlement before resolving.' } });
+                await this.notifyAdmins('SERVICE_TRANSFER_REVERSED', 'Provider transfer reversed',
+                    `Review Stripe reconciliation for service job ${payment.jobId}.`, '/dashboard/admin/services?tab=disputes');
+                return;
+            }
+        }
+        await this.reconcileHeldSettlement(payment.id);
+    }
+
+    private async reconcileHeldSettlement(paymentId: string) {
+        const payment = await this.prisma.servicePayment.findUnique({ where: { id: paymentId }, include: { job: true } });
+        if (!payment?.stripeTransferId?.startsWith('claim:')) return;
+        try {
+            if (payment.stripeTransferId === `claim:refund:${payment.id}`) {
+                await this.adminResolveDispute('reconciliation', payment.jobId, {
+                    outcome: payment.refundAmountPence === payment.grossPence ? 'REFUND' : 'PARTIAL_REFUND',
+                    refundAmountPence: payment.refundAmountPence, note: payment.job.cancelReason || 'Reconciled settlement',
+                });
+            } else if (payment.stripeTransferId === `claim:release:${payment.id}`) {
+                await this.release(payment.jobId, 'reconciled settlement', payment.job.status === ServiceJobStatus.DISPUTED);
+            }
+        } catch (error: any) {
+            this.logger.warn(`Settlement ${payment.id} remains held: ${error?.message}`);
+        }
+    }
+
+    async reconcileHeldSettlements() {
+        const payments = await this.prisma.servicePayment.findMany({
+            where: { stripeTransferId: { startsWith: 'claim:' } }, take: 100, orderBy: { updatedAt: 'asc' },
+        });
+        for (const payment of payments) await this.reconcileHeldSettlement(payment.id);
+        return payments.length;
     }
 
     /** The charge behind a paid PaymentIntent, used as the payout's funding source. */

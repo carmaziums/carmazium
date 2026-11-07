@@ -27,6 +27,12 @@ export class ServicesLifecycleService {
         @Optional() private readonly leads?: ServiceLeadsService,
     ) { }
 
+    @Cron('*/5 * * * *')
+    async reconcileSettlements() {
+        try { await this.services.reconcileHeldSettlements(); }
+        catch (error: any) { this.logger.error(`Settlement reconciliation failed: ${error?.message}`); }
+    }
+
     @Cron('7 * * * *')
     async tick(): Promise<void> {
         try {
@@ -201,6 +207,8 @@ export class ServicesLifecycleService {
         for (const payment of candidates) {
             const sessionId = payment.stripeCheckoutSessionId;
 
+            // Missing session could mean Checkout creation is still in flight.
+            if (!sessionId) continue;
             if (sessionId) {
                 try {
                     const session = await stripe.checkout.sessions.retrieve(sessionId);
@@ -212,8 +220,12 @@ export class ServicesLifecycleService {
                         );
                         continue;
                     }
+                    if (session.status === 'complete') continue; // A processing payment must retain its reservation.
                     if (session.status === 'open') {
-                        await stripe.checkout.sessions.expire(sessionId);
+                        const expired = await stripe.checkout.sessions.expire(sessionId);
+                        if (expired.status !== 'expired') continue;
+                    } else if (session.status !== 'expired') {
+                        continue; // Unknown remote state is not proof of non-payment.
                     }
                 } catch (e: any) {
                     // Never reopen when Stripe state is uncertain: that could let
@@ -229,39 +241,27 @@ export class ServicesLifecycleService {
             const minimumExpiry = new Date(now.getTime() + REOPEN_MINIMUM_HOURS * 3_600_000);
             const reopenedExpiry = payment.job.expiresAt > minimumExpiry ? payment.job.expiresAt : minimumExpiry;
 
-            await this.prisma.$transaction([
-                this.prisma.serviceJob.update({
-                    where: { id: payment.jobId },
-                    data: {
-                        status: ServiceJobStatus.OPEN,
-                        acceptedQuoteId: null,
-                        contractorId: null,
-                        agreedAmountPence: null,
-                        platformFeeRate: null,
-                        platformFeePence: null,
-                        contractorAmountPence: null,
-                        acceptedAt: null,
-                        expiresAt: reopenedExpiry,
-                    },
-                }),
-                this.prisma.serviceQuote.updateMany({
-                    where: {
-                        jobId: payment.jobId,
-                        status: { in: [ServiceQuoteStatus.ACCEPTED, ServiceQuoteStatus.DECLINED] },
-                        OR: [{ validUntil: null }, { validUntil: { gt: now } }],
-                    },
-                    data: { status: ServiceQuoteStatus.ACTIVE },
-                }),
-                this.prisma.serviceQuote.updateMany({
-                    where: {
-                        jobId: payment.jobId,
-                        status: { in: [ServiceQuoteStatus.ACCEPTED, ServiceQuoteStatus.DECLINED] },
-                        validUntil: { lte: now },
-                    },
-                    data: { status: ServiceQuoteStatus.EXPIRED },
-                }),
-                this.prisma.servicePayment.delete({ where: { id: payment.id } }),
-            ]);
+            const didReopen = await this.prisma.$transaction(async tx => {
+                const locked = await tx.serviceJob.updateMany({ where: { id: payment.jobId, status: ServiceJobStatus.ACCEPTED }, data: { updatedAt: now } });
+                if (locked.count !== 1) return false;
+                const current = await tx.servicePayment.findUnique({ where: { id: payment.id } });
+                if (!current || current.status !== ServicePaymentStatus.PENDING || current.stripeCheckoutSessionId !== sessionId) return false;
+                await tx.serviceJob.update({ where: { id: payment.jobId }, data: {
+                    status: ServiceJobStatus.OPEN, acceptedQuoteId: null, contractorId: null,
+                    agreedAmountPence: null, platformFeeRate: null, platformFeePence: null,
+                    contractorAmountPence: null, acceptedAt: null, expiresAt: reopenedExpiry,
+                } });
+                await tx.serviceQuote.updateMany({ where: { jobId: payment.jobId,
+                    status: { in: [ServiceQuoteStatus.ACCEPTED, ServiceQuoteStatus.DECLINED] },
+                    OR: [{ validUntil: null }, { validUntil: { gt: now } }],
+                }, data: { status: ServiceQuoteStatus.ACTIVE } });
+                await tx.serviceQuote.updateMany({ where: { jobId: payment.jobId,
+                    status: { in: [ServiceQuoteStatus.ACCEPTED, ServiceQuoteStatus.DECLINED] }, validUntil: { lte: now },
+                }, data: { status: ServiceQuoteStatus.EXPIRED } });
+                await tx.servicePayment.delete({ where: { id: payment.id } });
+                return true;
+            });
+            if (!didReopen) continue;
 
             reopened += 1;
             await this.notifications.create({
