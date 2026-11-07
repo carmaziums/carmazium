@@ -1,5 +1,6 @@
 import { capturePurchaseSnapshot } from '../dealers/purchase-listing-record';
 import { applyHistoryFilters } from './history-search';
+import { modelSearchWhere } from './model-search';
 import { buildFeatureConditions } from './feature-search';
 import { buildGradeSearchWhere } from './grade-search';
 import { summariseHistoricalQuotes, ArchivedValuationObservation, QUOTE_HISTORY_MONTHS } from './valuation-quote-history';
@@ -2104,7 +2105,7 @@ export class ListingsService {
             // An AND-nested OR means text searching cannot overwrite the selected makes.
             where.AND = [...(where.AND || []), { OR: makes.map(m => ({ make: { equals: m, mode: 'insensitive' } })) }];
         } else if (make) where.make = { contains: make, mode: 'insensitive' };
-        if (model) where.model = { contains: model, mode: 'insensitive' };
+        if (model?.trim()) where.AND = [...(where.AND || []), modelSearchWhere(model)];
         if (variant) where.variant = { contains: variant, mode: 'insensitive' };
 
         // ─── Year range ─────────────────────────────────────────────────────
@@ -2225,6 +2226,7 @@ export class ListingsService {
         // Stable tie-breakers keep pagination deterministic.
         let orderBy: any[] = [{ isFeatured: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }];
         const sortFields: Record<string, { field: string; direction: 'asc' | 'desc' }> = {
+            newest: { field: 'createdAt', direction: 'desc' },
             price_asc: { field: 'price', direction: 'asc' },
             price_desc: { field: 'price', direction: 'desc' },
             mileage_asc: { field: 'mileage', direction: 'asc' },

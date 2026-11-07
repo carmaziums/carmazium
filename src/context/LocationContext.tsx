@@ -27,8 +27,10 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
         lat: null, lng: null, postcode: null, source: null,
     })
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const postcodeRequestRef = useRef(0)
 
     useEffect(() => {
+        const request = postcodeRequestRef.current
         // 1. Check cached geo coords
         try {
             const raw = localStorage.getItem(GEO_KEY)
@@ -46,7 +48,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
             const pc = localStorage.getItem(PC_KEY)
             if (pc) {
                 geocodePostcode(pc).then(coords => {
-                    if (coords) setLocation({ ...coords, postcode: pc, source: 'postcode' })
+                    if (coords && request === postcodeRequestRef.current) setLocation({ ...coords, postcode: pc, source: 'postcode' })
                 })
                 return
             }
@@ -62,6 +64,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
         if (typeof navigator !== 'undefined' && navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 ({ coords }) => {
+                    if (request !== postcodeRequestRef.current) return
                     const loc = { lat: coords.latitude, lng: coords.longitude }
                     setLocation({ ...loc, postcode: null, source: 'geo' })
                     try {
@@ -74,12 +77,28 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
         }
     }, [pathname])
 
+    useEffect(() => () => {
+        ++postcodeRequestRef.current
+        if (debounceRef.current) clearTimeout(debounceRef.current)
+    }, [])
+
     const setPostcode = (pc: string) => {
         if (debounceRef.current) clearTimeout(debounceRef.current)
+        const request = ++postcodeRequestRef.current
+        const postcode = pc.trim().toUpperCase()
+        // A changed/invalid postcode must never keep searching around the old one.
+        setLocation({ lat: null, lng: null, postcode, source: 'postcode' })
+        try {
+            localStorage.removeItem(PC_KEY)
+            localStorage.removeItem(GEO_KEY)
+        } catch { /* storage unavailable */ }
         debounceRef.current = setTimeout(async () => {
-            try { localStorage.setItem(PC_KEY, pc) } catch { /* ignore */ }
-            const coords = await geocodePostcode(pc)
-            if (coords) setLocation({ ...coords, postcode: pc, source: 'postcode' })
+            const coords = postcode ? await geocodePostcode(postcode) : null
+            if (request !== postcodeRequestRef.current) return
+            if (coords) {
+                setLocation({ ...coords, postcode, source: 'postcode' })
+                try { localStorage.setItem(PC_KEY, postcode) } catch { /* ignore */ }
+            }
         }, 600)
     }
 

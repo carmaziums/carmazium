@@ -2538,9 +2538,32 @@ describe('ListingsService', () => {
             expect(byPrice[0]).toEqual({ price: 'asc' });
             expect(byPrice[1]).toEqual({ isFeatured: 'desc' });
             prisma.listing.findMany.mockClear();
+            await service.findAll({ sortBy: 'newest' } as any);
+            expect(prisma.listing.findMany.mock.calls[0][0].orderBy[0]).toEqual({ createdAt: 'desc' });
+            prisma.listing.findMany.mockClear();
             await service.findAll({} as any);
             const defaultOrder = prisma.listing.findMany.mock.calls[0][0].orderBy;
             expect(defaultOrder[0]).toEqual({ isFeatured: 'desc' });
+        });
+        it('intersects model families with keyword search, makes, false filters and pagination', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            prisma.listing.count.mockResolvedValue(0);
+            await service.findAll({ make: 'Kia', model: 'Ceed', search: 'GT',
+                isImported: false, ulezCompliant: false, maxEngine: 1600, maxCo2: 120,
+                page: 2, limit: 10 } as any);
+            const query = prisma.listing.findMany.mock.calls[0][0];
+            expect(query.where.make).toEqual({ contains: 'Kia', mode: 'insensitive' });
+            expect(query.where.AND).toEqual(expect.arrayContaining([expect.objectContaining({
+                OR: expect.arrayContaining([{ model: { equals: 'Ceed', mode: 'insensitive' } }]),
+            })]));
+            expect(query.where.OR).toContainEqual({ title: { contains: 'GT', mode: 'insensitive' } });
+            expect(query.where.isImported).toBe(false);
+            expect(query.where.ulezCompliant).toBe(false);
+            expect(query.where.engineSize).toEqual({ lte: 1600 });
+            expect(query.where.co2Emissions).toEqual({ lte: 120 });
+            expect(query.skip).toBe(10);
+            expect(query.take).toBe(10);
+            expect(prisma.listing.count.mock.calls[0][0].where).toEqual(query.where);
         });
         it('never returns moderation notes or internal timestamps from public search, but keeps the keeper disclosure for buyers (#723)', async () => {
             prisma.listing.findMany.mockResolvedValue([{

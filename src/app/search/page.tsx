@@ -352,6 +352,7 @@ function SearchPageContent() {
     // Count active filters for badge
     const activeFilterCount = React.useMemo(() => {
         let count = 0
+        if (appliedFilters.search.trim()) count++
         if (appliedFilters.make) count++
         if (appliedFilters.model) count++
         if (appliedFilters.variant) count++
@@ -424,7 +425,7 @@ function SearchPageContent() {
         if (state.maxBhp) f.maxBhp = parseInt(state.maxBhp)
         if (state.sellerType) f.sellerType = state.sellerType
         if (state.location) f.location = state.location
-        if (state.sortBy && state.sortBy !== 'newest') f.sortBy = state.sortBy
+        if (state.sortBy) f.sortBy = state.sortBy
         if (state.features?.length) f.features = state.features
         if (state.deliveryAvailable) f.deliveryAvailable = true
         if (state.isImported === 'yes') f.isImported = true
@@ -525,7 +526,7 @@ function SearchPageContent() {
         const origin = `${userLocation?.lat ?? 'missing'}:${userLocation?.lng ?? 'missing'}`
         if (lastRadiusOrigin.current === origin) return
         lastRadiusOrigin.current = origin
-        if (userLocation?.lat != null && userLocation?.lng != null) fetchListings(appliedFilters)
+        fetchListings(appliedFilters)
     }, [userLocation?.lat, userLocation?.lng, appliedFilters, fetchListings])
 
     // (Initial mount fetch relies on didInitialHydrate inside the main effect above)
@@ -553,6 +554,11 @@ function SearchPageContent() {
         setIsFilterOpen(false)
     }
     const handleResetFilters = () => {
+        setMakeQuery('')
+        setModelQuery('')
+        setFeatureQuery('')
+        setMakeManualEntry(false)
+        setModelManualEntry(false)
         setFilters(INITIAL_FILTERS)
         setAppliedFilters(INITIAL_FILTERS)
         fetchListings(INITIAL_FILTERS)
@@ -677,7 +683,7 @@ function SearchPageContent() {
                                         const active = filters.vehicleType === opt.value
                                         return (
                                             <button key={opt.value} type="button"
-                                                onClick={() => setFilters(prev => ({ ...prev, vehicleType: opt.value }))}
+                                                onClick={() => setFilters(prev => ({ ...prev, vehicleType: opt.value, bodyType: '', make: '', model: '', variant: '' }))}
                                                 className={`py-2.5 rounded-lg border text-sm font-semibold transition-all text-center ${
                                                     active
                                                         ? 'border-primary bg-primary/10 text-primary shadow-[0_0_12px_rgba(237,28,36,0.15)]'
@@ -1131,26 +1137,27 @@ function SearchPageContent() {
                             {/* Distance */}
                             <FilterSection title="Distance">
                                 <div className="space-y-2">
-                                    {!userLocation?.lat && (
                                         <div className="space-y-2">
-                                            <p className="text-xs text-[var(--text-muted)]">Allow location or enter your postcode:</p>
+                                            <p className="text-xs text-[var(--text-muted)]">Enter or change your search postcode:</p>
                                             <div className="flex gap-2">
                                                 <input
                                                     type="text"
+                                                    aria-label="Search distance postcode"
+                                                    defaultValue={userLocation?.postcode || ''}
                                                     placeholder="e.g. M1 1AA"
                                                     className="flex-1 bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg px-3 py-2 text-xs placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-primary/50"
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Enter') setPostcode((e.target as HTMLInputElement).value)
                                                     }}
-                                                    onBlur={(e) => { if (e.target.value) setPostcode(e.target.value) }}
+                                                    onBlur={(e) => { if (e.target.value.trim() !== (userLocation?.postcode || '')) setPostcode(e.target.value) }}
                                                 />
                                             </div>
                                         </div>
-                                    )}
                                     <select
+                                        aria-label="Search distance"
                                         value={filters.maxDistanceMi ?? ''}
                                         onChange={(e) => set('maxDistanceMi', e.target.value === '' ? null : Number(e.target.value))}
-                                        disabled={!userLocation?.lat}
+                                        disabled={userLocation?.lat == null || userLocation?.lng == null}
                                         className="w-full bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg px-3 py-2 text-xs text-[var(--text-primary)] disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:border-primary/50"
                                     >
                                         <option value="">Any distance</option>
@@ -1278,7 +1285,8 @@ function SearchPageContent() {
                             {appliedFilters.bodyType && (
                                 <FilterTag label={BODY_TYPE_LABELS[appliedFilters.bodyType]} onRemove={() => clearFilter({ bodyType: '' })} />
                             )}
-                            {appliedFilters.make && <FilterTag label={`Make: ${appliedFilters.make}`} onRemove={() => clearFilter({ make: '' })} />}
+                            {appliedFilters.search.trim() && <FilterTag label={`Search: ${appliedFilters.search.trim()}`} onRemove={() => clearFilter({ search: '' })} />}
+                            {appliedFilters.make && <FilterTag label={`Make: ${appliedFilters.make}`} onRemove={() => clearFilter({ make: '', model: '', variant: '' })} />}
                             {appliedFilters.model && <FilterTag label={`Model: ${appliedFilters.model}`} onRemove={() => clearFilter({ model: '', variant: '' })} />}
                             {appliedFilters.variant && <FilterTag label={`Variant: ${appliedFilters.variant}`} onRemove={() => clearFilter({ variant: '' })} />}
                             {(appliedFilters.minPrice || appliedFilters.maxPrice) && (
@@ -1294,6 +1302,13 @@ function SearchPageContent() {
                             {appliedFilters.features.map(feature => <FilterTag key={feature} label={`Feature: ${feature}`} onRemove={() => clearFilter({ features: appliedFilters.features.filter(x => x !== feature) })} />)}
                             {appliedFilters.transmissions.map(t => <FilterTag key={t} label={t} onRemove={() => clearFilter({ transmissions: appliedFilters.transmissions.filter(x => x !== t) })} />)}
                             {appliedFilters.color && <FilterTag label={`Colour: ${appliedFilters.color}`} onRemove={() => clearFilter({ color: '' })} />}
+                            {appliedFilters.minDoors && <FilterTag label={`${appliedFilters.minDoors}+ doors`} onRemove={() => clearFilter({ minDoors: '' })} />}
+                            {appliedFilters.minSeats && <FilterTag label={`${appliedFilters.minSeats}+ seats`} onRemove={() => clearFilter({ minSeats: '' })} />}
+                            {(appliedFilters.minEngine || appliedFilters.maxEngine) && <FilterTag label={`Engine: ${appliedFilters.minEngine || '0'}–${appliedFilters.maxEngine || '∞'} cc`} onRemove={() => clearFilter({ minEngine: '', maxEngine: '' })} />}
+                            {appliedFilters.maxCo2 && <FilterTag label={`CO₂: ≤${appliedFilters.maxCo2} g/km`} onRemove={() => clearFilter({ maxCo2: '' })} />}
+                            {appliedFilters.minCombinedMpg && <FilterTag label={`MPG: ${appliedFilters.minCombinedMpg}+`} onRemove={() => clearFilter({ minCombinedMpg: '' })} />}
+                            {appliedFilters.maxZeroTo60Mph && <FilterTag label={`0–60: ≤${appliedFilters.maxZeroTo60Mph}s`} onRemove={() => clearFilter({ maxZeroTo60Mph: '' })} />}
+                            {appliedFilters.driveType && <FilterTag label={`Drive: ${appliedFilters.driveType}`} onRemove={() => clearFilter({ driveType: '' })} />}
                             {appliedFilters.exteriorGrades.map(g => <FilterTag key={g} label={`Exterior Grade ${g}`} onRemove={() => clearFilter({ exteriorGrades: appliedFilters.exteriorGrades.filter(x => x !== g) })} />)}
                             {appliedFilters.writeOffCategories.map(c => {
                                 const label = WRITE_OFF_OPTIONS.find(o => o.value === c)?.label ?? c
