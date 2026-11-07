@@ -106,8 +106,19 @@ export class AnalyticsController {
     @Post('heartbeat')
     @UseGuards(ThrottlerGuard)
     @Throttle({ default: { limit: 12, ttl: 60_000 } })
-    async heartbeat(@Body() body: HeartbeatInput & { signedIn?: unknown }) {
-        await this.presence.heartbeat(body ?? {}, body?.signedIn === true);
+    async heartbeat(@Body() body: HeartbeatInput, @Req() req: Request) {
+        // A public request cannot declare itself signed in. Verify the Bearer
+        // identity without creating a cookie session; guest beats remain anonymous.
+        const header = req.headers.authorization;
+        const bearer = header?.startsWith('Bearer ') ? header.slice(7) : null;
+        let verifiedUserId: string | null = null;
+        if (bearer) {
+            try {
+                const user = await this.authService.verifySupabaseToken(bearer);
+                verifiedUserId = typeof user?.id === 'string' ? user.id : null;
+            } catch { /* treat invalid/expired Bearer as an anonymous visit */ }
+        }
+        await this.presence.heartbeat(body ?? {}, verifiedUserId);
         return { ok: true };
     }
 
