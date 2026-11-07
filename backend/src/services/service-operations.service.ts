@@ -1134,8 +1134,13 @@ export class ServiceOperationsService {
             LIMIT 1
         `);
         const prior = existing[0];
+        const matchesOutcome = (snapshot: any) => input.outcome === 'REFUND'
+            ? snapshot?.status === ServiceJobStatus.CANCELLED && snapshot?.payment?.status === ServicePaymentStatus.REFUNDED
+            : snapshot?.status === ServiceJobStatus.RELEASED && snapshot?.payment?.status === ServicePaymentStatus.RELEASED
+                && (input.outcome === 'RELEASE' || (snapshot.payment.refundAmountPence === input.refundAmountPence && snapshot.payment.stripeRefundStatus === 'succeeded'));
 
-        if (prior?.status === 'SUCCEEDED' && job.status !== ServiceJobStatus.DISPUTED) {
+
+        if (prior?.status === 'SUCCEEDED' && matchesOutcome(job)) {
             try {
                 await this.ensureResolutionCaseEntry(adminId, jobId, input.outcome, note);
             } catch (error: any) {
@@ -1149,10 +1154,7 @@ export class ServiceOperationsService {
             };
         }
 
-        const terminalMatchesOutcome =
-            input.outcome !== 'REFUND'
-                ? job.status === ServiceJobStatus.RELEASED && job.payment.status === ServicePaymentStatus.RELEASED
-                : job.status === ServiceJobStatus.CANCELLED && job.payment.status === ServicePaymentStatus.REFUNDED;
+        const terminalMatchesOutcome = matchesOutcome(job);
 
         if (!terminalMatchesOutcome) {
             if (job.status !== ServiceJobStatus.DISPUTED) {
@@ -1267,12 +1269,7 @@ export class ServiceOperationsService {
             });
             const claim = current?.payment?.stripeTransferId;
             const expectedClaim = `claim:${input.outcome === 'RELEASE' ? 'release' : 'refund'}:${job.payment.id}`;
-            const recoveredSuccess =
-                input.outcome !== 'REFUND'
-                    ? current?.status === ServiceJobStatus.RELEASED
-                        && current?.payment?.status === ServicePaymentStatus.RELEASED
-                    : current?.status === ServiceJobStatus.CANCELLED
-                        && current?.payment?.status === ServicePaymentStatus.REFUNDED;
+            const recoveredSuccess = matchesOutcome(current);
             const status = recoveredSuccess
                 ? 'SUCCEEDED'
                 : claim === expectedClaim
