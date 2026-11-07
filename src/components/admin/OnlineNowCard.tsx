@@ -41,7 +41,7 @@ export function OnlineNowCard() {
         <div>
           <p className="flex items-center gap-2 text-xs font-bold text-[var(--text-muted)]"><Users className="h-4 w-4" /> Active visitor signals</p>
           <p className="mt-1 font-mono text-3xl font-black">{v(data?.total)}</p>
-          <p className="text-xs text-[var(--text-muted)]">{data ? `${v(data.web.signedIn + data.app.signedIn)} verified signed-in accounts (per platform)` : " "}</p>
+          <p className="text-xs text-[var(--text-muted)]">{data ? `${v(data.web.signedIn + data.app.signedIn)} verified signed-in accounts (per website/app)` : " "}</p>
         </div>
         <div>
           <p className="flex items-center gap-2 text-xs font-bold text-[var(--text-muted)]"><Globe className="h-4 w-4" /> On the website</p>
@@ -55,7 +55,7 @@ export function OnlineNowCard() {
         </div>
       </div>
       <p className="mt-4 border-t border-[var(--border-default)] pt-3 text-xs text-[var(--text-muted)]">
-        Counts are recent website/app heartbeats, not a live connection count. Signed-in identities are verified and deduplicated per platform; guest browser tabs and automated traffic may be counted separately.
+        Counts are recent website/app heartbeats, not a live connection count. Signed-in identities are verified and deduplicated per website/app surface; guest browser tabs and automated traffic may be counted separately.
       </p>
     </section>
   )
