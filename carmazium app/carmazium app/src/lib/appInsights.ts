@@ -73,10 +73,12 @@ export async function submitProblemReport(input: {
 
 // ── Admin ────────────────────────────────────────────────────────────────────
 export interface AppStats {
-  installs: { android: number; androidApp: number; androidWebApp: number; ios: number; windows: number };
+  installs: { android: number; androidApp: number; androidWebApp: number; ios: number; iosApp: number; iosWebApp: number; windows: number };
   installsTotal: number;
   androidAppInstalls: number;
   androidAppInstalls30d: number;
+  iosAppFirstOpens: number;
+  iosAppFirstOpens30d: number;
   webInstalls: Record<string, number>;
   webInstallsTotal: number;
   webInstalls30d: number;
@@ -113,11 +115,13 @@ export const setProblemReportStatus = (id: string, status: 'new' | 'resolved') =
 const sessionVisitorId = randomId();
 
 /** "Still here" ping while the app is in the foreground (about once a minute). */
-export async function sendOnlineHeartbeat(signedIn: boolean): Promise<void> {
+export async function sendOnlineHeartbeat(_signedIn: boolean): Promise<void> {
   try {
     await apiClient('/analytics/heartbeat', {
       method: 'POST',
-      body: JSON.stringify({ visitorId: sessionVisitorId, surface: 'app', platform: appPlatform(), signedIn }),
+      // The server verifies the Authorization token supplied by apiClient.
+      // It never trusts a self-reported signed-in flag.
+      body: JSON.stringify({ visitorId: sessionVisitorId, surface: 'app', platform: appPlatform() }),
       timeoutMs: 8000,
     });
   } catch {

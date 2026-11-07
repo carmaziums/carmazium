@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Redis } from 'ioredis';
+import { createHash } from 'node:crypto';
 
 /**
  * "Online now" counter for admins: website vs app, by platform.
@@ -68,20 +69,32 @@ export class OnlinePresenceService implements OnModuleDestroy {
 
     onModuleDestroy() { this.redis?.disconnect(); }
 
-    async heartbeat(input: HeartbeatInput, signedIn: boolean, now = Date.now()): Promise<boolean> {
-        const hb = normaliseHeartbeat(input, signedIn);
+    /** Only a server-verified user ID can count as signed in. Never trust body.signedIn. */
+    async heartbeat(input: HeartbeatInput, verifiedUserId: string | null = null, now = Date.now()): Promise<boolean> {
+        const hb = normaliseHeartbeat(input, Boolean(verifiedUserId));
         if (!hb) return false;
+        // One authenticated account counts once per surface, even with several tabs.
+        // Guests remain anonymous browser sessions, not provably unique people.
+        const storageKey = verifiedUserId
+            ? `verified-${createHash('sha256').update(verifiedUserId).digest('hex').slice(0, 40)}-${hb.surface}`
+            : hb.visitorId;
         const record: PresenceRecord = { surface: hb.surface, platform: hb.platform, signedIn: hb.signedIn };
         if (this.redis) {
             try {
-                await this.redis.multi()
-                    .zadd(OnlinePresenceService.ZSET, now, hb.visitorId)
-                    .hset(OnlinePresenceService.HASH, hb.visitorId, JSON.stringify(record))
+                const tx = this.redis.multi();
+                if (verifiedUserId) {
+                    // Remove the same tab's earlier anonymous heartbeat after login.
+                    tx.zrem(OnlinePresenceService.ZSET, hb.visitorId)
+                        .hdel(OnlinePresenceService.HASH, hb.visitorId);
+                }
+                await tx.zadd(OnlinePresenceService.ZSET, now, storageKey)
+                    .hset(OnlinePresenceService.HASH, storageKey, JSON.stringify(record))
                     .exec();
                 return true;
             } catch { /* fall through to memory */ }
         }
-        this.memory.set(hb.visitorId, { at: now, record });
+        if (verifiedUserId) this.memory.delete(hb.visitorId);
+        this.memory.set(storageKey, { at: now, record });
         if (this.memory.size > 50_000) this.prune(now);
         return true;
     }

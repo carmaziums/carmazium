@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { useAuth } from "@/context/AuthContext"
+import { getAccessToken } from "@/lib/supabase"
 import { countAppEvent } from "@/lib/appInstallCounter"
 import { detectDevicePlatform } from "@/components/pwa/InstallWebAppButton"
 
@@ -29,17 +30,20 @@ export function OnlineHeartbeat() {
         : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
     }
     const platform = () => {
-      if (window.matchMedia?.("(display-mode: standalone)").matches) return "installed"
+      if (window.matchMedia?.("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true) return "installed"
       return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ? "mobile" : "desktop"
     }
-    const beat = () => {
+    const beat = async () => {
       if (document.visibilityState !== "visible") return
+      const token = signedInRef.current ? await getAccessToken().catch(() => null) : null
+      // Identity is verified on the server. Never send a trusted-looking
+      // signedIn boolean in publicly supplied analytics data.
       void fetch(`${API_URL}/analytics/heartbeat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         credentials: "omit",
         keepalive: true,
-        body: JSON.stringify({ visitorId: idRef.current, surface: "web", platform: platform(), signedIn: signedInRef.current }),
+        body: JSON.stringify({ visitorId: idRef.current, surface: "web", platform: platform() }),
       }).catch(() => {})
     }
     // Count an installed web app (iPhone Home Screen, Windows/Android install)
@@ -62,7 +66,7 @@ export function OnlineHeartbeat() {
     const onVisible = () => { if (document.visibilityState === "visible") beat() }
     document.addEventListener("visibilitychange", onVisible)
     return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", onVisible) }
-  }, [])
+  }, [user?.id])
 
   return null
 }

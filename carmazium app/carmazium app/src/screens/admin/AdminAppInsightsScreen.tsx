@@ -71,13 +71,14 @@ export const AdminAppInsightsScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   // One number per platform, all time — these only ever go up.
-  const android = (stats?.apkDownloads ?? 0) + (stats?.installs.androidWebApp ?? 0);
-  const total = android + (stats?.installs.ios ?? 0) + (stats?.installs.windows ?? 0);
+  // Downloads are not verified installations. Keep event types separate.
   const tiles = stats ? [
-    { label: 'Total installs', value: n(total), sub: 'All devices, all time', icon: 'download-outline' },
-    { label: 'Android', value: n(android), sub: `${n(stats.installs.androidApp)} opened the app`, icon: 'logo-android' },
-    { label: 'iPhone', value: n(stats.installs.ios), sub: 'Added to Home Screen', icon: 'logo-apple' },
-    { label: 'Windows', value: n(stats.installs.windows), sub: 'Installed from Edge or Chrome', icon: 'desktop-outline' },
+    { label: 'Android native first opens', value: n(stats.installs.androidApp), sub: 'Reported first-open IDs', icon: 'logo-android' },
+    { label: 'APK downloads', value: n(stats.apkDownloads), sub: 'Downloads, not confirmed installs', icon: 'download-outline' },
+    { label: 'Android web-app opens', value: n(stats.installs.androidWebApp), sub: 'Standalone website launches', icon: 'logo-android' },
+    { label: 'iPhone web-app opens', value: n(stats.installs.iosWebApp), sub: 'Home Screen website launches', icon: 'logo-apple' },
+    { label: 'iPhone native first opens', value: n(stats.installs.iosApp), sub: 'Reported first-open IDs', icon: 'logo-apple' },
+    { label: 'Windows web-app opens', value: n(stats.installs.windows), sub: 'Standalone website launches', icon: 'desktop-outline' },
     { label: 'Open problem reports', value: n(stats.problemReports.open), sub: `${n(stats.problemReports.total)} in total`, icon: 'alert-circle-outline' },
   ] : [];
 
@@ -98,7 +99,7 @@ export const AdminAppInsightsScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </View>
       <Text style={styles.onlineNote}>
-        {online ? `${n(online.total)} people online · ${n(online.web.signedIn + online.app.signedIn)} signed in · updates every 30 seconds` : 'Loading…'}
+        {online ? `${n(online.total)} recent visitor signals · ${n(online.web.signedIn + online.app.signedIn)} verified signed-in (per platform) · 2-minute window` : 'Loading…'}
       </Text>
 
       <Text style={styles.section}>INSTALLS (ALL TIME)</Text>
@@ -159,7 +160,7 @@ export const AdminAppInsightsScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <AdminHeader title="App & problem reports" subtitle="Online now, downloads and customer reports" onBack={() => navigation.goBack()} />
+      <AdminHeader title="App & problem reports" subtitle="Recent activity, downloads and customer reports" onBack={() => navigation.goBack()} />
       <FlatList
         data={reports}
         keyExtractor={r => r.id}
