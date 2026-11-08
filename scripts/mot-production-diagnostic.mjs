@@ -1,6 +1,14 @@
 // Read-only upstream checks inside the existing production machine.
 // Secrets stay on that machine. Only allowlisted status fields reach public CI logs.
 const app = 'carmazium-hjoh9w';
+// Independent network check from the CI runner; no credentials are sent.
+try {
+  const response = await fetch('https://history.mot.api.gov.uk/', { signal: AbortSignal.timeout(10000) });
+  console.log(JSON.stringify({ runnerConnection: 'HTTP_' + response.status }));
+} catch (error) {
+  const code = error?.cause?.code;
+  console.log(JSON.stringify({ runnerConnection: typeof code === 'string' && /^(ERR_(SSL|TLS)_|UND_ERR_|E)[A-Z0-9_]{1,55}$/.test(code) ? code : 'connection_failed' }));
+}
 const token = process.env.FLY_API_TOKEN;
 if (!token) throw new Error('Existing Fly access is not configured');
 const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
