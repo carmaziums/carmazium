@@ -298,7 +298,7 @@ describe('calculateVehicleValuation', () => {
     });
 
 
-    it('uses the lower market band for auction and adds 20 percent for retail', () => {
+    it('calculates retail from retail evidence and trade separately', () => {
         const result = calculateVehicleValuation(vehicle, [
             { price: 9000, year: 2019, mileage: 60000, kind: 'ACTIVE_ASK' },
             { price: 9500, year: 2019, mileage: 58000, kind: 'ACTIVE_ASK' },
@@ -306,61 +306,59 @@ describe('calculateVehicleValuation', () => {
             { price: 10500, year: 2020, mileage: 52000, kind: 'ACTIVE_ASK' },
             { price: 11000, year: 2021, mileage: 50000, kind: 'ACTIVE_ASK' },
         ]);
-
-        expect(result.auction.marketValue).toBe(result.low);
-        expect(result.retail.suggestedAsking).toBe(Math.round(result.low * 1.20));
-        expect(result.retail.suggestedMinimum).toBeLessThanOrEqual(result.retail.suggestedAsking);
-        expect(result.retail.suggestedAsking).toBe(Math.round(result.auction.marketValue * 1.20));
-        expect(result.auction.marketValue).toBeLessThan(result.retail.suggestedAsking);
+        expect(result.valuationMethod).toBe('SEPARATE_MARKETS');
+        expect(result.channelEvidence?.retailComparableCount).toBe(5);
+        expect(result.channelEvidence?.tradeBasis).toBe('MODEL_ESTIMATE');
+        expect(result.channelEvidence?.independentlyObservedTrade).toBe(false);
+        expect(result.retail.suggestedAsking).toBeGreaterThan(result.auction.marketValue);
         expect(result.auction.suggestedReserve).toBeLessThanOrEqual(result.auction.marketValue);
     });
 
-    it('retains a 20 percent retail premium after specification adjustments', () => {
-        const base = calculateVehicleValuation(vehicle, []);
-        const adjusted = applyVehicleSpecificationAdjustments(base, {
-            ...vehicle,
-            condition: 'EXCELLENT',
-            serviceHistory: 'Full',
-            numberOfKeys: 2,
-        });
-        expect(adjusted.auction.marketValue).toBe(adjusted.low);
-        expect(adjusted.retail.suggestedAsking).toBe(Math.round(adjusted.auction.marketValue * 1.20));
-        expect(adjusted.retail.suggestedMinimum).toBeLessThanOrEqual(adjusted.retail.suggestedAsking);
-        expect(adjusted.auction.suggestedReserve).toBeLessThanOrEqual(adjusted.auction.marketValue);
+    it('uses observed dealer auction outcomes when available instead of fixed retail percentage', () => {
+        const result = calculateVehicleValuation(vehicle, [
+            { price: 12000, year: 2019, mileage: 60000, kind: 'ACTIVE_ASK' },
+            { price: 12300, year: 2019, mileage: 62000, kind: 'ACTIVE_ASK' },
+            { price: 6900, year: 2019, mileage: 60000, kind: 'AUCTION_RESULT' },
+            { price: 7200, year: 2019, mileage: 61000, kind: 'AUCTION_RESULT' },
+        ]);
+        expect(result.channelEvidence?.tradeBasis).toBe('AUCTION_RESULTS');
+        expect(result.channelEvidence?.independentlyObservedTrade).toBe(true);
+        expect(result.auction.marketValue).toBeLessThan(result.retail.suggestedAsking * 0.7);
+        expect(result.retail.suggestedAsking).not.toBe(Math.round(result.auction.marketValue * 1.2));
     });
 
-    it('prices a £10,000 market lower band as £10,000 auction and £12,000 Retail', () => {
-        const current = calculateVehicleValuation(vehicle, []);
-        const normalized = alignVehicleValuationPrices({
-            ...current,
-            low: 10000,
-            mid: 11000,
-            high: 12000,
+    it('adjusts retail and auction market models when condition changes', () => {
+        const base = calculateVehicleValuation(vehicle, []);
+        const adjusted = applyVehicleSpecificationAdjustments(base, {
+            ...vehicle, condition: 'EXCELLENT', serviceHistory: 'Full', numberOfKeys: 2,
         });
+        expect(adjusted.retail.suggestedAsking).toBeGreaterThan(base.retail.suggestedAsking);
+        expect(adjusted.auction.marketValue).toBeGreaterThan(base.auction.marketValue);
+    });
+
+    it('keeps legacy 20-percent quote interpretation only for pre-upgrade snapshots', () => {
+        const current = calculateVehicleValuation(vehicle, []);
+        const legacyBase = {
+            ...current,
+            valuationMethod: undefined,
+            channelEvidence: undefined,
+            low: 10000, mid: 11000, high: 12000,
+        };
+        const normalized = alignVehicleValuationPrices(legacyBase);
         expect(normalized.auction.marketValue).toBe(10000);
         expect(normalized.retail.suggestedAsking).toBe(12000);
         expect(normalized.auction.openingBid).toBe(7000);
-        expect(normalized.auction.suggestedReserve).toBeLessThanOrEqual(10000);
+        const adjusted = applyVehicleSpecificationAdjustments(legacyBase, {
+            ...vehicle, condition: 'FAIR', numberOfKeys: 1,
+        });
+        expect(adjusted.retail.suggestedAsking).toBe(Math.round(adjusted.auction.marketValue * 1.20));
     });
 
-    it('recalculates frozen valuations created under the previous high-retail rule', () => {
-        const currentBase = calculateVehicleValuation(vehicle, []);
-        const legacyBase = {
-            ...currentBase,
-            retail: { suggestedAsking: currentBase.high, suggestedMinimum: currentBase.mid },
-            auction: { ...currentBase.auction, marketValue: currentBase.low },
-        };
-        const specification = { ...vehicle, condition: 'FAIR', numberOfKeys: 1 };
-        const oldJourneyResult = applyVehicleSpecificationAdjustments(legacyBase, specification);
-        const freshJourneyResult = applyVehicleSpecificationAdjustments(currentBase, specification);
-        expect(oldJourneyResult.retail.suggestedAsking).toBe(freshJourneyResult.retail.suggestedAsking);
-        expect(oldJourneyResult.auction.marketValue).toBe(freshJourneyResult.auction.marketValue);
-        // An unmodified saved journey must be rebased too (factor = 1).
-        const withoutAdjustments = { make: vehicle.make, model: vehicle.model, year: vehicle.year, mileage: vehicle.mileage };
-        const oldUnchanged = applyVehicleSpecificationAdjustments(legacyBase, withoutAdjustments);
-        const freshUnchanged = applyVehicleSpecificationAdjustments(currentBase, withoutAdjustments);
-        expect(oldUnchanged.retail.suggestedAsking).toBe(freshUnchanged.retail.suggestedAsking);
-        expect(oldUnchanged.auction.marketValue).toBe(freshUnchanged.auction.marketValue);
+    it('reduces the estimated valuation for high mileage even without market evidence', () => {
+        const lowMileage = calculateVehicleValuation({ ...vehicle, mileage: 30000 }, []);
+        const highMileage = calculateVehicleValuation({ ...vehicle, mileage: 112600 }, []);
+        expect(highMileage.retail.suggestedAsking).toBeLessThan(lowMileage.retail.suggestedAsking);
+        expect(highMileage.auction.marketValue).toBeLessThan(lowMileage.auction.marketValue);
     });
 
     it('does not let an extreme active asking price dominate completed outcomes', () => {

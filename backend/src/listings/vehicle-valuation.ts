@@ -53,6 +53,16 @@ export interface VehicleValuationComparable {
 }
 
 export interface VehicleValuationResult {
+    /** New quotations derive retail and dealer trade from distinct evidence. */
+    valuationMethod?: 'SEPARATE_MARKETS';
+    channelEvidence?: {
+        retailComparableCount: number;
+        tradeComparableCount: number;
+        retailBasis: 'RETAIL_MARKET' | 'MODEL_ESTIMATE';
+        tradeBasis: 'AUCTION_RESULTS' | 'MODEL_ESTIMATE';
+        /** Never present trade as independently observed if this is false. */
+        independentlyObservedTrade: boolean;
+    };
     low: number;
     mid: number;
     high: number;
@@ -80,6 +90,7 @@ export interface VehicleValuationResult {
         liveUkAttempts?: number;
         blendedMarketAttempts?: number;
         liveSources?: string[];
+        firecrawlVerifiedComparables?: number;
         valuationStrategy?: 'LIVE' | 'BLENDED' | 'FALLBACK';
         historicalQuotes?: HistoricalQuoteComparison;
     };
@@ -400,16 +411,17 @@ export function vehicleSpecificationAdjustmentFactor(input: VehicleValuationInpu
 }
 
 /**
- * The market-evidence lower band is CarMazium's dealer auction valuation.
- * Suggested Retail is exactly 20% above that amount (rounded to whole GBP).
- * Always derive both guides from the lower band; never discount it again.
- *
- * Normalising legacy stored valuation snapshots in this one place also avoids
- * incorrectly shifting the underlying comparables or changing saved listings.
+ * Legacy quotes have no valuationMethod and retain their frozen 20%-mapping
+ * until the original 24-hour lock expires. All new quotes use distinct channel
+ * prices. Do not turn modelled dealer estimates into observed market results.
  */
 export function alignVehicleValuationPrices(base: VehicleValuationResult): VehicleValuationResult {
-    const auctionMarketValue = base.low;
-    const retailSuggestedAsking = Math.round(auctionMarketValue * 1.20);
+    const auctionMarketValue = base.valuationMethod === 'SEPARATE_MARKETS'
+        ? base.auction.marketValue
+        : base.low;
+    const retailSuggestedAsking = base.valuationMethod === 'SEPARATE_MARKETS'
+        ? base.retail.suggestedAsking
+        : Math.round(auctionMarketValue * 1.20);
     return {
         ...base,
         retail: {
@@ -431,22 +443,82 @@ export function applyVehicleSpecificationAdjustments(
     input: VehicleValuationInput,
 ): VehicleValuationResult {
     const factor = vehicleSpecificationAdjustmentFactor(input);
-    if (Math.abs(factor - 1) < 0.0001) {
-        // Frozen 24-hour quotes or saved base journeys may carry the previous
-        // retail=low / auction=0.8*low policy. Reprice their same market base.
-        return alignVehicleValuationPrices(base);
-    }
-    const low = roundMoney(base.low * factor);
-    const mid = roundMoney(base.mid * factor);
-    const high = roundMoney(base.high * factor);
+    if (Math.abs(factor - 1) < 0.0001) return alignVehicleValuationPrices(base);
 
-    return alignVehicleValuationPrices({
+    const adjusted = {
         ...base,
-        low,
-        mid,
-        high,
+        low: roundMoney(base.low * factor),
+        mid: roundMoney(base.mid * factor),
+        high: roundMoney(base.high * factor),
+        retail: base.valuationMethod === 'SEPARATE_MARKETS'
+            ? { ...base.retail, suggestedAsking: roundMoney(base.retail.suggestedAsking * factor) }
+            : base.retail,
+        auction: base.valuationMethod === 'SEPARATE_MARKETS'
+            ? { ...base.auction, marketValue: roundMoney(base.auction.marketValue * factor) }
+            : base.auction,
         explanation: `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
-    });
+    };
+    return alignVehicleValuationPrices(adjusted);
+}
+
+/**
+ * A trade transaction must be observed independently of retail adverts.
+ * When auction evidence is absent, trade is explicitly a low-confidence
+ * liquidity-cost estimate rather than an invented "market observed" price.
+ */
+function calculateSeparateChannelValues(
+    input: VehicleValuationInput,
+    comparables: VehicleValuationComparable[],
+    fallback: number,
+): {
+    retailValue: number;
+    tradeValue: number;
+    retailComparableCount: number;
+    tradeComparableCount: number;
+} {
+    const retail = comparables.filter(row =>
+        row.kind === 'ACTIVE_ASK' || row.kind === 'SALE' || row.kind === 'ACCEPTED_OFFER'
+    ).map(row => normalizeComparable(input, row)).filter((row): row is { value: number; weight: number } => !!row);
+    const trade = comparables.filter(row => row.kind === 'AUCTION_RESULT')
+        .map(row => normalizeComparable(input, row))
+        .filter((row): row is { value: number; weight: number } => !!row)
+        // normalizeComparable converts dealer auctions to a 1.10 retail proxy;
+        // reverse that conversion when calculating the dealer channel.
+        .map(row => ({ ...row, value: row.value / 1.10 }));
+
+    // Guard against a single abnormal listing. Unlike the historic 20% rule,
+    // each channel starts with evidence from its own transaction type.
+    const removeOutliers = (rows: Array<{ value: number; weight: number }>) => {
+        if (rows.length < 5) return rows;
+        const mid = weightedQuantile(rows, 0.5);
+        return rows.filter(row => row.value >= mid * 0.55 && row.value <= mid * 1.60);
+    };
+    const retailRows = removeOutliers(retail);
+    const tradeRows = removeOutliers(trade);
+    const retailObserved = retailRows.length > 0 ? weightedQuantile(retailRows, 0.5) : fallback;
+    // A sparse sample is still more informative than a generic make-wide
+    // new-car price. Use fallback only lightly, and label the evidence quality.
+    const retailMarket = retailRows.length === 1 ? retailObserved * 0.85 + fallback * 0.15
+        : retailRows.length === 2 ? retailObserved * 0.92 + fallback * 0.08
+            : retailObserved;
+    const retailValue = roundMoney(retailMarket);
+    const age = Math.max(0, new Date().getFullYear() - input.year);
+    const excessMiles = Math.max(0, input.mileage - age * 8500);
+    const tradeRatio = clamp(0.78 - (excessMiles / 1000) * 0.001, 0.65, 0.82);
+    const tradeFallback = retailValue * tradeRatio;
+    const tradeObserved = tradeRows.length > 0 ? weightedQuantile(tradeRows, 0.5) : tradeFallback;
+    const tradeMarket = tradeRows.length === 1 ? tradeObserved * 0.75 + tradeFallback * 0.25
+        : tradeRows.length >= 2 ? tradeObserved
+            : tradeFallback;
+    // Dealer auction should not exceed retail guide purely because a sparse
+    // local transaction was an outlier. This is a sanity bound, not a price rule.
+    const tradeValue = roundMoney(Math.min(tradeMarket, retailValue * 0.97));
+    return {
+        retailValue,
+        tradeValue,
+        retailComparableCount: retailRows.length,
+        tradeComparableCount: tradeRows.length,
+    };
 }
 
 function normalizeComparable(
@@ -455,8 +527,10 @@ function normalizeComparable(
 ): { value: number; weight: number } | null {
     if (!Number.isFinite(comparable.price) || comparable.price < 250) return null;
 
+    // Missing mileage cannot silently be treated as an exact-mileage match.
+    if (comparable.mileage == null || !Number.isFinite(comparable.mileage)) return null;
     const compYear = comparable.year ?? input.year;
-    const compMileage = comparable.mileage ?? input.mileage;
+    const compMileage = comparable.mileage;
 
     // Normalise a nearby comparable to the target vehicle's age and mileage.
     // Newer comparable -> reduce it to target-year terms; older -> increase.
@@ -590,11 +664,14 @@ export function calculateVehicleValuation(
         );
     }
 
+    // Confidence must only count comparable rows that were usable, not
+    // rows with absent mileage or invalid prices.
+    const acceptedEvidence = comparables.filter(row => normalizeComparable(input, row) != null);
     const evidence = {
-        completedSales: comparables.filter((row) => row.kind === 'SALE').length,
-        acceptedOffers: comparables.filter((row) => row.kind === 'ACCEPTED_OFFER').length,
-        auctionResults: comparables.filter((row) => row.kind === 'AUCTION_RESULT').length,
-        activeAsks: comparables.filter((row) => row.kind === 'ACTIVE_ASK').length,
+        completedSales: acceptedEvidence.filter((row) => row.kind === 'SALE').length,
+        acceptedOffers: acceptedEvidence.filter((row) => row.kind === 'ACCEPTED_OFFER').length,
+        auctionResults: acceptedEvidence.filter((row) => row.kind === 'AUCTION_RESULT').length,
+        activeAsks: acceptedEvidence.filter((row) => row.kind === 'ACTIVE_ASK').length,
     };
 
     const strongEvidence = evidence.completedSales + evidence.acceptedOffers + evidence.auctionResults;
@@ -666,10 +743,18 @@ export function calculateVehicleValuation(
                     ? `Based on ${usable.length} similar CarMazium vehicles, including ${strongEvidence} completed sale, accepted-offer or auction outcome signal${strongEvidence === 1 ? '' : 's'}.`
                     : `Based on ${usable.length} similar live CarMazium asking prices. Completed-sale evidence for this exact vehicle is still limited.`;
 
-    // The conservative lower market band is the Auction valuation. Retail
-    // is 20% higher. This applies consistently to live, blended and fallback
-    // market evidence; the seller may still set their own actual prices.
+    const channels = calculateSeparateChannelValues(input, comparables, fallback);
+    // Retail and trade are distinct observations or separately-modelled
+    // estimates, not a fixed percentage of each other.
     return alignVehicleValuationPrices({
+        valuationMethod: 'SEPARATE_MARKETS',
+        channelEvidence: {
+            retailComparableCount: channels.retailComparableCount,
+            tradeComparableCount: channels.tradeComparableCount,
+            retailBasis: channels.retailComparableCount > 0 ? 'RETAIL_MARKET' : 'MODEL_ESTIMATE',
+            tradeBasis: channels.tradeComparableCount > 0 ? 'AUCTION_RESULTS' : 'MODEL_ESTIMATE',
+            independentlyObservedTrade: channels.tradeComparableCount >= 2,
+        },
         low,
         mid,
         high,
@@ -679,9 +764,7 @@ export function calculateVehicleValuation(
         evidence,
         source,
         explanation,
-        // alignVehicleValuationPrices replaces these input placeholders with
-        // values calculated from the final lower band.
-        retail: { suggestedAsking: 0, suggestedMinimum: 0 },
-        auction: { marketValue: 0, openingBid: 0, reserveLow: 0, reserveHigh: 0, suggestedReserve: 0 },
+        retail: { suggestedAsking: channels.retailValue, suggestedMinimum: 0 },
+        auction: { marketValue: channels.tradeValue, openingBid: 0, reserveLow: 0, reserveHigh: 0, suggestedReserve: 0 },
     });
 }

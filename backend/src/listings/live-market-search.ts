@@ -213,6 +213,69 @@ function isCleanComparableTitle(title: string, targetWriteOff?: string): boolean
     return !/\b(cat\s*[abns]|write[ -]?off|salvage|spares|repair|damaged|non[- ]runner)\b/i.test(title);
 }
 
+/**
+ * Keep comparable evidence within the same identifiable derivative. A Golf
+ * 1.5 R-Line must not inherit a Golf GTI / Golf R / 1.0 SE asking price merely
+ * because all adverts share the broad "Golf" model family.
+ */
+function engineDisplacement(value: string): string | null {
+    const found = normalize(value).match(/(?:^| )(0[89]|[1-6])[ .]([0-9])(?: |$)/);
+    return found ? `${Number(found[1])}.${found[2]}` : null;
+}
+
+function trimFamily(value: string): string | null {
+    const name = normalize(value);
+    const trims = [
+        'R LINE', 'AMG LINE', 'S LINE', 'M SPORT', 'ST LINE',
+        'GTI', 'GTD', 'GTE', 'VRS', 'TEKNA', 'N CONNECTA',
+        'INVINCIBLE', 'TITANIUM', 'VIGNALE', 'PORTFOLIO',
+        'MATCH', 'STYLE', 'LIFE', 'DESIGN', 'SE', 'SEL',
+    ];
+    for (const trim of trims) {
+        if (new RegExp(`(?:^| )${trim}(?: |$)`).test(name)) return trim;
+    }
+    return null;
+}
+
+function fuelFamily(value?: string | null): string | null {
+    const text = normalize(value);
+    if (!text) return null;
+    if (/ELECTRIC/.test(text)) return 'ELECTRIC';
+    if (/DIESEL/.test(text)) return 'DIESEL';
+    if (/HYBRID/.test(text)) return 'HYBRID';
+    if (/PETROL|GASOLINE/.test(text)) return 'PETROL';
+    return null;
+}
+
+function gearboxFamily(value?: string | null): string | null {
+    const text = normalize(value);
+    if (!text) return null;
+    if (/MANUAL/.test(text) && !/SEMI/.test(text)) return 'MANUAL';
+    if (/AUTO|DSG|CVT|TIPTRONIC/.test(text)) return 'AUTOMATIC';
+    return null;
+}
+
+export function compatibleDerivative(input: VehicleValuationInput, row: Record<string, unknown>, title: string): boolean {
+    const candidateVariant = typeof row.variant === 'string' ? row.variant : '';
+    const candidate = [candidateVariant, title].join(' ');
+    const targetEngine = engineDisplacement(input.variant ?? '');
+    const sourceEngine = engineDisplacement(candidate);
+    if (targetEngine && sourceEngine && targetEngine !== sourceEngine) return false;
+
+    const targetTrim = trimFamily(input.variant ?? '');
+    const sourceTrim = trimFamily(candidate);
+    if (targetTrim && sourceTrim && targetTrim !== sourceTrim) return false;
+
+    const requiredFuel = fuelFamily(input.fuelType);
+    const observedFuel = fuelFamily(typeof row.fuelType === 'string' ? row.fuelType : null);
+    if (requiredFuel && observedFuel && requiredFuel !== observedFuel) return false;
+
+    const requiredGearbox = gearboxFamily(input.transmission);
+    const observedGearbox = gearboxFamily(typeof row.transmission === 'string' ? row.transmission : null);
+    if (requiredGearbox && observedGearbox && requiredGearbox !== observedGearbox) return false;
+    return true;
+}
+
 export function sanitizeLiveUkComparables(
     input: VehicleValuationInput,
     raw: unknown,
@@ -227,8 +290,12 @@ export function sanitizeLiveUkComparables(
     const seen = new Set<string>();
     const rows: VehicleValuationComparable[] = [];
 
-    const yearTolerance = Math.max(1, Math.min(6, options?.yearTolerance ?? 3));
-    const mileageTolerance = Math.max(20_000, Math.min(150_000, options?.mileageTolerance ?? 90_000));
+    const yearTolerance = Math.max(1, Math.min(3, options?.yearTolerance ?? 2));
+    // A distant mileage bracket can radically distort a high-mileage value.
+    // Recovery searches may widen sources but not call 30k- and 110k-mile
+    // vehicles directly comparable at near-full weight.
+    const targetMileageWindow = Math.max(12_000, Math.min(45_000, Math.round(input.mileage * 0.33)));
+    const mileageTolerance = Math.min(options?.mileageTolerance ?? targetMileageWindow, targetMileageWindow);
 
     for (const candidate of raw.slice(0, 45)) {
         if (!candidate || typeof candidate !== 'object') continue;
@@ -248,11 +315,13 @@ export function sanitizeLiveUkComparables(
         if (normalize(make) !== targetMake && !normalize(title).includes(targetMake)) continue;
         if (!modelMatches(input, model, title)) continue;
         if (!isCleanComparableTitle(title, input.writeOffCategory)) continue;
+        if (!compatibleDerivative(input, row, title)) continue;
 
         const mileage = mileageValue != null && Number.isFinite(mileageValue) && mileageValue >= 0
             ? Math.round(mileageValue)
             : null;
-        if (mileage != null && Math.abs(mileage - input.mileage) > mileageTolerance) continue;
+        // Never treat a listing with missing mileage as a mileage match.
+        if (mileage == null || Math.abs(mileage - input.mileage) > mileageTolerance) continue;
 
         let parsedUrl: URL;
         try {

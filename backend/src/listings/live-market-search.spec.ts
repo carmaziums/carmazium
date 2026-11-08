@@ -167,6 +167,29 @@ describe('sanitizeLiveUkComparables', () => {
         expect(rows).toEqual([]);
     });
 
+    it('rejects missing mileage and obviously mismatched Golf derivatives', () => {
+        const vehicle = {
+            make: 'Volkswagen', model: 'Golf', year: 2019, mileage: 112600,
+            fuelType: 'Petrol', transmission: 'Manual', variant: '1.5 TSI EVO R-Line',
+        };
+        const common = {
+            year: 2019, make: 'Volkswagen', model: 'Golf', priceGBP: 9500,
+            fuelType: 'Petrol', transmission: 'Manual',
+        };
+        const rows = sanitizeLiveUkComparables(vehicle, [
+            { ...common, title: '2019 Volkswagen Golf 1.5 TSI R-Line', variant: '1.5 TSI R-Line',
+                mileage: null, url: 'https://dealer.example/missing-mileage' },
+            { ...common, title: '2019 Volkswagen Golf 2.0 GTI', variant: '2.0 GTI',
+                mileage: 112000, url: 'https://dealer.example/gti' },
+            { ...common, title: '2019 Volkswagen Golf 1.5 R-Line Automatic', variant: '1.5 R-Line',
+                transmission: 'Automatic', mileage: 113000, url: 'https://dealer.example/auto' },
+            { ...common, title: '2019 Volkswagen Golf 1.5 TSI R-Line', variant: '1.5 TSI R-Line',
+                mileage: 112000, url: 'https://dealer.example/matched' },
+        ]);
+        expect(rows).toHaveLength(1);
+        expect(rows[0].sourceUrl).toBe('https://dealer.example/matched');
+    });
+
     it('rejects implausibly distant years and invalid prices', () => {
         const rows = sanitizeLiveUkComparables(input, [
             {

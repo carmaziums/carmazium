@@ -4,6 +4,8 @@ import { modelSearchWhere, makeSearchWhere } from './model-search';
 import { buildFeatureConditions } from './feature-search';
 import { buildGradeSearchWhere } from './grade-search';
 import { summariseHistoricalQuotes, ArchivedValuationObservation, QUOTE_HISTORY_MONTHS } from './valuation-quote-history';
+import { assessFirstPartyMarketDemand, applyFirstPartyDemandAdjustment } from './valuation-demand';
+import { searchFirecrawlValuationMarket } from './firecrawl-valuation-search';
 import { hasOtherActiveRetailRegistration } from './retail-uniqueness';
 import { geoBounds, haversineMiles } from './search-geo';
 import {
@@ -75,6 +77,7 @@ import {
 } from './vehicle-valuation';
 import {
     searchLiveUkVehicleMarket,
+    compatibleDerivative,
     LiveUkMarketSearchResult,
 } from './live-market-search';
 import {
@@ -299,6 +302,8 @@ export class ListingsService {
                     status: true,
                     winningBidAmount: true,
                     updatedAt: true,
+                    sellerFundsConfirmedAt: true,
+                    buyerRefusedAt: true,
                 },
             },
             offers: {
@@ -352,9 +357,15 @@ export class ListingsService {
             });
         }
 
+        const demandAssessment = assessFirstPartyMarketDemand(rows);
         const comparables: VehicleValuationComparable[] = [];
 
         for (const row of rows) {
+            if (!compatibleDerivative(
+                specificationInput,
+                { variant: row.variant, fuelType: row.fuelType, transmission: row.transmission },
+                `${row.make} ${row.model} ${row.variant ?? ''}`,
+            )) continue;
             const common = {
                 year: row.year,
                 mileage: row.mileage,
@@ -377,7 +388,13 @@ export class ListingsService {
                 isImported: row.isImported,
             };
 
-            if (row.type === 'AUCTION' && row.auction?.winningBidAmount != null) {
+            // A winning bid (particularly under reserve/provisional) is not
+            // evidence of a completed trade. Require seller confirmation and
+            // no buyer refusal before using it as a dealer auction result.
+            if (row.type === 'AUCTION'
+                && row.auction?.winningBidAmount != null
+                && row.auction.sellerFundsConfirmedAt != null
+                && row.auction.buyerRefusedAt == null) {
                 comparables.push({
                     ...common,
                     price: Number(row.auction.winningBidAmount),
@@ -432,6 +449,7 @@ export class ListingsService {
         const liveSourceDomains = new Set<string>();
         let liveUkAttempts = 0;
         let blendedMarketAttempts = 0;
+        let firecrawlVerifiedComparables = 0;
 
         const mergeLiveMarketResult = (result: LiveUkMarketSearchResult | null) => {
             if (!result) return;
@@ -447,13 +465,14 @@ export class ListingsService {
             }
 
             for (const comparable of result.comparables ?? []) {
+                // One advert can appear on a marketplace and the dealer's
+                // own website with differently formatted derivative labels.
+                // Do not let that double-count identical price/year/mileage
+                // as independent market evidence or raise confidence.
                 const key = [
                     Math.round(Number(comparable.price) || 0),
                     comparable.year ?? '',
                     comparable.mileage ?? '',
-                    (comparable.variant ?? '').trim().toUpperCase(),
-                    (comparable.fuelType ?? '').trim().toUpperCase(),
-                    (comparable.transmission ?? '').trim().toUpperCase(),
                 ].join('|');
 
                 if (!liveComparableMap.has(key)) {
@@ -482,7 +501,34 @@ export class ListingsService {
 
         await runMarketSearchAttempt('LIVE');
 
-        if (liveComparableMap.size < 3) {
+        // Firecrawl is strictly opt-in: off by default; requires a server-only
+        // API key, an approved-domain list and a positive credit check inside
+        // the adapter. Never send customer registration or user details.
+        if (
+            liveComparableMap.size < 5
+            && this.config.get<string>('VALUATION_FIRECRAWL_SEARCH_ENABLED') === 'true'
+        ) {
+            const apiKey = this.config.get<string>('FIRECRAWL_API_KEY') || '';
+            const approvedDomains = (this.config.get<string>('VALUATION_FIRECRAWL_APPROVED_DOMAINS') || '')
+                .split(',').map(domain => domain.trim()).filter(Boolean);
+            if (apiKey && approvedDomains.length > 0) {
+                const before = liveComparableMap.size;
+                const extra = await searchFirecrawlValuationMarket(specificationInput, {
+                    apiKey, approvedDomains,
+                    maxResults: 4,
+                    timeoutMs: 12_000,
+                });
+                if (extra.comparables.length > 0) mergeLiveMarketResult(extra);
+                firecrawlVerifiedComparables = liveComparableMap.size - before;
+            }
+        }
+
+        // Keep the existing paid-search budget by default. Additional
+        // searches for three/four comparables need an explicit opt-in because
+        // each OpenAI web-search pass can incur costs. Weak evidence is still
+        // honestly labelled LOW confidence.
+        const enhancedSearchApproved = this.config.get<string>('VALUATION_ENHANCED_SEARCH') === 'true';
+        if (liveComparableMap.size < (enhancedSearchApproved ? 5 : 3)) {
             const remainingLiveAttempts = 5 - liveUkAttempts;
             if (remainingLiveAttempts > 0) {
                 await Promise.all(
@@ -504,7 +550,12 @@ export class ListingsService {
         if (usableLiveComparables.length > 0) {
             calculatedBase = calculateVehicleValuation(
                 baseValuationInput,
-                usableLiveComparables,
+                [
+                    ...usableLiveComparables,
+                    // Genuine platform auction outcomes can inform the trade
+                    // channel even when retail is backed by fresh live adverts.
+                    ...comparables.filter(row => row.kind === 'AUCTION_RESULT'),
+                ],
             );
             calculatedBase.source = 'LIVE_UK_MARKET';
             calculatedBase.explanation =
@@ -521,6 +572,7 @@ export class ListingsService {
                 liveUkAttempts,
                 blendedMarketAttempts: 0,
                 liveSources: [...liveSourceDomains].sort(),
+                firecrawlVerifiedComparables,
                     valuationStrategy: 'LIVE',
             };
         } else {
@@ -564,6 +616,7 @@ export class ListingsService {
                     liveUkAttempts,
                     blendedMarketAttempts,
                     liveSources: [...liveSourceDomains].sort(),
+                firecrawlVerifiedComparables,
                     valuationStrategy: 'BLENDED',
                 };
             } else if (usableLiveComparables.length > 0) {
@@ -588,6 +641,7 @@ export class ListingsService {
                     liveUkAttempts,
                     blendedMarketAttempts,
                     liveSources: [...liveSourceDomains].sort(),
+                firecrawlVerifiedComparables,
                     valuationStrategy: 'LIVE',
                 };
             } else {
@@ -608,6 +662,7 @@ export class ListingsService {
                     liveUkAttempts,
                     blendedMarketAttempts,
                     liveSources: [...liveSourceDomains].sort(),
+                firecrawlVerifiedComparables,
                     valuationStrategy: 'FALLBACK',
                 };
                 // Read historical *quoted* figures only as a diagnostic benchmark.
@@ -627,7 +682,10 @@ export class ListingsService {
         // A concurrent duplicate request can finish a different live search.
         // The valuationId is also the AnalyticsEvent primary key, so exactly one
         // base wins. Losers read the winning snapshot and return that same base.
-        const stableBase = await this.freezeValuationBase(dto, calculatedBase);
+        const stableBase = await this.freezeValuationBase(
+            dto,
+            applyFirstPartyDemandAdjustment(calculatedBase, demandAssessment),
+        );
 
         return this.freezeCustomerQuote(dto,
             applyVehicleSpecificationAdjustments(stableBase, specificationInput),
@@ -686,20 +744,24 @@ export class ListingsService {
     }
 
     /**
-     * A normalized UK registration is the primary vehicle identity.
-     * Model, year, mileage and formatting can be corrected without defeating
-     * the 24-hour quote lock. Vehicles without a VRM use a specification key.
+     * A normalized registration is one component of vehicle identity.
+     * Mileage and derivative must also match for a frozen 24-hour quote.
      */
     private valuationPriceLockId(dto: VehicleValuationDto): string {
         const vrm = (dto.registration ?? '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-        const identity = vrm
-            ? `VRM|${vrm}`
-            : [
-                dto.make.trim().toUpperCase(),
-                dto.model.trim().toUpperCase(),
-                dto.year,
-                dto.mileage,
-            ].join('|');
+        // The quote covers one exact vehicle configuration, not every vehicle
+        // sharing a VRM. In particular, changing mileage must never replay a
+        // different mileage's 24-hour price (EW19CFY regression).
+        const identity = [
+            vrm || 'UNREGISTERED',
+            dto.make.trim().toUpperCase(),
+            dto.model.trim().toUpperCase(),
+            dto.year,
+            dto.mileage,
+            (dto.variant ?? '').trim().toUpperCase().replace(/\s+/g, ' '),
+            (dto.fuelType ?? '').trim().toUpperCase(),
+            (dto.transmission ?? '').trim().toUpperCase(),
+        ].join('|');
         return `valuation-price-lock:${createHash('sha256').update(identity).digest('hex')}`;
     }
 
@@ -827,13 +889,12 @@ export class ListingsService {
         const identity = payload.identity ?? {};
         const expected = this.valuationIdentity(dto);
 
-        const sameIdentity = expected.registration
-            ? String(identity.registration ?? '') === expected.registration
-            : !identity.registration
-                && String(identity.make ?? '') === expected.make
-                && String(identity.model ?? '') === expected.model
-                && Number(identity.year) === expected.year
-                && Number(identity.mileage) === expected.mileage;
+        const sameIdentity =
+            String(identity.registration ?? '') === expected.registration
+            && String(identity.make ?? '') === expected.make
+            && String(identity.model ?? '') === expected.model
+            && Number(identity.year) === expected.year
+            && Number(identity.mileage) === expected.mileage;
 
         if (!sameIdentity) {
             throw new BadRequestException(

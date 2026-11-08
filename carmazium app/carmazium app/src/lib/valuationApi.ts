@@ -24,6 +24,14 @@ export interface VehicleValuationRequest {
 }
 
 export interface VehicleValuation {
+  valuationMethod?: 'SEPARATE_MARKETS';
+  channelEvidence?: {
+      retailComparableCount: number;
+      tradeComparableCount: number;
+      retailBasis: 'RETAIL_MARKET' | 'MODEL_ESTIMATE';
+      tradeBasis: 'AUCTION_RESULTS' | 'MODEL_ESTIMATE';
+      independentlyObservedTrade: boolean;
+  };
   low: number;
   mid: number;
   high: number;
@@ -55,8 +63,16 @@ export interface VehicleValuation {
     liveUkSearchStatus?: 'USED' | 'INSUFFICIENT' | 'UNAVAILABLE';
     rawLiveUkComparables?: number;
     liveUkAttempts?: number;
+    firecrawlVerifiedComparables?: number;
     blendedMarketAttempts?: number;
     valuationStrategy?: 'LIVE' | 'BLENDED' | 'FALLBACK';
+    demand?: {
+      status: 'INSUFFICIENT_DATA' | 'BALANCED' | 'HIGH_DEMAND' | 'LOW_DEMAND';
+      activeComparableSupply: number;
+      observedTransactions90d: number;
+      retailAdjustment: number;
+      tradeAdjustment: number;
+    };
   };
 }
 
