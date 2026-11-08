@@ -2020,6 +2020,7 @@ export class ListingsService {
         });
 
         const listing = createResult.listing;
+        this.backfillRetailMotOnView(listing);
         if (!createResult.created) {
             return listing;
         }
@@ -2419,47 +2420,54 @@ export class ListingsService {
 
 
     /**
-     * Repair historical ACTIVE retail records progressively when viewed.
+     * Recover missing official history after creation or when a listing is viewed.
      * Only the official DVLA + DVSA lookup is used: no AI inference, no estimated
      * transmission/MPG/performance. First page view stays fast; a later refresh
      * can display recovered MOT tests.
      *
      * Bounded to 2 concurrent requests and 1 start per 5 seconds, with a
-     * 24-hour negative retry budget per vehicle (even if DVSA is unavailable).
-     * All writes are guarded by current status and an unchanged empty history.
+     * five-minute retry budget for outages; only confirmed empty results wait a day.
+     * All writes guard vehicle identity, lifecycle and the unchanged empty history.
      */
     private backfillRetailMotOnView(listing: any): void {
         if (!this.dvlaService
             || !this.config.get<string>('DVLA_API_KEY')
             || !this.config.get<string>('MOT_HISTORY_API_KEY')
-            || listing?.type !== 'CLASSIFIED' || listing?.status !== 'ACTIVE'
+            || !['CLASSIFIED', 'AUCTION'].includes(listing?.type)
+            || !['ACTIVE', 'PENDING_REVIEW', 'DRAFT'].includes(listing?.status)
+            || listing.deletedAt
             || !listing?.id || !listing?.vrm
             || (Array.isArray(listing.motHistory) && listing.motHistory.length > 0)
             || !/^[A-Z0-9]{2,7}$/.test(String(listing.vrm).replace(/\s+/g, '').toUpperCase())) return;
 
         const now = Date.now();
         const last = this.motBackfillAttempts.get(listing.id) || 0;
-        if (now - last < 24 * 60 * 60 * 1000
+        if (now < last
             || this.motBackfillActive >= 2
             || now < this.motBackfillNextAt) return;
 
         if (this.motBackfillAttempts.size >= 2000) this.motBackfillAttempts.clear();
-        this.motBackfillAttempts.set(listing.id, now);
+        this.motBackfillAttempts.set(listing.id, now + 5 * 60_000);
         this.motBackfillNextAt = now + 5000;
         this.motBackfillActive++;
 
         void (async () => {
             try {
                 const official = await this.dvlaService!.lookupVrm(listing.vrm, false);
+                if (official.motHistoryStatus === 'NO_TESTS') {
+                    this.motBackfillAttempts.set(listing.id, Date.now() + 24 * 60 * 60_000);
+                }
                 const update = motEnrichmentUpdate(listing, official);
                 if (!update) return;
                 // Exact original empty-value guard prevents overwriting history
                 // supplied concurrently by a seller or updated by another call.
                 const saved = await this.prisma.listing.updateMany({
                     where: {
-                        id: listing.id, type: 'CLASSIFIED', status: 'ACTIVE', deletedAt: null,
+                        id: listing.id, type: listing.type, status: listing.status, deletedAt: null,
+                        vrm: listing.vrm, make: listing.make, year: listing.year,
                         OR: [
                             { motHistory: { equals: Prisma.DbNull } },
+                            { motHistory: { equals: Prisma.JsonNull } },
                             { motHistory: { equals: [] } },
                         ],
                     },
@@ -2468,7 +2476,8 @@ export class ListingsService {
                 // Protect a model edited concurrently by the seller.
                 if (saved.count > 0 && update.model) {
                     await this.prisma.listing.updateMany({
-                        where: { id: listing.id, model: null, type: 'CLASSIFIED', status: 'ACTIVE', deletedAt: null },
+                        where: { id: listing.id, model: null, type: listing.type, status: listing.status, deletedAt: null,
+                            vrm: listing.vrm, make: listing.make, year: listing.year },
                         data: { model: update.model },
                     });
                 }

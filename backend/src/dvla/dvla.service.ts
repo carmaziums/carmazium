@@ -74,6 +74,9 @@ export interface DvlaLookupResult {
     dataSource: 'DVLA';
     officialVehicleData?: OfficialVehicleData;
     motHistory?: MotTestResult[];
+    motHistoryStatus?: 'AVAILABLE' | 'NO_TESTS' | 'UNAVAILABLE' | 'IDENTITY_MISMATCH';
+    /** Safe diagnostic category only: never credentials or raw upstream errors. */
+    motHistoryFailure?: MotFailure;
     /** MOT reading is historical, NOT a verified current odometer figure. */
     lastMotMileage?: { value: number; unit: 'MI' | 'KM'; recordedAt: string };
 }
@@ -96,6 +99,14 @@ export interface MotTestDefect {
     type: string; // DVSA test records may also include older failure categories
     dangerous: boolean;
 }
+
+type MotFailure = 'TIMEOUT' | 'AUTHENTICATION' | 'CONFIGURATION' | 'RATE_LIMIT' | 'UPSTREAM';
+class MotLookupError extends Error {
+    constructor(readonly reason: MotFailure, readonly retryable = false) {
+        super('DVSA MOT lookup: ' + reason);
+    }
+}
+const vehicleIdentity = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 // ─── Fuel type mapping (DVLA values → our enum) ────────────────────────────────
 
@@ -202,7 +213,7 @@ export class DvlaService {
                 ? Math.min(configured, ceiling) : fallback;
         };
         this.dvlaTimeoutMs = budget('DVLA_CORE_TIMEOUT_MS', 8_000, 15_000);
-        this.motTimeoutMs = budget('DVLA_MOT_TIMEOUT_MS', 4_500, 6_000);
+        this.motTimeoutMs = budget('DVLA_MOT_TIMEOUT_MS', 6_000, 6_000);
         this.aiSyncTimeoutMs = budget('DVLA_SYNC_AI_TIMEOUT_MS', 3_000, 6_000);
         this.aiOptionalTimeoutMs = budget('DVLA_OPTIONAL_AI_TIMEOUT_MS', 18_000, 22_000);
 
@@ -234,8 +245,8 @@ export class DvlaService {
                 ? this.enrichCore(normalised, core, this.aiSyncTimeoutMs)
                 : core;
         }
-        // Optional MOT can stall independently, but never longer than its
-        // own 2.5-second budget. The core DVLA request has an 8-second cap.
+        // Two bounded MOT attempts fit inside the browser's 18-second budget.
+        // Core DVLA remains usable if the independent MOT service is unavailable.
         const [dvlaResult, motResult] = await Promise.allSettled([
             this.dvlaWithRetry(normalised),
             this.motApiRequest(normalised),
@@ -246,11 +257,17 @@ export class DvlaService {
         }
 
         const combined = dvlaResult.value;
+        combined.motHistoryStatus = 'UNAVAILABLE';
+        if (motResult.status === 'rejected') {
+            combined.motHistoryFailure = motResult.reason instanceof MotLookupError
+                ? motResult.reason.reason : 'UPSTREAM';
+        }
         if (motResult.status === 'fulfilled' && motResult.value
             && (!motResult.value.registration || motResult.value.registration === normalised)
             && (!motResult.value.make || !combined.make
-                || motResult.value.make.toUpperCase() === combined.make.toUpperCase())) {
+                || vehicleIdentity(motResult.value.make) === vehicleIdentity(combined.make))) {
             combined.motHistory = motResult.value.motTests;
+            combined.motHistoryStatus = combined.motHistory.length ? 'AVAILABLE' : 'NO_TESTS';
             combined.officialVehicleData = normalizeOfficialVehicleData({
                 ...combined.officialVehicleData,
                 mot: motResult.value.extraVehicleFacts,
@@ -274,11 +291,15 @@ export class DvlaService {
             if (motResult.value.firstUsedDate) combined.firstUsedDate = motResult.value.firstUsedDate;
         }
 
+        if (motResult.status === 'fulfilled' && motResult.value && combined.motHistoryStatus === 'UNAVAILABLE') {
+            combined.motHistoryStatus = 'IDENTITY_MISMATCH';
+        }
+        // Don't retain a failed MOT result for the normal successful cache window.
         // Only authoritative DVLA/MOT facts are cached, not AI output.
         if (this.coreCache.size >= 200) this.coreCache.clear();
         this.coreCache.set(normalised, {
             value: { ...combined, motHistory: combined.motHistory?.slice() },
-            expiresAt: Date.now() + (combined.model ? 2 * 60_000 : 20_000),
+            expiresAt: Date.now() + (combined.motHistoryStatus === 'UNAVAILABLE' ? 5_000 : combined.model ? 2 * 60_000 : 20_000),
         });
         return allowAiEnrichment
             ? this.enrichCore(normalised, { ...combined }, this.aiSyncTimeoutMs)
@@ -449,7 +470,7 @@ export class DvlaService {
      * Token credentials remain on the server. Concurrent lookups reuse one token
      * request and refresh it shortly before expiry.
      */
-    private async motBearerToken(signal: AbortSignal): Promise<string | null> {
+    private async motBearerToken(): Promise<string | null> {
         if (this.motAccessToken && this.motAccessToken.expiresAt > Date.now() + 60_000) {
             return this.motAccessToken.token;
         }
@@ -458,7 +479,7 @@ export class DvlaService {
         const clientId = this.configService.get<string>('MOT_HISTORY_CLIENT_ID');
         const clientSecret = this.configService.get<string>('MOT_HISTORY_CLIENT_SECRET');
         const tokenUrl = this.configService.get<string>('MOT_HISTORY_TOKEN_URL');
-        if (!clientId || !clientSecret || !tokenUrl) return null;
+        if (!clientId || !clientSecret || !tokenUrl) throw new MotLookupError('CONFIGURATION');
 
         // Restrict the configured token host so a misconfiguration cannot send
         // client secrets to an arbitrary third-party URL.
@@ -466,18 +487,18 @@ export class DvlaService {
         try {
             parsedUrl = new URL(tokenUrl);
         } catch {
-            this.logger.warn('MOT_TOKEN_URL is invalid');
-            return null;
+            throw new MotLookupError('CONFIGURATION');
         }
         if (parsedUrl.protocol !== 'https:'
             || parsedUrl.hostname !== 'login.microsoftonline.com'
             || !/^\/[^/]+\/oauth2\/v2\.0\/token$/.test(parsedUrl.pathname)
             || parsedUrl.username || parsedUrl.password || parsedUrl.search || parsedUrl.hash) {
-            this.logger.warn('MOT_HISTORY_TOKEN_URL must be the DVSA-issued Microsoft Entra token URL');
-            return null;
+            throw new MotLookupError('CONFIGURATION');
         }
 
-        const pending = (async (): Promise<string | null> => {
+        // A shared token request owns its deadline: one caller timing out must
+        // not abort another caller's authentication or leave an unbounded promise.
+        const pending = this.withDeadline('DVSA authentication', this.motTimeoutMs, async signal => {
             const response = await fetch(parsedUrl.toString(), {
                 method: 'POST',
                 signal,
@@ -490,11 +511,11 @@ export class DvlaService {
                 }).toString(),
             });
             if (!response.ok) {
-                this.logger.warn('DVSA MOT token request failed with HTTP ' + response.status);
-                return null;
+                throw new MotLookupError(response.status === 429 ? 'RATE_LIMIT'
+                    : response.status >= 500 ? 'UPSTREAM' : 'AUTHENTICATION', response.status >= 500);
             }
             const body = await response.json() as { access_token?: unknown; expires_in?: unknown };
-            if (typeof body.access_token !== 'string' || !body.access_token) return null;
+            if (typeof body.access_token !== 'string' || !body.access_token) throw new MotLookupError('AUTHENTICATION');
             const expiresIn = Number(body.expires_in);
             this.motAccessToken = {
                 token: body.access_token,
@@ -503,7 +524,7 @@ export class DvlaService {
                 ) * 1000,
             };
             return body.access_token;
-        })();
+        });
         this.motTokenInFlight = pending;
         try {
             return await pending;
@@ -512,7 +533,22 @@ export class DvlaService {
         }
     }
 
-    private async motApiRequest(normalised: string): Promise<{
+    private async motApiRequest(normalised: string): Promise<Awaited<ReturnType<DvlaService['motApiRequestOnce']>>> {
+        for (let attempt = 0; ; attempt++) {
+            try {
+                return await this.motApiRequestOnce(normalised);
+            } catch (error) {
+                const failure = error instanceof MotLookupError ? error
+                    : new MotLookupError(error instanceof Error && /deadline exceeded|abort/i.test(error.message)
+                        ? 'TIMEOUT' : 'UPSTREAM', true);
+                this.logger.warn('DVSA MOT attempt unavailable: ' + failure.reason);
+                if (attempt >= 1 || !failure.retryable) throw failure;
+                await new Promise(resolve => setTimeout(resolve, 250));
+            }
+        }
+    }
+
+    private async motApiRequestOnce(normalised: string): Promise<{
         motTests: MotTestResult[];
         registration?: string;
         make?: string;
@@ -526,16 +562,15 @@ export class DvlaService {
         lastMotMileage?: { value: number; unit: 'MI' | 'KM'; recordedAt: string };
     } | null> {
         const apiKey = this.configService.get<string>('MOT_HISTORY_API_KEY');
-        if (!apiKey) return null;
+        if (!apiKey) throw new MotLookupError('CONFIGURATION');
 
         const url = 'https://history.mot.api.gov.uk/v1/trade/vehicles/registration/'
             + encodeURIComponent(normalised);
-        try {
             // The auth exchange AND vehicle request share the optional MOT
             // deadline. Any failure must leave the core DVLA lookup intact.
             return await this.withDeadline('DVSA MOT history', this.motTimeoutMs, async signal => {
-                const token = await this.motBearerToken(signal);
-                if (!token) return null;
+                const token = await this.motBearerToken();
+                if (!token) throw new MotLookupError('AUTHENTICATION');
                 const response = await fetch(url, {
                     method: 'GET',
                     headers: {
@@ -545,17 +580,20 @@ export class DvlaService {
                     },
                     signal,
                 });
-                if (response.status === 404) return { motTests: [] };
                 if (!response.ok) {
-                    // An expired/revoked token is replaced on the next lookup.
-                    if (response.status === 401 || response.status === 403) this.motAccessToken = null;
-                    this.logger.warn('DVSA MOT lookup returned HTTP ' + response.status);
-                    return null;
+                    const body = await response.json().catch(() => ({})) as { errorCode?: string; code?: string };
+                    const code = body.errorCode || body.code;
+                    if (response.status === 404 && code === 'MOTH-NF-01') return { motTests: [] };
+                    if (response.status === 401 || response.status === 403) {
+                        this.motAccessToken = null;
+                        throw new MotLookupError('AUTHENTICATION', response.status === 401 || code === 'MOTH-FB-02');
+                    }
+                    throw new MotLookupError(response.status === 429 ? 'RATE_LIMIT' : 'UPSTREAM', response.status >= 500);
                 }
 
                 // v1 returns ONE vehicle object, unlike the old v6 array.
                 const vehicle = await response.json() as Record<string, any>;
-                if (!vehicle || typeof vehicle !== 'object' || Array.isArray(vehicle)) return null;
+                if (!vehicle || typeof vehicle !== 'object' || Array.isArray(vehicle)) throw new MotLookupError('UPSTREAM');
 
                 const motTests: MotTestResult[] = (Array.isArray(vehicle.motTests) ? vehicle.motTests : [])
                     .filter((test: any) => test && (test.testResult === 'PASSED' || test.testResult === 'FAILED'))
@@ -616,10 +654,5 @@ export class DvlaService {
                     } : undefined,
                 };
             });
-        } catch (error) {
-            this.logger.warn('Optional DVSA MOT lookup unavailable: '
-                + (error instanceof Error ? error.message : 'unknown'));
-            return null;
-        }
     }
 }

@@ -963,6 +963,8 @@ export class AdminService {
         return {
             updated,
             officialMotTestsAvailable: Array.isArray(official.motHistory) && official.motHistory.length > 0,
+            motHistoryStatus: official.motHistoryStatus,
+            motHistoryFailure: official.motHistoryFailure,
             message: updated.length
                 ? 'Only missing verified government data was filled. Seller-entered values were preserved.'
                 : 'No new verified data was available. No listing values were changed.',
