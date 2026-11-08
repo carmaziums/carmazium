@@ -4,6 +4,7 @@ import * as React from "react"
 import { Upload, X, CheckCircle, Loader2, AlertTriangle, FileSpreadsheet, ArrowRight, Car, Settings2, Download } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { dvlaLookup } from "@/lib/dvlaApi"
+import { importedOfficialFacts } from "@/lib/vehicleLookupFeedback"
 import { createListing, type CreateListingRequest, type BodyTypeValue, type VehicleTypeValue, type EuroStandardValue } from "@/lib/listingApi"
 
 interface BulkImportModalProps {
@@ -26,6 +27,7 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
     const [progress, setProgress] = React.useState({ current: 0, total: 0 })
     const [errorRows, setErrorRows] = React.useState<{ vrm: string; error: string }[]>([])
     const [importedCount, setImportedCount] = React.useState(0)
+    const [motPendingCount, setMotPendingCount] = React.useState(0)
     
     // File input ref
     const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -38,6 +40,7 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                 setProgress({ current: 0, total: 0 })
                 setErrorRows([])
                 setImportedCount(0)
+                setMotPendingCount(0)
             }, 300)
         }
     }, [isOpen])
@@ -137,11 +140,17 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
 
     const processImports = async (rows: CsvRow[]) => {
         let successCount = 0
+        let pendingMot = 0
+        let nextLookupAt = 0
         const errors: { vrm: string; error: string }[] = []
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i]
             try {
+                // Stay below the website's ten-lookups-per-minute limit.
+                const waitMs = nextLookupAt - Date.now()
+                if (waitMs > 0) await new Promise(resolve => setTimeout(resolve, waitMs))
+                nextLookupAt = Date.now() + 6500
                 // 1. Fetch exact specifications from DVLA seamlessly
                 const dvlaData = await dvlaLookup(row.vrm)
                 
@@ -159,6 +168,7 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
 
                 // 3. Assemble dynamic payload mapping the automated spec points
                 const payload: CreateListingRequest = {
+                    ...importedOfficialFacts(dvlaData),
                     title: `${dvlaData.make} ${dvlaData.model} ${dvlaData.year || ''}`.trim(),
                     price: priceNum,
                     mileage: mileageNum,
@@ -191,6 +201,7 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                 // 4. Fire to server
                 await createListing(payload)
                 successCount++
+                if (!payload.motHistory?.length && dvlaData.motHistoryStatus !== 'NO_TESTS') pendingMot++
 
             } catch (err: any) {
                 errors.push({ vrm: row.vrm, error: err.message || "Failed to import." })
@@ -200,6 +211,7 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
         }
 
         setImportedCount(successCount)
+        setMotPendingCount(pendingMot)
         setErrorRows(errors)
         setStatus("complete")
     }
@@ -316,6 +328,11 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                         </div>
                     )}
 
+                    {status === "complete" && motPendingCount > 0 && (
+                        <p role="status" className="mb-4 text-sm text-amber-600 dark:text-amber-400">
+                            MOT history could not be confirmed for {motPendingCount} imported vehicles. Their drafts were saved; retry the lookup in each draft later.
+                        </p>
+                    )}
                     {/* COMPLETE STATE */}
                     {status === "complete" && (
                         <div className="space-y-6">

@@ -1,4 +1,5 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
+import { RoutingDrainService } from './routing-drain.service';
 import { HealthCheckService, HealthCheck, PrismaHealthIndicator } from '@nestjs/terminus';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
@@ -10,6 +11,7 @@ export class HealthController {
         private readonly health: HealthCheckService,
         private readonly prisma: PrismaHealthIndicator,
         private readonly prismaService: PrismaService,
+        private readonly routingDrain: RoutingDrainService,
     ) { }
 
     /**
@@ -23,6 +25,9 @@ export class HealthController {
     @Get('live')
     @ApiOperation({ summary: 'Check API process liveness' })
     live() {
+        if (this.routingDrain.isDraining) {
+            throw new ServiceUnavailableException('API is draining for shutdown');
+        }
         return {
             status: 'ok',
             service: 'carmazium-api',

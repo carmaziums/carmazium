@@ -1,5 +1,7 @@
 "use client"
 
+import { motLookupMessage } from "@/lib/vehicleLookupFeedback"
+
 import * as React from "react"
 import { SELL_FAQS } from "@/lib/sellFaqs"
 import { SellerGuideLinks } from "@/components/blog/SellerGuideLinks"
@@ -97,6 +99,7 @@ type LandingVehiclePrefill = {
     wheelplan: string
     typeApproval: string
     motHistory: unknown[]
+    motHistoryStatus?: DvlaLookupResult["motHistoryStatus"]
     officialVehicleData?: import('@/lib/dvlaApi').OfficialVehicleData
 }
 
@@ -368,6 +371,7 @@ function QuickValuationForm() {
                     wheelplan: vehicle.wheelplan || "",
                     typeApproval: vehicle.typeApproval || "",
                     motHistory: vehicle.motHistory || [],
+                    motHistoryStatus: vehicle.motHistoryStatus,
                     officialVehicleData: vehicle.officialVehicleData,
                 },
             })
@@ -596,6 +600,7 @@ function QuickValuationForm() {
                     Free valuation · No obligation · Your guide price is based on vehicle details and available CarMazium market evidence.
                 </p>
 
+                {(pendingVehicle || result?.dvlaVerified) && <p role="status" className="text-sm text-[var(--text-secondary)]">{motLookupMessage(pendingVehicle ?? result!.vehicle)}</p>}
                 {error && (
                     <p role="alert" className="rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-500">
                         {error}

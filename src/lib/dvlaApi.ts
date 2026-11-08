@@ -62,6 +62,10 @@ export interface DvlaLookupResult {
     wheelplan?: string;
     typeApproval?: string;
     motHistory?: MotTestResult[];
+    motHistoryStatus?: 'AVAILABLE' | 'NO_TESTS' | 'UNAVAILABLE' | 'IDENTITY_MISMATCH';
+    motHistoryFailure?: 'TIMEOUT' | 'AUTHENTICATION' | 'CONFIGURATION' | 'RATE_LIMIT' | 'UPSTREAM' | 'CONNECTION';
+    motHistoryErrorCode?: string;
+    motHistoryCheckedAt?: string;
     /** Historical MOT reading only; seller must enter current mileage. */
     lastMotMileage?: { value: number; unit: 'MI' | 'KM'; recordedAt: string };
 }

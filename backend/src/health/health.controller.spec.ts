@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { HealthController } from './health.controller';
+import { RoutingDrainService, ROUTING_DRAIN_MS } from './routing-drain.service';
 
 describe('HealthController reliability probes', () => {
     const prismaService = {} as any;
@@ -23,6 +24,7 @@ describe('HealthController reliability probes', () => {
             health as any,
             prisma as any,
             prismaService,
+            new RoutingDrainService(),
         );
 
         const result = controller.live();
@@ -38,6 +40,7 @@ describe('HealthController reliability probes', () => {
             health as any,
             prisma as any,
             prismaService,
+            new RoutingDrainService(),
         );
 
         await controller.ready();
@@ -52,6 +55,7 @@ describe('HealthController reliability probes', () => {
             health as any,
             prisma as any,
             prismaService,
+            new RoutingDrainService(),
         );
 
         await controller.check();
@@ -68,5 +72,53 @@ describe('HealthController reliability probes', () => {
         expect(flyConfig).toMatch(/min_machines_running\s*=\s*1/);
         expect(flyConfig).toMatch(/path\s*=\s*['"]\/health\/live['"]/);
         expect(flyConfig).not.toMatch(/path\s*=\s*['"]\/health\/ready['"]/);
+    });
+});
+
+
+describe('routing drain before HTTP shutdown', () => {
+    afterEach(() => jest.useRealTimers());
+    it('withdraws routing immediately but waits for load-balancer convergence', async () => {
+        jest.useFakeTimers();
+        const drain = new RoutingDrainService();
+        const health = new HealthController({} as any, {} as any, {} as any, drain);
+        expect(health.live().status).toBe('ok');
+        let readyToClose = false;
+        const pending = drain.begin().then(() => { readyToClose = true; });
+        expect(() => health.live()).toThrow('API is draining for shutdown');
+        await jest.advanceTimersByTimeAsync(ROUTING_DRAIN_MS - 1);
+        expect(readyToClose).toBe(false);
+        await jest.advanceTimersByTimeAsync(1);
+        await pending;
+        expect(readyToClose).toBe(true);
+    });
+});
+
+describe('in-flight request protection', () => {
+    afterEach(() => jest.useRealTimers());
+    it('keeps dependencies alive until an active request finishes and counts close only once', async () => {
+        jest.useFakeTimers();
+        const drain = new RoutingDrainService();
+        const finish = drain.trackRequest();
+        let closed = false;
+        const pending = drain.begin().then(() => { closed = true; });
+        await jest.advanceTimersByTimeAsync(ROUTING_DRAIN_MS);
+        expect(closed).toBe(false);
+        finish();
+        finish();
+        await pending;
+        expect(closed).toBe(true);
+    });
+    it('bounds a hung request inside the Fly shutdown budget', async () => {
+        jest.useFakeTimers();
+        const drain = new RoutingDrainService();
+        drain.trackRequest();
+        let closed = false;
+        const pending = drain.begin().then(() => { closed = true; });
+        await jest.advanceTimersByTimeAsync(ROUTING_DRAIN_MS + 24_999);
+        expect(closed).toBe(false);
+        await jest.advanceTimersByTimeAsync(1);
+        await pending;
+        expect(closed).toBe(true);
     });
 });

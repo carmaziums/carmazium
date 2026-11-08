@@ -20,7 +20,7 @@ const VEHICLE_FIELDS = [
     "vrm", "make", "model", "year", "mileage", "vehicleType", "fuelType",
     "transmission", "bodyType", "variant", "driveType", "doors", "seats",
     "bhp", "color", "primaryColour", "engineSize", "euroStandard",
-    "co2Emissions", "motStatus", "taxStatus", "motExpiryDate",
+    "co2Emissions", "motHistoryStatus", "motStatus", "taxStatus", "motExpiryDate",
     "taxDueDate", "markedForExport", "monthOfFirstRegistration",
     "wheelplan", "typeApproval", "firstUsedDate", "dateOfLastV5CIssued",
 ] as const
