@@ -307,14 +307,16 @@ export function UserDetailModal({ userId, onClose, onChanged, onMessage }: { use
     if (typeof document === "undefined") return null
 
     return createPortal(
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm" onClick={onClose}>
+        // Mobile chat is portalled to document.body at z-index 9999. This
+        // separate portal must sit above it when an admin taps a user's name.
+        <div className="fixed inset-0 z-[10000] flex justify-end bg-black/60 backdrop-blur-sm" onClick={onClose} role="dialog" aria-modal="true" aria-label="User details">
             <div
                 className="w-full max-w-lg h-full bg-[var(--bg-card)] border-l border-[var(--border-default)] shadow-2xl flex flex-col"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="shrink-0 flex items-center justify-between p-5 border-b border-[var(--border-default)] bg-[var(--bg-card)]">
                     <h3 className="text-lg font-black uppercase tracking-tight">User Details</h3>
-                    <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
+                    <button type="button" aria-label="Close user details" onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
                         <X size={20} />
                     </button>
                 </div>
