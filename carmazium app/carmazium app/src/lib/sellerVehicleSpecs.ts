@@ -43,6 +43,27 @@ export function normalizeNativeBodyType(value: unknown, vehicleType: NativeVehic
   return allowedNativeBodyTypes(vehicleType).includes(canonical) ? canonical : '';
 }
 
+/**
+ * DVLA-derived details belong to the identity returned by that lookup.
+ * A manual make/model/year correction must not silently reuse a previous
+ * vehicle's variant, transmission, emissions or MOT evidence in a valuation.
+ * DVLA sometimes omits model; in that case the seller may enter it manually.
+ */
+export function nativeLookupMatchesEditedVehicle(
+  lookup: { make?: unknown; model?: unknown; year?: unknown } | null,
+  current: { make: string; model: string; year: string | number },
+): boolean {
+  if (!lookup) return false;
+  const normalize = (value: unknown) =>
+    typeof value === 'string' ? value.trim().replace(/\s+/g, ' ').toUpperCase() : '';
+  const originalMake = normalize(lookup.make);
+  const originalYear = Number(lookup.year);
+  if (!originalMake || !Number.isSafeInteger(originalYear) || originalYear < 1900) return false;
+  if (normalize(current.make) !== originalMake || Number(current.year) !== originalYear) return false;
+  const originalModel = normalize(lookup.model);
+  return !originalModel || normalize(current.model) === originalModel;
+}
+
 export function preserveNativeLookupSpecs(
   current: { vrm: string; transmission: string; bodyType: string; vehicleType: NativeVehicleType },
   incoming: { vrm: string; transmission?: unknown; bodyType?: unknown },
