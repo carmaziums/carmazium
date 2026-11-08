@@ -43,6 +43,11 @@ const probe = async () => {
     const c = e?.cause?.code || e?.code;
     out.transportCode = ['ENOTFOUND','ECONNRESET','ECONNREFUSED','ETIMEDOUT','UND_ERR_CONNECT_TIMEOUT','UND_ERR_SOCKET','CERT_HAS_EXPIRED','ERR_TLS_CERT_ALTNAME_INVALID','UNABLE_TO_VERIFY_LEAF_SIGNATURE','UNABLE_TO_GET_ISSUER_CERT_LOCALLY','SELF_SIGNED_CERT_IN_CHAIN','DEPTH_ZERO_SELF_SIGNED_CERT','ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR','UND_ERR_HEADERS_TIMEOUT','ERR_INVALID_CHAR','UND_ERR_INVALID_ARG'].includes(c) ? c : 'other';
     out.errorCategory = /certificat|self.signed|issuer|verify.*signature/i.test(String(e?.cause?.message)) ? 'certificate' : /header/i.test(String(e?.message)+' '+String(e?.cause?.message)) ? 'header' : 'other';
+    if (typeof c === 'string' && /^ERR_(SSL|TLS)_[A-Z0-9_]{1,55}$/.test(c)) out.transportCode = c;
+    if (/handshake|ssl|tls/i.test(String(e?.cause?.message))) out.errorCategory = 'tls_handshake';
+    if (Array.isArray(e?.cause?.errors)) {
+      out.nestedErrors = e.cause.errors.map(x => ['ENETUNREACH','EHOSTUNREACH','ECONNREFUSED','ECONNRESET','ETIMEDOUT'].includes(x?.code) ? x.code : 'other').slice(0,4).join('_');
+    }
   }
   emit();
 };
@@ -51,8 +56,8 @@ if (result.exit_code !== 0) throw new Error('Remote probe could not complete; ra
 let report;
 try { report = JSON.parse(result.stdout); } catch { throw new Error('Unexpected diagnostic output suppressed'); }
 const clean = {};
-for (const key of ['stage','configured','tokenStatus','tokenError','vehicleStatus','vehicleCode','testsArray','testsCount','errorType','transportCode','errorCategory']) {
+for (const key of ['stage','configured','tokenStatus','tokenError','vehicleStatus','vehicleCode','testsArray','testsCount','errorType','transportCode','errorCategory','nestedErrors']) {
   const v = report[key];
-  if (typeof v === 'boolean' || typeof v === 'number' || (typeof v === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(v))) clean[key] = v;
+  if (typeof v === 'boolean' || typeof v === 'number' || (typeof v === 'string' && /^[A-Za-z0-9_-]{1,70}$/.test(v))) clean[key] = v;
 }
 console.log(JSON.stringify(clean));
