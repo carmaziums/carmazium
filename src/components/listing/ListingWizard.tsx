@@ -31,6 +31,7 @@ import {
 import { uploadImage } from "@/lib/supabase"
 import { getSessionStatus, applyHpiFee } from "@/lib/paymentApi"
 import { dvlaLookup, dvlaEnrich } from "@/lib/dvlaApi"
+import { motLookupMessage } from "@/lib/vehicleLookupFeedback"
 import type { OfficialVehicleData } from "@/lib/dvlaApi"
 import { normalizeMotHistorySnapshot } from "@/lib/listingMotHistory"
 import { getExistingListingGuidance } from "@/lib/existingListingGuidance"
@@ -369,6 +370,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [dvlaLoading, setDvlaLoading] = React.useState(false)
     const [dvlaError, setDvlaError] = React.useState<string | null>(null)
     const [dvlaSuccess, setDvlaSuccess] = React.useState(false)
+    const [motFeedback, setMotFeedback] = React.useState<string | null>(null)
     const [geoLoading, setGeoLoading] = React.useState(false)
     const [isGeneratingDesc, setIsGeneratingDesc] = React.useState(false)
     const [baseValuation, setBaseValuation] = React.useState<VehicleValuation | null>(null)
@@ -547,6 +549,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 // Jump straight to step 1 (already pre-filled)
                 setIsHpiUnlocked(!!l.hpiReport)
                 setDvlaSuccess(true)
+                setMotFeedback(null)
                 setExistingAuctionStatus(l.auction?.status ?? null)
                 if (l.type === 'AUCTION') {
                     const now = Date.now()
@@ -795,7 +798,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         setNotOwnerRelOther('')
         setDvlaLoading(false)
         setDvlaError(null)
-        setDvlaSuccess(false)
+        setDvlaSuccess(false); setMotFeedback(null)
         setBaseValuation(null)
         valuationBaseKeyRef.current = null
         setValuation(null)
@@ -1563,6 +1566,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             }
             const verifiedByDvla = detail.dvlaVerified !== false
             setDvlaSuccess(verifiedByDvla)
+            setMotFeedback(motLookupMessage(detail.vehicle ?? {}))
             setDvlaError(verifiedByDvla ? null : "DVLA could not verify this registration. Review the manually entered vehicle details before continuing.")
             setSellingMethod("list")
             setCurrentStep(1)
@@ -1640,6 +1644,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             valuationJourneyBaseKeyRef.current = getValuationBaseKey(vehicle, editId)
         }
         setDvlaSuccess(pending.dvlaVerified)
+        setMotFeedback(motLookupMessage(pending.vehicle))
         setDvlaError(pending.dvlaVerified ? null : "Review your vehicle details before continuing.")
         setSellingMethod("list")
         setCurrentStep(1)
@@ -2805,10 +2810,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             setFormData(prev => ({
                                                 ...prev, vrm: nextVrm,
                                                 ...(normalizeVehicleRegistration(prev.vrm) !== normalizeVehicleRegistration(nextVrm)
-                                                    ? { transmission: "", bodyType: "" }
+                                                    ? { transmission: "", bodyType: "", motHistory: [], officialVehicleData: undefined }
                                                     : {}),
                                             }))
-                                            setDvlaSuccess(false)
+                                            setDvlaSuccess(false); setMotFeedback(null)
                                             setDvlaError(null)
                                         }}
                                         className={`${inputCls} uppercase font-mono tracking-widest text-lg h-14 flex-1 ${hasAttemptedNext && !formData.vrm ? 'border-red-500' : 'border-primary/20 focus:border-primary'}`} />
@@ -2817,7 +2822,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         onClick={async () => {
                                             const requestedVrm = normalizeVehicleRegistration(formData.vrm)
                                             const lookupId = ++lookupRequestRef.current
-                                            setDvlaLoading(true); setDvlaError(null); setDvlaSuccess(false)
+                                            setDvlaLoading(true); setDvlaError(null); setDvlaSuccess(false); setMotFeedback(null)
                                             try {
                                                 const r = await dvlaLookup(formData.vrm, false)
                                                 if (lookupId !== lookupRequestRef.current) return
@@ -2903,6 +2908,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 } else if (es) {
                                                     set("ulezCompliant", false)
                                                 }
+                                                setMotFeedback(motLookupMessage(r))
                                                 setDvlaSuccess(true)
                                                 // Follow-up, consented live-web specification research
                                                 // is optional. Do not hold the Analyze DVLA spinner,
@@ -2963,7 +2969,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </Button>
                                 </div>
                                 <p className="text-xs text-[var(--text-secondary)]">UK number plate — click Look Up to auto-fill vehicle details.</p>
-                                {dvlaSuccess && <p className="text-xs text-emerald-400 flex items-center gap-1"><BadgeCheck size={12} /> DVLA and available MOT details loaded. Optional specification suggestions will appear if available. Review and edit below.</p>}
+                                {dvlaSuccess && <p className="text-xs text-emerald-400 flex items-center gap-1"><BadgeCheck size={12} /> DVLA vehicle details loaded. Review and edit below.</p>}
+                                {(dvlaSuccess || motFeedback) && <p role="status" className="text-sm text-[var(--text-secondary)]">{motFeedback ?? motLookupMessage({ motHistory: formData.motHistory })}</p>}
                                 {dvlaError && <p className="text-xs text-red-400">{dvlaError}</p>}
                             </div>
 

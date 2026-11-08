@@ -12,12 +12,20 @@ import helmet from 'helmet';
 import { RedisIoAdapter } from './core/adapters/redis-io.adapter';
 import { loggerConfig } from './core/config/logger.config';
 import { getAllowedOrigins } from './core/allowed-origins';
+import { RoutingDrainService } from './health/routing-drain.service';
 import { ABSOLUTE_SESSION_LIFETIME_MS, remainingSessionLifetimeMs } from './auth/session-lifetime';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: loggerConfig,
     rawBody: true,
+  });
+  const routingDrain = app.get(RoutingDrainService);
+  app.use((_req: any, res: any, next: () => void) => {
+    const finish = routingDrain.trackRequest();
+    res.once('finish', finish);
+    res.once('close', finish);
+    next();
   });
 
   // ---------------------------------------------------------------------------
@@ -199,9 +207,8 @@ async function bootstrap() {
   // The previous handler closed Redis and immediately called process.exit(0).
   // That could sever an in-flight auction GET/POST or websocket at the exact
   // moment Fly replaced the machine, surfacing upstream as ECONNRESET /
-  // UND_ERR_SOCKET / ETIMEDOUT. Stop accepting new work through Nest first and
-  // let active HTTP/socket resources drain. fly.toml gives this process up to
-  // 30 seconds before a forced kill.
+  // UND_ERR_SOCKET / ETIMEDOUT. Mark routing health unavailable while serving late-arriving
+  // requests, then close Nest. Fly gives the complete sequence 60 seconds.
   let shuttingDown = false;
   const shutdown = async (signal: string) => {
     if (shuttingDown) return;
@@ -209,12 +216,14 @@ async function bootstrap() {
     console.log(`Received ${signal}; draining CarMazium API connections...`);
 
     const hardStop = setTimeout(() => {
-      console.error('Graceful shutdown exceeded 25 seconds; exiting before Fly force-kills the machine.');
+      console.error('Graceful shutdown exceeded 55 seconds; exiting before Fly force-kills the machine.');
       process.exit(1);
-    }, 25_000);
+    }, 55_000);
     hardStop.unref();
 
     try {
+      await routingDrain.begin();
+      console.log('Routing drain complete; closing CarMazium API connections.');
       await app.close();
       await redisIoAdapter.closeRedisConnections();
       clearTimeout(hardStop);

@@ -1,7 +1,7 @@
 app = 'carmazium-hjoh9w'
 primary_region = 'lhr'
 kill_signal = 'SIGTERM'
-kill_timeout = 30
+kill_timeout = 60
 
 [build]
 
@@ -46,7 +46,7 @@ kill_timeout = 30
 
   [[http_service.checks]]
     grace_period = '30s'
-    interval = '15s'
+    interval = '5s'
     method = 'GET'
 
     # Routing health must describe the API process, not PostgreSQL. A transient

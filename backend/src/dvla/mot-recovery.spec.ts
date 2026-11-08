@@ -96,3 +96,28 @@ describe('listing recovery', () => {
   expect(instance.motBackfillAttempts.get('one')).toBe(now + 24 * 60 * 60000); expect(instance.prisma.listing.updateMany).not.toHaveBeenCalled();
  });
 });
+
+
+it('reports TLS failure without retrying it or erasing successful DVLA data', async () => {
+ const error = new TypeError('fetch failed');
+ Object.assign(error, { cause: { code: 'ERR_SSL_TLSV1_UNRECOGNIZED_NAME' } });
+ mot.mockRejectedValue(error);
+ const result = await service().lookupVrm('AB17XYZ');
+ expect(result.make).toBe('LAND ROVER');
+ expect(result.motHistoryStatus).toBe('UNAVAILABLE');
+ expect(result.motHistoryFailure).toBe('CONNECTION');
+ expect(result.motHistoryCheckedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+ expect(mot).toHaveBeenCalledTimes(1);
+});
+it.each(['MOTH-RL-01', 'MOTH-RL-02'])('retains safe quota detail %s without retrying', async code => {
+ mot.mockResolvedValue(fail(429, code));
+ const result = await service().lookupVrm('AB17XYZ');
+ expect(result.motHistoryFailure).toBe('RATE_LIMIT');
+ expect(result.motHistoryErrorCode).toBe(code);
+ expect(mot).toHaveBeenCalledTimes(1);
+});
+it('does not expose arbitrary upstream error strings', async () => {
+ mot.mockResolvedValue(fail(429, 'secret-response-body'));
+ const result = await service().lookupVrm('AB17XYZ');
+ expect(result.motHistoryErrorCode).toBeUndefined();
+});

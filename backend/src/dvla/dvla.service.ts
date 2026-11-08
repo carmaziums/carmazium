@@ -77,6 +77,8 @@ export interface DvlaLookupResult {
     motHistoryStatus?: 'AVAILABLE' | 'NO_TESTS' | 'UNAVAILABLE' | 'IDENTITY_MISMATCH';
     /** Safe diagnostic category only: never credentials or raw upstream errors. */
     motHistoryFailure?: MotFailure;
+    motHistoryErrorCode?: string;
+    motHistoryCheckedAt?: string;
     /** MOT reading is historical, NOT a verified current odometer figure. */
     lastMotMileage?: { value: number; unit: 'MI' | 'KM'; recordedAt: string };
 }
@@ -100,9 +102,9 @@ export interface MotTestDefect {
     dangerous: boolean;
 }
 
-type MotFailure = 'TIMEOUT' | 'AUTHENTICATION' | 'CONFIGURATION' | 'RATE_LIMIT' | 'UPSTREAM';
+type MotFailure = 'TIMEOUT' | 'AUTHENTICATION' | 'CONFIGURATION' | 'RATE_LIMIT' | 'UPSTREAM' | 'CONNECTION';
 class MotLookupError extends Error {
-    constructor(readonly reason: MotFailure, readonly retryable = false) {
+    constructor(readonly reason: MotFailure, readonly retryable = false, readonly upstreamCode?: string) {
         super('DVSA MOT lookup: ' + reason);
     }
 }
@@ -257,10 +259,14 @@ export class DvlaService {
         }
 
         const combined = dvlaResult.value;
+        combined.motHistoryCheckedAt = new Date().toISOString();
         combined.motHistoryStatus = 'UNAVAILABLE';
         if (motResult.status === 'rejected') {
             combined.motHistoryFailure = motResult.reason instanceof MotLookupError
                 ? motResult.reason.reason : 'UPSTREAM';
+            if (motResult.reason instanceof MotLookupError && /^MOTH-[A-Z]{2}-\d{2}$/.test(motResult.reason.upstreamCode || '')) {
+                combined.motHistoryErrorCode = motResult.reason.upstreamCode;
+            }
         }
         if (motResult.status === 'fulfilled' && motResult.value
             && (!motResult.value.registration || motResult.value.registration === normalised)
@@ -294,6 +300,9 @@ export class DvlaService {
         if (motResult.status === 'fulfilled' && motResult.value && combined.motHistoryStatus === 'UNAVAILABLE') {
             combined.motHistoryStatus = 'IDENTITY_MISMATCH';
         }
+        // Timestamped outcomes distinguish a real retrieval from a listing edit.
+        // Never log tokens, keys, raw upstream bodies or customer account data.
+        this.logger.log(`DVSA MOT result vrm=${normalised} status=${combined.motHistoryStatus} tests=${combined.motHistory?.length ?? 0} failure=${combined.motHistoryFailure ?? 'none'} code=${combined.motHistoryErrorCode ?? 'none'} checkedAt=${combined.motHistoryCheckedAt}`);
         // Don't retain a failed MOT result for the normal successful cache window.
         // Only authoritative DVLA/MOT facts are cached, not AI output.
         if (this.coreCache.size >= 200) this.coreCache.clear();
@@ -538,10 +547,16 @@ export class DvlaService {
             try {
                 return await this.motApiRequestOnce(normalised);
             } catch (error) {
+                const transportCode = (error as { cause?: { code?: unknown }; code?: unknown })?.cause?.code
+                    ?? (error as { code?: unknown })?.code;
+                const tlsFailure = typeof transportCode === 'string'
+                    && /^(ERR_SSL_|ERR_TLS_|CERT_|UNABLE_TO_VERIFY_|UNABLE_TO_GET_ISSUER_|SELF_SIGNED_)/.test(transportCode);
                 const failure = error instanceof MotLookupError ? error
-                    : new MotLookupError(error instanceof Error && /deadline exceeded|abort/i.test(error.message)
-                        ? 'TIMEOUT' : 'UPSTREAM', true);
-                this.logger.warn('DVSA MOT attempt unavailable: ' + failure.reason);
+                    : new MotLookupError(tlsFailure ? 'CONNECTION'
+                        : error instanceof Error && /deadline exceeded|abort/i.test(error.message)
+                            ? 'TIMEOUT' : 'UPSTREAM', !tlsFailure);
+                const safeTransport = typeof transportCode === 'string' && /^[A-Z0-9_]{1,65}$/.test(transportCode) ? transportCode : 'none';
+                this.logger.warn(`DVSA MOT attempt unavailable: ${failure.reason}; transport=${safeTransport}; code=${failure.upstreamCode ?? 'none'}`);
                 if (attempt >= 1 || !failure.retryable) throw failure;
                 await new Promise(resolve => setTimeout(resolve, 250));
             }
@@ -582,13 +597,14 @@ export class DvlaService {
                 });
                 if (!response.ok) {
                     const body = await response.json().catch(() => ({})) as { errorCode?: string; code?: string };
-                    const code = body.errorCode || body.code;
+                    const rawCode = body.errorCode || body.code;
+                    const code = typeof rawCode === 'string' && /^MOTH-[A-Z]{2}-\d{2}$/.test(rawCode) ? rawCode : undefined;
                     if (response.status === 404 && code === 'MOTH-NF-01') return { motTests: [] };
                     if (response.status === 401 || response.status === 403) {
                         this.motAccessToken = null;
-                        throw new MotLookupError('AUTHENTICATION', response.status === 401 || code === 'MOTH-FB-02');
+                        throw new MotLookupError('AUTHENTICATION', response.status === 401 || code === 'MOTH-FB-02', code);
                     }
-                    throw new MotLookupError(response.status === 429 ? 'RATE_LIMIT' : 'UPSTREAM', response.status >= 500);
+                    throw new MotLookupError(response.status === 429 ? 'RATE_LIMIT' : 'UPSTREAM', response.status >= 500, code);
                 }
 
                 // v1 returns ONE vehicle object, unlike the old v6 array.
