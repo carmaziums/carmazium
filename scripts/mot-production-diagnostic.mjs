@@ -48,6 +48,14 @@ const probe = async () => {
     if (Array.isArray(e?.cause?.errors)) {
       out.nestedErrors = e.cause.errors.map(x => ['ENETUNREACH','EHOSTUNREACH','ECONNREFUSED','ECONNRESET','ETIMEDOUT'].includes(x?.code) ? x.code : 'other').slice(0,4).join('_');
     }
+    if (out.stage === 'vehicle') {
+      const https = require('node:https');
+      const probeConnection = options => new Promise(resolve => {
+        const req = https.get('https://history.mot.api.gov.uk/v1/trade/vehicles/registration/NX17TWU', { ...options, signal: AbortSignal.timeout(8000) }, res => { res.resume(); resolve('HTTP_' + res.statusCode); });
+        req.on('error', err => resolve(/^[A-Z0-9_]{1,65}$/.test(err.code || '') ? err.code : 'other'));
+      });
+      [out.ipv4, out.tls12] = await Promise.all([probeConnection({family:4}), probeConnection({family:4,minVersion:'TLSv1.2',maxVersion:'TLSv1.2'})]);
+    }
   }
   emit();
 };
@@ -56,7 +64,7 @@ if (result.exit_code !== 0) throw new Error('Remote probe could not complete; ra
 let report;
 try { report = JSON.parse(result.stdout); } catch { throw new Error('Unexpected diagnostic output suppressed'); }
 const clean = {};
-for (const key of ['stage','configured','tokenStatus','tokenError','vehicleStatus','vehicleCode','testsArray','testsCount','errorType','transportCode','errorCategory','nestedErrors']) {
+for (const key of ['stage','configured','tokenStatus','tokenError','vehicleStatus','vehicleCode','testsArray','testsCount','errorType','transportCode','errorCategory','nestedErrors','ipv4','tls12']) {
   const v = report[key];
   if (typeof v === 'boolean' || typeof v === 'number' || (typeof v === 'string' && /^[A-Za-z0-9_-]{1,70}$/.test(v))) clean[key] = v;
 }
