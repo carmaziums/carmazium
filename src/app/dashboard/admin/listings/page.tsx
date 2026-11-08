@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Car, Loader2, ArrowLeft, Trash2, AlertTriangle, Eye, ChevronDown, Check, X, ClipboardList, Pencil, Gauge, FileWarning, RotateCcw, Search } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
@@ -14,7 +14,7 @@ import { AdminVehicleReviewPanel } from "@/components/admin/AdminVehicleReviewPa
 import { HpiReportForm } from "@/components/admin/HpiReportForm"
 import { HpiPdfUpload } from "@/components/admin/HpiPdfUpload"
 import { useAuth } from "@/context/AuthContext"
-import { getAdminListings, deleteListingForce, getPendingListingReviews, approveListing, rejectListing, relistAdminDraftAsAuction } from "@/lib/adminApi"
+import { getAdminListing, getAdminListings, deleteListingForce, getPendingListingReviews, approveListing, rejectListing, relistAdminDraftAsAuction } from "@/lib/adminApi"
 import type { AdminListingStatus, AdminListingType } from "@/lib/adminApi"
 import { getModerationChannel, getModerationPrice, getModerationListingHref, getModerationListingDates } from "@/lib/adminListingModeration"
 import { formatPrice } from "@/lib/listingApi"
@@ -105,8 +105,18 @@ function matchesAdminListingSearch(listing: any, query: string) {
 }
 
 export default function AdminListingsPage() {
+    return (
+        <React.Suspense fallback={<div role="status" className="p-8 pt-24">Loading listing moderation…</div>}>
+            <AdminListingsContent />
+        </React.Suspense>
+    )
+}
+
+function AdminListingsContent() {
     const { user, profile, loading: authLoading } = useAuth()
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const selectedListingId = searchParams.get('listingId') || ''
     const [listings, setListings] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
     const [deleting, setDeleting] = React.useState<string | null>(null)
@@ -145,21 +155,23 @@ export default function AdminListingsPage() {
         // can briefly leave user present while profile is null.
         if (authLoading) return
         if (!user) {
-            router.replace('/auth/login')
+            router.replace('/auth/login?redirect=' + encodeURIComponent('/dashboard/admin/listings' + (selectedListingId ? '?listingId=' + encodeURIComponent(selectedListingId) : '')))
             return
         }
         if (!profile) return
         if (profile.role !== 'ADMIN') {
             router.replace('/dashboard')
         }
-    }, [user, profile, authLoading, router])
+    }, [user, profile, authLoading, router, selectedListingId])
 
     const fetchListings = async () => {
         const requestId = ++listingsRequestId.current
         try {
             setLoading(true)
             setError(null)
-            const result = await getAdminListings(
+            const result = selectedListingId
+                ? { data: [await getAdminListing(encodeURIComponent(selectedListingId))], pagination: { total: 1 } }
+                : await getAdminListings(
                 page,
                 limit,
                 searchQuery ? undefined : (ownerFilter === 'ADMIN' ? 'ADMIN' : undefined),
@@ -186,8 +198,10 @@ export default function AdminListingsPage() {
         if (profile?.role === 'ADMIN') {
             fetchListings()
         }
+        // Invalidate responses when the selected listing changes or this page unmounts.
+        return () => { listingsRequestId.current += 1 }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [profile, page, ownerFilter, statusFilter, searchQuery, listingTypeFilter])
+    }, [profile, page, ownerFilter, statusFilter, searchQuery, listingTypeFilter, selectedListingId])
 
     const loadPending = async () => {
         try {
@@ -208,9 +222,11 @@ export default function AdminListingsPage() {
     }, [profile])
 
     const visiblePendingListings = React.useMemo(
-        () => pendingListings.filter((listing) =>
-            (listingTypeFilter === 'ALL' || listing.type === listingTypeFilter) && matchesAdminListingSearch(listing, searchQuery)),
-        [pendingListings, searchQuery, listingTypeFilter],
+        () => selectedListingId
+            ? pendingListings.filter((listing) => listing.id === selectedListingId)
+            : pendingListings.filter((listing) =>
+                (listingTypeFilter === 'ALL' || listing.type === listingTypeFilter) && matchesAdminListingSearch(listing, searchQuery)),
+        [pendingListings, searchQuery, listingTypeFilter, selectedListingId],
     )
 
     const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -347,7 +363,19 @@ export default function AdminListingsPage() {
                         </div>
                     </div>
 
-                    <form
+                    {selectedListingId && (
+                        <section className="rounded-2xl border border-primary/30 bg-[var(--bg-card)] p-4 space-y-3" aria-label="Selected listing">
+                            <h2 className="font-bold">Selected listing</h2>
+                            <p className="text-sm text-[var(--text-muted)]">This view shows only the car you selected. Use its controls below to manage it or view the advert.</p>
+                            <Button variant="outline" onClick={() => {
+                                setPage(1)
+                                clearSearch()
+                                router.push('/dashboard/admin/listings')
+                            }}>Back to listing search</Button>
+                        </section>
+                    )}
+
+                    {!selectedListingId && <form
                         onSubmit={handleSearchSubmit}
                         className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4"
                         role="search"
@@ -382,7 +410,7 @@ export default function AdminListingsPage() {
                                 ? `Showing matches for “${searchQuery}” across every seller and listing status.`
                                 : 'Search by the seller’s name or a registration number. Search covers the complete listing history.'}
                         </p>
-                    </form>
+                    </form>}
 
                     {error && (
                         <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200">
@@ -401,8 +429,15 @@ export default function AdminListingsPage() {
                         </div>
                     )}
 
+                        {actionError && (
+                            <div role="status" className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300 text-sm">{actionError}</div>
+                        )}
+                        {successMsg && (
+                            <div role="status" className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-300 text-sm">{successMsg}</div>
+                        )}
+
                     {/* ── Pending Review ────────────────────────────────────────── */}
-                    <div className="glass-card min-w-0 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
+                    {(!selectedListingId || visiblePendingListings.length > 0) && <div className="glass-card min-w-0 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5">
                             <h2 className="text-xl font-black font-heading uppercase tracking-tight flex items-center gap-2.5">
                                 <ClipboardList className="text-amber-400" size={22} />
@@ -416,12 +451,6 @@ export default function AdminListingsPage() {
                             )}
                         </div>
 
-                        {actionError && (
-                            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300 text-sm">{actionError}</div>
-                        )}
-                        {successMsg && (
-                            <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-300 text-sm">{successMsg}</div>
-                        )}
 
                         {pendingLoading ? (
                             <div className="flex justify-center py-8"><Loader2 className="animate-spin text-primary" size={24} /></div>
@@ -651,9 +680,9 @@ export default function AdminListingsPage() {
                                 })}
                             </div>
                         )}
-                    </div>
+                    </div>}
 
-                    <div className="space-y-3" aria-label="Listing filters">
+                    {!selectedListingId && <div className="space-y-3" aria-label="Listing filters">
                         <div role="group" aria-label="Filter by listing status" className="flex flex-wrap gap-2">
                             {STATUS_TABS.map(({ value, label }) => (
                                 <button
@@ -721,7 +750,7 @@ export default function AdminListingsPage() {
                                 </span>
                             )}
                         </div>
-                    </div>
+                    </div>}
 
                     <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
 
@@ -787,7 +816,7 @@ export default function AdminListingsPage() {
                                                 title="View Listing"
                                                 className="inline-flex min-h-11 min-w-11 items-center justify-center bg-blue-500/10 rounded-lg text-blue-400 hover:bg-blue-500/20 transition-colors"
                                             >
-                                                <Eye size={16} />
+                                                <Eye size={16} />{selectedListingId && <span className="px-2 text-xs">View advert</span>}
                                             </Link>
                                             <button
                                                 type="button"
@@ -797,7 +826,7 @@ export default function AdminListingsPage() {
                                                 title={l.status === 'SOLD' ? 'Cannot edit a sold listing' : 'Edit Listing'}
                                                 className="inline-flex min-h-11 min-w-11 items-center justify-center bg-white/5 rounded-lg text-[var(--text-muted)] hover:bg-white/10 hover:text-primary disabled:opacity-30 transition-colors"
                                             >
-                                                <Pencil size={16} />
+                                                <Pencil size={16} />{selectedListingId && <span className="px-2 text-xs">Edit listing</span>}
                                             </button>
                                             <button
                                                 type="button"
@@ -919,7 +948,7 @@ export default function AdminListingsPage() {
                         </div>{/* end hidden sm:block */}
 
                         {/* Pagination footer */}
-                        <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-input)] flex items-center justify-between text-xs font-medium text-[var(--text-muted)]">
+                        {!selectedListingId && <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-input)] flex items-center justify-between text-xs font-medium text-[var(--text-muted)]">
                             <span>Showing {(page - 1) * limit + 1 + (listings.length === 0 ? -1 : 0)} to {Math.min(page * limit, total)} of {total}</span>
                             <div className="flex items-center gap-2">
                                 <button 
@@ -933,7 +962,7 @@ export default function AdminListingsPage() {
                                     disabled={page * limit >= total}
                                 >Next</button>
                             </div>
-                        </div>
+                        </div>}
                         </>)}
                     </div>
 

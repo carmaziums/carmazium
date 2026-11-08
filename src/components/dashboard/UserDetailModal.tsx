@@ -538,9 +538,15 @@ export function UserDetailModal({ userId, onClose, onChanged, onMessage }: { use
                                 {detail.recentListings?.length > 0 && (
                                     <div className="space-y-1.5 mb-3">
                                         {detail.recentListings.map((l: any) => (
-                                            <Link key={l.id} href={`/buy-cars/${l.slug}`} target="_blank" className="flex items-center justify-between p-2 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)] text-xs hover:border-primary/40 transition-colors">
-                                                <span className="truncate max-w-[180px]">{l.title}</span>
-                                                <span className="text-[var(--text-muted)] shrink-0">{formatPrice(l.price)} · {l.status}</span>
+                                            <Link
+                                                key={l.id}
+                                                href={`/dashboard/admin/listings?listingId=${encodeURIComponent(l.id)}`}
+                                                onClick={onClose}
+                                                className="flex min-h-14 flex-col gap-1 p-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)] text-xs hover:border-primary/40 focus-visible:outline-primary transition-colors"
+                                            >
+                                                <span className="font-bold break-words">{l.title}</span>
+                                                <span className="text-[var(--text-muted)]">{formatPrice(l.price)} · {l.status}</span>
+                                                <span className="font-semibold text-primary">Manage listing →</span>
                                             </Link>
                                         ))}
                                     </div>
