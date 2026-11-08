@@ -17,12 +17,12 @@ import { PageHero } from "@/components/layout/PageHero"
 
 export const metadata: Metadata = {
     title: "Trader & Partner Pricing",
-    description: "CarMazium pricing for verified motor traders and Partner Accounts, including the auction fee paid by the winning Trader.",
+    description: "Verified dealers can advertise retail cars on CarMazium from £1 per vehicle until sold, with no mandatory subscription. Auction wins cost £125 unless an eligible grant applies.",
     // Without these the page inherits /pricing's canonical and is dropped from search as a duplicate.
     alternates: { canonical: "/pricing/traders" },
     openGraph: {
         title: "Trader & Partner Pricing | CarMazium",
-        description: "CarMazium pricing for verified motor traders and Partner Accounts, including the auction fee paid by the winning Trader.",
+        description: "Verified dealers can advertise retail cars on CarMazium from £1 per vehicle until sold, with no mandatory subscription. Auction wins cost £125 unless an eligible grant applies.",
         url: "/pricing/traders",
         type: "website",
     },
@@ -111,6 +111,33 @@ export default function TraderPricingPage() {
                             <Link href="/search">Browse Retail Cars</Link>
                         </Button>
                     </article>
+                </div>
+            </section>
+
+            <section className="container mx-auto px-5 pb-16 md:pb-20" aria-labelledby="trader-retail-listing-pricing">
+                <div className="mx-auto max-w-5xl rounded-2xl border border-primary/30 bg-[var(--bg-card)] p-7 md:p-10">
+                    <div className="grid gap-7 md:grid-cols-[1fr_auto] md:items-center">
+                        <div>
+                            <div className="mb-3 flex items-center gap-2 text-primary">
+                                <ShoppingBag size={18} aria-hidden="true" />
+                                <span className="text-xs font-black uppercase tracking-[0.14em]">Advertise your own retail stock</span>
+                            </div>
+                            <h2 id="trader-retail-listing-pricing" className="text-2xl font-black">
+                                £{PRICING.listing.basic.price} per car, one-off until sold.
+                            </h2>
+                            <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
+                                Verified dealers pay the same Basic retail listing price as private sellers.
+                                No compulsory subscription, and no CarMazium retail buyer fee.
+                            </p>
+                            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
+                                Optional Standard (£{PRICING.listing.standard.price}) and Premium (£{PRICING.listing.premium.price}) packages are also available.
+                                Each published retail car has its own listing fee, whether added by a dealer or a private seller.
+                            </p>
+                        </div>
+                        <Button asChild className="w-full md:w-auto">
+                            <Link href="/sell?sellMode=retail&package=basic">List a retail car</Link>
+                        </Button>
+                    </div>
                 </div>
             </section>
 
