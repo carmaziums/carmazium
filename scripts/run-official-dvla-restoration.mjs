@@ -21,9 +21,13 @@ let cursor = null;
 const totals = {};
 for (let batch = 1; batch <= 100; batch++) {
   const input = { apply, cutoff, cursor };
-  const command = source + '\nrunBatch(' + JSON.stringify(input) + ').then(r => console.log("RESTORE_RESULT:" + JSON.stringify(r))).catch(() => { console.log("RESTORE_FAILED"); process.exitCode=1; });';
+  const safeFailures = ['One-off repair authorization window expired','Unexpected database; repair stopped','DVLA access unavailable','Unexpected DVLA endpoint','DVLA implementation changed; review required'];
+  const command = source + '\nrunBatch(' + JSON.stringify(input) + ').then(r => console.log("RESTORE_RESULT:" + JSON.stringify(r))).catch(e => { const safe=' + JSON.stringify(safeFailures) + '; console.log("RESTORE_FAILURE:" + (safe.includes(e.message) ? e.message : "runtime_error")); process.exitCode=1; });';
   const result = await api(`/${machine.id}/exec`, { command: ['node', '-e', command], timeout: 50 });
-  if (result.exit_code !== 0) throw new Error('Repair stopped; remote raw output suppressed');
+  if (result.exit_code !== 0) {
+    const failure = result.stdout?.split('\n').find(s => s.startsWith('RESTORE_FAILURE:'))?.slice('RESTORE_FAILURE:'.length);
+    throw new Error('Repair stopped: ' + (safeFailures.includes(failure) ? failure : 'runtime_error; raw output suppressed'));
+  }
   const line = result.stdout?.split('\n').find(s => s.startsWith('RESTORE_RESULT:'));
   if (!line) throw new Error('Repair result missing; no automatic mutation retry');
   const report = JSON.parse(line.slice('RESTORE_RESULT:'.length));
@@ -36,7 +40,7 @@ for (let batch = 1; batch <= 100; batch++) {
   for (const category of ['fieldCounts','statusCounts']) {
     totals[category] ||= {};
     for (const [key, value] of Object.entries(report[category] || {})) {
-      if (!/^[A-Za-z]+$/.test(key) || !Number.isInteger(value)) continue;
+      if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(key) || !Number.isInteger(value)) continue;
       totals[category][key] = (totals[category][key] || 0) + value;
     }
   }
