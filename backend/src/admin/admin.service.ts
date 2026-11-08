@@ -1,3 +1,5 @@
+import { markListingSold } from './admin-mark-listing-sold';
+import { AdminMarkListingSoldDto } from './dto/admin-mark-listing-sold.dto';
 import { LedgerFilters, DealerArchiveFilters, ledgerWhere, dealerArchiveWhere } from './admin-list-filters';
 import { Injectable, Optional, Logger, NotFoundException, BadRequestException, BadGatewayException, ConflictException } from '@nestjs/common';
 import { isSelfDeletedAccount } from '../users/account-deletion';
@@ -45,6 +47,10 @@ export class AdminService {
         private readonly handoverDocuments: HandoverDocumentsService,
         @Optional() private readonly dvlaService?: DvlaService,
     ) { }
+
+    async markListingSold(id: string, adminId: string, dto: AdminMarkListingSoldDto) {
+        return markListingSold(this.prisma, id, adminId, dto);
+    }
 
     async getAllUsers(page = 1, limit = 20, search?: string) {
         const skip = (page - 1) * limit;

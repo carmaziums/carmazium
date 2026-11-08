@@ -9,6 +9,7 @@ import { Car, Loader2, ArrowLeft, Trash2, AlertTriangle, Eye, ChevronDown, Check
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import { ListingEditModal } from "@/components/dashboard/ListingEditModal"
+import { AdminMarkSoldButton } from "@/components/admin/AdminMarkSoldButton"
 import { AdminVehicleReviewPanel } from "@/components/admin/AdminVehicleReviewPanel"
 import { HpiReportForm } from "@/components/admin/HpiReportForm"
 import { HpiPdfUpload } from "@/components/admin/HpiPdfUpload"
@@ -527,7 +528,8 @@ export default function AdminListingsPage() {
                                                                 </div>
                                                             )}
 
-                                                            <div className="flex items-center gap-4 py-2">
+                                                            <div className="flex flex-wrap items-center gap-4 py-2">
+                                                                <AdminMarkSoldButton listing={l} onSaved={() => { fetchListings(); loadPending(); setSuccessMsg("Listing marked sold. No platform purchase or payment was created.") }} />
                                                                 <Link href={getModerationListingHref(l)} target="_blank" className="text-xs text-blue-400 hover:underline inline-flex items-center gap-1">
                                                                     <Eye size={12} /> Preview listing
                                                                 </Link>
@@ -776,7 +778,8 @@ export default function AdminListingsPage() {
                                                 </button>
                                             )}
                                         </div>
-                                        <div className="flex w-full items-center justify-end gap-2 border-t border-[var(--border-default)] pt-2">
+                                        <div className="flex w-full flex-wrap items-center justify-end gap-2 border-t border-[var(--border-default)] pt-2">
+                                            <AdminMarkSoldButton listing={l} onSaved={() => { fetchListings(); loadPending(); setSuccessMsg("Listing marked sold. No platform purchase or payment was created.") }} />
                                             <Link
                                                 href={getModerationListingHref(l)}
                                                 target="_blank"
@@ -887,6 +890,7 @@ export default function AdminListingsPage() {
                                                             Relist in Auction
                                                         </button>
                                                     )}
+                                                    <AdminMarkSoldButton listing={l} onSaved={() => { fetchListings(); loadPending(); setSuccessMsg("Listing marked sold. No platform purchase or payment was created.") }} />
                                                     <Link href={getModerationListingHref(l)} target="_blank" className="p-2.5 hover:bg-white/10 rounded-lg transition-colors text-blue-400 hover:text-primary dark:hover:" title="View Listing">
                                                         <Eye size={18} />
                                                     </Link>

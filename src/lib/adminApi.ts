@@ -1317,3 +1317,9 @@ export async function getTrafficAnalytics(from?: string, to?: string): Promise<T
   // /analytics/traffic returns the object directly (no StandardResponse wrapper)
   return apiClient<TrafficAnalytics>(`/analytics/traffic${qs ? `?${qs}` : ''}`);
 }
+
+export async function markAdminListingSold(id: string, source: "EXTERNAL" | "UNKNOWN", reason: string) {
+  return apiClient(`/admin/listings/${encodeURIComponent(id)}/sold`, {
+    method: "PATCH", body: JSON.stringify({ source, reason }),
+  });
+}
