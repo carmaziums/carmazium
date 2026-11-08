@@ -1,3 +1,4 @@
+import { AdminMarkListingSoldDto } from './dto/admin-mark-listing-sold.dto';
 import {
     Controller,
     Get,
@@ -174,6 +175,16 @@ export class AdminController {
     ): Promise<StandardResponse<any>> {
         const listing = await this.adminService.updateListing(id, dto);
         return new StandardResponse(listing);
+    }
+
+    @Patch('listings/:id/sold')
+    @ApiOperation({ summary: 'Mark an advert sold without recording a platform purchase or payment' })
+    async markListingSold(
+        @Param('id') id: string,
+        @CurrentUser() admin: { id: string },
+        @Body() dto: AdminMarkListingSoldDto,
+    ): Promise<StandardResponse<any>> {
+        return new StandardResponse(await this.adminService.markListingSold(id, admin.id, dto));
     }
 
     @Post('listings/:id/refresh-official-data')
