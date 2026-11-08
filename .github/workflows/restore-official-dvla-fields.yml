@@ -1,0 +1,46 @@
+name: Restore missing official DVLA fields
+on:
+  pull_request:
+    paths:
+      - 'scripts/*official-dvla*'
+      - '.github/workflows/restore-official-dvla-fields.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/restore-official-dvla-fields.yml'
+  workflow_dispatch:
+    inputs:
+      apply:
+        type: boolean
+        default: false
+        description: Fill verified missing fields (one-off owner authorization expires 9 Nov 2026)
+permissions:
+  contents: read
+concurrency:
+  group: official-dvla-restoration
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check scripts/run-official-dvla-restoration.mjs
+      - run: node --test scripts/test-official-dvla-restoration.test.cjs
+  restore:
+    needs: validate
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'Restore missing official DVLA fields')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Fill only verified gaps on eligible production listings
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          APPLY_MISSING_DVLA: ${{ github.event_name == 'push' || inputs.apply }}
+        run: node scripts/run-official-dvla-restoration.mjs
