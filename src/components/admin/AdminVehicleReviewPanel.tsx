@@ -80,7 +80,7 @@ export function AdminVehicleReviewPanel({ listing, onEdit, onUpdated }: {
         <section className="mt-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 text-xs"
           aria-label="Admin-only missing vehicle field details">
           <p className="mb-2 font-semibold">Admin review — not shown to buyers or sellers</p>
-          <p className="mb-3 text-[var(--text-muted)]">Each field is currently blank. Government records and seller declarations have different correction paths. BHP, MPG, equipment and map coordinates are not automatically treated as errors.</p>
+          <p className="mb-3 text-[var(--text-muted)]">These fields are missing or need a complete answer. Government records and seller declarations have different correction paths. BHP, MPG, equipment and map coordinates are not automatically treated as errors.</p>
           <div className="space-y-2">
             {items.map(item => (
               <div key={item.field} className="rounded-lg border border-[var(--border-default)] p-2">

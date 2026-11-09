@@ -12,7 +12,7 @@ const linked = read('backend/src/listings/listings.service.ts');
 
 test('admin-only warnings name exactly which fields and explain where they originate', () => {
     assert.match(page, /AdminVehicleReviewPanel/);
-    assert.equal((page.match(/<AdminVehicleReviewPanel/g) || []).length, 2);
+    assert.equal((page.match(/<AdminVehicleReviewPanel/g) || []).length, 3);
     assert.doesNotMatch(page, /retailCompletenessGaps/);
     for (const value of ['getAdminVehicleReviewItems', 'item.label', 'item.source', 'item.explanation', 'item.currentValue']) {
         assert.ok(panel.includes(value), value);
@@ -44,4 +44,21 @@ test('both linked channels retain the official MOT history and first-use dates',
     assert.equal((linked.match(/firstUsedDate: source\.firstUsedDate/g) || []).length, 2);
     assert.equal((linked.match(/dateOfLastV5CIssued: source\.dateOfLastV5CIssued/g) || []).length, 2);
     assert.match(linked, /source\.linkedListingId/);
+});
+
+
+test('admin edit can load and save every new approval declaration without defaulting answers', () => {
+    const editor = read('src/components/dashboard/ListingEditModal.tsx');
+    const dto = read('backend/src/admin/dto/admin-update-listing.dto.ts');
+    for (const field of ['mechanicalIssues', 'electricalIssues']) {
+        assert.ok(editor.includes(`${field}: l.${field} || ''`));
+        assert.ok(dto.includes(`${field}?: string;`));
+        assert.ok(service.includes(`['${field}', '${field === 'mechanicalIssues' ? 'mechanical' : 'electrical'}']`));
+        assert.ok(rules.includes(field));
+    }
+    assert.match(editor, /SellerFaultDeclaration/);
+    assert.match(editor, /focusDeclaration/);
+    assert.match(editor, /declarationGaps.find\(gap => changedFieldKeys.includes\(gap.key\)\)/);
+    assert.match(editor, /role="dialog" aria-modal="true"/);
+    assert.match(editor, /z-\[100\]/);
 });

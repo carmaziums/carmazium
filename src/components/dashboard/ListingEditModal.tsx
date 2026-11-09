@@ -11,6 +11,8 @@ import {
     GripVertical, Move, Sparkles,
 } from "lucide-react"
 import { getAdminListing, updateListingAsAdmin } from "@/lib/adminApi"
+import { SellerFaultDeclaration } from '@/components/listing/SellerFaultDeclaration'
+import { faultDeclarationError } from '@/lib/sellerFaultDeclaration'
 import { aiGenerateDescription } from "@/lib/aiApi"
 import { uploadImage } from "@/lib/supabase"
 import { prepareImageForUpload } from "@/lib/vehiclePhotoCompression"
@@ -56,6 +58,7 @@ const STATUS_STYLES: Record<string, string> = {
 // decide whether that section carries unsaved edits — the tab rail's dot.
 const SECTIONS = [
     { key: 'core', label: 'Core', icon: Tag, fields: ['title', 'price', 'priceMin', 'priceMax'] },
+    { key: 'declarations', label: 'Seller Declarations', icon: ShieldCheck, fields: ['numberOfKeys', 'serviceHistory', 'mechanicalIssues', 'electricalIssues'] },
     { key: 'identity', label: 'Vehicle Identity', icon: Fingerprint, fields: ['make', 'model', 'variant', 'year', 'mileage', 'vrm', 'vin'] },
     {
         key: 'mechanical', label: 'Mechanical & Body', icon: Wrench, fields: [
@@ -66,7 +69,7 @@ const SECTIONS = [
     },
     {
         key: 'history', label: 'History & Ownership', icon: HistoryIcon, fields: [
-            'numberOfKeys', 'serviceHistory', 'owners', 'stolenRecovered', 'hasOutstandingFinance',
+            'owners', 'stolenRecovered', 'hasOutstandingFinance',
             'isLegalRegisteredKeeper', 'writeOffCategory', 'isDepartedSale', 'departedRelationship', 'notOwnerRelationship',
         ],
     },
@@ -171,7 +174,16 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
 
     React.useEffect(() => {
         if (!listingId) return
+        const previousOverflow = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
+        return () => { document.body.style.overflow = previousOverflow }
+    }, [listingId])
+
+    React.useEffect(() => {
+        if (!listingId) return
         setLoading(true)
+        setListing(null)
+        setError(null)
         setLoadError(null)
         setSavedMsg(null)
         setDescriptionAiError(null)
@@ -222,6 +234,8 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                     co2Emissions: str(l.co2Emissions),
                     numberOfKeys: str(l.numberOfKeys),
                     serviceHistory: l.serviceHistory || '',
+                    mechanicalIssues: l.mechanicalIssues || '',
+                    electricalIssues: l.electricalIssues || '',
                     owners: l.owners || '',
                     stolenRecovered: bool(l.stolenRecovered),
                     hasOutstandingFinance: bool(l.hasOutstandingFinance),
@@ -257,6 +271,7 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                 }
                 setEditForm(form)
                 setOriginalForm(form)
+                if (!form.serviceHistory.trim() || !form.numberOfKeys || faultDeclarationError(form.mechanicalIssues, 'mechanical') || faultDeclarationError(form.electricalIssues, 'electrical')) setActiveSection('declarations')
                 const images = Array.isArray(l.images) ? [...l.images] : []
                 setEditImages(images)
                 setOriginalImages(images)
@@ -462,10 +477,34 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
         setIsPanningImage(false)
     }
 
+    const declarationGaps = [
+        ...(!editForm.numberOfKeys?.trim() || !Number.isInteger(Number(editForm.numberOfKeys)) || Number(editForm.numberOfKeys) < 0 || Number(editForm.numberOfKeys) > 10 ? [{ key: 'numberOfKeys', label: 'Number of keys' }] : []),
+        ...(!editForm.serviceHistory?.trim() ? [{ key: 'serviceHistory', label: 'Service history' }] : []),
+        ...(faultDeclarationError(editForm.mechanicalIssues, 'mechanical') ? [{ key: 'mechanicalIssues', label: 'Mechanical faults' }] : []),
+        ...(faultDeclarationError(editForm.electricalIssues, 'electrical') ? [{ key: 'electricalIssues', label: 'Electrical faults' }] : []),
+    ]
+    const focusDeclaration = (key: string) => {
+        setActiveSection('declarations')
+        requestAnimationFrame(() => {
+            const target = document.getElementById(`admin-declaration-${key}`)
+            target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            const control = target?.querySelector<HTMLElement>('textarea') ?? target?.querySelector<HTMLElement>('input, select, button')
+            control?.focus({ preventScroll: true })
+        })
+    }
+
     const handleSave = async () => {
         if (!listingId) return
         setError(null)
         setSavedMsg(null)
+
+        // Partial corrections remain saveable, but never save an invalid edited declaration.
+        const invalidChange = declarationGaps.find(gap => changedFieldKeys.includes(gap.key))
+        if (invalidChange) {
+            setError(`Please complete ${invalidChange.label.toLowerCase()} using the seller's confirmed answer.`)
+            focusDeclaration(invalidChange.key)
+            return
+        }
 
         if (listing?.auction && ['SCHEDULED', 'ACTIVE'].includes(listing.auction.status)) {
             const reservePrice = Number(editForm.reservePrice)
@@ -522,7 +561,7 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
             setListing((prev: any) => ({ ...prev, ...updated }))
             setOriginalForm(editForm)
             setOriginalImages(editImages)
-            setSavedMsg('Saved.')
+            setSavedMsg(declarationGaps.length ? 'Changes saved. Missing seller declarations still need confirmation before approval.' : 'Changes saved. Return to moderation to approve when all checks are complete.')
             onSaved?.(updated)
         } catch (err) {
             setError(errorMessage(err, 'Failed to save changes'))
@@ -537,8 +576,9 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
     const active = SECTIONS.find(s => s.key === activeSection) ?? SECTIONS[0]
 
     return createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-8 bg-black/70 backdrop-blur-md" onClick={onClose}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 md:p-8 bg-black/70 backdrop-blur-md" onClick={onClose}>
             <div
+                role="dialog" aria-modal="true" aria-label="Edit listing details"
                 className="w-full max-w-6xl h-full max-h-[94vh] md:max-h-[90vh] bg-[var(--bg-card)] border border-[var(--border-default)] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
@@ -639,7 +679,7 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                             </nav>
 
                             {/* Active section content */}
-                            <div className="flex-1 overflow-y-auto p-5 md:p-6">
+                            <div className="flex-1 min-w-0 overflow-y-auto p-5 md:p-6">
                                 {error && (
                                     <div className="flex items-center gap-2 p-3 mb-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
                                         <AlertCircle size={16} className="shrink-0" /> {error}
@@ -651,6 +691,15 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                                     </div>
                                 )}
 
+                                {declarationGaps.length > 0 && (
+                                    <div className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm" role="status">
+                                        <p className="font-semibold">Seller answers needed before approval</p>
+                                        <p className="mt-1 text-xs">Ask the seller before entering these answers. Saving other corrections does not approve the listing.</p>
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {declarationGaps.map(gap => <button key={gap.key} type="button" onClick={() => focusDeclaration(gap.key)} className="rounded-lg border border-amber-500/40 px-3 py-2 text-xs font-semibold">{gap.label}</button>)}
+                                        </div>
+                                    </div>
+                                )}
                                 <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-4 flex items-center gap-2">
                                     <active.icon size={14} className="text-primary" /> {active.label}
                                 </h4>
@@ -700,10 +749,20 @@ export function ListingEditModal({ listingId, onClose, onSaved }: ListingEditMod
                                     </div>
                                 )}
 
+                                {active.key === 'declarations' && (
+                                    <div className="space-y-4">
+                                        <p className="text-sm text-[var(--text-secondary)]">Record only answers confirmed by the seller. Blank means unanswered, not no faults. DVLA/MOT cannot supply these declarations.</p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div id="admin-declaration-numberOfKeys"><Field label="Number of Keys" value={editForm.numberOfKeys} onChange={set('numberOfKeys')} type="select" options={Array.from({ length: 11 }, (_, i) => String(i))} /></div>
+                                            <div id="admin-declaration-serviceHistory"><Field label="Service History" value={editForm.serviceHistory} onChange={set('serviceHistory')} type="select" options={['Full Main Dealer', 'Full Independent', 'Partial', 'None']} /></div>
+                                        </div>
+                                        <div id="admin-declaration-mechanicalIssues"><SellerFaultDeclaration key={`${listingId}-mechanical`} kind="mechanical" value={editForm.mechanicalIssues || ''} onChange={set('mechanicalIssues')} attempted inputClassName={fieldInputClass} /></div>
+                                        <div id="admin-declaration-electricalIssues"><SellerFaultDeclaration key={`${listingId}-electrical`} kind="electrical" value={editForm.electricalIssues || ''} onChange={set('electricalIssues')} attempted inputClassName={fieldInputClass} /></div>
+                                    </div>
+                                )}
+
                                 {active.key === 'history' && (
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                        <Field label="Number of Keys" value={editForm.numberOfKeys} onChange={set('numberOfKeys')} type="number" />
-                                        <Field label="Service History" value={editForm.serviceHistory} onChange={set('serviceHistory')} />
                                         <Field label="Previous Owners" value={editForm.owners} onChange={set('owners')} />
                                         <Field label="Stolen/Recovered" value={editForm.stolenRecovered} onChange={set('stolenRecovered')} type="boolean" />
                                         <Field label="Outstanding Finance" value={editForm.hasOutstandingFinance} onChange={set('hasOutstandingFinance')} type="boolean" />

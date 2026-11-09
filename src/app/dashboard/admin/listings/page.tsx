@@ -550,6 +550,8 @@ function AdminListingsContent() {
                                                                 </div>
                                                             )}
 
+                                                            <AdminVehicleReviewPanel listing={l} onEdit={() => setEditListingId(l.id)} onUpdated={() => { fetchListings(); loadPending() }} />
+
                                                             {l.description && (
                                                                 <div className="py-3">
                                                                     <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold mb-1">Description</p>
@@ -972,7 +974,7 @@ function AdminListingsContent() {
             <ListingEditModal
                 listingId={editListingId}
                 onClose={() => setEditListingId(null)}
-                onSaved={() => { fetchListings(); loadPending() }}
+                onSaved={() => { setActionError(null); fetchListings(); loadPending() }}
             />
             {hpiUploadTarget && (
                 <HpiPdfUpload

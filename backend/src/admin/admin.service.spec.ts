@@ -1,3 +1,6 @@
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
+import { AdminUpdateListingDto } from './dto/admin-update-listing.dto';
 import { BadRequestException } from '@nestjs/common';
 import { AdminService } from './admin.service';
 
@@ -47,6 +50,34 @@ describe('AdminService listing approval readiness', () => {
 
         return { service, prisma, auctionsService };
     };
+
+    it('accepts declared faults through the strict admin DTO whitelist', () => {
+        const dto = plainToInstance(AdminUpdateListingDto, { mechanicalIssues: 'No known faults', electricalIssues: 'Window switch broken' });
+        expect(validateSync(dto, { whitelist: true, forbidNonWhitelisted: true })).toEqual([]);
+        expect(dto.mechanicalIssues).toBe('No known faults');
+        expect(validateSync(plainToInstance(AdminUpdateListingDto, { electricalIssues: 'x'.repeat(2001) }))).not.toHaveLength(0);
+    });
+
+    it('saves confirmed fault declarations without changing approval status or other fields', async () => {
+        const listing = { id: 'listing-1', status: 'PENDING_REVIEW', auction: null };
+        const { service, prisma } = makeService(listing);
+        prisma.listing.update.mockImplementation(async ({ data }: any) => ({ ...listing, ...data }));
+        const result = await service.updateListing('listing-1', { mechanicalIssues: 'No known faults', electricalIssues: ' Rear window switch broken ' });
+        expect(prisma.listing.update).toHaveBeenCalledWith({ where: { id: 'listing-1' }, data: { mechanicalIssues: 'No known faults', electricalIssues: 'Rear window switch broken' } });
+        expect(result.status).toBe('PENDING_REVIEW');
+    });
+
+    it.each(['', '  ', 'Yes', 'Yes!'])('rejects incomplete admin fault declarations: %s', async value => {
+        const { service, prisma } = makeService({ id: 'listing-1', status: 'PENDING_REVIEW' });
+        await expect(service.updateListing('listing-1', { electricalIssues: value })).rejects.toThrow(BadRequestException);
+        expect(prisma.listing.update).not.toHaveBeenCalled();
+    });
+
+    it('allows an unrelated partial correction while legacy declarations remain unanswered', async () => {
+        const { service, prisma } = makeService({ id: 'listing-1', status: 'PENDING_REVIEW', mechanicalIssues: null, electricalIssues: null });
+        await service.updateListing('listing-1', { location: 'Birmingham' });
+        expect(prisma.listing.update).toHaveBeenCalledWith({ where: { id: 'listing-1' }, data: { location: 'Birmingham' } });
+    });
 
     const completeFields = {
         createdAt: new Date('2026-09-19T01:00:00.000Z'),
