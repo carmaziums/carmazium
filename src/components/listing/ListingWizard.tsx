@@ -4335,13 +4335,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <h3 className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-2">
                                         <Shield size={16} className="text-primary" /> {isAuction ? "Auction Listing" : "Seller Badges"}
                                     </h3>
-                                    <button
+                                    {!editId && <button
                                         type="button"
                                         onClick={() => setSellingMethod(null)}
                                         className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}
                                     >
                                         Change listing method
-                                    </button>
+                                    </button>}
                                 </div>
                                 <p className="text-xs text-[var(--text-muted)] mb-4">
                                     {isAuction
@@ -4953,7 +4953,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             ? <Button onClick={handleNext} className="px-7 shadow-neon">Next Step <ArrowRight className="ml-2 h-4 w-4" /></Button>
                             : <Button onClick={handleSubmit} disabled={isSubmitting}
                                 className="px-7 bg-emerald-600 hover:bg-emerald-700 border-none shadow-[0_0_20px_rgba(16,185,129,0.4)] disabled:opacity-50">
-                                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Publishing...</> : <>Publish <CheckCircle className="ml-2 h-4 w-4" /></>}
+                                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{editId ? 'Saving...' : 'Publishing...'}</> : <>{editId ? 'Save Changes' : 'Publish'} <CheckCircle className="ml-2 h-4 w-4" /></>}
                             </Button>
                         }
                         </div>
