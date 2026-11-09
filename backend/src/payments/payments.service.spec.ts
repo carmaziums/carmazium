@@ -129,6 +129,8 @@ function readyRetailListing(overrides: Record<string, unknown> = {}) {
         bodyType: 'COUPE',
         location: 'Birmingham',
         owners: '1',
+        numberOfKeys: 2,
+        serviceHistory: 'Partial',
         description: 'Well presented vehicle with full details.',
         condition: 'GOOD',
         stolenRecovered: false,

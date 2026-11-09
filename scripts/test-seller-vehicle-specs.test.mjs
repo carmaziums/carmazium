@@ -639,7 +639,7 @@ test('valuation price rule: low market guide is Auction, Retail is exactly 20% h
 
 test('web guided seller wizard focuses first missing field without resetting whole page scroll', () => {
   const source = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
-  assert.match(source, /const firstInvalidField = \(\)/)
+  assert.match(source, /const firstInvalidField = \(step = currentStep\)/)
   assert.match(source, /const focusMissingField = \(field: string\)/)
   assert.match(source, /setStepValidationMessage\(missing/)
   assert.match(source, /focusMissingField\(missing\.field\)/)

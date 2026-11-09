@@ -62,6 +62,8 @@ describe('AdminService listing approval readiness', () => {
         title: 'BMW M3 2020',
         location: 'Birmingham',
         owners: '1',
+        numberOfKeys: 2,
+        serviceHistory: 'Partial',
         description: 'Well presented vehicle with full details.',
         condition: 'GOOD',
         stolenRecovered: false,

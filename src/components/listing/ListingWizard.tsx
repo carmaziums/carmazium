@@ -536,7 +536,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     owners: l.owners ? String(l.owners) : '',
                     variant: l.variant || '',
                     driveType: l.driveType || '',
-                    numberOfKeys: l.numberOfKeys ? String(l.numberOfKeys) : '',
+                    numberOfKeys: l.numberOfKeys != null ? String(l.numberOfKeys) : '',
                     torqueNm: l.torqueNm ? String(l.torqueNm) : '',
                     topSpeedMph: l.topSpeedMph ? String(l.topSpeedMph) : '',
                     zeroTo60Mph: l.zeroTo60Mph ? String(l.zeroTo60Mph) : '',
@@ -1117,6 +1117,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         model: "The model helps buyers search for and compare the correct vehicle.",
         year: "The vehicle's year helps buyers judge its age and market value.",
         condition: "A condition declaration helps buyers understand wear and any faults.",
+        serviceHistory: "Choose the service history supported by the vehicle records. Select None if there is no service history.",
+        numberOfKeys: "Confirm how many keys will be handed over with the vehicle. Select 0 if there are no keys.",
         body: "Body type helps buyers filter for the vehicle shape they want.",
         location: "The area helps buyers decide whether collection or delivery is practical.",
         mileage: "Mileage is important to valuation and buyer confidence.",
@@ -1231,6 +1233,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 if (!formData.owners) missing.push('previous keepers')
                 if (!formData.description.trim()) missing.push('description')
                 if (!formData.condition) missing.push('condition')
+                if (!formData.serviceHistory.trim()) missing.push('service history')
+                if (!formData.numberOfKeys.trim()) missing.push('number of keys')
                 missing.push(...missingSellerDeclarations)
                 if ((formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') && formData.listingType !== 'AUCTION') {
                     return 'Category A and Category B vehicles can only be listed in Auction. Switch this listing to Auction to continue.'
@@ -1327,8 +1331,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     }
 
     /** Return the exact first unanswered input, not a generic page position. */
-    const firstInvalidField = (): { field: string; label: string } | null => {
-        if (currentStep === 1) {
+    const firstInvalidField = (step = currentStep): { field: string; label: string } | null => {
+        if (step === 1) {
             const inputIssue = listingDetailsInputIssue(formData)
             if (inputIssue) return inputIssue
             const required: Array<[string, string, boolean]> = [
@@ -1337,6 +1341,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 ['model', 'Model', !formData.model.trim()],
                 ['year', 'Year', !formData.year.trim()],
                 ['condition', 'Condition', !formData.condition],
+                ['serviceHistory', 'Service History', !formData.serviceHistory.trim()],
+                ['numberOfKeys', 'Number of Keys', !formData.numberOfKeys.trim()],
                 ['body', 'Body Type', formData.vehicleType !== 'MOTORCYCLE' && !normalizeSellerBodyType(formData.bodyType, bodyTypeKeys)],
                 ['location', 'Location', !formData.location.trim()],
                 ['mileage', 'Mileage', !formData.mileage.trim()],
@@ -1356,15 +1362,15 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             const missing = required.find(([, , invalid]) => invalid)
             return missing ? { field: missing[0], label: missing[1] } : null
         }
-        if (currentStep === 2) return { field: 'photos', label: 'Photos' }
-        if (currentStep === 3) {
+        if (step === 2) return { field: 'photos', label: 'Photos' }
+        if (step === 3) {
             const price = Number(formData.priceAsking)
             if (!isValidListingPrice(formData.priceAsking)) return { field: 'asking', label: isAuction ? 'Auction Value' : 'Asking Price' }
             if (formData.priceMin && (!isValidListingPrice(formData.priceMin) || Number(formData.priceMin) > price)) {
                 return { field: 'minimum', label: 'Lower (Minimum) Price' }
             }
         }
-        if (currentStep === 4 && isAuction) {
+        if (step === 4 && isAuction) {
             if (auctionSchedule.startTime !== 'NOW' && (!auctionSchedule.startTime || !Number.isFinite(new Date(auctionSchedule.startTime).getTime()) || new Date(auctionSchedule.startTime).getTime() <= Date.now())) return { field: 'start', label: 'Auction Start Date' }
             if (!(Number(auctionSchedule.reservePrice) > 0)) return { field: 'reserve', label: 'Reserve Price' }
             if (!(Number(auctionSchedule.startingBid) > 0)) return { field: 'auctionvalue', label: 'Auction Value' }
@@ -1382,6 +1388,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             model: 'listing-required-model',
             year: 'listing-required-year',
             condition: 'vehicle-condition-field',
+            serviceHistory: 'listing-required-service-history',
+            numberOfKeys: 'listing-required-keys',
             body: 'body-type-field',
             location: 'listing-required-location',
             mileage: 'listing-required-mileage',
@@ -1764,7 +1772,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 setCurrentStep(step)
                 setHasAttemptedNext(true)
                 setSubmitError(error)
-                alert(error)
+                setStepValidationMessage(error)
+                const missing = firstInvalidField(step)
+                // Wait until the restored step is mounted before locating its control.
+                if (missing) window.requestAnimationFrame(() => focusMissingField(missing.field))
                 return
             }
         }
@@ -3274,16 +3285,24 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </div>
 
                                     {/* Service History */}
-                                    <div className="space-y-2 md:col-span-2">
-                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Service History</label>
+                                    <div id="listing-required-service-history" role="group" aria-labelledby="listing-service-history-label"
+                                        aria-invalid={hasAttemptedNext && !formData.serviceHistory.trim()}
+                                        aria-describedby={hasAttemptedNext && !formData.serviceHistory.trim() ? "listing-service-history-error" : undefined}
+                                        className={`space-y-2 md:col-span-2 scroll-mt-28 rounded-xl p-3 border ${hasAttemptedNext && !formData.serviceHistory.trim() ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
+                                        <label id="listing-service-history-label" className="text-sm font-bold uppercase text-[var(--text-muted)]">Service History <span className="text-red-500">*</span></label>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                             {(["Full Main Dealer", "Full Independent", "Partial", "None"] as const).map((sh) => (
                                                 <button key={sh} type="button"
-                                                    onClick={() => set("serviceHistory", formData.serviceHistory === sh ? "" : sh)}
+                                                    aria-pressed={formData.serviceHistory === sh}
+                                                    onClick={() => set("serviceHistory", sh)}
                                                     className={`py-2.5 px-2 rounded-lg border text-xs font-semibold transition-all text-center ${formData.serviceHistory === sh ? "border-primary bg-primary/10 text-primary" : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"}`}
                                                 >{sh}</button>
                                             ))}
                                         </div>
+                                        <p className="text-xs text-[var(--text-secondary)]">Choose the history supported by your service book or invoices. Select None if there is no service history.</p>
+                                        {hasAttemptedNext && !formData.serviceHistory.trim() && (
+                                            <p id="listing-service-history-error" role="alert" className="text-xs text-red-400 font-medium">Please select the vehicle’s service history to continue.</p>
+                                        )}
                                     </div>
                                     {/* Known Mechanical & Electrical Problems */}
                                     <div className="space-y-2 md:col-span-2">
@@ -3312,16 +3331,24 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </div>
 
                                     {/* Number of Keys */}
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Number of Keys</label>
+                                    <div id="listing-required-keys" role="group" aria-labelledby="listing-keys-label"
+                                        aria-invalid={hasAttemptedNext && !formData.numberOfKeys.trim()}
+                                        aria-describedby={hasAttemptedNext && !formData.numberOfKeys.trim() ? "listing-keys-error" : undefined}
+                                        className={`space-y-2 scroll-mt-28 rounded-xl p-3 border ${hasAttemptedNext && !formData.numberOfKeys.trim() ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
+                                        <label id="listing-keys-label" className="text-sm font-bold uppercase text-[var(--text-muted)]">Number of Keys <span className="text-red-500">*</span></label>
                                         <div className="flex gap-2">
-                                            {(["1", "2", "3"] as const).map((k) => (
+                                            {(["0", "1", "2", "3"] as const).map((k) => (
                                                 <button key={k} type="button"
-                                                    onClick={() => set("numberOfKeys", formData.numberOfKeys === k ? "" : k)}
+                                                    aria-pressed={formData.numberOfKeys === k}
+                                                    onClick={() => set("numberOfKeys", k)}
                                                     className={`flex-1 py-2.5 rounded-lg border text-sm font-bold transition-all ${formData.numberOfKeys === k ? "border-primary bg-primary/10 text-primary" : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"}`}
                                                 >{k} {k === "3" ? "+" : ""} {parseInt(k) === 1 ? "Key" : "Keys"}</button>
                                             ))}
                                         </div>
+                                        <p className="text-xs text-[var(--text-secondary)]">Confirm the keys included with the vehicle. Select 0 if there are no keys.</p>
+                                        {hasAttemptedNext && !formData.numberOfKeys.trim() && (
+                                            <p id="listing-keys-error" role="alert" className="text-xs text-red-400 font-medium">Please select the number of keys to continue.</p>
+                                        )}
                                     </div>
                                 </div>
                             </div>
