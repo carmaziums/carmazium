@@ -80,10 +80,12 @@ describe('admin-only official missing-field repair', () => {
 
     it('requests only explicitly selected seller-entered fields via in-app notification', async () => {
         const { service, notifications, gateway } = setup({});
-        await service.requestVehicleDetailsFromSeller('retail-1', ['numberOfKeys', 'serviceHistory']);
+        await service.requestVehicleDetailsFromSeller('retail-1', ['numberOfKeys', 'serviceHistory', 'mechanicalIssues', 'electricalIssues']);
         const message = notifications.create.mock.calls[0][0];
         expect(message.message).toContain('number of keys');
         expect(message.message).toContain('service history');
+        expect(message.message).toContain('known mechanical faults');
+        expect(message.message).toContain('known electrical faults');
         expect(message.message).not.toContain('MOT expiry');
         expect(gateway.sendNotification).toHaveBeenCalled();
         await expect(service.requestVehicleDetailsFromSeller('retail-1', ['motExpiryDate']))

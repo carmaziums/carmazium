@@ -1,3 +1,5 @@
+import { faultDeclarationError } from './sellerFaultDeclaration';
+
 /**
  * Admin-only, evidence-aware review hints for an individual listing.
  * These are tasks for staff, NOT seller-facing validations or publication rules.
@@ -24,7 +26,7 @@ export function getAdminVehicleReviewItems(listing: any): AdminVehicleReviewItem
     explanation: string, options: Pick<AdminVehicleReviewItem, 'sellerField' | 'official'> = {}) => {
     items.push({
       field, label, source, explanation, ...options,
-      currentValue: 'Not recorded',
+      currentValue: listing[field] == null || String(listing[field]).trim() === '' ? 'Not recorded' : String(listing[field]),
     });
   };
 
@@ -51,6 +53,11 @@ export function getAdminVehicleReviewItems(listing: any): AdminVehicleReviewItem
     'DVLA/DVSA does not provide a key count. Ask the seller or enter the verified count.', { sellerField: 'numberOfKeys' });
   if (absent(listing.serviceHistory)) add('serviceHistory', 'Service history', 'Seller',
     'DVLA/DVSA does not provide the vehicle service book or invoices. Ask the seller.', { sellerField: 'serviceHistory' });
+
+  for (const [field, kind] of [['mechanicalIssues', 'mechanical'], ['electricalIssues', 'electrical']] as const) {
+    if (faultDeclarationError(listing[field], kind)) add(field, kind === 'mechanical' ? 'Mechanical fault declaration' : 'Electrical fault declaration', 'Seller',
+      'Ask the seller to confirm No known faults, or Yes with a description. A blank answer does not mean no faults.', { sellerField: field });
+  }
 
   // BHP, MPG, equipment and postcode coordinates are optional enrichments, not
   // DVLA/DVSA guarantees. Their absence must not inflate admin error counts.

@@ -1,3 +1,4 @@
+import { faultDeclarationError } from '../listings/seller-fault-declaration';
 import { markListingSold } from './admin-mark-listing-sold';
 import { AdminMarkListingSoldDto } from './dto/admin-mark-listing-sold.dto';
 import { LedgerFilters, DealerArchiveFilters, ledgerWhere, dealerArchiveWhere } from './admin-list-filters';
@@ -985,13 +986,15 @@ export class AdminService {
             features: 'vehicle equipment',
             numberOfKeys: 'number of keys',
             serviceHistory: 'service history',
+            mechanicalIssues: 'known mechanical faults (No known faults, or Yes with details)',
+            electricalIssues: 'known electrical faults (No known faults, or Yes with details)',
             owners: 'previous keepers',
         };
         if (!Array.isArray(requested)) {
             throw new BadRequestException('Choose the seller fields you need');
         }
         const fields = [...new Set(requested)].filter(field => Object.prototype.hasOwnProperty.call(labels, field));
-        if (!fields.length || fields.length > 7 || fields.length !== new Set(requested).size) {
+        if (!fields.length || fields.length > Object.keys(labels).length || fields.length !== new Set(requested).size) {
             throw new BadRequestException('Choose valid seller-editable fields only');
         }
         const notification = await this.notificationsService.create({
@@ -1057,6 +1060,13 @@ export class AdminService {
         if (dto.ulezCompliant !== undefined) data.ulezCompliant = dto.ulezCompliant;
         if (dto.euroStandard !== undefined) data.euroStandard = dto.euroStandard;
         if (dto.co2Emissions !== undefined) data.co2Emissions = dto.co2Emissions;
+        for (const [field, kind] of [['mechanicalIssues', 'mechanical'], ['electricalIssues', 'electrical']] as const) {
+            if (dto[field] !== undefined) {
+                const error = faultDeclarationError(dto[field], kind);
+                if (error) throw new BadRequestException(error);
+                data[field] = dto[field]!.trim();
+            }
+        }
         // History / ownership
         if (dto.numberOfKeys !== undefined) data.numberOfKeys = dto.numberOfKeys;
         if (dto.serviceHistory !== undefined) data.serviceHistory = dto.serviceHistory;

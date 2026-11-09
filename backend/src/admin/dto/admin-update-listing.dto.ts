@@ -225,6 +225,18 @@ export class AdminUpdateListingDto {
     @IsOptional()
     co2Emissions?: number;
 
+    @ApiProperty({ required: false, description: 'Explicit no known faults or seller-confirmed fault details' })
+    @IsString()
+    @MaxLength(2000)
+    @IsOptional()
+    mechanicalIssues?: string;
+
+    @ApiProperty({ required: false, description: 'Explicit no known faults or seller-confirmed fault details' })
+    @IsString()
+    @MaxLength(2000)
+    @IsOptional()
+    electricalIssues?: string;
+
     // ─── History / ownership ────────────────────────────────────────────────
     @ApiProperty({ required: false })
     @Type(() => Number)
