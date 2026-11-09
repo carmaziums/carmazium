@@ -122,6 +122,8 @@ on:
       - "src/lib/pendingSellerHandoff.ts"
       - "src/lib/sellerDraftIsolation.ts"
       - "src/lib/sellerDeclarationValidation.ts"
+      - "src/lib/sellerFaultDeclaration.ts"
+      - "carmazium app/carmazium app/src/lib/sellerFaultDeclaration.ts"
       - "src/lib/sellerAuctionDraft.ts"
       - "scripts/test-seller-vehicle-specs.test.mjs"
       - "scripts/test-mazium-description.test.mjs"
