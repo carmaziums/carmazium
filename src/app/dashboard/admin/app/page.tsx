@@ -100,10 +100,10 @@ export default function AdminAppPage() {
   const tiles = stats ? [
     { label: "Android native first opens", value: n(stats.installs.androidApp), sub: "Distinct reported native first-open IDs, not verified hardware installations", icon: <FaAndroid className="h-5 w-5" /> },
     { label: "APK downloads", value: n(stats.apkDownloads), sub: "GitHub release APK download requests, not installations", icon: <Download className="h-5 w-5" /> },
-    { label: "Android web-app opens", value: n(stats.installs.androidWebApp), sub: "First reported standalone website launches", icon: <FaAndroid className="h-5 w-5" /> },
-    { label: "iPhone web-app opens", value: n(stats.installs.iosWebApp), sub: "First reported Home Screen website launches", icon: <FaApple className="h-5 w-5" /> },
+    { label: "Android web-app first opens", value: n(stats.installs.androidWebApp), sub: "First reported standalone website launches", icon: <FaAndroid className="h-5 w-5" /> },
+    { label: "iPhone web-app first opens", value: n(stats.installs.iosWebApp), sub: "First reported Home Screen website launches", icon: <FaApple className="h-5 w-5" /> },
     { label: "iPhone native first opens", value: n(stats.installs.iosApp), sub: "Distinct reported native first-open IDs", icon: <FaApple className="h-5 w-5" /> },
-    { label: "Windows web-app opens", value: n(stats.installs.windows), sub: "First reported installed website launches", icon: <Monitor className="h-5 w-5" /> },
+    { label: "Windows web-app first opens", value: n(stats.installs.windows), sub: "First reported installed website launches", icon: <Monitor className="h-5 w-5" /> },
     { label: "Open problem reports", value: n(stats.problemReports.open), sub: `${n(stats.problemReports.total)} reports in total`, icon: <AlertCircle className="h-5 w-5" /> },
   ] : []
 
@@ -117,7 +117,7 @@ export default function AdminAppPage() {
           </Link>
           <header>
             <h1 className="text-2xl font-black tracking-tight flex items-center gap-3">
-              <Smartphone className="text-primary" size={24} /> Online now, app & problem reports
+              <Smartphone className="text-primary" size={24} /> App activity & problem reports
             </h1>
             <p className="text-sm text-[var(--text-muted)] mt-1.5 max-w-2xl">
               Separate download requests from reported first opens of the native app and installed website, alongside customer problem reports. These are event counts, not verified installation totals.
