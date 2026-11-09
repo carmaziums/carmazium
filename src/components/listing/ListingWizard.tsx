@@ -741,6 +741,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // Persist the form and the seller's current step so a normal browser
     // refresh resumes where they were instead of dropping back to method choice.
     React.useEffect(() => {
+        // An existing advert is server-backed. Never copy its edit form into
+        // the new-listing draft, where it could be published as a duplicate.
+        if (editId) return
         if (!authLoading && user?.id && readyDraftOwner === user.id && activeDraftOwnerRef.current === user.id
             && sellingMethod === 'list' && formData.vrm) {
             localStorage.setItem(draftKeys.draft, JSON.stringify(formData))
@@ -751,7 +754,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 localStorage.removeItem(draftKeys.auctionSchedule)
             }
         }
-    }, [formData, auctionSchedule, sellingMethod, currentStep, draftKeys, user?.id, authLoading, readyDraftOwner])
+    }, [editId, formData, auctionSchedule, sellingMethod, currentStep, draftKeys, user?.id, authLoading, readyDraftOwner])
 
     const handleStartFresh = () => {
         const confirmed = window.confirm(
