@@ -23,6 +23,8 @@ const completeDraft = {
     bodyType: 'SUV',
     location: 'Birmingham',
     owners: '1',
+    numberOfKeys: 2,
+    serviceHistory: 'Partial',
     description: 'Complete vehicle description',
     condition: 'GOOD',
     stolenRecovered: false,
