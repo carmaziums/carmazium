@@ -62,3 +62,14 @@ test('admin edit can load and save every new approval declaration without defaul
     assert.match(editor, /role="dialog" aria-modal="true"/);
     assert.match(editor, /z-\[100\]/);
 });
+
+
+test('admin vehicle dropdowns offer the complete supported API options', () => {
+    const editor = read('src/components/dashboard/ListingEditModal.tsx');
+    const dto = read('backend/src/listings/dto/create-listing.dto.ts');
+    for (const [constant, name] of [['FUEL_TYPES', 'FuelType'], ['TRANSMISSIONS', 'Transmission'], ['BODY_TYPES', 'BodyType'], ['CONDITIONS', 'VehicleCondition'], ['WRITE_OFF_CATEGORIES', 'WriteOffCategory'], ['VEHICLE_TYPES', 'VehicleType'], ['EURO_STANDARDS', 'EuroStandard'], ['LISTING_TYPES', 'ListingType']]) {
+        const ui = editor.match(new RegExp(String.raw`const ${constant} = \[([^\]]+)\]`))[1];
+        const server = dto.match(new RegExp(String.raw`export enum ${name} \{([^}]+)\}`))[1];
+        assert.deepEqual([...ui.matchAll(/'([^']+)'/g)].map(m => m[1]).sort(), [...server.matchAll(/= '([^']+)'/g)].map(m => m[1]).sort(), name);
+    }
+});
