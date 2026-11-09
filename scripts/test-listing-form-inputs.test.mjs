@@ -41,3 +41,87 @@ test('prices require finite positive currency amounts with at most two decimals'
   for (const value of ['1', '2500.99', ' 50.00 ']) assert.equal(isValidListingPrice(value), true)
   for (const value of ['0', '-1', 'Infinity', '1e3', '1.001', '500abc', '']) assert.equal(isValidListingPrice(value), false)
 })
+
+// Exercise the wizard's actual validation and navigation closures. Extracting
+// them through the TypeScript AST keeps these tests on production behaviour.
+function wizardFunction(file, name, context) {
+  const source = readFileSync(new URL(file, import.meta.url), 'utf8')
+  const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  let initializer
+  function visit(node) {
+    if (ts.isVariableDeclaration(node) && node.name.getText(tree) === name) initializer = node.initializer
+    ts.forEachChild(node, visit)
+  }
+  visit(tree)
+  assert.ok(initializer, `${name} must exist`)
+  const js = ts.transpileModule(`const result = ${initializer.getText(tree)}; result`, {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
+  }).outputText
+  return vm.runInNewContext(js, { ...context })
+}
+const wizardFile = '../src/components/listing/ListingWizard.tsx'
+const completeForm = {
+  ...valid, make: 'BMW', model: 'X5', fuelType: 'PETROL', transmission: 'AUTOMATIC',
+  bodyType: 'SUV', vehicleType: 'CAR', location: 'Birmingham', owners: '1', description: 'Seller description',
+  condition: 'GOOD', serviceHistory: 'Partial', numberOfKeys: '2', writeOffCategory: 'NONE',
+  stolenRecovered: false, hasOutstandingFinance: false, isLegalRegisteredKeeper: true,
+  isDepartedSale: false, declarationAcknowledged: true,
+}
+function wizardContext(formData) {
+  return {
+    formData, currentStep: 1, listingDetailsInputIssue, missingSellerDeclarations: [], bodyTypeKeys: ['SUV'],
+    normalizeSellerTransmission: value => value, normalizeSellerBodyType: value => value,
+  }
+}
+test('auction and retail cannot advance or submit a restored draft with missing seller history/keys', () => {
+  for (const listingType of ['AUCTION', 'CLASSIFIED']) {
+    for (const [field, label] of [['serviceHistory', 'service history'], ['numberOfKeys', 'number of keys']]) {
+      for (const missing of ['', '   ']) {
+        const context = wizardContext({ ...completeForm, listingType, [field]: missing })
+        // Current step may be Review; explicit step 1 must still reject it.
+        context.currentStep = 5
+        assert.match(wizardFunction(wizardFile, 'getStepValidationError', context)(1), new RegExp(label))
+        assert.equal(wizardFunction(wizardFile, 'firstInvalidField', context)(1).field, field)
+      }
+    }
+    const context = wizardContext({ ...completeForm, listingType, serviceHistory: 'None', numberOfKeys: '0' })
+    assert.equal(wizardFunction(wizardFile, 'getStepValidationError', context)(1), null)
+    assert.equal(wizardFunction(wizardFile, 'firstInvalidField', context)(1), null)
+  }
+})
+test('both missing answers lead first to service history, then to keys after history is supplied', () => {
+  const formData = { ...completeForm, serviceHistory: '', numberOfKeys: '' }
+  const firstInvalid = wizardFunction(wizardFile, 'firstInvalidField', wizardContext(formData))
+  assert.equal(firstInvalid().field, 'serviceHistory')
+  formData.serviceHistory = 'None'
+  assert.equal(firstInvalid().field, 'numberOfKeys')
+  formData.numberOfKeys = '0'
+  assert.equal(firstInvalid(), null)
+})
+test('missing seller answers scroll to their exact group and focus its first choice', () => {
+  for (const [field, id] of [['serviceHistory', 'listing-required-service-history'], ['numberOfKeys', 'listing-required-keys']]) {
+    const events = []
+    const button = { focus: options => events.push(['focus', options.preventScroll]) }
+    const group = {
+      scrollIntoView: options => events.push(['scroll', options.block]),
+      matches: () => false, querySelector: () => button,
+    }
+    const focus = wizardFunction(wizardFile, 'focusMissingField', {
+      window: { requestAnimationFrame: fn => fn() },
+      document: { getElementById: target => target === id ? group : null },
+    })
+    focus(field)
+    assert.deepEqual(events, [['scroll', 'center'], ['focus', true]])
+  }
+})
+test('native seller flow also requires explicit answers and accepts zero keys', () => {
+  const file = '../carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx'
+  for (const [serviceHistory, numberOfKeys] of [['', ''], ['   ', '   ']]) {
+    const validate = wizardFunction(file, 'fieldErrorRaw', { serviceHistory, numberOfKeys })
+    assert.match(validate('serviceHistory'), /service history/)
+    assert.match(validate('numberOfKeys'), /number of keys/)
+  }
+  const validate = wizardFunction(file, 'fieldErrorRaw', { serviceHistory: 'None', numberOfKeys: '0' })
+  assert.equal(validate('serviceHistory'), null)
+  assert.equal(validate('numberOfKeys'), null)
+})

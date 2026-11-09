@@ -58,6 +58,12 @@ export function getListingSubmissionMissingFields(listing: any): string[] {
     if (!listing?.owners?.trim?.()) missing.push('previous keepers');
     if (!listing?.description?.trim?.()) missing.push('description');
     if (!listing?.condition) missing.push('condition');
+    // Seller declarations cannot be supplied by DVLA. Zero keys and an
+    // explicit 'None' service history are valid; absent answers are not.
+    if (!Number.isInteger(listing?.numberOfKeys) || listing.numberOfKeys < 0 || listing.numberOfKeys > 10) {
+        missing.push('number of keys');
+    }
+    if (!listing?.serviceHistory?.trim?.()) missing.push('service history');
 
     // These declarations are intentionally explicit booleans: false is a valid
     // answer and must never be treated as "missing".

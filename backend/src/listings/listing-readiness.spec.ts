@@ -19,6 +19,8 @@ const readyListing = (overrides: Record<string, unknown> = {}) => ({
     title: 'BMW M3 2020',
     location: 'Birmingham',
     owners: '1',
+            numberOfKeys: 2,
+            serviceHistory: 'Partial',
     description: 'Well presented vehicle with full details.',
     condition: 'GOOD',
     vehicleType: 'CAR',
@@ -30,12 +32,27 @@ const readyListing = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe('listing readiness', () => {
+    it.each(['CLASSIFIED', 'AUCTION'])('accepts explicitly declared no keys/no history for %s', (type) => {
+        expect(getListingSubmissionMissingFields(readyListing({
+            type, numberOfKeys: 0, serviceHistory: 'None',
+        }))).toEqual([]);
+        expect(getListingSubmissionReadiness(readyListing({
+            type, numberOfKeys: null, serviceHistory: null,
+        }))).toMatchObject({ ready: false, missingFields: ['number of keys', 'service history'] });
+    });
+
     it('treats explicit false legal declarations as completed answers', () => {
         expect(getListingSubmissionMissingFields(readyListing())).toEqual([]);
     });
 
     it.each([
         [{ images: [] }, 'at least 10 photos'],
+        [{ numberOfKeys: undefined }, 'number of keys'],
+        [{ numberOfKeys: null }, 'number of keys'],
+        [{ numberOfKeys: -1 }, 'number of keys'],
+        [{ numberOfKeys: 1.5 }, 'number of keys'],
+        [{ serviceHistory: undefined }, 'service history'],
+        [{ serviceHistory: '   ' }, 'service history'],
         [{ stolenRecovered: undefined }, 'stolen/recovered declaration'],
         [{ hasOutstandingFinance: undefined }, 'outstanding finance declaration'],
         [{ isLegalRegisteredKeeper: undefined }, 'registered keeper declaration'],

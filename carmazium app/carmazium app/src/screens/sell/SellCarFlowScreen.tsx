@@ -991,7 +991,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const scrollToMissingField = (field: string) => {
     const sections: Record<string, string> = {
       vrm: 'registration', make: 'identity', model: 'identity', year: 'identity',
-      bodyType: 'body', location: 'location',
+      bodyType: 'body', location: 'location', serviceHistory: 'model-details', numberOfKeys: 'model-details',
       mileage: 'technical', fuelType: 'technical', transmission: 'technical',
       title: 'description', description: 'description',
       condition: 'ownership', owners: 'ownership', departedRelationship: 'ownership',
@@ -1286,6 +1286,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     if (key === 'bodyType' && vehicleType !== 'MOTORCYCLE'
       && !normalizeNativeBodyType(bodyType, vehicleType)) return 'Select the vehicle body type';
     if (key === 'condition' && !condition) return 'Required';
+    if (key === 'serviceHistory' && !serviceHistory.trim()) return 'Select the vehicle’s service history to continue';
+    if (key === 'numberOfKeys' && !numberOfKeys.trim()) return 'Select the number of keys to continue';
     if (key === 'owners' && !owners) return 'Required';
     if (key === 'departedRelationship' && isDepartedSale && !departedRelationship.trim()) return 'Required';
     if (key === 'writeOffCat' && !writeOffCat) return 'Required';
@@ -1317,7 +1319,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   // All field keys validated per step — used to force every field's error to show
   // (mark touched) when Next is tapped, and to know which keys to check.
-  const STEP1_FIELD_KEYS = ['vrm', 'make', 'model', 'year', 'mileage', 'title', 'location', 'fuelType', 'description', 'transmission', 'bodyType', 'condition', 'owners', 'departedRelationship', 'writeOffCat', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper', 'notOwnerRelationship', 'declAcknowledged'];
+  const STEP1_FIELD_KEYS = ['vrm', 'make', 'model', 'year', 'serviceHistory', 'numberOfKeys', 'mileage', 'title', 'location', 'fuelType', 'description', 'transmission', 'bodyType', 'condition', 'owners', 'departedRelationship', 'writeOffCat', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper', 'notOwnerRelationship', 'declAcknowledged'];
   const STEP3_FIELD_KEYS = ['priceAsking'];
   const STEP4_AUCTION_FIELD_KEYS = ['auctionStartDate', 'reservePrice', 'startingBid', 'minIncrement', 'buyItNowPrice'];
 
@@ -2840,10 +2842,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         </SectionBox>
 
         {/* Model Details */}
-        <SectionBox title="Model Details">
+        <SectionBox title="Model Details" onLayout={rememberValidationSection("model-details")}>
           <FieldInput label="VARIANT / TRIM" value={variant} onChange={setVariant} placeholder="e.g. S-Line, M Sport, Ghia" />
           <PillRow label="DRIVE TYPE" options={DRIVE_TYPES} value={driveType as any} onSelect={setDriveType} />
-          <PillRow label="SERVICE HISTORY" options={SERVICE_HISTORY_OPTS} value={serviceHistory as any} onSelect={setServiceHistory} />
+          <View onLayout={rememberNestedField('model-details', 'serviceHistory')}>
+            <PillRow label="SERVICE HISTORY" options={SERVICE_HISTORY_OPTS} value={serviceHistory as any} onSelect={setServiceHistory}
+              required error={fieldError('serviceHistory') ?? undefined} />
+          </View>
           <FieldInput
             label="KNOWN MECHANICAL PROBLEMS"
             value={mechanicalIssues}
@@ -2860,20 +2865,21 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             placeholder="e.g. warning light, parking sensor, battery, window or infotainment fault"
             hint="Add any known warning lights, battery/charging, sensor, lighting, infotainment or other electrical faults."
           />
-          <View>
-            <SL label="NUMBER OF KEYS" />
+          <View onLayout={rememberNestedField('model-details', 'numberOfKeys')}>
+            <SL label="NUMBER OF KEYS" required />
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              {['1', '2', '3+ Keys'].map(k => (
+              {['0', '1', '2', '3'].map(k => (
                 <TouchableOpacity
                   key={k}
-                  style={[s.pill, numberOfKeys === k && s.pillActive]}
+                  style={[s.pill, (numberOfKeys === k || (k === '3' && numberOfKeys === '3+ Keys')) && s.pillActive]}
                   onPress={() => setNumberOfKeys(k)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[s.pillText, numberOfKeys === k && s.pillTextActive]}>{k}</Text>
+                  <Text style={[s.pillText, (numberOfKeys === k || (k === '3' && numberOfKeys === '3+ Keys')) && s.pillTextActive]}>{k === '3' ? '3+' : k}</Text>
                 </TouchableOpacity>
               ))}
             </View>
+            {fieldError('numberOfKeys') ? <Text style={s.inlineError}>{fieldError('numberOfKeys')}</Text> : null}
           </View>
         </SectionBox>
 
