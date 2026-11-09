@@ -64,6 +64,8 @@ describe('AdminService listing approval readiness', () => {
         owners: '1',
         numberOfKeys: 2,
         serviceHistory: 'Partial',
+        mechanicalIssues: 'No known faults',
+        electricalIssues: 'No known faults',
         description: 'Well presented vehicle with full details.',
         condition: 'GOOD',
         stolenRecovered: false,

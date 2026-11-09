@@ -62,20 +62,25 @@ const draftCompiled = ts.transpileModule(draftSource, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 });
 const draftHelper = {};
-runInNewContext(draftCompiled.outputText, { exports: draftHelper });
+const faultHelpers = {};
+runInNewContext(ts.transpileModule(readFileSync(new URL('../src/lib/sellerFaultDeclaration.ts', import.meta.url), 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText, { exports: faultHelpers });
+runInNewContext(draftCompiled.outputText, { exports: draftHelper, require: () => faultHelpers });
 const completeDraft = {
   vrm: 'AB12CDE', make: 'Ford', model: 'Focus', year: '2019',
   mileage: '49000', title: 'Ford Focus 2019', location: 'Birmingham',
   fuelType: 'PETROL', transmission: 'MANUAL', bodyType: 'HATCHBACK',
   vehicleType: 'CAR', description: 'Vehicle description', condition: 'GOOD',
   owners: '2', writeOffCat: 'NONE', stolenRecovered: false,
+  serviceHistory: 'Partial', numberOfKeys: '0', mechanicalIssues: 'No known faults', electricalIssues: 'No known faults',
   outstandingFinance: false, isLegalKeeper: true, notOwnerRelationship: '',
   isDepartedSale: false, departedRelationship: '', declAcknowledged: true,
 };
 test('full persisted Step 1 only resumes later step when all mandatory answers survive restart', () => {
   const valid = d => draftHelper.nativeDraftStepOneComplete(d, normalizeNativeTransmission, normalizeNativeBodyType);
   assert.equal(valid(completeDraft), true);
-  for (const field of ['location', 'condition', 'owners', 'writeOffCat', 'description', 'transmission', 'bodyType', 'fuelType']) {
+  for (const field of ['location', 'condition', 'owners', 'writeOffCat', 'description', 'transmission', 'bodyType', 'fuelType', 'serviceHistory', 'numberOfKeys', 'mechanicalIssues', 'electricalIssues']) {
     assert.equal(valid({ ...completeDraft, [field]: '' }), false, `blank ${field} must re-open details`);
   }
   for (const field of ['stolenRecovered', 'outstandingFinance', 'isLegalKeeper']) {
@@ -99,7 +104,7 @@ test('native uses account-scoped hydration and never stores editing an existing 
   assert.match(screen, /nativeDraftStepOneComplete\(store,/);
   assert.match(screen, /if \(!editMode\) updateDraft\(/);
   assert.match(screen, /if \(editMode\) \{ navigation\?\.goBack\(\); return; \}/);
-  for (const name of ['location', 'description', 'condition', 'owners', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper']) {
+  for (const name of ['serviceHistory', 'numberOfKeys', 'mechanicalIssues', 'electricalIssues', 'location', 'description', 'condition', 'owners', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper']) {
     assert.match(store, new RegExp(name + ': state\\.' + name));
   }
 });

@@ -1,3 +1,5 @@
+import { faultDeclarationError } from './seller-fault-declaration';
+
 /**
  * Kept for source compatibility with older code/tests.
  * HPI was previously mandatory for listings created from this date, but the
@@ -64,6 +66,8 @@ export function getListingSubmissionMissingFields(listing: any): string[] {
         missing.push('number of keys');
     }
     if (!listing?.serviceHistory?.trim?.()) missing.push('service history');
+    if (faultDeclarationError(listing?.mechanicalIssues, 'mechanical')) missing.push('mechanical fault declaration');
+    if (faultDeclarationError(listing?.electricalIssues, 'electrical')) missing.push('electrical fault declaration');
 
     // These declarations are intentionally explicit booleans: false is a valid
     // answer and must never be treated as "missing".

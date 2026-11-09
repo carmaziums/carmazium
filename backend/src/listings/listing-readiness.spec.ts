@@ -21,6 +21,8 @@ const readyListing = (overrides: Record<string, unknown> = {}) => ({
     owners: '1',
     numberOfKeys: 2,
     serviceHistory: 'Partial',
+    mechanicalIssues: 'No known faults',
+    electricalIssues: 'No known faults',
     description: 'Well presented vehicle with full details.',
     condition: 'GOOD',
     vehicleType: 'CAR',
@@ -41,12 +43,26 @@ describe('listing readiness', () => {
         }))).toMatchObject({ ready: false, missingFields: ['number of keys', 'service history'] });
     });
 
+    it.each(['CLASSIFIED', 'AUCTION'])('accepts explicit no faults and described faults for %s', (type) => {
+        for (const answers of [
+            { mechanicalIssues: 'No known faults', electricalIssues: 'No known faults' },
+            { mechanicalIssues: 'Clutch judders when cold', electricalIssues: 'Rear window switch does not work' },
+            { mechanicalIssues: 'No known faults', electricalIssues: 'Battery warning light on' },
+        ]) expect(getListingSubmissionReadiness(readyListing({ type, ...answers })).ready).toBe(true);
+    });
+
     it('treats explicit false legal declarations as completed answers', () => {
         expect(getListingSubmissionMissingFields(readyListing())).toEqual([]);
     });
 
     it.each([
         [{ images: [] }, 'at least 10 photos'],
+        [{ mechanicalIssues: undefined }, 'mechanical fault declaration'],
+        [{ mechanicalIssues: '   ' }, 'mechanical fault declaration'],
+        [{ mechanicalIssues: 'Yes' }, 'mechanical fault declaration'],
+        [{ electricalIssues: null }, 'electrical fault declaration'],
+        [{ electricalIssues: '' }, 'electrical fault declaration'],
+        [{ electricalIssues: 'YES' }, 'electrical fault declaration'],
         [{ numberOfKeys: undefined }, 'number of keys'],
         [{ numberOfKeys: null }, 'number of keys'],
         [{ numberOfKeys: -1 }, 'number of keys'],

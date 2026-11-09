@@ -25,6 +25,8 @@ const completeDraft = {
     owners: '1',
     numberOfKeys: 2,
     serviceHistory: 'Partial',
+    mechanicalIssues: 'No known faults',
+    electricalIssues: 'No known faults',
     description: 'Complete vehicle description',
     condition: 'GOOD',
     stolenRecovered: false,

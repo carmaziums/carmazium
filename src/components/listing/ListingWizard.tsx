@@ -3,6 +3,8 @@
 import { VEHICLE_FEATURES, VEHICLE_FEATURE_GROUPS } from "@/lib/vehicleFeatures"
 
 import * as React from "react"
+import { SellerFaultDeclaration } from "@/components/listing/SellerFaultDeclaration"
+import { faultDeclarationError } from "@/lib/sellerFaultDeclaration"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { Textarea } from "@/components/ui/Textarea"
@@ -1118,6 +1120,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         year: "The vehicle's year helps buyers judge its age and market value.",
         condition: "A condition declaration helps buyers understand wear and any faults.",
         serviceHistory: "Choose the service history supported by the vehicle records. Select None if there is no service history.",
+        mechanicalIssues: "Declare known mechanical faults, or explicitly select No known faults.",
+        electricalIssues: "Declare known electrical faults, or explicitly select No known faults.",
         numberOfKeys: "Confirm how many keys will be handed over with the vehicle. Select 0 if there are no keys.",
         body: "Body type helps buyers filter for the vehicle shape they want.",
         location: "The area helps buyers decide whether collection or delivery is practical.",
@@ -1235,6 +1239,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 if (!formData.condition) missing.push('condition')
                 if (!formData.serviceHistory.trim()) missing.push('service history')
                 if (!formData.numberOfKeys.trim()) missing.push('number of keys')
+                if (faultDeclarationError(formData.mechanicalIssues, 'mechanical')) missing.push('mechanical fault declaration')
+                if (faultDeclarationError(formData.electricalIssues, 'electrical')) missing.push('electrical fault declaration')
                 missing.push(...missingSellerDeclarations)
                 if ((formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') && formData.listingType !== 'AUCTION') {
                     return 'Category A and Category B vehicles can only be listed in Auction. Switch this listing to Auction to continue.'
@@ -1342,6 +1348,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 ['year', 'Year', !formData.year.trim()],
                 ['condition', 'Condition', !formData.condition],
                 ['serviceHistory', 'Service History', !formData.serviceHistory.trim()],
+                ['mechanicalIssues', 'Known Mechanical Problems', !!faultDeclarationError(formData.mechanicalIssues, 'mechanical')],
+                ['electricalIssues', 'Known Electrical Problems', !!faultDeclarationError(formData.electricalIssues, 'electrical')],
                 ['numberOfKeys', 'Number of Keys', !formData.numberOfKeys.trim()],
                 ['body', 'Body Type', formData.vehicleType !== 'MOTORCYCLE' && !normalizeSellerBodyType(formData.bodyType, bodyTypeKeys)],
                 ['location', 'Location', !formData.location.trim()],
@@ -1390,6 +1398,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             condition: 'vehicle-condition-field',
             serviceHistory: 'listing-required-service-history',
             numberOfKeys: 'listing-required-keys',
+            mechanicalIssues: 'listing-required-mechanical-faults',
+            electricalIssues: 'listing-required-electrical-faults',
             body: 'body-type-field',
             location: 'listing-required-location',
             mileage: 'listing-required-mileage',
@@ -1425,9 +1435,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             if (!target) return
             const scrollTarget = field === 'confirmation' ? target.closest('label') ?? target : target
             scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            const focusTarget = scrollTarget.matches('input,select,textarea,button')
+            const detailsTarget = (field === 'mechanicalIssues' || field === 'electricalIssues')
+                ? scrollTarget.querySelector<HTMLElement>('textarea') : null
+            const focusTarget = detailsTarget ?? (scrollTarget.matches('input,select,textarea,button')
                 ? scrollTarget as HTMLElement
-                : scrollTarget.querySelector<HTMLElement>('input:not([type="hidden"]):not([disabled]),select:not([disabled]),textarea:not([disabled]),button:not([disabled])')
+                : scrollTarget.querySelector<HTMLElement>('input:not([type="hidden"]):not([disabled]),select:not([disabled]),textarea:not([disabled]),button:not([disabled])'))
             if (focusTarget) {
                 focusTarget.focus({ preventScroll: true })
             } else {
@@ -3304,31 +3316,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             <p id="listing-service-history-error" role="alert" className="text-xs text-red-400 font-medium">Please select the vehicle’s service history to continue.</p>
                                         )}
                                     </div>
-                                    {/* Known Mechanical & Electrical Problems */}
-                                    <div className="space-y-2 md:col-span-2">
-                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Known Mechanical Problems</label>
-                                        <Textarea
-                                            value={formData.mechanicalIssues}
-                                            onChange={(e) => set("mechanicalIssues", e.target.value)}
-                                            maxLength={2000}
-                                            rows={3}
-                                            placeholder="e.g. clutch judder when cold, suspension knock, oil leak, gearbox noise. Leave blank if you have nothing to report."
-                                            className={inputCls}
-                                        />
-                                        <p className="text-[10px] text-[var(--text-secondary)]">Tell buyers about any known engine, gearbox, clutch, brake, steering, suspension or other mechanical faults.</p>
-                                    </div>
-                                    <div className="space-y-2 md:col-span-2">
-                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Known Electrical Problems</label>
-                                        <Textarea
-                                            value={formData.electricalIssues}
-                                            onChange={(e) => set("electricalIssues", e.target.value)}
-                                            maxLength={2000}
-                                            rows={3}
-                                            placeholder="e.g. warning light, parking sensor fault, battery issue, window or infotainment problem. Leave blank if you have nothing to report."
-                                            className={inputCls}
-                                        />
-                                        <p className="text-[10px] text-[var(--text-secondary)]">Add known warning lights, battery/charging, sensor, lighting, infotainment or other electrical faults.</p>
-                                    </div>
+                                    <SellerFaultDeclaration kind="mechanical" value={formData.mechanicalIssues}
+                                        onChange={value => set("mechanicalIssues", value)} attempted={hasAttemptedNext} inputClassName={inputCls} />
+                                    <SellerFaultDeclaration kind="electrical" value={formData.electricalIssues}
+                                        onChange={value => set("electricalIssues", value)} attempted={hasAttemptedNext} inputClassName={inputCls} />
 
                                     {/* Number of Keys */}
                                     <div id="listing-required-keys" role="group" aria-labelledby="listing-keys-label"

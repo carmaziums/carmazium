@@ -1,3 +1,4 @@
+import { faultDeclarationError, isNoKnownFaults, NO_KNOWN_FAULTS } from '../../lib/sellerFaultDeclaration';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useScrollLocked } from '../../lib/scrollLock';
 import {
@@ -396,6 +397,32 @@ function PillRow<T extends string>({
         ))}
       </ScrollView>
       {error ? <Text style={s.inlineError}>{error}</Text> : null}
+    </View>
+  );
+}
+
+function FaultDeclarationField({ kind, value, onChange, error }: {
+  kind: 'mechanical' | 'electrical'; value: string; onChange: (value: string) => void; error?: string;
+}) {
+  const [detailsRequested, setDetailsRequested] = useState(false);
+  const noFaults = isNoKnownFaults(value);
+  const showDetails = !noFaults && (detailsRequested || !!value.trim());
+  return (
+    <View>
+      <PillRow label={`KNOWN ${kind.toUpperCase()} PROBLEMS`} required
+        options={[{ v: 'NO', l: 'No known faults' }, { v: 'YES', l: 'Yes — describe faults' }]}
+        value={noFaults ? 'NO' : showDetails ? 'YES' : ''}
+        onSelect={answer => {
+          setDetailsRequested(answer === 'YES');
+          if (answer === 'NO') onChange(NO_KNOWN_FAULTS);
+          else if (noFaults) onChange('');
+        }} error={!showDetails ? error : undefined} />
+      {showDetails && <FieldInput label={`DESCRIBE KNOWN ${kind.toUpperCase()} FAULTS`} required
+        value={value} onChange={text => { setDetailsRequested(true); onChange(text.slice(0, 2000)); }} multiline
+        placeholder={kind === 'mechanical'
+          ? 'e.g. clutch judder, suspension knock, oil leak or gearbox noise'
+          : 'e.g. warning light, parking sensor, battery, window or infotainment fault'}
+        error={error} />}
     </View>
   );
 }
@@ -992,6 +1019,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const sections: Record<string, string> = {
       vrm: 'registration', make: 'identity', model: 'identity', year: 'identity',
       bodyType: 'body', location: 'location', serviceHistory: 'model-details', numberOfKeys: 'model-details',
+      mechanicalIssues: 'model-details', electricalIssues: 'model-details',
       mileage: 'technical', fuelType: 'technical', transmission: 'technical',
       title: 'description', description: 'description',
       condition: 'ownership', owners: 'ownership', departedRelationship: 'ownership',
@@ -1049,6 +1077,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             setDescription(store.description);
             setCondition(store.condition);
             setOwners(store.owners);
+            setServiceHistory(store.serviceHistory ?? '');
+            setNumberOfKeys(store.numberOfKeys ?? '');
+            setMechanicalIssues(store.mechanicalIssues ?? '');
+            setElectricalIssues(store.electricalIssues ?? '');
             setWriteOffCat(store.writeOffCat);
             setStolenRecovered(store.stolenRecovered);
             setOutstandingFinance(store.outstandingFinance);
@@ -1079,6 +1111,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 mileage: true, title: true, location: true, fuelType: true,
                 transmission: true, bodyType: draftVehicleType !== 'MOTORCYCLE',
                 condition: true, owners: true, description: true,
+                serviceHistory: true, numberOfKeys: true, mechanicalIssues: true, electricalIssues: true,
                 writeOffCat: true, stolenRecovered: true, outstandingFinance: true,
                 isLegalKeeper: true, notOwnerRelationship: true,
                 departedRelationship: true, declAcknowledged: true,
@@ -1288,6 +1321,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     if (key === 'condition' && !condition) return 'Required';
     if (key === 'serviceHistory' && !serviceHistory.trim()) return 'Select the vehicle’s service history to continue';
     if (key === 'numberOfKeys' && !numberOfKeys.trim()) return 'Select the number of keys to continue';
+    if (key === 'mechanicalIssues') return faultDeclarationError(mechanicalIssues, 'mechanical');
+    if (key === 'electricalIssues') return faultDeclarationError(electricalIssues, 'electrical');
     if (key === 'owners' && !owners) return 'Required';
     if (key === 'departedRelationship' && isDepartedSale && !departedRelationship.trim()) return 'Required';
     if (key === 'writeOffCat' && !writeOffCat) return 'Required';
@@ -1319,7 +1354,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   // All field keys validated per step — used to force every field's error to show
   // (mark touched) when Next is tapped, and to know which keys to check.
-  const STEP1_FIELD_KEYS = ['vrm', 'make', 'model', 'year', 'serviceHistory', 'numberOfKeys', 'mileage', 'title', 'location', 'fuelType', 'description', 'transmission', 'bodyType', 'condition', 'owners', 'departedRelationship', 'writeOffCat', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper', 'notOwnerRelationship', 'declAcknowledged'];
+  const STEP1_FIELD_KEYS = ['vrm', 'make', 'model', 'year', 'serviceHistory', 'mechanicalIssues', 'electricalIssues', 'numberOfKeys', 'mileage', 'title', 'location', 'fuelType', 'description', 'transmission', 'bodyType', 'condition', 'owners', 'departedRelationship', 'writeOffCat', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper', 'notOwnerRelationship', 'declAcknowledged'];
   const STEP3_FIELD_KEYS = ['priceAsking'];
   const STEP4_AUCTION_FIELD_KEYS = ['auctionStartDate', 'reservePrice', 'startingBid', 'minIncrement', 'buyItNowPrice'];
 
@@ -2466,6 +2501,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       vrm, vehicleType, make, model, year, mileage, title, fuelType, transmission, bodyType, colour,
       price: priceAsking, priceMin, listingType,
       location, description, condition, owners, writeOffCat,
+      serviceHistory, numberOfKeys, mechanicalIssues, electricalIssues,
       stolenRecovered, outstandingFinance, isLegalKeeper,
       notOwnerRelationship, notOwnerRelSelect, notOwnerRelOther,
       isDepartedSale, departedRelationship, departedRelSelect, departedRelOther, declAcknowledged,
@@ -2512,6 +2548,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       vrm, vehicleType, make, model, year, mileage, title, fuelType, transmission, bodyType, colour,
       price: priceAsking, priceMin, listingType,
       location, description, condition, owners, writeOffCat,
+      serviceHistory, numberOfKeys, mechanicalIssues, electricalIssues,
       stolenRecovered, outstandingFinance, isLegalKeeper,
       notOwnerRelationship, notOwnerRelSelect, notOwnerRelOther,
       isDepartedSale, departedRelationship, departedRelSelect, departedRelOther, declAcknowledged,
@@ -2849,22 +2886,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             <PillRow label="SERVICE HISTORY" options={SERVICE_HISTORY_OPTS} value={serviceHistory as any} onSelect={setServiceHistory}
               required error={fieldError('serviceHistory') ?? undefined} />
           </View>
-          <FieldInput
-            label="KNOWN MECHANICAL PROBLEMS"
-            value={mechanicalIssues}
-            onChange={v => setMechanicalIssues(v.slice(0, 2000))}
-            multiline
-            placeholder="e.g. clutch judder, suspension knock, oil leak, gearbox noise"
-            hint="Add any known engine, gearbox, clutch, brake, steering, suspension or other mechanical faults."
-          />
-          <FieldInput
-            label="KNOWN ELECTRICAL PROBLEMS"
-            value={electricalIssues}
-            onChange={v => setElectricalIssues(v.slice(0, 2000))}
-            multiline
-            placeholder="e.g. warning light, parking sensor, battery, window or infotainment fault"
-            hint="Add any known warning lights, battery/charging, sensor, lighting, infotainment or other electrical faults."
-          />
+          <View onLayout={rememberNestedField('model-details', 'mechanicalIssues')}>
+            <FaultDeclarationField kind="mechanical" value={mechanicalIssues} onChange={setMechanicalIssues}
+              error={fieldError('mechanicalIssues') ?? undefined} />
+          </View>
+          <View onLayout={rememberNestedField('model-details', 'electricalIssues')}>
+            <FaultDeclarationField kind="electrical" value={electricalIssues} onChange={setElectricalIssues}
+              error={fieldError('electricalIssues') ?? undefined} />
+          </View>
           <View onLayout={rememberNestedField('model-details', 'numberOfKeys')}>
             <SL label="NUMBER OF KEYS" required />
             <View style={{ flexDirection: 'row', gap: 8 }}>

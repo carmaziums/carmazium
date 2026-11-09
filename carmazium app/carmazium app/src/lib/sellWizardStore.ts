@@ -10,6 +10,7 @@ export interface SellWizardDraft {
   price: string; priceMin: string; listingType: 'CLASSIFIED' | 'AUCTION' | '';
   // Retain every mandatory Step 1 answer across app restarts.
   location: string; description: string; condition: string; owners: string;
+  serviceHistory: string; numberOfKeys: string; mechanicalIssues: string; electricalIssues: string;
   writeOffCat: string; stolenRecovered: boolean | null;
   outstandingFinance: boolean | null; isLegalKeeper: boolean | null;
   notOwnerRelationship: string; notOwnerRelSelect: string; notOwnerRelOther: string;
@@ -32,6 +33,7 @@ export const EMPTY_SELL_DRAFT = {
   fuelType: '', transmission: '', bodyType: '', colour: '',
   price: '', priceMin: '', listingType: '' as '' | 'CLASSIFIED' | 'AUCTION',
   location: '', description: '', condition: '', owners: '',
+  serviceHistory: '', numberOfKeys: '', mechanicalIssues: '', electricalIssues: '',
   writeOffCat: '', stolenRecovered: null as boolean | null,
   outstandingFinance: null as boolean | null, isLegalKeeper: null as boolean | null,
   notOwnerRelationship: '', notOwnerRelSelect: '', notOwnerRelOther: '',
@@ -68,6 +70,8 @@ export const useSellWizardStore = create<SellWizardDraft>()(
         listingType: state.listingType,
         location: state.location, description: state.description,
         condition: state.condition, owners: state.owners,
+        serviceHistory: state.serviceHistory, numberOfKeys: state.numberOfKeys,
+        mechanicalIssues: state.mechanicalIssues, electricalIssues: state.electricalIssues,
         writeOffCat: state.writeOffCat, stolenRecovered: state.stolenRecovered,
         outstandingFinance: state.outstandingFinance, isLegalKeeper: state.isLegalKeeper,
         notOwnerRelationship: state.notOwnerRelationship,

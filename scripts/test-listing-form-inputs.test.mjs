@@ -9,6 +9,7 @@ function load(name) {
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, context)
   return context.exports
 }
+const { faultDeclarationError, isNoKnownFaults } = load('sellerFaultDeclaration')
 const { registrationLookupReset } = load('listingRegistrationChange')
 const { listingDetailsInputIssue, isValidListingPrice } = load('listingInputValidation')
 const valid = { vrm: 'JU55 MAG', year: '2016', mileage: '65350', title: 'BMW X5 2016' }
@@ -64,12 +65,13 @@ const completeForm = {
   ...valid, make: 'BMW', model: 'X5', fuelType: 'PETROL', transmission: 'AUTOMATIC',
   bodyType: 'SUV', vehicleType: 'CAR', location: 'Birmingham', owners: '1', description: 'Seller description',
   condition: 'GOOD', serviceHistory: 'Partial', numberOfKeys: '2', writeOffCategory: 'NONE',
+  mechanicalIssues: 'No known faults', electricalIssues: 'No known faults',
   stolenRecovered: false, hasOutstandingFinance: false, isLegalRegisteredKeeper: true,
   isDepartedSale: false, declarationAcknowledged: true,
 }
 function wizardContext(formData) {
   return {
-    formData, currentStep: 1, listingDetailsInputIssue, missingSellerDeclarations: [], bodyTypeKeys: ['SUV'],
+    formData, currentStep: 1, listingDetailsInputIssue, faultDeclarationError, missingSellerDeclarations: [], bodyTypeKeys: ['SUV'],
     normalizeSellerTransmission: value => value, normalizeSellerBodyType: value => value,
   }
 }
@@ -124,4 +126,60 @@ test('native seller flow also requires explicit answers and accepts zero keys', 
   const validate = wizardFunction(file, 'fieldErrorRaw', { serviceHistory: 'None', numberOfKeys: '0' })
   assert.equal(validate('serviceHistory'), null)
   assert.equal(validate('numberOfKeys'), null)
+})
+
+test('web, native and server use identical fault declaration semantics', () => {
+  const canonical = readFileSync(new URL('../src/lib/sellerFaultDeclaration.ts', import.meta.url), 'utf8')
+  for (const path of ['../backend/src/listings/seller-fault-declaration.ts', '../carmazium app/carmazium app/src/lib/sellerFaultDeclaration.ts']) {
+    assert.equal(readFileSync(new URL(path, import.meta.url), 'utf8'), canonical)
+  }
+  for (const kind of ['mechanical', 'electrical']) {
+    for (const value of [undefined, null, '', '   ', 'yes', 'Yes!', 'Y']) assert.ok(faultDeclarationError(value, kind))
+    for (const value of ['No known faults', 'None', 'No', 'Clutch slips when cold', 'Window switch does not work']) assert.equal(faultDeclarationError(value, kind), null)
+    assert.equal(isNoKnownFaults('No known faults'), true)
+    assert.equal(isNoKnownFaults('No mechanical faults'), true)
+    assert.equal(isNoKnownFaults('No warning light, but window does not work'), false)
+    assert.equal(isNoKnownFaults(''), false)
+  }
+})
+test('both listing routes require each fault answer before Next and restored Review submission', () => {
+  for (const listingType of ['AUCTION', 'CLASSIFIED']) {
+    for (const [field, kind] of [['mechanicalIssues', 'mechanical'], ['electricalIssues', 'electrical']]) {
+      for (const value of ['', '  ', 'Yes']) {
+        const context = wizardContext({ ...completeForm, listingType, [field]: value })
+        context.currentStep = 5
+        assert.match(wizardFunction(wizardFile, 'getStepValidationError', context)(1), new RegExp(kind + ' fault declaration'))
+        assert.equal(wizardFunction(wizardFile, 'firstInvalidField', context)(1).field, field)
+      }
+    }
+    for (const answers of [
+      { mechanicalIssues: 'No known faults', electricalIssues: 'No known faults' },
+      { mechanicalIssues: 'Clutch slipping', electricalIssues: 'Battery warning light on' },
+    ]) assert.equal(wizardFunction(wizardFile, 'getStepValidationError', wizardContext({ ...completeForm, listingType, ...answers }))(1), null)
+  }
+})
+test('fault navigation focuses the declaration choice, or its details box after Yes', () => {
+  for (const [field, id] of [['mechanicalIssues', 'listing-required-mechanical-faults'], ['electricalIssues', 'listing-required-electrical-faults']]) {
+    for (const detailsOpen of [false, true]) {
+      const events = []
+      const choice = { focus: () => events.push('choice') }
+      const details = { focus: () => events.push('details') }
+      const group = { scrollIntoView: () => events.push('scroll'), matches: () => false,
+        querySelector: selector => selector === 'textarea' ? (detailsOpen ? details : null) : choice }
+      wizardFunction(wizardFile, 'focusMissingField', {
+        window: { requestAnimationFrame: fn => fn() },
+        document: { getElementById: target => target === id ? group : null },
+      })(field)
+      assert.deepEqual(events, ['scroll', detailsOpen ? 'details' : 'choice'])
+    }
+  }
+})
+test('native validates blank or bare Yes answers, and accepts explicit no or described faults', () => {
+  const file = '../carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx'
+  for (const field of ['mechanicalIssues', 'electricalIssues']) {
+    for (const value of ['', ' ', 'Yes', 'No known faults', 'Window switch faulty']) {
+      const validate = wizardFunction(file, 'fieldErrorRaw', { [field]: value, faultDeclarationError })
+      assert.equal(validate(field) === null, ['No known faults', 'Window switch faulty'].includes(value))
+    }
+  }
 })

@@ -1,3 +1,5 @@
+import { faultDeclarationError } from './sellerFaultDeclaration'
+
 /** Never resume a later step when the persisted subset omitted required answers. */
 export interface ResumableNativeSellerDetails {
   vrm: string; make: string; model: string; year: string; mileage: string
@@ -8,6 +10,7 @@ export interface ResumableNativeSellerDetails {
   isLegalKeeper: boolean | null; notOwnerRelationship: string
   isDepartedSale: boolean; departedRelationship: string
   declAcknowledged: boolean; description: string
+  serviceHistory?: string; numberOfKeys?: string; mechanicalIssues?: string; electricalIssues?: string
 }
 export function nativeDraftStepOneComplete(
   draft: ResumableNativeSellerDetails,
@@ -20,6 +23,9 @@ export function nativeDraftStepOneComplete(
     && !!draft.fuelType.trim() && !!validTransmission(draft.transmission)
     && (draft.vehicleType === 'MOTORCYCLE' || !!validBody(draft.bodyType, draft.vehicleType))
     && !!draft.condition && !!draft.owners && !!draft.writeOffCat
+    && !!draft.serviceHistory?.trim() && !!draft.numberOfKeys?.trim()
+    && !faultDeclarationError(draft.mechanicalIssues, 'mechanical')
+    && !faultDeclarationError(draft.electricalIssues, 'electrical')
     && draft.stolenRecovered !== null && draft.outstandingFinance !== null
     && draft.isLegalKeeper !== null
     && (draft.isLegalKeeper !== false || !!draft.notOwnerRelationship.trim())
