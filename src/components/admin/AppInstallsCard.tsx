@@ -12,7 +12,7 @@ type AppStats = {
   apkDownloads: number | null
 }
 
-/** Admin overview: all-time app installs per platform (never reset). */
+/** Admin overview: all-time download requests and reported first opens. */
 export function AppInstallsCard() {
   const [data, setData] = React.useState<AppStats | null>(null)
   const [failed, setFailed] = React.useState(false)
@@ -33,17 +33,18 @@ export function AppInstallsCard() {
   const items = [
     { label: "Android native first opens", value: v(data?.installs?.androidApp), icon: <FaAndroid className="h-4 w-4 text-lime-500" /> },
     { label: "APK downloads", value: v(data?.apkDownloads), icon: <Download className="h-4 w-4 text-primary" /> },
-    { label: "Android web-app opens", value: v(data?.installs?.androidWebApp), icon: <FaAndroid className="h-4 w-4 text-lime-500" /> },
-    { label: "iPhone web-app opens", value: v(data?.installs?.iosWebApp), icon: <FaApple className="h-4 w-4" /> },
+    { label: "Android web-app first opens", value: v(data?.installs?.androidWebApp), icon: <FaAndroid className="h-4 w-4 text-lime-500" /> },
+    { label: "iPhone web-app first opens", value: v(data?.installs?.iosWebApp), icon: <FaApple className="h-4 w-4" /> },
   ]
 
   return (
     <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-[var(--text-muted)]">
-          <Download className="h-4 w-4 text-primary" /> App installs
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="flex min-w-0 items-start gap-2 text-sm font-black uppercase tracking-widest text-[var(--text-muted)]">
+          <Download className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <span>App downloads &amp; first opens</span>
         </h2>
-        <span className="text-xs text-[var(--text-muted)]">{failed ? "Couldn’t refresh" : "All time"}</span>
+        <span className="shrink-0 text-xs text-[var(--text-muted)]">{failed ? "Couldn’t refresh" : "All time"}</span>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {items.map(i => (
