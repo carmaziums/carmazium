@@ -32,6 +32,8 @@ import { uploadImage } from "@/lib/supabase"
 import { getSessionStatus, applyHpiFee } from "@/lib/paymentApi"
 import { dvlaLookup, dvlaEnrich } from "@/lib/dvlaApi"
 import { motLookupMessage } from "@/lib/vehicleLookupFeedback"
+import { registrationLookupReset } from "@/lib/listingRegistrationChange"
+import { listingDetailsInputIssue, isValidListingPrice } from "@/lib/listingInputValidation"
 import type { OfficialVehicleData } from "@/lib/dvlaApi"
 import { normalizeMotHistorySnapshot } from "@/lib/listingMotHistory"
 import { getExistingListingGuidance } from "@/lib/existingListingGuidance"
@@ -232,10 +234,12 @@ function SelectField({
     id?: string; label: string; value: string; onChange: (v: string) => void
     options: { value: string; label: string }[]; required?: boolean; error?: boolean; errorMessage?: string
 }) {
+    const inputId = React.useId()
     return (
         <div id={id} className="space-y-2 scroll-mt-28">
-            <label className="text-sm font-bold uppercase text-[var(--text-muted)]">{label}{required && " *"}</label>
+            <label htmlFor={inputId} className="text-sm font-bold uppercase text-[var(--text-muted)]">{label}{required && " *"}</label>
             <select
+                id={inputId}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 aria-invalid={error || undefined}
@@ -1208,17 +1212,19 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const getStepValidationError = (step = currentStep): string | null => {
         switch (step) {
             case 1: {
+                const inputIssue = listingDetailsInputIssue(formData)
+                if (inputIssue) return inputIssue.message
                 const missing: string[] = []
-                if (!formData.vrm) missing.push('registration')
-                if (!formData.make) missing.push('make')
-                if (!formData.model) missing.push('model')
+                if (!formData.vrm.trim()) missing.push('registration')
+                if (!formData.make.trim()) missing.push('make')
+                if (!formData.model.trim()) missing.push('model')
                 if (!formData.year) missing.push('year')
                 if (!formData.mileage) missing.push('mileage')
                 if (!formData.fuelType) missing.push('fuel type')
                 if (!normalizeSellerTransmission(formData.transmission)) missing.push('transmission')
                 if (formData.vehicleType !== 'MOTORCYCLE' && !normalizeSellerBodyType(formData.bodyType, bodyTypeKeys)) missing.push('body type')
                 if (!formData.title || formData.title.length < 5) missing.push('listing title')
-                if (!formData.location) missing.push('location')
+                if (!formData.location.trim()) missing.push('location')
                 if (!formData.owners) missing.push('previous keepers')
                 if (!formData.description.trim()) missing.push('description')
                 if (!formData.condition) missing.push('condition')
@@ -1245,12 +1251,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             case 3: {
                 const pMin = parseFloat(formData.priceMin)
                 const pAsk = parseFloat(formData.priceAsking)
-                if (!formData.priceAsking || isNaN(pAsk) || pAsk <= 0) {
+                if (!isValidListingPrice(formData.priceAsking)) {
                     return isAuction
                         ? 'Please enter a valid estimated market value before continuing.'
                         : 'Please enter a valid asking price before continuing.'
                 }
-                if (formData.priceMin && (!Number.isFinite(pMin) || pMin <= 0)) {
+                if (formData.priceMin && (!Number.isFinite(pMin) || !isValidListingPrice(formData.priceMin))) {
                     return 'Please enter a valid minimum price.'
                 }
                 if (formData.priceMin && pMin > pAsk) {
@@ -1320,6 +1326,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     /** Return the exact first unanswered input, not a generic page position. */
     const firstInvalidField = (): { field: string; label: string } | null => {
         if (currentStep === 1) {
+            const inputIssue = listingDetailsInputIssue(formData)
+            if (inputIssue) return inputIssue
             const required: Array<[string, string, boolean]> = [
                 ['registration', 'Registration', !formData.vrm.trim()],
                 ['make', 'Make', !formData.make.trim()],
@@ -1348,8 +1356,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         if (currentStep === 2) return { field: 'photos', label: 'Photos' }
         if (currentStep === 3) {
             const price = Number(formData.priceAsking)
-            if (!Number.isFinite(price) || price <= 0) return { field: 'asking', label: isAuction ? 'Auction Value' : 'Asking Price' }
-            if (formData.priceMin && (!Number.isFinite(Number(formData.priceMin)) || Number(formData.priceMin) <= 0 || Number(formData.priceMin) > price)) {
+            if (!isValidListingPrice(formData.priceAsking)) return { field: 'asking', label: isAuction ? 'Auction Value' : 'Asking Price' }
+            if (formData.priceMin && (!isValidListingPrice(formData.priceMin) || Number(formData.priceMin) > price)) {
                 return { field: 'minimum', label: 'Lower (Minimum) Price' }
             }
         }
@@ -2801,18 +2809,19 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             {/* VRM + Lookup */}
                             <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Registration (VRM) *</label>
+                                <label htmlFor="listing-required-registration" className="text-sm font-bold uppercase text-[var(--text-muted)]">Registration (VRM) *</label>
                                 <div className="flex flex-col sm:flex-row gap-3">
                                     <Input id="listing-required-registration" placeholder="e.g. AB12 CDE" value={formData.vrm}
                                         onChange={(e) => {
                                             const nextVrm = e.target.value.toUpperCase()
                                             lookupRequestRef.current += 1
+                                            // The obsolete request's finally block cannot release loading.
+                                            setDvlaLoading(false)
                                             setFormData(prev => ({
                                                 ...prev, vrm: nextVrm,
-                                                ...(normalizeVehicleRegistration(prev.vrm) !== normalizeVehicleRegistration(nextVrm)
-                                                    ? { transmission: "", bodyType: "", motHistory: [], officialVehicleData: undefined }
-                                                    : {}),
+                                                ...registrationLookupReset(prev.vrm, nextVrm),
                                             }))
+                                            setManualMakeEntry(false); setManualModelEntry(false); setManualVariantEntry(false)
                                             setDvlaSuccess(false); setMotFeedback(null)
                                             setDvlaError(null)
                                         }}
@@ -2968,7 +2977,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         Analyze DVLA
                                     </Button>
                                 </div>
-                                <p className="text-xs text-[var(--text-secondary)]">UK number plate — click Look Up to auto-fill vehicle details.</p>
+                                <p className="text-xs text-[var(--text-secondary)]">UK number plate — click Analyze DVLA to auto-fill vehicle details.</p>
                                 {dvlaSuccess && <p className="text-xs text-emerald-400 flex items-center gap-1"><BadgeCheck size={12} /> DVLA vehicle details loaded. Review and edit below.</p>}
                                 {(dvlaSuccess || motFeedback) && <p role="status" className="text-sm text-[var(--text-secondary)]">{motFeedback ?? motLookupMessage({ motHistory: formData.motHistory })}</p>}
                                 {dvlaError && <p className="text-xs text-red-400">{dvlaError}</p>}
@@ -3086,7 +3095,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         const selectValue = matchedMake ?? (isCustomMake ? "__other__" : "")
                                         return (
                                             <>
-                                                <select
+                                                <select aria-label="Make"
                                                     value={selectValue}
                                                     onChange={(e) => {
                                                         if (e.target.value === "__other__") {
@@ -3139,7 +3148,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         const modelMissing = hasAttemptedNext && !formData.model
                                         return (
                                             <>
-                                                <select
+                                                <select aria-label="Model"
                                                     value={selectValue}
                                                     onChange={(e) => {
                                                         if (e.target.value === "__other__") {
@@ -3170,7 +3179,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Year *</label>
-                                    <Input id="listing-required-year" type="number" placeholder="2023" value={formData.year} onChange={(e) => set("year", e.target.value)} className={inputCls} />
+                                    <Input aria-label="Year" id="listing-required-year" type="number" placeholder="2023" value={formData.year} onChange={(e) => set("year", e.target.value)} className={inputCls} />
                                 </div>
                             </div>
 
@@ -3196,7 +3205,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             const selectValue = matchedVariant ?? (isCustom ? "__other__" : "")
                                             return (
                                                 <>
-                                                    <select
+                                                    <select aria-label="Variant / Trim"
                                                         value={selectValue}
                                                         onChange={(e) => {
                                                             if (e.target.value === "__other__") { setManualVariantEntry(true); set("variant", "") }
@@ -3394,7 +3403,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1.5"><MapPin size={13} /> Location *</label>
                                 <div className="flex gap-3">
-                                    <Input id="listing-required-location" placeholder="e.g. London, Manchester" value={formData.location} onChange={(e) => set("location", e.target.value)} className={`${inputCls} flex-1 ${hasAttemptedNext && !formData.location ? 'border-red-500' : ''}`} />
+                                    <Input aria-label="Location" id="listing-required-location" placeholder="e.g. London, Manchester" value={formData.location} onChange={(e) => set("location", e.target.value)} className={`${inputCls} flex-1 ${hasAttemptedNext && !formData.location ? 'border-red-500' : ''}`} />
                                     <Button type="button" variant="outline" disabled={geoLoading}
                                         onClick={async () => {
                                             if (!navigator.geolocation) { alert("Geolocation is not supported by your browser."); return }
@@ -3561,7 +3570,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {/* Mileage */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Mileage *</label>
-                                    <Input id="listing-required-mileage" type="number" placeholder="e.g. 45000" value={formData.mileage} onChange={(e) => set("mileage", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.mileage ? 'border-red-500' : ''}`} />
+                                    <Input aria-label="Mileage" id="listing-required-mileage" type="number" placeholder="e.g. 45000" value={formData.mileage} onChange={(e) => set("mileage", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.mileage ? 'border-red-500' : ''}`} />
                                 </div>
 
                                 {/* Give sellers value guidance immediately after the
@@ -3770,12 +3779,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {/* Title & Description */}
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Listing Title *</label>
-                                <Input id="listing-required-title" placeholder="e.g. BMW M4 Competition 2023" value={formData.title} onChange={(e) => set("title", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.title ? 'border-red-500' : ''}`} />
+                                <Input aria-label="Listing Title" id="listing-required-title" placeholder="e.g. BMW M4 Competition 2023" value={formData.title} onChange={(e) => set("title", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.title ? 'border-red-500' : ''}`} />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Description *</label>
                                 <Textarea
-                                    id="listing-required-description"
+                                    aria-label="Description" id="listing-required-description"
                                     placeholder="Describe service history, any extras, reason for selling..."
                                     value={formData.description}
                                     onChange={(e) => set("description", e.target.value)}
@@ -4326,13 +4335,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <h3 className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-2">
                                         <Shield size={16} className="text-primary" /> {isAuction ? "Auction Listing" : "Seller Badges"}
                                     </h3>
-                                    <button
+                                    {!editId && <button
                                         type="button"
                                         onClick={() => setSellingMethod(null)}
                                         className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}
                                     >
                                         Change listing method
-                                    </button>
+                                    </button>}
                                 </div>
                                 <p className="text-xs text-[var(--text-muted)] mb-4">
                                     {isAuction
@@ -4944,7 +4953,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             ? <Button onClick={handleNext} className="px-7 shadow-neon">Next Step <ArrowRight className="ml-2 h-4 w-4" /></Button>
                             : <Button onClick={handleSubmit} disabled={isSubmitting}
                                 className="px-7 bg-emerald-600 hover:bg-emerald-700 border-none shadow-[0_0_20px_rgba(16,185,129,0.4)] disabled:opacity-50">
-                                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Publishing...</> : <>Publish <CheckCircle className="ml-2 h-4 w-4" /></>}
+                                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{editId ? 'Saving...' : 'Publishing...'}</> : <>{editId ? 'Save Changes' : 'Publish'} <CheckCircle className="ml-2 h-4 w-4" /></>}
                             </Button>
                         }
                         </div>

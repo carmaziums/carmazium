@@ -108,6 +108,9 @@ on:
       - "scripts/test-meta-seller-conversions.test.mjs"
       - "src/lib/dvlaApi.ts"
       - "src/lib/vehicleLookupFeedback.ts"
+      - "src/lib/listingRegistrationChange.ts"
+      - "src/lib/listingInputValidation.ts"
+      - "scripts/test-listing-form-inputs.test.mjs"
       - "src/components/dealer/BulkImportModal.tsx"
       - "scripts/test-mot-lookup-feedback.test.mjs"
       - "src/lib/apiClient.ts"
@@ -164,7 +167,7 @@ jobs:
         run: node --test scripts/test-listing-filter-serialization.test.mjs scripts/test-search-postcode.test.mjs scripts/test-search-app-parity.test.mjs scripts/test-native-search-postcode.test.mjs
 
       - name: Retail and auction DVLA timeout regression tests
-        run: node --test scripts/test-dvla-retail-lookup.test.mjs scripts/test-mot-lookup-feedback.test.mjs
+        run: node --test scripts/test-dvla-retail-lookup.test.mjs scripts/test-mot-lookup-feedback.test.mjs scripts/test-listing-form-inputs.test.mjs
 
       - name: Verify same-origin browser account profile fallback and authorization safeguards
         run: node --test scripts/test-browser-account-profile-fallback.test.mjs
@@ -273,7 +276,7 @@ jobs:
             exit 0
           fi
 
-          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E '^src/(components/(listing/|dealer/BulkImportModal\.tsx|features/ImportListingModal\.tsx|dashboard/ListingEditModal\.tsx)|app/(pricing/|dashboard/(seller/auctions/|dealer/inventory/))|lib/(listingApi|pricingConfig|auctionApi|auctionPricing|sellerVehicleSpecs|pendingSellerHandoff|sellerDraftIsolation|sellerDeclarationValidation|sellerAuctionDraft|googleAds|gtm|dvlaApi|vehicleLookupFeedback|apiClient|fetchWithRetry)\.ts)|^src/app/checkout/success/page\.tsx' || true)"
+          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E '^src/(components/(listing/|dealer/BulkImportModal\.tsx|features/ImportListingModal\.tsx|dashboard/ListingEditModal\.tsx)|app/(pricing/|dashboard/(seller/auctions/|dealer/inventory/))|lib/(listingApi|pricingConfig|auctionApi|auctionPricing|sellerVehicleSpecs|pendingSellerHandoff|sellerDraftIsolation|sellerDeclarationValidation|sellerAuctionDraft|googleAds|gtm|dvlaApi|vehicleLookupFeedback|listingRegistrationChange|listingInputValidation|apiClient|fetchWithRetry)\.ts)|^src/app/checkout/success/page\.tsx' || true)"
 
           if [ -n "$LISTING_ERRORS" ]; then
             echo
