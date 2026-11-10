@@ -60,6 +60,8 @@ describe('listing readiness', () => {
         [{ mechanicalIssues: undefined }, 'mechanical fault declaration'],
         [{ mechanicalIssues: '   ' }, 'mechanical fault declaration'],
         [{ mechanicalIssues: 'Yes' }, 'mechanical fault declaration'],
+        [{ mechanicalIssues: 'Not declared by seller' }, 'mechanical fault declaration'],
+        [{ electricalIssues: 'Not declared by seller' }, 'electrical fault declaration'],
         [{ electricalIssues: null }, 'electrical fault declaration'],
         [{ electricalIssues: '' }, 'electrical fault declaration'],
         [{ electricalIssues: 'YES' }, 'electrical fault declaration'],

@@ -134,7 +134,7 @@ test('web, native and server use identical fault declaration semantics', () => {
     assert.equal(readFileSync(new URL(path, import.meta.url), 'utf8'), canonical)
   }
   for (const kind of ['mechanical', 'electrical']) {
-    for (const value of [undefined, null, '', '   ', 'yes', 'Yes!', 'Y']) assert.ok(faultDeclarationError(value, kind))
+    for (const value of [undefined, null, '', '   ', 'yes', 'Yes!', 'Y', 'Not declared by seller', ' NOT DECLARED BY SELLER ']) assert.ok(faultDeclarationError(value, kind))
     for (const value of ['No known faults', 'None', 'No', 'Clutch slips when cold', 'Window switch does not work']) assert.equal(faultDeclarationError(value, kind), null)
     assert.equal(isNoKnownFaults('No known faults'), true)
     assert.equal(isNoKnownFaults('No mechanical faults'), true)
@@ -145,7 +145,7 @@ test('web, native and server use identical fault declaration semantics', () => {
 test('both listing routes require each fault answer before Next and restored Review submission', () => {
   for (const listingType of ['AUCTION', 'CLASSIFIED']) {
     for (const [field, kind] of [['mechanicalIssues', 'mechanical'], ['electricalIssues', 'electrical']]) {
-      for (const value of ['', '  ', 'Yes']) {
+      for (const value of ['', '  ', 'Yes', 'Not declared by seller']) {
         const context = wizardContext({ ...completeForm, listingType, [field]: value })
         context.currentStep = 5
         assert.match(wizardFunction(wizardFile, 'getStepValidationError', context)(1), new RegExp(kind + ' fault declaration'))
