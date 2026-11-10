@@ -116,6 +116,7 @@ describe('ChatService — conversation context and authorization', () => {
                 updateMany: jest.fn(),
             },
         };
+        prisma.$queryRaw = jest.fn().mockResolvedValue([]);
         prisma.$transaction = jest.fn(async (callback: any) => callback(prisma));
         notificationsService = { create: jest.fn().mockResolvedValue({ id: 'notification' }) };
         notificationsGateway = { sendNotification: jest.fn() };

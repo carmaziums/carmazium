@@ -1,3 +1,4 @@
+import { SupportMessageEvents } from './support-message-events';
 import { Module } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { ChatController } from './chat.controller';
@@ -19,7 +20,7 @@ import { ChatContentSafetyService } from './chat-content-safety.service';
 @Module({
     imports: [PrismaModule, NotificationsModule, AuthModule, ServicesModule, DealersModule],
     controllers: [ChatController],
-    providers: [ChatService, ChatGateway, ChatRateLimitService, ChatAttachmentService, ChatContentSafetyService],
-    exports: [ChatService, ChatGateway, ChatRateLimitService, ChatAttachmentService, ChatContentSafetyService],
+    providers: [SupportMessageEvents, ChatService, ChatGateway, ChatRateLimitService, ChatAttachmentService, ChatContentSafetyService],
+    exports: [SupportMessageEvents, ChatService, ChatGateway, ChatRateLimitService, ChatAttachmentService, ChatContentSafetyService],
 })
 export class ChatModule { }

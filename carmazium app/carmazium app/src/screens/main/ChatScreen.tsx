@@ -268,8 +268,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
           ]}
         >
           {msg.aiGenerated && (
-            <Text style={styles.aiLabel} accessibilityLabel="AI-generated support message">
-              MaziuM · AI-generated response
+            <Text style={styles.aiLabel} accessibilityLabel="Automated support message">
+              MaziuM · Automated response
             </Text>
           )}
           <Text style={styles.bubbleText}>{msg.content}</Text>

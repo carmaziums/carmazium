@@ -27,6 +27,11 @@ kill_timeout = 60
   # file as the whole truth and everything else as garbage to collect.
 
 [env]
+  MAZIUM_SUPPORT_AUTO_REPLY_ENABLED = "true"
+  MAZIUM_SUPPORT_DISPATCH_ENABLED = "true"
+  MAZIUM_SUPPORT_AUDIENCE = "all"
+  MAZIUM_SUPPORT_BOT_USER_ID = "e641510d-0b2c-4eb1-96c6-8874bb9e6b53"
+  MAZIUM_SUPPORT_MAX_DAILY_REPLIES = "200"
   NOTIFICATION_EMAILS_ENABLED = "true"
   NOTIFICATION_EMAIL_DAILY_CAP = "400"
 

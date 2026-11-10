@@ -88,6 +88,19 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
 
     const isDispute = room.context === 'DISPUTE'
     const canDraftSupport = isAdminViewer && room.context === 'SUPPORT' && !room.supportClosedAt
+    const [automationStatus, setAutomationStatus] = React.useState<string | null>(null)
+    React.useEffect(() => {
+        if (!canDraftSupport) return
+        let cancelled = false
+        apiClient<any>('/ai/admin/support-automation-status').then(result => {
+            const status = result?.data ?? result
+            if (!cancelled) setAutomationStatus(status.enabled && status.botReady && status.audience === 'all'
+                ? 'Automatic support replies are on. Human requests receive an acknowledgement.'
+                : 'Automatic support replies are unavailable; please reply manually.')
+        }).catch(() => { if (!cancelled) setAutomationStatus('Automatic reply status could not be checked.') })
+        return () => { cancelled = true }
+    }, [canDraftSupport, room.id])
+
     React.useEffect(() => {
         setAiConsent(Boolean(room.supportAiConsentAt && !room.supportAiOptedOutAt))
         setConsentError(null)
@@ -529,7 +542,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                 // Explicit human review: insert into composer, never auto-send.
                 setNewMessage(response.data.text)
                 setSupportDraftNotice(response.data.careful
-                    ? 'MaziuM draft added. This is a sensitive topic (money, account or complaint): check every fact and edit before sending.'
+                    ? 'MaziuM draft added. This needs a human decision or careful review: check every fact before sending.'
                     : 'MaziuM draft added. Check facts and edit before sending.')
                 inputRef.current?.focus()
             } else {
@@ -1052,8 +1065,8 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                                 }`}
                                         >
                                             {msg.aiGenerated && room.context === 'SUPPORT' && (
-                                                <p className="mb-1 text-[10px] font-bold" aria-label="AI-generated support message">
-                                                    MaziuM · AI-generated response
+                                                <p className="mb-1 text-[10px] font-bold" aria-label="Automated support message">
+                                                    MaziuM · Automated response
                                                 </p>
                                             )}
                                             {!isOwn && isDispute && msg.sender && (
@@ -1228,9 +1241,9 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                 {!isAdminViewer && room.context === 'SUPPORT' && !room.supportClosedAt && (
                     <div className="shrink-0 mx-4 mt-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] p-3 text-xs">
                         <p className="font-semibold">MaziuM AI support (optional)</p>
-                        <p className="mt-1 text-[var(--text-secondary)]">With your permission, AI may help answer routine questions. You can withdraw permission at any time. Our team handles sensitive issues.</p>
+                        <p className="mt-1 text-[var(--text-secondary)]">MaziuM automatically answers common questions and acknowledges human-support requests. Allow AI assistance for other questions; your message is then shared with our AI provider. Financial decisions stay with our team.</p>
                         <label className="mt-2 flex items-center gap-2">
-                            <input type="checkbox" checked={aiConsent} disabled={consentBusy || Boolean(room.supportHumanTakeoverAt)} onChange={(event) => void updateAiConsent(event.target.checked)} />
+                            <input type="checkbox" checked={aiConsent} disabled={consentBusy || Boolean(room.supportHumanTakeoverAt && Date.now() - new Date(room.supportHumanTakeoverAt).getTime() < 15 * 60_000)} onChange={(event) => void updateAiConsent(event.target.checked)} />
                             <span>{aiConsent ? 'AI assistance permitted' : 'Allow AI assistance'}</span>
                         </label>
                         {!room.supportHumanTakeoverAt && (
@@ -1240,10 +1253,11 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                 Talk to a person instead
                             </button>
                         )}
-                        {room.supportHumanTakeoverAt && <p className="mt-1 text-[var(--text-secondary)]">A human support agent has taken over this conversation. AI assistance cannot be re-enabled here.</p>}
+                        {room.supportHumanTakeoverAt && <p className="mt-1 text-[var(--text-secondary)]">A human-support request or staff reply is recorded here. Your explicit request for a person pauses further AI answers; you can opt back in when the checkbox is available.</p>}
                         {consentError && <p role="alert" className="mt-1 text-red-500">{consentError}</p>}
                     </div>
                 )}
+                {canDraftSupport && automationStatus && <p role="status" className="px-4 pt-2 text-xs text-[var(--text-secondary)]">{automationStatus}</p>}
                 {canDraftSupport && (
                     <div className="shrink-0 px-3 pt-1 sm:px-4 sm:pt-2 flex flex-wrap items-center gap-1 sm:gap-2">
                         <button
@@ -1254,7 +1268,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         >
                             {generatingSupportDraft ? 'Preparing MaziuM draft…' : 'Suggest MaziuM reply'}
                         </button>
-                        <span className="hidden sm:inline text-xs text-[var(--text-muted)]">Admin review required; never sent automatically.</span>
+                        <span className="hidden sm:inline text-xs text-[var(--text-muted)]">This suggested draft needs your review. Automatic MaziuM replies are labelled in the chat.</span>
                     </div>
                 )}
                 {supportDraftNotice && canDraftSupport && (

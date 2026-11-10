@@ -1,4 +1,6 @@
-import { BadRequestException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { SupportMessageEvents } from './support-message-events';
+import { supportReplyPlan, SUPPORT_UNAVAILABLE_REPLY } from './support-automatic-responses';
+import { BadRequestException, Optional, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BlockChatRoomDto, CreateRoomDto, OpenDisputeDto, ReportChatMessageDto, SendChatAttachmentDto, SendMessageDto, UpdateChatReportDto } from './dto';
 import { ChatContext, ChatReportStatus, DisputeStatus, Message, Prisma, ServicePaymentStatus, UserRole } from '@prisma/client';
@@ -26,6 +28,7 @@ export class ChatService {
         private readonly tradeTeamService: TradeTeamService,
         private readonly dealersService: DealersService,
         private readonly chatContentSafety: ChatContentSafetyService,
+        @Optional() private readonly supportEvents?: SupportMessageEvents,
     ) { }
 
     /**
@@ -2168,10 +2171,10 @@ export class ChatService {
                 context: ChatContext.SUPPORT,
                 deletedAt: null,
                 supportClosedAt: null,
-                ...(consent ? { supportHumanTakeoverAt: null } : {}),
+                ...(consent ? { OR: [{ supportHumanTakeoverAt: null }, { supportHumanTakeoverAt: { lt: new Date(Date.now() - 15 * 60_000) } }] } : {}),
             },
             data: consent
-                ? { supportAiConsentAt: now, supportAiOptedOutAt: null }
+                ? { supportAiConsentAt: now, supportAiOptedOutAt: null, supportHumanTakeoverAt: null }
                 : { supportAiConsentAt: null, supportAiOptedOutAt: now },
         });
         if (result.count !== 1) {
@@ -2197,9 +2200,6 @@ export class ChatService {
         if (!room || room.context !== ChatContext.SUPPORT || room.deletedAt || room.supportClosedAt) {
             return { eligible: false, reason: 'NOT_OPEN_SUPPORT' } as const;
         }
-        if (!room.supportAiConsentAt || room.supportAiOptedOutAt || room.supportHumanTakeoverAt) {
-            return { eligible: false, reason: 'NO_ACTIVE_CONSENT' } as const;
-        }
         const supportId = room.initiator.role === UserRole.ADMIN && room.participant.role !== UserRole.ADMIN
             ? room.initiatorId
             : room.participant.role === UserRole.ADMIN && room.initiator.role !== UserRole.ADMIN
@@ -2213,7 +2213,7 @@ export class ChatService {
             orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         });
         if (!latest || latest.id !== sourceMessageId || latest.senderId !== customerId
-            || latest.aiGenerated || latest.attachmentPath || !latest.content?.trim()) {
+            || latest.aiGenerated || (latest.attachmentPath && !requestsHumanSupport(latest.content)) || !latest.content?.trim()) {
             return { eligible: false, reason: 'NOT_LATEST_CUSTOMER_TEXT' } as const;
         }
         const existing = await this.prisma.message.findFirst({
@@ -2221,7 +2221,9 @@ export class ChatService {
             select: { id: true },
         });
         if (existing) return { eligible: false, reason: 'ALREADY_REPLIED' } as const;
-        return { eligible: true, reason: 'READY', customerId, supportId, content: latest.content } as const;
+        const plan = supportReplyPlan(room, latest.content, latest.createdAt);
+        if (!plan) return { eligible: false, reason: 'HUMAN_HANDLING' } as const;
+        return { eligible: true, reason: 'READY', customerId, supportId, content: latest.content, plan } as const;
     }
 
     /**
@@ -2235,6 +2237,7 @@ export class ChatService {
         sourceMessageId: string,
         botUserId: string,
         reply: string,
+        kind: 'AI' | 'FIXED' = 'AI',
     ) {
         // A caller-supplied user ID must never be enough to impersonate a
         // customer or staff account. The bot is explicitly configured by ops.
@@ -2246,9 +2249,9 @@ export class ChatService {
         if (!botUserId || !reply.trim() || reply.length > 1200) {
             throw new BadRequestException('Invalid MaziuM reply');
         }
-        const { classifySupportMessage, supportAutoReplyClientMessageId } =
+        const { safeAutomaticSupportReply, supportAutoReplyClientMessageId } =
             await import('./mazium-support-policy');
-        if (classifySupportMessage(reply).action !== 'DRAFT') {
+        if (kind === 'AI' && !safeAutomaticSupportReply(reply)) {
             throw new BadRequestException('MaziuM reply requires human review');
         }
         const outcome = await this.prisma.$transaction(async (tx) => {
@@ -2261,8 +2264,7 @@ export class ChatService {
                     participant: { select: { role: true } },
                 },
             });
-            if (!room || room.context !== ChatContext.SUPPORT || room.deletedAt || room.supportClosedAt
-                || !room.supportAiConsentAt || room.supportAiOptedOutAt || room.supportHumanTakeoverAt) {
+            if (!room || room.context !== ChatContext.SUPPORT || room.deletedAt || room.supportClosedAt) {
                 return { created: false, reason: 'SUPPORT_NOT_ELIGIBLE' } as const;
             }
             const adminId = room.initiator.role === UserRole.ADMIN && room.participant.role !== UserRole.ADMIN
@@ -2288,10 +2290,13 @@ export class ChatService {
                 orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
             });
             if (!latest || latest.id !== sourceMessageId || latest.senderId !== customerId
-                || latest.createdAt < room.supportAiConsentAt
-                || latest.aiGenerated || latest.attachmentPath
-                || classifySupportMessage(latest.content).action !== 'DRAFT') {
+                || latest.aiGenerated || (latest.attachmentPath && !requestsHumanSupport(latest.content))) {
                 return { created: false, reason: 'SOURCE_CHANGED_OR_SENSITIVE' } as const;
+            }
+            const plan = supportReplyPlan(room, latest.content, latest.createdAt);
+            if (!plan || (kind === 'AI' && plan.kind !== 'AI')
+                || (kind === 'FIXED' && reply !== (plan.kind === 'FIXED' ? plan.reply : SUPPORT_UNAVAILABLE_REPLY))) {
+                return { created: false, reason: 'CONSENT_OR_REPLY_CHANGED' } as const;
             }
             const duplicate = await tx.message.findUnique({
                 where: { aiSourceMessageId: sourceMessageId },
@@ -2304,14 +2309,14 @@ export class ChatService {
             // Global daily cap and room cooldown are checked inside the
             // transaction. The advisory lock serialises the global quota,
             // but provider-side spending limits are still necessary.
-            const maxDaily = Math.min(100, Math.max(1,
-                Number(process.env.MAZIUM_SUPPORT_MAX_DAILY_REPLIES || 20) || 20));
+            const maxDaily = Math.min(1000, Math.max(1,
+                Number(process.env.MAZIUM_SUPPORT_MAX_DAILY_REPLIES || 200) || 200));
             const dayStart = new Date();
             dayStart.setUTCHours(0, 0, 0, 0);
             const sentToday = await tx.message.count({
                 where: { aiGenerated: true, createdAt: { gte: dayStart } },
             });
-            if (sentToday >= maxDaily) {
+            if (kind === 'AI' && sentToday >= maxDaily) {
                 return { created: false, reason: 'DAILY_LIMIT_REACHED' } as const;
             }
             const lastBotReply = await tx.message.findFirst({
@@ -2319,7 +2324,7 @@ export class ChatService {
                 orderBy: { createdAt: 'desc' },
                 select: { createdAt: true },
             });
-            if (lastBotReply && Date.now() - lastBotReply.createdAt.getTime() < 60_000) {
+            if (kind === 'AI' && lastBotReply && Date.now() - lastBotReply.createdAt.getTime() < 1000) {
                 return { created: false, reason: 'ROOM_COOLDOWN' } as const;
             }
             const message = await tx.message.create({
@@ -2571,6 +2576,23 @@ export class ChatService {
         }
     }
 
+    /** Both human sends and automated replies share the room lock. */
+    private async createInboundMessage(room: any, senderId: string, data: Prisma.MessageUncheckedCreateInput) {
+        if (room.context !== ChatContext.SUPPORT) {
+            return this.prisma.message.create({ data, include: this.messageInclude });
+        }
+        return this.prisma.$transaction(async tx => {
+            await tx.$queryRaw`SELECT id FROM "chat_rooms" WHERE id = ${room.id} FOR UPDATE`;
+            const sender = await tx.user.findUnique({ where: { id: senderId }, select: { role: true } });
+            if (sender?.role === UserRole.ADMIN) {
+                await tx.chatRoom.update({ where: { id: room.id }, data: { supportHumanTakeoverAt: new Date() } });
+            } else if (requestsHumanSupport(data.content)) {
+                await tx.chatRoom.update({ where: { id: room.id }, data: { supportAiOptedOutAt: new Date(), supportHumanTakeoverAt: new Date() } });
+            }
+            return tx.message.create({ data, include: this.messageInclude });
+        });
+    }
+
     /**
      * Persist a message exactly once. The client-generated message ID survives
      * WebSocket timeouts and HTTP fallback retries, so a lost acknowledgement
@@ -2603,14 +2625,11 @@ export class ChatService {
 
         let message: any;
         try {
-            message = await this.prisma.message.create({
-                data: {
+            message = await this.createInboundMessage(room, senderId, {
                     chatRoomId: roomId,
                     senderId,
                     clientMessageId: dto.clientMessageId,
                     content: dto.content,
-                },
-                include: this.messageInclude,
             });
         } catch (error) {
             // Two retries can race. The unique sender/clientMessageId index is
@@ -2640,29 +2659,7 @@ export class ChatService {
             : null;
         const supportSenderIsAdmin = supportSender?.role === UserRole.ADMIN;
 
-        // Explicit customer requests for a person or AI opt-out are persisted
-        // before any subsequent autonomous support processing can run.
-        if (room.context === ChatContext.SUPPORT
-            && !supportSenderIsAdmin
-            && requestsHumanSupport(dto.content)) {
-            await this.prisma.chatRoom.update({
-                where: { id: roomId },
-                data: { supportAiOptedOutAt: new Date(), supportHumanTakeoverAt: new Date() },
-            });
-        }
-
         const routing = await this.resolveMessageRouting(room, senderId);
-        // Any human staff response in an official support room takes precedence
-        // over pending AI work. Persist this before broadcasting the response.
-        // The AI delivery transaction must recheck this timestamp atomically.
-        if (room.context === ChatContext.SUPPORT) {
-            if (supportSenderIsAdmin) {
-                await this.prisma.chatRoom.update({
-                    where: { id: roomId },
-                    data: { supportHumanTakeoverAt: new Date() },
-                });
-            }
-        }
         await this.prisma.chatRoom.update({
             where: { id: roomId },
             data: {
@@ -2691,6 +2688,9 @@ export class ChatService {
             }
         }
 
+        if (room.context === ChatContext.SUPPORT && !supportSenderIsAdmin) {
+            this.supportEvents?.publish(roomId, message.id);
+        }
         return { message, created: true };
     }
 
@@ -2755,8 +2755,7 @@ export class ChatService {
 
         let message: any;
         try {
-            message = await this.prisma.message.create({
-                data: {
+            message = await this.createInboundMessage(room, senderId, {
                     chatRoomId: roomId,
                     senderId,
                     clientMessageId: dto.clientMessageId,
@@ -2765,8 +2764,6 @@ export class ChatService {
                     attachmentName: dto.name.trim(),
                     attachmentMime: dto.mime,
                     attachmentSize: dto.size,
-                },
-                include: this.messageInclude,
             });
         } catch (error) {
             if (
@@ -2796,25 +2793,7 @@ export class ChatService {
             : null;
         const supportSenderIsAdmin = supportSender?.role === UserRole.ADMIN;
 
-        // Photo captions can also contain explicit opt-out instructions.
-        if (room.context === ChatContext.SUPPORT
-            && !supportSenderIsAdmin
-            && requestsHumanSupport(content)) {
-            await this.prisma.chatRoom.update({
-                where: { id: roomId },
-                data: { supportAiOptedOutAt: new Date(), supportHumanTakeoverAt: new Date() },
-            });
-        }
-
         const routing = await this.resolveMessageRouting(room, senderId);
-        // A staff photo is also a human response; pending AI replies must
-        // not continue after this official support intervention.
-        if (room.context === ChatContext.SUPPORT && supportSenderIsAdmin) {
-            await this.prisma.chatRoom.update({
-                where: { id: roomId },
-                data: { supportHumanTakeoverAt: new Date() },
-            });
-        }
         await this.prisma.chatRoom.update({
             where: { id: roomId },
             data: {
@@ -2848,6 +2827,9 @@ export class ChatService {
             }
         }
 
+        if (room.context === ChatContext.SUPPORT && !supportSenderIsAdmin && requestsHumanSupport(content)) {
+            this.supportEvents?.publish(roomId, message.id);
+        }
         return {
             message: await this.chatAttachmentService.hydrateMessage(message),
             created: true,
