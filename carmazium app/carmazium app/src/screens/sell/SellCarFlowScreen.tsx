@@ -1,4 +1,4 @@
-import { faultDeclarationError, isNoKnownFaults, NO_KNOWN_FAULTS } from '../../lib/sellerFaultDeclaration';
+import { faultDeclarationError, isNoKnownFaults, isUndeclaredFaults, NO_KNOWN_FAULTS } from '../../lib/sellerFaultDeclaration';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useScrollLocked } from '../../lib/scrollLock';
 import {
@@ -406,16 +406,18 @@ function FaultDeclarationField({ kind, value, onChange, error }: {
 }) {
   const [detailsRequested, setDetailsRequested] = useState(false);
   const noFaults = isNoKnownFaults(value);
-  const showDetails = !noFaults && (detailsRequested || !!value.trim());
+  const undeclared = isUndeclaredFaults(value);
+  const showDetails = !noFaults && (detailsRequested || (!!value.trim() && !undeclared));
   return (
     <View>
+      {undeclared && <Text>This older listing says “Not declared by seller”. Please answer the question when updating it.</Text>}
       <PillRow label={`KNOWN ${kind.toUpperCase()} PROBLEMS`} required
         options={[{ v: 'NO', l: 'No known faults' }, { v: 'YES', l: 'Yes — describe faults' }]}
         value={noFaults ? 'NO' : showDetails ? 'YES' : ''}
         onSelect={answer => {
           setDetailsRequested(answer === 'YES');
           if (answer === 'NO') onChange(NO_KNOWN_FAULTS);
-          else if (noFaults) onChange('');
+          else if (noFaults || undeclared) onChange('');
         }} error={!showDetails ? error : undefined} />
       {showDetails && <FieldInput label={`DESCRIBE KNOWN ${kind.toUpperCase()} FAULTS`} required
         value={value} onChange={text => { setDetailsRequested(true); onChange(text.slice(0, 2000)); }} multiline
