@@ -804,12 +804,14 @@ function AdminListingsContent() {
                                 {error ? 'Unable to load listings.' : (searchQuery ? 'No listings match this search.' : 'No listings in this view.')}
                             </div>
                         ) : (<>
-                        {/* ── Mobile cards (< sm) ── */}
-                        <div className="sm:hidden divide-y divide-[var(--border-default)]">
+                        {/* Draft actions stay fully visible on phones and desktop; tables remain for other views. */}
+                        <div className={listings.some(l => l.status === 'DRAFT')
+                            ? 'grid min-w-0 grid-cols-1 gap-4 p-3 xl:grid-cols-2'
+                            : 'sm:hidden divide-y divide-[var(--border-default)]'}>
                             {listings.map((l) => {
                                 const isSelf = false
                                 return (
-                                    <div key={l.id} className={`flex flex-wrap items-start gap-3 p-3 ${l.deletedAt ? 'bg-red-500/5' : ''}`}>
+                                    <div key={l.id} className={`flex min-w-0 flex-wrap items-start gap-3 rounded-xl border border-[var(--border-default)] p-3 ${l.deletedAt ? 'bg-red-500/5' : ''}`}>
                                         {l.images?.[0] ? (
                                             <Image src={l.images[0]} alt="" width={48} height={48} className="w-12 h-12 rounded-lg object-cover shrink-0" />
                                         ) : (
@@ -891,7 +893,7 @@ function AdminListingsContent() {
                         </div>
 
                         {/* ── Desktop table (≥ sm) ── */}
-                        <div className="hidden sm:block overflow-x-auto">
+                        <div className={listings.some(l => l.status === 'DRAFT') ? 'hidden' : 'hidden sm:block overflow-x-auto'}>
                             <table className="w-full text-left">
                                 <thead className="bg-[var(--bg-input)] text-[var(--text-muted)] text-xs uppercase font-black tracking-widest border-b border-[var(--border-default)]">
                                     <tr>
