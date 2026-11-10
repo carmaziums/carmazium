@@ -103,9 +103,9 @@ export function BuyerVehicleInformation({ listing }: { listing: Listing }) {
         { label: "Automated vehicle (DVLA)", value: official?.dvla?.automatedVehicle == null ? null : official.dvla.automatedVehicle ? "Yes" : "No" },
     ]
     const conditionFacts: Fact[] = [
-        { label: "Condition (seller)", value: listing.condition ? humanize(listing.condition) : null },
-        { label: "Service history (seller)", value: listing.serviceHistory },
-        { label: "Keys (seller)", value: listing.numberOfKeys },
+        { label: "Condition (seller)", value: listing.condition ? humanize(listing.condition) : "Not declared by seller" },
+        { label: "Service history (seller)", value: listing.serviceHistory?.trim() || "Not declared by seller" },
+        { label: "Keys (seller)", value: present(listing.numberOfKeys) ? listing.numberOfKeys : "Not declared by seller" },
         { label: "Write-off category (seller)", value: listing.writeOffCategory && listing.writeOffCategory !== "NONE" ? humanize(listing.writeOffCategory) : null },
         { label: "Mechanical issues (seller)", value: listing.mechanicalIssues },
         { label: "Electrical issues (seller)", value: listing.electricalIssues },
@@ -143,7 +143,7 @@ export function BuyerVehicleInformation({ listing }: { listing: Listing }) {
                 </h3>
                 <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
                     Available information saved with this listing from vehicle registration checks and the seller.
-                    Only known fields are shown. This is not a live DVLA/DVSA refresh or an independent vehicle history check.
+                    Missing seller condition, service history and key details are labelled “Not declared by seller”. This is not a live DVLA/DVSA refresh or an independent vehicle history check.
                 </p>
                 {latestRecorded && (
                     <div className="mt-4 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3">
