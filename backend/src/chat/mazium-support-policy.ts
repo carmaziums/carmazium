@@ -8,22 +8,21 @@ export type SupportDecision =
     | { action: 'ESCALATE'; reason: string }
     | { action: 'DRAFT'; reason: 'ROUTINE_SUPPORT' };
 
+// Financial commitments and privileged actions require a person. Merely
+// mentioning a fee, verification, a complaint or an account is not a decision.
 const OWNER_APPROVAL = [
     /\b(refund|reimburse|chargeback|compensation|payout|withdrawal|transfer money)\b/i,
-    /\b(bank (?:details|account)|sort code|iban|card number)\b/i,
-    /\b(kyc|identity verification|verify my identity|delete (?:my |the )?account|change (?:my |the )?role)\b/i,
-    /\b(legal action|solicitor|court|police|fraud|scam|complaint|dispute)\b/i,
-    /\b(change|waive|reduce|cancel) (?:the |my )?(?:fee|payment|invoice|price)\b/i,
-    /\b(approve|reject|override|reinstate|ban|suspend)\b/i,
-    /\b(api key|password|one.time code|otp|pin|cvv)\b/i,
-    /\b(refunds?|reimbursements?|chargebacks?|payouts?|withdrawals?|compensate|compensated)\b/i,
-    /\b(banking|bank transfer|account number|sort.code|payment details|sortcode)\b/i,
-    /\b(gdpr|data erasure|personal data request|subject access|remove my data)\b/i,
-    /\b(sue|lawsuit|litigation|small claims|trading standards|citizens advice)\b/i,
-    /\b(hacked|unauthorised access|stolen account|security breach|phishing)\b/i,
-    /\b(refund(?:ing|ed)?|cancel(?:ling|ation)?|repay(?:ment)?|reverse (?:a |the )?charge)\b/i,
-    /\b(account (?:locked|suspended|deleted|compromised)|can't (?:log ?in|access my account))\b/i,
-    /\b(privacy complaint|data breach|identity theft|stolen identity)\b/i,
+    /\b(bank (?:transfer details|details|account)|sort code|iban|card number|account number|payment details|sortcode)\b/i,
+    /\b(?:delete|close) (?:my |the )?account\b/i,
+    /\b(?:change|waive|reduce|cancel) (?:the |my )?(?:fee|payment|invoice|price|role)\b/i,
+    /\b(?:approve|reject|override|reinstate|ban|suspend) (?:my |the |this |a )?(?:account|payment|refund|listing|verification|kyc|user)\b/i,
+    /\b(?:api key|one.time code|otp|cvv|my password is|password[:=])\b/i,
+    /\b(?:refunds?|reimbursements?|chargebacks?|payouts?|withdrawals?|compensate|compensated)\b/i,
+    /\b(?:gdpr|data erasure|personal data request|subject access|remove my data)\b/i,
+    /\b(?:legal action|solicitor|court|sue|lawsuit|litigation|small claims|trading standards)\b/i,
+    /\b(?:hacked|unauthorised access|stolen account|security breach|phishing|privacy complaint|data breach|identity theft)\b/i,
+    /\b(?:dispute this sale|refund(?:ing|ed)?|repay(?:ment)?|reverse (?:a |the )?charge)\b/i,
+    /\b(?:where|when)\b.*\b(?:my|the) (?:£?100|reward|money|payment)\b/i,
 ];
 
 export function classifySupportMessage(message: string): SupportDecision {
@@ -94,7 +93,7 @@ export function canAutoReplyToSupport(input: {
         && !input.alreadyProcessed
         && input.withinRateAndBudgetLimits
         && classifySupportMessage(input.incomingMessage).action === 'DRAFT'
-        && classifySupportMessage(input.proposedReply).action === 'DRAFT';
+        && safeAutomaticSupportReply(input.proposedReply);
 }
 
 /**
@@ -118,7 +117,7 @@ export function supportAutoReplyClientMessageId(incomingMessageId: string): stri
 export function requestsHumanSupport(message: string): boolean {
     return [
         /\b(human|real person|actual person|live agent|support agent|staff member|manager|supervisor)\b/i,
-        /\b(?:speak|talk|chat|connect|transfer|put me through)\s+(?:to|with)\s+(?:a|an|the|someone|somebody)?\s*(?:person|representative|someone|somebody|agent)\b/i,
+        /\b(?:speak|talk|chat|connect|transfer|put me through)\s+(?:me\s+)?(?:to|with)\s+(?:a|an|the|someone|somebody)?\s*(?:person|representative|someone|somebody|agent)\b/i,
         /\b(stop|disable|turn off|opt out of|no more) (?:the |your )?(?:ai|bot|automated|automatic)\b/i,
         /\b(don't|do not|no longer) (?:want to )?(?:talk to|chat with|speak to) (?:an? )?(?:ai|bot|robot)\b/i,
     ].some((pattern) => pattern.test(message));
@@ -144,4 +143,13 @@ export function isInboundCustomerSupportMessage(input: {
     if (officialSupportAccountId !== initiatorId && officialSupportAccountId !== participantId) return false;
     const customerId = officialSupportAccountId === initiatorId ? participantId : initiatorId;
     return senderId === customerId && senderId !== officialSupportAccountId;
+}
+
+
+/** Informational wording about money is allowed; commitments and impersonation are not. */
+export function safeAutomaticSupportReply(reply: string): boolean {
+    return !!reply.trim() && reply.length <= 1200
+        && !/\b(?:I|we)(?:'ve| have| will| can| shall|'ll)?\s+(?:already\s+)?(?:approved|approve|authorised|authorize|authorise|issued|issue|processed|process|sent|send|pay|paid|refund|refunded|waive|waived|guarantee|guaranteed|changed|deleted|verified)\b/i.test(reply)
+        && !/\b(?:I am|I'm) (?:a |your )?(?:human|real person|human agent)\b/i.test(reply)
+        && !/\b(?:your (?:refund|payout|payment|reward) (?:is|has been) (?:approved|processed|sent|guaranteed)|send (?:me|us) (?:your )?(?:password|otp|card number|bank details))\b/i.test(reply);
 }

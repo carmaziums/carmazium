@@ -1,138 +1,104 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { ChatContext } from '@prisma/client';
+import { ChatContext, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MaziumSupportAutoReplyService } from './mazium-support-auto-reply.service';
+import { SupportMessageEvents } from '../chat/support-message-events';
 
-/**
- * Conservative polling dispatcher. Only new customer messages are considered.
- * Disabled unless both the core and dispatcher flags are explicitly enabled.
- * The persistence service remains the final authority on eligibility.
- */
+/** Inbound events reply immediately; polling recovers missed events, never old conversations. */
 @Injectable()
-export class MaziumSupportDispatcher {
+export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
     private readonly logger = new Logger(MaziumSupportDispatcher.name);
     private running = false;
-
-    constructor(
-        private readonly config: ConfigService,
-        private readonly prisma: PrismaService,
-        private readonly autoReply: MaziumSupportAutoReplyService,
-    ) {}
-
-    @Cron(CronExpression.EVERY_30_SECONDS)
+    private startedAt = new Date();
+    private unsubscribe?: () => void;
+    private botReady = false;
+    constructor(private readonly config: ConfigService, private readonly prisma: PrismaService,
+        private readonly autoReply: MaziumSupportAutoReplyService, private readonly events: SupportMessageEvents) {}
+    private enabled() {
+        return this.config.get<string>('MAZIUM_SUPPORT_AUTO_REPLY_ENABLED') === 'true'
+            && this.config.get<string>('MAZIUM_SUPPORT_DISPATCH_ENABLED') === 'true'
+            && !!this.config.get<string>('MAZIUM_SUPPORT_BOT_USER_ID');
+    }
+    async status() {
+        const botId = this.config.get<string>('MAZIUM_SUPPORT_BOT_USER_ID');
+        const bot = botId ? await this.prisma.user.findUnique({ where: { id: botId }, select: { role: true, deletedAt: true, lockoutUntil: true } }) : null;
+        return { enabled: this.enabled(), audience: this.config.get<string>('MAZIUM_SUPPORT_AUDIENCE') || 'test',
+            botReady: !!bot && bot.role !== UserRole.ADMIN && !bot.deletedAt && !!bot.lockoutUntil && bot.lockoutUntil > new Date(),
+            modelAvailable: !!this.config.get<string>('OPENAI_API_KEY') };
+    }
+    private allowedCustomer(id: string) {
+        return this.config.get<string>('MAZIUM_SUPPORT_AUDIENCE') === 'all'
+            || (this.config.get<string>('MAZIUM_SUPPORT_TEST_USER_IDS') || '').split(',').map(x => x.trim()).filter(Boolean).includes(id);
+    }
+    async onModuleInit() {
+        if (!this.enabled()) return;
+        this.startedAt = new Date();
+        this.unsubscribe = this.events.subscribe((roomId, messageId) => {
+            void this.processOne(roomId, messageId).catch(() => this.logger.warn('Support event deferred to polling'));
+        });
+        await this.ensureBot();
+    }
+    onModuleDestroy() { this.unsubscribe?.(); }
+    private async ensureBot(): Promise<boolean> {
+        if (this.botReady) return true;
+        const id = this.config.get<string>('MAZIUM_SUPPORT_BOT_USER_ID');
+        if (!id) return false;
+        try {
+            const bot = await this.prisma.user.upsert({
+                where: { id }, update: {},
+                create: { id, email: `mazium-support-${id}@system.carmazium.invalid`,
+                    passwordHash: '!SYSTEM_ACCOUNT_NO_LOGIN!', role: UserRole.BUYER,
+                    firstName: 'MaziuM', lastName: 'Automated Support',
+                    lockoutUntil: new Date('9999-12-31T00:00:00.000Z'), isEmailVerified: false, showPublicProfile: false },
+                select: { id: true, email: true, role: true, deletedAt: true, lockoutUntil: true },
+            });
+            this.botReady = bot.email === `mazium-support-${id}@system.carmazium.invalid`
+                && bot.role !== UserRole.ADMIN && !bot.deletedAt && !!bot.lockoutUntil && bot.lockoutUntil > new Date();
+            if (!this.botReady) this.logger.error('Support bot identity is not a locked system account');
+            return this.botReady;
+        } catch { this.logger.error('Could not prepare the locked support bot identity'); return false; }
+    }
+    async processOne(roomId: string, messageId: string) {
+        if (!this.enabled() || !(await this.ensureBot())) return;
+        const eligible = await this.autoReply.inspect(roomId, messageId);
+        if (!eligible.eligible || !this.allowedCustomer(eligible.customerId)) return;
+        const claimed = await this.prisma.$transaction(async tx => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(186729, 2)`;
+            const maxDaily = Math.min(1000, Math.max(1, Number(this.config.get<string>('MAZIUM_SUPPORT_MAX_DAILY_REPLIES') || 200) || 200));
+            const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+            const attempts = eligible.plan.kind === 'AI' ? await tx.message.count({ where: { aiSupportAttemptedAt: { gte: today } } }) : 0;
+            const claim = await tx.message.updateMany({
+                where: { id: messageId, chatRoomId: roomId, aiGenerated: false, deletedAt: null, aiSupportAttemptedAt: null, createdAt: { gte: this.startedAt } },
+                data: { aiSupportAttemptedAt: new Date() },
+            });
+            return { claimed: claim.count === 1, allowGeneration: attempts < maxDaily };
+        });
+        if (claimed.claimed) {
+            const delivered = await this.autoReply.processCustomerMessage(roomId, messageId, claimed.allowGeneration);
+            if (!delivered && eligible.plan.kind === 'FIXED') {
+                // Retry a failed local receipt without paying for another model call.
+                await this.prisma.message.updateMany({ where: { id: messageId, chatRoomId: roomId, aiGenerated: false }, data: { aiSupportAttemptedAt: null } });
+            }
+        }
+    }
+    @Cron(CronExpression.EVERY_5_SECONDS)
     async dispatch(): Promise<void> {
-        if (this.running
-            || this.config.get<string>('MAZIUM_SUPPORT_AUTO_REPLY_ENABLED') !== 'true'
-            || this.config.get<string>('MAZIUM_SUPPORT_DISPATCH_ENABLED') !== 'true'
-            || !this.config.get<string>('MAZIUM_SUPPORT_BOT_USER_ID')) return;
+        if (this.running || !this.enabled() || !(await this.ensureBot())) return;
         this.running = true;
         try {
-            // Only messages arriving after the customer opted in may trigger
-            // an autonomous reply. Older messages require human handling.
-            const since = new Date(Date.now() - 2 * 60 * 1000);
-            // Avoid paying for model generations after the reply quota is
-            // exhausted. The transactional insert independently rechecks.
-            const maxDaily = Math.min(100, Math.max(1,
-                Number(this.config.get<string>('MAZIUM_SUPPORT_MAX_DAILY_REPLIES') || 20) || 20));
-            const dayStart = new Date();
-            dayStart.setUTCHours(0, 0, 0, 0);
-            const sentToday = await this.prisma.message.count({
-                where: { aiGenerated: true, createdAt: { gte: dayStart } },
-            });
-            if (sentToday >= maxDaily) return;
-            const testUsers = (this.config.get<string>('MAZIUM_SUPPORT_TEST_USER_IDS') || '')
-                .split(',').map((id) => id.trim()).filter(Boolean);
-            // A missing allowlist must never result in sending to every customer.
-            if (!testUsers.length) return;
+            const since = new Date(Math.max(this.startedAt.getTime(), Date.now() - 2 * 60 * 1000));
+            const testUsers = (this.config.get<string>('MAZIUM_SUPPORT_TEST_USER_IDS') || '').split(',').map(id => id.trim()).filter(Boolean);
+            if (this.config.get<string>('MAZIUM_SUPPORT_AUDIENCE') !== 'all' && !testUsers.length) return;
             const messages = await this.prisma.message.findMany({
-                where: {
-                    createdAt: { gte: since },
-                    aiSourceMessageId: null,
-                    deletedAt: null,
-                    aiGenerated: false,
-                    aiSupportAttemptedAt: null,
-                    attachmentPath: null,
-                    // Exclude all messages authored by the configured AI
-                    // identity, even if older records lack AI provenance.
-                    senderId: { in: testUsers },
-                    sender: { role: { not: 'ADMIN' } },
-                    chatRoom: {
-                        context: ChatContext.SUPPORT,
-                        deletedAt: null,
-                        supportClosedAt: null,
-                        supportAiConsentAt: { not: null },
-                        supportAiOptedOutAt: null,
-                        supportHumanTakeoverAt: null,
-                    },
-                },
-                orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-                take: 5,
-                select: { id: true, chatRoomId: true },
+                where: { createdAt: { gte: since }, deletedAt: null, aiGenerated: false, aiSupportAttemptedAt: null, aiSourceMessageId: null,
+                    senderId: { not: this.config.get<string>('MAZIUM_SUPPORT_BOT_USER_ID'), ...(this.config.get<string>('MAZIUM_SUPPORT_AUDIENCE') !== 'all' ? { in: testUsers } : {}) },
+                    sender: { role: { not: 'ADMIN' } }, chatRoom: { context: ChatContext.SUPPORT, deletedAt: null, supportClosedAt: null } },
+                orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 20, select: { id: true, chatRoomId: true },
             });
-            for (const message of messages) {
-                const room = await this.prisma.chatRoom.findUnique({
-                    where: { id: message.chatRoomId },
-                    select: { supportAiConsentAt: true },
-                });
-                const participantIds = await this.prisma.chatRoom.findUnique({
-                    where: { id: message.chatRoomId },
-                    select: { initiatorId: true, participantId: true },
-                });
-                if (!participantIds) continue;
-                const customer = await this.prisma.message.findUnique({
-                    where: { id: message.id }, select: { senderId: true },
-                });
-                if (!customer || !testUsers.includes(customer.senderId)) continue;
-                const source = await this.prisma.message.findUnique({
-                    where: { id: message.id },
-                    select: { createdAt: true },
-                });
-                if (!room?.supportAiConsentAt || !source
-                    || source.createdAt < room.supportAiConsentAt) continue;
-                // Atomic claim prevents repeated OpenAI calls from parallel
-                // workers or from the next 30-second polling cycle.
-                const claimed = await this.prisma.$transaction(async (tx) => {
-                    await tx.$queryRaw`SELECT pg_advisory_xact_lock(186729, 2)`;
-                    const now = new Date();
-                    const today = new Date(now);
-                    today.setUTCHours(0, 0, 0, 0);
-                    const attemptsToday = await tx.message.count({
-                        where: { aiSupportAttemptedAt: { gte: today } },
-                    });
-                    if (attemptsToday >= maxDaily) return false;
-                    const recentRoomAttempt = await tx.message.count({
-                        where: {
-                            chatRoomId: message.chatRoomId,
-                            aiSupportAttemptedAt: { gte: new Date(now.getTime() - 60_000) },
-                        },
-                    });
-                    if (recentRoomAttempt > 0) return false;
-                    const latest = await tx.message.findFirst({
-                        where: { chatRoomId: message.chatRoomId, deletedAt: null },
-                        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-                        select: { id: true },
-                    });
-                    if (latest?.id !== message.id) return false;
-                    const claim = await tx.message.updateMany({
-                        where: {
-                            id: message.id,
-                            chatRoomId: message.chatRoomId,
-                            aiGenerated: false,
-                            aiSupportAttemptedAt: null,
-                        },
-                        data: { aiSupportAttemptedAt: now },
-                    });
-                    return claim.count === 1;
-                });
-                if (!claimed) continue;
-                await this.autoReply.processCustomerMessage(message.chatRoomId, message.id);
-            }
-        } catch {
-            this.logger.warn('MaziuM dispatcher deferred to human support');
-        } finally {
-            this.running = false;
-        }
+            for (const message of messages) await this.processOne(message.chatRoomId, message.id);
+        } catch { this.logger.warn('Support dispatcher deferred to human support'); }
+        finally { this.running = false; }
     }
 }

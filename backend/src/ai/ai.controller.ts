@@ -1,3 +1,4 @@
+import { MaziumSupportDispatcher } from './mazium-support-dispatcher.service';
 import { Controller, Post, Get, Patch, Body, Param, Query, Req, UsePipes, ValidationPipe, UseGuards, BadRequestException } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { AiSearchDto, AiChatDto, AiDescriptionDto, AiReportDto, UpdateAiReportDto } from './ai.dto';
@@ -21,7 +22,15 @@ export class AiController {
         private readonly rateLimit: ChatRateLimitService,
         private readonly chatService: ChatService,
         private readonly configService: ConfigService,
+        private readonly supportDispatcher: MaziumSupportDispatcher,
     ) { }
+
+    @Get('admin/support-automation-status')
+    @UseGuards(SessionAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
+    async supportAutomationStatus() {
+        return { success: true, data: await this.supportDispatcher.status() };
+    }
 
     @Post('search')
     @ApiOperation({ summary: 'AI-powered vehicle search' })
