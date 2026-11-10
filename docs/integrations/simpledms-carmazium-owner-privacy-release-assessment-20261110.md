@@ -6,6 +6,10 @@
 
 This document records what can be supported **today** from CarMazium source code, current non-personal database aggregates and live public pages. It is not a legal opinion, an executed UK GDPR Article 6 determination, a DPIA sign-off, a data subject's consent, a producer rights certificate or approval for production. A company director must review the marked decisions. Independent SimpleDMS claims belong to its own company record and its approval.
 
+**Company identity verification (10 November 2026):** Companies House live public register confirms CARMAZIUM LTD (17053307) remains active, has the registered office **181 Hunters Road, Birmingham, B19 1ES**, and its sole current director is Afaq Iftikhar. The live register also confirms SIMPLEDMS LTD (17167272) is active, with registered office **Brightfield Business Hub, Bakewell Road, Orton Southgate, Peterborough, Cambridgeshire, PE2 6XU**, and director **Patricia Jean Abel**. These match the corporate names and registered-office details in the contract. This verifies the public register, not an unrecorded board approval, signing instruction or individual DocuSign envelope.
+
+Source links: https://find-and-update.company-information.service.gov.uk/company/17053307 ; https://find-and-update.company-information.service.gov.uk/company/17053307/officers ; https://find-and-update.company-information.service.gov.uk/company/17167272 ; https://find-and-update.company-information.service.gov.uk/company/17167272/officers .
+
 ## 1. Evidence inventory and distinction between code and reality
 
 | Topic | Observation | What it does **not** establish |
