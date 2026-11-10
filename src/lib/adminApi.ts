@@ -799,6 +799,13 @@ export interface AdminDraftAuctionRelistResult {
   status: 'SCHEDULED';
 }
 
+export async function publishAdminDraftRetailFree(listingId: string) {
+  const result = await apiClient<{ data: { listingId: string; status: 'ACTIVE'; type: 'CLASSIFIED'; price: number; feeCharged: number; slug: string } }>(
+    `/admin/listings/${listingId}/publish-retail-free`, { method: 'POST' },
+  );
+  return result.data;
+}
+
 export async function relistAdminDraftAsAuction(listingId: string) {
   const result = await apiClient<{ data: AdminDraftAuctionRelistResult }>(
     `/admin/listings/${listingId}/relist-auction`,

@@ -51,6 +51,20 @@ export class PaymentsService {
         return { listing, ...readiness };
     }
 
+    /** Shares the listing row lock with admin fee waivers; never charge a waived fee. */
+    private async reserveListingFeeTransaction(listingId: string, userId: string, amount: number, description: string) {
+        return this.prisma.$transaction(async tx => {
+            await tx.$queryRaw`SELECT id FROM public.listings WHERE id = ${listingId} FOR UPDATE`;
+            const current = await tx.listing.findUnique({ where: { id: listingId } });
+            const completed = await tx.transaction.findFirst({ where: { listingId, type: 'LISTING_FEE', status: 'COMPLETED', deletedAt: null } });
+            if (completed) throw new BadRequestException('This retail listing fee has already been paid or waived. Refresh your listing; no further payment is needed.');
+            if (!current || current.deletedAt || current.type !== 'CLASSIFIED' || current.status !== 'DRAFT') {
+                throw new BadRequestException('Only an unpaid retail draft can start a listing checkout. Refresh your listing.');
+            }
+            return tx.transaction.create({ data: { listingId, userId, amount, type: 'LISTING_FEE', status: 'PENDING', description } });
+        }, { isolationLevel: 'Serializable' });
+    }
+
     private assertListingFeeReady(
         readiness: { missingFields: string[] },
     ): void {
@@ -802,16 +816,7 @@ export class PaymentsService {
         const amount = this.LISTING_FEES[chargeTier];
 
         // Create a pending transaction record
-        const transaction = await this.prisma.transaction.create({
-            data: {
-                userId: transactionUserId,
-                listingId,
-                amount,
-                type: 'LISTING_FEE' as any,
-                status: 'PENDING',
-                description: `${chargeTier} Listing Fee`,
-            },
-        });
+        const transaction = await this.reserveListingFeeTransaction(listingId, transactionUserId, amount, `${chargeTier} Listing Fee`);
 
         const session = await stripe.checkout.sessions.create({
             mode: 'payment',
@@ -975,6 +980,8 @@ export class PaymentsService {
                 payableAuctionId!, listingId, transactionUserId,
                 descriptionMap[type] ?? `Payment for ${listing.title}`,
             )
+            : type === 'LISTING_FEE'
+                ? await this.reserveListingFeeTransaction(listingId, transactionUserId, amount, descriptionMap[type])
             : await this.prisma.transaction.create({
                 data: {
                     listingId,

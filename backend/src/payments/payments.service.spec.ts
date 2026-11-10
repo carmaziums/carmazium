@@ -182,6 +182,20 @@ describe('PaymentsService — createListingSession retail payment gate', () => {
         );
     });
 
+    it('does not start Stripe checkout after an admin fee waiver', async () => {
+        prisma.listing.findUnique.mockResolvedValue(readyRetailListing());
+        prisma.transaction.findFirst.mockResolvedValue({ id: 'waived-fee', amount: 0 });
+        await expect(service.createListingSession('BASIC', 'user-1', 'listing-1')).rejects.toThrow(/already been paid or waived/i);
+        expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
+    });
+
+    it('rechecks draft status under the same row lock as admin publication', async () => {
+        prisma.listing.findUnique.mockResolvedValueOnce(readyRetailListing()).mockResolvedValue(readyRetailListing({ status: 'ACTIVE' }));
+        await expect(service.createListingSession('BASIC', 'user-1', 'listing-1')).rejects.toThrow(/only an unpaid retail draft/i);
+        expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
+    });
+
     it('heals a legacy FREE retail listing to BASIC before checkout', async () => {
         prisma.listing.findUnique.mockResolvedValue(readyRetailListing({ badgeTier: 'FREE' }));
 
@@ -255,6 +269,13 @@ describe('PaymentsService — createPaymentSheet (LISTING_FEE)', () => {
         prisma.listing.findUnique.mockResolvedValue(readyRetailListing());
         mockEphemeralKeysCreate.mockResolvedValue({ secret: 'ek_mock' });
         mockPaymentIntentsCreate.mockResolvedValue({ id: 'pi_mock', client_secret: 'pi_mock_secret' });
+    });
+
+    it('does not create a mobile PaymentIntent after a completed fee waiver', async () => {
+        prisma.transaction.findFirst.mockResolvedValue({ id: 'waived-fee', amount: 0 });
+        await expect(service.createPaymentSheet('listing-1', 'user-1', 1, 'LISTING_FEE', 'gbp', 'BASIC')).rejects.toThrow(/already been paid or waived/i);
+        expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
     });
 
     it('accepts type LISTING_FEE and includes the persisted badgeTier in PaymentIntent metadata', async () => {

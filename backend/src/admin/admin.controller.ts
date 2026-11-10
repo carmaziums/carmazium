@@ -204,6 +204,13 @@ export class AdminController {
         return new StandardResponse(await this.adminService.requestVehicleDetailsFromSeller(id, fields));
     }
 
+    @Post('listings/:id/publish-retail-free')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Admin-only one-time BASIC retail fee waiver and immediate publication of a complete draft' })
+    async publishDraftRetailFree(@Param('id') id: string, @CurrentUser() admin: any): Promise<StandardResponse<any>> {
+        return new StandardResponse(await this.adminService.publishDraftRetailFree(id, admin.id));
+    }
+
     @Post('listings/:id/relist-auction')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Admin-only one-click relist of an eligible seller draft into a 24-hour auction' })
