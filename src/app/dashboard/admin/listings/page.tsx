@@ -14,7 +14,7 @@ import { AdminVehicleReviewPanel } from "@/components/admin/AdminVehicleReviewPa
 import { HpiReportForm } from "@/components/admin/HpiReportForm"
 import { HpiPdfUpload } from "@/components/admin/HpiPdfUpload"
 import { useAuth } from "@/context/AuthContext"
-import { getAdminListing, getAdminListings, deleteListingForce, getPendingListingReviews, approveListing, rejectListing, relistAdminDraftAsAuction } from "@/lib/adminApi"
+import { getAdminListing, getAdminListings, deleteListingForce, getPendingListingReviews, approveListing, rejectListing, relistAdminDraftAsAuction, publishAdminDraftRetailFree } from "@/lib/adminApi"
 import type { AdminListingStatus, AdminListingType } from "@/lib/adminApi"
 import { getModerationChannel, getModerationPrice, getModerationListingHref, getModerationListingDates } from "@/lib/adminListingModeration"
 import { formatPrice } from "@/lib/listingApi"
@@ -84,6 +84,26 @@ function ListingHistoryDates({ listing }: { listing: any }) {
     )
 }
 
+function FreeRetailAction({ listing, busy, publishing, error, onPublish, onEdit }: {
+    listing: any; busy: boolean; publishing: boolean; error?: string;
+    onPublish: () => void; onEdit: () => void;
+}) {
+    return <div className="mt-2 w-full min-w-0 sm:max-w-xs">
+        <button type="button" onClick={onPublish} disabled={busy}
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
+            {publishing ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+            {publishing ? 'Publishing…' : 'List in retail — free'}
+        </button>
+        <p className="mt-1 text-left text-[11px] leading-snug text-[var(--text-muted)]">
+            Goes live now at {formatPrice(Number(listing.price))}. One-time Basic listing; £0 listing fee. Check the car is still available.
+        </p>
+        {error && <div role="alert" className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-left text-xs text-red-700 dark:text-red-300">
+            {error}
+            <button type="button" className="mt-2 block min-h-10 font-bold underline" onClick={onEdit}>Edit details</button>
+        </div>}
+    </div>
+}
+
 function matchesAdminListingSearch(listing: any, query: string) {
     const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
     if (terms.length === 0) return true
@@ -120,6 +140,8 @@ function AdminListingsContent() {
     const [listings, setListings] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
     const [deleting, setDeleting] = React.useState<string | null>(null)
+    const [publishingRetail, setPublishingRetail] = React.useState<string | null>(null)
+    const [retailError, setRetailError] = React.useState<{ id: string; text: string } | null>(null)
     const [relisting, setRelisting] = React.useState<string | null>(null)
     const [relistFeedback, setRelistFeedback] = React.useState<{ kind: 'success' | 'error'; text: string } | null>(null)
     const [error, setError] = React.useState<string | null>(null)
@@ -283,8 +305,25 @@ function AdminListingsContent() {
         }
     }
 
+    const handlePublishRetail = async (listingId: string) => {
+        if (publishingRetail || relisting) return
+        setPublishingRetail(listingId)
+        setRetailError(null)
+        setRelistFeedback(null)
+        try {
+            const result = await publishAdminDraftRetailFree(listingId)
+            setRelistFeedback({ kind: 'success', text: 'Retail listing is live at ' + formatPrice(result.price) + '. No new fee was charged. The one-time free listing is recorded.' })
+            await fetchListings()
+        } catch (err: any) {
+            setRetailError({ id: listingId, text: err.message === 'AUTH_REDIRECT'
+                ? 'Refresh your secure admin session and try again.'
+                : err.message || 'Publication was not confirmed. Refresh and check the listing before trying again.' })
+            await fetchListings()
+        } finally { setPublishingRetail(null) }
+    }
+
     const handleRelistAuction = async (listingId: string) => {
-        if (relisting) return
+        if (relisting || publishingRetail) return
         setRelistFeedback(null)
         setRelisting(listingId)
         try {
@@ -796,11 +835,16 @@ function AdminListingsContent() {
                                                             onUpdated={() => { fetchListings(); loadPending() }}
                                                         />
 
+                                            {l.status === 'DRAFT' && !l.deletedAt && <FreeRetailAction listing={l}
+                                                busy={!!relisting || !!publishingRetail || deleting === l.id}
+                                                publishing={publishingRetail === l.id}
+                                                error={retailError && retailError.id === l.id ? retailError.text : undefined}
+                                                onPublish={() => handlePublishRetail(l.id)} onEdit={() => setEditListingId(l.id)} />}
                                             {l.status === 'DRAFT' && !l.deletedAt && (
                                                 <button
                                                     type="button"
                                                     onClick={() => handleRelistAuction(l.id)}
-                                                    disabled={!!relisting || deleting === l.id}
+                                                    disabled={!!relisting || !!publishingRetail || deleting === l.id}
                                                     title="Seller-requested relist. Uses previous reserve or the draft's listed price."
                                                     className="mt-2 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
                                                 >
@@ -908,12 +952,17 @@ function AdminListingsContent() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-2">
+                                                <div className="flex flex-wrap items-center justify-end gap-2">
+                                                    {l.status === 'DRAFT' && !l.deletedAt && <FreeRetailAction listing={l}
+                                                        busy={!!relisting || !!publishingRetail || deleting === l.id}
+                                                        publishing={publishingRetail === l.id}
+                                                        error={retailError && retailError.id === l.id ? retailError.text : undefined}
+                                                        onPublish={() => handlePublishRetail(l.id)} onEdit={() => setEditListingId(l.id)} />}
                                                     {l.status === 'DRAFT' && !l.deletedAt && (
                                                         <button
                                                             type="button"
                                                             onClick={() => handleRelistAuction(l.id)}
-                                                            disabled={!!relisting || deleting === l.id}
+                                                            disabled={!!relisting || !!publishingRetail || deleting === l.id}
                                                             title="Seller-requested relist. Uses previous reserve or the draft's listed price."
                                                             className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-bold whitespace-nowrap text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
                                                         >

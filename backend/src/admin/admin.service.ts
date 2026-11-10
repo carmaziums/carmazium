@@ -1,3 +1,4 @@
+import { publishDraftRetailFree, ADMIN_FREE_RETAIL_EVENT } from './admin-free-retail';
 import { faultDeclarationError } from '../listings/seller-fault-declaration';
 import { markListingSold } from './admin-mark-listing-sold';
 import { AdminMarkListingSoldDto } from './dto/admin-mark-listing-sold.dto';
@@ -437,7 +438,7 @@ export class AdminService {
         const relistEvents = data.length
             ? await this.prisma.analyticsEvent.findMany({
                 where: {
-                    type: { in: ['admin_draft_auction_relist', 'seller_listing_relisted'] },
+                    type: { in: ['admin_draft_auction_relist', 'seller_listing_relisted', ADMIN_FREE_RETAIL_EVENT] },
                     OR: data.map(listing => ({
                         payload: { path: ['listingId'], equals: listing.id },
                     })),
@@ -468,6 +469,10 @@ export class AdminService {
         };
     }
 
+
+    async publishDraftRetailFree(id: string, adminId: string) {
+        return publishDraftRetailFree(this.prisma, id, adminId);
+    }
 
     /**
      * Staff-only, one-click recovery of a customer-requested DRAFT into a fresh
