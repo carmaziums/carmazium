@@ -2010,8 +2010,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 setCurrentStep(1)
                 setSellingMethod(null)
                 if (payload.listingType === 'AUCTION') {
-                    // Full page load so every tracker sees the confirmation URL.
-                    window.location.assign(AUCTION_SUBMITTED_URL)
+                    // In-app navigation (not a full reload) so the Meta Lead and
+                    // other conversion requests sent just above are not cancelled.
+                    // The Pixel and GTM still record a PageView for this URL.
+                    router.push(AUCTION_SUBMITTED_URL)
                     return
                 }
                 setPendingReview({
@@ -2161,8 +2163,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     localStorage.removeItem(draftKeys.draft)
                     localStorage.removeItem(draftKeys.auctionSchedule)
                     localStorage.removeItem(draftKeys.step)
-                    // Full page load so every tracker sees the confirmation URL.
-                    window.location.assign(AUCTION_SUBMITTED_URL)
+                    // In-app navigation (not a full reload) so the Meta Lead and
+                    // other conversion requests sent just above are not cancelled.
+                    // The Pixel and GTM still record a PageView for this URL.
+                    router.push(AUCTION_SUBMITTED_URL)
                     return
                 }
                 setPendingReview({
