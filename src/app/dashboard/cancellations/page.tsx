@@ -176,7 +176,7 @@ export default function SaleCancellationsPage() {
                                             <div className="rounded-xl bg-[var(--bg-input)] p-4">
                                                 <p className="text-[10px] uppercase tracking-widest font-black text-[var(--text-muted)]">Outcome / notes</p>
                                                 <p className="text-sm text-[var(--text-secondary)] mt-1">
-                                                    {request.counterpartResponseNote || request.adminNote || (
+                                                    {request.counterpartResponseNote || (
                                                         request.status === "PENDING_ADMIN"
                                                             ? "The request needs CarMazium review before the transaction can be reversed."
                                                             : request.status === "PENDING_COUNTERPARTY"
@@ -184,6 +184,8 @@ export default function SaleCancellationsPage() {
                                                                 : "No additional note."
                                                     )}
                                                 </p>
+                                                {request.adminNote && <p className="text-sm text-[var(--text-secondary)] mt-2">Admin decision: {request.adminNote}</p>}
+                                                {request.status === "PENDING_ADMIN" && request.counterpartResponseNote && <p className="text-xs text-amber-400 mt-2">CarMazium will review the evidence and can approve cancellation even if the other party declines.</p>}
                                                 {request.buyerFeeRefunded && <p className="text-xs font-bold text-emerald-400 mt-2">£125 auction buyer fee refunded.</p>}
                                                 {request.sellerBonusRecoveryRequired && <p className="text-xs font-bold text-amber-400 mt-2">Seller bonus recovery requires admin reconciliation.</p>}
                                             </div>

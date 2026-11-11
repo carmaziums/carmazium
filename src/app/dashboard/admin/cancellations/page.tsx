@@ -15,6 +15,11 @@ export default function AdminSaleCancellationsPage() {
     const [loading, setLoading] = React.useState(true)
     const [busy, setBusy] = React.useState<string | null>(null)
     const [error, setError] = React.useState<string | null>(null)
+    const [search, setSearch] = React.useState("")
+    const filteredRequests = requests.filter(request =>
+        `${request.listing?.vrm || ""} ${request.listing?.title || ""}`.replace(/\s/g, "").toLowerCase()
+            .includes(search.replace(/\s/g, "").toLowerCase())
+    )
 
     const load = React.useCallback(async () => {
         setLoading(true)
@@ -33,11 +38,17 @@ export default function AdminSaleCancellationsPage() {
     async function review(request: SaleCancellationRequest, decision: "APPROVE" | "REJECT") {
         const note = window.prompt(
             decision === "APPROVE"
-                ? "Admin note for this approval:"
+                ? (request.status === "PENDING_COUNTERPARTY"
+                    ? "The other party has not accepted this request. Enter the reason for your admin decision (required):"
+                    : "Admin note for this approval:")
                 : "Reason for rejecting this cancellation:",
             ""
         )
         if (note === null) return
+        if (request.status === "PENDING_COUNTERPARTY" && !note.trim()) {
+            setError("Enter an admin note when deciding before the other party responds.")
+            return
+        }
         let refundBuyerFee: boolean | undefined
         if (decision === "APPROVE" && request.auctionId) {
             refundBuyerFee = window.confirm(
@@ -65,22 +76,33 @@ export default function AdminSaleCancellationsPage() {
                         <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">Marketplace controls</p>
                         <h1 className="text-3xl font-black mt-1">Sale Cancellation Review</h1>
                         <p className="text-sm text-[var(--text-muted)] mt-2">
-                            Only escalated cases appear here, including transactions where handover or the £100 seller reward prevents automatic reversal.
+                            All open requests appear here, including those awaiting the other party or declined by them. Admins can review the evidence and approve or reject cancellation regardless of the other party’s response. Decisions are recorded against the request.
                         </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-end gap-3">
+                        <label className="flex-1 min-w-48 text-sm font-bold">
+                            Search registration or vehicle
+                            <input value={search} onChange={event => setSearch(event.target.value)}
+                                placeholder="Registration or vehicle name"
+                                className="mt-2 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-3" />
+                        </label>
+                        <button type="button" onClick={() => void load()} disabled={loading}
+                            className="rounded-xl border border-[var(--border-default)] px-4 py-3 text-sm font-bold disabled:opacity-50">Refresh requests</button>
                     </div>
 
                     {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">{error}</div>}
 
                     {loading ? (
                         <div className="py-24 flex justify-center"><Loader2 className="animate-spin text-primary" /></div>
-                    ) : requests.length === 0 ? (
+                    ) : filteredRequests.length === 0 ? (
                         <div className="rounded-2xl border border-dashed border-[var(--border-default)] p-12 text-center">
                             <ShieldCheck size={30} className="mx-auto text-emerald-400" />
-                            <h2 className="font-black mt-3">No cancellations awaiting admin review</h2>
+                            <h2 className="font-black mt-3">{requests.length ? "No requests match this search" : "No open cancellation requests"}</h2>
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {requests.map(request => (
+                            {filteredRequests.map(request => (
                                 <article key={request.id} className="rounded-2xl border border-amber-500/25 bg-amber-500/5 p-5 space-y-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
@@ -88,11 +110,12 @@ export default function AdminSaleCancellationsPage() {
                                                 <AlertTriangle size={17} className="text-amber-400" />
                                                 <h2 className="font-black">{request.listing?.title || "Vehicle sale"}</h2>
                                             </div>
+                                            {request.listing?.vrm && <p className="font-mono font-black mt-2">{request.listing.vrm}</p>}
                                             <p className="text-xs text-[var(--text-muted)] mt-1">
                                                 {request.requestedByRole} requested · {new Date(request.createdAt).toLocaleString("en-GB")}
                                             </p>
                                         </div>
-                                        <span className="text-xs font-black uppercase tracking-widest text-amber-400">Admin review</span>
+                                        <span className="text-xs font-black uppercase tracking-widest text-amber-400">{request.status === "PENDING_COUNTERPARTY" ? "Awaiting other party" : "Admin review"}</span>
                                     </div>
 
                                     <div className="rounded-xl bg-[var(--bg-input)] p-4">

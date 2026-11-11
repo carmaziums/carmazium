@@ -59,7 +59,7 @@ export class SaleCancellationsController {
     @Get('admin/pending')
     @UseGuards(RolesGuard)
     @Roles(UserRole.ADMIN)
-    @ApiOperation({ summary: 'Admin: list cancellation requests that require manual review' })
+    @ApiOperation({ summary: 'Admin: list all open cancellation requests, including those awaiting the other party' })
     async pendingAdmin() {
         return new StandardResponse(await this.service.pendingAdmin());
     }
@@ -67,7 +67,7 @@ export class SaleCancellationsController {
     @Get(':id')
     @ApiOperation({ summary: 'Get one cancellation request and privately signed evidence links' })
     async findOne(@Param('id') id: string, @CurrentUser() user: any) {
-        return new StandardResponse(await this.service.findOne(id, user.id));
+        return new StandardResponse(await this.service.findOne(id, user.id, user.role === UserRole.ADMIN));
     }
 
     @Post(':id/respond')
@@ -92,7 +92,7 @@ export class SaleCancellationsController {
     @Post(':id/admin-review')
     @UseGuards(RolesGuard)
     @Roles(UserRole.ADMIN)
-    @ApiOperation({ summary: 'Admin approves or rejects an escalated cancellation request' })
+    @ApiOperation({ summary: 'Admin approves or rejects an open cancellation request' })
     async adminReview(
         @Param('id') id: string,
         @Body() body: { decision?: 'APPROVE' | 'REJECT'; note?: string; refundBuyerFee?: boolean },
