@@ -651,7 +651,10 @@ test('web guided seller wizard focuses first missing field without resetting who
   for (const field of ['registration','make','model','year','location','mileage','title','description','photos','asking','minimum','start','reserve','increment','buy-now']) {
     assert.match(source, new RegExp('listing-required-' + field), 'stable missing-field target: ' + field)
   }
-  assert.match(source, /role="alert" className="mb-5/)
+  const navigation = source.split('{/* Navigation */}')[1]
+  assert.match(navigation, /role="alert"/)
+  assert.match(navigation, /focusMissingField\(missing\.field\)/)
+  assert.match(navigation, /Go to missing field/)
 })
 
 test('full-screen guided form is the default; switching to website preserves the current listing', () => {
