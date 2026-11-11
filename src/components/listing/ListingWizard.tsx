@@ -2787,11 +2787,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 <div id="listing-wizard-panel" style={{ overflow: "visible" }} className="dealer-glass-card p-4 sm:p-7 md:p-10 relative border-[var(--border-default)]">
                     <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -z-10 opacity-60" />
 
-                    {stepValidationMessage && (
-                        <div role="alert" className="mb-5 rounded-xl border border-red-500/50 bg-red-500/10 p-4 text-sm font-semibold text-red-300">
-                            {stepValidationMessage} <span className="block mt-1 text-xs font-normal">We have taken you to the first field that needs attention.</span>
-                        </div>
-                    )}
                     {/* Always-visible context for both first-time and experienced
                         sellers, without sending their form data to AI. */}
                     <section aria-label="Guidance for this listing step" className="mb-6 rounded-xl border border-sky-500/30 bg-sky-500/5 p-4 sm:p-5 space-y-3">
@@ -3345,44 +3340,47 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             </div>
 
                             {/* ── Performance & Economy ─────────────────────────────────── */}
-                            <div className="border border-[var(--border-default)] bg-[var(--bg-input)] rounded-xl p-5 space-y-4">
-                                <h3 className="text-sm font-bold uppercase text-[var(--text-muted)] tracking-wider flex items-center gap-2">
-                                    <Zap size={14} /> Performance & Economy
-                                </h3>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
-                                    {/* 0-60 */}
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">0–60 mph (secs)</label>
-                                        <Input type="number" step="0.1" placeholder="e.g. 4.5" value={formData.zeroTo60Mph}
-                                            onChange={(e) => set("zeroTo60Mph", e.target.value)} className={inputCls} />
+                            <details className="border border-[var(--border-default)] bg-[var(--bg-input)] rounded-xl p-5">
+                                <summary className="min-h-[44px] cursor-pointer text-sm font-bold text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-4">
+                                    Performance &amp; economy (optional)
+                                    <span className="block mt-1 text-xs font-normal text-[var(--text-secondary)]">Add figures from your handbook, or skip this section.</span>
+                                </summary>
+                                <div className="mt-4 space-y-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
+                                        {/* 0-60 */}
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold uppercase text-[var(--text-muted)]">0–60 mph (secs)</label>
+                                            <Input type="number" step="0.1" placeholder="e.g. 4.5" value={formData.zeroTo60Mph}
+                                                onChange={(e) => set("zeroTo60Mph", e.target.value)} className={inputCls} />
+                                        </div>
+                                        {/* Top Speed */}
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Top Speed (mph)</label>
+                                            <Input type="number" placeholder="e.g. 155" value={formData.topSpeedMph}
+                                                onChange={(e) => set("topSpeedMph", e.target.value)} className={inputCls} />
+                                        </div>
+                                        {/* Torque */}
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Torque (Nm)</label>
+                                            <Input type="number" placeholder="e.g. 400" value={formData.torqueNm}
+                                                onChange={(e) => set("torqueNm", e.target.value)} className={inputCls} />
+                                        </div>
+                                        {/* Combined MPG */}
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Combined MPG</label>
+                                            <Input type="number" step="0.1" placeholder="e.g. 38.2" value={formData.combinedMpg}
+                                                onChange={(e) => set("combinedMpg", e.target.value)} className={inputCls} />
+                                        </div>
+                                        {/* Extra Urban MPG */}
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Extra Urban MPG</label>
+                                            <Input type="number" step="0.1" placeholder="e.g. 45.6" value={formData.extraUrbanMpg}
+                                                onChange={(e) => set("extraUrbanMpg", e.target.value)} className={inputCls} />
+                                        </div>
                                     </div>
-                                    {/* Top Speed */}
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Top Speed (mph)</label>
-                                        <Input type="number" placeholder="e.g. 155" value={formData.topSpeedMph}
-                                            onChange={(e) => set("topSpeedMph", e.target.value)} className={inputCls} />
-                                    </div>
-                                    {/* Torque */}
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Torque (Nm)</label>
-                                        <Input type="number" placeholder="e.g. 400" value={formData.torqueNm}
-                                            onChange={(e) => set("torqueNm", e.target.value)} className={inputCls} />
-                                    </div>
-                                    {/* Combined MPG */}
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Combined MPG</label>
-                                        <Input type="number" step="0.1" placeholder="e.g. 38.2" value={formData.combinedMpg}
-                                            onChange={(e) => set("combinedMpg", e.target.value)} className={inputCls} />
-                                    </div>
-                                    {/* Extra Urban MPG */}
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Extra Urban MPG</label>
-                                        <Input type="number" step="0.1" placeholder="e.g. 45.6" value={formData.extraUrbanMpg}
-                                            onChange={(e) => set("extraUrbanMpg", e.target.value)} className={inputCls} />
-                                    </div>
+                                    <p className="text-[10px] text-[var(--text-secondary)]">All performance figures are optional — check your vehicle handbook or manufacturer spec sheet.</p>
                                 </div>
-                                <p className="text-[10px] text-[var(--text-secondary)]">All performance figures are optional — check your vehicle handbook or manufacturer spec sheet.</p>
-                            </div>
+                            </details>
 
                             {/* Body Type — cars and HGVs use separate valid choices; motorcycles have no body-type requirement. */}
                             {formData.vehicleType !== 'MOTORCYCLE' && (
@@ -3726,76 +3724,85 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             </div>
 
                             {/* Features */}
-                            <div className="space-y-3">
-                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Vehicle features</label>
-                                <Input aria-label="Search vehicle features" placeholder="Search equipment, e.g. heated seats, CarPlay…"
-                                    value={featureSearch} onChange={e => setFeatureSearch(e.target.value)} className={inputCls} />
-                                <div className="max-h-96 overflow-y-auto rounded-lg border border-[var(--border-default)] p-3 space-y-5">
-                                    {Object.entries(VEHICLE_FEATURE_GROUPS).map(([group, choices]) => {
-                                        const visible = choices.filter(feature => feature.toLowerCase().includes(featureSearch.trim().toLowerCase()))
-                                        if (!visible.length) return null
-                                        return <section key={group} aria-label={group} className="space-y-2">
-                                            <h4 className="text-xs font-bold uppercase text-[var(--text-muted)]">{group}</h4>
-                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                                {visible.map(feature => {
-                                                    const selected = formData.features.includes(feature)
-                                                    return <button key={feature} type="button"
-                                                        aria-pressed={selected}
-                                                        onClick={() => set("features", selected ? formData.features.filter(f => f !== feature) : [...formData.features, feature])}
-                                                        className={`p-3 rounded-lg border text-left transition-all flex items-center justify-between ${selected ? "bg-primary/20 border-primary text-primary" : "bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30"}`}>
-                                                        <span className="text-sm font-medium">{feature}</span>
-                                                        {selected && <CheckCircle size={14} />}
-                                                    </button>
-                                                })}
+                            <details className="border border-[var(--border-default)] bg-[var(--bg-input)] rounded-xl p-5">
+                                <summary className="min-h-[44px] cursor-pointer text-sm font-bold text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-4">
+                                    Vehicle features (optional)
+                                    <span className="block mt-1 text-xs font-normal text-[var(--text-secondary)]">
+                                        {formData.features.length > 0
+                                            ? `${formData.features.length} selected — expand to review or change.`
+                                            : "Add equipment buyers may search for, or skip this section."}
+                                    </span>
+                                </summary>
+                                <div className="mt-4 space-y-3">
+                                    <Input aria-label="Search vehicle features" placeholder="Search equipment, e.g. heated seats, CarPlay…"
+                                        value={featureSearch} onChange={e => setFeatureSearch(e.target.value)} className={inputCls} />
+                                    <div className="max-h-96 overflow-y-auto rounded-lg border border-[var(--border-default)] p-3 space-y-5">
+                                        {Object.entries(VEHICLE_FEATURE_GROUPS).map(([group, choices]) => {
+                                            const visible = choices.filter(feature => feature.toLowerCase().includes(featureSearch.trim().toLowerCase()))
+                                            if (!visible.length) return null
+                                            return <section key={group} aria-label={group} className="space-y-2">
+                                                <h4 className="text-xs font-bold uppercase text-[var(--text-muted)]">{group}</h4>
+                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                                    {visible.map(feature => {
+                                                        const selected = formData.features.includes(feature)
+                                                        return <button key={feature} type="button"
+                                                            aria-pressed={selected}
+                                                            onClick={() => set("features", selected ? formData.features.filter(f => f !== feature) : [...formData.features, feature])}
+                                                            className={`p-3 rounded-lg border text-left transition-all flex items-center justify-between ${selected ? "bg-primary/20 border-primary text-primary" : "bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30"}`}>
+                                                            <span className="text-sm font-medium">{feature}</span>
+                                                            {selected && <CheckCircle size={14} />}
+                                                        </button>
+                                                    })}
+                                                </div>
+                                            </section>
+                                        })}
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+                                        {/* Custom Features */}
+                                        {formData.features.filter(f => !PRESET_FEATURES.includes(f)).map((f, i) => (
+                                            <div key={`custom-${i}`}
+                                                onClick={() => set("features", formData.features.filter(x => x !== f))}
+                                                className="p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between bg-primary/20 border-primary text-primary"
+                                            >
+                                                <span className="text-sm font-medium">{f}</span>
+                                                <CheckCircle size={14} />
                                             </div>
-                                        </section>
-                                    })}
-                                </div>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
-                                    {/* Custom Features */}
-                                    {formData.features.filter(f => !PRESET_FEATURES.includes(f)).map((f, i) => (
-                                        <div key={`custom-${i}`}
-                                            onClick={() => set("features", formData.features.filter(x => x !== f))}
-                                            className="p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between bg-primary/20 border-primary text-primary"
-                                        >
-                                            <span className="text-sm font-medium">{f}</span>
-                                            <CheckCircle size={14} />
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="flex gap-2 mt-2">
-                                    <Input 
-                                        id="custom-feature-input"
-                                        placeholder="Add a custom feature (e.g. Dashcam)" 
-                                        className={inputCls} 
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                const val = e.currentTarget.value.trim();
+                                        ))}
+                                    </div>
+                                    <div className="flex gap-2 mt-2">
+                                        <Input
+                                            id="custom-feature-input"
+                                            placeholder="Add a custom feature (e.g. Dashcam)"
+                                            className={inputCls}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    const val = e.currentTarget.value.trim();
+                                                    if (val && !formData.features.includes(val)) {
+                                                        set("features", [...formData.features, val]);
+                                                        e.currentTarget.value = '';
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => {
+                                                const input = document.getElementById('custom-feature-input') as HTMLInputElement;
+                                                const val = input.value.trim();
                                                 if (val && !formData.features.includes(val)) {
                                                     set("features", [...formData.features, val]);
-                                                    e.currentTarget.value = '';
+                                                    input.value = '';
                                                 }
-                                            }
-                                        }}
-                                    />
-                                    <Button 
-                                        type="button" 
-                                        variant="outline" 
-                                        onClick={() => {
-                                            const input = document.getElementById('custom-feature-input') as HTMLInputElement;
-                                            const val = input.value.trim();
-                                            if (val && !formData.features.includes(val)) {
-                                                set("features", [...formData.features, val]);
-                                                input.value = '';
-                                            }
-                                        }}
-                                        className="border-[var(--border-default)] text-[var(--text-primary)] hover:border-primary shrink-0"
-                                    >
-                                        Add
-                                    </Button>
+                                            }}
+                                            className="border-[var(--border-default)] text-[var(--text-primary)] hover:border-primary shrink-0"
+                                        >
+                                            Add
+                                        </Button>
+                                    </div>
                                 </div>
-                            </div>
+                            </details>
 
                             {/* Title & Description */}
                             <div className="space-y-2">
@@ -4232,16 +4239,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {hpiVerifyError && (
                                 <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
                                     <AlertTriangle size={14} className="shrink-0" /> {hpiVerifyError}
-                                </div>
-                            )}
-
-                            {hasAttemptedNext && getStepValidationError() && (
-                                <div
-                                    role="alert"
-                                    className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200"
-                                >
-                                    <p className="font-bold">Please complete the following before continuing:</p>
-                                    <p className="mt-1 leading-relaxed">{getStepValidationError()}</p>
                                 </div>
                             )}
 
@@ -4949,11 +4946,15 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     {/* Navigation */}
                     <div className="sticky bottom-2 z-20 mt-10 p-3 sm:p-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)]/95 backdrop-blur-lg shadow-xl">
                         {stepValidationMessage && (() => {
+                            const validationError = getStepValidationError()
+                            if (!validationError) return null
                             const missing = firstInvalidField()
                             return (
                                 <div role="alert" className="mb-3 flex flex-col gap-2 border-l-2 border-red-500 pl-3">
                                     <p className="text-sm font-semibold text-red-400">
-                                        {missing ? `Please complete: ${missing.label}` : stepValidationMessage}
+                                        {missing && validationError.startsWith('Please complete:')
+                                            ? `Please complete: ${missing.label}`
+                                            : validationError}
                                     </p>
                                     {missing && (
                                         <>
