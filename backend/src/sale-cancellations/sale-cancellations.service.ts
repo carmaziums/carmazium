@@ -2,6 +2,7 @@ import {
     BadRequestException,
     ForbiddenException,
     Injectable,
+    Logger,
     NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
@@ -33,6 +34,7 @@ const REASONS = [
 type CancellationReason = typeof REASONS[number];
 type CancellationDecision = 'ACCEPT' | 'REJECT';
 type AdminDecision = 'APPROVE' | 'REJECT';
+const OPEN_STATUSES = ['PENDING_COUNTERPARTY', 'PENDING_ADMIN'];
 
 const EVIDENCE_REQUIRED = new Set<CancellationReason>([
     'VEHICLE_FAULT',
@@ -52,6 +54,7 @@ const SAFETY_REVIEW_REASONS = new Set<CancellationReason>([
 
 @Injectable()
 export class SaleCancellationsService {
+    private readonly logger = new Logger(SaleCancellationsService.name);
     constructor(
         private readonly prisma: PrismaService,
         private readonly notifications: NotificationsService,
@@ -189,13 +192,18 @@ export class SaleCancellationsService {
             entityId: requestId,
             link,
             actionType: 'SALE_CANCELLATION',
-        }).catch(() => null);
+        }).catch(() => {
+            this.logger.error(`Could not deliver sale cancellation notification for request ${requestId} to user ${userId}`);
+        });
     }
 
     private async notifyAdmins(title: string, message: string, requestId: string): Promise<void> {
         const admins = await this.prisma.user.findMany({
             where: { role: 'ADMIN', deletedAt: null },
             select: { id: true },
+        }).catch(() => {
+            this.logger.error(`Could not resolve admin notification recipients for cancellation ${requestId}`);
+            return [];
         });
         await Promise.all(admins.map((admin) =>
             this.notifyUser(admin.id, title, message, requestId, '/dashboard/admin/cancellations')
@@ -323,13 +331,14 @@ export class SaleCancellationsService {
                     `${isSeller ? 'The seller' : 'The buyer'} requested cancellation of "${ctx.listing.title}". Review the reason and evidence before responding.`,
                     request.id,
                 );
-            } else {
-                await this.notifyAdmins(
-                    'Sale cancellation needs review',
-                    `A seller requested cancellation of "${ctx.listing.title}" but there is no linked buyer account to confirm it.`,
-                    request.id,
-                );
             }
+            // Admins must see new requests immediately, even while the other
+            // party has not responded. The request remains open for them too.
+            await this.notifyAdmins(
+                'Sale cancellation requested',
+                `${isSeller ? 'The seller' : 'The buyer'} requested cancellation of "${ctx.listing.title}"${ctx.listing.vrm ? ` (${ctx.listing.vrm})` : ''}. ${ctx.buyerId ? 'Awaiting the other party; admin review is available now.' : 'No linked buyer account; admin review is required.'}`,
+                request.id,
+            );
 
             return this.hydrate(request);
         } catch (error) {
@@ -399,7 +408,7 @@ export class SaleCancellationsService {
             }
         }
         const hydrated = await this.hydrate(row);
-        if (isAdmin) return { ...hydrated, viewer: { canAdminReview: row.status === ('PENDING_ADMIN' as any) } };
+        if (isAdmin) return { ...hydrated, viewer: { canAdminReview: OPEN_STATUSES.includes(row.status) } };
         const { canonicalId } = await this.actor(userId);
         const counterpartId = row.requestedByRole === 'SELLER' ? row.buyerId : row.sellerId;
         return {
@@ -415,7 +424,7 @@ export class SaleCancellationsService {
 
     async pendingAdmin() {
         const rows = await this.prisma.saleCancellationRequest.findMany({
-            where: { status: 'PENDING_ADMIN' as any },
+            where: { status: { in: OPEN_STATUSES as any } },
             include: { evidence: true },
             orderBy: { createdAt: 'asc' },
             take: 100,
@@ -455,18 +464,25 @@ export class SaleCancellationsService {
             const updated = await this.prisma.saleCancellationRequest.update({
                 where: { id },
                 data: {
-                    status: 'REJECTED' as any,
+                    // A party's refusal is not an admin decision. Keep the
+                    // dispute open for admin review instead of closing it.
+                    status: 'PENDING_ADMIN' as any,
                     counterpartRespondedById: canonicalId,
-                    counterpartResponseNote: note?.trim() || null,
+                    counterpartResponseNote: `Declined cancellation.${note?.trim() ? ` ${note.trim()}` : ''}`,
                     counterpartRespondedAt: new Date(),
-                    resolvedAt: new Date(),
+                    resolvedAt: null,
                 },
                 include: { evidence: true },
             });
             await this.notifyUser(
                 request.requestedById,
-                'Sale cancellation declined',
-                'The other party declined your sale cancellation request. You can contact them or CarMazium support if the issue remains unresolved.',
+                'Sale cancellation sent for admin review',
+                'The other party declined your cancellation request. CarMazium will review the evidence and can still approve cancellation.',
+                id,
+            );
+            await this.notifyAdmins(
+                'Disputed sale cancellation needs review',
+                'The other party declined a sale cancellation request. Review the evidence and record an admin decision; their refusal does not prevent approval.',
                 id,
             );
             return this.hydrate(updated);
@@ -545,8 +561,11 @@ export class SaleCancellationsService {
         }
         const request = await this.prisma.saleCancellationRequest.findUnique({ where: { id } });
         if (!request) throw new NotFoundException('Cancellation request not found.');
-        if (request.status !== ('PENDING_ADMIN' as any)) {
-            throw new BadRequestException('This request is not waiting for admin review.');
+        if (!OPEN_STATUSES.includes(request.status)) {
+            throw new BadRequestException('This cancellation request is no longer open for admin review.');
+        }
+        if (request.status === ('PENDING_COUNTERPARTY' as any) && !note?.trim()) {
+            throw new BadRequestException('An admin note is required when deciding before the other party responds.');
         }
 
         if (decision === 'REJECT') {
