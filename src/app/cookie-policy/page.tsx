@@ -40,8 +40,8 @@ export default function CookiePolicyPage() {
                     </div>
                     <h1 className="text-4xl md:text-5xl font-heading font-black mb-4 uppercase tracking-tight">Cookie Policy</h1>
                     <p className="text-[var(--text-muted)] text-lg max-w-2xl mx-auto">
-                        Two kinds of cookies run on CarMazium. One keeps you logged in. The other tells us whether our ads
-                        are actually working. Here&apos;s exactly which is which, and a switch to turn the second one off.
+                        CarMazium uses necessary technologies to keep accounts working, optional analytics and marketing
+                        tools, and Google AdSense advertisements on eligible public pages. Your choices are explained below.
                     </p>
                 </div>
 
@@ -72,8 +72,9 @@ export default function CookiePolicyPage() {
                             </div>
                         </div>
                         <p className="text-sm mb-4">
-                            Four tools, all off by default until you flip that switch. Turn it off any time and every one of
-                            them stops loading immediately — nothing else on the site changes.
+                            Optional tracking is controlled by your choice. Google Analytics may send cookieless measurement
+                            signals while consent is denied. Turning this switch off prevents new optional scripts from loading;
+                            reload the page to stop scripts that were already loaded.
                         </p>
                         <div className="divide-y divide-[var(--border-default)]">
                             {TRACKERS.map((tool) => (
@@ -83,6 +84,13 @@ export default function CookiePolicyPage() {
                                 </div>
                             ))}
                         </div>
+                    </section>
+
+                    <section className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-default)] p-6">
+                        <h2 className="text-lg font-bold text-[var(--text-primary)] mb-3">Google AdSense advertising</h2>
+                        <p className="text-sm">AdSense helps fund CarMazium by displaying third-party ads. Its code loads on eligible public pages after you accept optional technologies above. Google and its advertising partners may use cookies, device identifiers and browsing or ad-interaction information to serve, personalise and measure ads.</p>
+                        <p className="text-sm mt-3">For UK, EEA and Swiss visitors, Google&apos;s separate consent message lets you consent, decline or manage advertising purposes and partners. Accepting our analytics cookies does not replace that choice. You can revisit Google&apos;s choices using its privacy and cookie settings link when available. You can also turn optional technologies off above and reload the page to stop the AdSense code loading.</p>
+                        <p className="text-sm mt-3"><a href="https://policies.google.com/technologies/partner-sites" className="text-primary underline" target="_blank" rel="noopener noreferrer">How Google uses information from partner sites</a></p>
                     </section>
 
                     <p className="text-center text-sm text-[var(--text-muted)]">

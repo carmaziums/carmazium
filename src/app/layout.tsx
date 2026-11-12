@@ -20,6 +20,7 @@ import { OnlineHeartbeat } from "@/components/analytics/OnlineHeartbeat";
 import { GoogleConsentMode } from "@/components/analytics/GoogleConsentMode";
 import { GoogleTagManager } from "@/components/analytics/GoogleTagManager";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
+import { GoogleAdSense } from "@/components/analytics/GoogleAdSense";
 import { MetaAdvancedMatching, MetaPixel } from "@/components/analytics/MetaPixel";
 import { TikTokPixel } from "@/components/analytics/TikTokPixel";
 import { CookieConsentBanner } from "@/components/analytics/CookieConsentBanner";
@@ -88,6 +89,7 @@ export const metadata: Metadata = {
   },
   applicationName: "CarMazium",
   other: {
+    "google-adsense-account": "ca-pub-4507155809658636",
     "geo.region": "GB",
     "geo.placename": "United Kingdom",
   },
@@ -123,6 +125,7 @@ export default function RootLayout({
           <GoogleConsentMode />
           <GoogleTagManager />
           <GoogleAnalytics />
+          <GoogleAdSense />
           <MetaPixel />
           <TikTokPixel />
           <ThemeProvider>

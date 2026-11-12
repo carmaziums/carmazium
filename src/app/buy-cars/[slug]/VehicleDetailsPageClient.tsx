@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { GoogleAdBanner } from "@/components/analytics/GoogleAdSense"
 import { VehicleWarrantyCta } from "@/components/services/VehicleWarrantyCta"
 import { BuyerVehicleInformation } from "@/components/listing/BuyerVehicleInformation"
 import Link from "next/link"
@@ -1042,6 +1043,8 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                             </div>
 
                         </div>
+
+                        {listing.type === 'CLASSIFIED' && <GoogleAdBanner />}
 
                         {/* Vehicle Description */}
                         {listing.description && (
