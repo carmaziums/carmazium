@@ -12,6 +12,7 @@ describe('Analytics public telemetry integrity', () => {
         'valuation_quote_issued',
         'valuation_price_lock',
         'listing_approved',
+        'auction_listing_approved',
         'listing_rejected',
         'admin_draft_auction_relist',
     ])('rejects forged backend-only event type %s', (type) => {

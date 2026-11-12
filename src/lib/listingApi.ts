@@ -1,4 +1,5 @@
 import type { VehicleSearchOption } from './vehicleSearchOptions';
+import { captureApprovedAuctionAttribution } from './approvedAuctionAttribution';
 /**
  * API Client for Listing Operations
  */
@@ -1366,6 +1367,7 @@ export async function createListingCheckoutSession(listingId: string, badgeTier:
  * { activated: false, paymentConfirmationPending: true } while Stripe verification is unresolved.
  */
 export async function publishListing(listingId: string): Promise<{ activated: boolean; requiresPayment?: boolean; pendingReview?: boolean; paymentConfirmationPending?: boolean }> {
+    await captureApprovedAuctionAttribution(listingId)
     const data = await apiClient<{ data: { activated: boolean; requiresPayment?: boolean; pendingReview?: boolean; paymentConfirmationPending?: boolean } }>(`/listings/${listingId}/publish`, {
         method: 'POST',
     })

@@ -81,6 +81,9 @@ export function trackAdsConversion(
     // must never train the new bidding goal.
     if (event === QUALIFIED_EVENT) {
         const validAuction = params.listing_type === 'auction'
+            // Enable only after the separately imported server approval action
+            // is verified and selected as primary in the Google Ads campaign.
+            && process.env.NEXT_PUBLIC_GADS_AUCTION_APPROVAL_ONLY !== 'true'
             && params.qualification === 'auction_review'
             && params.outcome === 'pending_review'
         const validRetail = params.listing_type === 'retail'

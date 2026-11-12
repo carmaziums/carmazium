@@ -18,6 +18,7 @@ const BACKEND_ONLY_EVENT_TYPES = new Set([
     'valuation_quote_issued',
     'valuation_price_lock',
     'listing_approved',
+    'auction_listing_approved',
     'listing_rejected',
     'admin_draft_auction_relist',
     // Written only by POST /analytics/problem-report after validation.

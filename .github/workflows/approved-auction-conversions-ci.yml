@@ -1,0 +1,37 @@
+name: Approved Auction Conversions
+on:
+  pull_request:
+    paths:
+      - 'backend/src/analytics/**'
+      - 'backend/src/admin/admin.service.ts'
+      - 'backend/prisma/**'
+      - 'src/lib/approvedAuctionAttribution.ts'
+      - 'src/lib/googleAds.ts'
+      - 'src/lib/listingApi.ts'
+      - 'src/context/ConsentContext.tsx'
+      - 'scripts/test-approved-auction-attribution.test.mjs'
+      - 'scripts/test-google-ads-qualified-seller.test.mjs'
+      - '.github/workflows/approved-auction-conversions-ci.yml'
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: backend
+      - run: npx tsc --noEmit --incremental false
+      - run: npx tsc --noEmit --incremental false
+        working-directory: backend
+      - run: node --test scripts/test-approved-auction-attribution.test.mjs scripts/test-google-ads-qualified-seller.test.mjs scripts/test-meta-seller-conversions.test.mjs
+      - run: npm test -- --runInBand approved-auction-conversions.spec.ts analytics-event-policy.spec.ts admin.service.spec.ts
+        working-directory: backend
