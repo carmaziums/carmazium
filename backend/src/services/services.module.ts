@@ -8,6 +8,7 @@ import { PaymentsModule } from '../payments/payments.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ServicesService } from './services.service';
 import { ServicesController } from './services.controller';
+import { WarrantyEnquiriesController } from './warranty-enquiries.controller';
 import { ServiceLeadsController } from './service-leads.controller';
 import { ServiceLeadsService } from './service-leads.service';
 import { AdminServicesController } from './admin-services.controller';
@@ -41,6 +42,7 @@ import { TradeTeamController } from './trade-team.controller';
     controllers: [
         ServicesController,
         ServiceLeadsController,
+        WarrantyEnquiriesController,
         AdminServicesController,
         ServiceOperationsController,
         AdminServiceOperationsController,

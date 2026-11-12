@@ -11,7 +11,7 @@ import {
     MaxLength,
     Min,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ServiceType } from '@prisma/client';
 
@@ -80,6 +80,10 @@ export class CreateServiceLeadDto {
     @IsOptional() @IsString() @MaxLength(80)
     warrantyLevel?: string;
 
+    @ApiPropertyOptional({ description: 'Reject a warranty request if no verified provider currently matches' })
+    @IsOptional() @IsBoolean()
+    requireMatchedProvider?: boolean;
+
     @ApiProperty({ description: 'Explicit consent for matched approved providers to receive contact details' })
     @IsBoolean()
     consentToProviderContact: boolean;
@@ -105,4 +109,16 @@ export class RespondToServiceLeadDto {
 
     @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) @Max(120)
     termMonths?: number;
+}
+
+/** Public availability accepts vehicle/cover criteria only, never contact details. */
+export class WarrantyAvailabilityDto extends PickType(CreateServiceLeadDto, [
+    'listingId', 'vehicleRegistration', 'vehicleMake', 'vehicleModel',
+    'vehicleYear', 'vehicleMileage', 'vehicleValuePence', 'postcode',
+    'warrantyMonths', 'warrantyLevel',
+] as const) {
+    @Type(() => Number) vehicleYear?: number;
+    @Type(() => Number) vehicleMileage?: number;
+    @Type(() => Number) vehicleValuePence?: number;
+    @Type(() => Number) warrantyMonths?: number;
 }

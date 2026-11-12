@@ -8,7 +8,7 @@ import { CapabilityStatus, Prisma, ServiceType } from '@prisma/client';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { CreateServiceLeadDto, RespondToServiceLeadDto } from './service-leads.dto';
+import { CreateServiceLeadDto, RespondToServiceLeadDto, WarrantyAvailabilityDto } from './service-leads.dto';
 import { ReviewCapabilityDto } from './dto';
 import { assertServiceAcceptingNewRequests } from './service-availability';
 import { assertCapabilityVerificationReady, verifiedCapabilityWhere } from './capability-verification';
@@ -175,7 +175,7 @@ export class ServiceLeadsService {
             const levels = (candidate.leadWarrantyLevels ?? [])
                 .map((value: string) => value.trim().toLowerCase())
                 .filter(Boolean);
-            if (levels.length > 0 && (!lead.warrantyLevel || !levels.includes(lead.warrantyLevel.trim().toLowerCase()))) {
+            if (levels.length > 0 && lead.warrantyLevel?.trim().toLowerCase() !== 'not sure' && (!lead.warrantyLevel || !levels.includes(lead.warrantyLevel.trim().toLowerCase()))) {
                 return null;
             }
             if (!requiredNumber(candidate.leadWarrantyMinMonths, lead.warrantyMonths, (value, min) => value >= min)) return null;
@@ -257,6 +257,49 @@ export class ServiceLeadsService {
         return matched.slice(0, limit);
     }
 
+    /** Only active public retail listings may seed a new buyer warranty enquiry. */
+    async warrantyListing(listingId: string) {
+        assertServiceAcceptingNewRequests(ServiceType.WARRANTY);
+        const listing = await this.prisma.listing.findFirst({
+            where: { id: listingId, type: 'CLASSIFIED', status: 'ACTIVE', deletedAt: null },
+            select: {
+                id: true, title: true, slug: true, price: true,
+                vrm: true, make: true, model: true, year: true, mileage: true,
+                vehicle: { select: { vrm: true, make: true, model: true, year: true, mileage: true } },
+            },
+        });
+        if (!listing) throw new NotFoundException('This retail listing is no longer available for a warranty enquiry.');
+        return {
+            id: listing.id, title: listing.title, slug: listing.slug,
+            vehicleRegistration: listing.vehicle?.vrm ?? listing.vrm,
+            vehicleMake: listing.vehicle?.make ?? listing.make,
+            vehicleModel: listing.vehicle?.model ?? listing.model,
+            vehicleYear: listing.vehicle?.year ?? listing.year,
+            vehicleMileage: listing.vehicle?.mileage ?? listing.mileage,
+            vehicleValuePence: Math.round(Number(listing.price) * 100),
+        };
+    }
+
+    async warrantyAvailability(dto: WarrantyAvailabilityDto) {
+        assertServiceAcceptingNewRequests(ServiceType.WARRANTY);
+        const vehicle = dto.listingId ? await this.warrantyListing(dto.listingId) : null;
+        const postcode = normaliseUkPostcode(dto.postcode);
+        if (!postcode) throw new BadRequestException('Enter a valid UK postcode to check warranty availability.');
+        const matching = await this.matchingProviders(this.prisma, {
+            serviceType: ServiceType.WARRANTY,
+            postcode,
+            vehicleYear: vehicle?.vehicleYear ?? dto.vehicleYear ?? null,
+            vehicleMileage: vehicle?.vehicleMileage ?? dto.vehicleMileage ?? null,
+            vehicleValuePence: vehicle?.vehicleValuePence ?? dto.vehicleValuePence ?? null,
+            warrantyMonths: dto.warrantyMonths ?? null,
+            warrantyLevel: dto.warrantyLevel?.trim() || null,
+            annualIncomePence: null,
+            termMonths: null,
+        });
+        // No lead is saved and no provider/customer identity is disclosed.
+        return { available: matching.length > 0, providerCount: matching.length };
+    }
+
     async create(customerId: string, dto: CreateServiceLeadDto) {
         this.assertLeadType(dto.serviceType);
         assertServiceAcceptingNewRequests(dto.serviceType);
@@ -273,6 +316,11 @@ export class ServiceLeadsService {
         ) {
             throw new BadRequestException('Enquiries need a registration or vehicle make and model.');
         }
+
+        const retailWarranty = dto.serviceType === ServiceType.WARRANTY && dto.requireMatchedProvider && dto.listingId
+            ? await this.warrantyListing(dto.listingId)
+            : null;
+        const vehicleValuePence = retailWarranty?.vehicleValuePence ?? dto.vehicleValuePence ?? null;
 
         const customer = await this.prisma.user.findUnique({
             where: { id: customerId },
@@ -376,7 +424,7 @@ export class ServiceLeadsService {
         const leadMatchInput = {
             serviceType,
             postcode,
-            vehicleValuePence: dto.vehicleValuePence ?? null,
+            vehicleValuePence,
             vehicleYear,
             vehicleMileage,
             annualIncomePence: serviceType === ServiceType.FINANCE ? dto.annualIncomePence ?? null : null,
@@ -407,6 +455,9 @@ export class ServiceLeadsService {
             }
 
             const matching = await this.matchingProviders(tx, leadMatchInput);
+            if (serviceType === ServiceType.WARRANTY && dto.requireMatchedProvider && matching.length === 0) {
+                throw new BadRequestException('No approved warranty provider currently matches these details. Please change your preferences or try again later. Your enquiry has not been sent.');
+            }
             const created = await tx.serviceLead.create({
                 data: {
                     customerId,
@@ -418,7 +469,7 @@ export class ServiceLeadsService {
                     vehicleModel,
                     vehicleYear,
                     vehicleMileage,
-                    vehicleValuePence: dto.vehicleValuePence ?? null,
+                    vehicleValuePence,
                     fullName,
                     email: customer.email,
                     phone,

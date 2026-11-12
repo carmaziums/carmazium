@@ -1,10 +1,11 @@
 "use client"
 
 import Link from "next/link"
+import { Suspense } from "react"
 import { ArrowLeft, ArrowRight, BadgeCheck, CheckCircle, FileText, LayoutDashboard, ShieldCheck, Users } from "lucide-react"
 import { warrantyServiceEnabled } from "@/lib/featureFlags"
 import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
-import { ServiceLeadForm } from "@/components/services/ServiceLeadForm"
+import { WarrantyEnquiryForm } from "@/components/services/WarrantyEnquiryForm"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 
@@ -37,7 +38,7 @@ export default function WarrantyServicePage() {
                             Always read the provider&apos;s full warranty terms before purchasing, including covered components, exclusions, labour rates, claim limits and maintenance requirements.
                         </div>
                     </aside>
-                    <ServiceLeadForm type="WARRANTY" />
+                    <Suspense fallback={<p role="status">Loading warranty form…</p>}><WarrantyEnquiryForm /></Suspense>
                 </section>
 
                 <section className="rounded-3xl border border-purple-500/25 bg-purple-500/5 p-8 md:p-10">
