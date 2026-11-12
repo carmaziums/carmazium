@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { VehicleWarrantyCta } from "@/components/services/VehicleWarrantyCta"
 import { Button } from "@/components/ui/Button"
 import { Calendar, Gauge, Fuel, Cog, Car, BadgeCheck, ShieldCheck, Star, MapPin, Gavel, Truck, Globe } from "lucide-react"
 import { SellerBadge } from "@/components/ui/SellerBadge"
@@ -345,6 +346,7 @@ export function CarCard({
                             {status === 'SOLD' ? 'View Sold Vehicle' : listingType === 'AUCTION' ? 'View auction' : status === 'OFFER_ACCEPTED' ? 'View Sale Pending' : 'View Details'}
                         </Link>
                     </Button>
+                    <VehicleWarrantyCta listingId={listingId} status={status} listingType={listingType} compact />
                 </div>
             </div>
         </div>

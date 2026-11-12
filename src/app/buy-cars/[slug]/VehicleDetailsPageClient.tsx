@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { VehicleWarrantyCta } from "@/components/services/VehicleWarrantyCta"
 import { BuyerVehicleInformation } from "@/components/listing/BuyerVehicleInformation"
 import Link from "next/link"
 import Image from "next/image"
@@ -1031,6 +1032,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                         )}
                                     </div>
 
+                                    <VehicleWarrantyCta listingId={listing.id} status={listing.status} listingType={listing.type} />
                                     <VehicleDeliveryInlineCta listing={listing} />
                                 </div>
                                 <div className="bg-[var(--bg-card)] p-4 flex items-center justify-center gap-2 text-[var(--text-muted)] text-xs">
@@ -1558,6 +1560,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                             )
                                         })()}
 
+                                        <VehicleWarrantyCta listingId={listing.id} status={listing.status} listingType={listing.type} />
                                         <VehicleDeliveryInlineCta listing={listing} />
                                     </>
                                 )}

@@ -429,6 +429,7 @@ export interface CreateServiceLeadInput {
   warrantyMonths?: number;
   warrantyLevel?: string;
   consentToProviderContact: boolean;
+  requireMatchedProvider?: boolean;
 }
 export async function createServiceLead(input: CreateServiceLeadInput): Promise<ServiceLead> {
   const r = await apiClient<{ data: ServiceLead }>('/services/leads', { method: 'POST', body: JSON.stringify(input) }); return r.data;
@@ -572,4 +573,33 @@ export async function addServiceCaseNote(id: string, note: string): Promise<void
 }
 export async function uploadServiceCaseEvidence(id: string, body: FormData): Promise<void> {
   await apiClient(`/services/operations/jobs/${encodeURIComponent(id)}/evidence`, { method: 'POST', body });
+}
+
+export interface WarrantyListing {
+  id: string;
+  title: string;
+  slug: string;
+  vehicleRegistration: string | null;
+  vehicleMake: string | null;
+  vehicleModel: string | null;
+  vehicleYear: number | null;
+  vehicleMileage: number | null;
+  vehicleValuePence: number;
+}
+export type WarrantyAvailabilityInput = Pick<CreateServiceLeadInput,
+  'listingId' | 'vehicleRegistration' | 'vehicleMake' | 'vehicleModel' |
+  'vehicleYear' | 'vehicleMileage' | 'vehicleValuePence' | 'postcode' |
+  'warrantyMonths' | 'warrantyLevel'>;
+
+export async function getWarrantyListing(id: string): Promise<WarrantyListing> {
+  const r = await apiClient<{ data: WarrantyListing }>(`/services/warranty/listing/${encodeURIComponent(id)}`);
+  return r.data;
+}
+export async function checkWarrantyAvailability(input: WarrantyAvailabilityInput): Promise<{ available: boolean; providerCount: number }> {
+  const query = new URLSearchParams();
+  Object.entries(input).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') query.set(key, String(value));
+  });
+  const r = await apiClient<{ data: { available: boolean; providerCount: number } }>(`/services/warranty/availability?${query}`, { cache: 'no-store' });
+  return r.data;
 }
