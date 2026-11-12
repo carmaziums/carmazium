@@ -5,6 +5,7 @@ import { motLookupMessage } from "@/lib/vehicleLookupFeedback"
 import * as React from "react"
 import { SELL_FAQS } from "@/lib/sellFaqs"
 import { SellerGuideLinks } from "@/components/blog/SellerGuideLinks"
+import { GoogleAdBanner } from "@/components/analytics/GoogleAdSense"
 import { Suspense } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
@@ -712,6 +713,8 @@ function SellerLanding() {
                         </p>
 
                         <QuickValuationForm />
+
+                        <GoogleAdBanner />
 
                         <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
                             <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 shadow-sm">
