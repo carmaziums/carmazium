@@ -26,7 +26,9 @@ export function FinanceReferralForm({ listingId }: { listingId: string }) {
         if (!request.current || request.current.key !== key) request.current = { key, id: crypto.randomUUID() }
         setBusy(true); setError("")
         try {
-            const result = await apiClient<{ data: { redirectUrl: string } }>("/finance/referrals", { method: "POST", body: JSON.stringify({ ...details, requestId: request.current.id }) })
+            // The API requires a custom header for anonymous mutations; browsers
+            // must pass its existing CORS preflight before submitting this form.
+            const result = await apiClient<{ data: { redirectUrl: string } }>("/finance/referrals", { method: "POST", headers: { "X-CSRF-Token": "finance-referral" }, body: JSON.stringify({ ...details, requestId: request.current.id }) })
             const expected = "https://applications.jigsawfinance.com/pulse-cars-limited-1787921597855/"
             if (result.data.redirectUrl !== expected) throw new Error("The finance link could not be verified. Please contact the team.")
             window.location.assign(expected)
