@@ -660,22 +660,6 @@ if (
   ok('Native Partner Jobs preserve provider lifecycle and service-job chat parity');
 }
 
-// Partner/provider Finance & Warranty lead parity: native must keep the
-// authoritative matched inbox/detail contract and structured provider response.
-if (
-  !mobileServicesApi.includes('/services/leads/inbox?') ||
-  !mobileServicesApi.includes('/services/leads/inbox/${id}') ||
-  !mobileServicesApi.includes('/services/leads/${id}/respond') ||
-  !mobileProviderLeads.includes("navigation.navigate('ProviderLeadDetail'") ||
-  !mobileProviderLeadDetail.includes("lead.serviceType === 'FINANCE'") ||
-  !mobileProviderLeadDetail.includes('representativeApr') ||
-  !mobileProviderLeadDetail.includes('respondToProviderLead(lead.id')
-) {
-  fail('Native Partner Leads must preserve Finance/Warranty inbox, detail and response parity');
-} else {
-  ok('Native Partner Leads preserve matched enquiry and provider response parity');
-}
-
 // Partner/provider Messages parity: native reuses the shared chat system, but
 // must understand SERVICE_JOB room metadata and expose a provider-focused
 // service-job conversation workspace that opens the normal ChatScreen.
@@ -877,7 +861,6 @@ for (const [surface, source] of [
   ['dealer offers', webDealerOffersStates],
   ['unified buyer/seller dashboard', webUnifiedDashboardStates],
   ['provider jobs', webProviderJobsStates],
-  ['provider enquiries', webProviderLeadsStates],
 ]) {
   if (!source.includes('ErrorState') || !source.includes('LoadingState')) {
     fail(`${surface} can no longer distinguish load failure from loading`);
@@ -887,8 +870,7 @@ if (
   !webDealerInventoryStates.includes('EmptyState') ||
   !webDealerCustomersStates.includes('EmptyState') ||
   !webDealerOffersStates.includes('EmptyState') ||
-  !webProviderJobsStates.includes('EmptyState') ||
-  !webProviderLeadsStates.includes('EmptyState')
+  !webProviderJobsStates.includes('EmptyState')
 ) {
   fail('Representative list journeys can no longer distinguish empty data from failure');
 } else {
@@ -1037,7 +1019,6 @@ if (
   !webDealerRoutes.includes('label: "Offers"') ||
   !webDealerRoutes.includes('label: "Partner Account"') ||
   !webDealerRoutes.includes('label: "Service Jobs"') ||
-  !webDealerRoutes.includes('label: "Warranty Enquiries"') ||
   !mobileDealerDrawer.includes("label: 'Stock'") ||
   !mobileDealerDrawer.includes("label: 'Customers'") ||
   !mobileDealerDrawer.includes("label: 'Offers'") ||
@@ -1049,13 +1030,26 @@ if (
   !mobileDealerCustomers.includes('>Customers</Text>') ||
   !mobileDealerOffers.includes('>Offers Received</Text>') ||
   !mobilePartnerDashboard.includes('>Service Jobs</Text>') ||
-  !mobilePartnerDashboard.includes('>Warranty Enquiries</Text>') ||
-  !mobileProviderJobs.includes('>Service Jobs</Text>') ||
-  !mobileProviderLeads.includes('>Warranty Enquiries</Text>')
+  !mobileProviderJobs.includes('>Service Jobs</Text>')
 ) {
   fail('Shared dealer/Partner terminology drifted between web and native clients');
 } else {
   ok('Dealer and Partner navigation terminology is aligned across web and native');
+}
+
+// Finance/warranty provider inboxes are retired on web and native.
+if (
+  !mobileProviderLeads.includes('Managed by CarMazium admin') ||
+  !mobileProviderLeadDetail.includes('Managed by CarMazium admin') ||
+  mobileProviderLeads.includes('getProviderLeads(') ||
+  mobileProviderLeadDetail.includes('respondToProviderLead(') ||
+  mobileDealerDrawer.includes("stackScreen: 'ProviderLeads'") ||
+  mobilePartnerDashboard.includes("navigation.navigate('ProviderLeads'") ||
+  webDealerRoutes.includes('label: "Warranty Enquiries"')
+) {
+  fail('Finance/warranty provider controls must stay retired on web and native');
+} else {
+  ok('Finance/warranty provider controls are admin-managed on web and native');
 }
 
 // Dealer auction clients must use canonical dealership identity and the same

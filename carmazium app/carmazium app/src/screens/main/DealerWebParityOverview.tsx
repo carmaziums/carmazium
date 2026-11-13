@@ -216,7 +216,7 @@ export const DealerWebParityOverview: React.FC<Props> = ({
       icon: 'people-outline', destination: 'customers', show: canManageCrm },
     { title: 'Buy & bid', description: 'Live auctions, your bids and completed purchases.',
       icon: 'hammer-outline', destination: 'buy-and-bid', show: canViewTrade },
-    { title: 'Partner services', description: 'Delivery, inspections, finance and warranty services.',
+    { title: 'Partner services', description: 'Manage delivery, recovery and vehicle inspection services.',
       icon: 'business-outline', destination: 'partner-services', show: true },
     { title: 'Performance', description: 'Real dealership analytics, sales and revenue.',
       icon: 'bar-chart-outline', destination: 'performance', show: canViewAnalytics },

@@ -96,3 +96,7 @@ Deploy the additive `admin_finance_routing` database migration before the backen
 ## Temporary public warranty state
 
 The old matching form and provider response routes are retired. Until the paid warranty launch gates are satisfied, the warranty page directs customers to the CarMazium team and clearly states online quotes/purchases are being prepared. The old public matching availability returns unavailable; the old create-matched-lead HTTP endpoint rejects new requests. Automatic hourly matching, approval-triggered matching and the admin rematch HTTP route are also retired. Existing customer/admin history is retained. This avoids collecting an application into a workflow that no longer has a provider inbox.
+
+## Native app alignment
+
+The mobile source removes the same provider application cards, warranty inbox navigation and response screens, while preserving the finance calculator switch. The backend rejects retired operations from already-installed versions. Updated native screens require a new signed app release; this website deployment does not update an installed APK. Native TypeScript and cross-product navigation/parity checks passed.

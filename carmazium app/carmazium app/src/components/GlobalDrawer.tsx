@@ -73,7 +73,6 @@ const PROVIDER_ITEMS: MenuItem[] = [
   { id: 'provider-home', section: 'Business', label: 'Partner Home', icon: 'business-outline', iconLib: 'ion', stackScreen: 'PartnerDashboard' },
   { id: 'provider-overview', section: 'Services', label: 'Service Overview', icon: 'grid-outline', iconLib: 'ion', stackScreen: 'ProviderCapabilities' },
   { id: 'provider-jobs', section: 'Services', label: 'Available Jobs', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'ProviderJobs' },
-  { id: 'provider-leads', section: 'Services', label: 'Warranty Enquiries', icon: 'clipboard-outline', iconLib: 'ion', stackScreen: 'ProviderLeads' },
   { id: 'provider-messages', section: 'Account', label: 'Messages', icon: 'chatbubbles-outline', iconLib: 'ion', stackScreen: 'ProviderMessages' },
   { id: 'provider-settings', section: 'Account', label: 'Account Settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings' },
 ];
@@ -123,7 +122,6 @@ const DEALER_ITEMS: MenuItem[] = [
   { id: 'dealer-partner', section: 'Services', label: 'Partner Account', icon: 'grid-outline', iconLib: 'ion', stackScreen: 'PartnerDashboard' },
   { id: 'dealer-service-addons', section: 'Services', label: 'Service Add-ons', icon: 'construct-outline', iconLib: 'ion', stackScreen: 'ProviderCapabilities' },
   { id: 'dealer-service-jobs', section: 'Services', label: 'Service Jobs', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'ProviderJobs' },
-  { id: 'dealer-service-leads', section: 'Services', label: 'Warranty Enquiries', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'ProviderLeads' },
 ];
 
 // Website Stock submenu (DashboardSidebar dealer-stock-submenu).

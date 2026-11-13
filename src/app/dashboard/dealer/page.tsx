@@ -243,7 +243,7 @@ export default function DealerDashboard() {
         {
             href: "/dashboard/partner",
             title: "Partner services",
-            description: "Delivery, inspections, finance and warranty services.",
+            description: "Manage delivery, recovery and vehicle inspection services.",
             icon: Building2,
             show: true,
         },

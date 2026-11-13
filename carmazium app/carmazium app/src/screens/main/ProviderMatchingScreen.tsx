@@ -88,6 +88,7 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
       const mine = await getMyCapabilities();
       const next = mine.capabilities.find((item) => item.id === capabilityId);
       if (!next) throw new Error('Service capability not found on your Partner Account.');
+      if (next.serviceType === 'FINANCE' || next.serviceType === 'WARRANTY') throw new Error('Finance and warranty providers are managed directly by CarMazium admin.');
       hydrate(next);
     } catch (err: any) {
       setError(err?.message || 'Could not load matching settings.');
