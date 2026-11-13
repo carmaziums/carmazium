@@ -1,9 +1,9 @@
-import { BadRequestException, ForbiddenException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException, ServiceUnavailableException, ValidationPipe } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { FinanceReferralService, JIGSAW_FINANCE_URL } from './finance-referral.service';
-import { CreateFinanceReferralDto } from './finance-referral.dto';
+import { CreateFinanceReferralDto, FinancePreferenceDto } from './finance-referral.dto';
 
 const dto = { requestId: '939dd888-87c4-4326-a714-87ba43353065', listingId: '5960728b-c243-482f-aec7-b2965330932a', fullName: 'Test Buyer', email: 'buyer@example.test', phone: '07700900123', consent: true };
 
@@ -80,4 +80,14 @@ describe('Jigsaw finance referrals', () => {
         expect(errors.map(e => e.property)).toEqual(expect.arrayContaining(['fullName', 'email', 'phone', 'consent']));
         await expect(service.create({ ...dto, phone: '-------' })).rejects.toBeInstanceOf(BadRequestException);
     });
+    it('requires real JSON booleans even with the production implicit-conversion pipe', async () => {
+        const pipe = new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true, transformOptions: { enableImplicitConversion: true } });
+        const transform = (metatype: any, value: unknown) => pipe.transform(value, { type: 'body', metatype });
+        await expect(transform(CreateFinanceReferralDto, { ...dto, consent: 'false' })).rejects.toBeInstanceOf(BadRequestException);
+        await expect(transform(CreateFinanceReferralDto, { ...dto, consent: 'true' })).rejects.toBeInstanceOf(BadRequestException);
+        await expect(transform(FinancePreferenceDto, { enabled: 'false' })).rejects.toBeInstanceOf(BadRequestException);
+        await expect(transform(FinancePreferenceDto, { enabled: false })).resolves.toEqual({ enabled: false });
+        await expect(transform(CreateFinanceReferralDto, dto)).resolves.toMatchObject({ consent: true });
+    });
+
 });

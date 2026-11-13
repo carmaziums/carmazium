@@ -10,9 +10,11 @@ export class CreateFinanceReferralDto {
     @Transform(trim) @IsEmail() @Length(3, 254) email: string;
     @Transform(trim) @IsString() @Length(7, 30)
     @Matches(/^\+?[\d\s().-]+$/) phone: string;
+    @Transform(({ obj, key }) => obj[key])
     @Equals(true) consent: boolean;
 }
 
 export class FinancePreferenceDto {
+    @Transform(({ obj, key }) => obj[key])
     @IsBoolean() enabled: boolean;
 }
