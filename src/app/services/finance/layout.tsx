@@ -36,7 +36,7 @@ export default function FinanceLayout({ children }: { children: React.ReactNode 
                     serviceType: "Vehicle finance introduction",
                     description: metadata.description,
                     url: SEO_SITE + "/services/finance",
-                    broker: { "@id": SEO_SITE + "/#organization" },
+                    provider: { "@type": "Organization", name: "Jigsaw Finance" },
                     brand: { "@id": SEO_TRADEXCHANGE },
                     areaServed: { "@type": "Country", name: "United Kingdom" },
                 }}
