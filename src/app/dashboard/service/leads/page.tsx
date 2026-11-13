@@ -93,7 +93,7 @@ export default function ProviderLeadInboxPage() {
                         <div>
                             <ErrorState message={error} onRetry={load} />
                             <p className="mt-3 text-sm text-[var(--text-muted)]">
-                                Finance and warranty enquiries require approval for the relevant service.{' '}
+                                Warranty enquiries require service approval. Finance providers must contact the CarMazium team directly.{' '}
                                 <Link href="/dashboard/service/capabilities" className="text-primary underline">
                                     View your service approvals
                                 </Link>

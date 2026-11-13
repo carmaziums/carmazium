@@ -59,7 +59,7 @@ const GUIDES: Record<string, AccountOnboardingGuide> = {
         greeting: (name) => `Welcome to CarMazium, ${name}!`,
         tagline: 'Your account is set up for approved automotive service work.',
         features: [
-            'Apply for the service capabilities your business provides',
+            'Apply for Delivery, Inspection or Warranty capabilities; contact the team directly about providing finance',
             'Capability approval is required before protected service work becomes available',
             'Respond to suitable work requests and manage accepted jobs from your service dashboard',
             'Use CarMazium messaging for job communication once the relevant workflow allows it',

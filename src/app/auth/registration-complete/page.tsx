@@ -109,7 +109,7 @@ const CONTRACTOR_GUIDE: AccountGuide = {
         {
             icon: ShieldCheck,
             title: "Complete capability approval",
-            description: "Apply for the service capabilities you provide. Protected service work becomes available only after approval.",
+            description: "Apply for Delivery, Inspection or Warranty services. Finance providers must contact the team directly to discuss a partnership.",
         },
         {
             icon: Truck,
