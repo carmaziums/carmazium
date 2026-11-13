@@ -41,14 +41,14 @@ export default function MyServiceLeadsPage() {
         <div className="min-h-screen pt-24 pb-20">
             <main className="container mx-auto px-5 max-w-4xl">
                 <div className="flex items-end justify-between gap-4 mb-8">
-                    <div><p className="text-primary text-xs font-black uppercase tracking-widest mb-2">My services</p><h1 className="text-3xl font-black font-heading">Finance & warranty enquiries</h1></div>
+                    <div><p className="text-primary text-xs font-black uppercase tracking-widest mb-2">My services</p><h1 className="text-3xl font-black font-heading">Warranty & previous enquiries</h1></div>
                     <Link href="/services" className="text-sm font-bold text-primary">Service Hub</Link>
                 </div>
 
                 {!loading && !user && <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-8 text-center"><p className="mb-4">Sign in to see your enquiries.</p><Link href="/auth/login?redirect=%2Fservices%2Fleads" className="text-primary font-bold">Sign in</Link></div>}
                 {busy && <div className="flex justify-center py-16"><Loader2 className="animate-spin text-primary" /></div>}
                 {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-500">{error}</div>}
-                {!busy && user && !error && leads.length === 0 && <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-8 text-center text-[var(--text-muted)]">You have not submitted a finance or warranty enquiry yet.</div>}
+                {!busy && user && !error && leads.length === 0 && <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-8 text-center text-[var(--text-muted)]">You have no saved enquiries. Finance applications now start from participating vehicle listings and continue with Jigsaw Finance.</div>}
 
                 <div className="space-y-4">
                     {leads.map((lead) => (

@@ -91,7 +91,7 @@ test("simplified Buy destinations highlight the correct related pages", () => {
 
 test("pages read their own titles, not a neighbour's", () => {
     assert.equal(getDealerRoute("/dashboard/dealer/messages").title, "Messages")
-    assert.equal(getDealerRoute("/dashboard/dealer/finance").title, "Finance Applications")
+    assert.equal(getDealerRoute("/dashboard/dealer/finance").title, "Finance Calculator")
     assert.match(read("src/app/dashboard/dealer/messages/page.tsx"), /getDealerRoute\("\/dashboard\/dealer\/messages"\)/)
     assert.match(read("src/app/dashboard/dealer/finance/page.tsx"), /getDealerRoute\("\/dashboard\/dealer\/finance"\)/)
     assert.throws(() => getDealerRoute("/nope"))

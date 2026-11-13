@@ -357,6 +357,7 @@ export class ServicesService {
      * account becomes a real contractor.
      */
     async applyCapability(userId: string, dto: ApplyCapabilityDto) {
+        if (dto.serviceType === ServiceType.FINANCE) throw new BadRequestException("Finance provider registration is closed. Contact CarMazium directly.");
         const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
         if (user?.role !== UserRole.CONTRACTOR) {
             throw new ForbiddenException('Switch your account to a service provider before applying.');

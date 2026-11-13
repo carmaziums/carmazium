@@ -78,31 +78,12 @@ describe('FinanceService partner integrity', () => {
         });
     });
 
-    it('creates persistent partner settings without exposing the stored full key', async () => {
+    it('rejects retired provider self-registration and application routes', async () => {
         const { prisma, service } = build();
-        prisma.partnerProfile.findUnique.mockResolvedValue(null);
-        prisma.partnerProfile.create.mockImplementation(({ data }: any) => ({
-            id: 'finance-profile-1',
-            ...data,
-            isActive: true,
-        }));
-
-        const result = await service.updatePartnerSettings('finance-user-1', {
-            companyName: 'Finance Co',
-            callbackUrl: 'https://partner.example/callback',
-        });
-
-        expect(prisma.partnerProfile.create).toHaveBeenCalledWith({
-            data: expect.objectContaining({
-                financeUserId: 'finance-user-1',
-                partnerType: 'FINANCE_PARTNER',
-                companyName: 'Finance Co',
-                callbackUrl: 'https://partner.example/callback',
-                apiKey: expect.stringMatching(/^cmz_fin_/),
-            }),
-        });
-        expect(result.apiKeyHint).toMatch(/^••••••••••••/);
-        expect(result).not.toHaveProperty('apiKey');
-        expect(result.integrationEnabled).toBe(false);
+        await expect(service.updatePartnerSettings('finance-user-1', { companyName: 'Finance Co' })).rejects.toThrow('registration is closed');
+        await expect(service.regenerateApiKey('finance-user-1')).rejects.toThrow('retired');
+        await expect(service.create('buyer', {} as any)).rejects.toThrow('Jigsaw Finance');
+        expect(prisma.partnerProfile.create).not.toHaveBeenCalled();
     });
+
 });

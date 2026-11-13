@@ -379,102 +379,12 @@ function buildJourney() {
     return { store, notifications, service };
 }
 
-describe('Finance enquiry — end to end', () => {
-    it('matches only Finance providers, receives a response, exposes it to the customer and closes safely', async () => {
+describe('Retired finance matching', () => {
+    it('rejects legacy finance submissions without sharing contact details with a provider', async () => {
         const { store, notifications, service } = buildJourney();
-
-        const lead = await service.create('customer', {
-            serviceType: ServiceType.FINANCE,
-            vehicleRegistration: 'ab12 cde',
-            vehicleMake: 'BMW',
-            vehicleModel: '320d',
-            vehicleYear: 2019,
-            vehicleValuePence: 1_500_000,
-            depositPence: 200_000,
-            termMonths: 48,
-            monthlyBudgetPence: 35_000,
-            employmentStatus: 'Employed',
-            annualIncomePence: 3_600_000,
-            consentToProviderContact: true,
-        } as any);
-
-        expect(lead.recipientCount).toBe(1);
-        expect(lead.vehicleRegistration).toBe('AB12CDE');
-        expect(store.recipients).toHaveLength(1);
-        expect(store.recipients[0].contractorId).toBe('finance-profile');
-        expect(notifications.create).toHaveBeenCalledWith(expect.objectContaining({
-            userId: 'finance-user',
-            type: 'SERVICE_LEAD_NEW',
-            entityId: lead.id,
-        }));
-
-        const inbox = await service.inbox('finance-user', ServiceType.FINANCE);
-        expect(inbox).toHaveLength(1);
-        expect(inbox[0]).toMatchObject({
-            id: lead.id,
-            serviceType: ServiceType.FINANCE,
-            recipientStatus: 'NEW',
-        });
-
-        await expect(
-            service.inbox('warranty-user', ServiceType.FINANCE),
-        ).rejects.toBeInstanceOf(ForbiddenException);
-
-        const providerDetail = await service.providerLead('finance-user', lead.id);
-        expect(providerDetail).toMatchObject({
-            fullName: 'Cara Customer',
-            email: 'customer@example.com',
-            phone: '07000000001',
-            postcode: 'B1 1AA',
-            vehicleRegistration: 'AB12CDE',
-            depositPence: 200_000,
-            termMonths: 48,
-            monthlyBudgetPence: 35_000,
-            employmentStatus: 'Employed',
-            annualIncomePence: 3_600_000,
-            recipientStatus: 'VIEWED',
-        });
-
-        await expect(
-            service.providerLead('warranty-user', lead.id),
-        ).rejects.toBeInstanceOf(ForbiddenException);
-
-        const response = await service.respond('finance-user', lead.id, {
-            headline: 'Finance option available',
-            message: 'Subject to status and lender approval.',
-            productName: 'Hire Purchase',
-            indicativePricePence: 34_900,
-            representativeApr: 7.9,
-            termMonths: 48,
-        } as any);
-
-        expect(response).toMatchObject({
-            status: 'RESPONDED',
-            headline: 'Finance option available',
-            productName: 'Hire Purchase',
-            indicativePricePence: 34_900,
-            representativeApr: 7.9,
-            termMonths: 48,
-        });
-        expect(notifications.create).toHaveBeenCalledWith(expect.objectContaining({
-            userId: 'customer',
-            type: 'SERVICE_LEAD_RESPONSE',
-            entityId: lead.id,
-        }));
-
-        const customerView = await service.customerLead('customer', lead.id);
-        expect(customerView.recipientCount).toBe(1);
-        expect(customerView.responseCount).toBe(1);
-        expect(customerView.responses).toHaveLength(1);
-        expect(customerView.responses[0]).toMatchObject({
-            businessName: 'Midlands Vehicle Finance',
-            representativeApr: 7.9,
-            termMonths: 48,
-        });
-
-        const closed = await service.close('customer', lead.id);
-        expect(closed.status).toBe('CLOSED');
-        expect((await service.inbox('finance-user', ServiceType.FINANCE))).toEqual([]);
+        await expect(service.create('customer', { serviceType: ServiceType.FINANCE } as any)).rejects.toThrow('Jigsaw Finance');
+        expect(store.recipients).toHaveLength(0);
+        expect(notifications.create).not.toHaveBeenCalled();
     });
 });
 

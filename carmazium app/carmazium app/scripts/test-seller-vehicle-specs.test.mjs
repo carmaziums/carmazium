@@ -272,25 +272,26 @@ test('native full-screen listing guide explains every step and incomplete fields
   assert.equal((source.match(/\{renderStepGuidance\(\)\}/g) || []).length, 5);
 });
 
-test('dealer account settings can supply warranty and finance terms for MaziuM descriptions', () => {
+test('dealer settings retain warranty terms and link to optional Jigsaw calculator settings', () => {
   const settings = readFileSync(new URL('../src/screens/main/SettingsScreen.tsx', import.meta.url), 'utf8');
   const flow = readFileSync(new URL('../src/screens/sell/SellCarFlowScreen.tsx', import.meta.url), 'utf8');
   assert.match(settings, /setDealerWarrantyOffered\(dp\.warrantyOffered === true\)/);
-  assert.match(settings, /setDealerFinanceDetails\(dp\.financeDetails \?\? ''\)/);
   assert.match(settings, /warrantyDetails: dealerWarrantyOffered \? dealerWarrantyDetails\.trim\(\) : null/);
-  assert.match(settings, /financeDetails: dealerFinanceOffered \? dealerFinanceDetails\.trim\(\) : null/);
+  assert.doesNotMatch(settings, /financeDetails: dealerFinanceOffered/);
+  assert.match(settings, /navigation\.navigate\('FinancePreferences'\)/);
   assert.match(settings, /accessibilityLabel="Warranty offered"/);
-  assert.match(settings, /accessibilityLabel="Finance offered"/);
+  assert.doesNotMatch(settings, /accessibilityLabel="Finance offered"/);
   assert.match(flow, /mazium_ai_consent_v2/);
   assert.match(flow, /CarMazium separately adds the saved dealership introduction/);
   assert.match(flow, /apiClient<any>\('\/ai\/generate-description'/);
 });
 
-test('new dealer onboarding accepts optional genuine business introduction warranty and finance', () => {
+test('new dealer onboarding retains warranty and explains the separate Jigsaw preference', () => {
   const code = readFileSync(new URL('../src/screens/main/DealerOnboardingScreen.tsx', import.meta.url), 'utf8');
   assert.match(code, /description: introduction\.trim\(\)/);
   assert.match(code, /warrantyOffered, warrantyDetails: warrantyOffered/);
-  assert.match(code, /financeOffered, financeDetails: financeOffered/);
+  assert.doesNotMatch(code, /financeOffered, financeDetails: financeOffered/);
+  assert.match(code, /Finance providers must contact the CarMazium team directly/);
   assert.match(code, /OPTIONAL BUSINESS INTRODUCTION & SALES SERVICES/);
   assert.match(code, /You can skip this section/)
 });

@@ -61,13 +61,12 @@ export function dealerDescriptionAppendix(facts?: DealerDescriptionFacts | null)
     const bio = publicDealerCopy(facts.description).slice(0, 450);
     const warranty = facts.warrantyOffered && facts.warrantyDetails
         ? publicDealerCopy(facts.warrantyDetails) : '';
-    const finance = facts.financeOffered && facts.financeDetails
-        ? publicDealerCopy(facts.financeDetails) : '';
+    // Legacy dealer finance declarations are not part of the Jigsaw referral model.
+    // The seller-controlled listing calculator supplies finance information separately.
     const items = [
         companyName ? 'About the dealer: ' + companyName + (area ? ' — based in ' + area + '.' : '.') : area ? 'Dealer location: ' + area + '.' : '',
         bio,
         warranty ? 'Warranty offered (dealer-stated terms): ' + warranty : '',
-        finance ? 'Finance available, subject to eligibility and lender approval (dealer-stated): ' + finance : '',
     ].filter(Boolean);
     return items.length ? items.join('\n') : '';
 }

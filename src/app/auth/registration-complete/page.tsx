@@ -88,7 +88,7 @@ const DEALER_GUIDE: AccountGuide = {
         {
             icon: Truck,
             title: "Add approved business services",
-            description: "Add Delivery & Recovery, Vehicle Inspection, Finance or Warranty services where the relevant capability has been approved.",
+            description: "Add Delivery & Recovery, Vehicle Inspection or Warranty services where approved. Finance providers should contact the CarMazium team directly.",
         },
         {
             icon: Users,
@@ -109,7 +109,7 @@ const CONTRACTOR_GUIDE: AccountGuide = {
         {
             icon: ShieldCheck,
             title: "Complete capability approval",
-            description: "Apply for the service capabilities you provide. Protected service work becomes available only after approval.",
+            description: "Apply for Delivery, Inspection or Warranty services. Finance providers must contact the team directly to discuss a partnership.",
         },
         {
             icon: Truck,
@@ -135,27 +135,27 @@ const CONTRACTOR_GUIDE: AccountGuide = {
 
 const FINANCE_GUIDE: AccountGuide = {
     accountLabel: "Finance Partner Account",
-    intro: "Your finance partner workspace is ready.",
+    intro: "Finance partnerships are now arranged directly with the CarMazium team.",
     features: [
         {
             icon: Search,
-            title: "Review finance enquiries",
-            description: "See finance requests routed to your partner account.",
+            title: "Contact our team",
+            description: "Discuss a vehicle-finance partnership directly with CarMazium.",
         },
         {
             icon: ClipboardCheck,
-            title: "Return finance quotes",
-            description: "Respond to enquiries through the CarMazium finance workflow.",
+            title: "Buyer applications",
+            description: "Buyers continue to Jigsaw Finance through Pulse Cars Limited.",
         },
         {
             icon: Building2,
             title: "Manage partner activity",
-            description: "Track enquiries and maintain your finance partner account from the finance dashboard.",
+            description: "Provider registration and finance integrations are no longer self-service.",
         },
     ],
-    protectionNote: "Only the finance-partner tools assigned to your approved account are available.",
-    dashboardPath: "/dashboard/finance",
-    dashboardLabel: "Finance Dashboard",
+    protectionNote: "Contact our team before offering finance through CarMazium.",
+    dashboardPath: "/services/finance#providers",
+    dashboardLabel: "Contact the finance team",
     businessAccount: true,
 }
 

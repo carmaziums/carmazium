@@ -72,7 +72,7 @@ export default function ProviderLeadInboxPage() {
                     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
                         <div>
                             <p className="text-primary text-xs font-black uppercase tracking-widest mb-2">Provider inbox</p>
-                            <h1 className="text-3xl font-black font-heading">Finance & warranty enquiries</h1>
+                            <h1 className="text-3xl font-black font-heading">Warranty enquiries</h1>
                             <p className="text-sm text-[var(--text-muted)] mt-2">
                                 Open a matched enquiry to review the customer, vehicle and requested terms before responding.
                             </p>
@@ -84,7 +84,7 @@ export default function ProviderLeadInboxPage() {
                             onChange={e => setType(e.target.value as "" | "FINANCE" | "WARRANTY")}
                         >
                             <option value="">All lead services</option>
-                            <option value="FINANCE">Vehicle Finance</option>
+                            <option value="FINANCE">Historical finance enquiries</option>
                             <option value="WARRANTY">Warranty Providers</option>
                         </select>
                     </div>
@@ -93,7 +93,7 @@ export default function ProviderLeadInboxPage() {
                         <div>
                             <ErrorState message={error} onRetry={load} />
                             <p className="mt-3 text-sm text-[var(--text-muted)]">
-                                Finance and warranty enquiries require approval for the relevant service.{' '}
+                                Warranty enquiries require service approval. Finance providers must contact the CarMazium team directly.{' '}
                                 <Link href="/dashboard/service/capabilities" className="text-primary underline">
                                     View your service approvals
                                 </Link>
@@ -109,7 +109,7 @@ export default function ProviderLeadInboxPage() {
                             title="No matched enquiries right now"
                             description={type
                                 ? `New ${type === 'FINANCE' ? 'finance' : 'warranty'} enquiries will appear here when they match your approved service.`
-                                : 'New finance and warranty enquiries will appear here when they match your approved services.'}
+                                : 'New warranty enquiries will appear here when they match your approved service. Finance providers should contact our team directly.'}
                         />
                     )}
 

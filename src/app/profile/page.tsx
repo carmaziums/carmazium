@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { FinanceProviderContact } from "@/components/finance/FinanceProviderContact"
+import { FinancePreference } from "@/components/finance/FinancePreference"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -301,8 +303,6 @@ export default function ProfilePage() {
         description: businessForm.description.trim(),
         warrantyOffered: businessForm.warrantyOffered,
         warrantyDetails: businessForm.warrantyOffered ? businessForm.warrantyDetails.trim() : null,
-        financeOffered: businessForm.financeOffered,
-        financeDetails: businessForm.financeOffered ? businessForm.financeDetails.trim() : null,
         openingHours: Object.fromEntries(Object.entries(businessForm.openingHours).filter(([, value]) => value.trim())),
         ...extra,
     }), [businessForm, isSoleTraderKyc])
@@ -314,10 +314,6 @@ export default function ProfilePage() {
         }
         if (businessForm.warrantyOffered && !businessForm.warrantyDetails.trim()) {
             setRoleError("Enter the warranty duration, cover and exclusions, or switch Warranty Offered off.")
-            return
-        }
-        if (businessForm.financeOffered && !businessForm.financeDetails.trim()) {
-            setRoleError("Explain the finance provider or arrangements, eligibility and that finance is subject to approval.")
             return
         }
         setBusinessLoading(true)
@@ -497,7 +493,7 @@ export default function ProfilePage() {
                 <section className="mb-12">
                     <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><Building2 className="text-primary" /> Partner Account</h3>
                     <div className="glass-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-5">
-                        <div><p className="font-bold">One business account, multiple services</p><p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Your approved Vehicle Dealer, Delivery & Recovery, Vehicle Inspection, Vehicle Finance and Warranty services can live under the same Partner Account.</p></div>
+                        <div><p className="font-bold">One business account, multiple services</p><p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Your approved Vehicle Dealer, Delivery & Recovery, Vehicle Inspection and Warranty services can live under the same Partner Account.</p></div>
                         <Link href="/dashboard/partner"><Button>Open Partner Dashboard</Button></Link>
                     </div>
                 </section>
@@ -555,24 +551,7 @@ export default function ProfilePage() {
                                 )}
                                 <p className="text-xs text-[var(--text-muted)]">Only warranty terms you supply will be included. Do not promise cover the buyer will not receive.</p>
                             </div>
-                            <div className="space-y-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
-                                <label className="flex items-center gap-3 text-sm font-bold">
-                                    <input type="checkbox" checked={businessForm.financeOffered}
-                                        onChange={event => setBusinessForm({ ...businessForm, financeOffered: event.target.checked })} />
-                                    We can offer or arrange finance
-                                </label>
-                                {businessForm.financeOffered && (
-                                    <>
-                                        <label className="block text-xs font-semibold text-[var(--text-secondary)]" htmlFor="dealer-finance-details">Finance arrangements and conditions</label>
-                                        <textarea id="dealer-finance-details" rows={5} maxLength={1000} required
-                                            value={businessForm.financeDetails}
-                                            onChange={event => setBusinessForm({ ...businessForm, financeDetails: event.target.value })}
-                                            placeholder="e.g. Finance may be available through our authorised partners, subject to status, eligibility and lender approval..."
-                                            className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] p-3 text-sm text-[var(--text-primary)]" />
-                                    </>
-                                )}
-                                <p className="text-xs text-[var(--text-muted)]">Describe only the finance service you can lawfully provide. Never promise approval or guaranteed rates.</p>
-                            </div>
+                            <FinancePreference />
                         </div>
                         <p className="text-xs text-[var(--text-muted)]">These optional statements appear in future MaziuM descriptions when you generate them. Review every description before publishing. Your existing listings will not be rewritten automatically.</p>
                         <div>
@@ -702,7 +681,7 @@ export default function ProfilePage() {
             {currentSection === "account" && <section id="upgrade-role" className="scroll-mt-28">
                 <h3 className="text-xl font-bold mb-3 flex items-center gap-2"><Car className="text-primary" /> Account Type</h3>
                 <p className="mb-7" style={{ color: "var(--text-muted)" }}>Personal accounts are for individual buyers and sellers. Businesses use one Partner Account and add the services they need from the Partner Dashboard.</p>
-                {(currentRole.includes("FINANCE") || currentRole.includes("INSURANCE") || currentRole === "CONTRACTOR") && (
+                {(currentRole.includes("INSURANCE") || currentRole === "CONTRACTOR") && (
                     <div className="glass-card p-5 mb-6">
                         <p className="font-bold mb-2">Partner integration and service configuration</p>
                         <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>Your partner-specific integrations retain their existing verification and access checks. Open your service workspace to manage them.</p>
@@ -711,7 +690,9 @@ export default function ProfilePage() {
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {!isPersonal && <AccountCard icon={User} label="Personal Account" sub="Buy and sell vehicles as an individual" button="Switch to Personal Account" loading={loading} onClick={() => handleRoleElevation("BUYER")} />}
-                    {!isPartner && <AccountCard icon={Building2} label="Partner Account" sub="One business login with Dealer, Delivery, Inspection, Finance and Warranty add-ons" button="Create Partner Account" loading={loading} onClick={() => handleRoleElevation("DEALER")} />}
+                    <FinancePreference />
+                    <FinanceProviderContact />
+                    {!isPartner && <AccountCard icon={Building2} label="Partner Account" sub="One business login with Dealer, Delivery, Inspection and Warranty add-ons; contact us about finance partnerships" button="Create Partner Account" loading={loading} onClick={() => handleRoleElevation("DEALER")} />}
                 </div>
             </section>}
         </div>

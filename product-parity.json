@@ -576,7 +576,7 @@
       "status": "required"
     },
     {
-      "id": "partner.legacy_finance_operations",
+      "id": "partner.finance_contact_only",
       "web": [
         "src/app/dashboard/finance/page.tsx",
         "src/app/dashboard/finance/applications/page.tsx",

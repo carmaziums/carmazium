@@ -114,7 +114,7 @@ export default function ServiceDashboard() {
                             <p className="text-primary text-xs font-black uppercase tracking-[0.18em] mb-2">TradeXchange Services</p>
                             <h1 className="text-3xl md:text-4xl font-black font-heading mb-2">Provider overview</h1>
                             <p className="text-sm text-[var(--text-muted)] max-w-2xl">
-                                Delivery and Inspection jobs, Finance and Warranty enquiries, approvals and earnings in one place.
+                                Delivery and Inspection jobs, Warranty enquiries, approvals and earnings in one place. Contact our team about finance partnerships.
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -160,7 +160,7 @@ export default function ServiceDashboard() {
                                     <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0"><ClipboardList size={20} /></div>
                                     <div>
                                         <div className="flex items-center gap-2 flex-wrap">
-                                            <h2 className="font-heading font-bold text-lg">Finance & Warranty inbox</h2>
+                                            <h2 className="font-heading font-bold text-lg">Warranty inbox</h2>
                                             {leads.length > 0 && <span className="rounded-full bg-primary text-white text-[10px] font-black min-w-5 h-5 px-1.5 inline-flex items-center justify-center">{leads.length > 99 ? "99+" : leads.length}</span>}
                                         </div>
                                         <p className="text-sm text-[var(--text-muted)] mt-1 leading-relaxed">Open customer enquiries matched to your approved lead-service capabilities and send provider responses.</p>
@@ -211,7 +211,7 @@ export default function ServiceDashboard() {
                                 <div>
                                     <h2 className="font-bold">How your service areas work</h2>
                                     <p className="text-sm text-[var(--text-muted)] mt-1 leading-relaxed">
-                                        Delivery & Recovery and Vehicle Inspections use competitive quotes with the 9% / 91% job-payment split. Vehicle Finance and Warranty Providers use matched customer enquiries and do not use the service-job payment flow.
+                                        Delivery & Recovery and Vehicle Inspections use competitive quotes with the 9% / 91% job-payment split. Warranty providers receive matched enquiries. Buyers apply externally with Jigsaw Finance; finance providers should contact our team directly.
                                     </p>
                                 </div>
                             </div>

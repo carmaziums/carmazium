@@ -90,7 +90,7 @@ export const SettingsScreen: React.FC = () => {
       toPersonal ? 'Switch to Personal Account?' : 'Create Partner Account?',
       toPersonal
         ? 'Your dealer tools will be hidden until you switch back. Your business details and verification are kept.'
-        : 'One business login with Dealer, Delivery, Inspection, Finance and Warranty add-ons. Dealer features unlock after business verification.',
+        : 'One business login with Dealer, Delivery, Inspection and Warranty add-ons. Finance providers must contact the team directly. Dealer features unlock after business verification.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -336,10 +336,7 @@ export const SettingsScreen: React.FC = () => {
       Alert.alert('Warranty details needed', 'Provide warranty cover, duration and exclusions, or switch Warranty off.');
       return;
     }
-    if (dealerFinanceOffered && !dealerFinanceDetails.trim()) {
-      Alert.alert('Finance details needed', 'Describe the finance options and that approval depends on the lender, or switch Finance off.');
-      return;
-    }
+
 
     setDealerSaving(true);
     try {
@@ -357,8 +354,6 @@ export const SettingsScreen: React.FC = () => {
           description: dealerDescription.trim(),
           warrantyOffered: dealerWarrantyOffered,
           warrantyDetails: dealerWarrantyOffered ? dealerWarrantyDetails.trim() : null,
-          financeOffered: dealerFinanceOffered,
-          financeDetails: dealerFinanceOffered ? dealerFinanceDetails.trim() : null,
           logo: dealerLogo,
         }),
       });
@@ -676,6 +671,8 @@ export const SettingsScreen: React.FC = () => {
           <Text style={styles.accountToolsSub}>Quick access to the same conversations and saved vehicles on web and app.</Text>
           <View style={styles.accountToolsGrid}>
             {[
+              { id: 'finance', label: 'Listing finance calculator', icon: 'calculator-outline',
+                action: () => navigation.navigate('FinancePreferences') },
               { id: 'saved', label: 'Saved Cars', icon: 'heart-outline',
                 action: () => navigation.navigate('Tabs', { screen: 'Saved' }) },
               { id: 'messages', label: 'Messages', icon: 'chatbubbles-outline',
@@ -1025,22 +1022,11 @@ export const SettingsScreen: React.FC = () => {
                     placeholderTextColor={Colors.iconMuted} />
                 </View>
               )}
-              <View style={styles.toggleRow}>
-                <Text style={styles.toggleTitle}>We offer or arrange finance</Text>
-                <Switch value={dealerFinanceOffered} onValueChange={setDealerFinanceOffered}
-                  accessibilityLabel="Finance offered" trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }} />
-              </View>
-              {dealerFinanceOffered && (
-                <View>
-                  <FieldLabel label="FINANCE OPTIONS & CONDITIONS" />
-                  <TextInput style={[styles.inputField, { minHeight: 105, textAlignVertical: 'top' }]}
-                    multiline maxLength={1000} value={dealerFinanceDetails}
-                    onChangeText={setDealerFinanceDetails}
-                    placeholder="Describe actual finance arrangements, eligibility and lender approval."
-                    placeholderTextColor={Colors.iconMuted} />
-                </View>
-              )}
-              <Text style={styles.payoutDesc}>Optional sales terms are included only after you save them. All finance remains subject to eligibility and lender approval. You must review generated descriptions before publishing.</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('FinancePreferences')}>
+                <Text style={styles.toggleTitle}>Finance calculator settings</Text>
+                <Text style={styles.payoutDesc}>Choose whether to show the calculator and Jigsaw Finance application link on your listings. Finance providers must contact the team directly.</Text>
+              </TouchableOpacity>
+              <Text style={styles.payoutDesc}>Review generated descriptions before publishing.</Text>
               <View style={styles.cardDivider} />
               <TouchableOpacity
                 style={[styles.saveBtn, dealerSaving && { opacity: 0.6 }]}

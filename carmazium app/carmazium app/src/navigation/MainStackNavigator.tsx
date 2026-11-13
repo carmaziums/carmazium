@@ -150,6 +150,7 @@ export type MainStackParamList = {
   DealerPurchaseDetail: { saleId: string };
   DealerEarnings: undefined;
   DealerFinance: undefined;
+  FinancePreferences: undefined;
   Services: undefined;
   CreateServiceJob: { serviceType: 'DELIVERY' | 'INSPECTION'; purchase?: {
     listingId: string; title: string; registration?: string | null;
@@ -365,6 +366,10 @@ export const MainStackNavigator: React.FC = () => {
         name="DealerEarnings"
         component={GatedDealerEarningsScreen}
         options={{ animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen
+        name="FinancePreferences"
+        component={DealerFinanceScreen}
       />
       <Stack.Screen
         name="DealerFinance"

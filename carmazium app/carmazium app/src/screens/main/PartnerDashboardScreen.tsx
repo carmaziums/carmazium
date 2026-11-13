@@ -196,7 +196,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.eyebrow}>TRADEXCHANGE PARTNER</Text>
             <Text style={styles.title}>One business account</Text>
             <Text style={styles.sub}>
-              Add Vehicle Dealer, Delivery & Recovery, Inspection, Finance and Warranty services without replacing the services you already use.
+              Add Dealer, Delivery, Inspection and Warranty services. Finance providers should contact the team directly.
             </Text>
           </View>
 
@@ -249,7 +249,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                     <Text style={styles.quickTaskText}>Available jobs</Text>
                     <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.quickTask} onPress={() => navigation.navigate('ProviderLeads')} accessibilityRole="button" accessibilityLabel="See matched finance and warranty enquiries" activeOpacity={0.8}>
+                  <TouchableOpacity style={styles.quickTask} onPress={() => navigation.navigate('ProviderLeads')} accessibilityRole="button" accessibilityLabel="See matched warranty enquiries" activeOpacity={0.8}>
                     <Ionicons name="document-text-outline" size={21} color={Colors.accent} />
                     <Text style={styles.quickTaskText}>Enquiries</Text>
                     <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
@@ -277,13 +277,19 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
               </View>
 
               {SERVICE_ORDER.map((type) => {
+                if (type === 'FINANCE') return <View key={type} style={styles.serviceCard}>
+                  <View style={{flex:1,gap:10}}><Text style={{fontWeight:'700',fontSize:18,color:Colors.textPrimary}}>Vehicle Finance</Text>
+                  <Text style={{color:Colors.textSecondary}}>Want to offer vehicle finance through CarMazium? Contact our team directly to discuss a partnership.</Text>
+                  <TouchableOpacity accessibilityRole="link" onPress={() => Linking.openURL('https://www.carmazium.com/contact')}><Text style={{color:Colors.accent}}>Contact our team</Text></TouchableOpacity></View>
+                </View>;
+
                 const cap = byType.get(type);
                 const approved = cap?.status === 'APPROVED';
                 return (
                   <View key={type} style={styles.serviceCard}>
                     <View style={styles.serviceIcon}>
                       <Ionicons
-                        name={type === 'DELIVERY' ? 'car-outline' : type === 'INSPECTION' ? 'search-outline' : type === 'FINANCE' ? 'cash-outline' : 'shield-checkmark-outline'}
+                        name={type === 'DELIVERY' ? 'car-outline' : type === 'INSPECTION' ? 'search-outline' : 'shield-checkmark-outline'}
                         size={21}
                         color={approved ? Colors.accentGreen : Colors.textSecondary}
                       />
@@ -328,9 +334,9 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
               <View style={styles.card}>
                 <View style={styles.rowBetween}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>Finance & Warranty Enquiries</Text>
+                    <Text style={styles.cardTitle}>Warranty Enquiries</Text>
                     <Text style={styles.cardText}>
-                      Review Finance and Warranty enquiries matched to your approved services, then send or update your response from the app.
+                      Review Warranty enquiries matched to your approved services, then send or update your response from the app.
                     </Text>
                   </View>
                   <Ionicons name="mail-unread-outline" size={26} color={Colors.infoBlueLight} />

@@ -200,7 +200,7 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
         style={styles.manageCoverage}
         onPress={() => navigation.navigate('ProviderCapabilities')}
         accessibilityRole="button"
-        accessibilityLabel="Manage finance and warranty service approvals and matching coverage"
+        accessibilityLabel="Manage warranty service approvals and matching coverage"
         activeOpacity={0.8}
       >
         <Ionicons name="options-outline" size={17} color={Colors.accent} />
@@ -241,7 +241,7 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
           accessibilityLabel="Go back"
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Finance & Warranty Enquiries</Text>
+          <Text style={styles.headerTitle}>Warranty Enquiries</Text>
           <Text style={styles.headerSub}>Matched customer enquiries</Text>
         </View>
         <HamburgerButton />
@@ -266,7 +266,7 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
               <Ionicons name="mail-unread-outline" size={34} color={Colors.textMuted} />
               <Text style={styles.emptyTitle}>No matched enquiries</Text>
               <Text style={styles.emptyText}>
-                New Finance and Warranty enquiries appear automatically when they match your approved service and matching settings.
+                New warranty enquiries appear when they match your approved service. Finance providers must contact the team directly.
               </Text>
               <TouchableOpacity
                 style={styles.secondaryButton}

@@ -180,7 +180,7 @@ export default function PartnerDashboardPage() {
                     <Building2 className="mx-auto text-primary mb-5" size={46} />
                     <h1 className="text-3xl font-black font-heading mb-3">Create a Partner Account</h1>
                     <p className="text-[var(--text-muted)] max-w-xl mx-auto mb-7">
-                        One business account lets you add the CarMazium services you need — Vehicle Dealer, Delivery & Recovery, Vehicle Inspection, Vehicle Finance and Warranty — without changing account type each time.
+                        One business account lets you add the CarMazium services you need — Vehicle Dealer, Delivery & Recovery, Vehicle Inspection and Warranty — without changing account type each time. Finance providers should contact our team directly.
                     </p>
                     {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
                     <Button onClick={becomePartner} disabled={busy === "partner"}>
@@ -301,14 +301,10 @@ export default function PartnerDashboardPage() {
                             <AddonCard
                                 icon={CreditCard}
                                 title="Vehicle Finance"
-                                description="Receive matched customer finance enquiries and respond with your own products and terms. No CarMazium payout account is required."
-                                status={finance ? statusLabel[finance.status] : "Not activated"}
-                                active={finance?.status === "APPROVED"}
-                                action={finance?.status === "APPROVED"
-                                    ? <Link href="/dashboard/service/leads"><Button size="sm" variant="outline">Open enquiries</Button></Link>
-                                    : finance?.status === "PENDING"
-                                        ? <Link href={`/dashboard/service/capabilities/${finance.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Upload verification documents</Button></Link>
-                                        : <Button size="sm" onClick={() => applyService("FINANCE")} disabled={busy === "FINANCE"}>{busy === "FINANCE" ? <Loader2 className="animate-spin" size={14} /> : "Add service"}</Button>}
+                                description="Want to offer vehicle finance through CarMazium? Contact our team directly to discuss a partnership."
+                                status="Contact our team"
+                                active={false}
+                                action={<Link href="/services/finance#providers"><Button size="sm" variant="outline">Contact the finance team</Button></Link>}
                             />
                             <AddonCard
                                 icon={ShieldCheck}

@@ -31,7 +31,8 @@ const sections = [
           <li>location information such as town, postcode and, only when you choose the “Locate Me” feature, device location used to determine a nearby postcode;</li>
           <li>vehicle and listing information including registration, mileage, specification, condition, photographs, videos, pricing, bids, offers, handover evidence and transaction history;</li>
           <li>business and verification information for Partner Accounts, including company or sole-trader details, address, identity evidence and documents submitted for KYC or service-provider verification;</li>
-          <li>service, finance, warranty and insurance enquiry information that you choose to submit;</li>
+          <li>service, warranty and insurance enquiry information that you choose to submit;</li>
+          <li>for a finance referral, your name, email address, phone number, selected vehicle and the time you agreed to the referral notice. These details are saved and emailed to the CarMazium admin team for follow-up before you continue to the Pulse Cars Limited application on Jigsaw Finance’s website. We do not send these details to a panel of finance providers or put them in the redirect URL. You enter the separate finance application directly with Jigsaw under its own privacy policy. Referral contact details are removed from our application database after 90 days; related correspondence is retained only as needed under our retention policy;</li>
           <li>payment and payout information. Card payments are processed by Stripe. CarMazium does not receive or store full card numbers. Bank or payout details may be stored where needed to make or administer a payout;</li>
           <li>messages, chat attachments, reports, disputes and customer-support communications;</li>
           <li>push-notification tokens and notification preferences;</li>

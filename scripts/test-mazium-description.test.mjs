@@ -25,7 +25,7 @@ test("description action retains consent and does not alter its API contract", (
     assert.match(action, /if \(!ensureAiSharingConsent\(\)\) return/)
     assert.match(action, /aiGenerateDescription\(/)
     assert.match(action, /set\("description", res\.text\)/)
-    assert.match(cta, /Dealer profiles add an introduction, location and saved warranty\/finance terms/)
+    assert.match(cta, /Dealer profiles add an introduction, location and saved warranty terms/)
     assert.match(cta, /aria-busy=\{isGeneratingDesc\}/)
 })
 
@@ -59,12 +59,13 @@ test("MaziuM dealer copy is sourced from profile and consent uses the expanded d
     const usersService = readFileSync(new URL("../backend/src/users/users.service.ts", import.meta.url), "utf8");
     assert.match(wizard, /mazium_ai_consent_v2/);
     assert.match(wizard, /Dealer profiles add an introduction, location/);
-    assert.match(wizard, /Add or review your dealer warranty, finance and introduction/);
+    assert.match(wizard, /Add or review your dealer warranty and introduction/);
     assert.match(wizard, /serviceHistory: formData\.serviceHistory/);
     assert.match(profile, /warrantyOffered: businessForm\.warrantyOffered/);
-    assert.match(profile, /financeOffered: businessForm\.financeOffered/);
+    assert.doesNotMatch(profile, /financeOffered: businessForm\.financeOffered/);
+    assert.match(profile, /<FinancePreference/);
     assert.match(profile, /We offer a vehicle warranty/);
-    assert.match(profile, /We can offer or arrange finance/);
+    assert.doesNotMatch(profile, /We can offer or arrange finance/);
     assert.match(usersService, /warrantyOffered/);
     assert.match(usersService, /financeDetails/);
     assert.match(aiService, /sellerDealerFacts\(userId\)/);

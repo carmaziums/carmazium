@@ -38,6 +38,7 @@ import {
   updateInsurancePartnerQuote,
 } from '../../lib/legacyPartnerApi';
 import { useAuthStore } from '../../store/authStore';
+import { FinanceScreen } from '../main/FinanceScreen';
 
 const PAGE_SIZE = 20;
 
@@ -55,7 +56,13 @@ const applicantName = (item: LegacyPartnerItem) => {
   return name || item.user?.email || 'Customer';
 };
 
-export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = (props) => {
+  const accountRole = useAuthStore((s) => s.accountRole);
+  if (accountRole === 'finance_partner') return <FinanceScreen />;
+  return <LegacyPartnerOperations {...props} />;
+};
+
+const LegacyPartnerOperations: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const accountRole = useAuthStore((s) => s.accountRole);
   const kind: LegacyPartnerKind =

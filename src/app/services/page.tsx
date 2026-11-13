@@ -1,5 +1,6 @@
 "use client"
 
+import { FinanceProviderContact } from "@/components/finance/FinanceProviderContact"
 import Link from "next/link"
 import { PageJsonLd, SEO_SITE, SEO_TRADEXCHANGE } from "@/components/seo/PageJsonLd"
 import {
@@ -59,12 +60,12 @@ export default function ServicesPage() {
         {
             title: "Vehicle Finance",
             icon: GiMoneyStack,
-            desc: "Send one finance enquiry to approved matching providers. Providers respond with their own terms; CarMazium does not lend or guarantee approval.",
+            desc: "Apply from a participating vehicle listing and continue to Jigsaw Finance through Pulse Cars Limited. Finance providers: contact our team directly.",
             color: "text-amber-600 dark:text-amber-400",
             bg: "bg-amber-500/10",
             link: financeServiceEnabled ? "/services/finance" : undefined,
-            cta: financeServiceEnabled ? "Request finance options" : "Coming soon",
-            badge: "Matched enquiry",
+            cta: financeServiceEnabled ? "Explore vehicle finance" : "Coming soon",
+            badge: "Jigsaw Finance referral",
         },
         {
             title: "Warranty",
@@ -190,7 +191,7 @@ export default function ServicesPage() {
                                 <Search size={20} />
                             </div>
                             <h3 className="font-bold">2. Get the right response</h3>
-                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Paid jobs receive competitive quotes; finance and warranty requests are matched to approved providers.</p>
+                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Paid jobs receive competitive quotes; warranty enquiries reach approved providers. Finance applications continue externally with Jigsaw Finance.</p>
                         </div>
                         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
                             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -284,11 +285,11 @@ export default function ServicesPage() {
                                 </div>
                             </div>
                             <p className="text-sm leading-7 text-[var(--text-muted)]">
-                                These are provider-enquiry workflows, not paid TradeXchange service jobs. The 91% provider share / 9% CarMazium job-fee model does not apply to finance or warranty enquiries.
+                                Warranty enquiries are matched to approved providers. Buyers apply for finance externally with Jigsaw Finance through Pulse Cars Limited. Finance providers must contact our team directly about partnerships. The paid-job 9% fee does not apply to these services.
                             </p>
                             {(financeServiceEnabled || warrantyServiceEnabled) && (
                                 <Button asChild variant="outline" className="mt-6">
-                                    <Link href="/services/leads">My finance & warranty enquiries</Link>
+                                    <Link href="/services/leads">My warranty enquiries</Link>
                                 </Button>
                             )}
                         </div>
@@ -313,6 +314,7 @@ export default function ServicesPage() {
                     </div>
                 </div>
             </section>
+        <div className="container mx-auto px-5 py-8"><FinanceProviderContact /></div>
         </main>
     )
 }

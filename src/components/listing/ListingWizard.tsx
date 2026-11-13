@@ -348,7 +348,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         if (!aiConsentKey) return false
         if (hasAiSharingConsent()) return true
         const accepted = window.confirm(
-            "AI data sharing\n\nMaziuM sends your vehicle details, including registration where available, to OpenAI. For dealer accounts, CarMazium separately adds your saved business introduction, general location and dealer-stated warranty or finance terms. Direct contact details are excluded. Review all text before publishing.\n\nDo you consent to this AI processing?"
+            "AI data sharing\n\nMaziuM sends your vehicle details, including registration where available, to OpenAI. For dealer accounts, CarMazium separately adds your saved business introduction, general location and dealer-stated warranty terms. Direct contact details are excluded. Review all text before publishing.\n\nDo you consent to this AI processing?"
         )
         if (accepted) {
             window.localStorage.setItem(aiConsentKey, "accepted")
@@ -3872,16 +3872,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 ? "MaziuM is drafting your description..."
                                                 : !formData.make && !formData.model && !formData.year
                                                     ? "Add the vehicle make, model or year above to enable MaziuM."
-                                                    : "Draft vehicle copy with MaziuM. Dealer profiles add an introduction, location and saved warranty/finance terms where provided."}
+                                                    : "Draft vehicle copy with MaziuM. Dealer profiles add an introduction, location and saved warranty terms where provided."}
                                         </span>
                                     </span>
                                 </Button>
                                 {(profile?.role === 'DEALER' || isDealerStaff) && (
                                     <div className="mt-3 rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 space-y-2 text-xs">
                                         <p className="font-bold text-[var(--text-primary)]">About your dealership</p>
-                                        <p className="text-[var(--text-secondary)]">MaziuM uses your saved dealer introduction, general business location and any warranty or finance terms you provided. It skips missing fields and never promises services you have not selected.</p>
+                                        <p className="text-[var(--text-secondary)]">MaziuM uses your saved dealer introduction, general business location and any warranty terms you provided. It skips missing fields and never promises services you have not selected.</p>
                                         {!isDealerStaff
-                                            ? <Link href="/profile?section=business" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline">Add or review your dealer warranty, finance and introduction</Link>
+                                            ? <Link href="/profile?section=business" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline">Add or review your dealer warranty and introduction</Link>
                                             : <p className="text-[var(--text-secondary)]">Ask the dealership owner to update the Business Profile to add sales terms.</p>}
                                     </div>
                                 )}

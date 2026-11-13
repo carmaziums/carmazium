@@ -15,7 +15,8 @@ describe('Dealer-enriched MaziuM vehicle descriptions', () => {
         expect(text).toContain('About the dealer: Example Motors — based in Birmingham.');
         expect(text).toContain('Independent car retailer.');
         expect(text).toContain('30-day engine and gearbox cover');
-        expect(text).toContain('subject to eligibility and lender approval');
+        expect(text).not.toContain('Finance available');
+        expect(text).not.toContain('Finance introduced');
         expect(text).not.toContain('181 Example Road');
         expect(text).not.toContain('B19 1ES');
         expect(text).not.toContain('www.dealer.example');

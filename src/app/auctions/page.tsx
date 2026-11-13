@@ -1,5 +1,6 @@
 "use client"
 
+import { FinanceProviderContact } from "@/components/finance/FinanceProviderContact"
 import Link from "next/link"
 import { PageJsonLd, SEO_SITE, SEO_TRADEXCHANGE } from "@/components/seo/PageJsonLd"
 import Image from "next/image"
@@ -70,9 +71,9 @@ const PILLARS: Pillar[] = [
     {
         icon: Banknote,
         title: "Vehicle Finance",
-        eyebrow: "Matched finance enquiries",
-        description: "Send one enquiry to approved finance providers and compare the options, eligibility and regulated terms they return.",
-        points: ["One enquiry, matched providers", "Consent-led contact sharing", "Provider controls its own terms and APR"],
+        eyebrow: "Jigsaw Finance applications",
+        description: "Apply from a participating listing and continue to the Pulse Cars Limited form with Jigsaw Finance. Finance providers should contact our team directly.",
+        points: ["Seller-controlled calculator", "Contact details, then Jigsaw application", "Finance providers: contact our team"],
         ...(financeServiceEnabled ? { href: "/services/finance" } : {}),
         cta: "Explore finance",
     },
@@ -183,7 +184,7 @@ const PROVIDER_BENEFITS = [
     {
         icon: ShieldCheck,
         title: "Use the model that suits your service",
-        text: "Delivery and Inspection use paid job workflows, while Finance and Warranty providers receive matched customer enquiries under their own commercial terms.",
+        text: "Delivery and Inspection use paid jobs. Warranty providers receive matched enquiries. Finance applications go to Jigsaw; finance partnerships are discussed directly with our team.",
     },
 ]
 
@@ -196,7 +197,7 @@ const PROVIDER_STEPS = [
     {
         step: "02",
         title: "Choose your capabilities",
-        text: "Apply only for the TradeXchange services your business actually provides: Delivery, Inspection, Finance or Warranty.",
+        text: "Apply for Delivery, Inspection or Warranty services. To offer vehicle finance, contact the CarMazium team directly.",
     },
     {
         step: "03",
@@ -206,7 +207,7 @@ const PROVIDER_STEPS = [
     {
         step: "04",
         title: "Start receiving opportunities",
-        text: "Once approved, quote on relevant Delivery or Inspection jobs, or receive matched Finance and Warranty enquiries.",
+        text: "Once approved, quote on Delivery or Inspection jobs, or receive matched Warranty enquiries. Finance partnerships are arranged directly with our team.",
     },
 ]
 
@@ -326,7 +327,7 @@ export default function TradeXchangePage() {
                         </div>
                         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5">
                             <p className="mb-1 text-lg font-black font-heading">Matched enquiries</p>
-                            <p className="text-sm text-[var(--text-muted)]">Finance and Warranty providers can receive relevant customer demand inside CarMazium.</p>
+                            <p className="text-sm text-[var(--text-muted)]">Warranty providers receive matched enquiries. Finance providers can discuss partnerships directly with our team.</p>
                         </div>
                         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5">
                             <p className="mb-1 text-lg font-black font-heading">Approved-provider status</p>
@@ -397,7 +398,7 @@ export default function TradeXchangePage() {
                             <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Finance &amp; Warranty providers</p>
                             <h3 className="mb-4 text-2xl md:text-3xl font-black font-heading">Meet customers already in the vehicle journey</h3>
                             <p className="mb-5 text-sm leading-relaxed text-[var(--text-muted)]">
-                                Finance and Warranty use a matched-enquiry model rather than the 9% paid-job model. Approved providers can receive relevant customer enquiries and respond using their own products, commercial terms and required regulated information.
+                                Warranty providers receive matched customer enquiries. Finance providers: contact our team directly to discuss a partnership. Buyers on participating listings continue to Jigsaw Finance through Pulse Cars Limited after submitting their contact details.
                             </p>
                             <p className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 text-sm text-[var(--text-secondary)]">
                                 The opportunity is simple: reach relevant CarMazium users at the point they are already buying, selling or managing a vehicle.
@@ -453,6 +454,7 @@ export default function TradeXchangePage() {
                     </Button>
                 </div>
             </section>
+        <div className="container mx-auto px-5 py-8"><FinanceProviderContact /></div>
         </div>
     )
 }

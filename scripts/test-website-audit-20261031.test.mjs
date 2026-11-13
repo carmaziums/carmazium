@@ -50,9 +50,10 @@ test("auction vehicle page no longer shows unverified history badges or a dead u
     assert.doesNotMatch(page, /Unlock Full Report for £9\.99/)
 })
 
-test("finance calculator button opens the finance enquiry instead of doing nothing", () => {
+test("finance calculator links its vehicle to the referral form only when enabled", () => {
     const calc = read("src/components/features/FinanceCalculator.tsx")
-    assert.match(calc, /financeServiceEnabled && \(\s*<Link href="\/services\/finance"/)
+    assert.match(calc, /if \(!enabled\) return null/)
+    assert.ok(calc.includes("/services/finance?listingId=${encodeURIComponent(listingId)}"))
     assert.doesNotMatch(calc, /<button[^>]*>Apply for Finance<\/button>/)
 })
 

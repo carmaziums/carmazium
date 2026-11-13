@@ -3,17 +3,17 @@ import { PageJsonLd, SEO_SITE, SEO_TRADEXCHANGE } from "@/components/seo/PageJso
 
 export const metadata: Metadata = {
     title: "Vehicle Finance Enquiries UK",
-    description: "Send a vehicle finance enquiry to approved matching providers through CarMazium TradeXchange. Providers set their own eligibility, rates and regulated terms.",
+    description: "Apply from participating listings through the Pulse Cars Limited Jigsaw Finance form. CarMazium does not provide finance. Finance providers should contact our team.",
     alternates: { canonical: "/services/finance" },
     openGraph: {
         title: "Vehicle Finance Enquiries UK | CarMazium",
-        description: "Send a vehicle finance enquiry to approved matching providers through CarMazium TradeXchange.",
+        description: "Apply through Jigsaw Finance from participating CarMazium listings.",
         url: "/services/finance",
         type: "website",
     },
     twitter: {
         title: "Vehicle Finance Enquiries UK | CarMazium",
-        description: "Send a vehicle finance enquiry to approved matching providers through CarMazium TradeXchange.",
+        description: "Apply through Jigsaw Finance from participating CarMazium listings.",
     },
 }
 
@@ -36,7 +36,7 @@ export default function FinanceLayout({ children }: { children: React.ReactNode 
                     serviceType: "Vehicle finance introduction",
                     description: metadata.description,
                     url: SEO_SITE + "/services/finance",
-                    broker: { "@id": SEO_SITE + "/#organization" },
+                    provider: { "@type": "Organization", name: "Jigsaw Finance" },
                     brand: { "@id": SEO_TRADEXCHANGE },
                     areaServed: { "@type": "Country", name: "United Kingdom" },
                 }}

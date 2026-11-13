@@ -421,7 +421,7 @@ export const DealerProfileScreen: React.FC = () => {
 
 
             )}
-            {/* Finance applications */}
+            {/* Finance calculator */}
             <TouchableOpacity
               style={styles.attentionRow}
               activeOpacity={0.8}
@@ -431,8 +431,8 @@ export const DealerProfileScreen: React.FC = () => {
                 <Ionicons name="card-outline" size={18} color={Colors.infoBlue} />
               </View>
               <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>Finance applications</Text>
-                <Text style={styles.attentionSub}>Track vehicle finance you've applied for</Text>
+                <Text style={styles.attentionTitle}>Finance calculator</Text>
+                <Text style={styles.attentionSub}>Choose whether finance appears on your listings</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
