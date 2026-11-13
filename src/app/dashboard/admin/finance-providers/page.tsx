@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { apiClient } from "@/lib/apiClient"
 
 type Provider = { id: string; name: string; applicationUrl: string; disclosure: string; enabled: boolean; isDefault: boolean }
@@ -52,7 +53,9 @@ export default function AdminFinanceProvidersPage() {
         } catch (e) { setError(e instanceof Error ? e.message : "Could not assign provider.") }
         finally { setBusy(false) }
     }
-    return <main className="space-y-8 max-w-6xl">
+    return <div className="min-h-screen pt-20 pb-12"><div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
+        <DashboardSidebar role="admin" userName="Admin" userType="Administration" />
+        <main className="space-y-8 flex-1 min-w-0 max-w-6xl">
         <header><h1 className="text-3xl font-bold mb-3">Finance providers</h1><p className="text-[var(--text-muted)]">Admin appoints finance partners and selects the application shown for each vehicle. Sellers can turn finance display off; this page does not override their choice.</p></header>
         {error && <p role="alert" className="text-red-500">{error}</p>}
         {notice && <p role="status" className="text-emerald-600 dark:text-emerald-400">{notice}</p>}
@@ -94,5 +97,5 @@ export default function AdminFinanceProvidersPage() {
                 <div><p>{row.listingTitle}</p><p className="text-sm text-[var(--text-muted)]">{row.providerName || "Jigsaw Finance"} · {new Date(row.createdAt).toLocaleString("en-GB")}</p><p className="text-xs">Admin email: {row.adminNotifiedAt ? "sent" : "pending retry"}</p></div>
             </article>)}
         </section>
-    </main>
+    </main></div></div>
 }
