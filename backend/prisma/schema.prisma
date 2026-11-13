@@ -2386,3 +2386,21 @@ model ServicePayment {
   @@index([status])
   @@map("service_payments")
 }
+
+/// Contact details collected before an external Jigsaw application. Never a lending decision.
+model FinanceReferral {
+  id String @id
+  listingId String
+  sellerId String
+  listingTitle String
+  listingSlug String
+  fullName String
+  email String
+  phone String
+  consentVersion String
+  createdAt DateTime @default(now())
+  adminNotifiedAt DateTime?
+  notificationClaimedAt DateTime?
+  @@index([adminNotifiedAt, createdAt])
+  @@map("finance_referrals")
+}

@@ -116,7 +116,7 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.quickActionText}>Service jobs</Text>
               <Ionicons name="chevron-forward" size={17} color={Colors.textSecondary} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.quickAction} onPress={() => navigation.navigate('ProviderLeads')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Open matched finance and warranty enquiries">
+            <TouchableOpacity style={styles.quickAction} onPress={() => navigation.navigate('ProviderLeads')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Open matched warranty enquiries">
               <Ionicons name="mail-outline" size={19} color={Colors.accent} />
               <Text style={styles.quickActionText}>Enquiries</Text>
               <Ionicons name="chevron-forward" size={17} color={Colors.textSecondary} />
@@ -140,10 +140,16 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
           </View>
 
           {TYPES.map((type) => {
+                if (type === 'FINANCE') return <View key={type} style={styles.card}>
+                  <View style={{flex:1,gap:10}}><Text style={{fontWeight:'700',fontSize:18,color:Colors.textPrimary}}>Vehicle Finance</Text>
+                  <Text style={{color:Colors.textSecondary}}>Want to offer vehicle finance through CarMazium? Contact our team directly to discuss a partnership.</Text>
+                  <TouchableOpacity accessibilityRole="link" onPress={() => Linking.openURL('https://www.carmazium.com/contact')}><Text style={{color:Colors.accent}}>Contact our team</Text></TouchableOpacity></View>
+                </View>;
+
             const cap = byType.get(type);
             const canApply = !cap || cap.status === 'REJECTED';
             const coverageMissing = cap
-              ? (type === 'FINANCE' || type === 'WARRANTY'
+              ? (type === 'WARRANTY'
                   ? !cap.leadNationwide && cap.leadPostcodeAreas.length === 0
                   : !cap.jobNationwide && cap.jobPostcodeAreas.length === 0)
               : false;
@@ -151,7 +157,7 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
               <View key={type} style={styles.card}>
                 <View style={styles.row}>
                   <View style={styles.icon}>
-                    <Ionicons name={type === 'DELIVERY' ? 'car-outline' : type === 'INSPECTION' ? 'search-outline' : type === 'FINANCE' ? 'cash-outline' : 'shield-checkmark-outline'} size={21} color={statusColor(cap?.status)} />
+                    <Ionicons name={type === 'DELIVERY' ? 'car-outline' : type === 'INSPECTION' ? 'search-outline' : 'shield-checkmark-outline'} size={21} color={statusColor(cap?.status)} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.cardTitle}>{SERVICE_LABELS[type]}</Text>
@@ -167,7 +173,6 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.cardText}>
                   {type === 'DELIVERY' ? 'Quote on vehicle transport and recovery jobs.' :
                    type === 'INSPECTION' ? 'Quote on independent vehicle inspection jobs.' :
-                   type === 'FINANCE' ? 'Receive matched vehicle finance enquiries.' :
                    'Receive matched warranty enquiries.'}
                 </Text>
 

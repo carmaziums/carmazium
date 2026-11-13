@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { CapabilityStatus, ServiceType } from '@prisma/client';
 import { MAX_LEAD_RECIPIENTS, ServiceLeadsService } from './service-leads.service';
 
-describe('TradeXchange Finance/Warranty matching and privacy', () => {
+describe('TradeXchange Warranty matching and privacy', () => {
     let prisma: any;
     let notifications: any;
     let service: ServiceLeadsService;
@@ -33,7 +33,7 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
     const openLead = (overrides: Record<string, any> = {}) => ({
         id: 'lead-1',
         customerId: 'customer-1',
-        serviceType: ServiceType.FINANCE,
+        serviceType: ServiceType.WARRANTY,
         status: 'OPEN',
         listingId: null,
         vehicleRegistration: 'AB12CDE',
@@ -52,7 +52,7 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
         monthlyBudgetPence: 35_000,
         employmentStatus: 'Employed',
         annualIncomePence: 3_600_000,
-        warrantyMonths: null,
+        warrantyMonths: 12,
         warrantyLevel: null,
         consentToProviderContact: true,
         consentRecordedAt: new Date(),
@@ -119,13 +119,13 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
         );
 
         const result = await service.create('customer-1', {
-            serviceType: ServiceType.FINANCE,
+            serviceType: ServiceType.WARRANTY,
             vehicleRegistration: 'AB12 CDE',
             vehicleYear: 2020,
             vehicleMileage: 45_000,
             vehicleValuePence: 1_500_000,
             postcode: 'B1 1AA',
-            annualIncomePence: 3_600_000,
+            warrantyMonths: 12,
             termMonths: 48,
             employmentStatus: 'Employed',
             consentToProviderContact: true,
@@ -143,16 +143,17 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
             candidate('correct'),
             candidate('wrong-area', { leadPostcodeAreas: ['M'] }),
             candidate('too-expensive', { leadMinVehicleValuePence: 2_000_000 }),
-            candidate('income-too-low', { leadMinAnnualIncomePence: 4_000_000 }),
-            candidate('wrong-term', { leadFinanceTermMinMonths: 60 }),
+            candidate('too-old', { leadMinVehicleYear: 2022 }),
+            candidate('wrong-cover', { leadWarrantyMinMonths: 24 }),
         ]);
 
         await service.create('customer-1', {
-            serviceType: ServiceType.FINANCE,
+            serviceType: ServiceType.WARRANTY,
             vehicleRegistration: 'AB12 CDE',
             postcode: 'B1 1AA',
             vehicleValuePence: 1_500_000,
-            annualIncomePence: 3_600_000,
+            vehicleYear: 2020,
+            warrantyMonths: 12,
             termMonths: 48,
             employmentStatus: 'Employed',
             consentToProviderContact: true,
@@ -170,11 +171,11 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
         prisma.contractorProfile.findUnique.mockResolvedValue({
             id: 'provider-profile',
             deletedAt: null,
-            capabilities: [{ serviceType: ServiceType.FINANCE }],
+            capabilities: [{ serviceType: ServiceType.WARRANTY }],
         });
         prisma.serviceLeadRecipient.findMany.mockResolvedValue([]);
 
-        const inbox = await service.inbox('provider-user', ServiceType.FINANCE);
+        const inbox = await service.inbox('provider-user', ServiceType.WARRANTY);
 
         expect(inbox).toEqual([]);
         expect(prisma.serviceLeadRecipient.createMany).not.toHaveBeenCalled();
@@ -185,7 +186,7 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
         prisma.contractorProfile.findUnique.mockResolvedValue({
             id: 'provider-profile',
             deletedAt: null,
-            capabilities: [{ serviceType: ServiceType.FINANCE }],
+            capabilities: [{ serviceType: ServiceType.WARRANTY }],
         });
         prisma.serviceLeadRecipient.findMany.mockResolvedValue([{
             id: 'recipient-1',
@@ -205,14 +206,14 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
             lead: openLead(),
         }]);
 
-        const [summary] = await service.inbox('provider-user', ServiceType.FINANCE);
+        const [summary] = await service.inbox('provider-user', ServiceType.WARRANTY);
 
         expect(summary).toEqual(expect.objectContaining({
             id: 'lead-1',
             postcode: 'B',
             recipientStatus: 'NEW',
             vehicleRegistration: 'AB12CDE',
-            termMonths: 48,
+            warrantyMonths: 12,
         }));
         expect(summary).not.toHaveProperty('customerId');
         expect(summary).not.toHaveProperty('fullName');
@@ -229,7 +230,7 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
         prisma.contractorProfile.findUnique.mockResolvedValue({
             id: 'provider-profile',
             deletedAt: null,
-            capabilities: [{ serviceType: ServiceType.FINANCE }],
+            capabilities: [{ serviceType: ServiceType.WARRANTY }],
         });
         prisma.serviceLeadRecipient.findUnique.mockResolvedValue({
             id: 'recipient-1',
@@ -257,7 +258,8 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
             fullName: 'Cara Customer',
             email: 'cara@example.com',
             phone: '07000000000',
-            annualIncomePence: 3_600_000,
+            vehicleYear: 2020,
+            warrantyMonths: 12,
             recipientStatus: 'VIEWED',
         }));
         expect(detail).not.toHaveProperty('customerId');
@@ -310,7 +312,7 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
             .mockResolvedValueOnce({ added: 1, recipientCount: 1, recipientLimit: MAX_LEAD_RECIPIENTS })
             .mockResolvedValueOnce({ added: 0, recipientCount: 5, recipientLimit: MAX_LEAD_RECIPIENTS });
 
-        const result = await service.rematchOpenLeads(ServiceType.FINANCE);
+        const result = await service.rematchOpenLeads(ServiceType.WARRANTY);
 
         expect(rematch).toHaveBeenNthCalledWith(1, 'lead-1', 'AUTO_REMATCH', true);
         expect(rematch).toHaveBeenNthCalledWith(2, 'lead-2', 'AUTO_REMATCH', true);
@@ -386,7 +388,7 @@ describe('TradeXchange Finance/Warranty matching and privacy', () => {
     it('refuses approval of Finance/Warranty capability until matching coverage is configured', async () => {
         prisma.contractorCapability.findUnique.mockResolvedValue({
             id: 'cap-1',
-            serviceType: ServiceType.FINANCE,
+            serviceType: ServiceType.WARRANTY,
             leadNationwide: false,
             leadPostcodeAreas: [],
             contractor: {

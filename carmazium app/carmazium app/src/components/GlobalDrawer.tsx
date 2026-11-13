@@ -73,7 +73,7 @@ const PROVIDER_ITEMS: MenuItem[] = [
   { id: 'provider-home', section: 'Business', label: 'Partner Home', icon: 'business-outline', iconLib: 'ion', stackScreen: 'PartnerDashboard' },
   { id: 'provider-overview', section: 'Services', label: 'Service Overview', icon: 'grid-outline', iconLib: 'ion', stackScreen: 'ProviderCapabilities' },
   { id: 'provider-jobs', section: 'Services', label: 'Available Jobs', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'ProviderJobs' },
-  { id: 'provider-leads', section: 'Services', label: 'Finance & Warranty Enquiries', icon: 'clipboard-outline', iconLib: 'ion', stackScreen: 'ProviderLeads' },
+  { id: 'provider-leads', section: 'Services', label: 'Warranty Enquiries', icon: 'clipboard-outline', iconLib: 'ion', stackScreen: 'ProviderLeads' },
   { id: 'provider-messages', section: 'Account', label: 'Messages', icon: 'chatbubbles-outline', iconLib: 'ion', stackScreen: 'ProviderMessages' },
   { id: 'provider-settings', section: 'Account', label: 'Account Settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings' },
 ];
@@ -117,13 +117,13 @@ const DEALER_ITEMS: MenuItem[] = [
   { id: 'dealer-messages', section: 'Business', label: 'Messages', icon: 'chatbubble-outline', iconLib: 'ion', stackScreen: 'Messages' },
   { id: 'dealer-team', section: 'Business', label: 'Team', icon: 'people-outline', iconLib: 'ion', requiredPermission: 'MANAGE_TEAM', stackScreen: 'DealerTeam' },
   { id: 'dealer-settings', section: 'Business', label: 'Account Settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings', stackParams: { section: 'business' } },
-  { id: 'dealer-finance', section: 'Business', label: 'Finance Applications', icon: 'cash-outline', iconLib: 'ion', stackScreen: 'DealerFinance' },
+  { id: 'dealer-finance', section: 'Business', label: 'Finance Calculator', icon: 'cash-outline', iconLib: 'ion', stackScreen: 'DealerFinance' },
   { id: 'dealer-analytics', section: 'Business', label: 'Analytics', icon: 'bar-chart-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerAnalytics' },
   { id: 'dealer-earnings', section: 'Business', label: 'Earnings', icon: 'receipt-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerEarnings' },
   { id: 'dealer-partner', section: 'Services', label: 'Partner Account', icon: 'grid-outline', iconLib: 'ion', stackScreen: 'PartnerDashboard' },
   { id: 'dealer-service-addons', section: 'Services', label: 'Service Add-ons', icon: 'construct-outline', iconLib: 'ion', stackScreen: 'ProviderCapabilities' },
   { id: 'dealer-service-jobs', section: 'Services', label: 'Service Jobs', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'ProviderJobs' },
-  { id: 'dealer-service-leads', section: 'Services', label: 'Service Enquiries', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'ProviderLeads' },
+  { id: 'dealer-service-leads', section: 'Services', label: 'Warranty Enquiries', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'ProviderLeads' },
 ];
 
 // Website Stock submenu (DashboardSidebar dealer-stock-submenu).

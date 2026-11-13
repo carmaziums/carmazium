@@ -337,8 +337,7 @@ const webCheckout = read('src/app/checkout/page.tsx');
 
 // Block 9 revalidation — operational business-role landing must match web.
 // CONTRACTOR uses the consolidated Partner workspace. The legacy FINANCE_PARTNER
-// and INSURANCE_PARTNER roles still have live backend/web workflows, so native
-// must expose those records and mutations rather than an identity-only card.
+// now receives the finance contact page; INSURANCE_PARTNER retains its operations.
 if (
   !webDashboardRoleRouter.includes("role === 'CONTRACTOR'") ||
   !webDashboardRoleRouter.includes("router.push('/dashboard/partner')") ||
@@ -357,8 +356,8 @@ if (
 }
 
 if (
-  !webFinancePartnerDashboard.includes('getFinanceApplications') ||
-  !webFinancePartnerDashboard.includes('updateFinanceStatus') ||
+  !webFinancePartnerDashboard.includes('redirect("/services/finance#providers")') ||
+  !mobileLegacyPartnerDashboard.includes("if (accountRole === 'finance_partner') return <FinanceScreen />") ||
   !webInsurancePartnerDashboard.includes('getInsuranceQuotes') ||
   !webInsurancePartnerDashboard.includes('updateInsuranceStatus') ||
   !webPartnerApi.includes('/finance/partner?') ||
@@ -371,9 +370,9 @@ if (
   !mobileLegacyPartnerDashboard.includes('saveLegacyPartnerSettings') ||
   !mobileLegacyPartnerDashboard.includes('regenerateLegacyPartnerKey')
 ) {
-  fail('Finance/Insurance partner operations or settings are missing from one client');
+  fail('Finance contact-only routing or insurance operations drifted between clients');
 } else {
-  ok('Finance/Insurance partner records, response actions and integration settings are available on web and native');
+  ok('Finance partners receive contact guidance; insurance operations remain available on web and native');
 }
 
 // Block 9 — preserve the Block 8 payment boundary on both clients. CarMazium
@@ -1038,21 +1037,21 @@ if (
   !webDealerRoutes.includes('label: "Offers"') ||
   !webDealerRoutes.includes('label: "Partner Account"') ||
   !webDealerRoutes.includes('label: "Service Jobs"') ||
-  !webDealerRoutes.includes('label: "Service Enquiries"') ||
+  !webDealerRoutes.includes('label: "Warranty Enquiries"') ||
   !mobileDealerDrawer.includes("label: 'Stock'") ||
   !mobileDealerDrawer.includes("label: 'Customers'") ||
   !mobileDealerDrawer.includes("label: 'Offers'") ||
   !mobileDealerDrawer.includes("label: 'Bids & Offers'") ||
   !mobileDealerDrawer.includes("label: 'Saved'") ||
   !mobileDealerDrawer.includes("label: 'Live Auctions'") ||
-  !webDealerRoutes.includes('label: "Finance Applications"') ||
-  !mobileDealerDrawer.includes("label: 'Finance Applications'") ||
+  !webDealerRoutes.includes('label: "Finance Calculator"') ||
+  !mobileDealerDrawer.includes("label: 'Finance Calculator'") ||
   !mobileDealerCustomers.includes('>Customers</Text>') ||
   !mobileDealerOffers.includes('>Offers Received</Text>') ||
   !mobilePartnerDashboard.includes('>Service Jobs</Text>') ||
-  !mobilePartnerDashboard.includes('>Finance & Warranty Enquiries</Text>') ||
+  !mobilePartnerDashboard.includes('>Warranty Enquiries</Text>') ||
   !mobileProviderJobs.includes('>Service Jobs</Text>') ||
-  !mobileProviderLeads.includes('>Finance & Warranty Enquiries</Text>')
+  !mobileProviderLeads.includes('>Warranty Enquiries</Text>')
 ) {
   fail('Shared dealer/Partner terminology drifted between web and native clients');
 } else {

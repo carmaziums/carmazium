@@ -274,6 +274,13 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [sellerPhoneAvailable, setSellerPhoneAvailable] = useState(false);
 
   // Finance calculator
+  const [financeEnabled, setFinanceEnabled] = useState(false);
+  useEffect(() => {
+    let active = true;
+    setFinanceEnabled(false);
+    apiClient<{data:{enabled:boolean}}>(`/finance/referrals/listing/${encodeURIComponent(listing.id)}`).then(r => { if (active) setFinanceEnabled(r.data.enabled); }).catch(() => { if (active) setFinanceEnabled(false); });
+    return () => { active = false; };
+  }, [listing.id]);
   const [financeExpanded, setFinanceExpanded] = useState(false);
   const [depositPct, setDepositPct] = useState(10); // % of price as deposit
   const [termMonths, setTermMonths] = useState(48);
@@ -1620,7 +1627,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Finance Calculator — same inputs and maths as web's
               components/features/FinanceCalculator.tsx. CarMazium isn't a
               lender, so the CTA opens the website's finance enquiry. */}
-          <TouchableOpacity
+          {financeEnabled && <TouchableOpacity
             style={styles.financeCard}
             activeOpacity={0.85}
             onPress={() => setFinanceExpanded(!financeExpanded)}
@@ -1644,9 +1651,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               color={Colors.textMuted}
               style={{ marginLeft: 8 }}
             />
-          </TouchableOpacity>
+          </TouchableOpacity>}
 
-          {financeExpanded && (
+          {financeEnabled && financeExpanded && (
             <View style={styles.financeCalcBody}>
               <View style={styles.calcRow}>
                 <Text style={styles.calcLabel}>DEPOSIT</Text>
@@ -1693,7 +1700,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
 
               <View style={[styles.calcRow, styles.calcRowSpaced]}>
-                <Text style={styles.calcLabel}>REPRESENTATIVE APR</Text>
+                <Text style={styles.calcLabel}>ILLUSTRATIVE APR</Text>
                 <View style={styles.aprStepper}>
                   <TouchableOpacity
                     style={styles.aprStepBtn}
@@ -1728,16 +1735,16 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <TouchableOpacity
                   style={styles.financeEnquiryBtn}
                   onPress={() => {
-                    WebBrowser.openBrowserAsync('https://www.carmazium.com/services/finance').catch(() =>
+                    WebBrowser.openBrowserAsync(`https://www.carmazium.com/services/finance?listingId=${encodeURIComponent(listing.id)}`).catch(() =>
                       Alert.alert('Could not open CarMazium', 'Please visit www.carmazium.com/services/finance.'));
                   }}
                   accessibilityRole="button"
                 >
-                  <Text style={styles.financeEnquiryText}>Send a finance enquiry</Text>
+                  <Text style={styles.financeEnquiryText}>Apply for Finance</Text>
                 </TouchableOpacity>
               </View>
               <Text style={styles.financeCalcDisclaimer}>
-                *Figures are estimates and do not constitute a formal offer of finance. Rates and acceptance subject to status.
+                Illustrative estimates only, not an offered APR. Applications continue with Jigsaw Finance through Pulse Cars Limited, subject to status and lender approval. CarMazium does not provide finance.
               </Text>
             </View>
           )}

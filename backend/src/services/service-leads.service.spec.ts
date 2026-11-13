@@ -56,14 +56,14 @@ describe('ServiceLeadsService', () => {
         } as any)).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('blocks new Finance enquiries when the emergency switch is false', async () => {
+    it('rejects retired finance matching regardless of the emergency switch', async () => {
         const previous = process.env.NEXT_PUBLIC_FEATURE_FINANCE_SERVICES;
         process.env.NEXT_PUBLIC_FEATURE_FINANCE_SERVICES = 'false';
         try {
             await expect(service.create('customer-1', {
                 serviceType: ServiceType.FINANCE,
                 consentToProviderContact: true,
-            } as any)).rejects.toBeInstanceOf(ServiceUnavailableException);
+            } as any)).rejects.toBeInstanceOf(BadRequestException);
         } finally {
             if (previous === undefined) delete process.env.NEXT_PUBLIC_FEATURE_FINANCE_SERVICES;
             else process.env.NEXT_PUBLIC_FEATURE_FINANCE_SERVICES = previous;
@@ -77,96 +77,11 @@ describe('ServiceLeadsService', () => {
         } as any)).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('creates Finance enquiries through Prisma models and matches approved providers', async () => {
-        prisma.user.findUnique.mockResolvedValue({
-            email: 'buyer@example.com',
-            firstName: 'Buyer',
-            lastName: 'One',
-            phone: '07000000000',
-            postcode: 'B1 1AA',
-        });
-        prisma.contractorCapability.findMany.mockResolvedValue([
-            {
-                contractorId: 'provider-profile-1',
-                reviewedAt: new Date(),
-                leadNationwide: true,
-                leadPostcodeAreas: [],
-                leadMinVehicleValuePence: null,
-                leadMaxVehicleValuePence: null,
-                leadMinVehicleYear: null,
-                leadMaxVehicleMileage: null,
-                leadMinAnnualIncomePence: null,
-                leadFinanceTermMinMonths: null,
-                leadFinanceTermMaxMonths: null,
-                leadWarrantyLevels: [],
-                leadWarrantyMinMonths: null,
-                leadWarrantyMaxMonths: null,
-                contractor: { userId: 'provider-user-1', rating: 0, totalReviews: 0 },
-            },
-        ]);
-        prisma.serviceLead.create.mockResolvedValue({
-            id: 'lead-1',
-            customerId: 'customer-1',
-            serviceType: ServiceType.FINANCE,
-            status: 'OPEN',
-            listingId: null,
-            fullName: 'Buyer One',
-            email: 'buyer@example.com',
-            phone: '07000000000',
-            postcode: 'B1 1AA',
-            consentToProviderContact: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-            _count: { recipients: 1 },
-        });
-
-        const result = await service.create('customer-1', {
-            serviceType: ServiceType.FINANCE,
-            consentToProviderContact: true,
-            vehicleRegistration: 'AB12 CDE',
-            vehicleValuePence: 1_500_000,
-            postcode: 'B1 1AA',
-            depositPence: 100000,
-            termMonths: 48,
-            monthlyBudgetPence: 35_000,
-            employmentStatus: 'Employed',
-        } as any);
-
-        expect(prisma.contractorCapability.findMany).toHaveBeenCalledWith(expect.objectContaining({
-            where: expect.objectContaining({
-                serviceType: ServiceType.FINANCE,
-                status: CapabilityStatus.APPROVED,
-                verificationStatus: 'VERIFIED',
-                verificationExpiresAt: { gt: expect.any(Date) },
-            }),
-        }));
-        expect(prisma.serviceLead.create).toHaveBeenCalledWith(expect.objectContaining({
-            data: expect.objectContaining({
-                customerId: 'customer-1',
-                serviceType: ServiceType.FINANCE,
-                depositPence: 100000,
-                termMonths: 48,
-                consentToProviderContact: true,
-                recipients: {
-                    create: [expect.objectContaining({
-                        contractorId: 'provider-profile-1',
-                        status: 'NEW',
-                        matchSource: 'AUTO',
-                        matchReason: expect.stringContaining('Nationwide'),
-                    })],
-                },
-            }),
-            include: { _count: { select: { recipients: true } } },
-        }));
-        expect(result).toEqual(expect.objectContaining({
-            id: 'lead-1',
-            recipientCount: 1,
-        }));
-        expect(notifications.create).toHaveBeenCalledWith(expect.objectContaining({
-            userId: 'provider-user-1',
-            entityId: 'lead-1',
-        }));
+    it('rejects new Finance matching even when a provider exists', async () => {
+        prisma.contractorCapability.findMany.mockResolvedValue([{ contractorId: 'provider' }]);
+        await expect(service.create('customer-1', { serviceType: ServiceType.FINANCE, consentToProviderContact: true } as any)).rejects.toThrow('Jigsaw Finance');
+        expect(prisma.serviceLead.create).not.toHaveBeenCalled();
+        expect(prisma.contractorCapability.findMany).not.toHaveBeenCalled();
     });
 
     it('rejects a Finance enquiry that lacks the minimum underwriting context', async () => {
@@ -237,53 +152,10 @@ describe('ServiceLeadsService', () => {
         expect(prisma.contractorCapability.update).not.toHaveBeenCalled();
     });
 
-    it('allows admin approval of FINANCE without requiring Stripe Connect', async () => {
-        prisma.contractorCapability.findUnique.mockResolvedValue({
-            id: 'cap-1',
-            serviceType: ServiceType.FINANCE,
-            leadNationwide: true,
-            leadPostcodeAreas: [],
-            contractor: {
-                userId: 'provider-1',
-                user: {
-                    id: 'provider-1',
-                    stripeConnectAccountId: null,
-                    stripeConnectOnboardingComplete: false,
-                },
-            },
-        });
-        prisma.contractorCapability.update.mockResolvedValue({ id: 'cap-1', status: CapabilityStatus.APPROVED });
-        prisma.$queryRaw.mockResolvedValue([
-            {
-                id: 'e-business',
-                evidenceType: 'BUSINESS_IDENTITY',
-                evidenceStatus: 'APPROVED',
-                evidenceExpiresAt: null,
-                createdAt: new Date(),
-            },
-            {
-                id: 'e-regulatory',
-                evidenceType: 'FINANCE_REGULATORY_AUTHORITY',
-                evidenceStatus: 'APPROVED',
-                evidenceExpiresAt: null,
-                createdAt: new Date(),
-            },
-        ]);
-
-        const result = await service.reviewLeadCapability(
-            'admin-1',
-            'cap-1',
-            { status: CapabilityStatus.APPROVED } as any,
-        );
-
-        expect(result).toEqual({ id: 'cap-1', status: CapabilityStatus.APPROVED });
-        expect(prisma.contractorCapability.update).toHaveBeenCalledWith(expect.objectContaining({
-            where: { id: 'cap-1' },
-            data: expect.objectContaining({
-                status: CapabilityStatus.APPROVED,
-                reviewedById: 'admin-1',
-            }),
-        }));
+    it('blocks finance-provider activation in the retired matching system', async () => {
+        prisma.contractorCapability.findUnique.mockResolvedValue({ id: 'cap-1', serviceType: ServiceType.FINANCE });
+        await expect(service.reviewLeadCapability('admin', 'cap-1', {status: CapabilityStatus.APPROVED} as any)).rejects.toThrow('closed');
+        expect(prisma.contractorCapability.update).not.toHaveBeenCalled();
     });
 
     it('does not let a provider without an approved lead capability open the inbox', async () => {

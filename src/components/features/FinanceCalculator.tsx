@@ -3,13 +3,21 @@
 import * as React from "react"
 import Link from "next/link"
 import { Calculator, HelpCircle, Minus, Plus } from "lucide-react"
-import { financeServiceEnabled } from "@/lib/featureFlags"
+import { apiClient } from "@/lib/apiClient"
 
 interface FinanceCalculatorProps {
     vehiclePrice: number
+    listingId: string
 }
 
-export function FinanceCalculator({ vehiclePrice }: FinanceCalculatorProps) {
+export function FinanceCalculator({ vehiclePrice, listingId }: FinanceCalculatorProps) {
+    const [enabled, setEnabled] = React.useState(false)
+    React.useEffect(() => {
+        let active = true
+        setEnabled(false)
+        apiClient<{ data: { enabled: boolean } }>(`/finance/referrals/listing/${encodeURIComponent(listingId)}`).then(r => { if (active) setEnabled(r.data.enabled) }).catch(() => { if (active) setEnabled(false) })
+        return () => { active = false }
+    }, [listingId])
     const [deposit, setDeposit] = React.useState(vehiclePrice * 0.1)
     const [term, setTerm] = React.useState(48)
     const [apr, setApr] = React.useState(19)
@@ -30,6 +38,8 @@ export function FinanceCalculator({ vehiclePrice }: FinanceCalculatorProps) {
     const monthlyPayment = calculateMonthlyPayment()
 
     const aprPercent = ((apr - MIN_APR) / (MAX_APR - MIN_APR)) * 100
+
+    if (!enabled) return null
 
     return (
         <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-6 md:p-8">
@@ -91,9 +101,9 @@ export function FinanceCalculator({ vehiclePrice }: FinanceCalculatorProps) {
                         <div className="flex justify-between items-center text-sm">
                             <label className="text-[var(--text-secondary)] font-medium flex items-center gap-1.5">
                                 <HelpCircle size={13} className="text-[var(--text-muted)]" />
-                                Representative APR
+                                Illustrative APR
                             </label>
-                            <span className="font-bold">{apr}% fixed</span>
+                            <span className="font-bold">{apr}%</span>
                         </div>
                         <div className="flex items-center gap-3">
                             <button
@@ -143,19 +153,14 @@ export function FinanceCalculator({ vehiclePrice }: FinanceCalculatorProps) {
                     </div>
                     <p className="text-emerald-400 text-xs font-bold mb-6">Total Payable: £{Math.round(monthlyPayment * term + deposit).toLocaleString()}</p>
 
-                    {/* CarMazium isn't a lender: this opens the matched finance enquiry, and
-                        is hidden while that service is switched off. It used to be a
-                        button that did nothing. */}
-                    {financeServiceEnabled && (
-                        <Link href="/services/finance" className="block w-full bg-primary hover:bg-primary/90 text-white font-bold rounded-lg py-3 transition-colors">
-                            Send a finance enquiry
-                        </Link>
-                    )}
+                    <Link href={`/services/finance?listingId=${encodeURIComponent(listingId)}`} className="block w-full bg-primary hover:bg-primary/90 text-white font-bold rounded-lg py-3 transition-colors">
+                        Apply for Finance
+                    </Link>
                 </div>
             </div>
 
             <p className="text-[10px] text-[var(--text-muted)] mt-6 text-center">
-                *Figures are estimates and do not constitute a formal offer of finance. Rates and acceptance subject to status.
+                Figures are illustrative estimates, not a finance quote or an offered APR. CarMazium does not provide finance. Applications continue with Jigsaw Finance through Pulse Cars Limited, subject to status and lender approval.
             </p>
         </div>
     )

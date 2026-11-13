@@ -1268,7 +1268,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                         })()}
 
                         {/* Finance Calculator */}
-                        <FinanceCalculator vehiclePrice={Number(listing.price)} />
+                        <FinanceCalculator vehiclePrice={Number(listing.price)} listingId={listing.id} />
                     </div>
 
                     {/* Right Column: Sticky Sidebar — desktop only */}

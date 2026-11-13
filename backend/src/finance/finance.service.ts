@@ -28,40 +28,9 @@ export class FinanceService {
         });
     }
 
-    async create(userId: string, dto: CreateFinanceApplicationDto) {
-        const [partner, listing] = await Promise.all([
-            this.prisma.partnerProfile.findFirst({
-                where: {
-                    id: dto.partnerId,
-                    partnerType: 'FINANCE_PARTNER',
-                    isActive: true,
-                    deletedAt: null,
-                    financeUser: { deletedAt: null },
-                },
-            }),
-            this.prisma.listing.findUnique({
-                where: { id: dto.listingId },
-                select: { id: true, price: true, deletedAt: true },
-            }),
-        ]);
+    async create(userId: string, dto: CreateFinanceApplicationDto): Promise<never> {
+        throw new BadRequestException("Finance applications now start from a vehicle listing and continue on Jigsaw Finance.");
 
-        if (!partner) throw new BadRequestException('Finance partner is not available');
-        if (!listing || listing.deletedAt) throw new BadRequestException('Vehicle listing is not available');
-
-        const listingPrice = Number(listing.price ?? 0);
-        if (listingPrice > 0 && dto.depositAmount >= listingPrice) {
-            throw new BadRequestException('Deposit must be lower than the vehicle price');
-        }
-
-        return this.prisma.financeApplication.create({
-            data: {
-                userId,
-                listingId: dto.listingId,
-                partnerId: partner.id,
-                depositAmount: dto.depositAmount,
-                termMonths: dto.termMonths,
-            },
-        });
     }
 
     async findMyApplications(userId: string, page = 1, limit = 20) {
@@ -213,55 +182,11 @@ export class FinanceService {
         };
     }
 
-    async updatePartnerSettings(userId: string, dto: UpdateFinancePartnerSettingsDto) {
-        const existing = await this.prisma.partnerProfile.findUnique({
-            where: { financeUserId: userId },
-        });
-        if (existing?.deletedAt) {
-            throw new ForbiddenException('This finance partner profile is inactive. Contact CarMazium support.');
-        }
-
-        const companyName = dto.companyName.trim();
-        const callbackUrl = dto.callbackUrl?.trim() || null;
-        const profile = existing
-            ? await this.prisma.partnerProfile.update({
-                where: { id: existing.id },
-                data: { companyName, callbackUrl },
-            })
-            : await this.prisma.partnerProfile.create({
-                data: {
-                    financeUserId: userId,
-                    partnerType: 'FINANCE_PARTNER',
-                    companyName,
-                    callbackUrl,
-                    apiKey: this.generateApiKey(),
-                },
-            });
-
-        return {
-            companyName: profile.companyName,
-            callbackUrl: profile.callbackUrl ?? '',
-            isActive: profile.isActive,
-            isConfigured: true,
-            apiKeyHint: this.maskApiKey(profile.apiKey),
-            integrationEnabled: false,
-        };
+    async updatePartnerSettings(userId: string, dto: UpdateFinancePartnerSettingsDto): Promise<never> {
+        throw new ForbiddenException("Finance provider registration is closed. Contact CarMazium directly.");
     }
 
     async regenerateApiKey(userId: string) {
-        const profile = await this.getActivePartnerProfile(userId);
-        if (!profile) {
-            throw new NotFoundException('Save your finance partner settings before creating an API key');
-        }
-
-        const apiKey = this.generateApiKey();
-        await this.prisma.partnerProfile.update({
-            where: { id: profile.id },
-            data: { apiKey },
-        });
-        return {
-            apiKey,
-            apiKeyHint: this.maskApiKey(apiKey),
-        };
+        throw new ForbiddenException("Finance provider integrations have been retired.");
     }
 }

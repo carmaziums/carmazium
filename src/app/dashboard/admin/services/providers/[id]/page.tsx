@@ -244,7 +244,7 @@ export default function AdminProviderReviewPage() {
     const leadService = data?.serviceType === "FINANCE" || data?.serviceType === "WARRANTY"
     const matchingReady = !leadService || !!data?.leadNationwide || (data?.leadPostcodeAreas?.length ?? 0) > 0
     const verificationReady = !!data?.verification?.ready
-    const canApprove = verificationReady && matchingReady && (!paidService || stripeReady)
+    const canApprove = data?.serviceType !== "FINANCE" && verificationReady && matchingReady && (!paidService || stripeReady)
 
     return <div className="min-h-screen pt-20 pb-12">
         <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
@@ -488,6 +488,7 @@ export default function AdminProviderReviewPage() {
 
                     <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
                         <h2 className="font-heading font-bold text-lg mb-4">Admin decision</h2>
+                        {data.serviceType === "FINANCE" && <p className="text-sm mb-4">Finance provider registration is closed. Partnership enquiries must be discussed directly with the team. These records are retained for history.</p>}
                         <div className="flex flex-wrap gap-3">
                             {data.status !== "APPROVED" && <Button
                                 disabled={busy || !canApprove}
@@ -496,7 +497,7 @@ export default function AdminProviderReviewPage() {
                                     : paidService && !stripeReady
                                         ? "Provider must complete Stripe Connect first"
                                         : !matchingReady
-                                            ? "Finance/Warranty lead matching coverage must be configured first"
+                                            ? "Warranty lead matching coverage must be configured first"
                                             : undefined}
                                 onClick={() => review("APPROVED")}
                             >

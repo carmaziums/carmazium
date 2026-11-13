@@ -18,7 +18,7 @@ describe('account onboarding guidance', () => {
         expect(guide.accountLabel).toBe('Partner Account');
         expect(text).toMatch(/KYC verification/i);
         expect(text).toMatch(/£125/i);
-        expect(text).toMatch(/capability approval/i);
+        expect(text).toMatch(/approved.*services/i);
         expect(guide.dashboardPath).toBe('/dashboard/partner');
     });
 
@@ -37,7 +37,7 @@ describe('account onboarding guidance', () => {
         const insurance = getAccountOnboardingGuide('INSURANCE_PARTNER');
 
         expect(finance.accountLabel).toBe('Finance Partner Account');
-        expect(finance.features.join(' ')).toMatch(/finance enquiries/i);
+        expect(finance.features.join(' ')).toMatch(/contact our team.*finance partnership/i);
         expect(insurance.accountLabel).toBe('Insurance Partner Account');
         expect(insurance.features.join(' ')).toMatch(/insurance quote requests/i);
     });

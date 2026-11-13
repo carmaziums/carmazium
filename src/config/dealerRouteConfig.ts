@@ -208,7 +208,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         href: "/dashboard/service/capabilities",
         label: "Service Add-ons",
         title: "Service Add-ons",
-        subHeader: "Delivery, inspection, finance and warranty services",
+        subHeader: "Delivery, inspection and warranty services; finance partnerships by contact",
         icon: Wrench,
         hidden: true,
         section: "Services"
@@ -224,8 +224,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/service/leads",
-        label: "Service Enquiries",
-        title: "Finance & Warranty Enquiries",
+        label: "Warranty Enquiries",
+        title: "Warranty Enquiries",
         subHeader: "Matched TradeXchange customer enquiries",
         icon: Briefcase,
         hidden: true,
@@ -233,9 +233,9 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/dealer/finance",
-        label: "Finance Applications",
-        title: "Finance Applications",
-        subHeader: "Track customer finance applications",
+        label: "Finance Calculator",
+        title: "Finance Calculator",
+        subHeader: "Choose whether to show finance on your listings",
         icon: DollarSign,
         hidden: true,
         section: "Business"

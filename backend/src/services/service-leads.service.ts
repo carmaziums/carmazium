@@ -300,7 +300,12 @@ export class ServiceLeadsService {
         return { available: matching.length > 0, providerCount: matching.length };
     }
 
+    private assertNewLeadType(type: ServiceType) {
+        if (type === ServiceType.FINANCE) throw new BadRequestException("Start from the vehicle listing to apply through Jigsaw Finance.");
+    }
+
     async create(customerId: string, dto: CreateServiceLeadDto) {
+        this.assertNewLeadType(dto.serviceType);
         this.assertLeadType(dto.serviceType);
         assertServiceAcceptingNewRequests(dto.serviceType);
 
@@ -957,6 +962,7 @@ export class ServiceLeadsService {
         });
         if (!cap) throw new NotFoundException('Application not found');
         this.assertLeadType(cap.serviceType);
+        if (cap.serviceType === ServiceType.FINANCE && dto.status === CapabilityStatus.APPROVED) throw new BadRequestException('Finance provider applications are closed.');
 
         let verification: Awaited<ReturnType<typeof assertCapabilityVerificationReady>> | null = null;
         if (dto.status === CapabilityStatus.APPROVED) {
@@ -1029,6 +1035,7 @@ export class ServiceLeadsService {
             });
             if (!lead) throw new NotFoundException('Enquiry not found');
             this.assertLeadType(lead.serviceType);
+            if (lead.serviceType === ServiceType.FINANCE) throw new BadRequestException("Finance provider matching has been retired.");
             if (
                 lead.status !== 'OPEN'
                 || lead.expiresAt <= new Date()
@@ -1105,12 +1112,13 @@ export class ServiceLeadsService {
      * idempotent and every lead still caps at MAX_LEAD_RECIPIENTS.
      */
     async rematchOpenLeads(serviceType?: ServiceType, limit = 250) {
+        if (serviceType === ServiceType.FINANCE) return { scanned: 0, leadsUpdated: 0, recipientsAdded: 0 };
         if (serviceType) this.assertLeadType(serviceType);
         const now = new Date();
         const boundedLimit = Math.min(Math.max(limit, 1), 500);
         const typeFilter = serviceType
             ? Prisma.sql`l."serviceType" = ${serviceType}::service_type`
-            : Prisma.sql`l."serviceType" IN ('FINANCE'::service_type, 'WARRANTY'::service_type)`;
+            : Prisma.sql`l."serviceType" = 'WARRANTY'::service_type`;
 
         // Select only enquiries that still have recipient capacity. Without
         // this filter, a large block of older already-full leads could occupy
