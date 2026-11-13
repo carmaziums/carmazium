@@ -48,6 +48,14 @@ integration('Approved auction delivery on disposable PostgreSQL', () => {
         await queueApprovedAuctionConversion(tx, { id: listingId, sellerId, type: 'AUCTION' });
     });
 
+    it('keeps both internal tracking tables behind row-level security', async () => {
+        const tables = await db.$queryRaw<Array<{ relname: string; relrowsecurity: boolean }>>`
+            SELECT relname, relrowsecurity FROM pg_class
+            WHERE oid IN ('public.seller_conversion_consents'::regclass, 'public.approved_auction_conversions'::regclass)`;
+        expect(tables).toHaveLength(2);
+        expect(tables.every(table => table.relrowsecurity)).toBe(true);
+    });
+
     it('serializes competing captures and workers into one record and one send attempt', async () => {
         await Promise.all([capture(), capture()]);
         expect(await db.approvedAuctionConversion.count({ where: { listingId } })).toBe(1);

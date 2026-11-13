@@ -16,3 +16,17 @@ CREATE TABLE "approved_auction_conversions" (
 );
 CREATE INDEX "approved_auction_conversions_state_approvedAt_idx" ON "approved_auction_conversions"("state", "approvedAt");
 CREATE INDEX "approved_auction_conversions_userId_idx" ON "approved_auction_conversions"("userId");
+
+-- These identifiers are backend-only, never a public Supabase Data API.
+ALTER TABLE "seller_conversion_consents" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "approved_auction_conversions" ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON "seller_conversion_consents", "approved_auction_conversions" FROM PUBLIC;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    REVOKE ALL ON "seller_conversion_consents", "approved_auction_conversions" FROM anon;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    REVOKE ALL ON "seller_conversion_consents", "approved_auction_conversions" FROM authenticated;
+  END IF;
+END $$;
