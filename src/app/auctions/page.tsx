@@ -72,7 +72,7 @@ const PILLARS: Pillar[] = [
         icon: Banknote,
         title: "Vehicle Finance",
         eyebrow: "Jigsaw Finance applications",
-        description: "Apply from a participating listing and continue to the Pulse Cars Limited form with Jigsaw Finance. Finance providers should contact our team directly.",
+        description: "Apply from a participating listing and continue to the application form with Jigsaw Finance. Finance providers should contact our team directly.",
         points: ["Seller-controlled calculator", "Contact details, then Jigsaw application", "Finance providers: contact our team"],
         ...(financeServiceEnabled ? { href: "/services/finance" } : {}),
         cta: "Explore finance",
@@ -398,7 +398,7 @@ export default function TradeXchangePage() {
                             <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Finance &amp; Warranty providers</p>
                             <h3 className="mb-4 text-2xl md:text-3xl font-black font-heading">Meet customers already in the vehicle journey</h3>
                             <p className="mb-5 text-sm leading-relaxed text-[var(--text-muted)]">
-                                Warranty providers receive matched customer enquiries. Finance providers: contact our team directly to discuss a partnership. Buyers on participating listings continue to Jigsaw Finance through Pulse Cars Limited after submitting their contact details.
+                                Warranty providers receive matched customer enquiries. Finance providers: contact our team directly to discuss a partnership. Buyers on participating listings continue to Jigsaw Finance after submitting their contact details.
                             </p>
                             <p className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 text-sm text-[var(--text-secondary)]">
                                 The opportunity is simple: reach relevant CarMazium users at the point they are already buying, selling or managing a vehicle.

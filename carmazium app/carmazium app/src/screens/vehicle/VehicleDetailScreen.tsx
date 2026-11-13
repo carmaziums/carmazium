@@ -1744,7 +1744,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </TouchableOpacity>
               </View>
               <Text style={styles.financeCalcDisclaimer}>
-                Illustrative estimates only, not an offered APR. Applications continue with Jigsaw Finance through Pulse Cars Limited, subject to status and lender approval. CarMazium does not provide finance.
+                Illustrative estimates only, not an offered APR. Applications continue with Jigsaw Finance, subject to status and lender approval. CarMazium does not provide finance.
               </Text>
             </View>
           )}

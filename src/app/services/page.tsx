@@ -60,7 +60,7 @@ export default function ServicesPage() {
         {
             title: "Vehicle Finance",
             icon: GiMoneyStack,
-            desc: "Apply from a participating vehicle listing and continue to Jigsaw Finance through Pulse Cars Limited. Finance providers: contact our team directly.",
+            desc: "Apply from a participating vehicle listing and continue to Jigsaw Finance. Finance providers: contact our team directly.",
             color: "text-amber-600 dark:text-amber-400",
             bg: "bg-amber-500/10",
             link: financeServiceEnabled ? "/services/finance" : undefined,
@@ -285,7 +285,7 @@ export default function ServicesPage() {
                                 </div>
                             </div>
                             <p className="text-sm leading-7 text-[var(--text-muted)]">
-                                Warranty enquiries are matched to approved providers. Buyers apply for finance externally with Jigsaw Finance through Pulse Cars Limited. Finance providers must contact our team directly about partnerships. The paid-job 9% fee does not apply to these services.
+                                Warranty enquiries are matched to approved providers. Buyers apply for finance externally with Jigsaw Finance. Finance providers must contact our team directly about partnerships. The paid-job 9% fee does not apply to these services.
                             </p>
                             {(financeServiceEnabled || warrantyServiceEnabled) && (
                                 <Button asChild variant="outline" className="mt-6">

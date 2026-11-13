@@ -160,7 +160,7 @@ export function FinanceCalculator({ vehiclePrice, listingId }: FinanceCalculator
             </div>
 
             <p className="text-[10px] text-[var(--text-muted)] mt-6 text-center">
-                Figures are illustrative estimates, not a finance quote or an offered APR. CarMazium does not provide finance. Applications continue with Jigsaw Finance through Pulse Cars Limited, subject to status and lender approval.
+                Figures are illustrative estimates, not a finance quote or an offered APR. CarMazium does not provide finance. Applications continue with Jigsaw Finance, subject to status and lender approval.
             </p>
         </div>
     )
