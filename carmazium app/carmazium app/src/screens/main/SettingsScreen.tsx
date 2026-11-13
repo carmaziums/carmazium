@@ -1024,7 +1024,7 @@ export const SettingsScreen: React.FC = () => {
               )}
               <TouchableOpacity onPress={() => navigation.navigate('FinancePreferences')}>
                 <Text style={styles.toggleTitle}>Finance calculator settings</Text>
-                <Text style={styles.payoutDesc}>Choose whether to show the calculator and Jigsaw Finance application link on your listings. Finance providers must contact the team directly.</Text>
+                <Text style={styles.payoutDesc}>Choose whether to show the calculator and admin-selected finance application link on your listings. Finance providers must contact the team directly.</Text>
               </TouchableOpacity>
               <Text style={styles.payoutDesc}>Review generated descriptions before publishing.</Text>
               <View style={styles.cardDivider} />

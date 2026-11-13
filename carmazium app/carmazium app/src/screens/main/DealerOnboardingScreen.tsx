@@ -332,7 +332,7 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
             )}
           </View>
           <Text style={styles.inputLabel}>FINANCE</Text>
-          <Text style={styles.signInText}>After setting up your account, choose whether to show the Jigsaw Finance calculator and application link under Settings → Listing finance calculator. Finance providers must contact the CarMazium team directly to discuss a partnership.</Text>
+          <Text style={styles.signInText}>After setting up your account, choose whether to show the finance calculator and application link selected by CarMazium admin under Settings → Listing finance calculator. Finance providers must contact the CarMazium team directly to discuss a partnership.</Text>
 
           <View style={styles.signInRow}>
              <Text style={styles.signInText}>Already have a dealer account? <Text style={styles.signInLink}>Sign in</Text></Text>

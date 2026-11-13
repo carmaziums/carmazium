@@ -192,7 +192,7 @@ export default function ServiceDashboard() {
                                 <div>
                                     <h2 className="font-bold">How your service areas work</h2>
                                     <p className="text-sm text-[var(--text-muted)] mt-1 leading-relaxed">
-                                        Delivery & Recovery and Vehicle Inspections use competitive quotes with the 9% / 91% job-payment split. Finance and warranty partnerships are arranged directly with our team. Buyers apply externally with Jigsaw Finance.
+                                        Delivery & Recovery and Vehicle Inspections use competitive quotes with the 9% / 91% job-payment split. Finance and warranty partnerships are arranged directly with our team. Buyers apply externally with the finance provider selected by admin.
                                     </p>
                                 </div>
                             </div>
