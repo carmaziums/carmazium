@@ -208,7 +208,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         href: "/dashboard/service/capabilities",
         label: "Service Add-ons",
         title: "Service Add-ons",
-        subHeader: "Delivery, inspection and warranty services; finance partnerships by contact",
+        subHeader: "Delivery and inspection services; finance and warranty partnerships by contact",
         icon: Wrench,
         hidden: true,
         section: "Services"
@@ -218,15 +218,6 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         label: "Service Jobs",
         title: "Service Jobs",
         subHeader: "TradeXchange delivery and inspection work",
-        icon: Briefcase,
-        hidden: true,
-        section: "Services"
-    },
-    {
-        href: "/dashboard/service/leads",
-        label: "Warranty Enquiries",
-        title: "Warranty Enquiries",
-        subHeader: "Matched TradeXchange customer enquiries",
         icon: Briefcase,
         hidden: true,
         section: "Services"

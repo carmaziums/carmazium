@@ -59,13 +59,12 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
     setLoading(true);
     setError(null);
     try {
-      const [mine, verification] = await Promise.all([
-        getMyCapabilities(),
-        getCapabilityVerification(capabilityId),
-      ]);
+      const mine = await getMyCapabilities();
       const cap = mine.capabilities.find((item) => item.id === capabilityId);
       if (!cap) throw new Error('This service application was not found on your Partner Account.');
       setServiceType(cap.serviceType);
+      if (cap.serviceType === 'FINANCE' || cap.serviceType === 'WARRANTY') throw new Error('Finance and warranty verification is managed directly by CarMazium admin.');
+      const verification = await getCapabilityVerification(capabilityId);
       setDetail(verification);
       setEvidenceType((current) => {
         if (current && verification.verification.requirements.some((r) => r.type === current)) return current;

@@ -65,25 +65,25 @@ const SERVICES: ServiceItem[] = [
   },
   {
     title: 'Vehicle Finance',
-    desc: 'Apply from a participating listing with Jigsaw Finance. Finance providers: contact our team directly.',
+    desc: 'Apply from a participating listing with an admin-selected finance provider. Finance providers: contact our team directly.',
     icon: 'cash-outline',
     color: Colors.lightOrange_fbbf24,
     bg: Colors.warningAlpha10,
     border: Colors.warningAlpha30,
     path: '/services/finance',
     cta: 'Explore finance',
-    kind: 'Matched enquiry',
+    kind: 'Admin-managed service',
   },
   {
     title: 'Vehicle Warranty',
-    desc: 'Request warranty options and compare providers’ cover levels, exclusions and indicative costs.',
+    desc: 'Contact the CarMazium team about warranty availability for your vehicle. Warranty partners are appointed by admin.',
     icon: 'shield-checkmark-outline',
     color: Colors.palePurple_c084fc,
     bg: Colors.infoBlueAlpha10,
     border: Colors.borderHi,
     path: '/services/warranty',
-    cta: 'Request warranty options',
-    kind: 'Matched enquiry',
+    cta: 'Contact the warranty team',
+    kind: 'Admin-managed service',
   },
 ];
 
@@ -182,7 +182,7 @@ export const ServicesScreen: React.FC = () => {
           <View style={{ flex: 1 }}>
             <Text style={styles.partnerTitle}>Provide services with CarMazium</Text>
             <Text style={styles.partnerText}>
-              Use one Partner Account for Delivery, Inspections and Warranty. Contact our team about finance partnerships.
+              Use one Partner Account for Delivery and Inspections. Contact our team about finance and warranty partnerships.
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
@@ -252,7 +252,7 @@ export const ServicesScreen: React.FC = () => {
         <View style={styles.noteCard}>
           <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={styles.noteText}>
-            Delivery and inspection are paid service jobs with competing provider quotes and CarMazium checkout. Warranty enquiries are matched to providers. Finance applications continue externally with Jigsaw; providers contact our team. CarMazium does not make lending decisions or guarantee approval.
+            Delivery and inspection are paid service jobs with competing provider quotes and CarMazium checkout. Warranty enquiries are handled directly by admin. Finance applications continue externally with the provider selected by admin; prospective partners contact our team. CarMazium does not make lending decisions or guarantee approval.
           </Text>
         </View>
 

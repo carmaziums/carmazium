@@ -31,7 +31,7 @@ import { IconButton } from '../../components/IconButton';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ProviderCapabilities'>;
 
-const TYPES: ServiceType[] = ['DELIVERY', 'INSPECTION', 'FINANCE', 'WARRANTY'];
+const TYPES: ServiceType[] = ['DELIVERY', 'INSPECTION'];
 
 const statusColor = (status?: string) => {
   if (status === 'APPROVED') return Colors.accentGreen;
@@ -109,16 +109,11 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={Colors.accent} />}
         >
           <Text style={styles.title}>Manage your services</Text>
-          <Text style={styles.sub}>Activate each service independently. Complete verification and set your coverage before matched jobs or enquiries can reach you.</Text>
+          <Text style={styles.sub}>Activate each service independently. Complete verification and set your coverage before matched delivery or inspection jobs can reach you.</Text>
           <View style={styles.quickActions}>
             <TouchableOpacity style={styles.quickAction} onPress={() => navigation.navigate('ProviderJobs')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Open available delivery and inspection jobs">
               <Ionicons name="briefcase-outline" size={19} color={Colors.accent} />
               <Text style={styles.quickActionText}>Service jobs</Text>
-              <Ionicons name="chevron-forward" size={17} color={Colors.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickAction} onPress={() => navigation.navigate('ProviderLeads')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Open matched warranty enquiries">
-              <Ionicons name="mail-outline" size={19} color={Colors.accent} />
-              <Text style={styles.quickActionText}>Enquiries</Text>
               <Ionicons name="chevron-forward" size={17} color={Colors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -140,11 +135,7 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
           </View>
 
           {TYPES.map((type) => {
-                if (type === 'FINANCE') return <View key={type} style={styles.card}>
-                  <View style={{flex:1,gap:10}}><Text style={{fontWeight:'700',fontSize:18,color:Colors.textPrimary}}>Vehicle Finance</Text>
-                  <Text style={{color:Colors.textSecondary}}>Want to offer vehicle finance through CarMazium? Contact our team directly to discuss a partnership.</Text>
-                  <TouchableOpacity accessibilityRole="link" onPress={() => Linking.openURL('https://www.carmazium.com/contact')}><Text style={{color:Colors.accent}}>Contact our team</Text></TouchableOpacity></View>
-                </View>;
+
 
             const cap = byType.get(type);
             const canApply = !cap || cap.status === 'REJECTED';

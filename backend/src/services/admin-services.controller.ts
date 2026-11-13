@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { AdminCreateWarrantyPartnerDto } from "./admin-warranty-partner.dto";
+import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiCookieAuth, ApiQuery } from '@nestjs/swagger';
 import { UserRole, CapabilityStatus, ServiceJobStatus, ServiceType } from '@prisma/client';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
@@ -20,6 +21,12 @@ export class AdminServicesController {
         private readonly services: ServicesService,
         private readonly leads: ServiceLeadsService,
     ) { }
+
+    @Post('warranty-partners')
+    @ApiOperation({ summary: 'Admin appoints a warranty partner for verification; no provider self-application' })
+    async addWarrantyPartner(@CurrentUser() admin: any, @Body() dto: AdminCreateWarrantyPartnerDto) {
+        return new StandardResponse(await this.leads.adminCreateWarrantyPartner(admin.id, dto));
+    }
 
     @Get('capabilities')
     @ApiQuery({ name: 'status', enum: Object.values(CapabilityStatus), required: false })
@@ -85,9 +92,9 @@ export class AdminServicesController {
     }
 
     @Post('leads/:id/rematch')
-    @ApiOperation({ summary: 'Explicitly rematch one open Finance/Warranty enquiry to newly eligible providers, up to the recipient cap' })
+    @ApiOperation({ summary: 'Retired provider matching endpoint' })
     async rematchLead(@Param('id') id: string) {
-        return new StandardResponse(await this.leads.adminRematch(id));
+        throw new ForbiddenException('Provider inbox matching has been retired. Finance routing and warranty enquiries are managed by admin.');
     }
 
     @Get('leads')

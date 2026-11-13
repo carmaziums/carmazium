@@ -39,7 +39,7 @@ import { IconButton } from '../../components/IconButton';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PartnerDashboard'>;
 
-const SERVICE_ORDER: ServiceType[] = ['DELIVERY', 'INSPECTION', 'FINANCE', 'WARRANTY'];
+const SERVICE_ORDER: ServiceType[] = ['DELIVERY', 'INSPECTION'];
 
 const statusText = (status?: string) => {
   switch (status) {
@@ -196,7 +196,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.eyebrow}>TRADEXCHANGE PARTNER</Text>
             <Text style={styles.title}>One business account</Text>
             <Text style={styles.sub}>
-              Add Dealer, Delivery, Inspection and Warranty services. Finance providers should contact the team directly.
+              Add Dealer, Delivery and Inspection services. Finance and warranty partnerships are managed by the CarMazium team.
             </Text>
           </View>
 
@@ -249,11 +249,6 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                     <Text style={styles.quickTaskText}>Available jobs</Text>
                     <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.quickTask} onPress={() => navigation.navigate('ProviderLeads')} accessibilityRole="button" accessibilityLabel="See matched warranty enquiries" activeOpacity={0.8}>
-                    <Ionicons name="document-text-outline" size={21} color={Colors.accent} />
-                    <Text style={styles.quickTaskText}>Enquiries</Text>
-                    <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
-                  </TouchableOpacity>
                   <TouchableOpacity style={styles.quickTask} onPress={() => navigation.navigate('ProviderCapabilities')} accessibilityRole="button" accessibilityLabel="Manage services and matching areas" activeOpacity={0.8}>
                     <Ionicons name="options-outline" size={21} color={Colors.accent} />
                     <Text style={styles.quickTaskText}>Service areas</Text>
@@ -277,11 +272,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
               </View>
 
               {SERVICE_ORDER.map((type) => {
-                if (type === 'FINANCE') return <View key={type} style={styles.serviceCard}>
-                  <View style={{flex:1,gap:10}}><Text style={{fontWeight:'700',fontSize:18,color:Colors.textPrimary}}>Vehicle Finance</Text>
-                  <Text style={{color:Colors.textSecondary}}>Want to offer vehicle finance through CarMazium? Contact our team directly to discuss a partnership.</Text>
-                  <TouchableOpacity accessibilityRole="link" onPress={() => Linking.openURL('https://www.carmazium.com/contact')}><Text style={{color:Colors.accent}}>Contact our team</Text></TouchableOpacity></View>
-                </View>;
+
 
                 const cap = byType.get(type);
                 const approved = cap?.status === 'APPROVED';
@@ -331,25 +322,6 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.card}>
-                <View style={styles.rowBetween}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>Warranty Enquiries</Text>
-                    <Text style={styles.cardText}>
-                      Review Warranty enquiries matched to your approved services, then send or update your response from the app.
-                    </Text>
-                  </View>
-                  <Ionicons name="mail-unread-outline" size={26} color={Colors.infoBlueLight} />
-                </View>
-                <TouchableOpacity
-                  style={styles.secondaryButton}
-                  onPress={() => navigation.navigate('ProviderLeads')}
-                >
-                  <Ionicons name="document-text-outline" size={17} color={Colors.white} />
-                  <Text style={styles.secondaryText}>OPEN ENQUIRIES</Text>
-                </TouchableOpacity>
-              </View>
-
               {hasApprovedJobCapability && (
                 <View style={styles.card}>
                   <View style={styles.rowBetween}>
@@ -388,14 +360,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                     </TouchableOpacity>
                   )}
                 </View>
-              ) : (
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Finance & Warranty payouts</Text>
-                  <Text style={styles.cardText}>
-                    No Stripe payout account is required for Finance or Warranty enquiries because CarMazium does not collect those provider payments.
-                  </Text>
-                </View>
-              )}
+              ) : null}
 
               <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('DealerTeam')}>
                 <Ionicons name="people-outline" size={17} color={Colors.white} />

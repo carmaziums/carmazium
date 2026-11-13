@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { apiClient } from "@/lib/apiClient"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { Loader2, CheckCircle, XCircle, AlertCircle, CreditCard, Ban, Scale, FileSearch } from "lucide-react"
@@ -25,12 +26,23 @@ function AdminServices() {
     const [disputes, setDisputes] = React.useState<ServiceJob[] | null>(null)
     const [leads, setLeads] = React.useState<ServiceLead[] | null>(null)
     const [query, setQuery] = React.useState("")
-    const [serviceFilter, setServiceFilter] = React.useState<"ALL" | ServiceType>("ALL")
+    const [serviceFilter, setServiceFilter] = React.useState<"ALL" | ServiceType>(() => {
+        const requested = params.get("serviceType")
+        return requested && ["DELIVERY", "INSPECTION", "FINANCE", "WARRANTY"].includes(requested) ? requested as ServiceType : "ALL"
+    })
+    const requestedService = params.get("serviceType")
+    const requestedTab = params.get("tab")
+    React.useEffect(() => {
+        setServiceFilter(requestedService && ["DELIVERY", "INSPECTION", "FINANCE", "WARRANTY"].includes(requestedService) ? requestedService as ServiceType : "ALL")
+        setTab(requestedTab && ["queue", "providers", "jobs", "leads", "disputes"].includes(requestedTab) ? requestedTab as Tab : "queue")
+    }, [requestedService, requestedTab])
     const [jobPage, setJobPage] = React.useState(1)
     const [disputePage, setDisputePage] = React.useState(1)
     const [loading, setLoading] = React.useState(false)
     const loadVersion = React.useRef(0)
     const pageSize = 50
+    const [partnerEmail, setPartnerEmail] = React.useState("")
+    const [partnerName, setPartnerName] = React.useState("")
     const [busy, setBusy] = React.useState<string | null>(null)
     const [error, setError] = React.useState<string | null>(null)
 
@@ -102,6 +114,20 @@ function AdminServices() {
                     <option value="WARRANTY">Warranty</option>
                 </select>
             </div>
+            {serviceFilter === "WARRANTY" && <form className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 space-y-3 mb-6" onSubmit={async event => {
+                event.preventDefault(); setBusy("add-warranty-partner"); setError(null)
+                try {
+                    await apiClient("/admin/services/warranty-partners", { method: "POST", body: JSON.stringify({ email: partnerEmail, businessName: partnerName }) })
+                    setPartnerEmail(""); setPartnerName(""); setTab("providers"); await load()
+                } catch (error: any) { setError(error.message || "Could not appoint warranty partner.") }
+                finally { setBusy(null) }
+            }}>
+                <h2 className="font-bold text-lg">Add warranty partner</h2>
+                <p className="text-sm text-[var(--text-muted)]">Appoint a partner using its existing account email. Admin reviews the agreement and verification documents before approval. Adding a partner does not activate warranty sales.</p>
+                <label className="block text-sm">Partner account email<input className="block w-full mt-1 p-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)]" type="email" required maxLength={254} value={partnerEmail} onChange={e => setPartnerEmail(e.target.value)} /></label>
+                <label className="block text-sm">Business name<input className="block w-full mt-1 p-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)]" required minLength={2} maxLength={160} value={partnerName} onChange={e => setPartnerName(e.target.value)} /></label>
+                <button className="rounded-xl bg-primary text-white px-4 py-2 font-bold disabled:opacity-50" disabled={Boolean(busy)}>{busy === "add-warranty-partner" ? "Adding…" : "Add for admin review"}</button>
+            </form>}
             {error && <div className="p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-300 text-sm flex items-start gap-3"><AlertCircle size={18} className="shrink-0 mt-0.5" /> {error}</div>}
             {(!caps || !jobs || !disputes || !leads) && !error && <div className="flex justify-center py-16"><Loader2 className="animate-spin text-primary" /></div>}
 
@@ -130,7 +156,7 @@ function AdminServices() {
                 <Button variant="outline" disabled={loading || ((tab === "jobs" ? jobs : disputes)?.length ?? 0) < pageSize} onClick={() => tab === "jobs" ? setJobPage(p => p + 1) : setDisputePage(p => p + 1)}>Next page</Button>
             </div>}
 
-            {leads && tab === "leads" && <div className="space-y-3">{leads.length===0 && <p className="text-sm text-[var(--text-muted)] py-10 text-center">No Finance or Warranty enquiries yet.</p>}{leads.map(l => <div key={l.id} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5"><div className="flex items-start justify-between gap-4"><div><div className="flex gap-2 items-center flex-wrap"><h3 className="font-heading font-bold">{[l.vehicleRegistration,l.vehicleMake,l.vehicleModel].filter(Boolean).join(" · ") || "Vehicle enquiry"}</h3><span className="text-[10px] font-black uppercase tracking-widest text-primary">{SERVICE_LABELS[l.serviceType]}</span></div><p className="text-xs text-[var(--text-muted)] mt-2">Customer: {l.fullName} · {l.email}{l.phone ? ` · ${l.phone}` : ""}</p><p className="text-xs text-[var(--text-muted)] mt-1">Matched providers: {l.recipientCount ?? 0} · Responses: {l.responseCount ?? 0} · Created {new Date(l.createdAt).toLocaleDateString("en-GB")}</p>{l.status === "OPEN" && !l.recipientCount && <p className="text-sm text-amber-600 mt-2">Needs attention: no eligible provider matched. Review provider applications, then rematch this enquiry.</p>}<Link href={`/dashboard/admin/services/leads/${l.id}`} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline mt-3"><FileSearch size={13}/> Open enquiry & provider responses</Link></div><span className="text-[10px] font-black uppercase tracking-widest border border-[var(--border-default)] rounded-full px-2.5 py-1">{l.status}</span></div></div>)}</div>}
+            {leads && tab === "leads" && <div className="space-y-3">{leads.length===0 && <p className="text-sm text-[var(--text-muted)] py-10 text-center">No Finance or Warranty enquiries yet.</p>}{leads.map(l => <div key={l.id} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5"><div className="flex items-start justify-between gap-4"><div><div className="flex gap-2 items-center flex-wrap"><h3 className="font-heading font-bold">{[l.vehicleRegistration,l.vehicleMake,l.vehicleModel].filter(Boolean).join(" · ") || "Vehicle enquiry"}</h3><span className="text-[10px] font-black uppercase tracking-widest text-primary">{SERVICE_LABELS[l.serviceType]}</span></div><p className="text-xs text-[var(--text-muted)] mt-2">Customer: {l.fullName} · {l.email}{l.phone ? ` · ${l.phone}` : ""}</p><p className="text-xs text-[var(--text-muted)] mt-1">Matched providers: {l.recipientCount ?? 0} · Responses: {l.responseCount ?? 0} · Created {new Date(l.createdAt).toLocaleDateString("en-GB")}</p>{l.status === "OPEN" && !l.recipientCount && <p className="text-sm text-amber-600 mt-2">Historical enquiry: the admin team should contact this customer directly. Provider inbox matching has been retired.</p>}<Link href={`/dashboard/admin/services/leads/${l.id}`} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline mt-3"><FileSearch size={13}/> Open enquiry & provider responses</Link></div><span className="text-[10px] font-black uppercase tracking-widest border border-[var(--border-default)] rounded-full px-2.5 py-1">{l.status}</span></div></div>)}</div>}
 
             {disputes && tab === "disputes" && <div className="space-y-3">{activeDisputes.length===0 && <p className="text-sm text-[var(--text-muted)] py-10 text-center">Nothing in dispute.</p>}{activeDisputes.map(j => <div key={j.id} className="rounded-2xl border border-red-500/30 bg-[var(--bg-card)] p-5"><div className="flex items-start justify-between gap-4"><div><h3 className="font-heading font-bold">{j.title}</h3><p className="text-xs text-[var(--text-muted)]">Held: {j.payment ? formatPence(j.payment.grossPence) : "—"} · provider share {j.payment ? formatPence(j.payment.contractorPence) : "—"}</p>{j.cancelReason && <p className="text-sm mt-2">{j.cancelReason}</p>}<p className="text-xs text-[var(--text-muted)] mt-2">Settlement is available only inside the full dispute case so evidence and the audit trail remain in one operational workflow.</p><Link href={`/dashboard/admin/services/jobs/${j.id}`} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline mt-3"><FileSearch size={13}/> Open dispute case</Link></div><Scale size={20} className="text-red-500 shrink-0"/></div></div>)}</div>}
         </main>

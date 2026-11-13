@@ -21,11 +21,9 @@ import {
     formatPence,
     getAssignedJobs,
     getJobFeed,
-    getLeadInbox,
     getMyCapabilities,
     type MyCapabilities,
     type ServiceJob,
-    type ServiceLead,
 } from "@/lib/servicesApi"
 
 /**
@@ -41,7 +39,6 @@ export default function ServiceDashboard() {
     const [capabilities, setCapabilities] = React.useState<MyCapabilities | null>(null)
     const [feed, setFeed] = React.useState<ServiceJob[]>([])
     const [assigned, setAssigned] = React.useState<ServiceJob[]>([])
-    const [leads, setLeads] = React.useState<ServiceLead[]>([])
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
 
@@ -53,11 +50,10 @@ export default function ServiceDashboard() {
             setLoading(true)
             setError(null)
 
-            const [capResult, feedResult, assignedResult, leadResult] = await Promise.allSettled([
+            const [capResult, feedResult, assignedResult] = await Promise.allSettled([
                 getMyCapabilities(),
                 getJobFeed(),
                 getAssignedJobs(),
-                getLeadInbox(),
             ])
 
             if (cancelled) return
@@ -67,7 +63,6 @@ export default function ServiceDashboard() {
 
             setFeed(feedResult.status === "fulfilled" ? feedResult.value : [])
             setAssigned(assignedResult.status === "fulfilled" ? assignedResult.value : [])
-            setLeads(leadResult.status === "fulfilled" ? leadResult.value : [])
 
             // A provider may legitimately get 403 from one marketplace if they
             // are approved only for the other. Only show an error when even the
@@ -94,7 +89,7 @@ export default function ServiceDashboard() {
         ? `${profile.firstName} ${profile.lastName || ""}`.trim()
         : user?.email?.split("@")[0] || "Provider"
 
-    const approvedCount = capabilities?.capabilities.filter(c => c.status === "APPROVED").length ?? 0
+    const approvedCount = capabilities?.capabilities.filter(c => c.status === "APPROVED" && (c.serviceType === "DELIVERY" || c.serviceType === "INSPECTION")).length ?? 0
     const activeAssigned = assigned.filter(j => !["RELEASED", "CANCELLED", "EXPIRED"].includes(j.status))
     const releasedEarnings = assigned
         .filter(j => j.status === "RELEASED")
@@ -114,7 +109,7 @@ export default function ServiceDashboard() {
                             <p className="text-primary text-xs font-black uppercase tracking-[0.18em] mb-2">TradeXchange Services</p>
                             <h1 className="text-3xl md:text-4xl font-black font-heading mb-2">Provider overview</h1>
                             <p className="text-sm text-[var(--text-muted)] max-w-2xl">
-                                Delivery and Inspection jobs, Warranty enquiries, approvals and earnings in one place. Contact our team about finance partnerships.
+                                Delivery and Inspection jobs, approvals and earnings in one place. Contact our team about finance and warranty partnerships.
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -154,21 +149,7 @@ export default function ServiceDashboard() {
                             </div>
                         </Link>
 
-                        <Link href="/dashboard/service/leads" className="group rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 hover:border-primary/40 transition-colors">
-                            <div className="flex items-start justify-between gap-5">
-                                <div className="flex gap-4">
-                                    <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0"><ClipboardList size={20} /></div>
-                                    <div>
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <h2 className="font-heading font-bold text-lg">Warranty inbox</h2>
-                                            {leads.length > 0 && <span className="rounded-full bg-primary text-white text-[10px] font-black min-w-5 h-5 px-1.5 inline-flex items-center justify-center">{leads.length > 99 ? "99+" : leads.length}</span>}
-                                        </div>
-                                        <p className="text-sm text-[var(--text-muted)] mt-1 leading-relaxed">Open customer enquiries matched to your approved lead-service capabilities and send provider responses.</p>
-                                    </div>
-                                </div>
-                                <ChevronRight className="text-[var(--text-muted)] group-hover:text-primary transition-colors shrink-0" size={20} />
-                            </div>
-                        </Link>
+
                     </section>
 
                     <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] overflow-hidden">
@@ -211,7 +192,7 @@ export default function ServiceDashboard() {
                                 <div>
                                     <h2 className="font-bold">How your service areas work</h2>
                                     <p className="text-sm text-[var(--text-muted)] mt-1 leading-relaxed">
-                                        Delivery & Recovery and Vehicle Inspections use competitive quotes with the 9% / 91% job-payment split. Warranty providers receive matched enquiries. Buyers apply externally with Jigsaw Finance; finance providers should contact our team directly.
+                                        Delivery & Recovery and Vehicle Inspections use competitive quotes with the 9% / 91% job-payment split. Finance and warranty partnerships are arranged directly with our team. Buyers apply externally with the finance provider selected by admin.
                                     </p>
                                 </div>
                             </div>

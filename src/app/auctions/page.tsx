@@ -71,9 +71,9 @@ const PILLARS: Pillar[] = [
     {
         icon: Banknote,
         title: "Vehicle Finance",
-        eyebrow: "Jigsaw Finance applications",
-        description: "Apply from a participating listing and continue to the application form with Jigsaw Finance. Finance providers should contact our team directly.",
-        points: ["Seller-controlled calculator", "Contact details, then Jigsaw application", "Finance providers: contact our team"],
+        eyebrow: "Finance partner applications",
+        description: "Apply from a participating listing and continue to the application form with the selected finance provider. Finance providers should contact our team directly.",
+        points: ["Seller-controlled calculator", "Contact details, then provider application", "Finance providers: contact our team"],
         ...(financeServiceEnabled ? { href: "/services/finance" } : {}),
         cta: "Explore finance",
     },
@@ -81,8 +81,8 @@ const PILLARS: Pillar[] = [
         icon: ShieldCheck,
         title: "Warranty Providers",
         eyebrow: "Compare vehicle cover",
-        description: "Request warranty options for a vehicle and hear from approved providers offering their own products, cover and exclusions.",
-        points: ["Matched warranty enquiries", "Compare cover levels", "Provider issues its own policy terms"],
+        description: "Contact the CarMazium team about warranties for your vehicle or becoming a warranty partner.",
+        points: ["Admin-managed warranty enquiries", "Contact our warranty team", "Partner onboarding by admin"],
         ...(warrantyServiceEnabled ? { href: "/services/warranty" } : {}),
         cta: "Explore warranty",
     },
@@ -184,7 +184,7 @@ const PROVIDER_BENEFITS = [
     {
         icon: ShieldCheck,
         title: "Use the model that suits your service",
-        text: "Delivery and Inspection use paid jobs. Warranty providers receive matched enquiries. Finance applications go to Jigsaw; finance partnerships are discussed directly with our team.",
+        text: "Delivery and Inspection use paid jobs. CarMazium admin handles warranty enquiries. Finance applications go to the selected provider; finance partnerships are discussed directly with our team.",
     },
 ]
 
@@ -197,7 +197,7 @@ const PROVIDER_STEPS = [
     {
         step: "02",
         title: "Choose your capabilities",
-        text: "Apply for Delivery, Inspection or Warranty services. To offer vehicle finance, contact the CarMazium team directly.",
+        text: "Apply for Delivery or Inspection services. To offer finance or warranties, contact the CarMazium team directly.",
     },
     {
         step: "03",
@@ -207,7 +207,7 @@ const PROVIDER_STEPS = [
     {
         step: "04",
         title: "Start receiving opportunities",
-        text: "Once approved, quote on Delivery or Inspection jobs, or receive matched Warranty enquiries. Finance partnerships are arranged directly with our team.",
+        text: "Once approved, quote on Delivery or Inspection jobs. Finance and warranty partnerships are arranged directly with our team.",
     },
 ]
 
@@ -327,7 +327,7 @@ export default function TradeXchangePage() {
                         </div>
                         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5">
                             <p className="mb-1 text-lg font-black font-heading">Matched enquiries</p>
-                            <p className="text-sm text-[var(--text-muted)]">Warranty providers receive matched enquiries. Finance providers can discuss partnerships directly with our team.</p>
+                            <p className="text-sm text-[var(--text-muted)]">Finance and warranty providers can discuss partnerships directly with our team. Admin manages warranty partners and products.</p>
                         </div>
                         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5">
                             <p className="mb-1 text-lg font-black font-heading">Approved-provider status</p>
@@ -398,7 +398,7 @@ export default function TradeXchangePage() {
                             <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Finance &amp; Warranty providers</p>
                             <h3 className="mb-4 text-2xl md:text-3xl font-black font-heading">Meet customers already in the vehicle journey</h3>
                             <p className="mb-5 text-sm leading-relaxed text-[var(--text-muted)]">
-                                Warranty providers receive matched customer enquiries. Finance providers: contact our team directly to discuss a partnership. Buyers on participating listings continue to Jigsaw Finance after submitting their contact details.
+                                Finance and warranty providers: contact our team directly to discuss a partnership. Buyers on participating listings continue to the selected finance provider after submitting their contact details.
                             </p>
                             <p className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 text-sm text-[var(--text-secondary)]">
                                 The opportunity is simple: reach relevant CarMazium users at the point they are already buying, selling or managing a vehicle.

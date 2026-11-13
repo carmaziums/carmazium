@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, ForbiddenException, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ServiceType } from '@prisma/client';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
@@ -17,9 +17,9 @@ export class ServiceLeadsController {
 
     @Post('leads')
     @Throttle({ default: { limit: 5, ttl: 60_000 } })
-    @ApiOperation({ summary: 'Create a Vehicle Finance or Warranty enquiry and match approved providers' })
+    @ApiOperation({ summary: 'Retired provider-matching enquiry endpoint' })
     async create(@CurrentUser() user: any, @Body() dto: CreateServiceLeadDto) {
-        return new StandardResponse(await this.leads.create(user.id, dto));
+        throw new ForbiddenException("Finance applications start from a participating vehicle listing. Warranty enquiries are handled directly by the CarMazium team.");
     }
 
     // Static routes stay above /leads/:id so Nest never treats "my" or
@@ -33,15 +33,13 @@ export class ServiceLeadsController {
     @Get('leads/inbox')
     @ApiOperation({ summary: 'Matched Finance/Warranty enquiries for an approved provider (cursor paginated)' })
     async inbox(@CurrentUser() user: any, @Query() query: ServiceLeadInboxQueryDto) {
-        return new StandardResponse(
-            await this.leads.inboxPage(user.id, query.serviceType, query),
-        );
+        throw new ForbiddenException("Finance and warranty applications are managed by CarMazium admin.");
     }
 
     @Get('leads/inbox/:id')
     @ApiOperation({ summary: 'Open one matched Finance/Warranty enquiry in the provider dashboard' })
     async providerLead(@CurrentUser() user: any, @Param('id') id: string) {
-        return new StandardResponse(await this.leads.providerLead(user.id, id));
+        throw new ForbiddenException("Finance and warranty applications are managed by CarMazium admin.");
     }
 
     @Put('leads/:id/respond')
@@ -52,7 +50,7 @@ export class ServiceLeadsController {
         @Param('id') id: string,
         @Body() dto: RespondToServiceLeadDto,
     ) {
-        return new StandardResponse(await this.leads.respond(user.id, id, dto));
+        throw new ForbiddenException("Finance and warranty applications are managed by CarMazium admin.");
     }
 
     @Post('leads/:id/close')

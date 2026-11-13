@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, Switch, ScrollView, ActivityIndicator, Alert, Linking } from 'react-native';
+import { View, Text, Switch, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -30,9 +30,6 @@ export const DealerFinanceScreen: React.FC = () => {
     <Text style={{fontSize:24,fontWeight:'700',color:Colors.textPrimary}}>Listing finance calculator</Text>
     <Text style={{color:Colors.textSecondary}}>Show the finance calculator and Apply for Finance button on my current and future retail listings. This is on by default; you can turn it off at any time.</Text>
     {loading ? <ActivityIndicator /> : <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}><Text style={{flex:1,color:Colors.textPrimary}}>{enabled ? 'On — remove finance calculator from my listings' : 'Off — put finance calculator on my listings'}</Text><Switch value={enabled} disabled={saving} onValueChange={save} accessibilityLabel="Show finance calculator on my listings" /></View>}
-    <Text style={{color:Colors.textSecondary}}>Buyers enter their name, email and phone, then continue to the Jigsaw Finance application. CarMazium does not provide finance or make lending decisions.</Text>
-    <Text style={{fontSize:20,fontWeight:'700',color:Colors.textPrimary}}>Finance providers</Text>
-    <Text style={{color:Colors.textSecondary}}>Want to offer finance through CarMazium? Contact the team directly to discuss a partnership. There is no online finance-provider registration.</Text>
-    <Text accessibilityRole="link" onPress={() => Linking.openURL('https://www.carmazium.com/contact')} style={{color:Colors.accent}}>Contact the team</Text>
+    <Text style={{color:Colors.textSecondary}}>Buyers enter their name, email and phone, then continue to the application selected by CarMazium admin. CarMazium does not provide finance or make lending decisions.</Text>
   </ScrollView>;
 };

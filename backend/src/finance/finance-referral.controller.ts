@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Header, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -12,6 +12,7 @@ export class FinanceReferralController {
     constructor(private readonly referrals: FinanceReferralService) {}
 
     @Get('listing/:id')
+    @Header('Cache-Control', 'no-store')
     async availability(@Param('id', ParseUUIDPipe) id: string) {
         return new StandardResponse(await this.referrals.availability(id));
     }

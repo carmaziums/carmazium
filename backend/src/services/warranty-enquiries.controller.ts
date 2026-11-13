@@ -25,6 +25,6 @@ export class WarrantyEnquiriesController {
     @Throttle({ default: { limit: 30, ttl: 60_000 } })
     @ApiOperation({ summary: 'Check warranty provider availability without saving an enquiry' })
     async availability(@Query() dto: WarrantyAvailabilityDto) {
-        return new StandardResponse(await this.leads.warrantyAvailability(dto));
+        return new StandardResponse({ available: false, providerCount: 0 });
     }
 }

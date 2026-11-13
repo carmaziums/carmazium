@@ -37,7 +37,7 @@ const EVERY_DEALER_ROUTE = [
     "/dashboard/dealer", "/dashboard/dealer/inventory", "/dashboard/dealer/crm", "/dashboard/dealer/offers",
     "/dashboard/dealer/auctions", "/dashboard/dealer/auctions/won", "/dashboard/cancellations",
     "/dashboard/dealer/messages", "/dashboard/dealer/team", "/profile?section=business", "/dashboard/partner",
-    "/dashboard/service/capabilities", "/dashboard/service/jobs", "/dashboard/service/leads",
+    "/dashboard/service/capabilities", "/dashboard/service/jobs",
     "/dashboard/dealer/my-offers", "/dashboard/dealer/bids", "/dashboard/dealer/wishlist",
     "/dashboard/dealer/finance", "/dashboard/dealer/analytics", "/dashboard/dealer/earnings",
 ]
@@ -241,4 +241,14 @@ test("retail offers do not load auction positions for staff without VIEW_TRADE",
     assert.ok(retail.includes('const canViewTrade = !accessLoading && hasPermission("VIEW_TRADE")'))
     assert.ok(retail.includes('canViewTrade ? getMyActiveAuctionBids().catch(() => []) : Promise.resolve([])'))
     assert.ok(retail.includes('getMyOffers()'))
+})
+
+// Provider inboxes were deliberately retired when finance/warranty moved to admin.
+test("dealers retain the calculator toggle but no finance or warranty provider application destinations", () => {
+    assert.equal(DEALER_ROUTE_CONFIG.some(r => r.href === "/dashboard/service/leads"), false)
+    assert.equal(DEALER_ROUTE_CONFIG.some(r => r.href === "/dashboard/dealer/warranty"), false)
+    assert.equal(getDealerRoute("/dashboard/dealer/finance").label, "Finance Calculator")
+    const partner = read("src/app/dashboard/partner/page.tsx")
+    assert.doesNotMatch(partner, /applyService\("(?:FINANCE|WARRANTY)"\)/)
+    assert.doesNotMatch(partner, /title="(?:Vehicle Finance|Warranty Provider)"/)
 })

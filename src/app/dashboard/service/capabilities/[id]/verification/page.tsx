@@ -46,10 +46,12 @@ export default function ProviderVerificationPage() {
         if (!id) return
         setError(null)
         try {
-            const [mine, verification] = await Promise.all([getMyCapabilities(), getCapabilityVerification(id)])
+            const mine = await getMyCapabilities()
             const cap = mine.capabilities.find(c => c.id === id)
             if (!cap) throw new Error("This service application was not found on your account.")
             setCapability(cap)
+            if (cap.serviceType === "WARRANTY" || cap.serviceType === "FINANCE") { setDetail(null); return }
+            const verification = await getCapabilityVerification(id)
             setDetail(verification)
             setEvidenceType(current => {
                 if (current && verification.verification.requirements.some(r => r.type === current)) return current
@@ -103,6 +105,8 @@ export default function ProviderVerificationPage() {
             setError(e?.message || "Could not remove this evidence")
         } finally { setBusy(false) }
     }
+
+    if (capability?.serviceType === "WARRANTY" || capability?.serviceType === "FINANCE") return <main className="container mx-auto px-5 pt-28 pb-16"><h1 className="text-2xl font-bold mb-3">Provider administration</h1><p>Finance and warranty partnerships and applications are managed directly by the CarMazium admin team. This dashboard does not accept finance or warranty provider applications or documents.</p></main>
 
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}`.trim() : user?.email || "Provider"
 

@@ -1,3 +1,5 @@
+import { FinanceRoutingService } from "./finance-routing.service";
+import { AdminFinanceRoutingController } from "./admin-finance-routing.controller";
 import { Module } from '@nestjs/common';
 import { FinanceService } from './finance.service';
 import { FinanceController } from './finance.controller';
@@ -9,8 +11,8 @@ import { AuthModule } from '../auth/auth.module';
 
 @Module({
     imports: [PrismaModule, AuthModule, EmailModule],
-    controllers: [FinanceReferralController, FinanceController],
-    providers: [FinanceService, FinanceReferralService],
+    controllers: [AdminFinanceRoutingController, FinanceReferralController, FinanceController],
+    providers: [FinanceRoutingService, FinanceService, FinanceReferralService],
     exports: [FinanceService],
 })
 export class FinanceModule { }

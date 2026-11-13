@@ -88,7 +88,7 @@ const DEALER_GUIDE: AccountGuide = {
         {
             icon: Truck,
             title: "Add approved business services",
-            description: "Add Delivery & Recovery, Vehicle Inspection or Warranty services where approved. Finance providers should contact the CarMazium team directly.",
+            description: "Add Delivery & Recovery or Vehicle Inspection services where approved. Finance and warranty providers should contact the CarMazium team directly.",
         },
         {
             icon: Users,
@@ -109,7 +109,7 @@ const CONTRACTOR_GUIDE: AccountGuide = {
         {
             icon: ShieldCheck,
             title: "Complete capability approval",
-            description: "Apply for Delivery, Inspection or Warranty services. Finance providers must contact the team directly to discuss a partnership.",
+            description: "Apply for Delivery or Inspection services. Finance and warranty partnerships are arranged directly with our team.",
         },
         {
             icon: Truck,
