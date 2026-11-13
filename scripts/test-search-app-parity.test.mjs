@@ -61,7 +61,7 @@ test('web and native option overlays include new live makes, models and trims wi
 });
 test('both API clients serialize every shared filter with the same values',async()=>{
   const urls=[];const apiClient=async url=>{urls.push(url);return {data:[],pagination:{total:0}};};
-  const web=load('src/lib/listingApi.ts',{'./apiClient':{apiClient},'./listingMotHistory':{}});
+  const web=load('src/lib/listingApi.ts',{'./apiClient':{apiClient},'./listingMotHistory':{},'./approvedAuctionAttribution':{captureApprovedAuctionAttribution:()=>{throw Error('Search must not capture seller attribution');}}});
   const mobile=load(native+'lib/listingsApi.ts',{'./apiClient':{apiClient},'./transmission':{}});
   const filters={make:'Citroën',model:'C4 Grand Picasso',minPrice:0,maxPrice:250000,minYear:1999,maxYear:2026,minMileage:12345,maxMileage:62500,fuelTypes:['PETROL','ELECTRIC'],transmissions:['AUTOMATIC','CVT'],bodyType:'SUV',minEngine:0,maxEngine:1600,maxCo2:100,minBhp:80,maxBhp:200,minCombinedMpg:45.5,maxZeroTo60Mph:9.8,driveType:'FWD',ulezCompliant:false,isImported:false,deliveryAvailable:true,motValid:true,taxedOnly:true,serviceHistories:['PARTIAL'],maxOwners:3,vehicleType:'CAR',location:'Birmingham',features:['Heated Seats'],conditions:['GOOD'],exteriorGrades:[1,2],writeOffCategories:['NONE'],euroStandard:'EURO_6',minDoors:5,minSeats:7,color:'Blue',sellerType:'PRIVATE',variant:'SE',sortBy:'price_asc',page:2,limit:20,maxDistanceMi:25,originLatitude:52.5,originLongitude:-1.9};
   await web.getListings(filters);await mobile.searchListings({...filters,strictErrors:true});

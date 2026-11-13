@@ -11,12 +11,13 @@ const paymentsSource = readFileSync(new URL('../src/lib/paymentApi.ts', import.m
 const analyticsHookSource = readFileSync(new URL('../src/hooks/useAnalytics.ts', import.meta.url), 'utf8')
 const funnelSource = readFileSync(new URL('../src/lib/gtm.ts', import.meta.url), 'utf8')
 
-function setup({ qualifiedLabel = 'NEW_QUALIFIED_LABEL' } = {}) {
+function setup({ qualifiedLabel = 'NEW_QUALIFIED_LABEL', approvalOnly = false } = {}) {
     const sent = []
     const exports = {}
     const env = {
         NEXT_PUBLIC_GOOGLE_ADS_ID: 'AW-TEST',
         NEXT_PUBLIC_GADS_LABEL_LISTING_FEE_PAID: 'EXISTING_PAID_LABEL',
+        NEXT_PUBLIC_GADS_AUCTION_APPROVAL_ONLY: String(approvalOnly),
     }
     if (qualifiedLabel) env.NEXT_PUBLIC_GADS_LABEL_QUALIFIED_SELLER = qualifiedLabel
     const js = ts.transpileModule(adsSource, {
@@ -46,6 +47,15 @@ const retail = (listing_id = 'vehicle-2') => ({
     seller_role: 'SELLER',
     value: 1,
     currency: 'GBP',
+})
+
+test('approval cutover stops auction submissions while retaining verified retail conversions', () => {
+    const ctx = setup({ approvalOnly: true })
+    ctx.trackAdsConversion('qualified_seller_listing', auction())
+    assert.equal(ctx.sent.length, 0)
+    ctx.trackAdsConversion('qualified_seller_listing', retail())
+    assert.equal(ctx.sent.length, 1)
+    assert.equal(ctx.sent[0].transaction_id, 'qualified_listing:vehicle-2')
 })
 
 test('only a successful auction review submission qualifies; same vehicle cannot qualify twice', () => {

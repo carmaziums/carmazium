@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { revokeApprovedAuctionAttribution } from '@/lib/approvedAuctionAttribution'
 
 /**
  * PECR/GDPR cookie consent.
@@ -90,6 +91,7 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
         // inside the `wait_for_update` window set with the defaults —
         // otherwise every repeat visit is reported as denied.
         if (stored) applyGoogleConsent(stored)
+        if (stored === 'rejected') void revokeApprovedAuctionAttribution()
     }, [])
 
     const decide = React.useCallback((next: ConsentDecision) => {
@@ -101,6 +103,7 @@ export function ConsentProvider({ children }: { children: React.ReactNode }) {
         } catch {
             // Storage unavailable — the choice still applies for this page load.
         }
+        if (next === 'rejected') void revokeApprovedAuctionAttribution()
     }, [])
 
     const value = React.useMemo<ConsentContextValue>(() => ({

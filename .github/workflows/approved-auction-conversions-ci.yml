@@ -1,0 +1,73 @@
+name: Approved Auction Conversions
+on:
+  pull_request:
+    paths:
+      - 'backend/src/analytics/**'
+      - 'backend/src/admin/admin.service.ts'
+      - 'backend/prisma/**'
+      - 'src/lib/approvedAuctionAttribution.ts'
+      - 'src/lib/googleAds.ts'
+      - 'src/lib/listingApi.ts'
+      - 'src/context/ConsentContext.tsx'
+      - 'scripts/test-approved-auction-attribution.test.mjs'
+      - 'scripts/test-google-ads-qualified-seller.test.mjs'
+      - 'scripts/test-listing-filter-serialization.test.mjs'
+      - 'scripts/test-search-app-parity.test.mjs'
+      - '.github/workflows/approved-auction-conversions-ci.yml'
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: backend
+      - run: npx tsc --noEmit --incremental false
+      - run: npx tsc --noEmit --incremental false
+        working-directory: backend
+      - run: node --test scripts/test-approved-auction-attribution.test.mjs scripts/test-google-ads-qualified-seller.test.mjs scripts/test-meta-seller-conversions.test.mjs scripts/test-listing-filter-serialization.test.mjs scripts/test-search-app-parity.test.mjs
+      - run: npm test -- --runInBand approved-auction-conversions.spec.ts analytics-event-policy.spec.ts admin.service.spec.ts
+        working-directory: backend
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: qa
+          POSTGRES_PASSWORD: isolated_approval_only
+          POSTGRES_DB: carmazium_approval_qa
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U qa -d carmazium_approval_qa"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      DATABASE_URL: postgresql://qa:isolated_approval_only@127.0.0.1:5432/carmazium_approval_qa
+      DIRECT_URL: postgresql://qa:isolated_approval_only@127.0.0.1:5432/carmazium_approval_qa
+      APPROVAL_POSTGRES_TEST: '1'
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Build isolated baseline and exercise the new SQL migration
+        run: |
+          npx prisma db push --skip-generate
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c 'DROP TABLE approved_auction_conversions, seller_conversion_consents;'
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f prisma/migrations/20261112193000_approved_auction_conversions/migration.sql
+      - run: npm test -- --runInBand approved-auction-conversions.integration.spec.ts

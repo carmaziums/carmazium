@@ -431,6 +431,8 @@ model User {
   watchlistItems           WatchlistItem[]
   sellerReviewsGiven       SellerReview[]          @relation("ReviewerRelation")
   analyticsEvents          AnalyticsEvent[]
+  sellerConversionConsent  SellerConversionConsent?
+  approvedAuctionConversions ApprovedAuctionConversion[]
   featuredBoosts           FeaturedBoost[]
   offers                   Offer[]
   addressVerifications     AddressVerification[]
@@ -899,6 +901,7 @@ model Listing {
   serviceJobVehicles  ServiceJobVehicle[]
   serviceLeads        ServiceLead[]
   disputes            DisputeCase[]
+  approvedAuctionConversion ApprovedAuctionConversion?
 
   @@index([sellerId])
   @@index([vehicleId])
@@ -1624,6 +1627,33 @@ model AnalyticsEvent {
   @@index([createdAt])
   @@index([sessionId])
   @@map("analytics_events")
+}
+
+// Consented GA4 linkage only; never exposed by public listing serializers.
+model SellerConversionConsent {
+  userId    String @id
+  allowed   Boolean
+  decidedAt DateTime
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@map("seller_conversion_consents")
+}
+
+// One approval conversion per listing, not per review/relisting attempt.
+model ApprovedAuctionConversion {
+  listingId String @id
+  userId String
+  clientId String?
+  sessionId String?
+  capturedAt DateTime @default(now())
+  approvedAt DateTime?
+  state String @default("CAPTURED")
+  dispatchedAt DateTime?
+  failureCode String?
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([state, approvedAt])
+  @@index([userId])
+  @@map("approved_auction_conversions")
 }
 
 model EmailCapture {

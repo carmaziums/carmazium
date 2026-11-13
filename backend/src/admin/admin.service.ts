@@ -33,6 +33,7 @@ import {
     calculatePlatformOpeningBid,
 } from '../auctions/auction-pricing';
 import { londonMonthlyRanges } from '../analytics/london-traffic-range';
+import { queueApprovedAuctionConversion } from '../analytics/approved-auction-conversions';
 
 @Injectable()
 export class AdminService {
@@ -1387,7 +1388,7 @@ export class AdminService {
                 );
             }
 
-            return tx.listing.update({
+            const approved = await tx.listing.update({
                 where: { id },
                 data: {
                     ...buildListingActivationData(listing.badgeTier),
@@ -1396,6 +1397,8 @@ export class AdminService {
                         : {}),
                 },
             });
+            await queueApprovedAuctionConversion(tx, listing);
+            return approved;
         });
 
         // Operational funnel telemetry: admin approval is the exact moment a
