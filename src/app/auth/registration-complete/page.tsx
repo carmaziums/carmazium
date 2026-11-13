@@ -145,7 +145,7 @@ const FINANCE_GUIDE: AccountGuide = {
         {
             icon: ClipboardCheck,
             title: "Buyer applications",
-            description: "Buyers continue to Jigsaw Finance through Pulse Cars Limited.",
+            description: "Buyers continue to Jigsaw Finance.",
         },
         {
             icon: Building2,

@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 export const metadata: Metadata = {
     title: "Car Finance UK — Calculate Monthly Payments",
     description:
-        "Apply from participating listings through Jigsaw Finance and Pulse Cars Limited. Finance providers should contact the CarMazium team directly.",
+        "Apply from participating listings through Jigsaw Finance. Finance providers should contact the CarMazium team directly.",
     keywords: [
         "car finance UK",
         "car finance calculator",
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     openGraph: {
         title: "Car Finance UK — Calculate Monthly Payments | CarMazium",
         description:
-            "Buyer applications continue with Jigsaw Finance through Pulse Cars Limited. Finance providers should contact our team.",
+            "Buyer applications continue with Jigsaw Finance. Finance providers should contact our team.",
         url: "/finance",
         type: "website",
     },

@@ -76,7 +76,7 @@ const GUIDES: Record<string, AccountOnboardingGuide> = {
         tagline: 'Finance partnerships are arranged directly with our team.',
         features: [
             'Contact our team to discuss a finance partnership',
-            'Buyer applications continue with Jigsaw Finance through Pulse Cars Limited',
+            'Buyer applications continue with Jigsaw Finance',
             'Finance-provider registration is no longer available online',
             'Speak directly with our team about providing vehicle finance',
         ],

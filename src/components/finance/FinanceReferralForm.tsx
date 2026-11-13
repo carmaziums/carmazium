@@ -38,7 +38,7 @@ export function FinanceReferralForm({ listingId }: { listingId: string }) {
     return <form onSubmit={submit} className="space-y-5">
         <h2 className="text-xl font-bold">Apply for Finance</h2>
         <p className="font-semibold">{title}</p>
-        <p className="text-sm text-[var(--text-muted)]">Enter your contact details below. We will record your interest and notify the CarMazium admin team, then take you to the Pulse Cars Limited application on Jigsaw Finance’s website.</p>
+        <p className="text-sm text-[var(--text-muted)]">Enter your contact details below. We will record your interest and notify the CarMazium admin team, then take you to the application on Jigsaw Finance’s website.</p>
         <label className="block text-sm font-semibold">Full name<input className={input} name="fullName" autoComplete="name" required minLength={2} maxLength={120} /></label>
         <label className="block text-sm font-semibold">Email address<input className={input} name="email" type="email" autoComplete="email" required maxLength={254} /></label>
         <label className="block text-sm font-semibold">Phone number<input className={input} name="phone" type="tel" autoComplete="tel" required minLength={7} maxLength={30} /></label>

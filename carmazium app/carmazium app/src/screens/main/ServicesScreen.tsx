@@ -65,7 +65,7 @@ const SERVICES: ServiceItem[] = [
   },
   {
     title: 'Vehicle Finance',
-    desc: 'Apply from a participating listing with Jigsaw Finance through Pulse Cars Limited. Finance providers: contact our team directly.',
+    desc: 'Apply from a participating listing with Jigsaw Finance. Finance providers: contact our team directly.',
     icon: 'cash-outline',
     color: Colors.lightOrange_fbbf24,
     bg: Colors.warningAlpha10,
