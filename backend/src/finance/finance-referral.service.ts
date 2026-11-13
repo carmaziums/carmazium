@@ -26,7 +26,7 @@ export class FinanceReferralService {
     async preference(userId: string) {
         const owner = await this.preferenceOwner(userId);
         const user = await this.prisma.user.findUnique({ where: { id: owner }, select: { preferences: true } });
-        return { enabled: (user?.preferences as Record<string, unknown> | null)?.financeCalculatorEnabled === true };
+        return { enabled: (user?.preferences as Record<string, unknown> | null)?.financeCalculatorEnabled !== false };
     }
 
     async setPreference(userId: string, enabled: boolean) {
@@ -46,7 +46,7 @@ export class FinanceReferralService {
     async availability(listingId: string) {
         const listing = await this.eligibleListing(listingId);
         return {
-            enabled: Boolean(listing && (listing.seller?.preferences as Record<string, unknown> | null)?.financeCalculatorEnabled === true),
+            enabled: Boolean(listing && (listing.seller?.preferences as Record<string, unknown> | null)?.financeCalculatorEnabled !== false),
             title: listing?.title ?? null,
         };
     }
@@ -54,8 +54,8 @@ export class FinanceReferralService {
     async create(dto: CreateFinanceReferralDto) {
         const listing = await this.eligibleListing(dto.listingId);
         if (!listing) throw new NotFoundException('This vehicle is no longer available.');
-        if ((listing.seller?.preferences as Record<string, unknown> | null)?.financeCalculatorEnabled !== true) {
-            throw new ForbiddenException('The seller has not enabled finance referrals for this listing.');
+        if ((listing.seller?.preferences as Record<string, unknown> | null)?.financeCalculatorEnabled === false) {
+            throw new ForbiddenException('The seller has turned off finance referrals for this listing.');
         }
         if (dto.phone.replace(/\D/g, '').length < 7 || dto.phone.replace(/\D/g, '').length > 15) {
             throw new BadRequestException('Enter a valid phone number.');

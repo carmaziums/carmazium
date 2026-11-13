@@ -33,7 +33,7 @@ export function FinanceReferralForm({ listingId }: { listingId: string }) {
         } catch (e) { setError(e instanceof Error ? e.message : "Could not save your details. Please try again."); setBusy(false) }
     }
     if (available === null) return <p role="status">Checking this vehicle…</p>
-    if (!available) return <div role="status"><p>{error || "Finance referrals are not enabled for this listing, or the vehicle is no longer available."}</p><Link href="/search" className="text-primary underline">Browse available cars</Link></div>
+    if (!available) return <div role="status"><p>{error || "Finance has been turned off for this listing, or the vehicle is no longer available."}</p><Link href="/search" className="text-primary underline">Browse available cars</Link></div>
     const input = "mt-1 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)]"
     return <form onSubmit={submit} className="space-y-5">
         <h2 className="text-xl font-bold">Apply for Finance</h2>
