@@ -313,7 +313,8 @@ const toolGroups: ToolGroup[] = [
         tileClass: "hover:border-violet-400/40 hover:shadow-[0_12px_30px_rgba(139,92,246,0.12)]",
         accentClass: "bg-violet-400",
         tools: [
-            { href: "/dashboard/admin/transactions", title: "Transactions", description: "View the complete payment ledger.", icon: Receipt },
+            { href: "/dashboard/admin/transactions", title: "Transactions", description: "View vehicle payments and platform fees.", icon: Receipt },
+            { href: "/dashboard/admin/warranty-orders", title: "Warranty Orders", description: "Review paid warranties, record issuance and manage refunds.", icon: ShieldCheck },
             { href: "/dashboard/admin/hpi", title: "Vehicle History Reports", description: "Prepare, upload and replace Vehicle history reports.", icon: ShieldCheck },
             { href: "/dashboard/admin/free-listings", title: "Free Grants", description: "Grant free BASIC listings or fee-free auction purchases.", icon: Gift },
         ],

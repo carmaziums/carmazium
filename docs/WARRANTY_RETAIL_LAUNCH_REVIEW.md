@@ -1,6 +1,6 @@
 # CarMazium warranty implementation review
 
-Updated 13 November 2026. Status: **warranty paid launch blocked; admin controls and finance routing prepared for deployment**. This replaces earlier pricing proposals in this pack.
+Updated 13 November 2026. The finance/admin-routing release is live. The subsequent buyer warranty checkout implementation is now prepared and being validated; see `WARRANTY_CHECKOUT.md`. The user explicitly clarified that buyers must complete the form, receive an instant tariff price, pay through the website’s Stripe, and have admin arrange/pay the supplier separately. The earlier contact-admin-only consumer page is being replaced. The supplier observations below remain observations, not universal eligibility findings.
 
 ## Confirmed retail tariff
 

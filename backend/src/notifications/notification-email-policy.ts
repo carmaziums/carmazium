@@ -15,6 +15,7 @@ export interface NotificationEmailPolicyDecision {
  * send a second copy for these.
  */
 const DEDICATED_EMAIL_TYPES = new Set([
+    'WARRANTY_ORDER',
     'OFFER_RECEIVED',
     'OFFER_ACCEPTED',
     'OFFER_REJECTED',

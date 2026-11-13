@@ -2438,3 +2438,62 @@ model FinanceListingRoute {
   @@index([providerId])
   @@map("finance_listing_routes")
 }
+
+/// Customer purchases; payment is separate from manual supplier issuance.
+model WarrantyOrder {
+  id String @id
+  userId String?
+  listingId String?
+  accessTokenHash String
+  requestHash String
+  customer Json
+  vehicle Json
+  selection Json
+  price Json
+  totalPence Int
+  currency String @default("gbp")
+  tariffVersion String
+  consentVersion String
+  status String @default("QUOTED")
+  expiresAt DateTime
+  checkoutExpiresAt DateTime?
+  stripeAccountId String?
+  stripeCheckoutSessionId String? @unique
+  stripePaymentIntentId String? @unique
+  stripeRefundId String? @unique
+  refundReason String?
+  refundRequestedBy String?
+  paymentReviewReason String?
+  paidAt DateTime?
+  issuedAt DateTime?
+  issuedBy String?
+  warrantyReference String?
+  coverStart DateTime?
+  coverEnd DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  messages WarrantyOrderMessage[]
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@map("warranty_orders")
+}
+
+/// Transactional outbox: paid orders remain visible even during an email outage.
+model WarrantyOrderMessage {
+  id String @id @default(uuid())
+  orderId String
+  kind String
+  email String
+  userId String?
+  subject String
+  bodyHtml String
+  sentAt DateTime?
+  claimedAt DateTime?
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  order WarrantyOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  @@unique([orderId, kind, email])
+  @@index([sentAt, nextAttemptAt])
+  @@map("warranty_order_messages")
+}
