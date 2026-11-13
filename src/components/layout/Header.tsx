@@ -326,7 +326,7 @@ export function Header() {
                                 { name: "Vehicle Auctions", href: "/auctions/how-it-works", icon: Gavel, desc: "Buy and sell trade stock through live auctions." },
                                 { name: "Delivery & Recovery", href: "/services/delivery", icon: Truck, desc: "Arrange vehicle transport and recovery." },
                                 { name: "Vehicle Inspection", href: "/services/inspection", icon: Wrench, desc: "Request independent vehicle inspections." },
-                                { name: "Vehicle Finance", href: "/services/finance", icon: Banknote, desc: "Apply through Jigsaw; providers contact our team." },
+                                { name: "Vehicle Finance", href: "/services/finance", icon: Banknote, desc: "Apply through a selected partner; providers contact our team." },
                                 { name: "Warranty", href: "/services/warranty", icon: ShieldCheck, desc: "Request vehicle warranty options." },
                             ]
                             return (

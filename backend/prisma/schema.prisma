@@ -766,6 +766,7 @@ model Vehicle {
 }
 
 model Listing {
+  financeRouting FinanceListingRoute?
   recoveredStockPurchases DealerPurchaseReconciliation[] @relation("RecoveredStockListing")
   recoveredSourcePurchases DealerPurchaseReconciliation[] @relation("RecoveredSourceListing")
   id          String        @id @default(uuid())
@@ -2398,9 +2399,42 @@ model FinanceReferral {
   email String
   phone String
   consentVersion String
+  providerId String?
+  providerName String?
+  providerUrl String?
+  providerDisclosure String?
   createdAt DateTime @default(now())
   adminNotifiedAt DateTime?
   notificationClaimedAt DateTime?
+  @@index([createdAt])
   @@index([adminNotifiedAt, createdAt])
   @@map("finance_referrals")
+}
+
+/// Admin-controlled external finance providers; never writable from dealer APIs.
+model FinanceProvider {
+  id String @id @default(uuid())
+  name String
+  applicationUrl String
+  disclosure String
+  enabled Boolean @default(false)
+  isDefault Boolean @default(false)
+  createdById String?
+  updatedById String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  routes FinanceListingRoute[]
+  @@map("finance_providers")
+}
+
+/// Missing row means use default. Null providerId means deliberately disabled.
+model FinanceListingRoute {
+  listingId String @id
+  providerId String?
+  updatedById String
+  updatedAt DateTime @updatedAt
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  provider FinanceProvider? @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  @@index([providerId])
+  @@map("finance_listing_routes")
 }

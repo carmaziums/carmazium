@@ -396,6 +396,9 @@ export class ServiceOperationsService {
         if (capability.contractor.userId !== userId) {
             throw new ForbiddenException('This provider application does not belong to your account.');
         }
+        if (capability.serviceType === ServiceType.WARRANTY || capability.serviceType === ServiceType.FINANCE) {
+            throw new ForbiddenException("Finance and warranty verification is managed by CarMazium admin. Contact our team directly.");
+        }
         return capability;
     }
 

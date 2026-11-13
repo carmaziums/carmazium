@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { FinanceProviderContact } from "@/components/finance/FinanceProviderContact"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react"
@@ -155,7 +154,8 @@ export default function LeadMatchingSettingsPage() {
         ? `${profile.firstName} ${profile.lastName || ""}`.trim()
         : user?.email || "Provider"
 
-    if (!loading && capability?.serviceType === "FINANCE") return <main className="container mx-auto px-5 pt-28 pb-16"><FinanceProviderContact /></main>
+    if (!loading && capability?.serviceType === "WARRANTY") return <main className="container mx-auto px-5 pt-28 pb-16"><h1 className="text-2xl font-bold mb-3">Warranty administration</h1><p>Warranty partnerships and applications are managed directly by the CarMazium admin team. This dashboard does not accept warranty provider applications or documents.</p></main>
+    if (!loading && capability?.serviceType === "FINANCE") return <main className="container mx-auto px-5 pt-28 pb-16"><h1 className="text-2xl font-bold mb-3">Finance administration</h1><p>Finance providers and application routing are managed directly by CarMazium admin.</p></main>
 
     return (
         <div className="min-h-screen pt-20 pb-12">

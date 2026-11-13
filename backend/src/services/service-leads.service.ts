@@ -944,6 +944,26 @@ export class ServiceLeadsService {
         return this.cleanRecipient(response);
     }
 
+    async adminCreateWarrantyPartner(adminId: string, dto: { email: string; businessName: string }) {
+        const user = await this.prisma.user.findFirst({ where: { email: dto.email.toLowerCase(), deletedAt: null }, select: { id: true } });
+        if (!user) throw new NotFoundException('No existing account has that email. Ask the partner to create an ordinary account, then appoint it here.');
+        return this.prisma.$transaction(async tx => {
+            const profile = await tx.contractorProfile.upsert({
+                where: { userId: user.id },
+                create: { userId: user.id, businessName: dto.businessName },
+                update: {},
+            });
+            if (profile.deletedAt) throw new BadRequestException('This provider profile is inactive. Review the account before appointing it.');
+            // Existing approvals, rejections and evidence must never be reset by
+            // clicking Add again. Admin must complete the normal evidence review.
+            return tx.contractorCapability.upsert({
+                where: { contractorId_serviceType: { contractorId: profile.id, serviceType: ServiceType.WARRANTY } },
+                create: { contractorId: profile.id, serviceType: ServiceType.WARRANTY, status: CapabilityStatus.PENDING, reviewNote: 'Appointed by CarMazium admin; verification required.', reviewedById: adminId },
+                update: {},
+            });
+        });
+    }
+
     async isLeadCapability(id: string) {
         const cap = await this.prisma.contractorCapability.findUnique({
             where: { id },
@@ -1002,17 +1022,14 @@ export class ServiceLeadsService {
             type: approved ? 'SERVICE_CAPABILITY_APPROVED' : 'SERVICE_CAPABILITY_REVIEWED',
             title: `${cap.serviceType === ServiceType.FINANCE ? 'Vehicle Finance' : 'Warranty'} provider application ${approved ? 'approved' : 'updated'}`,
             message: approved
-                ? 'You can now receive matched customer enquiries in your provider inbox.'
+                ? 'Your partnership has been approved. The CarMazium team manages customer enquiries and will contact you directly.'
                 : (dto.reviewNote || `Your application status is now ${dto.status.toLowerCase()}.`),
-            link: approved ? '/dashboard/service/leads' : '/dashboard/service/capabilities',
+            link: '/contact',
             entityType: 'ContractorCapability',
             entityId: id,
             actionType: dto.status,
         }).catch(() => null);
 
-        if (approved) {
-            await this.rematchOpenLeads(cap.serviceType).catch(() => null);
-        }
 
         return updated;
     }

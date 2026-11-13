@@ -327,6 +327,10 @@ describe('Delivery & Recovery — end to end', () => {
         await expect(svc.adminReviewCapability(ADMIN.id, cap.id, { status: 'APPROVED' } as any)).rejects.toThrow(/Stripe Connect/);
     });
 
+    it('requires warranty partners to contact admin instead of applying from a provider account', async () => {
+        await expect(svc.applyCapability(TRUCKER.id, { serviceType: 'WARRANTY' } as any)).rejects.toThrow(/admin/i);
+    });
+
     it('admin re-checks Stripe readiness instead of trusting a stale completed flag', async () => {
         const cap = await svc.applyCapability(RIVAL.id, {
             serviceType: 'INSPECTION',

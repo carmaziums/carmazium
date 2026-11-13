@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { FinanceProviderContact } from "@/components/finance/FinanceProviderContact"
 import Link from "next/link"
 import { buttonVariants } from "@/components/ui/buttonVariants"
 import { AlertCircle, ArrowRight, CheckCircle, Clock, CreditCard, FileText, Landmark, Loader2, ShieldCheck, Truck, Wrench, XCircle } from "lucide-react"
@@ -14,7 +13,6 @@ import { getMyCapabilities, applyCapability, SERVICE_LABELS, type MyCapabilities
 const APPLICABLE: { type: ServiceType; icon: React.ComponentType<{ size?: number; className?: string }>; blurb: string; payout: boolean }[] = [
     { type: "DELIVERY", icon: Truck, blurb: "Quote on vehicle moves and recoveries. CarMazium keeps 9%; your Partner business receives 91% after completion.", payout: true },
     { type: "INSPECTION", icon: Wrench, blurb: "Quote on pre-purchase and trade vehicle inspections. CarMazium keeps 9%; your Partner business receives 91% after completion.", payout: true },
-    { type: "WARRANTY", icon: ShieldCheck, blurb: "Receive matched warranty enquiries and respond with suitable cover options.", payout: false },
 ]
 
 const STATUS_UI: Record<CapabilityStatus, { icon: React.ComponentType<{ size?: number; className?: string }>; cls: string; label: string }> = {
@@ -123,7 +121,7 @@ export default function CapabilitiesPage() {
                     {!authLoading && user && !isProvider && (
                         <section className="rounded-2xl border border-primary/30 bg-primary/5 p-6">
                             <h2 className="font-heading font-bold text-lg mb-1">Create a Partner Account</h2>
-                            <p className="text-sm text-[var(--text-muted)] mb-5">Businesses use one Partner Account, then add Vehicle Dealer, Delivery, Recovery, Inspection or Warranty services from that dashboard.</p>
+                            <p className="text-sm text-[var(--text-muted)] mb-5">Businesses use one Partner Account for Vehicle Dealer, Delivery, Recovery and Inspection services. Contact our team about finance and warranty partnerships.</p>
                             <Button onClick={becomePartner} disabled={switching}>{switching ? <Loader2 className="animate-spin" size={16} /> : <>Create Partner Account <ArrowRight size={16} className="ml-2" /></>}</Button>
                         </section>
                     )}
@@ -149,7 +147,6 @@ export default function CapabilitiesPage() {
                                 : <Button onClick={connectStripe} disabled={busy === "stripe"} variant="outline">{busy === "stripe" ? <Loader2 className="animate-spin" size={16} /> : <><CreditCard size={16} className="mr-2" /> {data.stripeConnect.connected ? "Finish Stripe setup" : "Set up business payouts"}</>}</Button>}
                         </section>
 
-                        <FinanceProviderContact />
                         <section>
                             <h2 className="text-xs font-black uppercase tracking-widest text-primary mb-4">Add services</h2>
                             <div className="space-y-3">

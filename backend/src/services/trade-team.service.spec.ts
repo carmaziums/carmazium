@@ -55,8 +55,8 @@ describe('TradeTeamService', () => {
         service = new TradeTeamService(prisma, { create: jest.fn().mockResolvedValue({}) } as any);
     });
 
-    it('blocks finance provider self-registration before changing the business', async () => {
-        await expect(service.applyBusinessCapability('owner', ServiceType.FINANCE)).rejects.toThrow(/contact/i);
+    it.each([ServiceType.FINANCE, ServiceType.WARRANTY])('blocks %s provider self-registration before changing the business', async (type) => {
+        await expect(service.applyBusinessCapability('owner', type)).rejects.toThrow(/contact/i);
         expect(prisma.contractorCapability.upsert).not.toHaveBeenCalled();
         expect(prisma.contractorProfile.upsert).not.toHaveBeenCalled();
     });
@@ -246,7 +246,7 @@ describe('TradeTeamService', () => {
         expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
     });
 
-    it.each([ServiceType.WARRANTY])(
+    it.each([ServiceType.DELIVERY, ServiceType.INSPECTION])(
         'lets a Partner business apply for %s without changing account role',
         async (serviceType) => {
             prisma.dealerProfile.findUnique.mockResolvedValue({

@@ -1,72 +1,23 @@
-"use client"
-
 import Link from "next/link"
-import { Suspense } from "react"
-import { ArrowLeft, ArrowRight, BadgeCheck, CheckCircle, FileText, LayoutDashboard, ShieldCheck, Users } from "lucide-react"
+import { ShieldCheck } from "lucide-react"
+import { WarrantyProviderContact } from "@/components/services/WarrantyProviderContact"
 import { warrantyServiceEnabled } from "@/lib/featureFlags"
 import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
-import { WarrantyEnquiryForm } from "@/components/services/WarrantyEnquiryForm"
-import { Button } from "@/components/ui/Button"
-import { useAuth } from "@/context/AuthContext"
 
 export default function WarrantyServicePage() {
-    const { user } = useAuth()
     if (!warrantyServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Warranty" />
-
-    const providerHref = user
-        ? "/dashboard/partner"
-        : "/auth/signup?role=DEALER"
-
-    return (
-        <div className="min-h-screen pt-24 pb-20">
-            <main className="container mx-auto px-5 max-w-6xl">
-                <Link href="/auctions" className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary mb-6"><ArrowLeft size={15} /> Back to TradeXchange</Link>
-
-                <section className="grid lg:grid-cols-[0.8fr_1.2fr] gap-10 items-start mb-16">
-                    <aside className="lg:sticky lg:top-24">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/25 bg-purple-500/10 px-4 py-1.5 mb-5 text-xs font-bold uppercase tracking-widest text-purple-500">
-                            <ShieldCheck size={13} /> TradeXchange · Warranty Providers
-                        </div>
-                        <h1 className="text-4xl md:text-5xl font-black font-heading mb-4">Vehicle Warranty</h1>
-                        <p className="text-[var(--text-muted)] leading-relaxed mb-6">Tell us about the vehicle and the cover you want. Approved matching warranty providers can respond with products and indicative prices for you to compare.</p>
-                        <div className="space-y-4 text-sm">
-                            <p className="flex gap-3"><CheckCircle size={18} className="text-emerald-500 shrink-0" /> Only providers approved by CarMazium for Warranty receive the enquiry.</p>
-                            <p className="flex gap-3"><FileText size={18} className="text-emerald-500 shrink-0" /> Providers supply their own cover levels, exclusions, claim limits and eligibility terms.</p>
-                            <p className="flex gap-3"><ShieldCheck size={18} className="text-emerald-500 shrink-0" /> CarMazium does not collect the warranty premium through the service-job payment system.</p>
-                        </div>
-                        <div className="mt-7 p-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] text-xs text-[var(--text-muted)] leading-relaxed">
-                            Always read the provider&apos;s full warranty terms before purchasing, including covered components, exclusions, labour rates, claim limits and maintenance requirements.
-                        </div>
-                    </aside>
-                    <Suspense fallback={<p role="status">Loading warranty form…</p>}><WarrantyEnquiryForm /></Suspense>
-                </section>
-
-                <section className="rounded-3xl border border-purple-500/25 bg-purple-500/5 p-8 md:p-10">
-                    <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-                        <div>
-                            <p className="text-purple-500 text-[10px] font-black uppercase tracking-[0.2em] mb-3">For warranty providers</p>
-                            <h2 className="text-3xl font-black font-heading mb-4">Put your warranty products in front of active vehicle customers</h2>
-                            <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-5">
-                                Apply for Warranty capability. Once approved, your business can receive relevant enquiries and respond with the cover, pricing, exclusions and product terms you offer.
-                            </p>
-                            <div className="rounded-2xl border border-purple-500/25 bg-[var(--bg-card)] p-5 mb-6">
-                                <p className="font-black mb-1">Warranty uses a matched-enquiry model — not the 9% job payout model.</p>
-                                <p className="text-sm text-[var(--text-muted)] leading-relaxed">CarMazium does not collect the warranty premium through the Delivery/Inspection service-job flow or deduct that 9% job fee from a warranty payout. The provider issues its own product terms and customer agreement.</p>
-                            </div>
-                            <Button asChild>
-                                <Link href={providerHref}>
-                                    Apply as a warranty provider <ArrowRight size={15} />
-                                </Link>
-                            </Button>
-                        </div>
-                        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-                            <div className="flex gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5"><BadgeCheck className="text-primary shrink-0" /><div><h3 className="font-bold text-sm mb-1">Capability-specific approval</h3><p className="text-xs text-[var(--text-muted)]">Only businesses approved for Warranty receive warranty enquiries.</p></div></div>
-                            <div className="flex gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5"><Users className="text-primary shrink-0" /><div><h3 className="font-bold text-sm mb-1">Relevant vehicle demand</h3><p className="text-xs text-[var(--text-muted)]">Reach users already buying, selling and managing vehicles through the CarMazium ecosystem.</p></div></div>
-                            <div className="flex gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5"><LayoutDashboard className="text-primary shrink-0" /><div><h3 className="font-bold text-sm mb-1">Dedicated enquiry inbox</h3><p className="text-xs text-[var(--text-muted)]">Review and manage TradeXchange warranty enquiries from your provider dashboard.</p></div></div>
-                        </div>
-                    </div>
-                </section>
-            </main>
-        </div>
-    )
+    return <main className="container mx-auto px-5 max-w-4xl pt-28 pb-20 space-y-10">
+        <section className="space-y-5">
+            <ShieldCheck className="text-primary" size={40} />
+            <h1 className="text-4xl md:text-5xl font-black font-heading">Vehicle warranties</h1>
+            <p className="text-lg text-[var(--text-muted)]">CarMazium admin manages warranty partners and customer warranty enquiries directly.</p>
+            <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 space-y-4">
+                <h2 className="text-xl font-bold">Contact our warranty team</h2>
+                <p>Online warranty quotes and purchases are being prepared. Contact our team about availability for your vehicle. We will confirm the product, eligibility, price and terms before any purchase.</p>
+                <p className="text-sm text-[var(--text-muted)]">An enquiry does not activate warranty cover or buy the vehicle.</p>
+                <Link href="/contact" className="inline-block rounded-xl bg-primary text-white px-5 py-3 font-bold">Contact the team</Link>
+            </div>
+        </section>
+        <WarrantyProviderContact />
+    </main>
 }

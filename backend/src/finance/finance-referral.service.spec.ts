@@ -1,8 +1,8 @@
-import { BadRequestException, ForbiddenException, NotFoundException, ServiceUnavailableException, ValidationPipe } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, ServiceUnavailableException, ValidationPipe } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { FinanceReferralService, JIGSAW_FINANCE_URL } from './finance-referral.service';
+import { FinanceReferralService, JIGSAW_FINANCE_URL, FINANCE_REFERRAL_NOTICE_VERSION } from './finance-referral.service';
 import { CreateFinanceReferralDto, FinancePreferenceDto } from './finance-referral.dto';
 
 const dto = { requestId: '939dd888-87c4-4326-a714-87ba43353065', listingId: '5960728b-c243-482f-aec7-b2965330932a', fullName: 'Test Buyer', email: 'buyer@example.test', phone: '07700900123', consent: true };
@@ -18,14 +18,15 @@ describe('Jigsaw finance referrals', () => {
             $executeRaw: jest.fn(),
         };
         const email = { sendEmail: jest.fn().mockResolvedValue({ id: 'mail-1' }) };
-        return { prisma, email, row, service: new FinanceReferralService(prisma, email as any) };
+        const routing = { forListing: jest.fn().mockResolvedValue({ id: "jigsaw-finance", name: "Jigsaw Finance", applicationUrl: JIGSAW_FINANCE_URL, disclosure: "Broker disclosure", version: "2026-11-13T00:00:00.000Z" }) };
+        return { prisma, email, row, routing, service: new FinanceReferralService(prisma, email as any, routing as any) };
     }
 
     it('notifies admins with escaped contact/vehicle details before returning only the fixed Jigsaw URL', async () => {
         const { service, prisma, email, row } = build();
         row.fullName = '<Test Buyer>';
         await expect(service.create({ ...dto, fullName: row.fullName })).resolves.toEqual({ redirectUrl: JIGSAW_FINANCE_URL });
-        expect(prisma.financeReferral.create).toHaveBeenCalledWith({ data: expect.objectContaining({ fullName: row.fullName, listingId: dto.listingId, consentVersion: 'jigsaw-referral-2026-11-13' }) });
+        expect(prisma.financeReferral.create).toHaveBeenCalledWith({ data: expect.objectContaining({ fullName: row.fullName, listingId: dto.listingId, consentVersion: FINANCE_REFERRAL_NOTICE_VERSION }) });
         expect(email.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: ['admin@example.test'], html: expect.stringContaining('&lt;Test Buyer&gt;') }));
         expect(email.sendEmail.mock.calls[0][0].html).toContain('not confirmation of a completed application');
         expect(JIGSAW_FINANCE_URL).not.toContain(dto.email);
@@ -100,6 +101,24 @@ describe('Jigsaw finance referrals', () => {
         await expect(service.availability(dto.listingId)).resolves.toMatchObject({ enabled });
         if (enabled) await expect(service.create(dto)).resolves.toEqual({ redirectUrl: JIGSAW_FINANCE_URL });
         else await expect(service.create(dto)).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('redirects only to the selected provider and snapshots the route for admin', async () => {
+        const { service, prisma, routing, row } = build();
+        const provider = { id: 'new-provider', name: 'New Provider', applicationUrl: 'https://finance.example.test/apply', disclosure: 'Approved provider disclosures', version: '2026-11-13T14:00:00.000Z' };
+        routing.forListing.mockResolvedValue(provider);
+        prisma.financeReferral.create.mockImplementation(({ data }) => Promise.resolve({ ...row, ...data }));
+        await expect(service.create({ ...dto, providerId: provider.id, providerVersion: provider.version })).resolves.toEqual({ redirectUrl: provider.applicationUrl });
+        expect(prisma.financeReferral.create).toHaveBeenCalledWith({ data: expect.objectContaining({ providerId: provider.id, providerName: provider.name, providerUrl: provider.applicationUrl, providerDisclosure: provider.disclosure }) });
+    });
+
+    it('blocks unavailable routes and changed provider disclosures before saving contact details', async () => {
+        const { service, prisma, routing } = build();
+        await expect(service.create({ ...dto, providerId: 'different-provider' })).rejects.toBeInstanceOf(ConflictException);
+        await expect(service.create({ ...dto, providerVersion: 'stale-version' })).rejects.toBeInstanceOf(ConflictException);
+        routing.forListing.mockResolvedValue(null as any);
+        await expect(service.create(dto)).rejects.toBeInstanceOf(ForbiddenException);
+        expect(prisma.financeReferral.create).not.toHaveBeenCalled();
     });
 
 });

@@ -48,6 +48,17 @@ describe('ServiceOperationsService', () => {
         expect(prisma.$queryRaw).not.toHaveBeenCalled();
     });
 
+    it('blocks warranty owners from uploading, deleting or opening the verification workflow', async () => {
+        prisma.contractorCapability.findUnique.mockResolvedValue({
+            id: 'warranty-cap', serviceType: 'WARRANTY', status: 'PENDING', contractor: { userId: 'owner' },
+        });
+        await expect(service.uploadProviderCapabilityDocument('owner', 'warranty-cap', pdf, { evidenceType: 'WARRANTY_PRODUCT_AUTHORITY' })).rejects.toBeInstanceOf(ForbiddenException);
+        await expect(service.deleteProviderCapabilityDocument('owner', 'warranty-cap', 'entry')).rejects.toBeInstanceOf(ForbiddenException);
+        await expect(service.providerCapabilityVerification('owner', 'warranty-cap')).rejects.toBeInstanceOf(ForbiddenException);
+        expect(prisma.$executeRaw).not.toHaveBeenCalled();
+        expect(prisma.$queryRaw).not.toHaveBeenCalled();
+    });
+
     it('recognises the allowed PDF and image signatures', () => {
         expect(hasExpectedTradeXchangeDocumentSignature(
             new Uint8Array(Buffer.from('%PDF-')),

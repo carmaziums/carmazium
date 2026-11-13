@@ -223,7 +223,7 @@ export default function AboutPage() {
                         <p>A Partner Account is the main business account. Vehicle Dealer, Delivery & Recovery and Vehicle Inspection are capabilities or services used from that business architecture rather than separate customer account types.</p>
                     </AccordionItem>
                     <AccordionItem title="How do finance and warranty services work?">
-                        <p>Buyers apply for finance from participating listings: enter your name, email and phone, then continue to the Jigsaw Finance application. CarMazium does not provide finance and charges its finance partner a fee for a successful application. Finance providers should contact our team directly. Warranty enquiries continue to be matched with approved warranty providers.</p>
+                        <p>Buyers apply for finance from participating listings: enter your name, email and phone, then continue to the selected provider’s application. CarMazium does not provide finance and charges its finance partner a fee for a successful application. Finance providers should contact our team directly. Warranty enquiries and partnerships are handled directly by CarMazium admin.</p>
                     </AccordionItem>
                 </div>
             </section>

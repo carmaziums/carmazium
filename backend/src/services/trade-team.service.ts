@@ -473,6 +473,7 @@ export class TradeTeamService {
     }
 
     async applyBusinessCapability(ownerUserId: string, serviceType: ServiceType) {
+        if (serviceType === ServiceType.WARRANTY) throw new BadRequestException("Warranty partners are managed by CarMazium admin. Contact our team directly.");
         if (serviceType === ServiceType.FINANCE) throw new BadRequestException("Finance provider registration is closed. Contact CarMazium directly.");
         const supported: readonly ServiceType[] = [
             ServiceType.DELIVERY,

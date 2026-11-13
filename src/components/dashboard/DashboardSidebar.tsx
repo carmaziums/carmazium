@@ -229,13 +229,11 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
             ...(isPartnerOwner ? [{ href: "/dashboard/partner", label: "Partner Home", icon: Building2, section: "Business" }] : []),
             { href: "/dashboard/service", label: "Service Overview", icon: LayoutDashboard, section: "Services" },
             { href: "/dashboard/service/jobs", label: "Available Jobs", icon: Briefcase, section: "Services" },
-            { href: "/dashboard/service/leads", label: "Warranty Enquiries", icon: ClipboardList, section: "Services" },
             { href: "/dashboard/service/capabilities", label: "Service Areas", icon: ShieldCheck, section: "Services" },
             { href: "/dashboard/service/messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account" },
             { href: "/profile", label: "Account Settings", icon: Settings, section: "Account" },
         ],
         finance: [
-            { href: "/services/finance#providers", label: "Contact finance team", icon: FileText },
             { href: "/dashboard/finance/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
             { href: "/profile", label: "Account Settings", icon: Settings },
         ],
@@ -266,6 +264,8 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
             { href: "/dashboard/admin/dealers", label: "All Dealers", icon: Building2, section: "Accounts & partners" },
             { href: "/dashboard/admin/dealer-verification", label: "Dealer KYC", icon: Shield, section: "Accounts & partners" },
             { href: "/dashboard/admin/services", label: "Trade Services", icon: Briefcase, section: "Accounts & partners" },
+            { href: "/dashboard/admin/services?tab=providers&serviceType=WARRANTY", label: "Warranty Partners", icon: ShieldCheck, section: "Accounts & partners" },
+            { href: "/dashboard/admin/finance-providers", label: "Finance Providers", icon: Briefcase, section: "Accounts & partners" },
 
             { href: "/dashboard/admin/app", label: "Online, App & Reports", icon: Smartphone, section: "Content & insights" },
             { href: "/dashboard/admin/analytics", label: "Analytics", icon: TrendingUp, section: "Content & insights" },
@@ -342,6 +342,10 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
         const linkPath = href.split('?')[0]
         if (pathname === "/dashboard/user" && linkPath === "/dashboard/user") {
             return searchParams.get("tab") === new URL(href, window.location.origin).searchParams.get("tab")
+        }
+        if (pathname === "/dashboard/admin/services" && linkPath === pathname) {
+            const warrantyView = searchParams.get("serviceType") === "WARRANTY"
+            return href.includes("serviceType=WARRANTY") ? warrantyView : !warrantyView
         }
         // Dealer menu items also stay highlighted on their related pages
         // (e.g. Buy & Bid while on My Bids or Auction Wins).

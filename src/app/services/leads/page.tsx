@@ -48,7 +48,7 @@ export default function MyServiceLeadsPage() {
                 {!loading && !user && <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-8 text-center"><p className="mb-4">Sign in to see your enquiries.</p><Link href="/auth/login?redirect=%2Fservices%2Fleads" className="text-primary font-bold">Sign in</Link></div>}
                 {busy && <div className="flex justify-center py-16"><Loader2 className="animate-spin text-primary" /></div>}
                 {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-500">{error}</div>}
-                {!busy && user && !error && leads.length === 0 && <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-8 text-center text-[var(--text-muted)]">You have no saved enquiries. Finance applications now start from participating vehicle listings and continue with Jigsaw Finance.</div>}
+                {!busy && user && !error && leads.length === 0 && <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-8 text-center text-[var(--text-muted)]">You have no saved enquiries. Finance applications now start from participating vehicle listings and continue with the selected finance provider.</div>}
 
                 <div className="space-y-4">
                     {leads.map((lead) => (

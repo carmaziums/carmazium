@@ -1,3 +1,4 @@
+import { FinanceRoutingService, INITIAL_FINANCE_PROVIDER_ID } from "./finance-routing.service";
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { Prisma } from '@prisma/client';
@@ -7,12 +8,12 @@ import { resolveDealerActor, assertDealerPermission } from '../dealers/dealer-ac
 import { CreateFinanceReferralDto } from './finance-referral.dto';
 
 export const JIGSAW_FINANCE_URL = 'https://applications.jigsawfinance.com/pulse-cars-limited-1787921597855/';
-export const FINANCE_REFERRAL_NOTICE_VERSION = 'jigsaw-referral-2026-11-13';
+export const FINANCE_REFERRAL_NOTICE_VERSION = 'admin-routed-finance-referral-2026-11-13';
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
 @Injectable()
 export class FinanceReferralService {
-    constructor(private readonly prisma: PrismaService, private readonly email: EmailService) {}
+    constructor(private readonly prisma: PrismaService, private readonly email: EmailService, private readonly routing: FinanceRoutingService) {}
 
     private async preferenceOwner(userId: string, write = false) {
         const actor = await resolveDealerActor(this.prisma, userId);
@@ -45,8 +46,10 @@ export class FinanceReferralService {
 
     async availability(listingId: string) {
         const listing = await this.eligibleListing(listingId);
+        const provider = listing ? await this.routing.forListing(listing.id) : null;
         return {
-            enabled: Boolean(listing && (listing.seller?.preferences as Record<string, unknown> | null)?.financeCalculatorEnabled !== false),
+            provider,
+            enabled: Boolean(provider && listing && (listing.seller?.preferences as Record<string, unknown> | null)?.financeCalculatorEnabled !== false),
             title: listing?.title ?? null,
         };
     }
@@ -57,6 +60,13 @@ export class FinanceReferralService {
         if ((listing.seller?.preferences as Record<string, unknown> | null)?.financeCalculatorEnabled === false) {
             throw new ForbiddenException('The seller has turned off finance referrals for this listing.');
         }
+        const provider = await this.routing.forListing(listing.id);
+        if (!provider) throw new ForbiddenException('Finance applications are not available for this listing.');
+        if ((dto.providerId && dto.providerId !== provider.id) ||
+            (dto.providerVersion && dto.providerVersion !== provider.version) ||
+            (!dto.providerId && provider.id !== INITIAL_FINANCE_PROVIDER_ID)) {
+            throw new ConflictException('The finance provider has changed. Refresh the page and review the application details again.');
+        }
         if (dto.phone.replace(/\D/g, '').length < 7 || dto.phone.replace(/\D/g, '').length > 15) {
             throw new BadRequestException('Enter a valid phone number.');
         }
@@ -65,6 +75,7 @@ export class FinanceReferralService {
             listingTitle: listing.title, listingSlug: listing.slug,
             fullName: dto.fullName, email: dto.email.toLowerCase(), phone: dto.phone,
             consentVersion: FINANCE_REFERRAL_NOTICE_VERSION,
+            providerId: provider.id, providerName: provider.name, providerUrl: provider.applicationUrl, providerDisclosure: provider.disclosure,
         };
         // A stable random request id makes a retry after a lost response safe.
         let referral;
@@ -77,10 +88,13 @@ export class FinanceReferralService {
         if (!referral || ['listingId', 'fullName', 'email', 'phone'].some(key => referral[key] !== data[key])) {
             throw new ConflictException('Please reopen the form and try again.');
         }
-        if (!referral.adminNotifiedAt && !await this.notifyAdmin(referral.id)) {
-            throw new ServiceUnavailableException('Your details have been saved, but the notification is still pending. Please try again shortly to continue to Jigsaw Finance.');
+        if ((!referral.providerId && provider.id !== INITIAL_FINANCE_PROVIDER_ID) || (referral.providerId && referral.providerId !== provider.id) || (referral.providerUrl && referral.providerUrl !== provider.applicationUrl) || (referral.providerDisclosure && referral.providerDisclosure !== provider.disclosure)) {
+            throw new ConflictException('The finance route changed after this request. Please reopen the form.');
         }
-        return { redirectUrl: JIGSAW_FINANCE_URL };
+        if (!referral.adminNotifiedAt && !await this.notifyAdmin(referral.id)) {
+            throw new ServiceUnavailableException('Your details have been saved, but the notification is still pending. Please try again shortly to continue to the finance provider.');
+        }
+        return { redirectUrl: provider.applicationUrl };
     }
 
     async notifyAdmin(id: string): Promise<boolean> {
@@ -96,9 +110,9 @@ export class FinanceReferralService {
             if (!recipients.length) return false;
             const sent = await this.email.sendEmail({
                 to: recipients,
-                subject: 'New Jigsaw Finance referral from CarMazium',
+                subject: 'New finance referral from CarMazium',
                 replyTo: referral.email,
-                html: `<h2>Finance application journey started</h2><p>A customer submitted their contact details before continuing to the Jigsaw Finance application.</p><p>Name: ${escapeHtml(referral.fullName)}<br>Email: ${escapeHtml(referral.email)}<br>Phone: ${escapeHtml(referral.phone)}</p><p>Vehicle: ${escapeHtml(referral.listingTitle)}<br><a href="https://www.carmazium.com/buy-cars/${encodeURIComponent(referral.listingSlug)}">View vehicle</a></p><p>Reference: ${escapeHtml(referral.id)}<br>Received: ${referral.createdAt.toISOString()}</p><p>This is a referral notification, not confirmation of a completed application, approval or successful finance agreement. Jigsaw handles the application externally.</p>`,
+                html: `<h2>Finance application journey started</h2><p>A customer submitted their contact details before continuing to the ${escapeHtml(referral.providerName || "Jigsaw Finance")} application.</p><p>Name: ${escapeHtml(referral.fullName)}<br>Email: ${escapeHtml(referral.email)}<br>Phone: ${escapeHtml(referral.phone)}</p><p>Vehicle: ${escapeHtml(referral.listingTitle)}<br><a href="https://www.carmazium.com/buy-cars/${encodeURIComponent(referral.listingSlug)}">View vehicle</a></p><p>Reference: ${escapeHtml(referral.id)}<br>Received: ${referral.createdAt.toISOString()}</p><p>This is a referral notification, not confirmation of a completed application, approval or successful finance agreement. The selected finance provider handles the application externally.</p>`,
             });
             if (!sent) return false;
             await this.prisma.financeReferral.update({ where: { id }, data: { adminNotifiedAt: new Date() } });

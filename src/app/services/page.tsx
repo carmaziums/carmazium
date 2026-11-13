@@ -60,22 +60,22 @@ export default function ServicesPage() {
         {
             title: "Vehicle Finance",
             icon: GiMoneyStack,
-            desc: "Apply from a participating vehicle listing and continue to Jigsaw Finance. Finance providers: contact our team directly.",
+            desc: "Apply from a participating vehicle listing and continue to the selected finance provider. Finance providers: contact our team directly.",
             color: "text-amber-600 dark:text-amber-400",
             bg: "bg-amber-500/10",
             link: financeServiceEnabled ? "/services/finance" : undefined,
             cta: financeServiceEnabled ? "Explore vehicle finance" : "Coming soon",
-            badge: "Jigsaw Finance referral",
+            badge: "External finance application",
         },
         {
             title: "Warranty",
             icon: GiRibbonMedal,
-            desc: "Tell us about the vehicle and cover you want. Approved warranty providers can respond with suitable products and indicative prices.",
+            desc: "Contact our team about warranties for your vehicle. CarMazium admin manages warranty partners and applications directly.",
             color: "text-purple-600 dark:text-purple-400",
             bg: "bg-purple-500/10",
             link: warrantyServiceEnabled ? "/services/warranty" : undefined,
-            cta: warrantyServiceEnabled ? "Request warranty options" : "Coming soon",
-            badge: "Matched enquiry",
+            cta: warrantyServiceEnabled ? "Contact the warranty team" : "Coming soon",
+            badge: "Admin-managed enquiries",
         },
     ]
 
@@ -191,7 +191,7 @@ export default function ServicesPage() {
                                 <Search size={20} />
                             </div>
                             <h3 className="font-bold">2. Get the right response</h3>
-                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Paid jobs receive competitive quotes; warranty enquiries reach approved providers. Finance applications continue externally with Jigsaw Finance.</p>
+                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Paid jobs receive competitive quotes; warranty enquiries go directly to our team. Finance applications continue externally with the selected finance provider.</p>
                         </div>
                         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
                             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -285,7 +285,7 @@ export default function ServicesPage() {
                                 </div>
                             </div>
                             <p className="text-sm leading-7 text-[var(--text-muted)]">
-                                Warranty enquiries are matched to approved providers. Buyers apply for finance externally with Jigsaw Finance. Finance providers must contact our team directly about partnerships. The paid-job 9% fee does not apply to these services.
+                                Finance and warranty providers must contact our team directly about partnerships. Admin manages warranty partners and products. Buyers apply for finance externally with the selected finance provider. The paid-job 9% fee does not apply to these services.
                             </p>
                             {(financeServiceEnabled || warrantyServiceEnabled) && (
                                 <Button asChild variant="outline" className="mt-6">
