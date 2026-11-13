@@ -46,8 +46,6 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
   const [introduction, setIntroduction] = useState('');
   const [warrantyOffered, setWarrantyOffered] = useState(false);
   const [warrantyDetails, setWarrantyDetails] = useState('');
-  const [financeOffered, setFinanceOffered] = useState(false);
-  const [financeDetails, setFinanceDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ tradingName?: string; vatNumber?: string }>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -106,10 +104,7 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
       setSubmitError('Add warranty terms and exclusions, or switch Warranty off.');
       return;
     }
-    if (financeOffered && !financeDetails.trim()) {
-      setSubmitError('Explain finance options and lender approval, or switch Finance off.');
-      return;
-    }
+
 
     setSubmitting(true);
     try {
@@ -135,7 +130,6 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
           ...(phone.trim() && { phone: phone.trim() }),
           description: introduction.trim(),
           warrantyOffered, warrantyDetails: warrantyOffered ? warrantyDetails.trim() : null,
-          financeOffered, financeDetails: financeOffered ? financeDetails.trim() : null,
         }),
       });
 
@@ -337,19 +331,8 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
                 placeholderTextColor={Colors.iconMuted} />
             )}
           </View>
-          <View style={styles.formGroup}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={styles.inputLabel}>WE OFFER OR ARRANGE FINANCE</Text>
-              <Switch value={financeOffered} onValueChange={setFinanceOffered}
-                accessibilityLabel="Finance offered" />
-            </View>
-            {financeOffered && (
-              <TextInput style={[styles.textInput, { minHeight: 110, textAlignVertical: 'top', paddingTop: 12 }]}
-                multiline maxLength={1000} value={financeDetails} onChangeText={setFinanceDetails}
-                placeholder="Finance provider or arrangement, subject to status and lender approval."
-                placeholderTextColor={Colors.iconMuted} />
-            )}
-          </View>
+          <Text style={styles.inputLabel}>FINANCE</Text>
+          <Text style={styles.signInText}>After setting up your account, choose whether to show the Jigsaw Finance calculator and application link under Settings → Listing finance calculator. Finance providers must contact the CarMazium team directly to discuss a partnership.</Text>
 
           <View style={styles.signInRow}>
              <Text style={styles.signInText}>Already have a dealer account? <Text style={styles.signInLink}>Sign in</Text></Text>

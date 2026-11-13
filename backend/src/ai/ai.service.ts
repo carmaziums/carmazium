@@ -546,8 +546,6 @@ export class AiService {
             description: true,
             warrantyOffered: true,
             warrantyDetails: true,
-            financeOffered: true,
-            financeDetails: true,
         } as const;
         const own = await this.prisma.dealerProfile.findUnique({
             where: { userId },
