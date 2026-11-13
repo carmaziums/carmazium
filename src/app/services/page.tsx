@@ -174,7 +174,7 @@ export default function ServicesPage() {
                         <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-primary">How it works</p>
                         <h2 className="text-3xl font-black tracking-tight md:text-4xl">Choose the workflow that fits the job</h2>
                         <p className="mt-4 leading-7 text-[var(--text-muted)]">
-                            TradeXchange separates paid service jobs from matched provider enquiries, so customers and automotive businesses can see what happens before they start.
+                            TradeXchange separates paid service jobs, warranty enquiries and external finance applications, so customers and automotive businesses can see what happens before they start.
                         </p>
                     </div>
 
@@ -280,7 +280,7 @@ export default function ServicesPage() {
                             <div className="mb-5 flex items-center gap-3">
                                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400"><Briefcase size={20} /></div>
                                 <div>
-                                    <p className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">Matched enquiries</p>
+                                    <p className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">Referrals & enquiries</p>
                                     <h3 className="text-xl font-bold">Finance & Warranty</h3>
                                 </div>
                             </div>
