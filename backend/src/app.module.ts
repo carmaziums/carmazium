@@ -40,6 +40,7 @@ import { MarketingModule } from './marketing/marketing.module';
 import { BlogModule } from './blog/blog.module';
 import { SaleCancellationsModule } from './sale-cancellations/sale-cancellations.module';
 import { SimpleDmsModule } from './partner-api/simpledms.module';
+import { WarrantiesModule } from './warranties/warranties.module';
 
 @Module({
   imports: [
@@ -87,6 +88,7 @@ import { SimpleDmsModule } from './partner-api/simpledms.module';
     SaleCancellationsModule,
     // Dedicated partner API remains fail-closed with both feature flags OFF.
     SimpleDmsModule,
+    WarrantiesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

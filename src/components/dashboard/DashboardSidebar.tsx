@@ -210,6 +210,7 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
         { href: "/dashboard/user?tab=bids", label: "My Offers", icon: Gavel, section: "Buying", activePrefixes: ["/dashboard/buyer/offers", "/dashboard/buyer/bids"] },
         { href: "/dashboard/user?tab=watchlist", label: "Saved Cars", icon: Heart, section: "Buying", activePrefixes: ["/dashboard/buyer/watchlist"] },
         { href: "/dashboard/user?tab=purchases", label: "Purchases", icon: Receipt, section: "Buying", activePrefixes: ["/dashboard/buyer/history"] },
+        { href: "/dashboard/warranties", label: "My Warranties", icon: ShieldCheck, section: "Buying" },
         { href: "/services/jobs", label: "Delivery & Inspections", icon: Briefcase, section: "Services" },
         { href: "/dashboard/cancellations", label: "Sale Cancellations", icon: ShieldCheck, section: "Account" },
         { href: "/dashboard/user?tab=messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account", activePrefixes: ["/dashboard/buyer/messages", "/dashboard/seller/messages"] },
@@ -265,6 +266,7 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
             { href: "/dashboard/admin/dealer-verification", label: "Dealer KYC", icon: Shield, section: "Accounts & partners" },
             { href: "/dashboard/admin/services", label: "Trade Services", icon: Briefcase, section: "Accounts & partners" },
             { href: "/dashboard/admin/services?tab=providers&serviceType=WARRANTY", label: "Warranty Partners", icon: ShieldCheck, section: "Accounts & partners" },
+            { href: "/dashboard/admin/warranty-orders", label: "Warranty Orders", icon: ShieldCheck, section: "Payments & reports" },
             { href: "/dashboard/admin/finance-providers", label: "Finance Providers", icon: Briefcase, section: "Accounts & partners" },
 
             { href: "/dashboard/admin/app", label: "Online, App & Reports", icon: Smartphone, section: "Content & insights" },

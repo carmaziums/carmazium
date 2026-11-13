@@ -1261,6 +1261,15 @@ export class PaymentsService {
             throw new BadRequestException(`Webhook signature verification failed: ${err.message}`);
         }
 
+        // Warranty checkout uses the platform account but has its own paid/issued
+        // lifecycle. Late-bound lookup avoids a PaymentsModule import cycle.
+        if (event.data.object?.metadata?.type === 'WARRANTY_ORDER' ||
+            event.type.startsWith('refund.') || event.type.startsWith('charge.dispute.') || event.type === 'charge.refunded') {
+            const { WarrantiesService } = await import('../warranties/warranties.service');
+            await this.moduleRef.get(WarrantiesService, { strict: false }).handleStripeEvent(event.type, event.data.object);
+            if (event.data.object?.metadata?.type === 'WARRANTY_ORDER') return { received: true };
+        }
+
         switch (event.type) {
             case 'refund.created':
             case 'refund.updated':

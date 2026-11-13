@@ -1,7 +1,7 @@
 /**
  * Approved Pulse Cars retail tariff, VAT inclusive, in integer pence.
- * This is arithmetic only: NOT a supplier quote, eligibility decision or permission
- * to take payment. No public endpoint calls this until the launch gates are met.
+ * Used for immutable customer quote/checkout snapshots. This is the agreed retail
+ * tariff, not a supplier quote or confirmation that warranty cover has been issued.
  */
 export const WARRANTY_TARIFF_VERSION = 'pulse-retail-12m-2026-11-13';
 export const WARRANTY_REPAIR_LIMITS = [1000, 2000] as const;

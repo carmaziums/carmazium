@@ -38,7 +38,7 @@ export const financeServiceEnabled = liveServiceEnabled(
     process.env.NEXT_PUBLIC_FEATURE_FINANCE_SERVICES,
 )
 
-/** Warranty Providers — approved-provider enquiry matching; no platform payment. */
+/** Warranty orders — instant retail quotes, platform checkout, admin supplier issuance. */
 export const warrantyServiceEnabled = liveServiceEnabled(
     'NEXT_PUBLIC_FEATURE_WARRANTY',
     process.env.NEXT_PUBLIC_FEATURE_WARRANTY,
