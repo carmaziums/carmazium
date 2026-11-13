@@ -33,6 +33,7 @@ export class WarrantyVehicleDto {
     @IsInt() @Min(0) @Max(12000) engineCc: number;
     @IsIn(['PETROL', 'DIESEL', 'HYBRID', 'ELECTRIC', 'OTHER']) fuelType: string;
     @IsISO8601({ strict: true }) @Matches(/^\d{4}-\d{2}-\d{2}$/) firstRegistrationDate: string;
+    @IsOptional() @IsISO8601({ strict: true }) @Matches(/^\d{4}-\d{2}-\d{2}$/) manufactureDate?: string;
     @IsInt() @Min(1) @Max(100000000) retailValuePence: number;
     @IsIn(['UK', 'EU', 'JAPAN', 'OTHER']) origin: string;
     @IsIn(['FULL', 'PART', 'LAST_SERVICE_ONLY', 'UNKNOWN']) serviceHistory: string;

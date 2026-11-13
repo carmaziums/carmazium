@@ -24,6 +24,7 @@ integration('Warranty orders: real PostgreSQL, synthetic Stripe only', () => {
             } },
             paymentIntents: { retrieve: jest.fn(async (id: string) => intents.get(id)) },
             refunds: {
+                list: jest.fn(async ({ payment_intent }: any) => ({ data: intents.get(payment_intent)?.latest_charge.amount_refunded ? [{ status: 'succeeded', amount: intents.get(payment_intent).latest_charge.amount_refunded }] : [] })),
                 create: jest.fn(async (args: any, options: any) => {
                     if (!refunds.has(options.idempotencyKey)) {
                         refunds.set(options.idempotencyKey, { id: `re_${randomUUID()}`, status: 'succeeded' });

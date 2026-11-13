@@ -48,6 +48,7 @@ export class WarrantiesService {
         if (dto.vehicle.requestedStartDate < dto.vehicle.purchaseDate || dto.vehicle.purchaseDate < dto.vehicle.firstRegistrationDate) {
             throw new BadRequestException('The warranty start must be on or after the purchase date, and purchase cannot precede first registration.');
         }
+        if (dto.vehicle.manufactureDate && dto.vehicle.manufactureDate > dto.vehicle.firstRegistrationDate) throw new BadRequestException('Manufacture cannot be after first registration.');
         if (dto.vehicle.lastServiceDate && dto.vehicle.lastServiceDate > today) throw new BadRequestException('Last service cannot be in the future.');
         if (dto.vehicle.lastServiceMileage !== undefined && dto.vehicle.lastServiceMileage > dto.vehicle.mileage) throw new BadRequestException('Last service mileage cannot exceed the current mileage.');
         if (dto.vehicle.knownFaults === 'KNOWN' && (dto.vehicle.faultDetails?.trim().length ?? 0) < 5) throw new BadRequestException('Describe the known faults.');
@@ -185,11 +186,17 @@ export class WarrantiesService {
         const intent = await stripe.paymentIntents.retrieve(order.stripePaymentIntentId, { expand: ['latest_charge'] });
         const charge = typeof intent.latest_charge === 'object' ? intent.latest_charge as any : null;
         if (!charge) throw new ConflictException('Could not verify settled payment.');
+        // A refund request/charge update is not proof that the refund succeeded.
+        const refunds = await stripe.refunds.list({ payment_intent: order.stripePaymentIntentId, limit: 100 });
+        const refundedPence = refunds.data.filter(r => r.status === 'succeeded').reduce((sum, r) => sum + r.amount, 0);
+        const refundPending = refunds.data.some(r => r.status === 'pending' || r.status === 'requires_action');
         let status: string | undefined;
         let reason: string | null = null;
-        if (charge.amount_refunded >= order.totalPence) status = 'REFUNDED';
-        else if (charge.amount_refunded > 0 || charge.disputed || intent.status !== 'succeeded' || intent.amount_received !== order.totalPence || intent.currency !== order.currency) {
+        if (refundedPence >= order.totalPence) status = 'REFUNDED';
+        else if (refundedPence > 0 || charge.disputed || intent.status !== 'succeeded' || intent.amount_received !== order.totalPence || intent.currency !== order.currency) {
             status = 'PAYMENT_REVIEW'; reason = 'Refund, dispute or payment mismatch — check Stripe before issuing cover.';
+        } else if (refundPending || charge.amount_refunded > 0) {
+            status = 'REFUND_PENDING'; reason = 'A refund is still pending confirmation; do not issue cover.';
         }
         if (status) {
             await this.prisma.$transaction(async tx => {
@@ -197,7 +204,7 @@ export class WarrantiesService {
                 const latest = await tx.warrantyOrder.findUniqueOrThrow({ where: { id: order.id } });
                 if (latest.status === status) return;
                 const updated = await tx.warrantyOrder.update({ where: { id: order.id }, data: { status, paymentReviewReason: reason } });
-                await this.enqueue(tx, updated, status === 'REFUNDED' ? 'REFUNDED' : 'PAYMENT_REVIEW');
+                await this.enqueue(tx, updated, status === 'REFUNDED' ? 'REFUNDED' : status === 'REFUND_PENDING' ? 'REFUND_PENDING' : 'PAYMENT_REVIEW');
             });
         }
     }
@@ -235,7 +242,10 @@ export class WarrantiesService {
             await tx.$queryRaw`SELECT id FROM warranty_orders WHERE id = ${id} FOR UPDATE`;
             const current = await tx.warrantyOrder.findUniqueOrThrow({ where: { id } });
             if (!['PAID_AWAITING_ISSUE', 'REFUND_PENDING'].includes(current.status) || current.issuedAt || !current.stripePaymentIntentId) throw new ConflictException('Only a paid, unissued order can be refunded here. Issued warranties require a cancellation review.');
-            if (current.status === 'REFUND_PENDING') return current;
+            if (current.status === 'REFUND_PENDING') {
+                if (!current.refundRequestedBy) throw new ConflictException('A refund was started directly in Stripe. Review that refund in Stripe; do not create another one.');
+                return current;
+            }
             return tx.warrantyOrder.update({ where: { id }, data: { status: 'REFUND_PENDING', refundReason: reason, refundRequestedBy: adminId } });
         });
         await this.submitRefund(order);
@@ -250,7 +260,7 @@ export class WarrantiesService {
         await this.prisma.warrantyOrder.update({ where: { id: order.id }, data: { stripeRefundId: refund.id } });
         if (refund.status === 'failed' || refund.status === 'canceled') {
             await this.prisma.warrantyOrder.update({ where: { id: order.id }, data: { status: 'PAYMENT_REVIEW', paymentReviewReason: 'Refund failed. Resolve in Stripe before further action.' } });
-        } else await this.refreshSettlement(order);
+        } else if (refund.status === 'succeeded') await this.refreshSettlement(order);
     }
 
     private async enqueue(tx: Prisma.TransactionClient, order: WarrantyOrder, kind: string) {
@@ -260,6 +270,7 @@ export class WarrantiesService {
         const description = kind === 'PAID' ? 'Payment received. Your warranty is awaiting issue. Payment alone does not activate cover. We will confirm the warranty reference and cover dates after it is issued. If we cannot arrange the selected cover, we will contact you and refund the payment.'
             : kind === 'ISSUED' ? `Your warranty has been issued. Reference: ${order.warrantyReference}. Cover: ${order.coverStart?.toISOString().slice(0, 10)} to ${order.coverEnd?.toISOString().slice(0, 10)}. Your warranty documents explain the terms, exclusions and repair authorisation process.`
             : kind === 'REFUNDED' ? 'Your warranty payment has been refunded. Your bank may take several days to show the credit. If a warranty had already been issued, contact the team to confirm its cancellation status.'
+            : kind === 'REFUND_PENDING' ? 'A refund is being processed. We will email you when Stripe confirms the result.'
             : 'Your warranty payment needs review. The admin team will check the payment and contact you; this is not confirmation of new cover.';
         const body = `<p>${esc(description)}</p><p>Order: ${esc(order.id)}<br>Vehicle: ${esc(vehicle.vrm)} — ${esc(vehicle.make)} ${esc(vehicle.model)}<br>Total paid/quoted: £${amount} including VAT<br>12 months; £${esc(selection.repairLimit)} single repair limit; £${esc(selection.labourRate)}/hour labour.<br>Additions: ${esc(selection.extras.join(', ') || 'None')}</p>`;
         const messages = [{ orderId: order.id, kind: `${kind}_CUSTOMER`, email: customer.email, userId: order.userId, subject: `CarMazium warranty: ${WARRANTY_STATUS_LABELS[order.status]}`, bodyHtml: `${body}<p><a href="${base}/services/warranty/order?id=${order.id}">View your order in the browser used to order, or sign in</a></p>` }];
@@ -295,7 +306,10 @@ export class WarrantiesService {
         const orders = await this.prisma.warrantyOrder.findMany({ where: { status: { in: ['CHECKOUT_PENDING', 'REFUND_PENDING'] } }, take: 50, orderBy: { updatedAt: 'asc' } });
         for (const order of orders) {
             try {
-                if (order.status === 'REFUND_PENDING') await this.submitRefund(order);
+                if (order.status === 'REFUND_PENDING') {
+                    if (order.refundRequestedBy) await this.submitRefund(order);
+                    else await this.refreshSettlement(order);
+                }
                 else if (order.stripeCheckoutSessionId) {
                     const stripe = await this.payments.getStripeClient();
                     await this.reconcileSession(await stripe.checkout.sessions.retrieve(order.stripeCheckoutSessionId));
@@ -303,6 +317,7 @@ export class WarrantiesService {
             } catch { this.logger.warn(`Warranty order ${order.id} reconciliation will retry.`); }
         }
         await this.prisma.warrantyOrder.updateMany({ where: { status: 'QUOTED', expiresAt: { lt: new Date() } }, data: { status: 'EXPIRED' } });
+        await this.prisma.warrantyOrder.updateMany({ where: { status: 'CHECKOUT_PENDING', paidAt: null, stripeCheckoutSessionId: null, checkoutExpiresAt: { lt: new Date() } }, data: { status: 'EXPIRED' } });
         // Unpaid contact details have no ongoing fulfilment purpose.
         await this.prisma.warrantyOrder.deleteMany({ where: { paidAt: null, status: { in: ['QUOTED', 'EXPIRED', 'PAYMENT_FAILED'] }, createdAt: { lt: new Date(Date.now() - 90 * 86400_000) } } });
     }

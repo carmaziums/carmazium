@@ -52,11 +52,11 @@ export function WarrantyQuoteForm() {
         setLookingUp(true); setError(''); setLookupNotice('')
         const registration = values.vrm.replace(/\s/g, '').toUpperCase()
         try {
-            const data = await apiClient<{ vrm: string; make?: string; model?: string; engineSize?: number; fuelType?: string; firstUsedDate?: string; motHistoryStatus?: string; motStatus?: string; lastMotMileage?: { value: number; unit: string; recordedAt: string } }>('/dvla/lookup', { method: 'POST', body: JSON.stringify({ vrm: registration, allowAiEnrichment: false }) })
+            const data = await apiClient<{ vrm: string; make?: string; model?: string; engineSize?: number; fuelType?: string; firstUsedDate?: string; officialVehicleData?: { dvla?: { manufactureDate?: string }; mot?: { manufactureDate?: string } }; motHistoryStatus?: string; motStatus?: string; lastMotMileage?: { value: number; unit: string; recordedAt: string } }>('/dvla/lookup', { method: 'POST', body: JSON.stringify({ vrm: registration, allowAiEnrichment: false }) })
             setValues(v => {
                 if (v.vrm.replace(/\s/g, '').toUpperCase() !== registration) return v
                 return { ...v, vrm: registration, make: data.make || v.make || '', model: data.model || v.model || '', engineCc: data.engineSize !== undefined ? String(data.engineSize) : v.engineCc || '',
-                    fuelType: data.fuelType || v.fuelType || '', firstRegistrationDate: /^\d{4}-\d{2}-\d{2}/.test(data.firstUsedDate || '') ? data.firstUsedDate!.slice(0, 10) : v.firstRegistrationDate || '' }
+                    fuelType: data.fuelType || v.fuelType || '', manufactureDate: /^\d{4}-\d{2}-\d{2}/.test(data.officialVehicleData?.dvla?.manufactureDate || data.officialVehicleData?.mot?.manufactureDate || '') ? (data.officialVehicleData?.dvla?.manufactureDate || data.officialVehicleData?.mot?.manufactureDate)!.slice(0, 10) : v.manufactureDate || '', firstRegistrationDate: /^\d{4}-\d{2}-\d{2}/.test(data.firstUsedDate || '') ? data.firstUsedDate!.slice(0, 10) : v.firstRegistrationDate || '' }
             })
             setQuote(null)
             setLookupNotice(`DVLA details loaded. ${data.motHistoryStatus === 'AVAILABLE' ? 'MOT history loaded.' : 'MOT history is unavailable or has no tests; confirm the details below.'}${data.lastMotMileage ? ` Last MOT reading: ${data.lastMotMileage.value.toLocaleString('en-GB')} ${data.lastMotMileage.unit}, recorded ${data.lastMotMileage.recordedAt.slice(0, 10)}. This is not your current mileage.` : ''} Please fill any missing fields and confirm all details.`)
@@ -69,7 +69,7 @@ export function WarrantyQuoteForm() {
         setBusy(true); setError('')
         const customer = Object.fromEntries(['title', 'firstName', 'lastName', 'email', 'phone', 'addressLine1', 'addressLine2', 'town', 'county', 'postcode'].map(k => [k, (values[k] || '').trim()]))
         const vehicle = { vrm: values.vrm, make: values.make, model: values.model, mileage: Number(values.mileage), engineCc: Number(values.engineCc), fuelType: values.fuelType,
-            firstRegistrationDate: values.firstRegistrationDate, retailValuePence: Math.round(Number(values.retailValue) * 100), origin: values.origin, serviceHistory: values.serviceHistory,
+            firstRegistrationDate: values.firstRegistrationDate, ...(values.manufactureDate ? { manufactureDate: values.manufactureDate } : {}), retailValuePence: Math.round(Number(values.retailValue) * 100), origin: values.origin, serviceHistory: values.serviceHistory,
             ...(values.lastServiceDate ? { lastServiceDate: values.lastServiceDate } : {}), ...(values.lastServiceMileage ? { lastServiceMileage: Number(values.lastServiceMileage) } : {}),
             purchaseDate: values.purchaseDate, requestedStartDate: values.requestedStartDate, knownFaults: values.knownFaults, faultDetails: values.faultDetails || '', detailsConfirmed: confirmed }
         const details = { ...(listingId ? { listingId } : {}), customer, vehicle, selection: { vehicleCategory: values.vehicleCategory, months: 12, repairLimit: Number(values.repairLimit), labourRate: Number(values.labourRate), extras }, consent }
@@ -124,6 +124,7 @@ export function WarrantyQuoteForm() {
                     {field('fuelType', 'Fuel type', { options: [['PETROL', 'Petrol'], ['DIESEL', 'Diesel'], ['HYBRID', 'Hybrid'], ['ELECTRIC', 'Electric'], ['OTHER', 'Other']] })}
                     {field('engineCc', 'Engine size (cc; enter 0 for electric)', { type: 'number', min: 0, max: 12000 })}
                     {field('firstRegistrationDate', 'First registration date', { type: 'date', max: today })}
+                    {field('manufactureDate', 'Date of manufacture, if known', { optional: true, type: 'date', max: today })}
                     {field('retailValue', 'Vehicle purchase / retail value (£)', { type: 'number', min: 1, max: 1000000 })}
                     {field('origin', 'Vehicle origin', { options: [['UK', 'UK'], ['EU', 'European import'], ['JAPAN', 'Japanese import'], ['OTHER', 'Other import']] })}
                     {field('serviceHistory', 'Service history', { options: [['FULL', 'Full service history'], ['PART', 'Part service history'], ['LAST_SERVICE_ONLY', 'Last service only'], ['UNKNOWN', 'Unknown / unavailable']] })}

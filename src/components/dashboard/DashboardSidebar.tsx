@@ -258,6 +258,7 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
             { href: "/dashboard/admin/cancellations", label: "Sale Cancellations", icon: ShieldCheck, section: "Marketplace" },
 
             { href: "/dashboard/admin/transactions", label: "Transactions", icon: Receipt, section: "Payments & reports" },
+            { href: "/dashboard/admin/warranty-orders", label: "Warranty Orders", icon: ShieldCheck, section: "Payments & reports" },
             { href: "/dashboard/admin/hpi", label: "Vehicle History Reports", icon: ShieldCheck, section: "Payments & reports" },
             { href: "/dashboard/admin/free-listings", label: "Free Listing Grants", icon: Gift, section: "Payments & reports" },
 
@@ -266,7 +267,6 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
             { href: "/dashboard/admin/dealer-verification", label: "Dealer KYC", icon: Shield, section: "Accounts & partners" },
             { href: "/dashboard/admin/services", label: "Trade Services", icon: Briefcase, section: "Accounts & partners" },
             { href: "/dashboard/admin/services?tab=providers&serviceType=WARRANTY", label: "Warranty Partners", icon: ShieldCheck, section: "Accounts & partners" },
-            { href: "/dashboard/admin/warranty-orders", label: "Warranty Orders", icon: ShieldCheck, section: "Payments & reports" },
             { href: "/dashboard/admin/finance-providers", label: "Finance Providers", icon: Briefcase, section: "Accounts & partners" },
 
             { href: "/dashboard/admin/app", label: "Online, App & Reports", icon: Smartphone, section: "Content & insights" },
