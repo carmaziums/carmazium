@@ -6,7 +6,7 @@ The existing website Google Ads qualified-seller action counts auction submissio
 
 ## Deployment sequence
 
-1. Run the migration and generate Prisma before enabling the backend. Check it against a staging PostgreSQL database, including concurrent capture/approval/revocation. Unit tests mock the database and do not establish real database concurrency behavior.
+1. Run the migration and generate Prisma before enabling the backend. The dedicated CI PostgreSQL job exercises the new SQL migration, competing captures/workers, transaction rollback and consent withdrawal on an isolated database. Require that job to pass before activation.
 2. Create a Measurement Protocol API secret for main web stream `G-MR12LCBSXY` in GA4 property `549182278`. Store it only in the backend secret manager as `GA4_MEASUREMENT_PROTOCOL_API_SECRET`. Set backend `GA4_MEASUREMENT_ID=G-MR12LCBSXY`. Never put this secret in Git, logs, a public build variable, or a client request.
 3. Validate the payload against Google's Measurement Protocol debug endpoint using a separate test property. Check consent rejection/revocation, non-owner and admin rejection, no event at pending review, exactly one send attempt after approval, and no attempt after resubmission. An HTTP 2xx from collect only acknowledges receipt; it does not prove processing or attribution.
 4. Deploy backend `GA4_APPROVED_AUCTIONS_ENABLED=true` and build web with `NEXT_PUBLIC_APPROVED_AUCTION_ATTRIBUTION=true` and the matching `NEXT_PUBLIC_GA_MEASUREMENT_ID`. Keep `NEXT_PUBLIC_GADS_AUCTION_APPROVAL_ONLY` false initially. Observe genuine consented approval events and source/campaign attribution in GA4. Do not fabricate production seller listings or payments for validation.
@@ -33,4 +33,4 @@ Restore the previous browser flag and campaign goal configuration together if re
 - https://developers.google.com/analytics/devguides/collection/protocol/ga4/reference
 - https://developers.google.com/analytics/devguides/collection/protocol/ga4/sending-events
 
-No production API secret, migration execution, live GA4 event validation, or Google Ads goal cutover is included in this code change.
+On 13 November 2026 the owner approved Google's data acknowledgement and creation of the main stream secret named `CarMazium approved auctions server`. That secret now exists in Google Analytics; its value is not stored in this repository. Backend secret configuration is still pending authenticated Fly.io access. No production migration execution, live GA4 event validation, or Google Ads goal cutover is included in this code change.

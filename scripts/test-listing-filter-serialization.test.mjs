@@ -12,6 +12,7 @@ function client() {
   const calls = [], exports = {};
   vm.runInNewContext(code, { exports, URLSearchParams, require: name => {
     if (name === './listingMotHistory') return {};
+    if (name === './approvedAuctionAttribution') return { captureApprovedAuctionAttribution: () => { throw Error('Search must not capture seller attribution'); } };
     assert.equal(name, './apiClient');
     return { apiClient: async (url, options) => { calls.push({ url, options }); return { data: [], pagination: { total: 0 } }; } };
   } });
