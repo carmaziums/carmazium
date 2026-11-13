@@ -33,7 +33,7 @@ describe('Jigsaw finance referrals', () => {
 
     it('fails closed for opted-out sellers and unavailable/sold vehicles', async () => {
         const { service, prisma } = build();
-        prisma.listing.findFirst.mockResolvedValueOnce({ seller: { preferences: {} } });
+        prisma.listing.findFirst.mockResolvedValueOnce({ seller: { preferences: { financeCalculatorEnabled: false } } });
         await expect(service.create(dto)).rejects.toBeInstanceOf(ForbiddenException);
         prisma.listing.findFirst.mockResolvedValueOnce(null);
         await expect(service.create(dto)).rejects.toBeInstanceOf(NotFoundException);
@@ -72,9 +72,9 @@ describe('Jigsaw finance referrals', () => {
         await expect(service.setPreference('staff', true)).rejects.toBeInstanceOf(ForbiddenException);
     });
 
-    it('defaults to off and validates contact details and explicit consent', async () => {
+    it('defaults to on and validates contact details and explicit consent', async () => {
         const { service } = build();
-        await expect(service.preference('seller')).resolves.toEqual({ enabled: false });
+        await expect(service.preference('seller')).resolves.toEqual({ enabled: true });
         expect(await validate(plainToInstance(CreateFinanceReferralDto, dto))).toHaveLength(0);
         const errors = await validate(plainToInstance(CreateFinanceReferralDto, { ...dto, email: 'invalid', consent: false, fullName: '  ', phone: 'letters' }));
         expect(errors.map(e => e.property)).toEqual(expect.arrayContaining(['fullName', 'email', 'phone', 'consent']));
@@ -88,6 +88,18 @@ describe('Jigsaw finance referrals', () => {
         await expect(transform(FinancePreferenceDto, { enabled: 'false' })).rejects.toBeInstanceOf(BadRequestException);
         await expect(transform(FinancePreferenceDto, { enabled: false })).resolves.toEqual({ enabled: false });
         await expect(transform(CreateFinanceReferralDto, dto)).resolves.toMatchObject({ consent: true });
+    });
+
+    it.each([null, {}, { financeCalculatorEnabled: true }, { financeCalculatorEnabled: false }])('uses default-on while preserving the explicit seller choice: %j', async (preferences) => {
+        const { service, prisma } = build();
+        prisma.user.findUnique.mockResolvedValue({ preferences });
+        const listing = await prisma.listing.findFirst();
+        prisma.listing.findFirst.mockResolvedValue({ ...listing, seller: { preferences } });
+        const enabled = preferences?.financeCalculatorEnabled !== false;
+        await expect(service.preference('seller')).resolves.toEqual({ enabled });
+        await expect(service.availability(dto.listingId)).resolves.toMatchObject({ enabled });
+        if (enabled) await expect(service.create(dto)).resolves.toEqual({ redirectUrl: JIGSAW_FINANCE_URL });
+        else await expect(service.create(dto)).rejects.toBeInstanceOf(ForbiddenException);
     });
 
 });

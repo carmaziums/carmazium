@@ -28,7 +28,7 @@ export function FinancePreference() {
     }
     return <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 space-y-4">
         <h2 className="text-xl font-bold">Finance calculator on my listings</h2>
-        <p className="text-sm text-[var(--text-muted)]">Choose whether the calculator and Apply for Finance button appear on your current and future retail listings. It is off until you choose to enable it. Buyers enter their name, email and phone number, then continue to the Pulse Cars Limited application with Jigsaw Finance.</p>
+        <p className="text-sm text-[var(--text-muted)]">Choose whether the calculator and Apply for Finance button appear on your current and future retail listings. It is on by default. You can turn it off or back on at any time. Buyers enter their name, email and phone number, then continue to the Pulse Cars Limited application with Jigsaw Finance.</p>
         <button type="button" role="switch" aria-checked={enabled} aria-label="Show finance calculator on my listings" disabled={loading || saving || (!!error && !message)} onClick={toggle} className="flex items-center gap-3 rounded-xl border border-[var(--border-default)] px-4 py-3 font-semibold disabled:opacity-50">
             <span aria-hidden="true" className={`relative h-6 w-11 rounded-full ${enabled ? "bg-primary" : "bg-gray-500"}`}><span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-all ${enabled ? "left-6" : "left-1"}`} /></span>
             {loading ? "Loading…" : saving ? "Saving…" : enabled ? "On — remove finance calculator from my listings" : "Off — put finance calculator on my listings"}
