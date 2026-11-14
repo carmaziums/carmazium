@@ -157,10 +157,16 @@ export class AdminService {
 
         const [recentListings, recentTransactions] = await Promise.all([
             this.prisma.listing.findMany({
-                where: { sellerId: id, deletedAt: null },
+                // Admin-only history includes archived and sold adverts. Always
+                // scope by the exact user ID, never by a matching display name.
+                where: { sellerId: id },
                 orderBy: { createdAt: 'desc' },
-                take: 5,
-                select: { id: true, title: true, slug: true, status: true, price: true, createdAt: true },
+                take: 20,
+                select: {
+                    id: true, title: true, slug: true, vrm: true, type: true,
+                    status: true, deletedAt: true, price: true, images: true,
+                    createdAt: true,
+                },
             }),
             this.prisma.transaction.findMany({
                 where: { userId: id, deletedAt: null },
