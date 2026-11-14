@@ -20,6 +20,11 @@ export interface ChatListing {
     title: string
     slug: string
     images: string[]
+    vrm?: string | null
+    type?: 'AUCTION' | 'CLASSIFIED'
+    status?: string
+    deletedAt?: string | null
+    price?: number | string
 }
 
 export interface ChatServiceJob {

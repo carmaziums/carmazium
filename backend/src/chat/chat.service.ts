@@ -97,6 +97,7 @@ export class ChatService {
                 id: true,
                 title: true,
                 slug: true,
+                vrm: true,
                 images: true,
                 type: true,
                 status: true,
