@@ -2,7 +2,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { SaleCancellationsService } from './sale-cancellations.service';
 
 describe('Archived sale cancellation review', () => {
-    function setup(deletedAt: Date | null = new Date('2026-11-14T11:54:55Z')) {
+    function setup(deletedAt: Date | null = new Date('2026-11-14T11:00:00Z')) {
         let request: any = {
             id: 'cancellation-1',
             listingId: 'listing-1',
@@ -20,8 +20,8 @@ describe('Archived sale cancellation review', () => {
         const listing: any = {
             id: 'listing-1',
             sellerId: 'seller-1',
-            title: 'Toyota Corolla 2021',
-            vrm: 'WL21JSZ',
+            title: 'Example hatchback 2021',
+            vrm: 'AA21ABC',
             status: 'SOLD',
             type: 'CLASSIFIED',
             deletedAt,
@@ -75,7 +75,7 @@ describe('Archived sale cancellation review', () => {
         expect(tx.saleCancellationRequest.update).toHaveBeenCalledWith(expect.objectContaining({
             data: expect.objectContaining({ status: 'APPROVED', adminReviewedById: 'admin-1' }),
         }));
-        expect(listing.deletedAt).toEqual(new Date('2026-11-14T11:54:55Z'));
+        expect(listing.deletedAt).toEqual(new Date('2026-11-14T11:00:00Z'));
         expect(notifications.create).toHaveBeenCalledWith(expect.objectContaining({ userId: 'seller-1' }));
     });
 
