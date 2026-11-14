@@ -267,18 +267,29 @@ export function UserDetailModal({
     const [error, setError] = React.useState<string | null>(null)
     const [acting, setActing] = React.useState(false)
     const [exporting, setExporting] = React.useState(false)
+    const detailRequestId = React.useRef(0)
 
     const load = React.useCallback(() => {
-        if (!userId) return
-        setLoading(true)
+        const requestId = ++detailRequestId.current
+        // Never show a previous user's personal details when the modal
+        // switches between similarly named accounts or an earlier GET races.
+        setDetail(null)
         setError(null)
+        if (!userId) {
+            setLoading(false)
+            return
+        }
+        setLoading(true)
         getAdminUserDetail(userId)
-            .then(setDetail)
-            .catch(err => setError(err.message || "Failed to load user details"))
-            .finally(() => setLoading(false))
+            .then(result => { if (detailRequestId.current === requestId) setDetail(result) })
+            .catch(err => { if (detailRequestId.current === requestId) setError(err.message || "Failed to load user details") })
+            .finally(() => { if (detailRequestId.current === requestId) setLoading(false) })
     }, [userId])
 
-    React.useEffect(() => { load() }, [load])
+    React.useEffect(() => {
+        load()
+        return () => { detailRequestId.current += 1 }
+    }, [load])
 
     if (!userId) return null
 
