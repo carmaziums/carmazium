@@ -1,5 +1,6 @@
 import {
     BadRequestException,
+    ConflictException,
     ForbiddenException,
     Injectable,
     Logger,
@@ -96,7 +97,7 @@ export class SaleCancellationsService {
             || (row.sellerId === canonicalId && hasDealerPermission(dealerActor, 'VIEW_INVENTORY'));
     }
 
-    private async context(listingId: string) {
+    private async context(listingId: string, allowArchived = false) {
         const listing = await this.prisma.listing.findUnique({
             where: { id: listingId },
             include: {
@@ -109,7 +110,13 @@ export class SaleCancellationsService {
                 },
             },
         });
-        if (!listing || listing.deletedAt) throw new NotFoundException('Vehicle listing not found.');
+        // A listing can be archived after a cancellation request was opened.
+        // Only an authenticated admin finalizing that existing request may use
+        // its archived sale record; ordinary buyers/sellers cannot initiate
+        // or automatically complete cancellations against archived listings.
+        if (!listing || (listing.deletedAt && !allowArchived)) {
+            throw new NotFoundException('Vehicle listing not found.');
+        }
 
         const acceptedOffer = listing.offers[0] ?? null;
         const sale = listing.sale ?? null;
@@ -601,7 +608,18 @@ export class SaleCancellationsService {
         });
         if (!request) throw new NotFoundException('Cancellation request not found.');
 
-        const ctx = await this.context(request.listingId);
+        const ctx = await this.context(request.listingId, !!adminId);
+        // An archived advert is not a licence to unwind a later, unrelated
+        // sale. The request must still refer to the same transaction/parties.
+        if (ctx.sellerId !== request.sellerId ||
+            ctx.buyerId !== request.buyerId ||
+            (request.saleId && ctx.sale?.id !== request.saleId) ||
+            (request.auctionId && ctx.auction?.id !== request.auctionId) ||
+            (!request.saleId && request.offerId && ctx.acceptedOffer?.id !== request.offerId)) {
+            throw new ConflictException(
+                'The sale changed since cancellation was requested. Review the current transaction before approving.',
+            );
+        }
         const refundBuyerFee =
             !!ctx.auction?.buyerFeePaid &&
             !!ctx.auction?.buyerFeeTransactionId &&
@@ -694,7 +712,10 @@ export class SaleCancellationsService {
             } else {
                 await tx.listing.update({
                     where: { id: request.listingId },
-                    data: { status: restoreRetailStatus as any },
+                    // Never inadvertently publish a listing that the seller
+                    // archived while this cancellation was awaiting review.
+                    // Keep deletedAt intact and return the advert to DRAFT.
+                    data: { status: (ctx.listing.deletedAt ? 'DRAFT' : restoreRetailStatus) as any },
                 });
             }
 
