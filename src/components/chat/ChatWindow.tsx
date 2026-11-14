@@ -1478,6 +1478,8 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                 <UserDetailModal
                     userId={selectedAdminUserId}
                     onClose={() => setSelectedAdminUserId(null)}
+                    conversationListing={room.listing}
+                    conversationContext={room.context}
                 />
             )}
         </div>
