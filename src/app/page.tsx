@@ -16,6 +16,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { buttonVariants } from "@/components/ui/buttonVariants"
 import HomeClient from "./HomeClient"
+import { BusinessSpotlightPromo } from "@/components/features/BusinessSpotlightPromo"
 import { PageJsonLd, SEO_SITE } from "@/components/seo/PageJsonLd"
 import { indexableRetail } from "@/components/seo/RetailVehicleJsonLd"
 import { type Listing } from "@/lib/listingApi"
@@ -211,6 +212,9 @@ export default async function Home() {
             `}</style>
 
             <HomeClient initialListings={featuredListings.map(toHomeCard)} latestRetailListings={latestRetailListings.map(toHomeCard)} latestBlogPosts={latestBlogPosts} />
+
+            {/* Permanent business showcase entry point; current feature rotates by data. */}
+            <BusinessSpotlightPromo />
 
             {/* Search-engine-readable marketplace context, structured for human scanning. */}
             <section

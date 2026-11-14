@@ -49,6 +49,7 @@ export function Footer() {
                             <li><Link href="/pricing" className={footerLinkClass}>Pricing</Link></li>
                             <li><Link href="/about" className={footerLinkClass}>About</Link></li>
                             <li><Link href="/reviews" className={footerLinkClass}>Feedback &amp; Reviews</Link></li>
+                            <li><Link href="/business-spotlight" className={footerLinkClass}>Business Spotlight</Link></li>
                             <li><Link href="/download-app" className={footerLinkClass}>Get the App</Link></li>
                             <li><Link href="/report-problem" className={footerLinkClass}>Report a problem</Link></li>
                         </ul>
