@@ -3,6 +3,8 @@
 import * as React from "react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
+import Image from "next/image"
+import type { ChatListing, ChatRoom } from "@/lib/chatApi"
 import {
     X, Loader2, Mail, ShieldCheck, Ban, LockKeyhole,
     LockKeyholeOpen, Building2, FileText, ExternalLink, Star, Car, Receipt, CreditCard, BadgeCheck,
@@ -249,7 +251,17 @@ async function exportUserDetailPdf(detail: any) {
     doc.save(`carmazium-user-${safeName}-${Date.now()}.pdf`)
 }
 
-export function UserDetailModal({ userId, onClose, onChanged, onMessage }: { userId: string | null; onClose: () => void; onChanged?: () => void; onMessage?: (userId: string) => void }) {
+export function UserDetailModal({
+    userId, onClose, onChanged, onMessage, conversationListing, conversationContext,
+}: {
+    userId: string | null
+    onClose: () => void
+    onChanged?: () => void
+    onMessage?: (userId: string) => void
+    /** Admin chat context; this vehicle need not be owned by the opened profile. */
+    conversationListing?: ChatListing | null
+    conversationContext?: ChatRoom['context']
+}) {
     const [detail, setDetail] = React.useState<any | null>(null)
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
@@ -375,6 +387,99 @@ export function UserDetailModal({ userId, onClose, onChanged, onMessage }: { use
                                 )}
                             </div>
                             )}
+
+                            {/* Always separate the conversation's vehicle from vehicles
+                                owned by this exact account. Names are not reliable IDs. */}
+                            {conversationContext && (
+                                <Section title="Vehicle in this conversation" icon={Car}>
+                                    {conversationListing ? (
+                                        <Link
+                                            href={`/dashboard/admin/listings?listingId=${encodeURIComponent(conversationListing.id)}`}
+                                            onClick={onClose}
+                                            className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3 hover:border-primary/60 transition-colors"
+                                        >
+                                            {conversationListing.images?.[0] ? (
+                                                <Image
+                                                    src={conversationListing.images[0]}
+                                                    alt=""
+                                                    width={88}
+                                                    height={68}
+                                                    className="h-[68px] w-[88px] shrink-0 rounded-lg object-cover"
+                                                />
+                                            ) : (
+                                                <div className="h-[68px] w-[88px] shrink-0 rounded-lg bg-[var(--bg-input)] flex items-center justify-center">
+                                                    <Car size={25} className="text-[var(--text-muted)]" />
+                                                </div>
+                                            )}
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-bold break-words">{conversationListing.title}</p>
+                                                <p className="mt-1 text-xs text-[var(--text-muted)]">
+                                                    {[conversationListing.vrm, conversationListing.deletedAt ? "Archived" : conversationListing.status].filter(Boolean).join(" · ")}
+                                                </p>
+                                                <p className="mt-1 text-xs font-bold text-primary">View linked vehicle in admin listings</p>
+                                            </div>
+                                            <ExternalLink size={14} className="shrink-0 text-primary" />
+                                        </Link>
+                                    ) : (
+                                        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-3 text-xs text-[var(--text-muted)]">
+                                            <p className="font-bold text-[var(--text-primary)]">No vehicle is linked to this conversation.</p>
+                                            <p className="mt-1">Ask for the registration or listing reference. A matching name on another account does not prove it is the same customer.</p>
+                                            <Link href="/dashboard/admin/listings" onClick={onClose} className="mt-2 inline-flex items-center gap-1 font-bold text-primary hover:underline">
+                                                Search admin vehicle listings <ExternalLink size={12} />
+                                            </Link>
+                                        </div>
+                                    )}
+                                </Section>
+                            )}
+
+                            <Section title="Vehicles listed by this account" icon={Car}>
+                                <p className="mb-3 text-xs text-[var(--text-muted)]">
+                                    Listings belong to this exact user account, including sold or archived vehicles. They are not automatically linked to the chat.
+                                </p>
+                                {detail.recentListings?.length ? (
+                                    <div className="space-y-2">
+                                        {detail.recentListings.map((listing: any) => (
+                                            <Link
+                                                key={listing.id}
+                                                href={`/dashboard/admin/listings?listingId=${encodeURIComponent(listing.id)}`}
+                                                onClick={onClose}
+                                                className="flex items-center gap-3 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] p-3 hover:border-primary/40 transition-colors"
+                                            >
+                                                {listing.images?.[0] ? (
+                                                    <Image
+                                                        src={listing.images[0]}
+                                                        alt=""
+                                                        width={72}
+                                                        height={56}
+                                                        className="h-14 w-[72px] shrink-0 rounded-md object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="h-14 w-[72px] shrink-0 rounded-md bg-[var(--bg-card)] flex items-center justify-center">
+                                                        <Car size={21} className="text-[var(--text-muted)]" />
+                                                    </div>
+                                                )}
+                                                <span className="min-w-0 flex-1">
+                                                    <span className="block text-sm font-bold break-words">{listing.title}</span>
+                                                    <span className="block mt-1 text-xs text-[var(--text-muted)]">
+                                                        {[listing.vrm, listing.deletedAt ? "Archived" : listing.status, listing.type === 'AUCTION' ? "Auction" : "Retail"].filter(Boolean).join(" · ")}
+                                                    </span>
+                                                    <span className="block mt-1 text-xs font-bold text-primary">{formatPrice(listing.price)} · Open vehicle</span>
+                                                </span>
+                                                <ExternalLink size={14} className="shrink-0 text-primary" />
+                                            </Link>
+                                        ))}
+                                        {(detail._count?.listings ?? 0) > detail.recentListings.length && (
+                                            <p className="text-xs text-[var(--text-muted)]">
+                                                Showing the latest {detail.recentListings.length} of {detail._count.listings} listings.
+                                            </p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] p-3 text-xs text-[var(--text-muted)]">
+                                        No vehicle listings are recorded on this account.
+                                    </div>
+                                )}
+                            </Section>
 
                             {/* Contact & Account */}
                             <Section title="Contact & Account" icon={Mail}>
@@ -534,23 +639,6 @@ export function UserDetailModal({ userId, onClose, onChanged, onMessage }: { use
                                         <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide">Auctions Won</p>
                                     </div>
                                 </div>
-
-                                {detail.recentListings?.length > 0 && (
-                                    <div className="space-y-1.5 mb-3">
-                                        {detail.recentListings.map((l: any) => (
-                                            <Link
-                                                key={l.id}
-                                                href={`/dashboard/admin/listings?listingId=${encodeURIComponent(l.id)}`}
-                                                onClick={onClose}
-                                                className="flex min-h-14 flex-col gap-1 p-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)] text-xs hover:border-primary/40 focus-visible:outline-primary transition-colors"
-                                            >
-                                                <span className="font-bold break-words">{l.title}</span>
-                                                <span className="text-[var(--text-muted)]">{formatPrice(l.price)} · {l.status}</span>
-                                                <span className="font-semibold text-primary">Manage listing →</span>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                )}
 
                                 {detail.recentTransactions?.length > 0 && (
                                     <div className="space-y-1.5">
