@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsDateString, IsEnum } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsDateString, IsEnum } from 'class-validator';
 import { LeadStatus } from '@prisma/client';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -11,6 +11,7 @@ export class UpdateLeadDto {
     @ApiPropertyOptional({ description: 'Sales agent user ID to reassign the lead to' })
     @IsOptional()
     @IsString()
+    @IsNotEmpty()
     assignedToId?: string | null;
 
     @ApiPropertyOptional({ description: 'Notes about the lead' })

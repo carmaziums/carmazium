@@ -14,6 +14,18 @@ describe('CRM dealership boundaries', () => {
         };
         return { prisma, service: new DealersService(prisma as any, {} as any, {} as any, {} as any) };
     };
+    it('accepts an explicitly null optional vehicle link without querying stock', async () => {
+        const { prisma, service } = setup();
+        const dto = Object.assign(new CreateLeadDto(), { buyerName: 'Synthetic', listingId: null, assignedToId: null });
+        expect(await validate(dto)).toEqual([]);
+        await service.createLead('owner-a', dto);
+        expect(prisma.listing.findFirst).not.toHaveBeenCalled();
+        expect(prisma.lead.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ listingId: null, assignedToId: null }) }));
+    });
+    it.each(['listingId', 'assignedToId'])('rejects an empty optional reference %s in validation', async field => {
+        expect((await validate(Object.assign(new CreateLeadDto(), { buyerName: 'Synthetic', [field]: '' }))).length).toBeGreaterThan(0);
+        if (field === 'assignedToId') expect((await validate(Object.assign(new UpdateLeadDto(), { assignedToId: '' }))).length).toBeGreaterThan(0);
+    });
     it('rejects a listing outside the dealership before creating a customer', async () => {
         const { prisma, service } = setup();
         await expect(service.createLead('owner-a', { buyerName: 'Synthetic', listingId: 'foreign' })).rejects.toThrow('Listing not found in your dealership');

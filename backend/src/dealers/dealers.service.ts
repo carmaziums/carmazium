@@ -1563,7 +1563,7 @@ export class DealersService {
     }
 
     private async assertLeadReferences(ownerUserId: string, dealerProfileId: string, dto: { listingId?: string; assignedToId?: string | null }) {
-        if (dto.listingId !== undefined) {
+        if (dto.listingId != null) {
             const listing = await this.prisma.listing.findFirst({ where: { id: dto.listingId, sellerId: ownerUserId, deletedAt: null }, select: { id: true } });
             if (!listing) throw new NotFoundException('Listing not found in your dealership');
         }
