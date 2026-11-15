@@ -454,7 +454,7 @@ if (
 if (
   !buyerPaymentsService.includes("transaction.stripePaymentId.startsWith('pi_')") ||
   !buyerPaymentsService.includes("payment_intent: paymentIntentId") ||
-  !buyerPaymentsService.includes('amount: 10000')
+  !/async issueRefundForAuction\(auctionId: string\): Promise<number>\s*\{\s*return this\.issueAuctionBuyerFeeRefund\(auctionId, 10000\);/.test(buyerPaymentsService)
 ) {
   fail('Auction handover refund path must support both web Checkout and native PaymentIntent fees');
 } else {
@@ -478,7 +478,10 @@ if (
   !buyerServicesService.includes('createInspectionFromAuction') ||
   !buyerAuctionsService.includes('async refuseAfterInspection(') ||
   !buyerAuctionsService.includes('issueFullRefundForAuctionInspection') ||
-  !buyerPaymentsService.includes('12500 - alreadyRefunded') ||
+  !/async issueFullRefundForAuctionInspection\(auctionId: string\): Promise<number>\s*\{\s*return this\.issueAuctionBuyerFeeRefund\(auctionId, 12500\);/.test(buyerPaymentsService) ||
+  !buyerPaymentsService.includes('targetPence - alreadyRefunded') ||
+  !buyerPaymentsService.includes("refund.status === 'succeeded'") ||
+  !buyerPaymentsService.includes("refund.status !== 'succeeded' || refund.amount !== remainingPence") ||
   !buyerPaymentsService.includes('amount: remainingPence') ||
   !webAuctionApi.includes('/refuse-after-inspection') ||
   !mobileAuctionApi.includes('/refuse-after-inspection')
