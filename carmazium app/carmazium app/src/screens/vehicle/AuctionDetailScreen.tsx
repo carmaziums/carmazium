@@ -1,10 +1,11 @@
+import { shareVehicle } from '../../lib/shareVehicle';
 import { SellerServiceBadges } from '../../components/SellerServiceBadges';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useScrollLocked } from '../../lib/scrollLock';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Dimensions, StatusBar, TextInput, ActivityIndicator,
-  Share, Alert, Keyboard, KeyboardAvoidingView, Platform, Linking,
+  Alert, Keyboard, KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
 // expo-image: caching/recycling for the hero auction photo (large, full-bleed,
 // shown on a screen users keep open while live-bidding).
@@ -1187,7 +1188,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <View style={[s.connDot, { backgroundColor: connected ? Colors.accentGreen : Colors.accent }]} />
           </View>
-          <IconButton style={s.iconBtn} icon={<Ionicons name="share-social-outline" size={17} color={Colors.white} />} onPress={() => Share.share({ message: `Check out this auction: ${title}` })} accessibilityLabel="Share" />
+          <IconButton style={s.iconBtn} icon={<Ionicons name="share-social-outline" size={17} color={Colors.white} />} onPress={() => void shareVehicle({ id: listing.id, title, type: 'AUCTION' }, auction?.id || auctionId)} accessibilityLabel="Share this auction" />
         </View>
       </View>
 

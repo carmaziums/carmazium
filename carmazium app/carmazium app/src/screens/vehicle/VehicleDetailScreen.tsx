@@ -1,3 +1,4 @@
+import { shareVehicle } from '../../lib/shareVehicle';
 import { SellerServiceBadges } from '../../components/SellerServiceBadges';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useScrollLocked } from '../../lib/scrollLock';
@@ -10,7 +11,6 @@ import {
   Dimensions,
   StatusBar,
   Alert,
-  Share,
   Modal,
   TextInput,
   ActivityIndicator,
@@ -880,7 +880,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
             <View style={styles.headerRightActions}>
               <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="git-compare-outline" size={18} color={Colors.onAccent} />} onPress={() => navigation.navigate('Compare', { initialListing: listing })} accessibilityLabel="Compare this car" />
-              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="share-social-outline" size={18} color={Colors.onAccent} />} onPress={() => Share.share({ message: `Check out this ${listing.year} ${listing.make} ${listing.model} on Carmazium!` })} accessibilityLabel="Share this listing" />
+              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="share-social-outline" size={18} color={Colors.onAccent} />} onPress={() => void shareVehicle({ id: listing.id, title: [listing.year, listing.make, listing.model].filter(Boolean).join(' '), type: 'CLASSIFIED' })} accessibilityLabel="Share this listing" />
               <IconButton style={styles.iconCircleBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? Colors.accent : Colors.onAccent} />} onPress={handleToggleSaved} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
             </View>
           </View>

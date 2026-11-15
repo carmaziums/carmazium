@@ -1,5 +1,7 @@
 "use client"
 
+import { VehicleShareDialog } from "@/components/listing/VehicleShareDialog"
+
 import * as React from "react"
 import { GoogleAdBanner } from "@/components/analytics/GoogleAdSense"
 import { VehicleWarrantyCta } from "@/components/services/VehicleWarrantyCta"
@@ -288,7 +290,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     const [offerSuccess, setOfferSuccess] = React.useState(false)
     const [isWatchlisted, setIsWatchlisted] = React.useState(false)
     const [watchlistLoading, setWatchlistLoading] = React.useState(false)
-    const [shareToast, setShareToast] = React.useState(false)
+    const [shareOpen, setShareOpen] = React.useState(false)
     const [showHpiModal, setShowHpiModal] = React.useState(false)
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
     // A failed load must not read as "No damage reported" to a buyer.
@@ -551,25 +553,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
         }
     }
 
-    const handleShare = async () => {
-        const url = window.location.href
-        const shareData = {
-            title: listing.title,
-            text: `Check out this ${listing.title} — ${formatPrice(listing.price)} on CarMazium`,
-            url,
-        }
-        try {
-            if (navigator.share) {
-                await navigator.share(shareData)
-            } else {
-                await navigator.clipboard.writeText(url)
-                setShareToast(true)
-                setTimeout(() => setShareToast(false), 2500)
-            }
-        } catch {
-            // User cancelled share dialog — no-op
-        }
-    }
+    const handleShare = () => setShareOpen(true)
 
     const handleWatchlist = async () => {
         if (!user) {
@@ -621,14 +605,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                 </div>
             )}
 
-            {/* Share toast */}
-            {shareToast && (
-                <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-blue-500/20 border border-blue-500/40 text-blue-300 px-5 py-3 rounded-xl shadow-2xl animate-in slide-in-from-bottom-4">
-                    <Share2 size={16} />
-                    <span className="text-sm font-semibold">Link copied to clipboard!</span>
-                    <button onClick={() => setShareToast(false)} className="ml-2"><X size={14} /></button>
-                </div>
-            )}
+            {shareOpen && <VehicleShareDialog vehicle={listing} onClose={() => setShareOpen(false)} />}
 
             {/* HPI Report Modal */}
             {listing.bodyType !== 'CARAVAN' && showHpiModal && listing && (
@@ -760,8 +737,8 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                             >
                                 <Scale size={20} className="mr-2" /> Compare
                             </Button>
-                            <Button variant="outline" size="icon" className="rounded-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:border-primary/40" onClick={handleShare}>
-                                <Share2 size={20} />
+                            <Button variant="outline" className="rounded-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:border-primary/40" onClick={handleShare} aria-label="Share this vehicle">
+                                <Share2 size={20} className="mr-2" /> Share
                             </Button>
                             <Button
                                 variant="outline"
@@ -1643,7 +1620,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                         size="icon"
                         className="h-11 w-11 shrink-0 border-white/20 text-gray-300"
                         onClick={handleShare}
-                        title="Share"
+                        title="Share this vehicle" aria-label="Share this vehicle"
                     >
                         <Share2 size={18} />
                     </Button>
