@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEmail, IsDateString, IsEnum, IsIn, Matches } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsEmail, IsDateString, IsEnum, IsIn, Matches } from 'class-validator';
 import { LeadStatus } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -21,6 +21,7 @@ export class CreateLeadDto {
     @ApiPropertyOptional({ description: 'Listing ID the lead is interested in' })
     @IsOptional()
     @IsString()
+    @IsNotEmpty()
     listingId?: string;
 
     @ApiPropertyOptional({ description: 'Authenticated buyer user ID, normally populated automatically by CarMazium' })
@@ -31,6 +32,7 @@ export class CreateLeadDto {
     @ApiPropertyOptional({ description: 'Sales agent user ID to assign the lead to' })
     @IsOptional()
     @IsString()
+    @IsNotEmpty()
     assignedToId?: string;
 
     @ApiPropertyOptional({ description: 'Lead source: listing_enquiry, chat, offer, walk_in, phone' })
