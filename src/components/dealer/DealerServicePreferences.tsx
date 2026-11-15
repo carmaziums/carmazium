@@ -41,7 +41,7 @@ export function DealerServicePreferences() {
         <p className="text-sm text-[var(--text-muted)]">New dealer accounts start with all four options on. Turn off any service you do not offer. Badges apply only to your listings; buyers should contact you for details.</p>
         <div className="grid gap-4 sm:grid-cols-2">{options.map(([key, title, description]) => {
             const enabled = dealer[key] !== false
-            return <label key={key} className="flex items-start gap-3 rounded-xl border border-[var(--border-default)] p-4">
+            return <label key={key} data-tour={key} className="flex items-start gap-3 rounded-xl border border-[var(--border-default)] p-4">
                 <input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={enabled} disabled={busy} onChange={e => toggle(key, e.target.checked)} />
                 <span><span className="block font-semibold">{title}</span><span className="block mt-1 text-sm text-[var(--text-muted)]">{description}</span></span>
             </label>

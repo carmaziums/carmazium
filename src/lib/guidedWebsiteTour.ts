@@ -76,7 +76,18 @@ export function getGuidedWebsiteSteps(profile: TourProfile): GuidedStep[] {
         ["reviews", "Ratings & Reviews", "Review feedback received and reviews you have given. Your public profile lets other people see the information and badges available to them."],
         ["account", "Account Type", "Review the account options that apply to you. Changing account type can affect the features available, so read the information before choosing."],
     ]
-    for (const [section, title, description] of settings) steps.push({ id: `settings-${section}`, title, description, href: `/profile?section=${section}`, target: { selector: "main h2, main h3", text: title } })
+    for (const [section, title, description] of settings) {
+        steps.push({ id: `settings-${section}`, title, description, href: `/profile?section=${section}`, target: { selector: "main h2, main h3", text: title } })
+        if (section === "business" && dealer && profile.dealerProfile) {
+            const services = [
+                ["financeOffered", "Finance badge", "This switch shows that you can arrange finance on your own listings. Buyers contact you for details. It does not make you a finance provider for other sellers’ vehicles. Turn it off if you do not offer finance."],
+                ["warrantyOffered", "Warranty badge", "This switch shows that you offer warranties on your own listings. Buyers contact you about the cover and terms. It is separate from CarMazium’s warranty partnerships. Turn it off if you do not offer warranties."],
+                ["deliveryServicesEnabled", "Collection, delivery and recovery", "This preference starts on for new dealer accounts and can be turned off. Before taking jobs, complete business verification, verified payout setup, the declaration and trade insurance. Your original £1 dealer verification is reused."],
+                ["inspectionServicesEnabled", "Vehicle inspection", "This preference also starts on and can be turned off. You need business verification, verified payouts, a declaration and service approval before taking jobs. No inspection documents or further £1 verification payment are required."],
+            ]
+            for (const [key, name, explanation] of services) steps.push({ id: key, title: name, description: explanation, href: "/profile?section=business", target: { selector: `[data-tour='${key}']` } })
+        }
+    }
     steps.push({ id: "finish", title: "You’re ready to explore", href: "/profile?section=personal", target: { selector: "button", text: "Replay website introduction" }, description: "You can replay this walkthrough from Account Settings whenever you need it. Use the account menu to return to your dashboard and Contact Support when you need help." })
     return steps
 }
