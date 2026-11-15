@@ -1066,7 +1066,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       vrm: 'registration', make: 'identity', model: 'identity', year: 'identity',
       bodyType: 'body', location: 'location', serviceHistory: 'model-details', numberOfKeys: 'model-details',
       mechanicalIssues: 'model-details', electricalIssues: 'model-details',
-      mileage: 'technical', fuelType: 'technical', transmission: 'technical',
+      mileage: 'technical', fuelType: 'technical', transmission: 'technical', doors: 'technical', seats: 'technical',
       title: 'description', description: 'description',
       condition: 'ownership', owners: 'ownership', departedRelationship: 'ownership',
       writeOffCat: 'declarations', stolenRecovered: 'declarations', outstandingFinance: 'declarations',
@@ -1116,6 +1116,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             setTransmission(normalizeNativeTransmission(store.transmission));
             setBodyType(normalizeNativeBodyType(store.bodyType, draftVehicleType));
             setColour(store.colour);
+            setDoors(store.doors ?? '');
+            setSeats(store.seats ?? '');
             setPriceAsking(store.price);
             setPriceMin(store.priceMin);
             setListingType(store.listingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED');
@@ -1345,6 +1347,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         'numberOfKeys', 'owners', 'description',
       ].includes(key)) return null;
     }
+    if ((key === 'doors' || key === 'seats') && !isCaravan && vehicleType !== 'MOTORCYCLE') {
+      const value = (key === 'doors' ? doors : seats).trim();
+      const min = key === 'doors' ? 2 : 1;
+      const max = key === 'doors' ? 8 : 20;
+      if (!/^\d+$/.test(value) || Number(value) < min || Number(value) > max) {
+        return `Enter the number of ${key} as a whole number between ${min} and ${max}`;
+      }
+    }
     if (key === 'priceAsking') {
       const v = parseFloat(priceAsking.replace(/[^0-9.]/g, ''));
       if (!priceAsking.trim() || isNaN(v) || v <= 0) return 'Enter a valid asking price (e.g. 12500)';
@@ -1409,7 +1419,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   // All field keys validated per step — used to force every field's error to show
   // (mark touched) when Next is tapped, and to know which keys to check.
-  const STEP1_FIELD_KEYS = ['vrm', 'make', 'model', 'year', 'serviceHistory', 'mechanicalIssues', 'electricalIssues', 'numberOfKeys', 'mileage', 'title', 'location', 'fuelType', 'description', 'transmission', 'bodyType', 'condition', 'owners', 'departedRelationship', 'writeOffCat', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper', 'notOwnerRelationship', 'declAcknowledged'];
+  const STEP1_FIELD_KEYS = ['vrm', 'make', 'model', 'year', 'serviceHistory', 'mechanicalIssues', 'electricalIssues', 'numberOfKeys', 'mileage', 'doors', 'seats', 'title', 'location', 'fuelType', 'description', 'transmission', 'bodyType', 'condition', 'owners', 'departedRelationship', 'writeOffCat', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper', 'notOwnerRelationship', 'declAcknowledged'];
   const STEP3_FIELD_KEYS = ['priceAsking'];
   const STEP4_AUCTION_FIELD_KEYS = ['auctionStartDate', 'reservePrice', 'startingBid', 'minIncrement', 'buyItNowPrice'];
 
@@ -2556,7 +2566,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const nextStep = Math.min(step + 1, totalSteps) as Step;
     // Persist current state to draft before advancing
     if (!editMode) updateDraft({
-      vrm, vehicleType, make, model, year, mileage, title, fuelType, transmission, bodyType, colour,
+      vrm, vehicleType, make, model, year, mileage, title, fuelType, transmission, bodyType, colour, doors, seats,
       price: priceAsking, priceMin, listingType,
       location, description, condition, owners, writeOffCat,
       serviceHistory, numberOfKeys, mechanicalIssues, electricalIssues,
@@ -2603,7 +2613,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   function handleSaveDraftExit() {
     if (editMode) { navigation?.goBack(); return; }
     updateDraft({
-      vrm, vehicleType, make, model, year, mileage, title, fuelType, transmission, bodyType, colour,
+      vrm, vehicleType, make, model, year, mileage, title, fuelType, transmission, bodyType, colour, doors, seats,
       price: priceAsking, priceMin, listingType,
       location, description, condition, owners, writeOffCat,
       serviceHistory, numberOfKeys, mechanicalIssues, electricalIssues,
@@ -3059,14 +3069,17 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <FieldInput label="BHP" value={bhp} onChange={setBhp} placeholder="e.g. 503" keyboardType="number-pad" />
             </View>
           </View>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
+          {vehicleType !== 'MOTORCYCLE' && <View style={{ flexDirection: 'row', gap: 10 }} onLayout={event => {
+            rememberNestedField('technical', 'doors')(event);
+            rememberNestedField('technical', 'seats')(event);
+          }}>
             <View style={{ flex: 1 }}>
-              <FieldInput label="DOORS" value={doors} onChange={setDoors} placeholder="e.g. 4" keyboardType="number-pad" />
+              <FieldInput label="DOORS" required value={doors} onChange={v => { setDoors(v); fieldTouched('doors')(); }} error={fieldError('doors') ?? undefined} placeholder="e.g. 4" keyboardType="number-pad" />
             </View>
             <View style={{ flex: 1 }}>
-              <FieldInput label="SEATS" value={seats} onChange={setSeats} placeholder="e.g. 5" keyboardType="number-pad" />
+              <FieldInput label="SEATS" required value={seats} onChange={v => { setSeats(v); fieldTouched('seats')(); }} error={fieldError('seats') ?? undefined} placeholder="e.g. 5" keyboardType="number-pad" />
             </View>
-          </View>
+          </View>}
         </SectionBox>}
 
         {/* Listing Title & Description */}

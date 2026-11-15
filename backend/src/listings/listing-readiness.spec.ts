@@ -16,6 +16,8 @@ const readyListing = (overrides: Record<string, unknown> = {}) => ({
     fuelType: 'PETROL',
     transmission: 'AUTOMATIC',
     bodyType: 'COUPE',
+    doors: 2,
+    seats: 4,
     title: 'BMW M3 2020',
     location: 'Birmingham',
     owners: '1',
@@ -142,5 +144,26 @@ describe('listing readiness', () => {
             missingFields: ['at least 10 photos'],
             missingHpi: false,
         });
+    });
+});
+
+describe('required doors and seats', () => {
+    it.each(['CLASSIFIED', 'AUCTION'])('blocks incomplete %s submissions but permits complete counts', type => {
+        for (const bodyType of ['HATCHBACK', 'CAMPERVAN', 'HGV_BOX']) {
+            for (const field of ['doors', 'seats']) {
+                for (const value of [undefined, null, 0, -1, 1.5, 21]) {
+                    expect(getListingSubmissionMissingFields(readyListing({ type, bodyType, [field]: value })))
+                        .toContain(`number of ${field}`);
+                }
+            }
+            expect(getListingSubmissionReadiness(readyListing({ type, bodyType, doors: 2, seats: 1 })).ready).toBe(true);
+        }
+    });
+    it('does not require hidden motorcycle or caravan counts', () => {
+        for (const vehicle of [{ vehicleType: 'MOTORCYCLE' }, { bodyType: 'CARAVAN' }]) {
+            const missing = getListingSubmissionMissingFields(readyListing({ ...vehicle, doors: null, seats: null }));
+            expect(missing).not.toContain('number of doors');
+            expect(missing).not.toContain('number of seats');
+        }
     });
 });

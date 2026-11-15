@@ -13,7 +13,7 @@ const { getMissingSellerDeclarations } = load('sellerDeclarationValidation')
 const { faultDeclarationError, isNoKnownFaults } = load('sellerFaultDeclaration')
 const { registrationLookupReset } = load('listingRegistrationChange')
 const { listingDetailsInputIssue, isValidListingPrice } = load('listingInputValidation')
-const valid = { vrm: 'JU55 MAG', year: '2016', mileage: '65350', title: 'BMW X5 2016' }
+const valid = { vrm: 'JU55 MAG', year: '2016', mileage: '65350', title: 'BMW X5 2016', doors: '5', seats: '5' }
 test('switching a BMW lookup to a Ford cannot retain BMW identity or official facts', () => {
   const original = { vrm: 'JU55MAG', make: 'BMW', model: 'X5', variant: 'M Sport', vin: 'old-vin', year: '2016', motHistory: [{ old: true }], motExpiryDate: '2027-05-22', officialVehicleData: { mot: { old: true } }, mileage: '65350', images: ['seller-photo'] }
   const changed = { ...original, ...registrationLookupReset(original.vrm, 'PX13RKF'), vrm: 'PX13RKF' }
@@ -269,3 +269,60 @@ test('switching to caravan clears motor facts and valuation while preserving the
     assert.equal(next.badgeTier, listingType === 'AUCTION' ? 'FREE' : 'BASIC');
   }
 });
+
+test('auction and retail require valid doors/seats on Next and final review, in field order', () => {
+  for (const listingType of ['AUCTION', 'CLASSIFIED']) {
+    for (const bodyType of ['SUV', 'CAMPERVAN', 'HGV_BOX']) {
+      const formData = { ...completeForm, listingType, bodyType, doors: '', seats: '' }
+      const context = wizardContext(formData)
+      context.currentStep = 5
+      const validate = wizardFunction(wizardFile, 'getStepValidationError', context)
+      const first = wizardFunction(wizardFile, 'firstInvalidField', context)
+      assert.match(validate(1), /number of doors/)
+      assert.equal(first(1).field, 'doors')
+      formData.doors = '5'
+      assert.match(validate(1), /number of seats/)
+      assert.equal(first(1).field, 'seats')
+      formData.seats = '5'
+      assert.equal(validate(1), null)
+      for (const field of ['doors', 'seats']) {
+        const validValue = formData[field]
+        for (const value of ['', ' ', '0', '-1', '1.5', '1e2', '21']) {
+          formData[field] = value
+          assert.equal(first(1).field, field)
+        }
+        formData[field] = validValue
+      }
+    }
+  }
+  for (const exempt of [{ vehicleType: 'MOTORCYCLE' }, { bodyType: 'CARAVAN' }]) {
+    assert.equal(listingDetailsInputIssue({ ...completeForm, ...exempt, doors: '', seats: '' }), null)
+  }
+})
+
+test('doors/seats navigation scrolls and focuses the precise input', () => {
+  for (const field of ['doors', 'seats']) {
+    const events = []
+    const input = { matches: () => true, querySelector: () => null,
+      scrollIntoView: options => events.push(['scroll', options.block]),
+      focus: options => events.push(['focus', options.preventScroll]) }
+    wizardFunction(wizardFile, 'focusMissingField', {
+      window: { requestAnimationFrame: fn => fn() },
+      document: { getElementById: id => id === `listing-required-${field}` ? input : null },
+    })(field)
+    assert.deepEqual(events, [['scroll', 'center'], ['focus', true]])
+  }
+})
+
+test('native doors/seats validation rejects empty or invalid counts and preserves exceptions', () => {
+  const file = '../carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx'
+  for (const field of ['doors', 'seats']) {
+    for (const value of ['', ' ', '0', '-1', '2.5', '21']) {
+      const context = { vehicleType: 'CAR', doors: '5', seats: '5', [field]: value }
+      assert.match(wizardFunction(file, 'fieldErrorRaw', context)(field), new RegExp(`number of ${field}`))
+    }
+    for (const context of [{ vehicleType: 'CAR', doors: '2', seats: '1' }, { vehicleType: 'MOTORCYCLE', doors: '', seats: '' }, { isCaravan: true, vehicleType: 'CAR', doors: '', seats: '' }]) {
+      assert.equal(wizardFunction(file, 'fieldErrorRaw', context)(field), null)
+    }
+  }
+})
