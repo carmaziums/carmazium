@@ -45,13 +45,14 @@ export function WebsiteIntroduction({ children }: { children: React.ReactNode })
 
     useEffect(() => {
         if (!open || !dialog.current) return
+        const modal = dialog.current
         const previousFocus = document.activeElement as HTMLElement | null
         const previousOverflow = document.body.style.overflow
-        dialog.current.showModal()
+        modal.showModal()
         document.body.style.overflow = "hidden"
         heading.current?.focus()
         return () => {
-            dialog.current?.close()
+            modal.close()
             document.body.style.overflow = previousOverflow
             if (previousFocus?.isConnected) previousFocus.focus()
         }
