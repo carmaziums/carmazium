@@ -152,6 +152,8 @@ export function RoleMessagesInbox({
                             onSelectRoom={setSelectedRoom}
                             selectedRoomId={selectedRoom?.id}
                             roomsOverride={filteredRooms}
+                            emptyTitle={filter === "unread" ? "No unread conversations" : filter === "support" ? "No support conversations" : undefined}
+                            emptyDescription={filter === "all" ? undefined : "Choose All to see your other conversations."}
                         />
                     </div>
 

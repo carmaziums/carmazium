@@ -47,7 +47,7 @@ export default function PartnerDashboardPage() {
     const { user, profile, loading: authLoading, refreshProfile } = useAuth()
     const router = useRouter()
     const [team, setTeam] = React.useState<PartnerTeam | null>(null)
-    const [loadingTeam, setLoadingTeam] = React.useState(false)
+    const [loadingTeam, setLoadingTeam] = React.useState(true)
     const [busy, setBusy] = React.useState<string | null>(null)
     const [error, setError] = React.useState<string | null>(null)
     const [companyName, setCompanyName] = React.useState("")
@@ -278,25 +278,25 @@ export default function PartnerDashboardPage() {
                                 icon={Truck}
                                 title="Delivery & Recovery"
                                 description="Quote on transport and recovery jobs on behalf of your Partner business."
-                                status={delivery ? statusLabel[delivery.status] : "Not activated"}
+                                status={loadingTeam ? "Checking status…" : !team ? "Status unavailable" : delivery ? statusLabel[delivery.status] : "Not activated"}
                                 active={delivery?.status === "APPROVED"}
                                 action={delivery?.status === "APPROVED"
                                     ? <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">Open jobs</Button></Link>
                                     : delivery?.status === "PENDING"
                                         ? <Link href={`/dashboard/service/capabilities/${delivery.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Complete service setup</Button></Link>
-                                        : <Button size="sm" onClick={() => applyService("DELIVERY")} disabled={busy === "DELIVERY"}>{busy === "DELIVERY" ? <Loader2 className="animate-spin" size={14} /> : "Complete setup"}</Button>}
+                                        : <Button size="sm" onClick={() => applyService("DELIVERY")} disabled={loadingTeam || !team || busy === "DELIVERY"}>{busy === "DELIVERY" ? <Loader2 className="animate-spin" size={14} /> : "Complete setup"}</Button>}
                             />
                             <AddonCard
                                 icon={Wrench}
                                 title="Vehicle Inspection"
                                 description="Quote on vehicle inspection jobs using the same Partner account and business payout details."
-                                status={inspection ? statusLabel[inspection.status] : "Not activated"}
+                                status={loadingTeam ? "Checking status…" : !team ? "Status unavailable" : inspection ? statusLabel[inspection.status] : "Not activated"}
                                 active={inspection?.status === "APPROVED"}
                                 action={inspection?.status === "APPROVED"
                                     ? <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">Open jobs</Button></Link>
                                     : inspection?.status === "PENDING"
                                         ? <Link href={`/dashboard/service/capabilities/${inspection.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Complete service setup</Button></Link>
-                                        : <Button size="sm" onClick={() => applyService("INSPECTION")} disabled={busy === "INSPECTION"}>{busy === "INSPECTION" ? <Loader2 className="animate-spin" size={14} /> : "Complete setup"}</Button>}
+                                        : <Button size="sm" onClick={() => applyService("INSPECTION")} disabled={loadingTeam || !team || busy === "INSPECTION"}>{busy === "INSPECTION" ? <Loader2 className="animate-spin" size={14} /> : "Complete setup"}</Button>}
                             />
 
 
@@ -309,7 +309,7 @@ export default function PartnerDashboardPage() {
                             <p className="text-sm text-[var(--text-muted)] mb-5">For Delivery and Inspection, the job poster always pays through CarMazium. CarMazium deducts 9% and the remaining 91% is paid to the Partner business Stripe Connect account.</p>
                             {loadingTeam ? <Loader2 className="animate-spin text-primary" size={18} /> : team?.stripeConnect.complete
                                 ? <div className="inline-flex items-center gap-2 text-emerald-500 font-bold text-sm"><CheckCircle2 size={17} /> Business payouts enabled</div>
-                                : <Button onClick={connectStripe} disabled={busy === "stripe"} variant="outline">{busy === "stripe" ? <Loader2 className="animate-spin" size={15} /> : "Set up business payouts"}</Button>}
+                                : <Button onClick={connectStripe} disabled={!team || busy === "stripe"} variant="outline">{busy === "stripe" ? <Loader2 className="animate-spin" size={15} /> : "Set up business payouts"}</Button>}
                         </div>
                         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
                             <div className="flex items-center gap-3 mb-3"><ShieldCheck className="text-primary" size={22} /><h3 className="font-black font-heading">One team, service permissions</h3></div>

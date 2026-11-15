@@ -23,7 +23,7 @@ import { PurchaseInspectionNotes } from "@/components/dealer/PurchaseInspectionN
 import { deliveryServiceEnabled } from "@/lib/featureFlags"
 import {
     type DealerPurchaseDetail, type DealerPurchaseSeller,
-    purchaseDeliveryHref, recordedPurchaseLabel,
+    purchaseDeliveryHref, recordedPurchaseLabel, purchaseHandoverLabel,
 } from "@/lib/dealerPurchaseDetail"
 
 const formatGBP = (amount: number) => new Intl.NumberFormat("en-GB", {
@@ -188,7 +188,7 @@ export default function DealerPurchaseDetailPage() {
                                     </div>
                                 </div>
                                 <DetailRow label="Sale channel" value={purchase.channel === "RETAIL" ? "Retail listing" : "Auction"} />
-                                <DetailRow label="Purchase stage" value={purchase.buyerCollectedAt ? "Collected" : purchase.purchaseStatus.replace(/_/g, " ")} />
+                                <DetailRow label="Handover stage" value={purchaseHandoverLabel(purchase)} />
                                 {purchase.buyerCollectedAt && (
                                     <DetailRow label="Buyer confirmed collection" value={formatDate(purchase.buyerCollectedAt)} />
                                 )}
