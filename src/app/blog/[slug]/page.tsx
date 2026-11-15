@@ -13,6 +13,7 @@ import { BlogContent, blogHeadingId } from "@/components/blog/BlogContent"
 import { serverBackendFetch } from "@/lib/serverBackendFetch"
 import { GooglePreferredSourceButton } from "@/components/blog/GooglePreferredSourceButton"
 import { EditorialTopicLinks } from "@/components/blog/EditorialTopicLinks"
+import { GoogleAdBanner } from "@/components/analytics/GoogleAdSense"
 
 // Canonical SEO origin. The apex domain permanently redirects to www.
 const SITE_URL = "https://www.carmazium.com"
@@ -330,6 +331,8 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                                 </nav>
                             </details>
                         )}
+
+                        <GoogleAdBanner />
 
                         <BlogContent content={post.content} />
 

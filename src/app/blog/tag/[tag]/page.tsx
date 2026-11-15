@@ -5,6 +5,7 @@ import { notFound } from "next/navigation"
 import { ArrowLeft, ArrowRight, Calendar, Newspaper, Tag } from "lucide-react"
 import type { BlogPost } from "@/lib/blogApi"
 import { serverBackendFetch } from "@/lib/serverBackendFetch"
+import { GoogleAdBanner } from "@/components/analytics/GoogleAdSense"
 
 // Canonical SEO origin. The apex domain permanently redirects to www.
 const SITE_URL = "https://www.carmazium.com"
@@ -89,6 +90,8 @@ export default async function BlogTagPage({ params, searchParams }: { params: Pr
                     <p className="text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-3 flex items-center gap-1.5"><Tag size={11} /> Tagged</p>
                     <h1 className="text-4xl md:text-5xl font-black font-heading tracking-tight">{decoded}</h1>
                 </div>
+
+                <GoogleAdBanner />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                     {posts.map((post) => (
