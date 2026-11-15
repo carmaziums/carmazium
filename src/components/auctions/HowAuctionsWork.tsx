@@ -30,7 +30,7 @@ const SELLER_STEPS = [
     {
         icon: FileText,
         title: "List for free.",
-        desc: "Add your car's details (DVLA-assisted), photos, and mark any known damage — CarMazium automatically grades your vehicle's condition from what you report, so you don't need to grade it yourself.",
+        desc: "Add your vehicle details, photos and known damage. Motor vehicles use the registration-assisted form. Touring caravans use manual details, need at least one photo and do not require registration, VIN, mileage or year; you choose your price without an automated valuation.",
     },
     {
         icon: Lock,
