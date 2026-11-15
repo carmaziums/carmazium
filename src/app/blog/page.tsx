@@ -9,6 +9,7 @@ import type { BlogPost } from "@/lib/blogApi"
 import { serverBackendFetch } from "@/lib/serverBackendFetch"
 import { GooglePreferredSourceButton } from "@/components/blog/GooglePreferredSourceButton"
 import { SellerGuideLinks } from "@/components/blog/SellerGuideLinks"
+import { GoogleAdBanner } from "@/components/analytics/GoogleAdSense"
 
 // Canonical SEO origin. The apex domain permanently redirects to www.
 const SITE_URL = "https://www.carmazium.com"
@@ -225,6 +226,8 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Pr
                                 </Link>
                             </section>
                         )}
+
+                        <GoogleAdBanner />
 
                         <section id="latest-guides" className="scroll-mt-28" aria-labelledby="latest-guides-heading">
                             <div className="mb-6 flex items-end justify-between gap-4">
