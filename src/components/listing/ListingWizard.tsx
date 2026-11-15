@@ -1081,7 +1081,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         )
     }, [isAuction, platformOpeningBid])
 
-    const missingSellerDeclarations = getMissingSellerDeclarations(formData)
+    const missingSellerDeclarations = isCaravan ? [] : getMissingSellerDeclarations(formData)
     const declarationError = hasAttemptedNext
         ? sellerDeclarationErrorMessage(missingSellerDeclarations)
         : null
@@ -1256,6 +1256,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 const inputIssue = listingDetailsInputIssue(formData)
                 if (inputIssue) return inputIssue.message
                 if (isCaravan) {
+                    if (formData.vin.trim() && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(formData.vin.trim())) return 'If you enter a caravan VIN, it must contain 17 valid characters. You can leave it blank.'
                     const missing: string[] = []
                     if (!formData.title || formData.title.trim().length < 5) missing.push('listing title')
                     if (!formData.location.trim()) missing.push('location')
@@ -1383,6 +1384,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             const inputIssue = listingDetailsInputIssue(formData)
             if (inputIssue) return inputIssue
             if (isCaravan) {
+                if (formData.vin.trim() && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(formData.vin.trim())) return { field: 'vin', label: 'Optional VIN (17 characters if entered)' }
                 const minimal: Array<[string, string, boolean]> = [
                     ['body', 'Body Type', !normalizeSellerBodyType(formData.bodyType, bodyTypeKeys)],
                     ['title', 'Listing Title', formData.title.trim().length < 5],
@@ -3173,7 +3175,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {/* Make / Model / Year */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 <div className="space-y-2">
-                                    <label id="listing-required-make" className="text-sm font-bold uppercase text-[var(--text-muted)]">Make *</label>
+                                    <label id="listing-required-make" className="text-sm font-bold uppercase text-[var(--text-muted)]">{isCaravan ? 'Make (optional)' : 'Make *'}</label>
                                     {(() => {
                                         // Case-insensitive match — DVLA returns uppercase (e.g. "TOYOTA")
                                         const matchedMake = CAR_MAKES.find(m => m.toLowerCase() === formData.make.trim().toLowerCase())
@@ -3211,7 +3213,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     })()}
                                 </div>
                                 <div className="space-y-2">
-                                    <label id="listing-required-model" className="text-sm font-bold uppercase text-[var(--text-muted)]">Model *</label>
+                                    <label id="listing-required-model" className="text-sm font-bold uppercase text-[var(--text-muted)]">{isCaravan ? 'Model (optional)' : 'Model *'}</label>
                                     {(() => {
                                         // getModelsForMake is already case-insensitive
                                         const models = getModelsForMake(formData.make)
@@ -3264,7 +3266,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     })()}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Year *</label>
+                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">{isCaravan ? 'Year (optional)' : 'Year *'}</label>
                                     <Input aria-label="Year" id="listing-required-year" type="number" placeholder="2023" value={formData.year} onChange={(e) => set("year", e.target.value)} className={inputCls} />
                                 </div>
                             </div>
@@ -3324,8 +3326,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         </div>
                                     </div>
                                     {/* Vehicle Condition */}
-                                    <div id="vehicle-condition-field" className={`space-y-2 md:col-span-2 rounded-xl p-3 border ${hasAttemptedNext && !formData.condition ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
-                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Vehicle Condition *</label>
+                                    <div id="vehicle-condition-field" className={`space-y-2 md:col-span-2 rounded-xl p-3 border ${hasAttemptedNext && !isCaravan && !formData.condition ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">{isCaravan ? 'Caravan Condition (optional)' : 'Vehicle Condition *'}</label>
                                         <p className="text-xs text-[var(--text-secondary)]">Describe the general condition. Exterior Grade 1–5 is calculated separately from the damage map and can be searched by buyers.</p>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                             {([
@@ -3358,10 +3360,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                                     {/* Service History */}
                                     <div id="listing-required-service-history" role="group" aria-labelledby="listing-service-history-label"
-                                        aria-invalid={hasAttemptedNext && !formData.serviceHistory.trim()}
-                                        aria-describedby={hasAttemptedNext && !formData.serviceHistory.trim() ? "listing-service-history-error" : undefined}
-                                        className={`space-y-2 md:col-span-2 scroll-mt-28 rounded-xl p-3 border ${hasAttemptedNext && !formData.serviceHistory.trim() ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
-                                        <label id="listing-service-history-label" className="text-sm font-bold uppercase text-[var(--text-muted)]">Service History <span className="text-red-500">*</span></label>
+                                        aria-invalid={hasAttemptedNext && !isCaravan && !formData.serviceHistory.trim()}
+                                        aria-describedby={hasAttemptedNext && !isCaravan && !formData.serviceHistory.trim() ? "listing-service-history-error" : undefined}
+                                        className={`space-y-2 md:col-span-2 scroll-mt-28 rounded-xl p-3 border ${hasAttemptedNext && !isCaravan && !formData.serviceHistory.trim() ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
+                                        <label id="listing-service-history-label" className="text-sm font-bold uppercase text-[var(--text-muted)]">Service History {!isCaravan && <span className="text-red-500">*</span>}</label>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                             {(["Full Main Dealer", "Full Independent", "Partial", "None"] as const).map((sh) => (
                                                 <button key={sh} type="button"
@@ -3372,14 +3374,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             ))}
                                         </div>
                                         <p className="text-xs text-[var(--text-secondary)]">Choose the history supported by your service book or invoices. Select None if there is no service history.</p>
-                                        {hasAttemptedNext && !formData.serviceHistory.trim() && (
+                                        {hasAttemptedNext && !isCaravan && !formData.serviceHistory.trim() && (
                                             <p id="listing-service-history-error" role="alert" className="text-xs text-red-400 font-medium">Please select the vehicle’s service history to continue.</p>
                                         )}
                                     </div>
                                     <SellerFaultDeclaration kind="mechanical" value={formData.mechanicalIssues}
-                                        onChange={value => set("mechanicalIssues", value)} attempted={hasAttemptedNext} inputClassName={inputCls} />
+                                        onChange={value => set("mechanicalIssues", value)} attempted={!isCaravan && hasAttemptedNext} inputClassName={inputCls} />
                                     <SellerFaultDeclaration kind="electrical" value={formData.electricalIssues}
-                                        onChange={value => set("electricalIssues", value)} attempted={hasAttemptedNext} inputClassName={inputCls} />
+                                        onChange={value => set("electricalIssues", value)} attempted={!isCaravan && hasAttemptedNext} inputClassName={inputCls} />
 
                                     {/* Number of Keys */}
                                     <div id="listing-required-keys" role="group" aria-labelledby="listing-keys-label"
@@ -3525,11 +3527,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         <div id="listing-required-photos" className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
                             <div className="space-y-4">
                                 <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4">Photos *</h2>
-                                <p className="text-sm text-[var(--text-muted)]">Upload up to 100 photos. Aim for at least 20 for the best results, and organise them by selecting the relevant category below.</p>
+                                <p className="text-sm text-[var(--text-muted)]">{isCaravan ? 'Upload photos manually to show the caravan exterior, interior, equipment and any damage. At least one photo is needed; more photos help buyers.' : 'Upload up to 100 photos. Aim for at least 20 for the best results, and organise them by selecting the relevant category below.'}</p>
                                 {/* Photo counter and progress bar — wizard form only */}
                                 {(() => {
                                     const photoCount = formData.images.length
-                                    const MIN_PHOTOS = 10
+                                    const MIN_PHOTOS = isCaravan ? 1 : 10
                                     const MAX_PHOTOS = 100
                                     const isMinMet = photoCount >= MIN_PHOTOS
                                     const progressPct = Math.min((photoCount / MAX_PHOTOS) * 100, 100)
@@ -3667,7 +3669,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {/* Give sellers value guidance immediately after the
                                     minimum valuation inputs are known, not only after
                                     photos and declarations are complete. */}
-                                <div className="md:col-span-2">
+                                {!isCaravan && <div className="md:col-span-2">
                                     <VehicleValuationCard
                                         valuation={valuation}
                                         loading={valuationLoading}
@@ -3676,7 +3678,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         compact
                                         onApply={applyValuation}
                                     />
-                                </div>
+                                </div>}
 
                                 {/* Fuel */}
                                 <SelectField label="Fuel Type" required error={hasAttemptedNext && !formData.fuelType} value={formData.fuelType} onChange={(v) => set("fuelType", v)}
