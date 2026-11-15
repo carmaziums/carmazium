@@ -106,7 +106,8 @@ test("missing motorcycle body type remains empty and cannot become a hidden bloc
 
 test("seller wizard uses the policy at validation, lookup, landing merge and submit boundaries", () => {
     const wizard = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
-    assert.match(wizard, /if \(!normalizeSellerTransmission\(formData\.transmission\)\) missing\.push\('transmission'\)/)
+    assert.match(wizard, /if \(!isCaravan && !normalizeSellerTransmission\(formData\.transmission\)\) missing\.push\('transmission'\)/)
+    assert.match(wizard, /if \(isCaravan\) \{[\s\S]*?const missing: string\[\] = \[\]/)
     assert.match(wizard, /if \(formData\.vehicleType !== 'MOTORCYCLE' && !normalizeSellerBodyType\(formData\.bodyType, bodyTypeKeys\)\)/)
     assert.match(wizard, /if \(lookupId !== lookupRequestRef\.current\) return/)
     assert.match(wizard, /if \(normalizeVehicleRegistration\(prev\.vrm\) !== requestedVrm\) return prev/)
