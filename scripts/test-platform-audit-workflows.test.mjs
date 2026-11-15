@@ -51,6 +51,17 @@ test('manufacturer aliases combine choices and stock models in both directions',
  assert.equal(options.searchMakes(stock).filter(x=>/mercedes/i.test(x)).length,1);
  assert.ok(options.searchModels(stock,'Mercedes-Benz').includes('Rare model'));assert.ok(options.searchModels(stock,'Mercedes').includes('A-Class'));assert.ok(options.searchModels(stock,'Dodge').includes('Rare truck'));
 });
+test('parenthesized DVLA Dodge make merges choices and preserves vehicle models',()=>{
+ const aliases=load('src/lib/makeAliases.ts');const options=load('src/lib/vehicleSearchOptions.ts');
+ const stock=[{make:'DODGE (USA)',model:'Nitro',vehicleType:'CAR'},{make:'Dodge',model:'Journey',vehicleType:'CAR'}];
+ assert.equal(aliases.canonicalMake(' DODGE (USA) '),'Dodge');
+ assert.deepEqual(plain(options.searchMakes(stock).filter(x=>/dodge/i.test(x))),['Dodge']);
+ assert.ok(options.searchModels(stock,'Dodge').includes('Nitro'));
+ assert.ok(options.searchModels(stock,'DODGE (USA)').includes('Journey'));
+ assert.equal(aliases.canonicalMake('Dodge Trucks'),'Dodge Trucks');
+ assert.equal(aliases.canonicalMake('Dodge (Canada)'),'Dodge (Canada)');
+ assert.equal(read('src/lib/makeAliases.ts'),read('carmazium app/carmazium app/src/data/makeAliases.ts'));
+});
 // Execute real component event handlers with a small hook scheduler; API mutations are in-memory spies.
 function harness(path,deps={}) {
  const slots=[],effects=[];let cursor=0,tree,component;
@@ -120,4 +131,20 @@ test('warranty filters ignore late responses and remove stale actionable rows wh
  pending[0].resolve({data:{data:[row('STALE123')],total:1}});await h.settle();assert.doesNotMatch(h.text(),/STALE123/);assert.match(h.text(),/NEW123/);
  h.find('button','Refresh').props.onClick();h.render();assert.doesNotMatch(h.text(),/NEW123/);assert.match(h.text(),/Loading orders/);
  pending[2].reject(Error('Offline'));await h.settle();assert.match(h.text(),/Offline/);assert.doesNotMatch(h.text(),/No orders match/);
+});
+
+test('finance search shows loading, empty and error states and ignores an older initial response',async()=>{
+ const pending=[];
+ const h=harness('src/app/dashboard/admin/finance-providers/page.tsx',{
+  '@/lib/apiClient':{apiClient:url=>url.includes('/listings')?new Promise((resolve,reject)=>pending.push({url,resolve,reject})):Promise.resolve({data:[]})},
+ });
+ const row={id:'old',title:'Older initial vehicle',vrm:'OLD123',status:'ACTIVE',financeRouting:null};
+ h.render();assert.match(h.text(),/Loading matching vehicles/);assert.doesNotMatch(h.text(),/No vehicles match/);
+ const searchForm=()=>h.find('form','Search');
+ const submit=searchForm().props.onSubmit({preventDefault(){}});h.render();assert.equal(pending.length,2);
+ pending[1].resolve({data:[]});await submit;await h.settle();assert.match(h.text(),/No vehicles match/);
+ pending[0].resolve({data:[row]});await h.settle();assert.doesNotMatch(h.text(),/Older initial vehicle/);assert.match(h.text(),/No vehicles match/);
+ const failed=searchForm().props.onSubmit({preventDefault(){}});h.render();assert.doesNotMatch(h.text(),/No vehicles match/);
+ pending[2].reject(Error('Offline'));await failed;await h.settle();assert.match(h.text(),/Press Search to try again/);assert.doesNotMatch(h.text(),/No vehicles match/);
+ const recovered=searchForm().props.onSubmit({preventDefault(){}});h.render();pending[3].resolve({data:[row]});await recovered;await h.settle();assert.match(h.text(),/Older initial vehicle/);assert.doesNotMatch(h.text(),/Press Search to try again/);
 });

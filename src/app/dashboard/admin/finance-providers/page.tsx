@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { apiClient } from "@/lib/apiClient"
 
@@ -14,24 +14,36 @@ export default function AdminFinanceProvidersPage() {
     const [referrals, setReferrals] = useState<Referral[]>([])
     const [providers, setProviders] = useState<Provider[]>([])
     const [listings, setListings] = useState<Listing[]>([])
+    const [listingState, setListingState] = useState<"loading" | "ready" | "error">("loading")
+    const listingRequest = useRef(0)
     const [query, setQuery] = useState("")
     const [editId, setEditId] = useState<string | null>(null)
     const [form, setForm] = useState(empty)
     const [error, setError] = useState("")
     const [notice, setNotice] = useState("")
     const [busy, setBusy] = useState(false)
-    const load = useCallback(async () => {
-        const [p, l, r] = await Promise.all([
-            apiClient<{ data: Provider[] }>("/admin/finance-routing/providers"),
-            apiClient<{ data: Listing[] }>("/admin/finance-routing/listings"),
-            apiClient<{ data: Referral[] }>("/admin/finance-routing/referrals"),
-        ])
-        setProviders(p.data); setListings(l.data); setReferrals(r.data)
+    const loadListings = useCallback(async (searchQuery = "") => {
+        const request = ++listingRequest.current
+        setListingState("loading"); setListings([])
+        try {
+            const result = await apiClient<{ data: Listing[] }>(`/admin/finance-routing/listings?q=${encodeURIComponent(searchQuery)}`)
+            if (request === listingRequest.current) { setListings(result.data); setListingState("ready") }
+        } catch (e) {
+            if (request === listingRequest.current) { setListingState("error"); throw e }
+        }
     }, [])
+    const load = useCallback(async () => {
+        const [p, r] = await Promise.all([
+            apiClient<{ data: Provider[] }>("/admin/finance-routing/providers"),
+            apiClient<{ data: Referral[] }>("/admin/finance-routing/referrals"),
+            loadListings(),
+        ])
+        setProviders(p.data); setReferrals(r.data)
+    }, [loadListings])
     useEffect(() => { load().catch(e => setError(e.message)) }, [load])
     async function search(event: React.FormEvent) {
         event.preventDefault(); setBusy(true); setError("")
-        try { setListings((await apiClient<{ data: Listing[] }>(`/admin/finance-routing/listings?q=${encodeURIComponent(query)}`)).data) }
+        try { await loadListings(query) }
         catch (e) { setError(e instanceof Error ? e.message : "Could not search listings.") }
         finally { setBusy(false) }
     }
@@ -57,7 +69,7 @@ export default function AdminFinanceProvidersPage() {
         <DashboardSidebar role="admin" userName="Admin" userType="Administration" />
         <div className="space-y-8 flex-1 min-w-0 max-w-6xl">
         <header><h1 className="text-3xl font-bold mb-3">Finance providers</h1><p className="text-[var(--text-muted)]">Admin appoints finance partners and selects the application shown for each vehicle. Sellers can turn finance display off; this page does not override their choice.</p></header>
-        {error && <p role="alert" className="text-red-500">{error}</p>}
+        {error && <p role="alert" className="text-red-700 dark:text-red-400">{error}</p>}
         {notice && <p role="status" className="text-emerald-600 dark:text-emerald-400">{notice}</p>}
         <section className="grid gap-4 sm:grid-cols-2">
             {providers.map(p => <article key={p.id} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 space-y-3">
@@ -78,8 +90,11 @@ export default function AdminFinanceProvidersPage() {
         </form>
         <section className="space-y-4">
             <h2 className="text-xl font-bold">Choose a provider for a vehicle</h2>
-            <form onSubmit={search} className="flex gap-3"><input aria-label="Search registration or vehicle title" className={input} value={query} onChange={e => setQuery(e.target.value)} placeholder="Registration or vehicle title" /><button disabled={busy} className="px-4 font-bold text-primary">Search</button></form>
+            <form onSubmit={search} className="flex gap-3"><input disabled={busy} aria-label="Search registration or vehicle title" className={input} value={query} onChange={e => setQuery(e.target.value)} placeholder="Registration or vehicle title" /><button disabled={busy} className="px-4 font-bold text-primary">Search</button></form>
             <p className="text-xs text-[var(--text-muted)]">Showing up to 30 matching retail listings. Search by registration to find a specific vehicle.</p>
+            {listingState === "loading" && <p role="status" className="text-[var(--text-muted)]">Loading matching vehicles…</p>}
+            {listingState === "error" && <p role="alert">Vehicle search could not load. Press Search to try again.</p>}
+            {listingState === "ready" && listings.length === 0 && <p role="status">No vehicles match this search. Try another registration or vehicle title, or clear the search and try again.</p>}
             {listings.map(row => <div key={row.id} className="rounded-xl border border-[var(--border-default)] p-4 grid gap-3 md:grid-cols-2 md:items-center">
                 <div><p className="font-bold">{row.title}</p><p className="text-sm text-[var(--text-muted)]">{row.vrm || "No registration"} · {row.status}</p></div>
                 <select aria-label={`Finance provider for ${row.vrm || row.title}`} className={input} disabled={busy} value={!row.financeRouting ? "DEFAULT" : row.financeRouting.providerId || "OFF"} onChange={e => assign(row, e.target.value)}>
