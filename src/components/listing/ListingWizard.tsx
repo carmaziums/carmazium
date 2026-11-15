@@ -1489,8 +1489,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         const labels: Record<string, string> = {
             fuel: 'Fuel Type', transmission: 'Transmission', owners: 'Number of Owners',
             writeoff: 'Insurance Write-Off Status', stolen: 'reported stolen or recovered',
-            finance: 'Outstanding Finance', keeper: 'Registered Keeper',
-            relationship: 'Relationship to the registered keeper',
+            finance: 'Outstanding Finance', keeper: isCaravan ? 'Legal Owner' : 'Registered Keeper',
+            relationship: isCaravan ? 'Relationship to the caravan owner' : 'Relationship to the registered keeper',
             estate: 'Relationship to owner', auctionvalue: 'Estimated Market Value',
         }
         window.requestAnimationFrame(() => {
@@ -3407,9 +3407,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             <p id="listing-service-history-error" role="alert" className="text-xs text-red-400 font-medium">Please select the vehicle’s service history to continue.</p>
                                         )}
                                     </div>
-                                    <SellerFaultDeclaration kind="mechanical" value={formData.mechanicalIssues}
+                                    <SellerFaultDeclaration caravan={isCaravan} kind="mechanical" value={formData.mechanicalIssues}
                                         optional={isCaravan} onChange={value => set("mechanicalIssues", value)} attempted={!isCaravan && hasAttemptedNext} inputClassName={inputCls} />
-                                    <SellerFaultDeclaration kind="electrical" value={formData.electricalIssues}
+                                    <SellerFaultDeclaration caravan={isCaravan} kind="electrical" value={formData.electricalIssues}
                                         optional={isCaravan} onChange={value => set("electricalIssues", value)} attempted={!isCaravan && hasAttemptedNext} inputClassName={inputCls} />
 
                                     {/* Number of Keys */}
@@ -3921,7 +3921,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {/* Title & Description */}
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Listing Title *</label>
-                                <Input aria-label="Listing Title" id="listing-required-title" placeholder="e.g. BMW M4 Competition 2023" value={formData.title} onChange={(e) => set("title", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.title ? 'border-red-500' : ''}`} />
+                                <Input aria-label="Listing Title" id="listing-required-title" placeholder={isCaravan ? "e.g. Four-berth touring caravan" : formData.bodyType === 'CAMPERVAN' ? "e.g. Volkswagen campervan with pop-top roof" : "e.g. BMW M4 Competition 2023"} value={formData.title} onChange={(e) => set("title", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.title ? 'border-red-500' : ''}`} />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)]">{isCaravan ? 'Caravan description (optional)' : 'Description *'}</label>
@@ -4189,7 +4189,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                                 {/* Legal Registered Keeper */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-[var(--text-secondary)]">Are you the legal registered keeper of this vehicle? *</label>
+                                    <label className="text-sm font-bold uppercase text-[var(--text-secondary)]">{isCaravan ? 'Are you the legal owner of this caravan? *' : 'Are you the legal registered keeper of this vehicle? *'}</label>
                                     <div className="flex gap-3">
                                         {([{ label: 'Yes', val: true }, { label: 'No — I am not the keeper', val: false }] as const).map(({ label, val }) => (
                                             <button key={label} type="button"
@@ -4199,17 +4199,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-secondary)] hover:border-blue-500/60"
                                                     }`}
                                             >
-                                                {label}
+                                                {isCaravan && val === false ? 'No — I am selling for the owner' : label}
                                             </button>
                                         ))}
                                     </div>
                                     {formData.isLegalRegisteredKeeper === false && (
                                         <div className="mt-3 space-y-2">
                                             <p className="text-xs text-amber-400 flex items-center gap-1.5">
-                                                <AlertTriangle size={12} /> You may still list this vehicle, but please tell us your relationship to the legal registered keeper.
+                                                <AlertTriangle size={12} /> {isCaravan ? 'You may still list this caravan with authority from its owner. Tell us your relationship to the owner.' : 'You may still list this vehicle, but please tell us your relationship to the legal registered keeper.'}
                                             </p>
                                             <SelectField
-                                                label="Relationship to the registered keeper"
+                                                label={isCaravan ? 'Relationship to the caravan owner' : 'Relationship to the registered keeper'}
                                                 required
                                                 error={hasAttemptedNext && !formData.notOwnerRelationship}
                                                 value={notOwnerRelSelect}
@@ -4217,7 +4217,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 options={NOT_OWNER_RELATIONSHIP_OPTIONS as unknown as { value: string; label: string }[]}
                                             />
                                             {hasAttemptedNext && !formData.notOwnerRelationship && (
-                                                <p className="text-red-400 text-xs mt-1">Please select your relationship to the registered keeper.</p>
+                                                <p className="text-red-400 text-xs mt-1">{isCaravan ? 'Please select your relationship to the caravan owner.' : 'Please select your relationship to the registered keeper.'}</p>
                                             )}
                                             {notOwnerRelSelect === 'Other' && (
                                                 <input

@@ -5,7 +5,8 @@ import { Textarea } from '@/components/ui/Textarea'
 import { faultDeclarationError, isNoKnownFaults, isUndeclaredFaults, NO_KNOWN_FAULTS } from '@/lib/sellerFaultDeclaration'
 
 /** Keep the existing API text field, but require an explicit No or described Yes. */
-export function SellerFaultDeclaration({ kind, value, onChange, attempted, inputClassName, optional = false }: {
+export function SellerFaultDeclaration({ kind, value, onChange, attempted, inputClassName, optional = false, caravan = false }: {
+    caravan?: boolean
     optional?: boolean
     kind: 'mechanical' | 'electrical'
     value: string
@@ -43,12 +44,16 @@ export function SellerFaultDeclaration({ kind, value, onChange, attempted, input
                     aria-invalid={!!error} aria-describedby={error ? `${id}-error` : `${id}-help`}
                     value={value} onChange={event => { setDetailsRequested(true); onChange(event.target.value) }}
                     maxLength={2000} rows={3} className={inputClassName}
-                    placeholder={kind === 'mechanical'
+                    placeholder={caravan ? kind === 'mechanical'
+                        ? 'Describe known faults with the brakes, hitch, chassis, wheels, suspension or stabilisers.'
+                        : 'Describe known faults with the leisure battery, charging, wiring, lights or appliances.' : kind === 'mechanical'
                         ? 'Describe the fault, e.g. clutch judder when cold, suspension knock, oil leak or gearbox noise.'
                         : 'Describe the fault, e.g. warning light, parking sensor fault, battery, window or infotainment problem.'} />
             )}
             <p id={`${id}-help`} className="text-xs text-[var(--text-secondary)]">
-                {kind === 'mechanical'
+                {caravan ? kind === 'mechanical'
+                    ? 'Describe known faults with the caravan brakes, hitch, chassis, wheels, suspension or stabilisers.'
+                    : 'Describe known faults with the leisure battery, charging, wiring, lights or appliances.' : kind === 'mechanical'
                     ? 'Declare any known engine, gearbox, clutch, brake, steering, suspension or other mechanical faults.'
                     : 'Declare any known warning lights, battery/charging, sensor, lighting, infotainment or other electrical faults.'}
             </p>

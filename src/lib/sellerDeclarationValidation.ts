@@ -5,6 +5,7 @@
  * their relationship/authority; never require them to falsely select "Yes".
  */
 export interface SellerDeclarations {
+    bodyType?: string
     writeOffCategory: string
     stolenRecovered: boolean | null
     hasOutstandingFinance: boolean | null
@@ -20,9 +21,10 @@ export function getMissingSellerDeclarations(value: SellerDeclarations): string[
     if (!value.writeOffCategory) missing.push("insurance write-off status")
     if (value.stolenRecovered === null) missing.push("stolen/recovered answer")
     if (value.hasOutstandingFinance === null) missing.push("outstanding finance answer")
-    if (value.isLegalRegisteredKeeper === null) missing.push("registered keeper answer")
+    const owner = value.bodyType === 'CARAVAN' ? 'caravan owner' : 'registered keeper'
+    if (value.isLegalRegisteredKeeper === null) missing.push(`${owner} answer`)
     if (value.isLegalRegisteredKeeper === false && !value.notOwnerRelationship?.trim()) {
-        missing.push("relationship to the registered keeper")
+        missing.push(`relationship to the ${owner}`)
     }
     if (value.isDepartedSale && !value.departedRelationship?.trim()) {
         missing.push("estate/departed-sale relationship")
