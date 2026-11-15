@@ -142,7 +142,7 @@ export function GuidedWebsiteTour({ steps, finish }: { steps: GuidedStep[]; fini
                 {voice && <button type="button" onClick={() => setNarration(value => value + 1)} className="min-h-11 text-sm underline">Read this step again</button>}
             </div>
             {!voiceSupported && <p className="text-xs">Voice guidance is unavailable in this browser. All instructions remain on screen.</p>}
-            {voiceError && <p role="status" className="text-xs">Audio could not start. Try “Read this step again”, or continue with the text.</p>}
+            {voice && voiceError && <p role="status" className="text-xs">Audio could not start. Try “Read this step again”, or continue with the text.</p>}
             <label className="mt-1 block text-xs font-semibold" htmlFor="website-tour-topic">Jump to a topic</label>
             <select id="website-tour-topic" value={index} onChange={event => go(Number(event.target.value))} className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-2 text-sm">{steps.map((step, position) => <option key={step.id} value={position}>{position + 1}. {step.title}</option>)}</select>
             <div className="mt-3 flex justify-between gap-3 border-t border-[var(--border-default)] pt-3"><button type="button" disabled={index === 0} onClick={() => go(index - 1)} className="min-h-11 rounded-xl border border-[var(--border-default)] px-5 font-semibold disabled:opacity-40">Back</button><button type="button" onClick={() => index === steps.length - 1 ? finish("tour_completed") : go(index + 1)} className="min-h-11 rounded-xl bg-primary px-6 font-bold text-white">{index === 0 ? "Start tour" : index === steps.length - 1 ? "Finish tour" : "Next"}</button></div>
