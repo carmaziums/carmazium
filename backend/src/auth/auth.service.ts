@@ -539,19 +539,16 @@ export class AuthService {
                     const resolvedLast =
                         meta.last_name ?? meta.lastName ?? meta.family_name ??
                         (fullNameFallback.includes(' ') ? fullNameFallback.split(' ').slice(1).join(' ') : undefined) ?? null;
-                    localUser = await this.prisma.user.upsert({
-                            where: { email: emailNorm },
-                            update: {
-                                // NEVER update `id` — overwriting the PK would orphan all
-                                // existing listings, sales, and offers for this user.
-                                // Only overwrite name if we have a value (don't blank out existing names).
-                                // Only overwrite role if explicitly present in Supabase metadata —
-                                // avoids stomping over a role set by /users/sync for OAuth users.
-                                ...(resolvedFirst && { firstName: resolvedFirst }),
-                                ...(resolvedLast && { lastName: resolvedLast }),
-                                ...(metaRole && { role: metaRole }),
-                            },
-                            create: {
+                    const include = {
+                        dealerProfile: true,
+                        contractorProfile: true,
+                        financePartnerProfile: true,
+                        insurancePartnerProfile: true,
+                    } as const;
+                    let created = false;
+                    try {
+                        localUser = await this.prisma.user.create({
+                            data: {
                                 id: data.user.id,
                                 email: emailNorm,
                                 firstName: resolvedFirst,
@@ -560,18 +557,32 @@ export class AuthService {
                                 passwordHash: 'SUPABASE_EXTERNAL_AUTH',
                                 isEmailVerified: isEmailConfirmed,
                             },
-                            include: {
-                                dealerProfile: true,
-                                contractorProfile: true,
-                                financePartnerProfile: true,
-                                insurancePartnerProfile: true,
-                            },
+                            include,
                         });
-                    this.logger.log(`Auto-synced new user from Supabase: ${email} (${data.user.id})`);
-                    
-                    // Process any pending dealership invitations
-                    await this.processPendingInvitations(localUser);
-                    this.sendNewAccountOnboarding(localUser);
+                        created = true;
+                    } catch (error: any) {
+                        if (error?.code !== 'P2002') throw error;
+                        // /users/sync or another authenticated request may have
+                        // won the insert. Reuse that account without replaying
+                        // onboarding or overwriting its role from metadata.
+                        localUser = await this.prisma.user.findUnique({
+                            where: { email: emailNorm },
+                            include,
+                        });
+                        if (!localUser) throw error;
+                        if (isEmailConfirmed && !localUser.isEmailVerified) {
+                            localUser = await this.prisma.user.update({
+                                where: { id: localUser.id },
+                                data: { isEmailVerified: true },
+                                include,
+                            });
+                        }
+                    }
+                    if (created) {
+                        this.logger.log(`Auto-synced new user from Supabase: ${email} (${data.user.id})`);
+                        await this.processPendingInvitations(localUser);
+                        this.sendNewAccountOnboarding(localUser);
+                    }
                 } catch (syncErr: any) {
                     this.logger.error(
                         `Auto-sync failed for ${email}: ${syncErr?.message || syncErr}`,

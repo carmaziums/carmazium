@@ -28,31 +28,30 @@ describe('re-registering after deleting an account', () => {
         const prisma: any = {
             user: {
                 findUnique: jest.fn().mockResolvedValue(null),
-                upsert: jest.fn().mockResolvedValue(created),
+                create: jest.fn().mockResolvedValue(created),
                 update: jest.fn(),
             },
         };
         const { service } = makeAuth(prisma, jest.fn().mockResolvedValue(supabaseUser('new-auth-id', 'Sam@Example.com')));
         const result: any = await service.verifySupabaseToken('token');
         expect(result?.id).toBe('new-auth-id');
-        expect(prisma.user.upsert).toHaveBeenCalledWith(expect.objectContaining({
-            where: { email: 'sam@example.com' },
-            create: expect.objectContaining({ id: 'new-auth-id', email: 'sam@example.com' }),
+        expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ id: 'new-auth-id', email: 'sam@example.com' }),
         }));
     });
 
     it('releases a leftover sign-in identity of a self-deleted account so the email can register again', async () => {
         const oldRow = { id: 'old-auth-id', email: 'deleted-old-auth-id@deleted.carmazium.com', deletedAt: new Date(), passwordHash: SELF_DELETED_PASSWORD_MARKER, isEmailVerified: true };
-        const prisma: any = { user: { findUnique: jest.fn().mockResolvedValueOnce(oldRow), upsert: jest.fn(), update: jest.fn() } };
+        const prisma: any = { user: { findUnique: jest.fn().mockResolvedValueOnce(oldRow), create: jest.fn(), update: jest.fn() } };
         const { service, deleteUser } = makeAuth(prisma, jest.fn().mockResolvedValue(supabaseUser('old-auth-id', 'sam@example.com')));
         expect(await service.verifySupabaseToken('token')).toBeNull();
         expect(deleteUser).toHaveBeenCalledWith('old-auth-id');
-        expect(prisma.user.upsert).not.toHaveBeenCalled();
+        expect(prisma.user.create).not.toHaveBeenCalled();
     });
 
     it('never releases the sign-in identity of an admin-banned account', async () => {
         const banned = { id: 'banned-id', email: 'ban@example.com', deletedAt: new Date(), passwordHash: 'SUPABASE_EXTERNAL_AUTH', isEmailVerified: true };
-        const prisma: any = { user: { findUnique: jest.fn().mockResolvedValueOnce(banned), upsert: jest.fn(), update: jest.fn() } };
+        const prisma: any = { user: { findUnique: jest.fn().mockResolvedValueOnce(banned), create: jest.fn(), update: jest.fn() } };
         const { service, deleteUser } = makeAuth(prisma, jest.fn().mockResolvedValue(supabaseUser('banned-id', 'ban@example.com')));
         expect(await service.verifySupabaseToken('token')).toBeNull();
         expect(deleteUser).not.toHaveBeenCalled();
