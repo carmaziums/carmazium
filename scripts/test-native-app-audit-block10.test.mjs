@@ -11,8 +11,8 @@ const native = text('carmazium app/carmazium app/src/screens/onboarding/Onboardi
 const home = text('src/app/HomeClient.tsx');
 
 test('Welcome screen communicates the same pricing as the website', () => {
-  assert.ok(home.includes('Auction <span className="text-primary">FREE</span>'));
-  assert.ok(home.includes('Retail for <span className="text-primary">£1</span>'));
+  assert.match(home, /Auction <span[^>]*>FREE<\/span>/);
+  assert.match(home, /Retail for <span[^>]*>£1<\/span>/);
   assert.ok(home.includes('Successful auction'));
   assert.ok(native.includes('FREE dealer auction'));
   assert.ok(native.includes('£1 retail'));

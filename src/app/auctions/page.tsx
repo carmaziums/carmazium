@@ -256,7 +256,7 @@ export default function TradeXchangePage() {
                     priority
                     className="object-cover object-center"
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-black/20" />
+                <div className="absolute inset-0 bg-slate-950/75" />
                 <div className="container mx-auto px-6 py-20 md:py-28 relative z-10">
                     <div className="max-w-4xl">
                         <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-5 text-xs font-black uppercase tracking-[0.22em] text-red-300">

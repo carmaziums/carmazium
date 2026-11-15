@@ -669,7 +669,7 @@ function DealerCRMContent() {
                                                             value={lead.status}
                                                             disabled={updatingLeadIds.has(lead.id)}
                                                             onChange={e => updateLeadStatus(lead.id, e.target.value)}
-                                                            className="w-full bg-black/40 border border-[var(--border-default)] text-white rounded-xl px-3 py-2 text-xs font-bold tracking-widest uppercase focus:outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer hover:bg-black/60 transition-colors"
+                                                            className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] text-[var(--text-primary)] rounded-xl px-3 py-2 text-xs font-bold tracking-widest uppercase focus:outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer hover:bg-[var(--bg-card-hover)] transition-colors"
                                                         >
                                                             {COLUMNS.map(status => (
                                                                 <option key={status.key} value={status.key} className="bg-[var(--bg-dropdown)]">

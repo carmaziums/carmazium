@@ -155,7 +155,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
               <source src={heroVideoSrc} type="video/mp4" />
             </video>
           )}
-          <div className="absolute inset-0 dark:bg-gradient-to-b dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900" />
+          <div className="absolute inset-0 bg-slate-950/75" />
         </div>
 
         <div className="relative z-10 container mx-auto px-5 max-w-5xl">
@@ -165,7 +165,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="text-5xl md:text-7xl font-bold font-heading mb-6 leading-tight drop-shadow-2xl"
           >
-            Sell Your Car <br /> Your <span className="text-primary tracking-tight">Way</span>
+            Sell Your Car <br /> Your <span className="text-red-300 tracking-tight">Way</span>
           </motion.h1>
 
           <motion.p
@@ -174,18 +174,18 @@ export default function HomeClient({ initialListings, latestRetailListings, late
             transition={{ duration: 0.8, delay: 0.1, ease: "easeOut" }}
             className="text-xl md:text-2xl font-bold mb-3 drop-shadow-lg"
           >
-            Auction <span className="text-primary">FREE</span> &middot; Retail for <span className="text-primary">£1</span>
+            Auction <span className="text-red-300">FREE</span> &middot; Retail for <span className="text-red-300">£1</span>
           </motion.p>
 
           <motion.p
             initial={false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.15, ease: "easeOut" }}
-            className="text-white/70 text-sm md:text-base max-w-2xl mx-auto mb-8"
+            className="text-white/90 text-sm md:text-base max-w-2xl mx-auto mb-8"
           >
-            Sell by auction <span className="text-primary font-semibold">FREE</span> and let verified dealers compete
-            or advertise your car for just <span className="text-primary font-semibold">£1</span>. Successful auction
-            sale? Get a <span className="text-primary font-semibold">£100</span> reward.
+            Sell by auction <span className="text-red-300 font-semibold">FREE</span> and let verified dealers compete
+            or advertise your car for just <span className="text-red-300 font-semibold">£1</span>. Successful auction
+            sale? Get a <span className="text-red-300 font-semibold">£100</span> reward.
           </motion.p>
 
           <motion.div
@@ -195,7 +195,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
           >
             <form
               onSubmit={handleAiSearch}
-              className="flex flex-col md:flex-row w-full max-w-3xl mx-auto mb-4 glass-strong p-2 rounded-3xl border border-white/20 shadow-2xl relative overflow-hidden group"
+              className="flex flex-col md:flex-row w-full max-w-3xl mx-auto mb-4 bg-[var(--bg-dropdown)] text-[var(--text-primary)] p-2 rounded-3xl border border-[var(--border-default)] shadow-2xl relative overflow-hidden group"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:animate-shine pointer-events-none" />
               <input
@@ -204,7 +204,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
                 onChange={(e) => setSearchQuery(e.target.value)}
                 aria-label="Describe the car you want"
                 placeholder="Ask AI: e.g. red SUV under £30k..."
-                className="flex-1 min-w-0 bg-transparent px-8 py-4 text-white placeholder:text-[var(--text-muted)] focus:outline-none text-lg truncate"
+                className="flex-1 min-w-0 bg-transparent px-8 py-4 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none text-lg truncate"
               />
               <Button
                 type="submit"
@@ -240,14 +240,14 @@ export default function HomeClient({ initialListings, latestRetailListings, late
                 transition={{ duration: 0.4 }}
                 className="w-full max-w-3xl mx-auto mb-8"
               >
-                <div className="glass-strong rounded-2xl border border-white/15 p-6 text-left shadow-2xl backdrop-blur-xl">
+                <div className="bg-[var(--bg-dropdown)] text-[var(--text-primary)] rounded-2xl border border-[var(--border-default)] p-6 text-left shadow-2xl">
                   {aiSearching ? (
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                         <Sparkles size={20} className="text-primary animate-pulse" />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-white">Mazium AI is thinking...</p>
+                        <p className="text-sm font-bold text-[var(--text-primary)]">Mazium AI is thinking...</p>
                         <div className="flex gap-1.5 mt-2">
                           <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce [animation-delay:0ms]" />
                           <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce [animation-delay:150ms]" />
@@ -262,8 +262,8 @@ export default function HomeClient({ initialListings, latestRetailListings, late
                           <Sparkles size={20} className="text-primary" />
                         </div>
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-wider text-primary mb-1">AI Recommendation</p>
-                          <p className="text-white text-sm leading-relaxed">{aiResult.text}</p>
+                          <p className="text-xs font-bold uppercase tracking-wider text-red-700 dark:text-red-300 mb-1">AI Recommendation</p>
+                          <p className="text-[var(--text-secondary)] text-sm leading-relaxed">{aiResult.text}</p>
                         </div>
                       </div>
 
@@ -277,7 +277,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
                           </div>
                           <div className="text-left flex-1">
                             <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">View matching cars</p>
-                            <p className="text-base font-semibold text-white">{aiResult.filterCard.label}</p>
+                            <p className="text-base font-semibold text-[var(--text-primary)]">{aiResult.filterCard.label}</p>
                           </div>
                           <ArrowRight size={18} className="text-primary group-hover:translate-x-1 transition-transform" />
                         </button>

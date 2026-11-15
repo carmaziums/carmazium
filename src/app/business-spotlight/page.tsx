@@ -46,7 +46,7 @@ export default function BusinessSpotlightDirectory() {
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
                     href={`/business-spotlight/${business.slug}`}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#258f86] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#16756f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#16756f] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#105c57] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                   >
                     Read business profile <ArrowRight size={16} aria-hidden="true" />
                   </Link>
@@ -69,7 +69,7 @@ export default function BusinessSpotlightDirectory() {
               <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--text-secondary)]">
                 Contact CarMazium to discuss an editorial or promotional feature. Listing and placement are subject to approval, accurate business information and agreed terms.
               </p>
-              <a href="mailto:info@carmazium.com?subject=Business%20Spotlight%20Enquiry" className="mt-4 inline-flex font-bold text-[#2aa99a] underline underline-offset-4">
+              <a href="mailto:info@carmazium.com?subject=Business%20Spotlight%20Enquiry" className="mt-4 inline-flex font-bold text-[#16756f] dark:text-[#2aa99a] underline underline-offset-4">
                 info@carmazium.com
               </a>
             </div>
