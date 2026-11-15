@@ -1,111 +1,40 @@
-"use client"
-
 import Image from "next/image"
 import Link from "next/link"
-import { motion } from "framer-motion"
 import { ArrowRight } from "lucide-react"
-import { useTheme } from "next-themes"
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/Button"
+
+const CATEGORIES = [
+  { title: "Everyday essentials", description: "Explore hatchbacks for everyday life.", href: "/search?bodyType=HATCHBACK", image: "/assets/images/body-hatchback.webp", alt: "Illustrative silver hatchback" },
+  { title: "Room for more", description: "Find cars with seven seats or more.", href: "/search?minSeats=7", image: "/assets/images/body-suv.webp", alt: "Illustrative family SUV" },
+  { title: "Electric & hybrid", description: "Explore a different way to drive.", href: "/search?fuelTypes=Electric%2CHybrid", image: "/assets/images/body-saloon.webp", alt: "Illustrative saloon car" },
+]
 
 export function DiscoverSection() {
-    const { resolvedTheme } = useTheme()
-    const [mounted, setMounted] = useState(false)
-    useEffect(() => setMounted(true), [])
-    const isLight = mounted && resolvedTheme === "light"
-
-    return (
-        <section className="relative overflow-hidden">
-            {/* Background — brand gradient from dark secondary to primary (light mode gets a soft pastel version) */}
-            <div
-                className="absolute inset-0"
-                style={{
-                    background: isLight
-                        ? "linear-gradient(135deg, #eef2f8 0%, #e6edf5 40%, #fbe4e2 60%, #fbd3ce 85%, #f8b8b0 100%)"
-                        : "linear-gradient(135deg, #1e293b 0%, #0f172a 40%, #1e293b 60%, #2d1215 85%, #ed1c24 100%)",
-                }}
-            />
-            {/* Subtle radial glow behind center car */}
-            <div className="absolute inset-0 pointer-events-none" style={{
-                background: "radial-gradient(ellipse 50% 80% at 50% 70%, rgba(237,28,36,0.12) 0%, transparent 70%)",
-            }} />
-
-            <div className="relative z-10 pt-16 pb-0">
-                <div className="container mx-auto px-5">
-                    {/* Heading */}
-                    <motion.h2
-                        initial={{ opacity: 0, y: 30 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.7 }}
-                        className="text-4xl md:text-5xl lg:text-6xl font-bold font-heading text-center mb-4 drop-shadow-lg"
-                        style={{ color: isLight ? 'var(--text-primary)' : '#ffffff' }}
-                    >
-                        Discover your perfect car
-                    </motion.h2>
-
-                    <motion.p
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.7, delay: 0.15 }}
-                        className="text-[var(--text-secondary)] text-center text-lg md:text-xl max-w-2xl mx-auto mb-12"
-                    >
-                        Explore used cars across the UK from verified sellers
-                    </motion.p>
-
-                    {/* CTA */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 15 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.6, delay: 0.25 }}
-                        className="flex justify-center mb-12"
-                    >
-                        <Link href="/search">
-                            <Button size="lg" shape="pill" className="px-10 py-6 text-lg shadow-neon hover:scale-105 transition-transform">
-                                Browse All Cars <ArrowRight className="ml-2 h-5 w-5" />
-                            </Button>
-                        </Link>
-                    </motion.div>
-                </div>
-
-                {/* Three Cars — Hero Image — FULL WIDTH edge-to-edge */}
-                <motion.div
-                    initial={{ opacity: 0, y: 40 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.8, delay: 0.3 }}
-                    className="relative w-full"
-                >
-                    <div 
-                        className="relative w-full overflow-hidden aspect-[5/2] md:aspect-[1360/389]"
-                        style={{ 
-                            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 70%, transparent 100%)',
-                            maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 70%, transparent 100%)'
-                        }}
-                    >
-                        <Image
-                            src={isLight ? "/assets/images/discover-hero-light.webp" : "/assets/images/discover-hero.webp"}
-                            alt="Discover your perfect car — Blue pickup, Red SUV, White sedan"
-                            fill
-                            sizes="100vw"
-                            className="object-cover object-center"
-                            loading="lazy"
-                        />
-                    </div>
-                </motion.div>
-            </div>
-
-            {/* Bottom transition overlay — merges the section gradient into the page background */}
-            <div
-                className="absolute bottom-0 left-0 right-0 h-16 md:h-48 z-20 pointer-events-none"
-                style={{
-                    background: isLight
-                        ? "linear-gradient(to top, var(--bg-body), color-mix(in srgb, var(--bg-body) 80%, transparent), transparent)"
-                        : "linear-gradient(to top, #0f172a, rgba(15,23,42,0.8), transparent)",
-                }}
-            />
-        </section>
-    )
+  return (
+    <section className="py-12 md:py-16" aria-labelledby="home-discover-heading">
+      <div className="container mx-auto px-5">
+        <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-primary">Discover your perfect car</p>
+            <h2 id="home-discover-heading" className="font-heading text-3xl font-bold tracking-tight md:text-4xl">Find a car that fits your life.</h2>
+            <p className="mt-3 text-sm text-[var(--text-secondary)]">Explore used cars across the UK from verified sellers.</p>
+          </div>
+          <Link href="/search" className="inline-flex min-h-11 items-center gap-2 text-sm font-bold underline underline-offset-4">Browse All Cars <ArrowRight size={17} aria-hidden="true" /></Link>
+        </div>
+        <div className="grid gap-5 sm:grid-cols-3">
+          {CATEGORIES.map(category => (
+            <Link key={category.title} href={category.href} className="group block overflow-hidden rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+              <div className="relative aspect-[16/9] overflow-hidden bg-white">
+                <Image src={category.image} alt={category.alt} fill sizes="(max-width: 639px) 100vw, 33vw" className="object-cover" />
+              </div>
+              <div className="p-5">
+                <h3 className="font-heading text-xl font-bold tracking-tight group-hover:text-primary">{category.title}</h3>
+                <p className="mt-2 text-sm text-[var(--text-muted)]">{category.description}</p>
+                <span className="mt-4 inline-flex items-center gap-2 text-sm font-bold underline underline-offset-4">Explore cars <ArrowRight size={16} aria-hidden="true" /></span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
 }

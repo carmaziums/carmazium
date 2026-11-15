@@ -14,7 +14,7 @@ test("homepage replaces old low-contrast banner instead of stacking another iden
   assert.ok(!home.includes("iPhone or Android — check the verified install links"))
   assert.ok(!home.includes("iPhone &amp; Android"))
   assert.ok(!home.includes("bg-gradient-to-r from-red-500/10 via-[var(--bg-card)]"))
-  assert.ok(home.indexOf("<HomeAppPromoCompact />") < home.indexOf("<DiscoverSection />"))
+  assert.ok(home.indexOf("<HomeAppPromoCompact />") > home.indexOf("<DiscoverSection />"))
 })
 
 test("compact banner shares approved campaign palette while remaining compact and responsive", () => {
