@@ -32,7 +32,9 @@ export function DealerServicePreferences() {
         try {
             await apiClient("/users/dealer-profile", { method: "PATCH", body: JSON.stringify({ [key]: enabled }) })
             await refreshProfile()
-            setMessage("Service preference saved.")
+            setMessage(enabled && (key === 'financeOffered' || key === 'warrantyOffered')
+                ? "Badge enabled on your own listings. Buyers will contact you for details; no provider application is needed."
+                : enabled ? "Service preference saved. Use the setup link below that service to complete its checks." : "Service preference turned off.")
         } catch (e) { setMessage(e instanceof Error ? e.message : "Could not save. Please try again.") }
         finally { setBusy(false) }
     }
@@ -41,10 +43,13 @@ export function DealerServicePreferences() {
         <p className="text-sm text-[var(--text-muted)]">New dealer accounts start with all four options on. Turn off any service you do not offer. Badges apply only to your listings; buyers should contact you for details.</p>
         <div className="grid gap-4 sm:grid-cols-2">{options.map(([key, title, description]) => {
             const enabled = dealer[key] !== false
-            return <label key={key} data-tour={key} className="flex items-start gap-3 rounded-xl border border-[var(--border-default)] p-4">
+            return <div key={key} className="rounded-xl border border-[var(--border-default)] p-4"><label data-tour={key} className="flex items-start gap-3">
                 <input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={enabled} disabled={busy} onChange={e => toggle(key, e.target.checked)} />
                 <span><span className="block font-semibold">{title}</span><span className="block mt-1 text-sm text-[var(--text-muted)]">{description}</span></span>
             </label>
+                {(key === 'deliveryServicesEnabled' || key === 'inspectionServicesEnabled') && <Link href={`/dashboard/service/capabilities#service-${key === 'deliveryServicesEnabled' ? 'delivery' : 'inspection'}`} className="mt-2 inline-flex min-h-11 items-center font-semibold text-primary underline">{key === 'deliveryServicesEnabled' ? 'Set up collection, delivery and recovery' : 'Set up vehicle inspection'}</Link>}
+                {(key === 'financeOffered' || key === 'warrantyOffered') && <p className="mt-2 text-xs text-[var(--text-muted)]">{enabled ? 'Badge on — buyers contact you for details.' : 'Badge off — hidden from your listings.'} No provider application is needed for this badge.</p>}
+            </div>
         })}</div>
         <p className="text-sm text-[var(--text-muted)]">Paid jobs reuse your approved dealer KYC and one-time £1 account verification. No additional verification payment is required for services. A verified business payout account is required. Turning a service on does not approve your application.</p>
         <Link className="inline-block font-semibold text-primary underline" href="/dashboard/service/capabilities">Complete service setup</Link>

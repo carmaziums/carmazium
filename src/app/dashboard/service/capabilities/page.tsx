@@ -2,15 +2,17 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { serviceVerificationPath, type JobService } from "@/lib/serviceSetupRouting"
 import { buttonVariants } from "@/components/ui/buttonVariants"
 import { AlertCircle, ArrowRight, CheckCircle, Clock, CreditCard, FileText, Landmark, Loader2, ShieldCheck, Truck, Wrench, XCircle } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/Button"
 import { apiClient } from "@/lib/apiClient"
-import { getMyCapabilities, applyCapability, SERVICE_LABELS, type MyCapabilities, type ServiceType, type CapabilityStatus } from "@/lib/servicesApi"
+import { getMyCapabilities, applyCapability, SERVICE_LABELS, type MyCapabilities, type CapabilityStatus } from "@/lib/servicesApi"
 
-const APPLICABLE: { type: ServiceType; icon: React.ComponentType<{ size?: number; className?: string }>; blurb: string; payout: boolean }[] = [
+const APPLICABLE: { type: JobService; icon: React.ComponentType<{ size?: number; className?: string }>; blurb: string; payout: boolean }[] = [
     { type: "DELIVERY", icon: Truck, blurb: "Quote on vehicle moves and recoveries. CarMazium keeps 9%; your Partner business receives 91% after completion.", payout: true },
     { type: "INSPECTION", icon: Wrench, blurb: "Quote on pre-purchase and trade vehicle inspections. CarMazium keeps 9%; your Partner business receives 91% after completion.", payout: true },
 ]
@@ -25,6 +27,7 @@ const inputCls = "w-full rounded-xl border px-4 py-3 text-sm outline-none focus:
 const labelCls = "block text-[11px] font-extrabold uppercase tracking-widest text-[var(--text-muted)] mb-2"
 
 export default function CapabilitiesPage() {
+    const router = useRouter()
     const { user, profile, loading: authLoading, refreshProfile } = useAuth()
     const [data, setData] = React.useState<MyCapabilities | null>(null)
     const [error, setError] = React.useState<string | null>(null)
@@ -64,18 +67,26 @@ export default function CapabilitiesPage() {
         if (!authLoading && user && isProvider) load()
     }, [authLoading, user, isProvider, load])
 
-    const apply = async (type: ServiceType) => {
+    React.useEffect(() => {
+        if (!data || !['#service-delivery', '#service-inspection'].includes(window.location.hash)) return
+        const target = document.getElementById(window.location.hash.slice(1))
+        target?.scrollIntoView({ block: 'start', behavior: 'instant' })
+        target?.querySelector<HTMLElement>('h3')?.focus({ preventScroll: true })
+    }, [data])
+
+    const apply = async (type: JobService) => {
         setBusy(type); setError(null)
         try {
+            let response: unknown
             if (isPartner) {
                 if (!profile?.dealerProfile) {
                     throw new Error("Set up your Partner business details first from the Partner Dashboard.")
                 }
-                await apiClient(`/services/team/capabilities/${type}`, { method: "POST" })
+                response = await apiClient(`/services/team/capabilities/${type}`, { method: "POST" })
             } else {
-                await applyCapability({ serviceType: type, businessName: businessName.trim() || undefined, phone: phone.trim() || undefined, serviceArea: serviceArea.trim() || undefined })
+                response = await applyCapability({ serviceType: type, businessName: businessName.trim() || undefined, phone: phone.trim() || undefined, serviceArea: serviceArea.trim() || undefined })
             }
-            load()
+            router.push(serviceVerificationPath(response, type))
         } catch (e: any) {
             setError(e?.message || "Could not apply")
         } finally {
@@ -154,10 +165,10 @@ export default function CapabilitiesPage() {
                                     const cap = byType.get(type)
                                     const st = cap ? STATUS_UI[cap.status] : null
                                     const canApply = !cap || cap.status === "REJECTED" || cap.status === "SUSPENDED"
-                                    return <div key={type} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+                                    return <div key={type} id={`service-${type.toLowerCase()}`} className="scroll-mt-28 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 flex flex-col sm:flex-row sm:items-center gap-4">
                                         <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0"><Icon size={20} className="text-primary" /></div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 flex-wrap"><h3 className="font-heading font-bold">{SERVICE_LABELS[type]}</h3>{st && <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${st.cls}`}><st.icon size={11} /> {st.label}</span>}</div>
+                                            <div className="flex items-center gap-2 flex-wrap"><h3 tabIndex={-1} className="font-heading font-bold">{SERVICE_LABELS[type]}</h3>{st && <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${st.cls}`}><st.icon size={11} /> {st.label}</span>}</div>
                                             <p className="text-xs text-[var(--text-muted)] mt-1">{blurb}</p>
                                             {payout && !data.stripeConnect.complete && <p className="text-[11px] text-amber-500 mt-2">Stripe Connect must be completed before admin can approve this paid-job service.</p>}
                                             {cap?.reviewNote && (cap.status === "REJECTED" || cap.status === "SUSPENDED") && <p className="text-xs text-red-500 mt-2">{cap.reviewNote}</p>}
@@ -165,7 +176,6 @@ export default function CapabilitiesPage() {
                                                 <Link href={`/dashboard/service/capabilities/${cap.id}/verification`} className={buttonVariants({ variant: "outline", size: "sm" })}><FileText size={13} /> {type === "INSPECTION" ? "Service declaration" : "Service declaration and trade insurance"}</Link>
                                                 <Link href={`/dashboard/service/capabilities/${cap.id}/matching`} className={buttonVariants({ variant: "outline", size: "sm" })}>Matching settings</Link>
                                             </div>}
-                                            {cap && (type === "FINANCE" || type === "WARRANTY") && !cap.leadNationwide && cap.leadPostcodeAreas.length === 0 && <p className="text-[11px] text-amber-500 mt-2">Configure matching coverage before this service can receive enquiries.</p>}
                                             {cap && (type === "DELIVERY" || type === "INSPECTION") && !cap.jobNationwide && cap.jobPostcodeAreas.length === 0 && <p className="text-[11px] text-amber-500 mt-2">Configure job coverage before this service can see or quote open work.</p>}
                                         </div>
                                         {canApply

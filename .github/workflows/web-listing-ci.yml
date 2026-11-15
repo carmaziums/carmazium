@@ -4,6 +4,13 @@ on:
   pull_request:
     paths:
       - "src/components/onboarding/**"
+      - "src/lib/serviceSetupRouting.ts"
+      - "src/lib/partnershipContact.ts"
+      - "scripts/test-service-setup-routing.test.mjs"
+      - "src/app/auctions/page.tsx"
+      - "src/app/contact/page.tsx"
+      - "src/app/dashboard/service/capabilities/**"
+      - "src/app/dashboard/partner/page.tsx"
       - "src/lib/guidedWebsiteTour.ts"
       - "scripts/generate-tour-narration.mjs"
       - "scripts/test-website-introduction.test.mjs"
@@ -177,6 +184,9 @@ jobs:
 
       - name: Guided tour roles and approved narration catalog
         run: node --test scripts/test-website-introduction.test.mjs
+
+      - name: Service setup and provider partnership routing
+        run: node --test scripts/test-service-setup-routing.test.mjs
 
       - name: Caravan buyer facts exclude motor-vehicle reports
         run: node --test scripts/test-caravan-buyer-information.test.mjs
