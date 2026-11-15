@@ -805,6 +805,11 @@ export function Header() {
 
 
 
+                        <div className="flex min-h-12 items-center justify-between rounded-xl border border-[var(--border-default)] px-4 py-3">
+                            <span className="text-base font-semibold">Appearance</span>
+                            <ThemeToggle />
+                        </div>
+
                         <Link
                             href="/download-app"
                             onClick={() => setIsMobileMenuOpen(false)}
