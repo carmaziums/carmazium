@@ -1,3 +1,4 @@
+import { ServiceJobAlertsService } from './service-job-alerts.service';
 import { dealerServiceEligibilityWhere, assertDealerServiceReady } from './dealer-service-eligibility';
 import {
     Injectable,
@@ -92,6 +93,7 @@ export class ServicesService {
         private readonly payments: PaymentsService,
         private readonly config: ConfigService,
         @Optional() private readonly tradeTeam?: TradeTeamService,
+        @Optional() private readonly jobAlerts?: ServiceJobAlertsService,
     ) { }
 
     // ── Money ──────────────────────────────────────────────────────────────
@@ -727,6 +729,7 @@ export class ServicesService {
 
         this.logger.log(`Service job ${job.id} (${job.serviceType}) posted by ${customerId}`);
         await this.notifyAdminsOfNewJob(job);
+        void this.jobAlerts?.forJob(job.id);
         return job;
     }
 
@@ -909,6 +912,7 @@ export class ServicesService {
                 include: { vehicles: true },
             }));
             await this.notifyAdminsOfNewJob(job);
+        void this.jobAlerts?.forJob(job.id);
             return job;
         } catch (error) {
             // The database has partial unique indexes for active purchase-linked
@@ -1047,6 +1051,7 @@ export class ServicesService {
             include: { vehicles: true },
         }));
         await this.notifyAdminsOfNewJob(job);
+        void this.jobAlerts?.forJob(job.id);
         return job;
     }
 

@@ -143,11 +143,11 @@ export default function CapabilitiesPage() {
                         <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
                             <h2 className="text-xs font-black uppercase tracking-widest text-primary mb-4">Your business</h2>
                             <div className="grid sm:grid-cols-2 gap-4">
-                                <div className="sm:col-span-2"><label className={labelCls}>Trading name</label><input className={inputCls} value={businessName} onChange={e => setBusinessName(e.target.value)} placeholder="e.g. Midlands Vehicle Services" maxLength={120} /></div>
-                                <div><label className={labelCls}>Business phone</label><input className={inputCls} value={phone} onChange={e => setPhone(e.target.value)} maxLength={30} /></div>
-                                <div><label className={labelCls}>Area you cover</label><input className={inputCls} value={serviceArea} onChange={e => setServiceArea(e.target.value)} placeholder="Nationwide, West Midlands..." maxLength={200} /></div>
+                                <div className="sm:col-span-2"><label className={labelCls}>Trading name</label><input aria-label="Trading name" readOnly={isPartner} className={inputCls} value={businessName} onChange={e => setBusinessName(e.target.value)} placeholder="e.g. Midlands Vehicle Services" maxLength={120} /></div>
+                                <div><label className={labelCls}>Business phone</label><input aria-label="Business phone" readOnly={isPartner} className={inputCls} value={phone} onChange={e => setPhone(e.target.value)} maxLength={30} /></div>
+                                <div><label className={labelCls}>Area you cover</label><input aria-label="Area you cover" readOnly={isPartner} className={inputCls} value={serviceArea} onChange={e => setServiceArea(e.target.value)} placeholder="Nationwide, West Midlands..." maxLength={200} /></div>
                             </div>
-                            {isPartner && <p className="text-xs text-[var(--text-muted)] mt-3">Partner business details are managed centrally from your Partner Dashboard/Profile.</p>}
+                            {isPartner && <p className="text-xs text-[var(--text-muted)] mt-3">Your business details are shown here for reference. <Link href="/profile?section=business" className="font-semibold text-[var(--primary)] underline">Edit them in Account Settings.</Link></p>}
                         </section>
 
                         <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">

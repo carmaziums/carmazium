@@ -1,3 +1,6 @@
+import { NotificationsService } from '../notifications/notifications.service';
+import { ServiceJobAlertsService } from './service-job-alerts.service';
+import { eligibleJobProviderWhere } from './service-job-alert-eligibility';
 import { dealerServiceEligibilityWhere } from './dealer-service-eligibility';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -23,7 +26,7 @@ integration('TradeXchange: real PostgreSQL transactions, synthetic Stripe only',
     for (const statement of migration.split(';').filter(s => s.trim())) await db.$executeRawUnsafe(statement);
     const id = randomUUID();
     customer = await db.user.create({ data: { email: `trade-c-${id}@invalid.example`, passwordHash: 'synthetic', role: 'BUYER' } });
-    providerUser = await db.user.create({ data: { email: `trade-p-${id}@invalid.example`, passwordHash: 'synthetic', role: 'DEALER', stripeConnectAccountId: 'acct_synthetic' } });
+    providerUser = await db.user.create({ data: { email: `trade-p-${id}@invalid.example`, passwordHash: 'synthetic', role: 'DEALER', stripeConnectAccountId: 'acct_synthetic', stripeConnectOnboardingComplete: true } });
     const dealer = await db.dealerProfile.create({ data: { userId: providerUser.id, companyName: 'Synthetic service test', vatNumber: 'SYNTHETIC', isVerified: true } });
     const kyc = await db.dealerKyc.create({ data: {
         dealerProfileId: dealer.id, companyHouseName: 'Synthetic service test', representativeName: 'Synthetic owner', representativePosition: 'Owner',
@@ -77,6 +80,51 @@ integration('TradeXchange: real PostgreSQL transactions, synthetic Stripe only',
       await db.dealerProfile.update({ where: { id: dealer.id }, data: { inspectionServicesEnabled: true } });
       await db.user.update({ where: { id: providerUser.id }, data: { role: 'DEALER' } });
     }
+  });
+
+  it('posts a job, receives competing quotes, accepts one and completes synthetic payment and payout', async () => {
+    const secondUser = await db.user.create({data:{email:`trade-second-${randomUUID()}@invalid.example`,passwordHash:'synthetic',role:'CONTRACTOR',stripeConnectAccountId:'acct_synthetic_second',stripeConnectOnboardingComplete:true}});
+    const second = await db.contractorProfile.create({data:{userId:secondUser.id,businessName:'Synthetic competitor',serviceTypes:['DELIVERY'],certifications:[]}});
+    await db.contractorCapability.create({data:{contractorId:second.id,serviceType:'DELIVERY',status:'APPROVED',verificationStatus:'VERIFIED',verificationExpiresAt:new Date(Date.now()+86400000),jobNationwide:true}});
+    const posted = await service.createJob(customer.id,{serviceType:'DELIVERY',title:'Synthetic CI lifecycle only',pickupPostcode:'B1 1AA',deliveryPostcode:'B2 2BB',vehicles:[{notes:'Synthetic disposable test, no real vehicle'}]});
+    const match = () => db.contractorCapability.findMany({where:eligibleJobProviderWhere(posted)});
+    expect((await match()).map(x=>x.contractorId)).toEqual(expect.arrayContaining([provider.id,second.id]));
+    const dealer = await db.dealerProfile.findUniqueOrThrow({where:{userId:providerUser.id}});
+    try {
+      await db.dealerProfile.update({where:{id:dealer.id},data:{deliveryServicesEnabled:false}});
+      expect((await match()).map(x=>x.contractorId)).not.toContain(provider.id);
+    } finally { await db.dealerProfile.update({where:{id:dealer.id},data:{deliveryServicesEnabled:true}}); }
+    const gateway={sendNotification:jest.fn(),isUserConnected:()=>true};
+    const realNotifications=new NotificationsService(db,{get:()=>gateway} as any,email as any);
+    const alerts=new ServiceJobAlertsService(db,realNotifications);
+    const previous=process.env.NOTIFICATION_EMAILS_ENABLED;process.env.NOTIFICATION_EMAILS_ENABLED='true';
+    try {
+      await Promise.all([alerts.forJob(posted.id),alerts.forJob(posted.id)]);
+      const notices=await db.notification.findMany({where:{entityId:posted.id,type:'SERVICE_JOB_AVAILABLE'}});
+      expect(notices.filter(x=>x.userId===providerUser.id)).toHaveLength(1);
+      expect(notices.filter(x=>x.userId===secondUser.id)).toHaveLength(1);
+      expect(notices.some(x=>x.userId===customer.id)).toBe(false);
+      expect(notices.every(x=>(x.data as any)._email.state==='pending')).toBe(true);
+      const claimed=await (realNotifications as any).claimEmailBatch();
+      const ownClaim=claimed.find((x:any)=>x.id===notices.find(n=>n.userId===providerUser.id)?.id);
+      expect(ownClaim.entityId).toBe(posted.id);
+      await (realNotifications as any).deliverClaimedEmail(ownClaim);
+      expect((await db.notification.findUniqueOrThrow({where:{id:ownClaim.id}})).data).toMatchObject({_email:{state:'sent'}});
+    } finally { if(previous===undefined)delete process.env.NOTIFICATION_EMAILS_ENABLED;else process.env.NOTIFICATION_EMAILS_ENABLED=previous; }
+    const a=await service.upsertQuote(provider.id,['DELIVERY'],providerUser.id,posted.id,{amountPence:10000});
+    const b=await service.upsertQuote(second.id,['DELIVERY'],secondUser.id,posted.id,{amountPence:9000});
+    expect(await db.serviceQuote.count({where:{jobId:posted.id,status:'ACTIVE'}})).toBe(2);
+    await expect(service.acceptQuote(outsider.id,posted.id,b.id)).rejects.toThrow();
+    expect(await service.acceptQuote(customer.id,posted.id,b.id)).toEqual({checkoutUrl:'https://synthetic.invalid/checkout'});
+    let after=await current(posted.id);
+    expect(after.status).toBe('ACCEPTED');expect(after.payment).toMatchObject({grossPence:9000,platformFeePence:810,contractorPence:8190,status:'PENDING'});
+    expect((await db.serviceQuote.findUniqueOrThrow({where:{id:a.id}})).status).toBe('DECLINED');
+    await expect(service.startJob(second.id,posted.id)).rejects.toThrow();
+    await service.markPaid(posted.id,after.payment!.id,`pi_synthetic_${randomUUID()}`);
+    await service.startJob(second.id,posted.id);await service.completeJob(second.id,posted.id);
+    await service.confirmCompletion(customer.id,posted.id);
+    after=await current(posted.id);expect(after.status).toBe('RELEASED');expect(after.payment!.status).toBe('RELEASED');
+    expect(stripe.transfers.create.mock.calls[0][0].amount).toBe(8190);
   });
 
   async function job(status: any = 'COMPLETED') {
