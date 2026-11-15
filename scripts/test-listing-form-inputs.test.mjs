@@ -93,7 +93,7 @@ test('both caravan listing methods accept manual details without VRM, VIN, year 
     ctx.damageEntryPending = false;
     assert.equal(wizardFunction(wizardFile, 'getStepValidationError', ctx)(2), null);
     draft.images = [];
-    assert.match(wizardFunction(wizardFile, 'getStepValidationError', ctx)(2), /one photo/);
+    assert.match(wizardFunction(wizardFile, 'getStepValidationError', ctx)(2), /1 more photo/);
   }
 });
 test('auction and retail cannot advance or submit a restored draft with missing seller history/keys', () => {
