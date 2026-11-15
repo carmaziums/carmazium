@@ -195,6 +195,8 @@ jobs:
       - name: Seller gearbox and body-type regression tests
         run: npm run test:seller-specs
 
+      - name: CRM pagination, isolated rollback and complete provider totals
+        run: node --test scripts/test-dealer-crm-audit.test.mjs
       - name: Guided tour roles and approved narration catalog
         run: node --test scripts/test-website-introduction.test.mjs
 
