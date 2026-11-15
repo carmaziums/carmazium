@@ -898,7 +898,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 vehicleType: 'CAR',
                 bodyType: key,
                 badgeTier: 'BASIC',
-                vrm: '', mileage: '', fuelType: '', transmission: '',
+                vrm: '', vin: prev.vin, mileage: '', fuelType: '', transmission: '',
                 engineSize: '', bhp: '', motStatus: '', taxStatus: '',
                 motExpiryDate: '', taxDueDate: '', motHistory: [],
                 officialVehicleData: undefined, euroStandard: '',
@@ -909,6 +909,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             setDvlaError(null)
             setBaseValuation(null)
             setValuation(null)
+            setDamageRecords([])
         } else {
             set('bodyType', key)
         }
@@ -1254,9 +1255,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             case 1: {
                 const inputIssue = listingDetailsInputIssue(formData)
                 if (inputIssue) return inputIssue.message
+                if (isCaravan) {
+                    const missing: string[] = []
+                    if (!formData.title || formData.title.trim().length < 5) missing.push('listing title')
+                    if (!formData.location.trim()) missing.push('location')
+                    if (formData.isLegalRegisteredKeeper === false && !formData.notOwnerRelationship?.trim()) missing.push('authority to sell')
+                    if (formData.isDepartedSale && !formData.departedRelationship?.trim()) missing.push('estate/departed-sale relationship')
+                    return missing.length ? `Please complete: ${missing.join(', ')}.` : null
+                }
                 const missing: string[] = []
                 if (!isCaravan && !formData.vrm.trim()) missing.push('registration')
-                if (isCaravan && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(formData.vin.trim())) missing.push('17-character caravan VIN (CRiS)')
                 if (!formData.make.trim()) missing.push('make')
                 if (!formData.model.trim()) missing.push('model')
                 if (!formData.year) missing.push('year')
@@ -1288,9 +1296,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 if (damageEntryPending) {
                     return 'Please save or cancel the open damage entry before leaving Photos. Wait for any photo upload to finish.'
                 }
-                const missingPhotos = Math.max(0, 10 - formData.images.length)
+                const minPhotos = isCaravan ? 1 : 10
+                const missingPhotos = Math.max(0, minPhotos - formData.images.length)
                 return missingPhotos > 0
-                    ? `Please add ${missingPhotos} more photo${missingPhotos === 1 ? '' : 's'} to continue. A minimum of 10 photos is required. a vehicle history check is optional.`
+                    ? `Please add ${missingPhotos} more photo${missingPhotos === 1 ? '' : 's'} to continue. A minimum of ${minPhotos} photo${minPhotos === 1 ? '' : 's'} is required.`
                     : null
             }
             case 3: {
@@ -1373,9 +1382,19 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         if (step === 1) {
             const inputIssue = listingDetailsInputIssue(formData)
             if (inputIssue) return inputIssue
+            if (isCaravan) {
+                const minimal: Array<[string, string, boolean]> = [
+                    ['body', 'Body Type', !normalizeSellerBodyType(formData.bodyType, bodyTypeKeys)],
+                    ['title', 'Listing Title', formData.title.trim().length < 5],
+                    ['location', 'Location', !formData.location.trim()],
+                    ['relationship', 'Authority to Sell', formData.isLegalRegisteredKeeper === false && !formData.notOwnerRelationship?.trim()],
+                    ['estate', 'Estate Relationship', formData.isDepartedSale && !formData.departedRelationship?.trim()],
+                ]
+                const missing = minimal.find(([, , invalid]) => invalid)
+                return missing ? { field: missing[0], label: missing[1] } : null
+            }
             const required: Array<[string, string, boolean]> = [
                 ['registration', 'Registration', !isCaravan && !formData.vrm.trim()],
-                ['vin', 'Caravan VIN (CRiS)', isCaravan && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(formData.vin.trim())],
                 ['make', 'Make', !formData.make.trim()],
                 ['model', 'Model', !formData.model.trim()],
                 ['year', 'Year', !formData.year.trim()],
@@ -1844,8 +1863,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 ...(!isAuctionListing ? { priceMin, priceMax } : {}),
                 // Request contract retains its numeric mileage field; the backend
                 // persists NULL for a caravan rather than a fictitious zero.
-                mileage: isCaravan ? 0 : parseInt(formData.mileage),
-                year: parseInt(formData.year),
+                mileage: isCaravan ? null : parseInt(formData.mileage),
+                year: formData.year ? parseInt(formData.year) : null,
                 vrm: isCaravan ? '' : formData.vrm,
                 vin: formData.vin || undefined,
                 images: formData.images,
@@ -3143,12 +3162,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             {/* VIN / CRiS identifier */}
                             <div className="space-y-2">
-                                <label htmlFor="listing-required-vin" className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1.5">{isCaravan ? 'Caravan VIN / CRiS *' : 'VIN'} {!isCaravan && <span className="text-[var(--text-secondary)] normal-case font-normal text-xs">(optional)</span>}</label>
-                                <Input id="listing-required-vin" placeholder="17-character VIN" value={formData.vin}
+                                <label htmlFor="listing-required-vin" className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1.5">{isCaravan ? 'Caravan VIN / CRiS' : 'VIN'} <span className="text-[var(--text-secondary)] normal-case font-normal text-xs">(optional)</span></label>
+                                <Input id="listing-required-vin" placeholder={isCaravan ? "Optional 17-character caravan VIN/CRiS" : "17-character VIN"} value={formData.vin}
                                     maxLength={17}
                                     onChange={(e) => set("vin", e.target.value.toUpperCase())}
-                                    className={`${inputCls} font-mono tracking-wider ${hasAttemptedNext && isCaravan && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(formData.vin.trim()) ? 'border-red-500' : ''}`} />
-                                <p className="text-xs text-[var(--text-secondary)]">{isCaravan ? 'Enter the 17-character chassis VIN found on the caravan/CRiS documents. This is seller-provided information, not automatically CRiS-verified.' : 'Vehicle Identification Number — increases buyer trust.'}</p>
+                                    className={`${inputCls} font-mono tracking-wider ${hasAttemptedNext && Boolean(formData.vin.trim()) && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(formData.vin.trim()) ? 'border-red-500' : ''}`} />
+                                <p className="text-xs text-[var(--text-secondary)]">{isCaravan ? 'VIN/CRiS information is optional. If provided, enter the full 17 characters; no CRiS verification is implied.' : 'Vehicle Identification Number — increases buyer trust.'}</p>
                             </div>
 
                             {/* Make / Model / Year */}
