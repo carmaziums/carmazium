@@ -1114,28 +1114,36 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const stepGuide = currentStep === 1
         ? {
             what: isCaravan
-                ? "Enter the caravan VIN/CRiS identifier, make, model, condition and ownership details. A UK number plate is not required."
+                ? "Add a title and location, then any caravan details you know. Registration, VIN/CRiS, mileage and year are not required. Complete the seller declarations truthfully."
                 : "Enter your registration and check the vehicle details. Answer the condition, ownership and legal questions truthfully.",
             why: isCaravan
-                ? "Touring caravans are not independently DVLA registered. Your accurate VIN and seller declarations help buyers check the caravan."
+                ? "Caravan listings are completed manually. Your photographs, optional details and seller declarations help buyers assess the caravan."
                 : "Registration can fill available DVLA/MOT details for you. Accurate information helps buyers understand the vehicle and avoids delays at review.",
             reminder: "Items marked * are required. Extra vehicle information is optional unless marked.",
         }
         : currentStep === 2
             ? {
-                what: "Add at least 10 clear photos showing the exterior, interior and any faults. Finish or cancel any open damage-map entry.",
-                why: "Buyers need to see the car and its condition before making an offer or bidding. Vehicle history checks remain optional.",
+                what: isCaravan
+                    ? "Add at least one clear photograph. Include the exterior, interior, equipment and any damage you know about."
+                    : isLeisure
+                        ? "Add at least 10 clear photos showing the campervan exterior, interior and any faults."
+                        : "Add at least 10 clear photos showing the exterior, interior and any faults. Finish or cancel any open damage-map entry.",
+                why: isLeisure
+                    ? "Buyers need your own photographs to assess the vehicle and its condition before making an offer or bidding."
+                    : "Buyers need to see the car and its condition before making an offer or bidding. Vehicle history checks remain optional.",
                 reminder: "Upload photos, then choose Next Step. You can add more photos later.",
             }
             : currentStep === 3
                 ? {
-                    what: isAuction
+                    what: isLeisure
+                        ? (isAuction ? "Enter your own auction estimate. CarMazium does not provide caravan or campervan valuations." : "Enter your own public asking price. CarMazium does not provide caravan or campervan valuations.")
+                        : isAuction
                         ? "Review CarMazium's Auction valuation, then confirm the estimated value for your vehicle."
                         : "Review the suggested Retail value and choose your own public asking price. A lower acceptable offer price is optional.",
                     why: isAuction
                         ? "The value helps calculate the opening bid; it is not shown as an advertised asking price to bidders."
                         : "Buyers see the asking price. Any lower acceptable offer floor is not shown publicly.",
-                    reminder: "These are guides only. You stay in control of your vehicle's asking price or Auction reserve.",
+                    reminder: isLeisure ? "You choose your asking price or auction estimate and reserve." : "These are guides only. You stay in control of your vehicle's asking price or Auction reserve.",
                 }
                 : currentStep === 4 && isAuction
                     ? {
@@ -2719,7 +2727,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         <Gavel className="w-8 h-8 text-orange-400" />
                                     </div>
                                     <h2 className="text-2xl font-bold mb-2 font-heading">Auction</h2>
-                                    <p className="text-[var(--text-muted)] mb-4 text-sm">Let verified motor dealers bid for your car in real time. Live auctions include anti-snipe protection.</p>
+                                    <p className="text-[var(--text-muted)] mb-4 text-sm">Let verified motor dealers bid for your vehicle in real time. Live auctions include anti-snipe protection.</p>
                                     {/* Bidding notice */}
                                     <div className="flex items-start gap-2 mb-5 px-3 py-2.5 rounded-lg border text-xs bg-orange-500/5 border-orange-500/20 text-orange-300/80">
                                         <Shield size={12} className="shrink-0 mt-0.5" />
@@ -2752,8 +2760,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <p className="text-[var(--text-muted)] mb-6 text-sm">Set your asking price and let buyers submit offers. You choose who to accept.</p>
                                     <ul className="space-y-2.5 mb-6 text-[var(--text-secondary)] flex-1">
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Starting from £1</li>
-                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> DVLA-verified vehicle data</li>
-                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Instant estimated valuation</li>
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Registration lookup for motor vehicles</li>
+                                        <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Set your own asking price</li>
                                         <li className="flex items-center gap-2.5 text-sm"><CheckCircle size={15} className="text-emerald-400 shrink-0" /> Reach retail buyers across the UK</li>
                                     </ul>
                                     <Button className="w-full py-4 group-hover:shadow-neon">Start Listing <ArrowRight className="ml-2 h-4 w-4" /></Button>
@@ -2831,7 +2839,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 </div>
                 <div id="listing-wizard-step-header" className="text-center mb-6 sm:mb-10 scroll-mt-20">
                     <h2 className="text-3xl md:text-4xl font-heading font-bold">
-                        {formData.listingType === "AUCTION" ? "List for Auction" : "List Your Car"}
+                        {formData.listingType === "AUCTION" ? "List for Auction" : "List Your Vehicle"}
                     </h2>
                     <p className="text-[var(--text-muted)] mt-2">Guided listing · Step {currentStep} of {totalSteps} · {WIZARD_STEPS.find(s => s.id === currentStep)?.title}</p>
                 </div>
@@ -3335,7 +3343,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         })()}
                                     </div>
                                     {/* Drive Type */}
-                                    <div className="space-y-2">
+                                    {!isCaravan && <div className="space-y-2">
                                         <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Drive Type</label>
                                         <div className="grid grid-cols-4 gap-2">
                                             {(["FWD", "RWD", "AWD", "4WD"] as const).map((dt) => (
@@ -3345,11 +3353,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 >{dt}</button>
                                             ))}
                                         </div>
-                                    </div>
+                                    </div>}
                                     {/* Vehicle Condition */}
                                     <div id="vehicle-condition-field" className={`space-y-2 md:col-span-2 rounded-xl p-3 border ${hasAttemptedNext && !isCaravan && !formData.condition ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
                                         <label className="text-sm font-bold uppercase text-[var(--text-muted)]">{isCaravan ? 'Caravan Condition (optional)' : 'Vehicle Condition *'}</label>
-                                        <p className="text-xs text-[var(--text-secondary)]">Describe the general condition. Exterior Grade 1–5 is calculated separately from the damage map and can be searched by buyers.</p>
+                                        <p className="text-xs text-[var(--text-secondary)]">{isLeisure ? 'Describe any wear, damage or defects you know about and show them in your photographs.' : 'Describe the general condition. Exterior Grade 1–5 is calculated separately from the damage map and can be searched by buyers.'}</p>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                             {([
                                                 { value: "EXCELLENT", label: "Excellent", help: "Very clean, minimal wear" },
@@ -3374,7 +3382,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 )
                                             })}
                                         </div>
-                                        {hasAttemptedNext && !formData.condition && (
+                                        {hasAttemptedNext && !isCaravan && !formData.condition && (
                                             <p className="text-xs text-red-400 font-medium">Vehicle condition is required.</p>
                                         )}
                                     </div>
@@ -3400,9 +3408,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         )}
                                     </div>
                                     <SellerFaultDeclaration kind="mechanical" value={formData.mechanicalIssues}
-                                        onChange={value => set("mechanicalIssues", value)} attempted={!isCaravan && hasAttemptedNext} inputClassName={inputCls} />
+                                        optional={isCaravan} onChange={value => set("mechanicalIssues", value)} attempted={!isCaravan && hasAttemptedNext} inputClassName={inputCls} />
                                     <SellerFaultDeclaration kind="electrical" value={formData.electricalIssues}
-                                        onChange={value => set("electricalIssues", value)} attempted={!isCaravan && hasAttemptedNext} inputClassName={inputCls} />
+                                        optional={isCaravan} onChange={value => set("electricalIssues", value)} attempted={!isCaravan && hasAttemptedNext} inputClassName={inputCls} />
 
                                     {/* Number of Keys */}
                                     <div id="listing-required-keys" role="group" aria-labelledby="listing-keys-label"
@@ -3428,7 +3436,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             </div>
 
                             {/* ── Performance & Economy ─────────────────────────────────── */}
-                            <details className="border border-[var(--border-default)] bg-[var(--bg-input)] rounded-xl p-5">
+                            {!isCaravan && <details className="border border-[var(--border-default)] bg-[var(--bg-input)] rounded-xl p-5">
                                 <summary className="min-h-[44px] cursor-pointer text-sm font-bold text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-4">
                                     Performance &amp; economy (optional)
                                     <span className="block mt-1 text-xs font-normal text-[var(--text-secondary)]">Add figures from your handbook, or skip this section.</span>
@@ -3468,7 +3476,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </div>
                                     <p className="text-[10px] text-[var(--text-secondary)]">All performance figures are optional — check your vehicle handbook or manufacturer spec sheet.</p>
                                 </div>
-                            </details>
+                            </details>}
 
                             {/* Body Type — cars and HGVs use separate valid choices; motorcycles have no body-type requirement. */}
                             {formData.vehicleType !== 'MOTORCYCLE' && (
@@ -3785,7 +3793,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             </div>
 
                             {/* UK Compliance */}
-                            <div className="border border-emerald-500/20 bg-emerald-500/5 rounded-xl p-5 space-y-4">
+                            {!isCaravan && <div className="border border-emerald-500/20 bg-emerald-500/5 rounded-xl p-5 space-y-4">
                                 <h3 className="text-sm font-bold uppercase text-emerald-400 tracking-wider flex items-center gap-2">
                                     <BadgeCheck size={14} /> UK Compliance
                                 </h3>
@@ -3827,7 +3835,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         <p className="text-xs text-[var(--text-secondary)]">Auto-filled from DVLA when available.</p>
                                     </div>
                                 </div>
-                            </div>
+                            </div>}
 
                             {/* Features */}
                             <details className="border border-[var(--border-default)] bg-[var(--bg-input)] rounded-xl p-5">

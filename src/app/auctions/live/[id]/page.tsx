@@ -306,8 +306,19 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     })
                 }
             })
-            .catch(() => {
-                if (!options?.silent) setLoadError("Failed to load auction. Please refresh.")
+            .catch((error: unknown) => {
+                if (!options?.silent) {
+                    // Display only recognised access-denial messages. Do not expose
+                    // arbitrary server errors, and preserve seller access to owned auctions.
+                    const message = error instanceof Error ? error.message : ''
+                    const accessMessages = [
+                        'Please sign in to access the Trade Exchange.',
+                        'The Trade Exchange is restricted to verified dealer accounts.',
+                        'Your dealer account is awaiting verification. Complete your KYC to access the Trade Exchange.',
+                        'Your dealership role does not include Trade Exchange access.',
+                    ]
+                    setLoadError(accessMessages.includes(message) ? message : "Failed to load auction. Please refresh.")
+                }
             })
             .finally(() => {
                 if (!options?.silent) setLoading(false)
@@ -762,12 +773,15 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             </div>
             <p className="text-[var(--text-muted)] text-sm">{loadError ?? "Auction not found."}</p>
             <div className="flex items-center gap-3">
-                <button
+                {!loadError?.includes('Trade Exchange') && <button
                     onClick={() => { void loadAuction() }}
                     className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-red-600 text-white text-xs font-bold rounded-xl transition-colors"
                 >
                     <RefreshCw size={13} /> Try Again
-                </button>
+                </button>}
+                {loadError?.includes('Trade Exchange') && (
+                    <Link href="/search" className="text-primary text-sm font-bold">Browse retail vehicles</Link>
+                )}
                 <Link href="/auctions/browse" className="text-[var(--text-muted)] text-xs font-bold hover:text-primary dark:hover:text-white transition-colors flex items-center gap-1">
                     <ArrowLeft size={13} /> All Auctions
                 </Link>

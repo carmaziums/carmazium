@@ -5,7 +5,8 @@ import { Textarea } from '@/components/ui/Textarea'
 import { faultDeclarationError, isNoKnownFaults, isUndeclaredFaults, NO_KNOWN_FAULTS } from '@/lib/sellerFaultDeclaration'
 
 /** Keep the existing API text field, but require an explicit No or described Yes. */
-export function SellerFaultDeclaration({ kind, value, onChange, attempted, inputClassName }: {
+export function SellerFaultDeclaration({ kind, value, onChange, attempted, inputClassName, optional = false }: {
+    optional?: boolean
     kind: 'mechanical' | 'electrical'
     value: string
     onChange: (value: string) => void
@@ -16,7 +17,7 @@ export function SellerFaultDeclaration({ kind, value, onChange, attempted, input
     const noFaults = isNoKnownFaults(value)
     const undeclared = isUndeclaredFaults(value)
     const showDetails = !noFaults && (detailsRequested || (!!value.trim() && !undeclared))
-    const error = attempted ? faultDeclarationError(value, kind) : null
+    const error = attempted && !optional ? faultDeclarationError(value, kind) : null
     const id = `listing-required-${kind}-faults`
     const label = kind === 'mechanical' ? 'Known Mechanical Problems' : 'Known Electrical Problems'
     return (
@@ -24,7 +25,7 @@ export function SellerFaultDeclaration({ kind, value, onChange, attempted, input
             aria-describedby={`${id}-help${error ? ` ${id}-error` : ''}`}
             className={`space-y-2 md:col-span-2 scroll-mt-28 rounded-xl p-3 border ${error ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
             <p id={`${id}-label`} className="text-sm font-bold uppercase text-[var(--text-muted)]">
-                {label} <span className="text-red-500">*</span>
+                {label} {optional ? <span>(optional)</span> : <span className="text-red-500">*</span>}
             </p>
             <p className="text-sm text-[var(--text-secondary)]">Are you aware of any {kind} faults?</p>
             {undeclared && <p className="text-sm text-amber-600">This older listing says “Not declared by seller”. Please answer the question when updating it.</p>}
@@ -38,7 +39,7 @@ export function SellerFaultDeclaration({ kind, value, onChange, attempted, input
                 ))}
             </div>
             {showDetails && (
-                <Textarea id={`${id}-details`} aria-label={`Describe known ${kind} faults`} required
+                <Textarea id={`${id}-details`} aria-label={`Describe known ${kind} faults`} required={!optional}
                     aria-invalid={!!error} aria-describedby={error ? `${id}-error` : `${id}-help`}
                     value={value} onChange={event => { setDetailsRequested(true); onChange(event.target.value) }}
                     maxLength={2000} rows={3} className={inputClassName}
