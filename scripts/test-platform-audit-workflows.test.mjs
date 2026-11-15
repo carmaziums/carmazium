@@ -51,6 +51,17 @@ test('manufacturer aliases combine choices and stock models in both directions',
  assert.equal(options.searchMakes(stock).filter(x=>/mercedes/i.test(x)).length,1);
  assert.ok(options.searchModels(stock,'Mercedes-Benz').includes('Rare model'));assert.ok(options.searchModels(stock,'Mercedes').includes('A-Class'));assert.ok(options.searchModels(stock,'Dodge').includes('Rare truck'));
 });
+test('parenthesized DVLA Dodge make merges choices and preserves vehicle models',()=>{
+ const aliases=load('src/lib/makeAliases.ts');const options=load('src/lib/vehicleSearchOptions.ts');
+ const stock=[{make:'DODGE (USA)',model:'Nitro',vehicleType:'CAR'},{make:'Dodge',model:'Journey',vehicleType:'CAR'}];
+ assert.equal(aliases.canonicalMake(' DODGE (USA) '),'Dodge');
+ assert.deepEqual(plain(options.searchMakes(stock).filter(x=>/dodge/i.test(x))),['Dodge']);
+ assert.ok(options.searchModels(stock,'Dodge').includes('Nitro'));
+ assert.ok(options.searchModels(stock,'DODGE (USA)').includes('Journey'));
+ assert.equal(aliases.canonicalMake('Dodge Trucks'),'Dodge Trucks');
+ assert.equal(aliases.canonicalMake('Dodge (Canada)'),'Dodge (Canada)');
+ assert.equal(read('src/lib/makeAliases.ts'),read('carmazium app/carmazium app/src/data/makeAliases.ts'));
+});
 // Execute real component event handlers with a small hook scheduler; API mutations are in-memory spies.
 function harness(path,deps={}) {
  const slots=[],effects=[];let cursor=0,tree,component;

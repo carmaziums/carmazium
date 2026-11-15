@@ -38,7 +38,16 @@ describe('manufacturer alias groups', () => {
     it.each(['Mercedes', 'Mercedes-Benz', 'Mercedes Benz'])('%s matches every supported Mercedes spelling', value => {
         expect(makeSearchWhere(value).OR.map(x => x.make.equals.toLowerCase())).toEqual(expect.arrayContaining(['mercedes', 'mercedes-benz', 'mercedes benz']));
     });
-    it.each(['Dodge', 'DODGE USA'])('%s matches Dodge and Dodge USA', value => {
-        expect(makeSearchWhere(value).OR.map(x => x.make.equals.toLowerCase())).toEqual(expect.arrayContaining(['dodge', 'dodge usa']));
+    it.each(['Dodge', 'DODGE USA', 'DODGE (USA)'])('%s matches Dodge and Dodge USA', value => {
+        expect(makeSearchWhere(value).OR.map(x => x.make.equals.toLowerCase())).toEqual(expect.arrayContaining(['dodge', 'dodge usa', 'dodge (usa)']));
+    });
+});
+
+describe('Dodge imported model names', () => {
+    it('matches a parenthesized imported make prefix without broadening other models', () => {
+        expect(matches('Nitro', 'DODGE (USA) NITRO SXT', 'Dodge')).toBe(true);
+        expect(matches('Nitro', 'Dodge Journey', 'Dodge')).toBe(false);
+        expect(makeSearchWhere('Dodge Trucks').OR).toHaveLength(1);
+        expect(makeSearchWhere('Dodge (Canada)').OR).toHaveLength(1);
     });
 });
