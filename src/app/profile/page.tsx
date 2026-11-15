@@ -3,6 +3,7 @@ import { DealerServicePreferences } from "@/components/dealer/DealerServicePrefe
 import { ReplayIntroduction } from "@/components/onboarding/WebsiteIntroduction"
 
 import * as React from "react"
+import { notificationEmailsEnabled, notificationEmailPatch } from "@/lib/notificationEmailPreference"
 import { FinanceProviderContact } from "@/components/finance/FinanceProviderContact"
 import { FinancePreference } from "@/components/finance/FinancePreference"
 import Link from "next/link"
@@ -72,6 +73,7 @@ function ProfileContent() {
     const [givenReviews, setGivenReviews] = React.useState<ReviewItem[]>([])
     const [activeSection, setActiveSection] = React.useState<SettingsSection>("personal")
     const [notificationsReady, setNotificationsReady] = React.useState(false)
+    const [notificationEmails, setNotificationEmails] = React.useState(true)
     const [notifyOnSale, setNotifyOnSale] = React.useState(true)
     const [showPublicProfile, setShowPublicProfile] = React.useState(true)
     const [notificationSaving, setNotificationSaving] = React.useState(false)
@@ -104,10 +106,11 @@ function ProfileContent() {
     React.useEffect(() => {
         if (!profile?.id) return
         let cancelled = false
-        apiClient<{ data: { notifyOnSale?: boolean; showPublicProfile?: boolean; bankAccountName?: string; bankSortCode?: string; bankAccountNumber?: string } }>("/users/me")
+        apiClient<{ data: { preferences?: unknown; notifyOnSale?: boolean; showPublicProfile?: boolean; bankAccountName?: string; bankSortCode?: string; bankAccountNumber?: string } }>("/users/me")
             .then(({ data }) => {
                 if (cancelled) return
                 if (typeof data.notifyOnSale === "boolean" && typeof data.showPublicProfile === "boolean") {
+                    setNotificationEmails(notificationEmailsEnabled(data.preferences))
                     setNotifyOnSale(data.notifyOnSale)
                     setShowPublicProfile(data.showPublicProfile)
                     setNotificationsReady(true)
@@ -129,7 +132,8 @@ function ProfileContent() {
         setNotificationSaving(true)
         setRoleError(null)
         try {
-            await apiClient("/users/me", { method: "PATCH", body: JSON.stringify({ notifyOnSale, showPublicProfile }) })
+            const { data: latest } = await apiClient<{ data: { preferences?: unknown } }>("/users/me")
+            await apiClient("/users/me", { method: "PATCH", body: JSON.stringify({ notifyOnSale, showPublicProfile, preferences: notificationEmailPatch(latest.preferences, notificationEmails) }) })
             await refreshProfile()
             setSuccess("Notification and privacy preferences saved.")
         } catch (error) {
@@ -593,6 +597,10 @@ function ProfileContent() {
                             <p role="status" className="rounded-xl border border-amber-500/30 p-4 text-sm" style={{ color: "var(--text-secondary)" }}>Your saved preferences are unavailable. The app will not change them until they can be loaded. Try reloading this page.</p>
                         ) : (
                             <>
+                                <label className="flex items-center justify-between gap-5 border-b border-[var(--border-default)] pb-5">
+                                    <span><strong className="block">Account notification emails</strong><span className="mt-1 block text-sm" style={{ color: "var(--text-muted)" }}>Email me about account notifications, including new service jobs that match my approved services and coverage. Turning this off keeps notifications in my account. Essential transaction emails are separate.</span></span>
+                                    <input type="checkbox" checked={notificationEmails} onChange={(event) => setNotificationEmails(event.target.checked)} className="h-5 w-5 shrink-0 accent-primary" />
+                                </label>
                                 <label className="flex items-center justify-between gap-5 border-b border-[var(--border-default)] pb-5">
                                     <span><strong className="block">Sale email notifications</strong><span className="mt-1 block text-sm" style={{ color: "var(--text-muted)" }}>Receive emails when your vehicle listings sell.</span></span>
                                     <input type="checkbox" checked={notifyOnSale} onChange={(event) => setNotifyOnSale(event.target.checked)} className="h-5 w-5 shrink-0 accent-primary" />

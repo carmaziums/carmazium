@@ -7,6 +7,11 @@ on:
       - "src/lib/serviceSetupRouting.ts"
       - "src/lib/partnershipContact.ts"
       - "scripts/test-service-setup-routing.test.mjs"
+      - "scripts/test-service-job-form-validation.test.mjs"
+      - "src/lib/serviceJobFormValidation.ts"
+      - "src/lib/notificationEmailPreference.ts"
+      - "src/app/services/delivery/new/page.tsx"
+      - "src/app/services/inspection/new/page.tsx"
       - "src/app/auctions/page.tsx"
       - "src/app/contact/page.tsx"
       - "src/app/dashboard/service/capabilities/**"
@@ -186,7 +191,7 @@ jobs:
         run: node --test scripts/test-website-introduction.test.mjs
 
       - name: Service setup and provider partnership routing
-        run: node --test scripts/test-service-setup-routing.test.mjs
+        run: node --test scripts/test-service-setup-routing.test.mjs scripts/test-service-job-form-validation.test.mjs
 
       - name: Caravan buyer facts exclude motor-vehicle reports
         run: node --test scripts/test-caravan-buyer-information.test.mjs
