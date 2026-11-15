@@ -9,9 +9,8 @@ import { Search, ArrowRight, ShieldCheck, UserCheck, FileText, CheckCircle, Hand
 import { Button } from "@/components/ui/Button"
 import { BrowseByCategory } from "@/components/features/BrowseByCategory"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
-import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { useRef, useState, useEffect } from "react"
-import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
 import { formatPrice } from "@/lib/listingApi"
 import type { HomeCardListing } from "@/lib/homeCardListing"
@@ -23,6 +22,7 @@ import { useAuth } from "@/context/AuthContext"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
 import { type BlogPostSummary } from "@/lib/blogApi"
 import { HomeAppPromoCompact } from "@/components/features/HomeAppPromoCompact"
+import styles from "./home.module.css"
 
 /* ── Dynamic imports for below-fold heavy components ────────────────────────
  * Code-split these into separate chunks so they don't block initial load.
@@ -46,40 +46,8 @@ export default function HomeClient({ initialListings, latestRetailListings, late
     .filter(listing => listing.status === "ACTIVE" && !featuredIds.has(listing.id))
     .slice(0, 8)
 
-  const ref = useRef(null)
   const router = useRouter()
-  const { resolvedTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-
-  // Mobile gets the cinematic poster without downloading megabytes of autoplay
-  // video. Keep the full video on desktop and honour reduced-motion settings.
-  const [showHeroVideo, setShowHeroVideo] = useState(false)
-  useEffect(() => {
-    const desktop = window.matchMedia("(min-width: 768px)")
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
-    const update = () => setShowHeroVideo(desktop.matches && !reducedMotion.matches)
-    update()
-    desktop.addEventListener("change", update)
-    reducedMotion.addEventListener("change", update)
-    return () => {
-      desktop.removeEventListener("change", update)
-      reducedMotion.removeEventListener("change", update)
-    }
-  }, [])
-  const heroVideoSrc = mounted && resolvedTheme === "light"
-    ? "/assets/videos/hero-cinematic-light.mp4"
-    : "/assets/videos/hero-cinematic.mp4"
-  const heroPosterSrc = mounted && resolvedTheme === "light"
-    ? "/assets/videos/hero-cinematic-light-poster.jpg"
-    : "/assets/videos/hero-cinematic-poster.jpg"
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"],
-  })
-
-  const y = useTransform(scrollYProgress, [0, 1], ["0%", "50%"])
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   // AI Search state
   const [searchQuery, setSearchQuery] = useState("")
@@ -126,110 +94,72 @@ export default function HomeClient({ initialListings, latestRetailListings, late
   }, [canTrade])
 
   return (
-    <div className="w-full max-w-[100vw] overflow-x-hidden flex flex-col">
-      {/* Cinematic Hero Section */}
-      <section ref={ref} className="relative min-h-[90vh] flex items-center justify-center text-center text-white overflow-hidden" style={{ marginTop: '-100px', paddingTop: '100px' }}>
-        {/* Mobile/reduced-motion visitors get the same poster, without a large video download. */}
-        <div className="absolute inset-0 w-full h-full">
-          <Image
-            src={heroPosterSrc}
-            alt=""
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
-            aria-hidden="true"
-          />
-          {showHeroVideo && (
-            <video
-              key={heroVideoSrc}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="none"
-              poster={heroPosterSrc}
-              className="absolute top-1/2 left-1/2 min-w-full min-h-full object-cover -translate-x-1/2 -translate-y-1/2"
-              onEnded={(e) => e.currentTarget.pause()}
-            >
-              <source src={heroVideoSrc} type="video/mp4" />
-            </video>
-          )}
-          <div className="absolute inset-0 bg-slate-950/75" />
-        </div>
-
-        <div className="relative z-10 container mx-auto px-5 max-w-5xl">
-          <motion.h1
-            initial={false}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="text-5xl md:text-7xl font-bold font-heading mb-6 leading-tight drop-shadow-2xl"
-          >
-            Sell Your Car <br /> Your <span className="text-red-300 tracking-tight">Way</span>
-          </motion.h1>
-
-          <motion.p
-            initial={false}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.1, ease: "easeOut" }}
-            className="text-xl md:text-2xl font-bold mb-3 drop-shadow-lg"
-          >
-            Auction <span className="text-red-300">FREE</span> &middot; Retail for <span className="text-red-300">£1</span>
-          </motion.p>
-
-          <motion.p
-            initial={false}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.15, ease: "easeOut" }}
-            className="text-white/90 text-sm md:text-base max-w-2xl mx-auto mb-8"
-          >
-            Sell by auction <span className="text-red-300 font-semibold">FREE</span> and let verified dealers compete
-            or advertise your car for just <span className="text-red-300 font-semibold">£1</span>. Successful auction
-            sale? Get a <span className="text-red-300 font-semibold">£100</span> reward.
-          </motion.p>
-
-          <motion.div
-            initial={false}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-          >
-            <form
-              onSubmit={handleAiSearch}
-              className="flex flex-col md:flex-row w-full max-w-3xl mx-auto mb-4 bg-[var(--bg-dropdown)] text-[var(--text-primary)] p-2 rounded-3xl border border-[var(--border-default)] shadow-2xl relative overflow-hidden group"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:animate-shine pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                aria-label="Describe the car you want"
-                placeholder="Ask AI: e.g. red SUV under £30k..."
-                className="flex-1 min-w-0 bg-transparent px-8 py-4 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none text-lg truncate"
-              />
-              <Button
-                type="submit"
-                variant="default"
-                size="lg"
-                shape="pill"
-                className="rounded-2xl px-10 text-lg shadow-neon group-hover:scale-105 transition-transform duration-300"
-                disabled={aiSearching || !searchQuery.trim()}
-              >
-                {aiSearching ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : (
-                  <Sparkles className="mr-2 h-5 w-5" />
-                )}
-                {aiSearching ? "Thinking..." : "AI Search"}
-              </Button>
-            </form>
-
-            {/* Powered by AI badge */}
-            <div className="text-xs text-white/80 mb-6 flex items-start justify-center gap-1.5 text-left md:text-center max-w-[260px] md:max-w-none mx-auto md:items-center">
-              <Sparkles size={14} className="text-primary shrink-0 mt-0.5 md:mt-0" />
-              <span>Powered by Mazium AI — describe your dream car in your own words</span>
+    <div className={cn(styles.home, "w-full max-w-[100vw] overflow-x-hidden flex flex-col")}>
+      {/* Marketplace hero: real HTML remains visible before hydration. */}
+      <section className={styles.hero} aria-labelledby="home-marketplace-heading">
+        <div className={styles.heroGrid}>
+          <div className={styles.heroCopy}>
+            <p className={styles.eyebrow}>The UK car marketplace</p>
+            <h1 id="home-marketplace-heading" className={styles.headline}>Your car.<br />Your choice.</h1>
+            <p className={styles.proposition}>
+              Auction <span>FREE</span>. Retail for <span>£1</span>.
+            </p>
+            <p className={styles.heroDescription}>
+              Sell your car through a free dealer auction or advertise to UK buyers for £1 until sold. Choose how you sell.
+            </p>
+            <div className={styles.heroActions}>
+              <Link href="/sell?sellMode=retail&package=basic#sell-options" className={styles.primaryAction}>
+                List my car for £1 <ArrowRight size={18} aria-hidden="true" />
+              </Link>
+              <Link href="/sell?sellMode=auction#sell-options" className={styles.secondaryAction}>
+                Sell by auction FREE
+              </Link>
             </div>
-          </motion.div>
+            <Link href="/sell" className={styles.quietLink}>Get a valuation or explore your options <ArrowRight size={16} aria-hidden="true" /></Link>
+          </div>
+          <div className={styles.heroVisual}>
+            <div className={styles.priceArtwork} aria-hidden="true">
+              <span>£1</span><p>Retail<br />listing fee</p>
+            </div>
+            <svg className={styles.ribbon} viewBox="0 0 720 440" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+              <path d="M780 70 C570 80 360 100 430 160 C490 215 730 205 650 280 C565 360 260 320 -30 455 L-50 397 C240 275 460 320 545 269 C608 231 280 220 321 147 C358 82 610 52 780 55Z" fill="#ED1C24" />
+            </svg>
+            <Image src="/assets/images/home-marketplace-cars.webp" alt="Silver hatchback and white SUV illustrating the CarMazium marketplace" width={1200} height={800} sizes="(max-width: 767px) 100vw, (max-width: 1280px) 52vw, 680px" priority className={styles.heroCars} />
+          </div>
+        </div>
+      </section>
 
+      {/* Natural-language search stays connected to the existing MaziuM API. */}
+      <section className={styles.aiSection} aria-labelledby="home-ai-search-heading">
+        <div className={styles.contentWidth}>
+          <p className={styles.eyebrow}>MaziuM AI search</p>
+          <h2 id="home-ai-search-heading" className={styles.sectionHeading}>Describe your next car.</h2>
+          <form onSubmit={handleAiSearch} className={styles.searchForm} aria-busy={aiSearching}>
+            <Search size={23} className={styles.searchIcon} aria-hidden="true" />
+            <label htmlFor="home-ai-query" className="sr-only">Describe the car you want</label>
+            <input id="home-ai-query" ref={searchInputRef} type="search" value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-describedby="home-ai-search-help"
+              placeholder="An automatic family car under £8,000 near Birmingham"
+              className={styles.searchInput} />
+            <Button type="submit" className={styles.searchSubmit} disabled={aiSearching || !searchQuery.trim()}>
+              {aiSearching && <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />}
+              {aiSearching ? "Finding cars…" : "Find matching cars"}
+            </Button>
+          </form>
+          <div className={styles.searchHelpers}>
+            <p id="home-ai-search-help"><Sparkles size={16} aria-hidden="true" /> Powered by MaziuM AI</p>
+            <div className={styles.searchExamples} aria-label="Example car searches">
+              {["Automatic under £5,000", "7-seat family car", "Small first car"].map(example => (
+                <button key={example} type="button" disabled={aiSearching} onClick={() => {
+                  setSearchQuery(example)
+                  searchInputRef.current?.focus()
+                }}>{example}</button>
+              ))}
+            </div>
+            <Link href="/search" className={styles.quietLink}>Prefer filters? Browse all cars <ArrowRight size={16} aria-hidden="true" /></Link>
+          </div>
+          <div aria-live="polite" aria-atomic="true">
           {/* AI Result Card */}
           <AnimatePresence>
             {(aiSearching || aiResult) && (
@@ -238,9 +168,9 @@ export default function HomeClient({ initialListings, latestRetailListings, late
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
                 transition={{ duration: 0.4 }}
-                className="w-full max-w-3xl mx-auto mb-8"
+                className="w-full mt-6"
               >
-                <div className="bg-[var(--bg-dropdown)] text-[var(--text-primary)] rounded-2xl border border-[var(--border-default)] p-6 text-left shadow-2xl">
+                <div className="bg-[var(--bg-dropdown)] text-[var(--text-primary)] rounded-2xl border border-[var(--border-default)] p-6 text-left shadow-sm">
                   {aiSearching ? (
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
@@ -289,61 +219,28 @@ export default function HomeClient({ initialListings, latestRetailListings, late
             )}
           </AnimatePresence>
 
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="text-xl text-gray-200 drop-shadow-lg font-medium"
-          >
-            Browse live auctions and retail-ready cars from verified sellers.
-          </motion.p>
+          </div>
         </div>
       </section>
 
-      {/* Action Hub */}
-      <section className="pt-8 pb-16 text-center container mx-auto px-5">
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.8 }}
-          className="flex flex-col items-center gap-8"
-        >
-          {/* Top Row: Main Actions */}
-          <div className="flex flex-wrap justify-center gap-6 w-full">
-            {/* <Link href="/auctions/browse">
-              <Button size="lg" shape="pill" className="w-full sm:w-auto min-w-[280px] py-7 text-xl shadow-neon hover:scale-105 transition-transform">
-                Browse Auctions <ArrowRight className="ml-2" />
-              </Button>
-            </Link> */}
-            <Link href="/search">
-              <Button size="lg" shape="pill" variant="dark" className="w-full sm:w-auto min-w-[280px] py-7 text-xl hover:bg-slate-800 hover:border-white/30 border border-[var(--border-default)] backdrop-blur-md">
-                Retail Listings
-              </Button>
-            </Link>
-          </div>
-
-          {/* Middle Row: Sell Action */}
-          <div>
-            <Link href="/sell">
-              <Button variant="outline" shape="pill" className="px-12 py-6 text-base border-primary/50 hover:bg-primary hover:text-white uppercase tracking-wider font-semibold hover:tracking-widest transition-all duration-300">
-                Sell My Car
-              </Button>
-            </Link>
-          </div>
-
-          {/* Bottom Row: Trust Indicators */}
-          <div className="flex flex-wrap justify-center gap-8 mt-8 font-medium" style={{ color: 'var(--text-muted)' }}>
-            <div className="flex items-center gap-2 group cursor-default"><ShieldCheck className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">Protected accounts</span></div>
-            <div className="flex items-center gap-2 group cursor-default"><UserCheck className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">Verified sellers</span></div>
-            <div className="flex items-center gap-2 group cursor-default"><FileText className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">Vehicle history checks</span></div>
-            <div className="flex items-center gap-2 group cursor-default"><CheckCircle className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">Independent checks advised</span></div>
-          </div>
-        </motion.div>
+      <section className={styles.valueStrip} aria-label="CarMazium listing fees and auction seller reward">
+        <div className={styles.valueGrid}>
+          <Link href="/pricing"><strong>£1</strong><span>Basic retail listing until sold</span><small>Compare all retail packages <ArrowRight size={14} aria-hidden="true" /></small></Link>
+          <Link href="/sell?sellMode=auction#sell-options"><strong>FREE</strong><span>Auction listing</span><small>Let verified dealers compete <ArrowRight size={14} aria-hidden="true" /></small></Link>
+          <Link href="/how-it-works"><strong>£100</strong><span>Qualifying auction seller reward</span><small>Successful auction sales after approved handover. Terms apply.</small></Link>
+        </div>
       </section>
 
-      {/* Compact app install campaign; preserve the larger approved footer artwork. */}
-      <HomeAppPromoCompact />
+      <section className={styles.utilityStrip} aria-label="Marketplace information and quick links">
+        <div className={styles.utilityInner}>
+          <Link href="/search">Retail Listings <ArrowRight size={15} aria-hidden="true" /></Link>
+          <Link href="/sell">Sell My Car <ArrowRight size={15} aria-hidden="true" /></Link>
+          <span><ShieldCheck size={17} aria-hidden="true" /> Protected accounts</span>
+          <span><UserCheck size={17} aria-hidden="true" /> Verified sellers</span>
+          <span><FileText size={17} aria-hidden="true" /> Vehicle history checks</span>
+          <span><CheckCircle size={17} aria-hidden="true" /> Independent checks advised</span>
+        </div>
+      </section>
 
       {/* Discover + Browse Sections (dynamically imported) */}
       <DiscoverSection />
@@ -356,8 +253,8 @@ export default function HomeClient({ initialListings, latestRetailListings, late
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-3xl font-bold font-heading flex items-center gap-3">
-                <Sparkles className="text-amber-400" size={32} strokeWidth={1.25} />
-                <span style={{ background: 'linear-gradient(135deg,#fbbf24,#f59e0b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Featured Listings</span>
+                <Sparkles className="text-primary" size={26} strokeWidth={1.5} aria-hidden="true" />
+                <span>Featured Listings</span>
               </h2>
               <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Featured retail cars — see more active cars below</p>
             </div>
@@ -370,7 +267,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
             {initialListings.map((listing, i) => (
               <motion.div
                 key={listing.id}
-                initial={{ opacity: 0, y: 30 }}
+                initial={false}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: i * 0.08 }}
@@ -462,7 +359,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
           No fictitious listing count when server data is temporarily missing. */}
       <div className="container mx-auto px-5 mb-12 md:mb-16">
         <Link href="/search"
-          className="group flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/15 via-amber-500/10 to-primary/10 px-6 py-6 md:px-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          className="group flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-primary/30 bg-[var(--bg-card)] px-6 py-6 md:px-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
           <div className="text-center sm:text-left">
             <p className="font-heading text-xl md:text-2xl font-extrabold">Explore the Full Car Marketplace</p>
             <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>Search and filter all publicly listed vehicles by make, price, mileage and more.</p>
@@ -548,7 +445,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
       <TestimonialsSection />
 
       {/* Steps Section */}
-      <section className="py-24 border-y" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-default)' }}>
+      <section className="py-14 md:py-20 border-y" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-default)' }}>
         <div className="container mx-auto px-5 text-center">
           <h2 className="text-3xl font-bold mb-16 font-heading">Simple Steps to Buy, Sell, or Auction</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -592,7 +489,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
       </section>
 
       {/* Personalization */}
-      <section className="py-24 text-center">
+      <section className="py-14 md:py-20 text-center">
         <div className="container mx-auto px-5 flex flex-col items-center gap-12">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -602,7 +499,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
             className="w-full max-w-4xl p-12 rounded-3xl border relative overflow-hidden shadow-2xl group"
             style={{ background: 'var(--bg-card)', borderColor: 'var(--border-default)' }}
           >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 blur-[100px] rounded-full group-hover:bg-indigo-500/30 transition-colors duration-500" />
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-[100px] rounded-full group-hover:bg-primary/10 transition-colors duration-500" />
 
             <div className="relative z-10 flex flex-col items-center text-center w-full">
               <Lightbulb className="text-primary h-12 w-12 mb-6 mx-auto animate-pulse" />
@@ -662,6 +559,9 @@ export default function HomeClient({ initialListings, latestRetailListings, late
           </motion.div>
         </div>
       </section>
+
+      {/* App installation options retained below the main marketplace journeys. */}
+      <HomeAppPromoCompact />
 
       {/* Blog Section */}
       {latestBlogPosts.length > 0 && (

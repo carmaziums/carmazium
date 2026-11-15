@@ -132,15 +132,15 @@ export function Header() {
             <div className="container mx-auto px-6 flex items-center justify-between gap-6 h-20 relative z-10">
 
                 {/* Logo Area */}
-                <div className="flex-1 flex items-center justify-start gap-6">
-                    <Link href="/" className="flex items-center">
+                <div className="min-w-0 flex items-center justify-start gap-6">
+                    <Link href="/" className="flex min-w-0 items-center">
                         <Image
                             src="/assets/images/logo-light.webp"
                             alt="CarMazium"
                             width={160}
                             height={40}
                             sizes="160px"
-                            className="h-9 md:h-10 w-auto object-contain dark:hidden"
+                            className="h-9 md:h-10 w-auto min-w-0 max-w-full object-contain dark:hidden"
                             priority
                         />
                         <Image
@@ -149,13 +149,13 @@ export function Header() {
                             width={160}
                             height={40}
                             sizes="160px"
-                            className="h-9 md:h-10 w-auto object-contain hidden dark:block"
+                            className="h-9 md:h-10 w-auto min-w-0 max-w-full object-contain hidden dark:block"
                         />
                     </Link>
                 </div>
 
                 {/* Desktop Nav */}
-                <nav className="hidden lg:flex flex-none justify-center gap-8">
+                <nav className="hidden 2xl:flex flex-none justify-center gap-8">
                     {visibleNavLinks.map((link) => {
                         if (link.kind === "buy-menu") {
                             return (
@@ -436,10 +436,10 @@ export function Header() {
                 </nav>
 
                 {/* Action Buttons */}
-                <div className="flex-1 flex items-center justify-end gap-2 lg:gap-3">
+                <div className="flex-1 flex items-center justify-end gap-2 2xl:gap-3">
                     {/* "Get the App" lives in the account menu, the mobile menu and the
                         footer — the desktop bar has no room for it at every zoom level. */}
-                    <div className="hidden lg:block">
+                    <div className="hidden 2xl:block">
                         <ThemeToggle />
                     </div>
 
@@ -455,7 +455,7 @@ export function Header() {
                                 aria-haspopup="true"
                                 aria-controls="account-menu"
                                 aria-label={isUserMenuOpen ? "Close account menu" : "Open account menu"}
-                                className="flex items-center gap-2 lg:gap-3 px-2.5 py-2 lg:px-3 rounded-xl hover:opacity-90 border transition-all group"
+                                className="flex items-center gap-2 2xl:gap-3 px-2.5 py-2 2xl:px-3 rounded-xl hover:opacity-90 border transition-all group"
                                 style={{
                                     background: 'var(--bg-card)',
                                     borderColor: 'var(--border-default)',
@@ -464,7 +464,7 @@ export function Header() {
                                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
                                     {profile?.firstName?.[0] || user.email?.[0].toUpperCase()}
                                 </div>
-                                <span className="hidden lg:block font-semibold text-sm">
+                                <span className="hidden 2xl:block font-semibold text-sm">
                                     {profile?.firstName || 'Account'}
                                 </span>
                                 <ChevronDown size={14} className={cn("opacity-60 group-hover:opacity-100 transition-transform", isUserMenuOpen && "rotate-180")} />
@@ -510,7 +510,7 @@ export function Header() {
                                         <Smartphone size={16} /> Get the App
                                     </Link>
                                     <div
-                                        className="lg:hidden flex items-center justify-between px-4 py-2 text-sm"
+                                        className="2xl:hidden flex items-center justify-between px-4 py-2 text-sm"
                                         style={{ color: 'var(--text-secondary)' }}
                                     >
                                         <span>Theme</span>
@@ -531,7 +531,7 @@ export function Header() {
                             <Button
                                 asChild
                                 variant="ghost"
-                                className="hidden lg:flex text-sm font-semibold hover:text-primary transition-colors"
+                                className="hidden 2xl:flex text-sm font-semibold hover:text-primary transition-colors"
                             >
                                 <Link href="/auth/signup">
                                     Sign Up
@@ -542,7 +542,7 @@ export function Header() {
                                 asChild
                                 variant="default"
                                 shape="default"
-                                className="hidden lg:flex gap-2 font-bold px-6 bg-gradient-to-br from-[#ff4d4d] to-[#ed1c24] hover:from-[#ff6b6b] hover:to-[#ff0033]"
+                                className="hidden 2xl:flex gap-2 font-bold px-6 bg-gradient-to-br from-[#ff4d4d] to-[#ed1c24] hover:from-[#ff6b6b] hover:to-[#ff0033]"
                             >
                                 <Link href="/auth/login">
                                     <LogIn size={18} /> Login
@@ -552,7 +552,7 @@ export function Header() {
                     )}
 
                     <button
-                        className="lg:hidden text-2xl ml-2"
+                        className="2xl:hidden text-2xl ml-2"
                         onClick={toggleMenu}
                         aria-expanded={isMobileMenuOpen}
                         aria-controls="mobile-main-menu"
@@ -567,18 +567,17 @@ export function Header() {
             {isMobileMenuOpen && (
                 <div
                     id="mobile-main-menu"
-                    className="lg:hidden absolute top-full left-0 w-full shadow-xl border-t animate-in slide-in-from-top-2 max-h-[calc(100vh-5rem)] overflow-y-auto"
+                    className="2xl:hidden absolute top-full left-0 w-full shadow-xl border-t animate-in slide-in-from-top-2 max-h-[calc(100vh-5rem)] overflow-y-auto"
                     style={{
                         background: 'var(--bg-dropdown)',
                         borderColor: 'var(--border-default)',
                     }}
                 >
                     <nav className="flex flex-col p-6 gap-4 text-center">
-                        {!user && (
-                            <div className="flex items-center justify-center pb-2">
-                                <ThemeToggle />
-                            </div>
-                        )}
+                        <div className="flex min-h-12 items-center justify-between rounded-xl border border-[var(--border-default)] px-4 py-3">
+                            <span className="text-base font-semibold">Appearance</span>
+                            <ThemeToggle />
+                        </div>
                         {visibleNavLinks.map((link) => {
                             if (link.kind === "buy-menu") {
                                 return (
