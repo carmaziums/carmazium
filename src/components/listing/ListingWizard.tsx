@@ -898,7 +898,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 vehicleType: 'CAR',
                 bodyType: key,
                 badgeTier: 'BASIC',
-                vrm: '', vin: prev.vin, mileage: '', fuelType: '', transmission: '',
+                vrm: '', vin: '', mileage: '', fuelType: '', transmission: '',
                 engineSize: '', bhp: '', motStatus: '', taxStatus: '',
                 motExpiryDate: '', taxDueDate: '', motHistory: [],
                 officialVehicleData: undefined, euroStandard: '',
