@@ -20,6 +20,9 @@ function metadataFor(payload, { ok = true, page = "1" } = {}) {
                 serverBackendFetch: async () => ({ ok, json: async () => payload }),
             }
             if (name === "next/navigation") return { notFound() { throw new Error("404") } }
+            if (name === "@/components/analytics/GoogleAdSense") return {
+                GoogleAdBanner() { throw new Error("Metadata must not render advertising") },
+            }
             return require(name)
         },
     })
