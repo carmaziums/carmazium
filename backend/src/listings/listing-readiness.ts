@@ -43,13 +43,18 @@ export function getListingSubmissionMissingFields(listing: any): string[] {
     if (!Array.isArray(listing?.images) || listing.images.length < 10) {
         missing.push('at least 10 photos');
     }
-    if (!listing?.vrm?.trim?.()) missing.push('VRM');
+    const isTouringCaravan = listing?.bodyType === 'CARAVAN';
+    if (isTouringCaravan) {
+        if (!/^[A-HJ-NPR-Z0-9]{17}$/i.test(String(listing?.vin ?? ''))) missing.push('17-character caravan VIN (CRiS)');
+    } else if (!listing?.vrm?.trim?.()) missing.push('VRM');
     if (!listing?.make?.trim?.()) missing.push('make');
     if (!listing?.model?.trim?.()) missing.push('model');
     if (!listing?.year) missing.push('year');
-    if (listing?.mileage === null || listing?.mileage === undefined) missing.push('mileage');
-    if (!listing?.fuelType) missing.push('fuel type');
-    if (!listing?.transmission) missing.push('transmission');
+    if (!isTouringCaravan) {
+        if (listing?.mileage === null || listing?.mileage === undefined) missing.push('mileage');
+        if (!listing?.fuelType) missing.push('fuel type');
+        if (!listing?.transmission) missing.push('transmission');
+    }
     // Motorcycles intentionally do not show a body-type selector. Cars and
     // HGVs still require a body type before submission.
     if (listing?.vehicleType !== 'MOTORCYCLE' && !listing?.bodyType) {
