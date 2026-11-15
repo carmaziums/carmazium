@@ -3,6 +3,7 @@ export interface ListingInputIssue { field: string; label: string; message: stri
 /** Validate values before parsing; parseInt silently truncates fractional inputs. */
 export function listingDetailsInputIssue(data: {
     vrm: string; year: string; mileage: string; title: string
+    doors?: string; seats?: string; vehicleType?: string; bodyType?: string
 }, currentYear = new Date().getFullYear()): ListingInputIssue | null {
     const vrm = data.vrm.replace(/\s/g, '').toUpperCase()
     if (data.vrm && !/^[A-Z0-9]{2,7}$/.test(vrm)) {
@@ -16,6 +17,14 @@ export function listingDetailsInputIssue(data: {
     }
     if (data.title && (data.title.trim().length < 5 || data.title.length > 200)) {
         return { field: 'title', label: 'Listing Title', message: 'Enter a listing title between 5 and 200 characters.' }
+    }
+    if (data.vehicleType !== 'MOTORCYCLE' && data.bodyType !== 'CARAVAN') {
+        for (const [field, label, min, max] of [['doors', 'Doors', 2, 8], ['seats', 'Seats', 1, 20]] as const) {
+            const value = data[field]?.trim() ?? ''
+            if (!/^\d+$/.test(value) || Number(value) < min || Number(value) > max) {
+                return { field, label, message: `Enter the number of ${field} as a whole number between ${min} and ${max}.` }
+            }
+        }
     }
     return null
 }

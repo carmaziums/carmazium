@@ -6,6 +6,7 @@ export interface ResumableNativeSellerDetails {
   title: string; location: string; fuelType: string; transmission: string
   bodyType: string; vehicleType: 'CAR' | 'HGV' | 'MOTORCYCLE'
   condition: string; owners: string; writeOffCat: string
+  doors?: string; seats?: string
   stolenRecovered: boolean | null; outstandingFinance: boolean | null
   isLegalKeeper: boolean | null; notOwnerRelationship: string
   isDepartedSale: boolean; departedRelationship: string
@@ -33,6 +34,10 @@ export function nativeDraftStepOneComplete(
     && !!draft.title.trim() && !!draft.location.trim() && !!draft.mileage.trim()
     && !!draft.fuelType.trim() && !!validTransmission(draft.transmission)
     && (draft.vehicleType === 'MOTORCYCLE' || !!validBody(draft.bodyType, draft.vehicleType))
+    && (draft.vehicleType === 'MOTORCYCLE' || (
+      /^\d+$/.test(draft.doors?.trim() ?? '') && Number(draft.doors) >= 2 && Number(draft.doors) <= 8
+      && /^\d+$/.test(draft.seats?.trim() ?? '') && Number(draft.seats) >= 1 && Number(draft.seats) <= 20
+    ))
     && !!draft.condition && !!draft.owners && !!draft.writeOffCat
     && !!draft.serviceHistory?.trim() && !!draft.numberOfKeys?.trim()
     && !faultDeclarationError(draft.mechanicalIssues, 'mechanical')

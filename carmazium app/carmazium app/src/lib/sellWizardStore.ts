@@ -7,6 +7,7 @@ export interface SellWizardDraft {
   vehicleType: 'CAR' | 'HGV' | 'MOTORCYCLE';
   make: string; model: string; year: string; mileage: string; title: string;
   fuelType: string; transmission: string; bodyType: string; colour: string;
+  doors: string; seats: string;
   price: string; priceMin: string; listingType: 'CLASSIFIED' | 'AUCTION' | '';
   // Retain every mandatory Step 1 answer across app restarts.
   location: string; description: string; condition: string; owners: string;
@@ -30,7 +31,7 @@ export interface SellWizardDraft {
 export const EMPTY_SELL_DRAFT = {
   vrm: '', vehicleType: 'CAR' as const,
   make: '', model: '', year: '', mileage: '', title: '',
-  fuelType: '', transmission: '', bodyType: '', colour: '',
+  fuelType: '', transmission: '', bodyType: '', colour: '', doors: '', seats: '',
   price: '', priceMin: '', listingType: '' as '' | 'CLASSIFIED' | 'AUCTION',
   location: '', description: '', condition: '', owners: '',
   serviceHistory: '', numberOfKeys: '', mechanicalIssues: '', electricalIssues: '',
@@ -66,6 +67,7 @@ export const useSellWizardStore = create<SellWizardDraft>()(
         make: state.make, model: state.model, year: state.year, mileage: state.mileage,
         title: state.title, fuelType: state.fuelType,
         transmission: state.transmission, bodyType: state.bodyType,
+        doors: state.doors, seats: state.seats,
         colour: state.colour, price: state.price, priceMin: state.priceMin,
         listingType: state.listingType,
         location: state.location, description: state.description,
