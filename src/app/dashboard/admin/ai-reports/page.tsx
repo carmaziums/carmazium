@@ -98,7 +98,7 @@ export default function AdminAiReportsPage() {
             <div className="container mx-auto px-4 sm:px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
 
-                <main className="flex-1 min-w-0 space-y-6">
+                <div className="flex-1 min-w-0 space-y-6">
                     <section className="rounded-[26px] border border-violet-400/20 bg-[var(--bg-card)] p-5 sm:p-7">
                         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                             <div>
@@ -224,7 +224,7 @@ export default function AdminAiReportsPage() {
                             })}
                         </div>
                     )}
-                </main>
+                </div>
             </div>
         </div>
     )

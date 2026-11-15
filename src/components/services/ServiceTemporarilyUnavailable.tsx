@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button"
 export function ServiceTemporarilyUnavailable({ serviceName }: { serviceName: string }) {
     return (
         <div className="min-h-screen pt-28 pb-20 px-5" style={{ background: "var(--bg-body)" }}>
-            <main className="mx-auto max-w-2xl">
+            <div className="mx-auto max-w-2xl">
                 <div className="rounded-3xl border border-amber-500/30 bg-amber-500/5 p-8 md:p-10 text-center">
                     <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-500">
                         <AlertTriangle size={26} />
@@ -19,7 +19,7 @@ export function ServiceTemporarilyUnavailable({ serviceName }: { serviceName: st
                         <Link href="/services"><ArrowLeft size={15} className="mr-2" /> View available services</Link>
                     </Button>
                 </div>
-            </main>
+            </div>
         </div>
     )
 }

@@ -149,7 +149,7 @@ function AdminMessagesContent() {
             <div className="container mx-auto px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8">
                 <DashboardSidebar role="admin" userName={userName} userType="Admin Account" />
 
-                <main className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0">
                     <div className="glass-card flex h-[calc(100dvh-165px)] min-h-0 flex-col overflow-hidden lg:h-[calc(100vh-180px)] lg:min-h-[620px]">
                         <div className="shrink-0 p-3 sm:p-6 border-b border-[var(--border-default)] flex flex-col xl:flex-row xl:items-center justify-between gap-2 sm:gap-4">
                             <div className="flex items-center gap-3 min-w-0">
@@ -342,7 +342,7 @@ function AdminMessagesContent() {
                             )}
                         </div>
                     </div>
-                </main>
+                </div>
             </div>
         </div>
         {mobileChat && selectedRoom && typeof document !== "undefined" && createPortal(

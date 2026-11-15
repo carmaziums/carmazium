@@ -24,9 +24,9 @@ function InsuranceMessagesContent() {
         <div className="min-h-screen pt-3 pb-24 lg:pt-20 lg:pb-12">
             <div className="container mx-auto px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8">
                 <DashboardSidebar role="insurance" userName={userName} userType="Insurance Partner" />
-                <main className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0">
                     <RoleMessagesInbox subtitle="Customer and insurance conversations" />
-                </main>
+                </div>
             </div>
         </div>
     )

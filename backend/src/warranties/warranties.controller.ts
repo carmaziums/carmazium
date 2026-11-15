@@ -38,7 +38,9 @@ export class WarrantiesController {
 export class AdminWarrantyOrdersController {
     constructor(private readonly warranties: WarrantiesService) {}
     @Get() @Header('Cache-Control', 'no-store')
-    async list(@Query('status') status?: string) { return new StandardResponse(await this.warranties.adminOrders(status)); }
+    async list(@Query('status') status?: string, @Query('page') page?: string, @Query('limit') limit?: string, @Query('search') search?: string, @Query('sort') sort?: string) {
+        return new StandardResponse(page === undefined ? await this.warranties.adminOrders(status) : await this.warranties.adminOrdersPage(status, Number(page), Number(limit ?? 25), search, sort));
+    }
     @Post(':id/issue')
     async issue(@Param('id', ParseUUIDPipe) id: string, @Body() dto: IssueWarrantyDto, @CurrentUser() user: { id: string }) {
         return new StandardResponse(await this.warranties.issue(id, dto, user.id));

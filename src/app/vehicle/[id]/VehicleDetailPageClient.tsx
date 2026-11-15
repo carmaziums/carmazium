@@ -1114,7 +1114,6 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                             // drives the "Grade N" chip on the card and the Buy Cars detail page.
                             // No grade on record must not be shown as "Grade 1 — Excellent".
                             const grade = typeof listing.exteriorGrade === 'number' ? listing.exteriorGrade : null
-                            const gradeLabel = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Average'][grade ?? 0]
                             const gradeColor = ['', 'text-emerald-400', 'text-green-400', 'text-yellow-400', 'text-orange-400', 'text-red-400'][grade ?? 0]
                             const gradeBg = ['', 'bg-emerald-500/10 border-emerald-500/20', 'bg-green-500/10 border-green-500/20', 'bg-yellow-500/10 border-yellow-500/20', 'bg-orange-500/10 border-orange-500/20', 'bg-red-500/10 border-red-500/20'][grade ?? 0]
                             return (
@@ -1122,14 +1121,15 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                                 <div className="flex items-start justify-between mb-2">
                                     <h3 className="text-xl font-bold border-l-4 border-amber-500 pl-4 flex items-center gap-2">
                                         <Wrench size={18} className="text-amber-400" />
-                                        Condition &amp; Damage
+                                        Seller-reported exterior damage
                                     </h3>
                                     {grade !== null && (
                                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold ${gradeBg} ${gradeColor}`}>
-                                            Grade {grade} — {gradeLabel}
+                                            Exterior grade {grade}
                                         </span>
                                     )}
                                 </div>
+                                <p className="text-sm text-[var(--text-secondary)] my-3">This grade reflects exterior damage reported by the seller. It is not an inspection or a mechanical condition assessment. Read the seller’s declared faults separately.</p>
                                 <p className="text-xs text-[var(--text-muted)] mb-4 pl-5">
                                     {damageRecords.length > 0
                                         ? `${damageRecords.length} damage ${damageRecords.length === 1 ? 'report' : 'reports'} from seller · ${positionedDamage.length} positioned on 3D — select a number or the detail card below`

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 export default function WarrantyOrderInformation() {
-    return <main className="container mx-auto max-w-3xl px-5 pt-28 pb-20 space-y-6">
+    return <div className="container mx-auto max-w-3xl px-5 pt-28 pb-20 space-y-6">
         <h1 className="text-3xl font-bold">Before you order a warranty</h1>
         <p>CarMazium provides the platform and collects the displayed payment through Stripe. Pulse Cars Limited arranges the Warrantywise warranty as broker. CarMazium and Pulse Cars Limited do not carry out warranty repairs through this checkout.</p>
         <h2 className="text-xl font-bold">Your quote and payment</h2>
@@ -14,5 +14,5 @@ export default function WarrantyOrderInformation() {
         <p>We use the details you supply to prepare the quote, take payment, arrange the warranty and send order updates. We share the necessary details with Pulse Cars Limited and Warrantywise for fulfilment. Stripe handles your card details. See our <Link className="underline" href="/privacy-policy">Privacy Policy</Link>.</p>
         <p>Quote/order information version: 13 November 2026.</p>
         <div className="flex gap-5"><Link className="underline" href="/services/warranty">Back to warranty quotes</Link><Link className="underline" href="/contact">Contact the team</Link></div>
-    </main>
+    </div>
 }

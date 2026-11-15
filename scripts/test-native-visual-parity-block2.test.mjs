@@ -18,7 +18,8 @@ const logo = app('components/Logo.tsx');
 
 test('actual website dealer bottom More panel is matched by native dealer mode only', () => {
   const sidebar = web('src/components/dashboard/DashboardSidebar.tsx');
-  assert.ok(sidebar.includes("fixed bottom-[72px] left-0 right-0"));
+  assert.ok(sidebar.includes('isMobileMenuOpen && <AccessibleModal label="Dashboard menu"'));
+  assert.ok(sidebar.includes('aria-label="Close dashboard menu"'));
   assert.ok(sidebar.includes("rounded-t-2xl"));
   assert.ok(drawer.includes('dealerMode ? styles.dealerBottomSheet : styles.sidePanel'));
   assert.ok(drawer.includes("width: '100%'"));

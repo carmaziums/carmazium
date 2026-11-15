@@ -200,10 +200,10 @@ function NewDeliveryJobForm() {
                         <input type="radio" name="when" checked={asap} onChange={() => setAsap(true)} className="accent-primary" />
                         <span className="text-sm font-bold">As soon as possible</span>
                     </label>
-                    <label className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer flex-1 ${!asap ? "border-primary bg-primary/5" : "border-[var(--border-default)] bg-[var(--bg-input)]"}`}>
+                    <label className={`flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer flex-1 min-w-0 ${!asap ? "border-primary bg-primary/5" : "border-[var(--border-default)] bg-[var(--bg-input)]"}`}>
                         <input type="radio" name="when" checked={!asap} onChange={() => setAsap(false)} className="accent-primary" />
                         <span className="text-sm font-bold whitespace-nowrap">On or after</span>
-                        <input id="job-date" aria-label="Preferred delivery date and time" aria-invalid={invalidField === "job-date"} aria-describedby={invalidField === "job-date" ? "job-error" : undefined} type="datetime-local" className={`${inputCls} py-1.5`} value={requestedFor} onChange={e => { setRequestedFor(e.target.value); setAsap(false) }} />
+                        <input id="job-date" aria-label="Preferred delivery date and time" aria-invalid={invalidField === "job-date"} aria-describedby={invalidField === "job-date" ? "job-error" : undefined} type="datetime-local" className={`${inputCls} py-1.5 min-w-0 max-w-full basis-full sm:basis-auto`} value={requestedFor} onChange={e => { setRequestedFor(e.target.value); setAsap(false) }} />
                     </label>
                 </div>
             </fieldset>

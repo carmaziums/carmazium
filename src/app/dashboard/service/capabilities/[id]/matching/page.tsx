@@ -154,17 +154,17 @@ export default function LeadMatchingSettingsPage() {
         ? `${profile.firstName} ${profile.lastName || ""}`.trim()
         : user?.email || "Provider"
 
-    if (!loading && capability?.serviceType === "WARRANTY") return <main className="container mx-auto px-5 pt-28 pb-16"><h1 className="text-2xl font-bold mb-3">Warranty administration</h1><p>Warranty partnerships and applications are managed directly by the CarMazium admin team. This dashboard does not accept warranty provider applications or documents.</p></main>
-    if (!loading && capability?.serviceType === "FINANCE") return <main className="container mx-auto px-5 pt-28 pb-16"><h1 className="text-2xl font-bold mb-3">Finance administration</h1><p>Finance providers and application routing are managed directly by CarMazium admin.</p></main>
+    if (!loading && capability?.serviceType === "WARRANTY") return <div className="container mx-auto px-5 pt-28 pb-16"><h1 className="text-2xl font-bold mb-3">Warranty administration</h1><p>Warranty partnerships and applications are managed directly by the CarMazium admin team. This dashboard does not accept warranty provider applications or documents.</p></div>
+    if (!loading && capability?.serviceType === "FINANCE") return <div className="container mx-auto px-5 pt-28 pb-16"><h1 className="text-2xl font-bold mb-3">Finance administration</h1><p>Finance providers and application routing are managed directly by CarMazium admin.</p></div>
 
     return (
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role={profile?.role === "DEALER" ? "dealer" : "provider"} userName={userName} userType="Partner Account" />
-                <main className="flex-1 max-w-4xl space-y-6">
+                <div className="flex-1 max-w-4xl space-y-6">
                     <div>
                         <Link href="/dashboard/service/capabilities" className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] hover:text-primary mb-5">
-                            <ArrowLeft size={14} /> Service add-ons
+                            <ArrowLeft size={14} /> My services
                         </Link>
                         <h1 className="text-3xl font-bold font-heading">Matching settings</h1>
                         <p className="text-sm text-[var(--text-muted)] mt-2">
@@ -247,7 +247,7 @@ export default function LeadMatchingSettingsPage() {
                             </Button>
                         </div>
                     </>}
-                </main>
+                </div>
             </div>
         </div>
     )

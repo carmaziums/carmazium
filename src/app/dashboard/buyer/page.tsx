@@ -76,7 +76,7 @@ function BuyerDashboard() {
 
                 <DashboardSidebar role="buyer" userName={userName} userType={profile?.role ? `${profile.role} Account` : "Buyer Account"} />
 
-                <main className="flex-1 space-y-8">
+                <div className="flex-1 space-y-8">
                     {/* Period Toggle Header */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <h2 className="text-2xl font-black font-heading uppercase tracking-tighter">Overview</h2>
@@ -212,7 +212,7 @@ function BuyerDashboard() {
                             )}
                         </div>
                     </div>
-                </main>
+                </div>
             </div>
         </div>
     )

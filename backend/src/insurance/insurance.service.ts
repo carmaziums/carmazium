@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
+import { InsuranceQuoteStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInsuranceQuoteDto } from './dto/create-insurance-quote.dto';
 import { UpdateInsuranceStatusDto } from './dto/update-insurance-status.dto';
@@ -82,13 +83,15 @@ export class InsuranceService {
         return { data, total, page: safePage, limit: safeLimit };
     }
 
-    async findByPartner(partnerId: string, page = 1, limit = 20) {
+    async findByPartner(partnerId: string, page = 1, limit = 20, status?: string) {
+        if (status && !Object.values(InsuranceQuoteStatus).includes(status as InsuranceQuoteStatus)) throw new BadRequestException('Unknown insurance quote status.');
+        const where = { partnerId, deletedAt: null, ...(status ? { status: status as InsuranceQuoteStatus } : {}) };
         const safePage = Math.max(1, Math.floor(page || 1));
         const safeLimit = Math.min(100, Math.max(1, Math.floor(limit || 20)));
         const skip = (safePage - 1) * safeLimit;
         const [data, total] = await Promise.all([
             this.prisma.insuranceQuote.findMany({
-                where: { partnerId, deletedAt: null },
+                where,
                 include: {
                     user: { select: { firstName: true, lastName: true, email: true } },
                     listing: {
@@ -104,11 +107,11 @@ export class InsuranceService {
                         },
                     },
                 },
-                orderBy: { createdAt: 'desc' },
+                orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
                 skip,
                 take: safeLimit,
             }),
-            this.prisma.insuranceQuote.count({ where: { partnerId, deletedAt: null } }),
+            this.prisma.insuranceQuote.count({ where }),
         ]);
         return { data, total, page: safePage, limit: safeLimit };
     }

@@ -115,7 +115,7 @@ export default function AdminMarketingPopupPage() {
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
-                <main className="flex-1 space-y-6 max-w-3xl">
+                <div className="flex-1 space-y-6 max-w-3xl">
                     <div>
                         <h1 className="text-3xl font-bold font-heading flex items-center gap-3">
                             <Megaphone className="text-primary" /> Marketing Popup
@@ -246,7 +246,7 @@ export default function AdminMarketingPopupPage() {
                             </a>
                         )}
                     </div>
-                </main>
+                </div>
             </div>
         </div>
     )

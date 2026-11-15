@@ -220,6 +220,28 @@ export class WarrantiesService {
         return orders.map(({ accessTokenHash, requestHash, ...order }) => ({ ...order, statusLabel: WARRANTY_STATUS_LABELS[order.status] }));
     }
 
+    async adminOrdersPage(status?: string, page = 1, limit = 25, search = '', sort = 'oldest') {
+        if (status && !Object.prototype.hasOwnProperty.call(WARRANTY_STATUS_LABELS, status)) throw new BadRequestException('Unknown warranty status.');
+        if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new BadRequestException('Invalid order pagination.');
+        if (search.length > 100 || !['oldest', 'newest'].includes(sort)) throw new BadRequestException('Invalid order search or sort.');
+        const term = search.trim();
+        const where: Prisma.WarrantyOrderWhereInput = {
+            status: status || { not: 'QUOTED' },
+            ...(term ? { OR: [
+                { id: { equals: term } },
+                { vehicle: { path: ['vrm'], string_contains: term.replace(/\s/g, '').toUpperCase(), mode: 'insensitive' } },
+                ...['firstName', 'lastName', 'email'].map(key => ({ customer: { path: [key], string_contains: term, mode: 'insensitive' as const } })),
+            ] } : {}),
+        };
+        const direction = sort === 'oldest' ? 'asc' : 'desc';
+        const [orders, total] = await this.prisma.$transaction([
+            this.prisma.warrantyOrder.findMany({ where, orderBy: [{ createdAt: direction }, { id: direction }], skip: (page - 1) * limit, take: limit,
+                include: { messages: { select: { kind: true, sentAt: true, attempts: true } } } }),
+            this.prisma.warrantyOrder.count({ where }),
+        ]);
+        return { data: orders.map(({ accessTokenHash, requestHash, ...order }) => ({ ...order, statusLabel: WARRANTY_STATUS_LABELS[order.status] })), total, page, limit };
+    }
+
     async issue(id: string, dto: IssueWarrantyDto, adminId: string) {
         if (dto.coverEnd <= dto.coverStart) throw new BadRequestException('Cover end must be after cover start.');
         const order = await this.prisma.warrantyOrder.findUniqueOrThrow({ where: { id } });

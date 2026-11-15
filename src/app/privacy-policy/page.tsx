@@ -134,7 +134,7 @@ const sections = [
 
 export default function PrivacyPolicyPage() {
   return (
-    <main className="min-h-screen bg-[var(--bg-primary)] pt-24 pb-16">
+    <div className="min-h-screen bg-[var(--bg-primary)] pt-24 pb-16">
       <div className="container mx-auto max-w-4xl px-5">
         <div className="mb-8">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Legal</p>
@@ -162,6 +162,6 @@ export default function PrivacyPolicyPage() {
           <Link href="/delete-account" className="rounded-xl border border-red-500/30 px-5 py-3 text-sm font-bold text-red-400 hover:bg-red-500/5">Delete Account</Link>
         </div>
       </div>
-    </main>
+    </div>
   )
 }

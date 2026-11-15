@@ -56,7 +56,7 @@ function MessagesContent() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="buyer" userName={userName} userType={profile?.role ? `${profile.role} Account` : "Buyer"} />
 
-                <main className="flex-1">
+                <div className="flex-1">
                     <div className="glass-card overflow-hidden h-[calc(100vh-180px)]">
                         <div className="p-6 border-b border-[var(--border-default)] flex items-center gap-3">
                             <MessageSquare className="text-primary" />
@@ -91,7 +91,7 @@ function MessagesContent() {
                             </div>
                         </div>
                     </div>
-                </main>
+                </div>
             </div>
         </div>
     )

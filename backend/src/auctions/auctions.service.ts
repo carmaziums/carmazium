@@ -923,10 +923,10 @@ export class AuctionsService {
     // records, no auction-specific fields). Added for mobile-production-
     // readiness-plan.md F43. Includes `listing.seller` (unlike findMyAuctions,
     // which has no reason to — the buyer needs to know who to contact).
-    async findWonAuctions(userId: string, page = 1, limit = 20): Promise<{ data: any[]; total: number }> {
+    async findWonAuctions(userId: string, page = 1, limit = 20, auctionId?: string): Promise<{ data: any[]; total: number }> {
         const buyerId = await this.resolveBuyerBusinessId(userId, 'VIEW_PURCHASES');
         const skip = (page - 1) * limit;
-        const where = { deletedAt: null, winnerId: buyerId };
+        const where = { deletedAt: null, winnerId: buyerId, ...(auctionId ? { id: auctionId } : {}) };
         const [data, total] = await Promise.all([
             this.prisma.auction.findMany({
                 where,
@@ -986,6 +986,12 @@ export class AuctionsService {
             data: gated.map((auction: any) => this.redactHandoverEvidence(auction)),
             total,
         };
+    }
+
+    async findWonAuction(userId: string, auctionId: string) {
+        const result = await this.findWonAuctions(userId, 1, 1, auctionId);
+        if (!result.data.length) throw new NotFoundException('Won auction not found');
+        return result.data[0];
     }
 
     async update(id: string, updateAuctionDto: UpdateAuctionDto, userId: string): Promise<Auction> {

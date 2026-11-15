@@ -316,7 +316,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                 </header>
 
                 <div className="container mx-auto px-5 max-w-6xl mt-10 md:mt-14 grid lg:grid-cols-[minmax(0,760px)_280px] gap-10 lg:gap-14 items-start">
-                    <main className="min-w-0">
+                    <div className="min-w-0">
                         {headings.length > 2 && (
                             <details className="lg:hidden mb-8 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                                 <summary className="cursor-pointer list-none flex items-center gap-2 font-bold text-sm text-[var(--text-primary)]">
@@ -372,7 +372,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                                 </div>
                             </div>
                         )}
-                    </main>
+                    </div>
 
                     <aside className="hidden lg:block sticky top-28 space-y-5">
                         {headings.length > 2 && (

@@ -122,7 +122,7 @@ export default async function UsedCarTypesPage() {
     const cars = await latestRetailCars()
 
     return (
-        <main className="min-h-screen pb-24 pt-24 md:pt-28">
+        <div className="min-h-screen pb-24 pt-24 md:pt-28">
             <PageJsonLd
                 path="/used-car-types"
                 title="Used Car Body Types: Hatchbacks, SUVs, Estates & More | CarMazium"
@@ -240,6 +240,6 @@ export default async function UsedCarTypesPage() {
                     </div>
                 </section>
             </div>
-        </main>
+        </div>
     )
 }

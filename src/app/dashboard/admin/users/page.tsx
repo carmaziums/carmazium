@@ -130,7 +130,7 @@ export default function AdminUsersPage() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
 
-                <main className="flex-1 space-y-8 min-w-0">
+                <div className="flex-1 space-y-8 min-w-0">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[var(--bg-input)] p-6 rounded-2xl border border-[var(--border-default)] backdrop-blur-md">
                         <div>
                             <Link href="/dashboard/admin" className="inline-flex items-center text-[var(--text-muted)] hover:text-primary dark:hover:text-white mb-2 text-sm transition-colors">
@@ -471,7 +471,7 @@ export default function AdminUsersPage() {
                             </div>
                         </div>
                     </div>
-                </main>
+                </div>
             </div>
             <UserDetailModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} onChanged={fetchUsers} onMessage={handleMessageUser} />
         </div>

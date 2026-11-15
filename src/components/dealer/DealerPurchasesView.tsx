@@ -276,7 +276,7 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
-                <main className="flex-1 space-y-6 min-w-0">
+                <div className="flex-1 space-y-6 min-w-0">
                     <PageHeader title="Purchases" subHeader="Cars you've bought or agreed to buy." />
                     <nav aria-label="Purchase stages" className="grid grid-cols-3 gap-1 rounded-xl border border-[var(--border-default)] p-1 bg-[var(--bg-card)]">
                         {([["progress","In progress"],["completed","Completed"],["cancelled","Cancelled"]] as const).map(([value,label]) => (
@@ -468,7 +468,7 @@ export function DealerPurchasesView({ mode }: { mode: "all" | "history" | "retai
                             </div>
                         </section>
                     )}
-                </main>
+                </div>
             </div>
 
             {cancelItem && (

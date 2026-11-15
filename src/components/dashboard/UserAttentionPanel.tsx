@@ -28,10 +28,16 @@ const ICONS: Record<UserAttentionKind, ComponentType<{ size?: number; className?
 export function UserAttentionPanel({ data, loading }: { data: UnifiedDashboardData | null; loading: boolean }) {
     const [extra, setExtra] = React.useState<{ auctions: Auction[]; deliveryPending: number } | null>(null)
 
+    const [failed, setFailed] = React.useState(false)
+    const [retry, setRetry] = React.useState(0)
+
     React.useEffect(() => {
         let cancelled = false
+        setExtra(null)
+        setFailed(false)
         Promise.allSettled([getMyAuctions(), getReceivedDeliveryRequests()]).then(([auctions, deliveries]) => {
             if (cancelled) return
+            setFailed([auctions, deliveries].some(result => result.status === "rejected"))
             setExtra({
                 auctions: auctions.status === "fulfilled" ? auctions.value : [],
                 deliveryPending: deliveries.status === "fulfilled"
@@ -40,7 +46,7 @@ export function UserAttentionPanel({ data, loading }: { data: UnifiedDashboardDa
             })
         })
         return () => { cancelled = true }
-    }, [])
+    }, [retry])
 
     const ready = !loading && extra !== null
     const items = ready
@@ -63,11 +69,15 @@ export function UserAttentionPanel({ data, loading }: { data: UnifiedDashboardDa
                 <p className="text-xs text-[var(--text-muted)] mt-1">Your to-do list, most urgent first.</p>
             </div>
 
+            {ready && (failed || !data) && <div role="alert" className="rounded-xl border border-amber-500/30 p-4 text-sm text-amber-800 dark:text-amber-300">
+                Some checks failed. This list may be incomplete. Open your offers, auctions or messages to check them directly.
+                <button type="button" className="block mt-2 font-bold underline" onClick={() => { if (!data) window.location.reload(); else setRetry(value => value + 1) }}>Retry checks</button>
+            </div>}
             {!ready ? (
                 <div className="space-y-2" aria-busy="true">
                     {[1, 2].map(i => <div key={i} className="h-16 rounded-xl bg-[var(--bg-input)] animate-pulse" />)}
                 </div>
-            ) : items.length === 0 ? (
+            ) : items.length === 0 && !failed && data ? (
                 <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
                     <CheckCircle2 size={20} className="text-emerald-500 shrink-0" />
                     <p className="text-sm font-semibold text-[var(--text-primary)]">You&apos;re all caught up. Nothing needs your attention right now.</p>

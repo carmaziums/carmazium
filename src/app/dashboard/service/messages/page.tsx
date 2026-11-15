@@ -28,9 +28,9 @@ function ServiceMessagesContent() {
                     userName={userName}
                     userType={profile?.role ? `${profile.role} Account` : "Service Provider"}
                 />
-                <main className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0">
                     <RoleMessagesInbox subtitle="Customer and provider conversations" />
-                </main>
+                </div>
             </div>
         </div>
     )

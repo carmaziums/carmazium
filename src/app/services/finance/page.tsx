@@ -4,7 +4,7 @@ import { FinanceProviderContact } from "@/components/finance/FinanceProviderCont
 
 export default async function VehicleFinanceServicePage({ searchParams }: { searchParams: Promise<{ listingId?: string }> }) {
     const { listingId } = await searchParams
-    return <main className="container mx-auto max-w-4xl px-5 py-12 space-y-8">
+    return <div className="container mx-auto max-w-4xl px-5 py-12 space-y-8">
         <Link href="/services" className="text-sm text-primary">Back to services</Link>
         <header className="space-y-4"><h1 className="text-4xl font-bold">Vehicle Finance</h1>
             <p className="text-[var(--text-muted)]">Apply through the finance provider selected for your vehicle by CarMazium admin. CarMazium does not provide finance or make lending decisions.</p>
@@ -13,5 +13,5 @@ export default async function VehicleFinanceServicePage({ searchParams }: { sear
             {listingId ? <FinanceReferralForm key={listingId} listingId={listingId} /> : <div className="space-y-4"><h2 className="text-2xl font-bold">Start with the vehicle you want</h2><p>On a participating retail listing, select Apply for Finance. Enter your name, email address and phone number; we notify the CarMazium admin team, then take you to the application on the selected provider’s website.</p><p className="text-sm text-[var(--text-muted)]">Sellers choose whether to show the calculator and application button. The selected provider handles the separate application, checks and finance disclosures. Finance is subject to status and lender approval. CarMazium charges its finance partner a fee for a successful application.</p><Link href="/search" className="inline-block rounded-xl bg-primary px-5 py-3 font-bold text-white">Browse cars</Link></div>}
         </section>
         <div id="providers"><FinanceProviderContact /></div>
-    </main>
+    </div>
 }

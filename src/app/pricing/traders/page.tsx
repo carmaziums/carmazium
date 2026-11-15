@@ -34,7 +34,7 @@ export default function TraderPricingPage() {
     const auction = PRICING.marketplace.auction
 
     return (
-        <main className="min-h-screen pb-24 pt-20">
+        <div className="min-h-screen pb-24 pt-20">
             <PageJsonLd
                 path="/pricing/traders"
                 title="CarMazium Trader & Partner Pricing"
@@ -157,6 +157,6 @@ export default function TraderPricingPage() {
                     </Button>
                 </div>
             </section>
-        </main>
+        </div>
     )
 }

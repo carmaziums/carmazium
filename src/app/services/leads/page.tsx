@@ -39,7 +39,7 @@ export default function MyServiceLeadsPage() {
 
     return (
         <div className="min-h-screen pt-24 pb-20">
-            <main className="container mx-auto px-5 max-w-4xl">
+            <div className="container mx-auto px-5 max-w-4xl">
                 <div className="flex items-end justify-between gap-4 mb-8">
                     <div><p className="text-primary text-xs font-black uppercase tracking-widest mb-2">My services</p><h1 className="text-3xl font-black font-heading">Warranty & previous enquiries</h1></div>
                     <Link href="/services" className="text-sm font-bold text-primary">Service Hub</Link>
@@ -70,7 +70,7 @@ export default function MyServiceLeadsPage() {
                         {loadingMore ? "Loading…" : "Load more enquiries"}
                     </button>
                 </div>}
-            </main>
+            </div>
         </div>
     )
 }

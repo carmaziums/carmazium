@@ -1,4 +1,5 @@
 "use client"
+import { ResponsiveFilterPanel } from "@/components/ui/ResponsiveFilterPanel"
 
 import * as React from "react"
 import { Suspense } from "react"
@@ -17,6 +18,7 @@ import { EXTERIOR_GRADE_OPTIONS } from "@/lib/exteriorGrade"
 import { haversineDistanceMiles } from "@/lib/distance"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useLocation } from "@/context/LocationContext"
+import { canonicalMake } from "@/lib/makeAliases"
 import { searchMakes, searchModels, searchVariants, type VehicleSearchOption } from "@/lib/vehicleSearchOptions"
 import { VEHICLE_FEATURE_GROUPS } from "@/lib/vehicleFeatures"
 import { useAnalytics } from "@/hooks/useAnalytics"
@@ -327,7 +329,14 @@ function SearchPageContent() {
 
     // Live counts beside each make, same source as the app's make picker.
     const [makeCounts, setMakeCounts] = React.useState<Record<string, number>>({})
-    React.useEffect(() => { void getMakeCounts().then(setMakeCounts) }, [])
+    React.useEffect(() => { void getMakeCounts().then(counts => {
+        const canonical: Record<string, number> = {}
+        for (const [make, count] of Object.entries(counts)) {
+            const key = canonicalMake(make).toLowerCase()
+            canonical[key] = (canonical[key] || 0) + count
+        }
+        setMakeCounts(canonical)
+    }) }, [])
 
     const set = <K extends keyof FilterState>(key: K, val: FilterState[K]) =>
         setFilters(prev => ({ ...prev, [key]: val }))
@@ -643,20 +652,7 @@ function SearchPageContent() {
                     {isFilterOpen ? <X size={18} /> : null}
                 </Button>
 
-                {/* ── Sidebar Overlay (Mobile) ── */}
-                {isFilterOpen && (
-                    <div
-                        className="fixed inset-0 z-[55] bg-slate-950/80 backdrop-blur-sm lg:hidden transition-opacity"
-                        onClick={() => setIsFilterOpen(false)}
-                    />
-                )}
-
-                {/* ── Sidebar ──────────────────────────────────────────────────── */}
-                <aside className={`
-                    fixed inset-x-0 bottom-0 z-[60] lg:z-10 flex flex-col h-[85vh] bg-[var(--bg-dropdown)] border-t border-[var(--border-default)] rounded-t-3xl shadow-2xl transition-transform duration-300
-                    lg:static lg:w-72 lg:flex-shrink-0 lg:glass-card lg:border lg:rounded-2xl lg:shadow-none lg:translate-y-0 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:flex lg:flex-col lg:overflow-visible lg:p-0
-                    ${isFilterOpen ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'}
-                `}>
+                <ResponsiveFilterPanel open={isFilterOpen} onClose={() => setIsFilterOpen(false)}>
                     <div className="flex justify-between items-center p-6 pb-4 border-b border-[var(--border-default)] lg:px-6 lg:pt-6 lg:pb-4 lg:border-b lg:border-[var(--border-default)] shrink-0">
                         <h3 data-tour="search-filters" className="font-heading font-bold text-xl">Filters</h3>
                         <div className="flex items-center gap-4">
@@ -667,6 +663,7 @@ function SearchPageContent() {
                             )}
                             <button
                                 onClick={() => setIsFilterOpen(false)}
+                                aria-label="Close filters"
                                 className="lg:hidden text-[var(--text-muted)] hover:text-primary dark:hover:text-white bg-[var(--bg-card)] w-8 h-8 rounded-full flex items-center justify-center"
                             >
                                 <X size={20} />
@@ -1275,7 +1272,7 @@ function SearchPageContent() {
                             <span className="hidden lg:inline">Apply Filters</span>
                         </Button>
                     </div>
-                </aside>
+                </ResponsiveFilterPanel>
 
                 {/* ── Results Column ─────────────────────────────────────────── */}
                 <div ref={resultsTopRef} className="flex-1 min-w-0">

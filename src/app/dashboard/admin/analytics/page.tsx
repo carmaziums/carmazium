@@ -1,4 +1,5 @@
 "use client"
+import { chronologicalHours } from "@/lib/analyticsHours"
 
 import * as React from "react"
 import Link from "next/link"
@@ -323,7 +324,7 @@ export default function AdminAnalyticsPage() {
     const maxDowSessions = Math.max(...dowData.map(r => r.sessions), 1)
 
     // Enrich hour data
-    const hourData = traffic?.busyHour.map(r => ({
+    const hourData = (traffic ? chronologicalHours(traffic.busyHour) : []).map(r => ({
         hour: `${String(r.hour).padStart(2, "0")}:00`,
         sessions: r.sessions,
     })) ?? []
@@ -436,7 +437,7 @@ export default function AdminAnalyticsPage() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
 
-                <main className="flex-1 space-y-8 min-w-0">
+                <div className="flex-1 space-y-8 min-w-0">
                     {/* Header */}
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[var(--bg-input)] p-6 rounded-2xl border border-[var(--border-default)] backdrop-blur-md">
                         <div>
@@ -1187,6 +1188,7 @@ export default function AdminAnalyticsPage() {
                                             <Clock size={14} className="text-cyan-400" />
                                             <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Busiest Hours of Day</p>
                                         </div>
+                                        <p className="text-xs text-[var(--text-muted)] mb-3">Hours are shown chronologically. Hours absent from the report are omitted, not counted as zero.</p>
                                         <SimpleBarChart
                                             data={hourData as Record<string, unknown>[]}
                                             maxVal={maxHourSessions}
@@ -1339,7 +1341,7 @@ export default function AdminAnalyticsPage() {
                             </div>
                         ) : null}
                     </div>
-                </main>
+                </div>
             </div>
         </div>
     )

@@ -59,7 +59,7 @@ export default function AboutPage() {
     const { user } = useAuth()
 
     return (
-        <main className="min-h-screen pb-20 pt-20">
+        <div className="min-h-screen pb-20 pt-20">
             <PageHero
                 eyebrow="About CarMazium"
                 title="A clearer way to connect the UK vehicle marketplace"
@@ -242,6 +242,6 @@ export default function AboutPage() {
                     </div>
                 </section>
             )}
-        </main>
+        </div>
     )
 }

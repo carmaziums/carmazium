@@ -6,7 +6,7 @@ import ts from 'typescript';
 const read = p => fs.readFileSync(new URL('../'+p, import.meta.url), 'utf8');
 const native = 'carmazium app/carmazium app/src/';
 const compile = source => ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-function load(path, deps = {}) { const exports = {}; vm.runInNewContext(compile(read(path)), { exports, URLSearchParams, require: name => { if (name in deps) return deps[name]; throw Error(name); } }); return exports; }
+function load(path, deps = {}) { const exports = {}; vm.runInNewContext(compile(read(path)), { exports, URLSearchParams, require: name => { if (name in deps) return deps[name]; if (['./makeAliases', './completeHistory'].includes(name)) return load('src/lib/'+name.slice(2)+'.ts'); throw Error(name); } }); return exports; }
 // Execute the actual native state/parameter functions, with state setters in place of React rendering.
 function nativeState() {
   const source = read(native+'screens/main/SearchScreen.tsx');

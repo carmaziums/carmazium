@@ -105,7 +105,7 @@ export default function DealerEarningsPage() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealership Account" />
 
-                <main className="flex-1 space-y-8 min-w-0">
+                <div className="flex-1 space-y-8 min-w-0">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
                             <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-neon-small shrink-0">
@@ -479,7 +479,7 @@ export default function DealerEarningsPage() {
                             </table>
                         </div>}
                     </div>}
-                </main>
+                </div>
             </div>
         </div>
     )

@@ -197,7 +197,6 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
 
     const motOk = listing.motStatus ? listing.motStatus.toLowerCase() === "valid" : null
     const taxOk = listing.taxStatus ? listing.taxStatus.toLowerCase() === "taxed" : null
-    const GRADE_LABELS = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Average']
     const businessAddress = seller?.dealerProfile?.businessAddress
 
     return (
@@ -368,7 +367,7 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                 <div className="flex gap-2 mt-2 flex-wrap">
                                     {listing.exteriorGrade != null && (
                                         <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border bg-violet-500/10 border-violet-500/20 text-violet-400">
-                                            <Award size={10} /> Grade {listing.exteriorGrade} — {GRADE_LABELS[listing.exteriorGrade] ?? ''}
+                                            <Award size={10} /> Exterior grade {listing.exteriorGrade} (seller-reported)
                                         </span>
                                     )}
                                     {/* Clickable regardless of clear/not-clear/pending — a winner

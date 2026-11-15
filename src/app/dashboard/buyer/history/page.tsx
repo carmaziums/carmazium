@@ -69,7 +69,7 @@ function BuyerHistoryPage() {
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="buyer" userName={userName} userType="Buyer" />
-                <main className="min-w-0 flex-1 space-y-6">
+                <div className="min-w-0 flex-1 space-y-6">
                     <h1 className="text-3xl font-bold font-heading mb-6">Purchase History</h1>
 
                     {error && (
@@ -160,7 +160,7 @@ function BuyerHistoryPage() {
                             </>
                         )}
                     </div>
-                </main>
+                </div>
             </div>
         </div>
     )

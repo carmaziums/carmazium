@@ -84,7 +84,7 @@ export default function AdminServiceJobPage() {
 
     return <div className="min-h-screen pt-20 pb-12"><div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
         <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
-        <main className="flex-1 max-w-5xl space-y-6">
+        <div className="flex-1 max-w-5xl space-y-6">
             <div><Link href="/dashboard/admin/services?tab=jobs" className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] hover:text-primary mb-5"><ArrowLeft size={14}/> Trade Exchange services</Link><h1 className="text-3xl font-bold font-heading">Service job</h1><p className="text-sm text-[var(--text-muted)] mt-1">Read-only operational view. Customer/provider actions are intentionally not available here.</p></div>
             {error && <div className="p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-300 text-sm flex gap-3"><AlertCircle size={18} className="shrink-0"/>{error}</div>}
             {!job && !error && <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary"/></div>}
@@ -109,6 +109,6 @@ export default function AdminServiceJobPage() {
                     {job.status === "DISPUTED" && <><div className="grid md:grid-cols-2 gap-4"><div className="space-y-2"><label className="text-xs font-bold">Admin case note</label><textarea className={`${inputCls} min-h-28`} value={note} onChange={e => setNote(e.target.value)} placeholder="Record calls, evidence reviewed or investigation notes..." maxLength={4000}/><Button variant="outline" disabled={busy === "note" || !note.trim()} onClick={addNote}>{busy === "note" && <Loader2 size={14} className="animate-spin mr-2"/>}Add case note</Button></div><div className="space-y-2"><label className="text-xs font-bold">Evidence image / PDF</label><input id="dispute-evidence" className={inputCls} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={e => setFile(e.target.files?.[0] ?? null)}/><p className="text-[11px] text-[var(--text-muted)]">Use for vehicle/damage evidence only. Do not upload bank details, identity documents or other highly sensitive personal information.</p><Button variant="outline" disabled={busy === "upload" || !file} onClick={uploadEvidence}>{busy === "upload" ? <Loader2 size={14} className="animate-spin mr-2"/> : <Upload size={14} className="mr-2"/>}Upload evidence</Button></div></div><div className="border-t border-[var(--border-default)] pt-5"><p className="font-bold text-sm mb-3">Resolve case</p><div className="flex flex-wrap gap-3"><Button disabled={!!busy} onClick={() => resolve("RELEASE")}>Release payment to provider</Button><Button variant="outline" disabled={!!busy} onClick={() => resolve("REFUND")}>Refund customer in full</Button><Button variant="outline" disabled={!!busy} onClick={() => resolve("PARTIAL_REFUND")}>Partial refund and settle remainder</Button></div></div></>}
                 </section>}
             </>}
-        </main>
+        </div>
     </div></div>
 }

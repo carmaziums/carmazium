@@ -1,3 +1,4 @@
+import { collectHistory } from "./completeHistory";
 import type { VehicleSearchOption } from './vehicleSearchOptions';
 import { captureApprovedAuctionAttribution } from './approvedAuctionAttribution';
 /**
@@ -744,6 +745,13 @@ export async function getMyBids(page = 1, limit = 20): Promise<BidsResponse> {
     return apiClient<BidsResponse>(`/bids/my?page=${page}&limit=${limit}`, {
         method: 'GET',
         cache: 'no-store',
+    })
+}
+
+export async function getAllMyBids(): Promise<Bid[]> {
+    return collectHistory<Bid>(async (page, limit) => {
+        const response = await getMyBids(page, limit)
+        return { data: response.data, total: response.pagination?.total }
     })
 }
 

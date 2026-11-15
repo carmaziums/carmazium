@@ -1576,22 +1576,22 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             // page (this pill) rather than duplicated in the spec grid too.
                                             // No grade on record must not be shown as "Grade 1 — Excellent".
                                             const grade = typeof auction.listing.exteriorGrade === 'number' ? auction.listing.exteriorGrade : null
-                                            const gradeLabel = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Average'][grade ?? 0]
                                             const gradeColor = ['', 'text-emerald-400', 'text-green-400', 'text-yellow-400', 'text-orange-400', 'text-red-400'][grade ?? 0]
                                             const gradeBg = ['', 'bg-emerald-500/10 border-emerald-500/20', 'bg-green-500/10 border-green-500/20', 'bg-yellow-500/10 border-yellow-500/20', 'bg-orange-500/10 border-orange-500/20', 'bg-red-500/10 border-red-500/20'][grade ?? 0]
                                             return (
                                         <div className="rounded-xl border border-amber-500/20 bg-[var(--bg-input)] p-4">
                                             <div className="flex items-start justify-between gap-3 mb-1">
                                                 <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider border-l-2 border-amber-500 pl-2.5">
-                                                    Condition &amp; Damage
+                                                    Seller-reported exterior damage
                                                 </h4>
                                                 {grade !== null && (
                                                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold shrink-0 ${gradeBg} ${gradeColor}`}>
-                                                        Grade {grade} — {gradeLabel}
+                                                        Exterior grade {grade}
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-[10px] text-[var(--text-muted)] mb-4 pl-3">
+                                            <p className="text-sm text-[var(--text-secondary)] my-3">This grade reflects exterior damage reported by the seller. It is not an inspection or a mechanical condition assessment. Read the seller’s declared faults separately.</p>
+                                <p className="text-[10px] text-[var(--text-muted)] mb-4 pl-3">
                                                 {damageRecords.length > 0
                                                     ? `${damageRecords.length} damage report${damageRecords.length !== 1 ? "s" : ""} · ${buyerDamagePins.length} 3D marker${buyerDamagePins.length !== 1 ? "s" : ""} — select a number or detail below`
                                                     : damageLoading

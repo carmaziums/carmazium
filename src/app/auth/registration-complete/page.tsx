@@ -260,7 +260,7 @@ export default function RegistrationCompletePage() {
     const firstName = profile?.firstName || user.user_metadata?.first_name || user.user_metadata?.firstName || ""
 
     return (
-        <main className="min-h-screen bg-slate-950 pt-24 pb-14 px-5">
+        <div className="min-h-screen bg-slate-950 pt-24 pb-14 px-5">
             <div className="mx-auto max-w-5xl">
                 <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] shadow-2xl">
                     <div className="relative px-6 py-10 sm:px-10 sm:py-12 text-center border-b border-white/10">
@@ -321,6 +321,6 @@ export default function RegistrationCompletePage() {
                     </div>
                 </section>
             </div>
-        </main>
+        </div>
     )
 }

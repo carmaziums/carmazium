@@ -464,9 +464,9 @@ export default function TradeXchangePage() {
                     <p className="mx-auto mb-6 max-w-2xl text-sm md:text-base text-[var(--text-muted)]">
                         Open the card that matches what you need. Every TradeXchange page explains that service first, then gives you the relevant action — browse, post a job, send an enquiry or apply as a provider.
                     </p>
-                    <Button asChild>
+                    <Button asChild className="h-auto min-h-11 max-w-full whitespace-normal text-center">
                         <Link href="/services">
-                            View the TradeXchange Services hub <ArrowRight size={15} />
+                            Explore vehicle services <ArrowRight size={15} className="shrink-0" />
                         </Link>
                     </Button>
                 </div>

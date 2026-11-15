@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function ReportProblemPage() {
   return (
-    <main className="min-h-screen bg-[var(--bg-primary)] pb-20 pt-28">
+    <div className="min-h-screen bg-[var(--bg-primary)] pb-20 pt-28">
       <div className="mx-auto max-w-2xl px-5">
         <h1 className="text-3xl font-black tracking-tight">Report a problem</h1>
         <p className="mt-2 text-[var(--text-muted)]">
@@ -18,6 +18,6 @@ export default function ReportProblemPage() {
         </p>
         <ReportProblemForm />
       </div>
-    </main>
+    </div>
   )
 }

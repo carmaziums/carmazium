@@ -55,7 +55,7 @@ function SellerPerformancePage() {
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="seller" userName={userName} userType="Seller" />
-                <main className="flex-1 space-y-6">
+                <div className="flex-1 space-y-6">
                     <h1 className="text-3xl font-bold font-heading mb-6">Performance</h1>
 
                     {error && (
@@ -106,7 +106,7 @@ function SellerPerformancePage() {
                             </div>
                         )}
                     </div>
-                </main>
+                </div>
             </div>
         </div>
     )

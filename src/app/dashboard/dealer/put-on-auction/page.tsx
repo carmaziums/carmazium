@@ -94,7 +94,7 @@ export default function PutOnAuctionPage() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
-                <main className="flex-1 space-y-6 min-w-0 max-w-2xl">
+                <div className="flex-1 space-y-6 min-w-0 max-w-2xl">
                     {/* Back */}
                     <Link
                         href="/dashboard/dealer/inventory"
@@ -309,7 +309,7 @@ export default function PutOnAuctionPage() {
                             )}
                         </>
                     )}
-                </main>
+                </div>
             </div>
         </div>
     )

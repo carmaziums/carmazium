@@ -11,6 +11,7 @@ const code = ts.transpileModule(source, { compilerOptions: {
 function client() {
   const calls = [], exports = {};
   vm.runInNewContext(code, { exports, URLSearchParams, require: name => {
+    if (name === './completeHistory') { const exports = {}; vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/lib/completeHistory.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { exports }); return exports; }
     if (name === './listingMotHistory') return {};
     if (name === './approvedAuctionAttribution') return { captureApprovedAuctionAttribution: () => { throw Error('Search must not capture seller attribution'); } };
     assert.equal(name, './apiClient');

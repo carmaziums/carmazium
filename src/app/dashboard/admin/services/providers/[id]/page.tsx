@@ -249,7 +249,7 @@ export default function AdminProviderReviewPage() {
     return <div className="min-h-screen pt-20 pb-12">
         <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
             <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
-            <main className="flex-1 max-w-4xl space-y-6">
+            <div className="flex-1 max-w-4xl space-y-6">
                 <div>
                     <Link href="/dashboard/admin/services?tab=queue" className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] hover:text-primary mb-5">
                         <ArrowLeft size={14}/> Trade Exchange services
@@ -524,7 +524,7 @@ export default function AdminProviderReviewPage() {
                         </div>
                     </section>
                 </>}
-            </main>
+            </div>
         </div>
     </div>
 }

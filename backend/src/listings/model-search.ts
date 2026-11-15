@@ -27,6 +27,8 @@ export function makeSearchWhere(make: string) {
     const value = make.trim();
     const plain = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const aliases = new Set([value, plain]);
+    if (/^mercedes(?:[- ]?benz)?$/i.test(value)) { for (const alias of ['Mercedes', 'Mercedes-Benz', 'Mercedes Benz', 'MercedesBenz']) aliases.add(alias); }
+    if (/^dodge(?:[ -]?usa)?$/i.test(value)) { for (const alias of ['Dodge', 'Dodge USA', 'Dodge-USA', 'DodgeUSA']) aliases.add(alias); }
     if (/^citro[eë]n$/i.test(value)) { aliases.add('Citroën'); aliases.add('Citroen'); }
     if (/^skoda$/i.test(plain)) { aliases.add('Skoda'); aliases.add('Škoda'); }
     return { OR: [...aliases].map(name => ({ make: { equals: name, mode: 'insensitive' as const } })) };

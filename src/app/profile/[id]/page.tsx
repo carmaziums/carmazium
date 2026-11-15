@@ -115,7 +115,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     if (!profile) notFound()
 
     return (
-        <main className="min-h-screen">
+        <div className="min-h-screen">
             <section className="border-b border-slate-700/50 bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 text-white">
                 <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
                     <div className="rounded-3xl border border-blue-300/15 bg-white/[0.04] p-5 shadow-[0_24px_80px_rgba(2,8,23,0.35)] backdrop-blur-sm sm:p-7">
@@ -245,7 +245,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                     </div>
                 </aside>
             </div>
-        </main>
+        </div>
     )
 }
 

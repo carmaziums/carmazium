@@ -90,7 +90,7 @@ export default function AdminHpiQueuePage() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
 
-                <main className="flex-1 space-y-6 min-w-0">
+                <div className="flex-1 space-y-6 min-w-0">
                     <Link
                         href="/dashboard/admin"
                         className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary transition-colors"
@@ -226,7 +226,7 @@ export default function AdminHpiQueuePage() {
                             </ul>
                         )}
                     </section>
-                </main>
+                </div>
             </div>
 
             {uploadTarget && (

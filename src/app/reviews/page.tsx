@@ -63,7 +63,7 @@ const BUYER_CHECKS = [
 
 export default function ReviewsPage() {
     return (
-        <main className="min-h-screen pb-24 pt-24 md:pt-28">
+        <div className="min-h-screen pb-24 pt-24 md:pt-28">
             <div className="container mx-auto max-w-7xl px-5">
                 <nav aria-label="Breadcrumb" className="mb-6 text-sm text-[var(--text-muted)]">
                     <Link href="/" className="hover:text-primary focus-visible:underline">Home</Link>
@@ -176,6 +176,6 @@ export default function ReviewsPage() {
                     </a>
                 </section>
             </div>
-        </main>
+        </div>
     )
 }

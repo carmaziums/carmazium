@@ -114,7 +114,7 @@ function ProviderOverview() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="provider" userName={userName} userType="Service Provider" />
 
-                <main className="flex-1 min-w-0 space-y-8">
+                <div className="flex-1 min-w-0 space-y-8">
                     <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-5">
                         <div>
                             <p className="text-primary text-xs font-black uppercase tracking-[0.18em] mb-2">TradeXchange Services</p>
@@ -125,7 +125,7 @@ function ProviderOverview() {
                         </div>
                         <div className="flex flex-wrap gap-2">
                             <Link href="/dashboard/service/capabilities" className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-default)] px-4 py-2.5 text-xs font-black uppercase tracking-widest hover:border-primary/40 transition-colors">
-                                <ShieldCheck size={15} /> Service setup & payouts
+                                <ShieldCheck size={15} /> My services
                             </Link>
                             <Link href="/dashboard/service/jobs" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-black uppercase tracking-widest text-white hover:bg-primary/90 transition-colors">
                                 Find jobs <ChevronRight size={15} />
@@ -215,7 +215,7 @@ function ProviderOverview() {
                             <Link href="/dashboard/service/capabilities" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>Complete service setup</Link>
                         </div>
                     </section>
-                </main>
+                </div>
             </div>
         </div>
     )

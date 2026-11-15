@@ -33,3 +33,12 @@ describe('make spellings', () => {
         expect(makeSearchWhere('MG')).toEqual({ OR: [{ make: { equals: 'MG', mode: 'insensitive' } }] });
     });
 });
+
+describe('manufacturer alias groups', () => {
+    it.each(['Mercedes', 'Mercedes-Benz', 'Mercedes Benz'])('%s matches every supported Mercedes spelling', value => {
+        expect(makeSearchWhere(value).OR.map(x => x.make.equals.toLowerCase())).toEqual(expect.arrayContaining(['mercedes', 'mercedes-benz', 'mercedes benz']));
+    });
+    it.each(['Dodge', 'DODGE USA'])('%s matches Dodge and Dodge USA', value => {
+        expect(makeSearchWhere(value).OR.map(x => x.make.equals.toLowerCase())).toEqual(expect.arrayContaining(['dodge', 'dodge usa']));
+    });
+});

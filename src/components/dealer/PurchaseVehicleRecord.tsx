@@ -115,7 +115,7 @@ export function PurchaseVehicleRecord({ record, title, purchasedAt = null }: { r
                 <Row label="Keys" value={record.numberOfKeys} />
                 <Row label="Service history" value={record.serviceHistory} />
                 <Row label="MOT" value={[record.motStatus, record.motExpiryDate ? `expires ${fmtDate(record.motExpiryDate)}` : null].filter(Boolean).join(", ")} />
-                <Row label="Condition grade" value={record.exteriorGrade ? `Grade ${record.exteriorGrade}` : null} />
+                <Row label="Seller-reported exterior grade" value={record.exteriorGrade ? `Grade ${record.exteriorGrade}` : null} />
                 <Row label="Insurance write-off" value={record.writeOffCategory && record.writeOffCategory !== "NONE" ? record.writeOffCategory : null} />
                 {features.length > 0 && <Row label="Features" value={features.join(", ")} />}
             </div>

@@ -120,15 +120,15 @@ export default function ProviderVerificationPage() {
         } finally { setBusy(false) }
     }
 
-    if (capability?.serviceType === "WARRANTY" || capability?.serviceType === "FINANCE") return <main className="container mx-auto px-5 pt-28 pb-16"><h1 className="text-2xl font-bold mb-3">Provider administration</h1><p>Finance and warranty partnerships and applications are managed directly by the CarMazium admin team. This dashboard does not accept finance or warranty provider applications or documents.</p></main>
+    if (capability?.serviceType === "WARRANTY" || capability?.serviceType === "FINANCE") return <div className="container mx-auto px-5 pt-28 pb-16"><h1 className="text-2xl font-bold mb-3">Provider administration</h1><p>Finance and warranty partnerships and applications are managed directly by the CarMazium admin team. This dashboard does not accept finance or warranty provider applications or documents.</p></div>
 
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}`.trim() : user?.email || "Provider"
 
     return <div className="min-h-screen pt-20 pb-12"><div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
         <DashboardSidebar role="provider" userName={userName} userType="Service Provider" />
-        <main className="flex-1 max-w-3xl space-y-6">
+        <div className="flex-1 max-w-3xl space-y-6">
             <div>
-                <Link href="/dashboard/service/capabilities" className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] hover:text-primary mb-5"><ArrowLeft size={14}/> Service areas</Link>
+                <Link href="/dashboard/service/capabilities" className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] hover:text-primary mb-5"><ArrowLeft size={14}/> My services</Link>
                 <h1 className="text-3xl font-bold font-heading">Provider verification</h1>
                 <p className="text-sm text-[var(--text-muted)] mt-1">{capability ? SERVICE_LABELS[capability.serviceType] : "Service application"} · business details, declaration and secure payout setup. Delivery/collection/recovery requires trade insurance only; inspection requires no uploads.</p>
             </div>
@@ -212,6 +212,6 @@ export default function ProviderVerificationPage() {
                     </div>)}
                 </section>
             </>}
-        </main>
+        </div>
     </div></div>
 }

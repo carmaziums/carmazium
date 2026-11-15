@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function DeleteAccountPage() {
   return (
-    <main className="min-h-screen bg-[var(--bg-primary)] pt-24 pb-16">
+    <div className="min-h-screen bg-[var(--bg-primary)] pt-24 pb-16">
       <div className="container mx-auto max-w-3xl px-5">
         <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Account & privacy</p>
         <h1 className="mt-2 text-4xl md:text-5xl font-black font-heading uppercase tracking-tight text-[var(--text-primary)]">Delete Account</h1>
@@ -19,6 +19,6 @@ export default function DeleteAccountPage() {
         </p>
         <DeleteAccountPortal />
       </div>
-    </main>
+    </div>
   )
 }

@@ -116,7 +116,7 @@ export default function SaleCancellationsPage() {
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role={sidebarRole} />
-                <main className="flex-1 min-w-0 space-y-6">
+                <div className="flex-1 min-w-0 space-y-6">
                     <div>
                         <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">Buyer & seller protection</p>
                         <h1 className="text-3xl font-black mt-1">Cancellation Requests</h1>
@@ -235,7 +235,7 @@ export default function SaleCancellationsPage() {
                             })}
                         </div>
                     )}
-                </main>
+                </div>
             </div>
         </div>
     )

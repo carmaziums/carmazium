@@ -84,7 +84,7 @@ export default function ContractorJobPage() {
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="provider" userName={userName} userType="Service Provider" />
-                <main className="flex-1 max-w-4xl">
+                <div className="flex-1 max-w-4xl">
             {job && isMine && <ServiceJobChanges job={job} role="provider" onChange={load} />}
                     <Link href="/dashboard/service/jobs" className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] hover:text-primary mb-6"><ArrowLeft size={14} /> Jobs</Link>
 
@@ -262,7 +262,7 @@ export default function ContractorJobPage() {
                             </aside>
                         </div>
                     )}
-                </main>
+                </div>
             </div>
         </div>
     )

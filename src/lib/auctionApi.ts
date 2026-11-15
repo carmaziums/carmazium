@@ -1,3 +1,4 @@
+import { collectHistory } from "./completeHistory";
 import { apiClient } from './apiClient';
 import type { OfficialVehicleData } from './dvlaApi';
 
@@ -293,15 +294,22 @@ export async function getWonAuctions(page = 1, limit = 50): Promise<Auction[]> {
     if (Array.isArray(r)) return r;
     if (r?.data && Array.isArray(r.data)) return r.data;
     if (r?.data && "data" in r.data && Array.isArray(r.data.data)) return r.data.data;
-    return [];
+    throw new Error("Could not load your auction wins. Please refresh.");
+}
+
+export async function getAllWonAuctions(): Promise<Auction[]> {
+    return collectHistory<Auction>(async (page, limit) => {
+        const res = await apiClient<{ data: { data: Auction[]; total: number } }>(`${API}/auctions/my/won?page=${page}&limit=${limit}`);
+        return res.data;
+    });
 }
 
 // Single-auction lookup through the winner-gated list endpoint rather than the
 // public findOne — that's the only query that includes the seller's phone/email
 // (safe here because it's filtered to `winnerId = requesting user`).
 export async function getWonAuctionById(id: string): Promise<Auction | null> {
-    const list = await getWonAuctions(1, 200);
-    return list.find(a => a.id === id) ?? null;
+    const res = await apiClient<{ data: Auction }>(`${API}/auctions/my/won/${encodeURIComponent(id)}`);
+    return res.data;
 }
 
 export async function getAuction(id: string): Promise<Auction> {

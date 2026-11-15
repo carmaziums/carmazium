@@ -404,7 +404,7 @@ function BuyerOffersPage() {
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="buyer" userName={userName} userType={profile?.role ? `${profile.role} Account` : "Buyer Account"} />
-                <main className="flex-1 space-y-6">
+                <div className="flex-1 space-y-6">
                     {amendingOffer && (
                         <AmendOfferModal
                             offer={amendingOffer}
@@ -707,7 +707,7 @@ function BuyerOffersPage() {
                             </table>
                         </div>
                     </div>
-                </main>
+                </div>
             </div>
         </div>
     )

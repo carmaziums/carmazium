@@ -226,7 +226,7 @@ export default function AdminFreeListingsPage() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
 
-                <main className="flex-1 min-w-0 space-y-6">
+                <div className="flex-1 min-w-0 space-y-6">
                     <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
                         <button
                             type="button"
@@ -449,7 +449,7 @@ export default function AdminFreeListingsPage() {
                             <Button variant="outline" disabled={page >= totalPages || loading} onClick={() => setPage(value => Math.min(totalPages, value + 1))}>Next</Button>
                         </div>
                     </div>
-                </main>
+                </div>
             </div>
 
             {selected && selectedRow && (

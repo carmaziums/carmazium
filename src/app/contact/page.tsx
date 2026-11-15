@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/Textarea"
 import { MapPin, Phone, Mail } from "lucide-react"
 
 export default function ContactPage() {
-    return <Suspense fallback={<main className="container mx-auto px-5 pt-28"><h1>Contact Us</h1></main>}><ContactForm /></Suspense>
+    return <Suspense fallback={<div className="container mx-auto px-5 pt-28"><h1>Contact Us</h1></div>}><ContactForm /></Suspense>
 }
 
 function ContactForm() {
