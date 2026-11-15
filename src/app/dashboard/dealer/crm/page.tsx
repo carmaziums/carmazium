@@ -77,7 +77,7 @@ function AddLeadModal({
         buyerName: "",
         buyerEmail: "",
         buyerPhone: "",
-        source: "listing_enquiry",
+        source: "",
         notes: "",
     })
     const [listings, setListings] = React.useState<any[]>([])
@@ -181,12 +181,13 @@ function AddLeadModal({
 
                     {/* Source */}
                     <div>
-                        <label htmlFor="customer-source" className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Lead Source</label>
-                        <select id="customer-source"
+                        <label htmlFor="customer-source" className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Lead Source *</label>
+                        <select id="customer-source" required
                             value={form.source}
                             onChange={e => set('source', e.target.value)}
                             className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary/50 transition-colors appearance-none cursor-pointer"
                         >
+                            <option value="" disabled>Select enquiry source</option>
                             {SOURCES.map(s => (
                                 <option key={s} value={s} className="bg-[var(--bg-dropdown)] capitalize">{s.replace(/_/g, ' ')}</option>
                             ))}
