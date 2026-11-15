@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, type FormEvent } from "react"
+import { Suspense, useState, type FormEvent } from "react"
+import { useSearchParams } from "next/navigation"
+import { partnershipSubject } from "@/lib/partnershipContact"
 
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -8,6 +10,13 @@ import { Textarea } from "@/components/ui/Textarea"
 import { MapPin, Phone, Mail } from "lucide-react"
 
 export default function ContactPage() {
+    return <Suspense fallback={<main className="container mx-auto px-5 pt-28"><h1>Contact Us</h1></main>}><ContactForm /></Suspense>
+}
+
+function ContactForm() {
+    const search = useSearchParams()
+    const topic = search.get('topic')
+    const subject = partnershipSubject(topic)
     const [emailDraftAttempted, setEmailDraftAttempted] = useState(false)
 
     // No public abuse-protected message API exists. Open the visitor's mail
@@ -40,6 +49,7 @@ export default function ContactPage() {
                     {/* Contact Form */}
                     <div className="lg:w-2/3 glass-card p-8">
                         <h3 className="text-2xl font-bold mb-6">Send us a message</h3>
+                        {subject && <div className="mb-6 rounded-xl border border-primary/30 bg-primary/5 p-4"><h2 className="font-bold">{subject}</h2><p className="mt-2 text-sm">Contact CarMazium directly to discuss your business, integration requirements and partnership. This enquiry does not register or approve a provider account.</p></div>}
                         <form className="space-y-6" onSubmit={openEmailDraft}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
@@ -53,7 +63,7 @@ export default function ContactPage() {
                             </div>
                             <div className="space-y-2">
                                 <label htmlFor="contact-subject" className="text-[var(--text-muted)] text-sm">Subject</label>
-                                <Input id="contact-subject" name="subject" maxLength={120} placeholder="Enquiry about..." required />
+                                <Input key={topic || 'general'} id="contact-subject" name="subject" defaultValue={subject} maxLength={120} placeholder="Enquiry about..." required />
                             </div>
                             <div className="space-y-2">
                                 <label htmlFor="contact-message" className="text-[var(--text-muted)] text-sm">Message</label>

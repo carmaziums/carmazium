@@ -20,6 +20,7 @@ import {
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
 import { Button } from "@/components/ui/Button"
+import { serviceVerificationPath, type JobService } from "@/lib/serviceSetupRouting"
 
 type CapabilityStatus = "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED"
 type PartnerCapability = {
@@ -125,12 +126,12 @@ export default function PartnerDashboardPage() {
         }
     }
 
-    const applyService = async (serviceType: "DELIVERY" | "INSPECTION" | "FINANCE" | "WARRANTY") => {
+    const applyService = async (serviceType: JobService) => {
         setBusy(serviceType)
         setError(null)
         try {
-            await apiClient(`/services/team/capabilities/${serviceType}`, { method: "POST" })
-            await loadTeam()
+            const response = await apiClient(`/services/team/capabilities/${serviceType}`, { method: "POST" })
+            router.push(serviceVerificationPath(response, serviceType))
         } catch (e: any) {
             setError(e?.message || "Could not add this service")
         } finally {

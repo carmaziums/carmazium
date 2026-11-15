@@ -1,6 +1,5 @@
 "use client"
 
-import { FinanceProviderContact } from "@/components/finance/FinanceProviderContact"
 import Link from "next/link"
 import { PageJsonLd, SEO_SITE, SEO_TRADEXCHANGE } from "@/components/seo/PageJsonLd"
 import Image from "next/image"
@@ -38,6 +37,7 @@ type Pillar = {
     points: string[]
     href?: string
     cta: string
+    partnership?: boolean
 }
 
 const PILLARS: Pillar[] = [
@@ -70,21 +70,33 @@ const PILLARS: Pillar[] = [
     },
     {
         icon: Banknote,
-        title: "Vehicle Finance",
-        eyebrow: "Finance partner applications",
-        description: "Apply from a participating listing and continue to the application form with the selected finance provider. Finance providers should contact our team directly.",
-        points: ["Seller-controlled calculator", "Contact details, then provider application", "Finance providers: contact our team"],
-        ...(financeServiceEnabled ? { href: "/services/finance" } : {}),
-        cta: "Explore finance",
+        title: "Finance Providers",
+        eyebrow: "Integrations & partnerships",
+        description: "Finance providers must contact CarMazium directly to discuss integration and partnership arrangements. Provider registration is handled by our team.",
+        points: ["Discuss your finance offering", "Agree integration requirements", "Partnership approval by CarMazium"],
+        href: "/contact?topic=finance-partnership",
+        cta: "Contact CarMazium about finance",
+        partnership: true,
     },
     {
         icon: ShieldCheck,
         title: "Warranty Providers",
-        eyebrow: "Compare vehicle cover",
-        description: "Contact the CarMazium team about warranties for your vehicle or becoming a warranty partner.",
-        points: ["Admin-managed warranty enquiries", "Contact our warranty team", "Partner onboarding by admin"],
-        ...(warrantyServiceEnabled ? { href: "/services/warranty" } : {}),
-        cta: "Explore warranty",
+        eyebrow: "Integrations & partnerships",
+        description: "Warranty providers must contact CarMazium directly to discuss products, integration and partnerships. A dealer’s own warranty badge is a separate setting.",
+        points: ["Discuss products and cover", "Agree integration requirements", "Partnership approval by CarMazium"],
+        href: "/contact?topic=warranty-partnership",
+        cta: "Contact CarMazium about warranties",
+        partnership: true,
+    },
+    {
+        icon: ShieldCheck,
+        title: "Insurance Providers",
+        eyebrow: "Integrations & partnerships",
+        description: "Insurance providers must contact CarMazium directly to discuss integration and partnership opportunities. This is a business enquiry, not an insurance quote or policy application.",
+        points: ["Discuss your insurance offering", "Agree integration requirements", "Partnership approval by CarMazium"],
+        href: "/contact?topic=insurance-partnership",
+        cta: "Contact CarMazium about insurance",
+        partnership: true,
     },
 ]
 
@@ -109,7 +121,7 @@ function PillarCard({ pillar, index }: { pillar: Pillar; index: number }) {
                             <Icon size={22} className="text-primary" />
                         </div>
                         <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-500">
-                            Open now
+                            {pillar.partnership ? 'Contact our team' : 'Open now'}
                         </span>
                     </div>
                     <p className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-primary">{eyebrow}</p>
@@ -184,7 +196,7 @@ const PROVIDER_BENEFITS = [
     {
         icon: ShieldCheck,
         title: "Use the model that suits your service",
-        text: "Delivery and Inspection use paid jobs. CarMazium admin handles warranty enquiries. Finance applications go to the selected provider; finance partnerships are discussed directly with our team.",
+        text: "Delivery and Inspection use paid jobs. Insurance, warranty and finance providers contact CarMazium directly for integration and partnership discussions.",
     },
 ]
 
@@ -197,7 +209,7 @@ const PROVIDER_STEPS = [
     {
         step: "02",
         title: "Choose your capabilities",
-        text: "Apply for Delivery or Inspection services. To offer finance or warranties, contact the CarMazium team directly.",
+        text: "Apply for Delivery or Inspection services. Insurance, warranty and finance providers must contact CarMazium directly about integration and partnerships.",
     },
     {
         step: "03",
@@ -207,7 +219,7 @@ const PROVIDER_STEPS = [
     {
         step: "04",
         title: "Start receiving opportunities",
-        text: "Once approved, quote on Delivery or Inspection jobs. Finance and warranty partnerships are arranged directly with our team.",
+        text: "Once approved, quote on Delivery or Inspection jobs. Insurance, finance and warranty partnerships are arranged directly with our team.",
     },
 ]
 
@@ -275,7 +287,7 @@ export default function TradeXchangePage() {
                         >
                             <Button asChild size="lg">
                                 <Link href={providerHref}>
-                                    Join as a Partner provider <ArrowRight size={16} />
+                                    Join for delivery or inspection <ArrowRight size={16} />
                                 </Link>
                             </Button>
                             <Button asChild variant="outline" size="lg" className="border-white/25 bg-white/10 text-white hover:border-white/40 hover:bg-white/15 hover:text-white">
@@ -326,8 +338,8 @@ export default function TradeXchangePage() {
                             <p className="text-sm text-[var(--text-muted)]">Choose the jobs that fit your routes, capacity, availability and pricing.</p>
                         </div>
                         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5">
-                            <p className="mb-1 text-lg font-black font-heading">Matched enquiries</p>
-                            <p className="text-sm text-[var(--text-muted)]">Finance and warranty providers can discuss partnerships directly with our team. Admin manages warranty partners and products.</p>
+                            <p className="mb-1 text-lg font-black font-heading">Business partnerships</p>
+                            <p className="text-sm text-[var(--text-muted)]">Insurance, warranty and finance providers must contact CarMazium directly for integrations and partnerships.</p>
                         </div>
                         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5">
                             <p className="mb-1 text-lg font-black font-heading">Approved-provider status</p>
@@ -340,16 +352,21 @@ export default function TradeXchangePage() {
             <section id="tradexchange-areas" className="container mx-auto px-4 md:px-6 py-16 md:py-20 scroll-mt-24">
                 <div className="mx-auto mb-10 max-w-3xl text-center">
                     <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Choose a TradeXchange area</p>
-                    <h2 className="mb-3 text-3xl md:text-4xl font-black font-heading tracking-tight">Five equal parts of the same marketplace</h2>
+                    <h2 className="mb-3 text-3xl md:text-4xl font-black font-heading tracking-tight">Find the right service or partnership</h2>
                     <p className="text-sm md:text-base text-[var(--text-muted)]">
                         Each area has its own rules, fees and workflow. Open a card to see exactly how that part of TradeXchange works before you continue.
                     </p>
                 </div>
 
-                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                     {PILLARS.map((pillar, index) => (
                         <PillarCard key={pillar.title} pillar={pillar} index={index} />
                     ))}
+                </div>
+                <div className="mt-6 rounded-xl border border-[var(--border-default)] p-5 text-sm">
+                    <p className="font-bold">Looking for finance or warranty cover for your vehicle?</p>
+                    <p className="mt-1 text-[var(--text-muted)]">The partnership cards above are for provider businesses. Buyers can use the existing customer services below.</p>
+                    <div className="mt-3 flex flex-wrap gap-5">{financeServiceEnabled && <Link className="inline-flex min-h-11 items-center font-bold text-primary underline" href="/services/finance">Vehicle finance for buyers</Link>}{warrantyServiceEnabled && <Link className="inline-flex min-h-11 items-center font-bold text-primary underline" href="/services/warranty">Warranty cover for buyers</Link>}</div>
                 </div>
             </section>
 
@@ -395,10 +412,10 @@ export default function TradeXchangePage() {
                         </div>
 
                         <div className="rounded-3xl border border-[var(--border-default)] bg-[var(--bg-input)] p-7 md:p-8">
-                            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Finance &amp; Warranty providers</p>
+                            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Insurance, Warranty &amp; Finance providers</p>
                             <h3 className="mb-4 text-2xl md:text-3xl font-black font-heading">Meet customers already in the vehicle journey</h3>
                             <p className="mb-5 text-sm leading-relaxed text-[var(--text-muted)]">
-                                Finance and warranty providers: contact our team directly to discuss a partnership. Buyers on participating listings continue to the selected finance provider after submitting their contact details.
+                                Insurance, warranty and finance providers must contact CarMazium directly to discuss integrations and partnerships. Our team agrees the requirements and approves each partnership.
                             </p>
                             <p className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 text-sm text-[var(--text-secondary)]">
                                 The opportunity is simple: reach relevant CarMazium users at the point they are already buying, selling or managing a vehicle.
@@ -409,7 +426,7 @@ export default function TradeXchangePage() {
                     <div className="mt-14">
                         <div className="mx-auto mb-9 max-w-2xl text-center">
                             <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Getting started</p>
-                            <h3 className="text-2xl md:text-3xl font-black font-heading">From account to approved provider in four clear steps</h3>
+                            <h3 className="text-2xl md:text-3xl font-black font-heading">Delivery and inspection: four steps to get started</h3>
                         </div>
                         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                             {PROVIDER_STEPS.map((item) => (
@@ -426,7 +443,7 @@ export default function TradeXchangePage() {
                         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                             <div className="max-w-2xl">
                                 <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Ready to grow with CarMazium?</p>
-                                <h3 className="mb-2 text-2xl md:text-3xl font-black font-heading">Create one Partner Account and apply for the services you offer.</h3>
+                                <h3 className="mb-2 text-2xl md:text-3xl font-black font-heading">Create one Partner Account for delivery, recovery and inspection.</h3>
                                 <p className="text-sm leading-relaxed text-[var(--text-muted)]">
                                     Start with one capability or apply for several. Approval is handled per service, so your TradeXchange presence can grow with your business.
                                 </p>
@@ -454,7 +471,7 @@ export default function TradeXchangePage() {
                     </Button>
                 </div>
             </section>
-        <div className="container mx-auto px-5 py-8"><FinanceProviderContact /></div>
+        <section className="container mx-auto px-5 py-8"><div className="rounded-2xl border border-primary/30 bg-[var(--bg-card)] p-6 space-y-3"><h2 className="text-xl font-bold">Provider integrations and partnerships</h2><p>Insurance, warranty and finance providers must contact CarMazium directly. These partnerships are arranged with our team, not through a dealer service application.</p><div className="flex flex-wrap gap-5 font-semibold text-primary"><Link className="inline-flex min-h-11 items-center underline" href="/contact">Contact CarMazium</Link><a className="inline-flex min-h-11 items-center underline" href="mailto:info@carmazium.com">Email info@carmazium.com</a><a className="inline-flex min-h-11 items-center underline" href="tel:+441218385040">Call 0121 838 5040</a></div></div></section>
         </div>
     )
 }
