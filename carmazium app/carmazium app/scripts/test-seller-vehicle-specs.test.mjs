@@ -272,26 +272,35 @@ test('native full-screen listing guide explains every step and incomplete fields
   assert.equal((source.match(/\{renderStepGuidance\(\)\}/g) || []).length, 5);
 });
 
-test('dealer settings retain warranty terms and link to optional Jigsaw calculator settings', () => {
+test('dealer settings preserve saved warranty terms, own-listing badges and separate calculator settings', () => {
   const settings = readFileSync(new URL('../src/screens/main/SettingsScreen.tsx', import.meta.url), 'utf8');
   const flow = readFileSync(new URL('../src/screens/sell/SellCarFlowScreen.tsx', import.meta.url), 'utf8');
-  assert.match(settings, /setDealerWarrantyOffered\(dp\.warrantyOffered === true\)/);
+  assert.match(settings, /setDealerWarrantyOffered\(dp\.warrantyOffered !== false\)/);
   assert.match(settings, /warrantyDetails: dealerWarrantyOffered \? dealerWarrantyDetails\.trim\(\) : null/);
   assert.doesNotMatch(settings, /financeDetails: dealerFinanceOffered/);
   assert.match(settings, /navigation\.navigate\('FinancePreferences'\)/);
-  assert.match(settings, /accessibilityLabel="Warranty offered"/);
+  assert.match(settings, /'Warranty badge', dealerWarrantyOffered/);
+  assert.match(settings, /'Finance badge', dealerFinanceOffered/);
+  assert.match(settings, /deliveryServicesEnabled: deliveryEnabled/);
+  assert.match(settings, /inspectionServicesEnabled: inspectionEnabled/);
   assert.doesNotMatch(settings, /accessibilityLabel="Finance offered"/);
   assert.match(flow, /mazium_ai_consent_v2/);
   assert.match(flow, /CarMazium separately adds the saved dealership introduction/);
   assert.match(flow, /apiClient<any>\('\/ai\/generate-description'/);
 });
 
-test('new dealer onboarding retains warranty and explains the separate Jigsaw preference', () => {
+test('new dealer onboarding defaults four independent services on without platform provider enrollment', () => {
   const code = readFileSync(new URL('../src/screens/main/DealerOnboardingScreen.tsx', import.meta.url), 'utf8');
   assert.match(code, /description: introduction\.trim\(\)/);
   assert.match(code, /warrantyOffered, warrantyDetails: warrantyOffered/);
   assert.doesNotMatch(code, /financeOffered, financeDetails: financeOffered/);
-  assert.match(code, /Finance providers must contact the CarMazium team directly/);
+  for (const state of ['warrantyOffered', 'financeOffered', 'deliveryServicesEnabled', 'inspectionServicesEnabled']) {
+    assert.match(code, new RegExp('const \\[' + state + ',[^\\]]+\\] = useState\\(true\\)'));
+  }
+  assert.match(code, /own-listing badges/);
+  assert.match(code, /Paid jobs remain locked/);
+  const partner = readFileSync(new URL('../src/screens/main/PartnerDashboardScreen.tsx', import.meta.url), 'utf8');
+  assert.match(partner, /Finance and warranty partnerships are managed by the CarMazium team/);
   assert.match(code, /OPTIONAL BUSINESS INTRODUCTION & SALES SERVICES/);
   assert.match(code, /You can skip this section/)
 });
