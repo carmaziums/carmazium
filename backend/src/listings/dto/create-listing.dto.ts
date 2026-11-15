@@ -13,6 +13,7 @@ import {
     IsObject,
     IsUrl,
     IsOptional,
+    ValidateIf,
     IsBoolean,
     Length,
     Matches,
@@ -73,6 +74,7 @@ export enum BodyType {
     STATION_WAGON = 'STATION_WAGON',
     MPV = 'MPV',
     VAN = 'VAN',
+    CARAVAN = 'CARAVAN',
     HGV_TRACTOR_UNIT = 'HGV_TRACTOR_UNIT',
     HGV_BOX = 'HGV_BOX',
     HGV_CURTAIN_SIDER = 'HGV_CURTAIN_SIDER',
@@ -154,28 +156,32 @@ export class CreateListingDto {
     @IsOptional()
     priceMax?: number;
 
-    @ApiProperty({ description: 'Mileage in miles', example: 45000 })
+    @ApiProperty({ description: 'Mileage in miles; not applicable to unpowered touring caravans', example: 45000 })
+    @ValidateIf((o: CreateListingDto) => o.bodyType !== BodyType.CARAVAN)
     @Type(() => Number)
     @IsInt()
     @Min(0)
     mileage: number;
 
-    @ApiProperty({ description: 'Year of manufacture', example: 2015 })
+    @ApiProperty({ description: 'Year of manufacture; optional for caravans when unknown', example: 2015 })
+    @ValidateIf((o: CreateListingDto) => o.bodyType !== BodyType.CARAVAN || o.year != null)
     @Type(() => Number)
     @IsInt()
     @Min(1900)
     @Max(new Date().getFullYear() + 1)
     year: number;
 
-    @ApiProperty({ description: 'UK Vehicle Registration Mark (VRM)', example: 'AB12 CDE' })
+    @ApiProperty({ description: 'UK registration; not applicable to unpowered touring caravans', example: 'AB12 CDE' })
+    @ValidateIf((o: CreateListingDto) => o.bodyType !== BodyType.CARAVAN)
     @IsString()
     @IsNotEmpty()
     @Length(2, 15)
     vrm: string;
 
-    @ApiProperty({ description: 'Vehicle Identification Number (VIN, 17 characters)', example: 'WAUZZZ4G4EN006369', required: false })
+    @ApiProperty({ description: 'Optional 17-character VIN/CRiS identifier for caravans and motor vehicles.', example: 'WAUZZZ4G4EN006369', required: false })
+    @ValidateIf((o: CreateListingDto) => o.vin !== undefined && o.vin !== null && o.vin !== '')
     @IsString()
-    @IsOptional()
+    @IsNotEmpty()
     @Matches(/^[A-HJ-NPR-Z0-9]{17}$/i, { message: 'VIN must be a valid 17-character alphanumeric code' })
     vin?: string;
 

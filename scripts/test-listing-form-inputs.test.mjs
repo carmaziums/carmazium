@@ -58,7 +58,7 @@ function wizardFunction(file, name, context) {
   const js = ts.transpileModule(`const result = ${initializer.getText(tree)}; result`, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
   }).outputText
-  return vm.runInNewContext(js, { ...context })
+  return vm.runInNewContext(js, { isCaravan: false, ...context })
 }
 const wizardFile = '../src/components/listing/ListingWizard.tsx'
 const completeForm = {
@@ -71,10 +71,31 @@ const completeForm = {
 }
 function wizardContext(formData) {
   return {
-    formData, currentStep: 1, listingDetailsInputIssue, faultDeclarationError, missingSellerDeclarations: [], bodyTypeKeys: ['SUV'],
+    formData, currentStep: 1, listingDetailsInputIssue, faultDeclarationError, missingSellerDeclarations: [], bodyTypeKeys: ['SUV', 'CARAVAN'],
+    isCaravan: formData.bodyType === 'CARAVAN',
     normalizeSellerTransmission: value => value, normalizeSellerBodyType: value => value,
   }
 }
+test('both caravan listing methods accept manual details without VRM, VIN, year or car-only specs', () => {
+  for (const listingType of ['AUCTION', 'CLASSIFIED']) {
+    const draft = {
+      ...completeForm, listingType, bodyType: 'CARAVAN', vrm: '', vin: '',
+      mileage: '', make: '', model: '', year: '', fuelType: '', transmission: '',
+      serviceHistory: '', numberOfKeys: '', owners: '', condition: '',
+      mechanicalIssues: '', electricalIssues: '',
+      stolenRecovered: null, hasOutstandingFinance: null,
+      isLegalRegisteredKeeper: null, declarationAcknowledged: false,
+      images: ['photo-one'],
+    };
+    const ctx = wizardContext(draft);
+    assert.equal(wizardFunction(wizardFile, 'getStepValidationError', ctx)(1), null);
+    assert.equal(wizardFunction(wizardFile, 'firstInvalidField', ctx)(1), null);
+    ctx.damageEntryPending = false;
+    assert.equal(wizardFunction(wizardFile, 'getStepValidationError', ctx)(2), null);
+    draft.images = [];
+    assert.match(wizardFunction(wizardFile, 'getStepValidationError', ctx)(2), /1 more photo/);
+  }
+});
 test('auction and retail cannot advance or submit a restored draft with missing seller history/keys', () => {
   for (const listingType of ['AUCTION', 'CLASSIFIED']) {
     for (const [field, label] of [['serviceHistory', 'service history'], ['numberOfKeys', 'number of keys']]) {

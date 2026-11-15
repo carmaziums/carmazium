@@ -723,6 +723,33 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [bodyType, setBodyType] = useState(
     () => normalizeNativeBodyType(landingPrefill?.bodyType, 'CAR') || '',
   );
+  const isCaravan = bodyType === 'CARAVAN';
+
+  const selectCaravanBodyType = () => {
+    setVehicleType('CAR');
+    vehicleTypeRef.current = 'CAR';
+    setBodyType('CARAVAN');
+    // Clear motor-vehicle lookup data; never invent a caravan registration.
+    setVrm('');
+    setVin('');
+    currentVrmRef.current = '';
+    setMileage('');
+    setFuelType('');
+    setTransmission('');
+    setEngineSize('');
+    setBhp('');
+    setMotStatus('');
+    setMotExpiry('');
+    setTaxStatus('');
+    setTaxDue('');
+    setMotHistory([]);
+    setOfficialVehicleData(undefined);
+    setBaseValuation(null);
+    setValuation(null);
+    setValuationError(null);
+    setValuationLoading(false);
+    setBadgeTier('BASIC');
+  };
   const [location, setLocation] = useState('');
   const [locatingMe, setLocatingMe] = useState(false);
   // Technical Specs
@@ -847,7 +874,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }, [listingType, platformOpeningBid]);
 
   useEffect(() => {
-    if (step !== 3 || vehicleType !== 'CAR') return;
+    if (step !== 3 || vehicleType !== 'CAR' || isCaravan) {
+      if (isCaravan) {
+        valuationRequestId.current += 1;
+        setBaseValuation(null);
+        setValuation(null);
+        setValuationError(null);
+        setValuationLoading(false);
+      }
+      return;
+    }
 
     const yearNumber = Number(year);
     const mileageNumber = Number(String(mileage).replace(/[^0-9]/g, ''));
@@ -920,6 +956,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }, [
     step,
     vehicleType,
+    isCaravan,
     vrm,
     make,
     model,
@@ -1292,6 +1329,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // it force-touches it, instead of going through the touched-gated wrapper
   // and reading the pre-update `touched` state from its own render closure.
   const fieldErrorRaw = (key: string): string | null => {
+    if (isCaravan) {
+      // Caravan sellers only need a useful advert, a location and their own
+      // price. Do not demand DVLA plates, odometer or car-only declarations.
+      if ([
+        'vrm', 'make', 'model', 'year', 'mileage', 'fuelType', 'transmission',
+        'condition', 'serviceHistory', 'mechanicalIssues', 'electricalIssues',
+        'numberOfKeys', 'owners', 'writeOffCat', 'stolenRecovered',
+        'outstandingFinance', 'isLegalKeeper', 'description', 'declAcknowledged',
+      ].includes(key)) return null;
+    }
     if (key === 'priceAsking') {
       const v = parseFloat(priceAsking.replace(/[^0-9.]/g, ''));
       if (!priceAsking.trim() || isNaN(v) || v <= 0) return 'Enter a valid asking price (e.g. 12500)';
@@ -1827,8 +1874,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     if (s === 2) {
       // Tapping Next explains the minimum instead of silently disabling it;
       // the existing rule is unchanged and is still enforced at publication.
-      if (allImages.length < MIN_PHOTOS) {
-        setValidationIssue({ field: 'photos', message: `Add ${MIN_PHOTOS - allImages.length} more photo(s) to continue (minimum ${MIN_PHOTOS}).` });
+      const minPhotos = isCaravan ? 1 : MIN_PHOTOS;
+      if (allImages.length < minPhotos) {
+        setValidationIssue({ field: 'photos', message: `Add ${minPhotos - allImages.length} more photo(s) to continue (minimum ${minPhotos}).` });
         scrollToMissingField('photos');
         return false;
       }
@@ -2070,13 +2118,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       Alert.alert('Review auction settings', 'Please complete the auction settings before publishing.');
       return;
     }
-    if (allImages.length < MIN_PHOTOS) {
+    if (allImages.length < (isCaravan ? 1 : MIN_PHOTOS)) {
+      // The backend requires one caravan photo or 10 photos for motor vehicles.
       // Was `=== 0`. The backend's publish guard is 10 and runs before the
       // badge-tier branch, so anything below it used to reach the payment sheet
       // and only fail afterwards (SELL-005).
       Alert.alert(
         'More Photos Needed',
-        `Listings need at least ${MIN_PHOTOS} photos before they can be published. You have ${allImages.length}. Go back to the Media step to add more.`,
+        `Listings need at least ${isCaravan ? 1 : MIN_PHOTOS} photo(s) before they can be published. You have ${allImages.length}. Go back to Media to add photos.`,
       );
       return;
     }
@@ -2088,12 +2137,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
       const payload: Record<string, any> = {
         vehicleType,
-        vrm: vrm.replace(/\s/g, '').toUpperCase(),
+        vrm: isCaravan ? '' : vrm.replace(/\s/g, '').toUpperCase(),
         vin: isValidVin ? vinTrimmed : undefined, make, model, year: year ? parseInt(year) : undefined,
         bodyType, location,
-        mileage: mileage ? parseInt(mileage.replace(/[^0-9]/g, '')) : undefined,
-        fuelType, transmission, color: colour, engineSize: engineSize ? parseInt(engineSize) : undefined,
-        bhp: bhp ? parseInt(bhp) : undefined,
+        mileage: isCaravan ? undefined : (mileage ? parseInt(mileage.replace(/[^0-9]/g, '')) : undefined),
+        fuelType: isCaravan ? undefined : fuelType, transmission: isCaravan ? undefined : transmission,
+        color: colour, engineSize: isCaravan ? undefined : (engineSize ? parseInt(engineSize) : undefined),
+        bhp: isCaravan ? undefined : (bhp ? parseInt(bhp) : undefined),
         doors: doors ? parseInt(doors) : undefined,
         seats: seats ? parseInt(seats) : undefined,
         variant, driveType,
@@ -2727,15 +2777,29 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 activeOpacity={0.7}
               >
                 <Text style={[s.pillText, vehicleType === t && s.pillTextActive]}>
-                  {t === 'HGV' ? 'HGV / Commercial' : t === 'MOTORCYCLE' ? 'Motorcycle' : 'Car'}
+                  {t === 'HGV' ? 'HGV / Commercial' : t === 'MOTORCYCLE' ? 'Motorcycle' : 'Car / Caravan'}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
         </SectionBox>
 
+        <TouchableOpacity
+          style={[s.pill, { marginBottom: 12 }, isCaravan && s.pillActive]}
+          onPress={selectCaravanBodyType}
+          accessibilityRole="button"
+          accessibilityState={{ selected: isCaravan }}
+        >
+          <MaterialCommunityIcons name="caravan" size={19} color={isCaravan ? Colors.onAccent : Colors.textSecondary} />
+          <Text style={[s.pillText, isCaravan && s.pillTextActive]}>Selling a touring caravan? No registration or VIN needed</Text>
+        </TouchableOpacity>
+        {isCaravan && <SectionBox title="Caravan details (manual entry)">
+          <Text style={s.fieldHint}>Enter what you know and set your own price. No DVLA lookup, VIN or mileage is required.</Text>
+          <FieldInput label="VIN / CRiS (optional)" value={vin} onChange={setVin} placeholder="17 characters, if known" />
+        </SectionBox>}
+
         {/* Registration */}
-        <SectionBox title="Registration (VRM) *" accent={Colors.accent} onLayout={rememberValidationSection("registration")}>
+        {!isCaravan && <SectionBox title="Registration (VRM) *" accent={Colors.accent} onLayout={rememberValidationSection("registration")}>
           <Text style={s.fieldHint}>Enter the UK registration plate and tap Analyse to auto-fill vehicle details.</Text>
           <View style={s.vrmRow}>
             <TextInput
@@ -2770,9 +2834,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <Text style={s.dvlaSuccessText}>DVLA data loaded — these fields are auto-filled but editable.</Text>
             </View>
           )}
-        </SectionBox>
+        </SectionBox>}
 
-        <TouchableOpacity
+        {!isCaravan && <TouchableOpacity
           style={s.optionalSectionToggle}
           onPress={() => setShowDvlaDetails(v => !v)}
           accessibilityRole="button"
@@ -2784,8 +2848,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             <Text style={s.optionalSectionHint}>{motStatus ? `MOT: ${motStatus} · ` : ''}{dvlaFetched ? 'Vehicle data loaded' : 'Review or enter extra registration details'}</Text>
           </View>
           <Ionicons name={showDvlaDetails ? 'chevron-up' : 'chevron-down'} size={21} color={Colors.textSecondary} />
-        </TouchableOpacity>
-        {showDvlaDetails && (
+        </TouchableOpacity>}
+        {!isCaravan && showDvlaDetails && (
           <>
         {/* Registration & Compliance — DVLA auto-filled but editable, matching
             web (ListingWizard.tsx) — these used to render as read-only text
@@ -2838,7 +2902,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         <SectionBox title="Make / Model / Year" onLayout={rememberValidationSection("identity")}>
           <View style={{ gap: 12 }}>
             <View>
-              <PickerField
+              {isCaravan ? <FieldInput label="CARAVAN MAKE (OPTIONAL)" value={make} onChange={setMake} placeholder="e.g. Swift, Bailey, Elddis" /> : <PickerField
                 label="MAKE *"
                 value={make}
                 options={CAR_MAKES}
@@ -2852,10 +2916,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 placeholder="e.g. BMW"
                 required
                 error={fieldError('make') ?? undefined}
-              />
+              />}
             </View>
             <View>
-              <PickerField
+              {isCaravan ? <FieldInput label="CARAVAN MODEL (OPTIONAL)" value={model} onChange={setModel} placeholder="e.g. Sprite, Pegasus" /> : <PickerField
                 label="MODEL *"
                 value={model}
                 options={getModelsForMake(make)}
@@ -2864,16 +2928,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 required
                 hint={!make.trim() ? 'Pick a Make first for a model list' : undefined}
                 error={fieldError('model') ?? undefined}
-              />
+              />}
             </View>
             <View>
               <FieldInput
-                label="YEAR *"
+                label={isCaravan ? 'YEAR (OPTIONAL)' : 'YEAR *'}
                 value={year}
                 onChange={v => { setYear(v); if (touched.year) setTouched(prev => ({ ...prev, year: true })); }}
                 placeholder="2021"
                 keyboardType="number-pad"
-                required
+                required={!isCaravan}
                 error={fieldError('year') ?? undefined}
               />
             </View>
@@ -2886,7 +2950,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <PillRow label="DRIVE TYPE" options={DRIVE_TYPES} value={driveType as any} onSelect={setDriveType} />
           <View onLayout={rememberNestedField('model-details', 'serviceHistory')}>
             <PillRow label="SERVICE HISTORY" options={SERVICE_HISTORY_OPTS} value={serviceHistory as any} onSelect={setServiceHistory}
-              required error={fieldError('serviceHistory') ?? undefined} />
+              required={!isCaravan} error={fieldError('serviceHistory') ?? undefined} />
           </View>
           <View onLayout={rememberNestedField('model-details', 'mechanicalIssues')}>
             <FaultDeclarationField kind="mechanical" value={mechanicalIssues} onChange={setMechanicalIssues}
@@ -2897,7 +2961,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               error={fieldError('electricalIssues') ?? undefined} />
           </View>
           <View onLayout={rememberNestedField('model-details', 'numberOfKeys')}>
-            <SL label="NUMBER OF KEYS" required />
+            <SL label={isCaravan ? 'NUMBER OF KEYS (OPTIONAL)' : 'NUMBER OF KEYS'} required={!isCaravan} />
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {['0', '1', '2', '3'].map(k => (
                 <TouchableOpacity
@@ -2921,7 +2985,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <TouchableOpacity
                 key={bt.v}
                 style={[s.pill, s.bodyTypePill, bodyType === bt.v && s.pillActive]}
-                onPress={() => setBodyType(bt.v)}
+                onPress={() => bt.v === 'CARAVAN' ? selectCaravanBodyType() : setBodyType(bt.v)}
                 activeOpacity={0.7}
               >
                 <MaterialCommunityIcons name={bt.icon as any} size={18} color={bodyType === bt.v ? Colors.onAccent : Colors.textSecondary} />
@@ -2951,8 +3015,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </TouchableOpacity>
         </SectionBox>
 
-        {/* Technical Specs */}
-        <SectionBox title="Technical Specs" onLayout={rememberValidationSection("technical")}>
+        {/* Technical Specs: caravans are unpowered, with no odometer or gearbox. */}
+        {isCaravan ? (
+        <SectionBox title="Caravan appearance">
+          <FieldInput label="COLOUR (OPTIONAL)" value={colour} onChange={setColour} placeholder="e.g. White" />
+        </SectionBox>
+        ) : <SectionBox title="Technical Specs" onLayout={rememberValidationSection("technical")}>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <View style={{ flex: 1 }}>
               <SL label="MILEAGE" required />
@@ -2991,7 +3059,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <FieldInput label="SEATS" value={seats} onChange={setSeats} placeholder="e.g. 5" keyboardType="number-pad" />
             </View>
           </View>
-        </SectionBox>
+        </SectionBox>}
 
         {/* Listing Title & Description */}
         <SectionBox title="Listing Title & Description" onLayout={rememberValidationSection("description")}>
@@ -3339,8 +3407,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   function renderStep2() {
     const tabImages = photoTab === 'Exterior' ? exteriorImages : photoTab === 'Interior' ? interiorImages : damageImages;
     const totalCount = allImages.length;
-    const belowMinimum = totalCount < MIN_PHOTOS;
-    const remaining = MIN_PHOTOS - totalCount;
+    const minPhotos = isCaravan ? 1 : MIN_PHOTOS;
+    const belowMinimum = totalCount < minPhotos;
+    const remaining = minPhotos - totalCount;
 
     return (
       <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
@@ -3356,7 +3425,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               not the tracker's ceiling — showing "3 / 100" while Next is
               disabled tells the seller nothing about why. */}
           <Text style={[s.photoTrackerCount, belowMinimum && s.photoTrackerCountShort]}>
-            {belowMinimum ? `${totalCount} / ${MIN_PHOTOS} MINIMUM` : `${totalCount} / ${MAX_PHOTOS}`}
+            {belowMinimum ? `${totalCount} / ${minPhotos} MINIMUM` : `${totalCount} / ${MAX_PHOTOS}`}
           </Text>
         </View>
         <View style={s.photoTrackerBar}>
@@ -3484,7 +3553,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         ) : (
           /* Damage Map */
           <View>
-            <SectionBox title="Damage Map — Select Damaged Areas" accent={Colors.warning}>
+            {isCaravan ? (
+              <SectionBox title="Caravan damage">
+                <Text style={s.fieldHint}>Photograph any damage and describe known faults. The car-shaped 3D model does not apply to caravans.</Text>
+              </SectionBox>
+            ) : <SectionBox title="Damage Map — Select Damaged Areas" accent={Colors.warning}>
               <Text style={s.fieldHint}>
                 Drag to rotate the 3D model. Tap a zone to mark damage, hide it, or attach a photo.
               </Text>
@@ -3496,7 +3569,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 onPhoto={handleZonePhoto}
                 bodyTypeLabel={BODY_TYPES.find(bt => bt.v === bodyType)?.l}
               />
-            </SectionBox>
+            </SectionBox>}
           </View>
         )}
 
@@ -3601,7 +3674,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </View>
         </SectionBox>
 
-        <SectionBox title="Vehicle Valuation" accent={Colors.infoBlue}>
+        {!isCaravan && <SectionBox title="Vehicle Valuation" accent={Colors.infoBlue}>
           {valuationLoading ? (
             <View style={s.valuationLoadingRow}>
               <ActivityIndicator size="small" color={Colors.infoBlueLight} />
@@ -3635,12 +3708,15 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           ) : (
             <Text style={s.fieldHint}>Complete the vehicle make, model, year and mileage to see the current market value.</Text>
           )}
-        </SectionBox>
+        </SectionBox>}
+        {isCaravan && <SectionBox title="Set your own caravan price">
+          <Text style={s.fieldHint}>No automatic caravan valuation is provided. Enter your own asking price or auction estimate.</Text>
+        </SectionBox>}
 
         <SectionBox title={isAuction ? 'Set Your Auction Value' : 'Set Your Retail Price Range'} accent={Colors.accent} onLayout={rememberValidationSection('pricing')}>
           {isAuction ? (
             <Text style={s.fieldHint}>
-              Use the current market value as a starting point. CarMazium automatically sets the Opening Bid at 70% of the value you enter, while you remain in control of the reserve.
+              {isCaravan ? 'Enter your own caravan auction estimate. CarMazium calculates the opening bid from your chosen value; no market price is suggested.' : 'Use the current market value as a starting point. CarMazium automatically sets the Opening Bid at 70% of the value you enter, while you remain in control of the reserve.'}
             </Text>
           ) : (
             <Text style={s.fieldHint}>
@@ -3815,7 +3891,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             Boost buyer confidence with trust badges on your listing. Badges increase buyer engagement and sell rates.
           </Text>
           <View style={{ gap: 10, marginTop: 8 }}>
-            {BADGES.filter(badge => (badge.listingType === 'AUCTION') === (listingType === 'AUCTION')).map(badge => {
+            {BADGES.filter(badge =>
+              (badge.listingType === 'AUCTION') === (listingType === 'AUCTION')
+              && (!isCaravan || badge.id === (isAuction ? 'FREE' : 'BASIC'))
+            ).map(badge => {
               const active = badgeTier === badge.id;
               return (
                 <TouchableOpacity
@@ -4147,7 +4226,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
         {/* HPI is optional. Standard/Premium already include it in the
             listing package, so never offer those sellers a second £9.99 charge. */}
-        {hpiUnlocked ? (
+        {!isCaravan && (hpiUnlocked ? (
           <View style={s.hpiCallout}>
             <View style={s.hpiCalloutIcon}>
               <Ionicons name="shield-checkmark" size={22} color={Colors.accentGreen} />
@@ -4196,7 +4275,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <Text style={s.hpiCalloutPrice}>{hpiUnlocking ? '...' : '£9.99'}</Text>
             </View>
           </TouchableOpacity>
-        )}
+        ))}
 
       </ScrollView>
     );

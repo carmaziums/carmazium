@@ -31,7 +31,8 @@ test('DVLA and MOT records survive landing-to-wizard and wizard-to-listing', () 
   assert.match(wizard, /motHistory:\s*motHistory\.length\s*\?\s*motHistory\s*:\s*undefined/);
   assert.match(wizard, /setFirstRegistered\(''\);\s*setFirstUsedDate\(''\);\s*setLastV5C\(''\)/);
   assert.match(wizard, /setMotHistory\(\[\]\)/);
-  assert.match(wizard, /mileage:\s*mileage\s*\?\s*parseInt/);
+  assert.match(wizard, /mileage:\s*isCaravan\s*\?\s*undefined\s*:\s*\(mileage\s*\?\s*parseInt/);
+  assert.match(wizard, /vrm:\s*isCaravan\s*\?\s*''\s*:/);
 });
 
 test('public 3D only shows seller-marked zones and projects late arriving damage', () => {

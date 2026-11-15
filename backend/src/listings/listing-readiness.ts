@@ -40,6 +40,21 @@ export function listingRequiresHpi(
 export function getListingSubmissionMissingFields(listing: any): string[] {
     const missing: string[] = [];
 
+    const isTouringCaravan = listing?.bodyType === 'CARAVAN';
+    if (isTouringCaravan) {
+        // Touring caravans are manually listed. VIN/CRiS, plate, year,
+        // mileage, engine, equipment and service fields are all optional.
+        if (!Array.isArray(listing?.images) || listing.images.length < 1) missing.push('at least one caravan photo');
+        if (!listing?.title || listing.title.trim().length < 5) missing.push('title');
+        if (!listing?.location?.trim?.()) missing.push('location');
+        if (listing?.isLegalRegisteredKeeper === false && !listing?.notOwnerRelationship?.trim?.()) {
+            missing.push('authority to sell');
+        }
+        if (listing?.isDepartedSale === true && !listing?.departedRelationship?.trim?.()) {
+            missing.push('estate/departed-sale relationship');
+        }
+        return missing;
+    }
     if (!Array.isArray(listing?.images) || listing.images.length < 10) {
         missing.push('at least 10 photos');
     }
@@ -47,9 +62,11 @@ export function getListingSubmissionMissingFields(listing: any): string[] {
     if (!listing?.make?.trim?.()) missing.push('make');
     if (!listing?.model?.trim?.()) missing.push('model');
     if (!listing?.year) missing.push('year');
-    if (listing?.mileage === null || listing?.mileage === undefined) missing.push('mileage');
-    if (!listing?.fuelType) missing.push('fuel type');
-    if (!listing?.transmission) missing.push('transmission');
+    if (!isTouringCaravan) {
+        if (listing?.mileage === null || listing?.mileage === undefined) missing.push('mileage');
+        if (!listing?.fuelType) missing.push('fuel type');
+        if (!listing?.transmission) missing.push('transmission');
+    }
     // Motorcycles intentionally do not show a body-type selector. Cars and
     // HGVs still require a body type before submission.
     if (listing?.vehicleType !== 'MOTORCYCLE' && !listing?.bodyType) {

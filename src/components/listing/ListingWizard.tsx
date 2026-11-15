@@ -887,12 +887,40 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         setFormData(prev => ({ ...prev, [key]: val }))
 
     const isAuction = formData.listingType === 'AUCTION'
+    const isCaravan = formData.bodyType === 'CARAVAN'
+    // A touring caravan is a VIN/CRiS-identified trailer, not a DVLA-registered motor vehicle.
+    const chooseBodyType = (key: BodyTypeValue) => {
+        lookupRequestRef.current += 1
+        setDvlaLoading(false)
+        if (key === 'CARAVAN') {
+            setFormData(prev => ({
+                ...prev,
+                vehicleType: 'CAR',
+                bodyType: key,
+                badgeTier: 'BASIC',
+                vrm: '', vin: '', mileage: '', fuelType: '', transmission: '',
+                engineSize: '', bhp: '', motStatus: '', taxStatus: '',
+                motExpiryDate: '', taxDueDate: '', motHistory: [],
+                officialVehicleData: undefined, euroStandard: '',
+                co2Emissions: '', ulezCompliant: null,
+            }))
+            setDvlaSuccess(false)
+            setMotFeedback(null)
+            setDvlaError(null)
+            setBaseValuation(null)
+            setValuation(null)
+            setDamageRecords([])
+        } else {
+            set('bodyType', key)
+        }
+    }
     const bodyTypeKeys = getBodyTypeKeysForVehicleType(formData.vehicleType)
     const automaticExteriorGrade = computeExteriorGradeFromDefectCount(damageRecords.length)
 
     // The backend returns one unchanged retail+auction quote per vehicle for
     // 24 hours. Seller inputs remain listing details, not a new quote.
     const valuationReady =
+        !isCaravan &&
         formData.vehicleType === 'CAR' &&
         !!formData.make &&
         !!formData.model &&
@@ -1053,7 +1081,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         )
     }, [isAuction, platformOpeningBid])
 
-    const missingSellerDeclarations = getMissingSellerDeclarations(formData)
+    const missingSellerDeclarations = isCaravan ? [] : getMissingSellerDeclarations(formData)
     const declarationError = hasAttemptedNext
         ? sellerDeclarationErrorMessage(missingSellerDeclarations)
         : null
@@ -1081,8 +1109,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // rather than changes, the existing DVLA/MOT lookup, validation and rules.
     const stepGuide = currentStep === 1
         ? {
-            what: "Enter your registration and check the vehicle details. Answer the condition, ownership and legal questions truthfully.",
-            why: "Registration can fill available DVLA/MOT details for you. Accurate information helps buyers understand the vehicle and avoids delays at review.",
+            what: isCaravan
+                ? "Enter the caravan VIN/CRiS identifier, make, model, condition and ownership details. A UK number plate is not required."
+                : "Enter your registration and check the vehicle details. Answer the condition, ownership and legal questions truthfully.",
+            why: isCaravan
+                ? "Touring caravans are not independently DVLA registered. Your accurate VIN and seller declarations help buyers check the caravan."
+                : "Registration can fill available DVLA/MOT details for you. Accurate information helps buyers understand the vehicle and avoids delays at review.",
             reminder: "Items marked * are required. Extra vehicle information is optional unless marked.",
         }
         : currentStep === 2
@@ -1223,14 +1255,23 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             case 1: {
                 const inputIssue = listingDetailsInputIssue(formData)
                 if (inputIssue) return inputIssue.message
+                if (isCaravan) {
+                    if (formData.vin.trim() && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(formData.vin.trim())) return 'If you enter a caravan VIN, it must contain 17 valid characters. You can leave it blank.'
+                    const missing: string[] = []
+                    if (!formData.title || formData.title.trim().length < 5) missing.push('listing title')
+                    if (!formData.location.trim()) missing.push('location')
+                    if (formData.isLegalRegisteredKeeper === false && !formData.notOwnerRelationship?.trim()) missing.push('authority to sell')
+                    if (formData.isDepartedSale && !formData.departedRelationship?.trim()) missing.push('estate/departed-sale relationship')
+                    return missing.length ? `Please complete: ${missing.join(', ')}.` : null
+                }
                 const missing: string[] = []
-                if (!formData.vrm.trim()) missing.push('registration')
+                if (!isCaravan && !formData.vrm.trim()) missing.push('registration')
                 if (!formData.make.trim()) missing.push('make')
                 if (!formData.model.trim()) missing.push('model')
                 if (!formData.year) missing.push('year')
-                if (!formData.mileage) missing.push('mileage')
-                if (!formData.fuelType) missing.push('fuel type')
-                if (!normalizeSellerTransmission(formData.transmission)) missing.push('transmission')
+                if (!isCaravan && !formData.mileage) missing.push('mileage')
+                if (!isCaravan && !formData.fuelType) missing.push('fuel type')
+                if (!isCaravan && !normalizeSellerTransmission(formData.transmission)) missing.push('transmission')
                 if (formData.vehicleType !== 'MOTORCYCLE' && !normalizeSellerBodyType(formData.bodyType, bodyTypeKeys)) missing.push('body type')
                 if (!formData.title || formData.title.length < 5) missing.push('listing title')
                 if (!formData.location.trim()) missing.push('location')
@@ -1256,9 +1297,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 if (damageEntryPending) {
                     return 'Please save or cancel the open damage entry before leaving Photos. Wait for any photo upload to finish.'
                 }
-                const missingPhotos = Math.max(0, 10 - formData.images.length)
+                const minPhotos = isCaravan ? 1 : 10
+                const missingPhotos = Math.max(0, minPhotos - formData.images.length)
                 return missingPhotos > 0
-                    ? `Please add ${missingPhotos} more photo${missingPhotos === 1 ? '' : 's'} to continue. A minimum of 10 photos is required. a vehicle history check is optional.`
+                    ? `Please add ${missingPhotos} more photo${missingPhotos === 1 ? '' : 's'} to continue. A minimum of ${minPhotos} photo${minPhotos === 1 ? '' : 's'} is required.`
                     : null
             }
             case 3: {
@@ -1341,8 +1383,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         if (step === 1) {
             const inputIssue = listingDetailsInputIssue(formData)
             if (inputIssue) return inputIssue
+            if (isCaravan) {
+                if (formData.vin.trim() && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(formData.vin.trim())) return { field: 'vin', label: 'Optional VIN (17 characters if entered)' }
+                const minimal: Array<[string, string, boolean]> = [
+                    ['body', 'Body Type', !normalizeSellerBodyType(formData.bodyType, bodyTypeKeys)],
+                    ['title', 'Listing Title', formData.title.trim().length < 5],
+                    ['location', 'Location', !formData.location.trim()],
+                    ['relationship', 'Authority to Sell', formData.isLegalRegisteredKeeper === false && !formData.notOwnerRelationship?.trim()],
+                    ['estate', 'Estate Relationship', formData.isDepartedSale && !formData.departedRelationship?.trim()],
+                ]
+                const missing = minimal.find(([, , invalid]) => invalid)
+                return missing ? { field: missing[0], label: missing[1] } : null
+            }
             const required: Array<[string, string, boolean]> = [
-                ['registration', 'Registration', !formData.vrm.trim()],
+                ['registration', 'Registration', !isCaravan && !formData.vrm.trim()],
                 ['make', 'Make', !formData.make.trim()],
                 ['model', 'Model', !formData.model.trim()],
                 ['year', 'Year', !formData.year.trim()],
@@ -1353,9 +1407,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 ['numberOfKeys', 'Number of Keys', !formData.numberOfKeys.trim()],
                 ['body', 'Body Type', formData.vehicleType !== 'MOTORCYCLE' && !normalizeSellerBodyType(formData.bodyType, bodyTypeKeys)],
                 ['location', 'Location', !formData.location.trim()],
-                ['mileage', 'Mileage', !formData.mileage.trim()],
-                ['fuel', 'Fuel Type', !formData.fuelType],
-                ['transmission', 'Transmission', !normalizeSellerTransmission(formData.transmission)],
+                ['mileage', 'Mileage', !isCaravan && !formData.mileage.trim()],
+                ['fuel', 'Fuel Type', !isCaravan && !formData.fuelType],
+                ['transmission', 'Transmission', !isCaravan && !normalizeSellerTransmission(formData.transmission)],
                 ['title', 'Listing Title', !formData.title || formData.title.length < 5],
                 ['description', 'Description', !formData.description.trim()],
                 ['owners', 'Previous Keepers', !formData.owners],
@@ -1809,9 +1863,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 // Market Value / guide price. Retail-only offer bounds are omitted.
                 price: displayPrice,
                 ...(!isAuctionListing ? { priceMin, priceMax } : {}),
-                mileage: parseInt(formData.mileage),
-                year: parseInt(formData.year),
-                vrm: formData.vrm,
+                // Request contract retains its numeric mileage field; the backend
+                // persists NULL for a caravan rather than a fictitious zero.
+                mileage: isCaravan ? null : parseInt(formData.mileage),
+                year: formData.year ? parseInt(formData.year) : null,
+                vrm: isCaravan ? '' : formData.vrm,
                 vin: formData.vin || undefined,
                 images: formData.images,
                 listingType: formData.listingType,
@@ -2808,7 +2864,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Vehicle Type *</label>
                                 <div className="flex gap-3">
                                     {(["CAR", "HGV", "MOTORCYCLE"] as const).map((vt) => {
-                                        const labels: Record<string, string> = { CAR: "Car", HGV: "HGV / Commercial", MOTORCYCLE: "Motorcycle" }
+                                        const labels: Record<string, string> = { CAR: "Car / Caravan", HGV: "HGV / Commercial", MOTORCYCLE: "Motorcycle" }
                                         const active = formData.vehicleType === vt
                                         return (
                                             <button key={vt} type="button"
@@ -2828,7 +2884,15 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </div>
                             </div>
 
+                            <button type="button"
+                                onClick={() => chooseBodyType('CARAVAN')}
+                                aria-pressed={isCaravan}
+                                className={`w-full rounded-xl border p-3 text-left text-sm font-bold ${isCaravan ? 'border-primary bg-primary/10 text-primary' : 'border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-secondary)]'}`}
+                            >
+                                Selling a touring caravan? Select Caravan — no DVLA registration or mileage required.
+                            </button>
                             {/* VRM + Lookup */}
+                            {!isCaravan && (
                             <div className="space-y-2">
                                 <label htmlFor="listing-required-registration" className="text-sm font-bold uppercase text-[var(--text-muted)]">Registration (VRM) *</label>
                                 <div className="flex flex-col sm:flex-row gap-3">
@@ -3003,8 +3067,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {(dvlaSuccess || motFeedback) && <p role="status" className="text-sm text-[var(--text-secondary)]">{motFeedback ?? motLookupMessage({ motHistory: formData.motHistory })}</p>}
                                 {dvlaError && <p className="text-xs text-red-400">{dvlaError}</p>}
                             </div>
+                            )}
 
-                            {/* Registration & Compliance Details */}
+                            {/* Registration & Compliance Details: motor vehicles only */}
+                            {!isCaravan && (
                             <div className="mt-8">
                                 <h3 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4 flex items-center gap-2">
                                     <Shield size={20} className="text-blue-400" />
@@ -3094,22 +3160,25 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </div>
                                 )}
                             </div>
+                            )}
 
-                            {/* VIN */}
+                            {/* VIN / CRiS identifier */}
                             <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1.5">VIN <span className="text-[var(--text-secondary)] normal-case font-normal text-xs">(optional)</span></label>
-                                <Input placeholder="17-character VIN" value={formData.vin}
+                                <label htmlFor="listing-required-vin" className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1.5">{isCaravan ? 'Caravan VIN / CRiS' : 'VIN'} <span className="text-[var(--text-secondary)] normal-case font-normal text-xs">(optional)</span></label>
+                                <Input id="listing-required-vin" placeholder={isCaravan ? "Optional 17-character caravan VIN/CRiS" : "17-character VIN"} value={formData.vin}
                                     maxLength={17}
                                     onChange={(e) => set("vin", e.target.value.toUpperCase())}
-                                    className={`${inputCls} font-mono tracking-wider`} />
-                                <p className="text-xs text-[var(--text-secondary)]">Vehicle Identification Number — increases buyer trust.</p>
+                                    className={`${inputCls} font-mono tracking-wider ${hasAttemptedNext && Boolean(formData.vin.trim()) && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(formData.vin.trim()) ? 'border-red-500' : ''}`} />
+                                <p className="text-xs text-[var(--text-secondary)]">{isCaravan ? 'VIN/CRiS information is optional. If provided, enter the full 17 characters; no CRiS verification is implied.' : 'Vehicle Identification Number — increases buyer trust.'}</p>
                             </div>
 
                             {/* Make / Model / Year */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 <div className="space-y-2">
-                                    <label id="listing-required-make" className="text-sm font-bold uppercase text-[var(--text-muted)]">Make *</label>
-                                    {(() => {
+                                    <label id="listing-required-make" className="text-sm font-bold uppercase text-[var(--text-muted)]">{isCaravan ? 'Make (optional)' : 'Make *'}</label>
+                                    {isCaravan ? (
+                                        <Input aria-label="Caravan make" placeholder="e.g. Swift, Bailey, Elddis" value={formData.make} onChange={e => set("make", e.target.value)} className={inputCls} />
+                                    ) : (() => {
                                         // Case-insensitive match — DVLA returns uppercase (e.g. "TOYOTA")
                                         const matchedMake = CAR_MAKES.find(m => m.toLowerCase() === formData.make.trim().toLowerCase())
                                         const isCustomMake = manualMakeEntry || (formData.make.trim() !== "" && !matchedMake)
@@ -3146,8 +3215,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     })()}
                                 </div>
                                 <div className="space-y-2">
-                                    <label id="listing-required-model" className="text-sm font-bold uppercase text-[var(--text-muted)]">Model *</label>
-                                    {(() => {
+                                    <label id="listing-required-model" className="text-sm font-bold uppercase text-[var(--text-muted)]">{isCaravan ? 'Model (optional)' : 'Model *'}</label>
+                                    {isCaravan ? (
+                                        <Input aria-label="Caravan model" placeholder="e.g. Sprite, Pegasus, Avante" value={formData.model} onChange={e => set("model", e.target.value)} className={inputCls} />
+                                    ) : (() => {
                                         // getModelsForMake is already case-insensitive
                                         const models = getModelsForMake(formData.make)
                                         if (models.length === 0) {
@@ -3199,7 +3270,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     })()}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Year *</label>
+                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">{isCaravan ? 'Year (optional)' : 'Year *'}</label>
                                     <Input aria-label="Year" id="listing-required-year" type="number" placeholder="2023" value={formData.year} onChange={(e) => set("year", e.target.value)} className={inputCls} />
                                 </div>
                             </div>
@@ -3259,8 +3330,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         </div>
                                     </div>
                                     {/* Vehicle Condition */}
-                                    <div id="vehicle-condition-field" className={`space-y-2 md:col-span-2 rounded-xl p-3 border ${hasAttemptedNext && !formData.condition ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
-                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Vehicle Condition *</label>
+                                    <div id="vehicle-condition-field" className={`space-y-2 md:col-span-2 rounded-xl p-3 border ${hasAttemptedNext && !isCaravan && !formData.condition ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
+                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">{isCaravan ? 'Caravan Condition (optional)' : 'Vehicle Condition *'}</label>
                                         <p className="text-xs text-[var(--text-secondary)]">Describe the general condition. Exterior Grade 1–5 is calculated separately from the damage map and can be searched by buyers.</p>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                             {([
@@ -3293,10 +3364,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                                     {/* Service History */}
                                     <div id="listing-required-service-history" role="group" aria-labelledby="listing-service-history-label"
-                                        aria-invalid={hasAttemptedNext && !formData.serviceHistory.trim()}
-                                        aria-describedby={hasAttemptedNext && !formData.serviceHistory.trim() ? "listing-service-history-error" : undefined}
-                                        className={`space-y-2 md:col-span-2 scroll-mt-28 rounded-xl p-3 border ${hasAttemptedNext && !formData.serviceHistory.trim() ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
-                                        <label id="listing-service-history-label" className="text-sm font-bold uppercase text-[var(--text-muted)]">Service History <span className="text-red-500">*</span></label>
+                                        aria-invalid={hasAttemptedNext && !isCaravan && !formData.serviceHistory.trim()}
+                                        aria-describedby={hasAttemptedNext && !isCaravan && !formData.serviceHistory.trim() ? "listing-service-history-error" : undefined}
+                                        className={`space-y-2 md:col-span-2 scroll-mt-28 rounded-xl p-3 border ${hasAttemptedNext && !isCaravan && !formData.serviceHistory.trim() ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
+                                        <label id="listing-service-history-label" className="text-sm font-bold uppercase text-[var(--text-muted)]">Service History {!isCaravan && <span className="text-red-500">*</span>}</label>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                             {(["Full Main Dealer", "Full Independent", "Partial", "None"] as const).map((sh) => (
                                                 <button key={sh} type="button"
@@ -3307,21 +3378,21 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             ))}
                                         </div>
                                         <p className="text-xs text-[var(--text-secondary)]">Choose the history supported by your service book or invoices. Select None if there is no service history.</p>
-                                        {hasAttemptedNext && !formData.serviceHistory.trim() && (
+                                        {hasAttemptedNext && !isCaravan && !formData.serviceHistory.trim() && (
                                             <p id="listing-service-history-error" role="alert" className="text-xs text-red-400 font-medium">Please select the vehicle’s service history to continue.</p>
                                         )}
                                     </div>
                                     <SellerFaultDeclaration kind="mechanical" value={formData.mechanicalIssues}
-                                        onChange={value => set("mechanicalIssues", value)} attempted={hasAttemptedNext} inputClassName={inputCls} />
+                                        onChange={value => set("mechanicalIssues", value)} attempted={!isCaravan && hasAttemptedNext} inputClassName={inputCls} />
                                     <SellerFaultDeclaration kind="electrical" value={formData.electricalIssues}
-                                        onChange={value => set("electricalIssues", value)} attempted={hasAttemptedNext} inputClassName={inputCls} />
+                                        onChange={value => set("electricalIssues", value)} attempted={!isCaravan && hasAttemptedNext} inputClassName={inputCls} />
 
                                     {/* Number of Keys */}
                                     <div id="listing-required-keys" role="group" aria-labelledby="listing-keys-label"
-                                        aria-invalid={hasAttemptedNext && !formData.numberOfKeys.trim()}
-                                        aria-describedby={hasAttemptedNext && !formData.numberOfKeys.trim() ? "listing-keys-error" : undefined}
-                                        className={`space-y-2 scroll-mt-28 rounded-xl p-3 border ${hasAttemptedNext && !formData.numberOfKeys.trim() ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
-                                        <label id="listing-keys-label" className="text-sm font-bold uppercase text-[var(--text-muted)]">Number of Keys <span className="text-red-500">*</span></label>
+                                        aria-invalid={hasAttemptedNext && !isCaravan && !formData.numberOfKeys.trim()}
+                                        aria-describedby={hasAttemptedNext && !isCaravan && !formData.numberOfKeys.trim() ? "listing-keys-error" : undefined}
+                                        className={`space-y-2 scroll-mt-28 rounded-xl p-3 border ${hasAttemptedNext && !isCaravan && !formData.numberOfKeys.trim() ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
+                                        <label id="listing-keys-label" className="text-sm font-bold uppercase text-[var(--text-muted)]">Number of Keys {!isCaravan && <span className="text-red-500">*</span>}</label>
                                         <div className="flex gap-2">
                                             {(["0", "1", "2", "3"] as const).map((k) => (
                                                 <button key={k} type="button"
@@ -3332,7 +3403,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             ))}
                                         </div>
                                         <p className="text-xs text-[var(--text-secondary)]">Confirm the keys included with the vehicle. Select 0 if there are no keys.</p>
-                                        {hasAttemptedNext && !formData.numberOfKeys.trim() && (
+                                        {hasAttemptedNext && !isCaravan && !formData.numberOfKeys.trim() && (
                                             <p id="listing-keys-error" role="alert" className="text-xs text-red-400 font-medium">Please select the number of keys to continue.</p>
                                         )}
                                     </div>
@@ -3399,7 +3470,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     key={key}
                                                     type="button"
                                                     aria-pressed={formData.bodyType === key}
-                                                    onClick={() => set("bodyType", key)}
+                                                    onClick={() => chooseBodyType(key)}
                                                     className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${formData.bodyType === key ? "border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(237,28,36,0.2)]" : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-white/30"}`}
                                                 >
                                                     <Icon className="w-10 h-5" />
@@ -3460,11 +3531,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         <div id="listing-required-photos" className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
                             <div className="space-y-4">
                                 <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4">Photos *</h2>
-                                <p className="text-sm text-[var(--text-muted)]">Upload up to 100 photos. Aim for at least 20 for the best results, and organise them by selecting the relevant category below.</p>
+                                <p className="text-sm text-[var(--text-muted)]">{isCaravan ? 'Upload photos manually to show the caravan exterior, interior, equipment and any damage. At least one photo is needed; more photos help buyers.' : 'Upload up to 100 photos. Aim for at least 20 for the best results, and organise them by selecting the relevant category below.'}</p>
                                 {/* Photo counter and progress bar — wizard form only */}
                                 {(() => {
                                     const photoCount = formData.images.length
-                                    const MIN_PHOTOS = 10
+                                    const MIN_PHOTOS = isCaravan ? 1 : 10
                                     const MAX_PHOTOS = 100
                                     const isMinMet = photoCount >= MIN_PHOTOS
                                     const progressPct = Math.min((photoCount / MAX_PHOTOS) * 100, 100)
@@ -3497,7 +3568,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 />
                             </div>
 
-                            {/* Damage Mapping Section */}
+                            {/* A car-shaped 3D damage model would misrepresent caravan damage. */}
+                            {isCaravan ? (
+                                <p className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-[var(--text-secondary)]">
+                                    Photograph every damaged area of the caravan and describe faults in the mandatory declarations. A caravan-specific 3D damage model is not yet available.
+                                </p>
+                            ) : (
                             <div className="pt-8 border-t border-[var(--border-default)]">
                                 <div className="flex items-center gap-3 mb-6">
                                     <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20">
@@ -3515,6 +3591,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     onPendingChange={setDamageEntryPending}
                                 />
                             </div>
+                            )}
 
                             {/* Video Embeds */}
                             <div className="pt-8 border-t border-[var(--border-default)]">
@@ -3586,6 +3663,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4 mt-8">Technical Specs</h2>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                {!isCaravan && (<>
                                 {/* Mileage */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Mileage *</label>
@@ -3595,7 +3673,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {/* Give sellers value guidance immediately after the
                                     minimum valuation inputs are known, not only after
                                     photos and declarations are complete. */}
-                                <div className="md:col-span-2">
+                                {!isCaravan && <div className="md:col-span-2">
                                     <VehicleValuationCard
                                         valuation={valuation}
                                         loading={valuationLoading}
@@ -3604,7 +3682,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         compact
                                         onApply={applyValuation}
                                     />
-                                </div>
+                                </div>}
 
                                 {/* Fuel */}
                                 <SelectField label="Fuel Type" required error={hasAttemptedNext && !formData.fuelType} value={formData.fuelType} onChange={(v) => set("fuelType", v)}
@@ -3642,6 +3720,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         { value: "CVT", label: "CVT" },
                                     ]}
                                 />
+                                </>)}
 
                                 {/* Colour */}
                                 <div className="space-y-2">
@@ -3649,6 +3728,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <Input placeholder="e.g. Alpine White" value={formData.color} onChange={(e) => set("color", e.target.value)} className={inputCls} />
                                 </div>
 
+                                {!isCaravan && (<>
                                 {/* Engine */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Engine Size (cc)</label>
@@ -3661,6 +3741,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <Input type="number" placeholder="e.g. 503" value={formData.bhp} onChange={(e) => set("bhp", e.target.value)} className={inputCls} />
                                 </div>
 
+                                </>)}
                                 {/* Doors (not for motorcycles) */}
                                 {formData.vehicleType !== 'MOTORCYCLE' && (
                                     <div className="space-y-2">
@@ -3892,7 +3973,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             {/* Ownership */}
                             <div className="space-y-3">
-                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Number of Owners *</label>
+                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">{isCaravan ? 'Previous Owners (optional)' : 'Number of Owners *'}</label>
                                 <div className="flex flex-wrap gap-2">
                                     {(['1', '2', '3', '4', '5+'] as const).map((opt) => (
                                         <button
@@ -4257,13 +4338,19 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                             <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4">{isAuction ? "Vehicle Value" : "Pricing"}</h2>
 
-                            <VehicleValuationCard
-                                valuation={valuation}
-                                loading={valuationLoading}
-                                error={valuationError}
-                                mode={isAuction ? "auction" : "retail"}
-                                onApply={applyValuation}
-                            />
+                            {isCaravan ? (
+                                <p className="rounded-xl border border-blue-500/25 bg-blue-500/10 p-4 text-sm text-[var(--text-secondary)]">
+                                    Enter your own caravan value using comparable caravan prices. Automatic car-registration valuations do not apply to towable caravans.
+                                </p>
+                            ) : (
+                                <VehicleValuationCard
+                                    valuation={valuation}
+                                    loading={valuationLoading}
+                                    error={valuationError}
+                                    mode={isAuction ? "auction" : "retail"}
+                                    onApply={applyValuation}
+                                />
+                            )}
 
                             <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
                                 {isAuction ? (
@@ -4411,7 +4498,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 </ul>
                                             </button>
 
-                                            {/* Standard */}
+                                            {!isCaravan && (<>
+                                             {/* Standard */}
                                             <button type="button"
                                                 onClick={() => set('badgeTier', 'STANDARD')}
                                                 className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'STANDARD'
@@ -4447,6 +4535,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Featured Boost included for 28 days</li>
                                                 </ul>
                                             </button>
+
+                                         </>)}
                                         </>
                                     )}
                                 </div>

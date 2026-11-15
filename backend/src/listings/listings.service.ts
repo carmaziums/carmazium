@@ -134,6 +134,7 @@ const mapBodyType = (body?: DtoBodyType): BodyType | null => {
         STATION_WAGON: 'STATION_WAGON',
         MPV: 'MPV',
         VAN: 'VAN',
+        CARAVAN: 'CARAVAN',
         HGV_TRACTOR_UNIT: 'HGV_TRACTOR_UNIT',
         HGV_BOX: 'HGV_BOX',
         HGV_CURTAIN_SIDER: 'HGV_CURTAIN_SIDER',
@@ -1773,7 +1774,11 @@ export class ListingsService {
      */
     async create(createListingDto: CreateListingDto, userId?: string): Promise<Listing> {
         const slug = this.generateSlug(createListingDto.title);
-        const normalizedVrm = this.normalizeVrm(createListingDto.vrm);
+        const isTouringCaravan = createListingDto.bodyType === DtoBodyType.CARAVAN;
+        if (isTouringCaravan && createListingDto.vrm?.trim()) {
+            throw new BadRequestException('A touring caravan uses its VIN/CRiS identifier, not a separate DVLA registration.');
+        }
+        const normalizedVrm = isTouringCaravan ? '' : this.normalizeVrm(createListingDto.vrm);
         const originalImages = createListingDto.images ?? [];
         const sellerId = userId
             ? await this.resolveInventorySellerId(userId, 'MANAGE_INVENTORY')
@@ -1924,13 +1929,14 @@ export class ListingsService {
                 // Vehicle identity
                 make: createListingDto.make ?? null,
                 model: createListingDto.model ?? null,
-                year: createListingDto.year,
-                mileage: createListingDto.mileage,
+                year: createListingDto.year ?? null,
+                // Unpowered touring caravans have neither an engine odometer nor an independent DVLA VRM.
+                mileage: isTouringCaravan ? null : createListingDto.mileage,
                 vrm: normalizedVrm || null,
                 vin: createListingDto.vin ?? null,
                 // Technical specs
-                fuelType: mapFuelType(createListingDto.fuelType),
-                transmission: mapTransmission(createListingDto.transmission),
+                fuelType: isTouringCaravan ? null : mapFuelType(createListingDto.fuelType),
+                transmission: isTouringCaravan ? null : mapTransmission(createListingDto.transmission),
                 color: createListingDto.color ?? null,
                 doors: createListingDto.doors ?? null,
                 seats: createListingDto.seats ?? null,

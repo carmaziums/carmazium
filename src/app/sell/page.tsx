@@ -713,6 +713,12 @@ function SellerLanding() {
                         </p>
 
                         <QuickValuationForm />
+                        <p className="mt-4 text-center text-sm text-[var(--text-secondary)]">
+                            Selling a touring caravan without its own DVLA registration?{' '}
+                            <a href="#sell-options" className="font-bold text-primary underline underline-offset-4">
+                                Skip the car valuation and choose Auction or £1 Retail below
+                            </a>. Enter the caravan VIN/CRiS identifier in the listing form.
+                        </p>
 
                         <GoogleAdBanner />
 

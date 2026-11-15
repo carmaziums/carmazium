@@ -4,7 +4,7 @@ import { captureApprovedAuctionAttribution } from './approvedAuctionAttribution'
  * API Client for Listing Operations
  */
 
-export type BodyTypeValue = 'SEDAN' | 'SUV' | 'HATCHBACK' | 'COUPE' | 'CONVERTIBLE' | 'ESTATE' | 'CROSSOVER' | 'SPORTS_CAR' | 'MINIVAN' | 'PICKUP_TRUCK' | 'STATION_WAGON' | 'MPV' | 'VAN' | 'HGV_TRACTOR_UNIT' | 'HGV_BOX' | 'HGV_CURTAIN_SIDER' | 'HGV_FLATBED' | 'HGV_TIPPER' | 'HGV_DROPSIDE' | 'HGV_TANKER' | 'HGV_REFRIGERATED' | 'HGV_CAR_TRANSPORTER'
+export type BodyTypeValue = 'SEDAN' | 'SUV' | 'HATCHBACK' | 'COUPE' | 'CONVERTIBLE' | 'ESTATE' | 'CROSSOVER' | 'SPORTS_CAR' | 'MINIVAN' | 'PICKUP_TRUCK' | 'STATION_WAGON' | 'MPV' | 'VAN' | 'CARAVAN' | 'HGV_TRACTOR_UNIT' | 'HGV_BOX' | 'HGV_CURTAIN_SIDER' | 'HGV_FLATBED' | 'HGV_TIPPER' | 'HGV_DROPSIDE' | 'HGV_TANKER' | 'HGV_REFRIGERATED' | 'HGV_CAR_TRANSPORTER'
 export type VehicleConditionValue = 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'CAT_S' | 'CAT_N' | 'CAT_C' | 'CAT_D'
 export type WriteOffSearchValue = 'NONE' | 'CAT_S' | 'CAT_N' | 'CAT_A' | 'CAT_B' | 'CAT_C' | 'CAT_D'
 export type EuroStandardValue = 'EURO_4' | 'EURO_5' | 'EURO_6' | 'EURO_6D'
@@ -30,8 +30,8 @@ import type { OfficialVehicleData } from './dvlaApi'
 export interface CreateListingRequest {
     title: string
     price: number
-    mileage: number
-    year: number
+    mileage: number | null
+    year: number | null
     vrm: string
     images: string[]
     listingType: 'AUCTION' | 'CLASSIFIED'
