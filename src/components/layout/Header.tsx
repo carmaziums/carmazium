@@ -132,15 +132,15 @@ export function Header() {
             <div className="container mx-auto px-6 flex items-center justify-between gap-6 h-20 relative z-10">
 
                 {/* Logo Area */}
-                <div className="shrink-0 flex items-center justify-start gap-6">
-                    <Link href="/" className="flex items-center">
+                <div className="min-w-0 flex items-center justify-start gap-6">
+                    <Link href="/" className="flex min-w-0 items-center">
                         <Image
                             src="/assets/images/logo-light.webp"
                             alt="CarMazium"
                             width={160}
                             height={40}
                             sizes="160px"
-                            className="h-9 md:h-10 w-auto object-contain dark:hidden"
+                            className="h-9 md:h-10 w-auto min-w-0 max-w-full object-contain dark:hidden"
                             priority
                         />
                         <Image
@@ -149,7 +149,7 @@ export function Header() {
                             width={160}
                             height={40}
                             sizes="160px"
-                            className="h-9 md:h-10 w-auto object-contain hidden dark:block"
+                            className="h-9 md:h-10 w-auto min-w-0 max-w-full object-contain hidden dark:block"
                         />
                     </Link>
                 </div>
