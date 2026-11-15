@@ -984,37 +984,44 @@ export class UsersService {
         const requestedRole =
             data.role && isSelfServiceUserRole(data.role) ? data.role : undefined;
 
-        // Check if user already exists
-        const userExists = await this.prisma.user.findUnique({
-            where: { email },
-        });
-
-        const user = await this.prisma.user.upsert({
-            where: { email },
-            update: {
-                // Only overwrite existing name if we have a non-empty value coming in
-                ...(data.firstName && { firstName: data.firstName }),
-                ...(data.lastName && { lastName: data.lastName }),
-                // Role is deliberately NOT updated here. sync runs on every
-                // login, not just signup; changing role from it would let a
-                // returning DEALER be silently downgraded to BUYER, and was half
-                // of the escalation hole. Role changes go through
-                // requestRoleElevation(), which enforces its own allowlist.
-            },
-            create: {
-                ...(userId && { id: userId }),
-                email,
-                firstName: data.firstName,
-                lastName: data.lastName,
-                ...(requestedRole !== undefined && { role: requestedRole }),
-                passwordHash: 'SUPABASE_EXTERNAL_AUTH', // Placeholder since auth is external
-            },
-        });
+        const update = {
+            // Login sync must not overwrite an established account role.
+            ...(data.firstName && { firstName: data.firstName }),
+            ...(data.lastName && { lastName: data.lastName }),
+        };
+        let isNewUser = false;
+        let user = await this.prisma.user.findUnique({ where: { email } });
+        if (user) {
+            user = await this.prisma.user.update({ where: { email }, data: update });
+        } else {
+            try {
+                // The unique database insert, not an earlier read, decides who
+                // owns onboarding and the first-registration conversion.
+                user = await this.prisma.user.create({
+                    data: {
+                        ...(userId && { id: userId }),
+                        email,
+                        firstName: data.firstName,
+                        lastName: data.lastName,
+                        ...(requestedRole !== undefined && { role: requestedRole }),
+                        passwordHash: 'SUPABASE_EXTERNAL_AUTH',
+                    },
+                });
+                isNewUser = true;
+            } catch (error: any) {
+                if (error?.code !== 'P2002') throw error;
+                // Only recover a concurrent insert of this email. An unrelated
+                // ID collision must fail rather than claim another account.
+                const existing = await this.prisma.user.findUnique({ where: { email } });
+                if (!existing) throw error;
+                user = await this.prisma.user.update({ where: { email }, data: update });
+            }
+        }
 
         // A genuinely new local account gets two durable onboarding surfaces:
         // a role-aware email and an in-app "Start Here" notification. Keep both
         // asynchronous so a temporary email/provider problem never blocks signup.
-        if (!userExists) {
+        if (isNewUser) {
             const guide = getAccountOnboardingGuide(user.role);
 
             void this.emailService
@@ -1048,7 +1055,7 @@ export class UsersService {
         // never fire on a login, a dashboard refresh, or a return visit.
         // Deriving newness client-side (e.g. from how recent user.created_at
         // looks) would be a guess; this is a fact.
-        return { user, isNewUser: !userExists };
+        return { user, isNewUser };
     }
 
     /**

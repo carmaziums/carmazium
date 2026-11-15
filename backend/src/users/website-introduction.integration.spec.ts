@@ -18,6 +18,7 @@ integration('Account introduction with disposable PostgreSQL', () => {
     });
     afterAll(async () => {
         if (!prisma) return;
+        await prisma.notification.deleteMany({ where: { userId: { in: ids } } });
         await prisma.user.deleteMany({ where: { id: { in: ids } } });
         await prisma.$disconnect();
     });
@@ -44,6 +45,39 @@ integration('Account introduction with disposable PostgreSQL', () => {
         expect((await service.getProfile(ids[0])).preferences).toMatchObject({ theme: 'dark', websiteIntroductionV1: { status: 'completed', version: 1 }, websiteIntroductionV2: { status: 'skipped', version: 2 } });
         await service.updateIntroduction(ids[0], 'tour_completed', 2);
         expect((await service.getProfile(ids[0])).preferences).toMatchObject({ websiteIntroductionV2: { status: 'completed', version: 2 } });
+    });
+    it('claims new-account onboarding once under concurrent signup with real unique constraints', async () => {
+        const email = `signup-race-${randomUUID()}@invalid.example`;
+        const emailService = { sendWelcomeEmail: jest.fn().mockResolvedValue({ id: 'synthetic-mail' }) };
+        const signup = new UsersService(prisma, emailService as any, { get: () => undefined } as any);
+        const originalFind = prisma.user.findUnique.bind(prisma.user);
+        let arrivals = 0;
+        let release: () => void;
+        const ready = new Promise<void>(resolve => { release = resolve; });
+        const lookup = jest.spyOn(prisma.user as any, 'findUnique').mockImplementation(async (args: any) => {
+            if (args.where.email === email && arrivals < 10) {
+                arrivals++;
+                if (arrivals === 10) release();
+                await ready;
+                return null;
+            }
+            return originalFind(args);
+        });
+        try {
+            const results = await Promise.all(Array.from({ length: 10 }, () => signup.syncUser({ email })));
+            ids.push(results[0].user.id);
+            expect(results.filter(result => result.isNewUser)).toHaveLength(1);
+            expect(new Set(results.map(result => result.user.id)).size).toBe(1);
+            expect(emailService.sendWelcomeEmail).toHaveBeenCalledTimes(1);
+            // Onboarding notification is deliberately asynchronous.
+            for (let attempt = 0; attempt < 40; attempt++) {
+                if (await prisma.notification.count({ where: { userId: results[0].user.id, type: 'ACCOUNT_WELCOME' } })) break;
+                await new Promise(resolve => setTimeout(resolve, 25));
+            }
+            expect(await prisma.notification.count({ where: { userId: results[0].user.id, type: 'ACCOUNT_WELCOME' } })).toBe(1);
+        } finally {
+            lookup.mockRestore();
+        }
     });
     it('never modifies a deleted account', async () => {
         await prisma.user.update({ where: { id: ids[1] }, data: { deletedAt: new Date() } });
