@@ -679,7 +679,7 @@ function SearchPageContent() {
                             {/* Vehicle Category */}
                             <div className="pb-4 border-b border-[var(--border-default)]">
                                 <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3">Vehicle Category</p>
-                                <div className="grid grid-cols-3 gap-2">
+                                <div className="grid grid-cols-2 gap-2">
                                     {[
                                         { value: 'CAR', label: 'Cars' },
                                         { value: 'LEISURE', label: 'Caravan / Campervan' },
