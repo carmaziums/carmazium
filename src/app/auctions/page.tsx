@@ -191,7 +191,7 @@ const PROVIDER_BENEFITS = [
     {
         icon: LayoutDashboard,
         title: "Run opportunities from one dashboard",
-        text: "Keep relevant jobs, accepted work, matched enquiries and capability approvals together instead of relying on scattered calls and messages.",
+        text: "Keep relevant jobs, accepted work and capability approvals together instead of relying on scattered calls and messages.",
     },
     {
         icon: ShieldCheck,
@@ -269,7 +269,7 @@ export default function TradeXchangePage() {
                         >
                             One trade platform.
                             <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-red-400">Five ways to do business.</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-red-400">Services and partnerships.</span>
                         </motion.h1>
                         <motion.p
                             initial={{ opacity: 0, y: 16 }}

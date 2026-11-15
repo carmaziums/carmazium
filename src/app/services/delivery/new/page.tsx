@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { jobVehicleIdentified, jobDateIssue, focusJobFormIssue } from "@/lib/serviceJobFormValidation"
 import { buttonVariants } from "@/components/ui/buttonVariants"
 import { useRouter } from "next/navigation"
 import { Truck, Plus, Trash2, Loader2, AlertCircle, ArrowRight, CheckCircle } from "lucide-react"
@@ -20,12 +21,13 @@ import { createJob, type JobVehicle } from "@/lib/servicesApi"
 
 const EMPTY_VEHICLE: JobVehicle = { registration: "", make: "", model: "", year: undefined, notes: "" }
 
-const inputCls = "w-full rounded-xl border px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-primary)]"
+const inputCls = "aria-[invalid=true]:border-red-500 aria-[invalid=true]:ring-1 aria-[invalid=true]:ring-red-500 w-full rounded-xl border px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-primary)]"
 const labelCls = "block text-[11px] font-extrabold uppercase tracking-widest text-[var(--text-muted)] mb-2"
 
 function NewDeliveryJobForm() {
     const router = useRouter()
     const [submitting, setSubmitting] = React.useState(false)
+    const [invalidField, setInvalidField] = React.useState<string | null>(null)
     const [error, setError] = React.useState<string | null>(null)
     const [linkedListingTitle, setLinkedListingTitle] = React.useState<string | null>(null)
     const prefillApplied = React.useRef(false)
@@ -78,9 +80,17 @@ function NewDeliveryJobForm() {
     const submit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError(null)
-        if (!title.trim()) return setError("Give the job a short title, e.g. \"BMW 3 Series, Leeds to Bristol\".")
-        if (!pickupPostcode.trim() || !deliveryPostcode.trim()) return setError("Both postcodes are needed to quote the route.")
-        if (vehicles.some(v => !v.registration && !v.make && !v.model)) return setError("Each vehicle needs at least a registration or a make and model.")
+        setInvalidField(null)
+        const fail = (field: string, message: string) => {
+            setInvalidField(field); setError(message); focusJobFormIssue(field)
+        }
+        if (!title.trim()) return fail("title", 'Give the job a short title, e.g. "BMW 3 Series, Leeds to Bristol".')
+        if (!pickupPostcode.trim()) return fail("pp", "Enter the pickup postcode so providers can quote the route.")
+        if (!deliveryPostcode.trim()) return fail("dp", "Enter the delivery postcode so providers can quote the route.")
+        const missingVehicle = vehicles.findIndex(v => !jobVehicleIdentified(v))
+        if (missingVehicle >= 0) return fail(`vehicle-${missingVehicle}-registration`, "Each vehicle needs either its registration or both its make and model.")
+        const dateIssue = jobDateIssue(requestedFor, !asap)
+        if (!asap && dateIssue) return fail(dateIssue.field, dateIssue.message)
 
         setSubmitting(true)
         try {
@@ -104,8 +114,9 @@ function NewDeliveryJobForm() {
                 })),
             })
             router.push(`/services/jobs/${job.id}?posted=1`)
-        } catch (err: any) {
-            setError(err?.message || "Could not post the job. Please try again.")
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Could not post the job. Please try again.")
+            requestAnimationFrame(() => focusJobFormIssue("job-error"))
             setSubmitting(false)
         }
     }
@@ -131,7 +142,7 @@ function NewDeliveryJobForm() {
             )}
 
             {error && (
-                <div className="mb-6 p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-300 text-sm flex items-start gap-3">
+                <div role="alert" id="job-error" tabIndex={-1} className="mb-6 p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-300 text-sm flex items-start gap-3">
                     <AlertCircle size={18} className="shrink-0 mt-0.5" /> {error}
                 </div>
             )}
@@ -156,14 +167,14 @@ function NewDeliveryJobForm() {
 
             <div className="mb-8">
                 <label className={labelCls} htmlFor="title">Job title</label>
-                <input id="title" className={inputCls} value={title} onChange={e => setTitle(e.target.value)} maxLength={120} placeholder='e.g. "BMW 3 Series, Leeds to Bristol"' />
+                <input aria-invalid={invalidField === "title"} aria-describedby={invalidField === "title" ? "job-error" : undefined} id="title" className={inputCls} value={title} onChange={e => setTitle(e.target.value)} maxLength={120} placeholder='e.g. "BMW 3 Series, Leeds to Bristol"' />
             </div>
 
             <div className="grid sm:grid-cols-2 gap-5 mb-8">
                 <div className="space-y-3">
                     <div>
                         <label className={labelCls} htmlFor="pp">Pickup postcode</label>
-                        <input id="pp" className={`${inputCls} font-mono uppercase`} value={pickupPostcode} onChange={e => setPickupPostcode(e.target.value)} maxLength={10} placeholder="LS1 4AP" />
+                        <input aria-invalid={invalidField === "pp"} aria-describedby={invalidField === "pp" ? "job-error" : undefined} id="pp" className={`${inputCls} font-mono uppercase`} value={pickupPostcode} onChange={e => setPickupPostcode(e.target.value)} maxLength={10} placeholder="LS1 4AP" />
                     </div>
                     <div>
                         <label className={labelCls} htmlFor="pa">Pickup address <span className="normal-case font-semibold">(optional — shown only to your chosen transporter)</span></label>
@@ -173,7 +184,7 @@ function NewDeliveryJobForm() {
                 <div className="space-y-3">
                     <div>
                         <label className={labelCls} htmlFor="dp">Delivery postcode</label>
-                        <input id="dp" className={`${inputCls} font-mono uppercase`} value={deliveryPostcode} onChange={e => setDeliveryPostcode(e.target.value)} maxLength={10} placeholder="BS1 4DJ" />
+                        <input aria-invalid={invalidField === "dp"} aria-describedby={invalidField === "dp" ? "job-error" : undefined} id="dp" className={`${inputCls} font-mono uppercase`} value={deliveryPostcode} onChange={e => setDeliveryPostcode(e.target.value)} maxLength={10} placeholder="BS1 4DJ" />
                     </div>
                     <div>
                         <label className={labelCls} htmlFor="da">Delivery address <span className="normal-case font-semibold">(optional)</span></label>
@@ -192,7 +203,7 @@ function NewDeliveryJobForm() {
                     <label className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer flex-1 ${!asap ? "border-primary bg-primary/5" : "border-[var(--border-default)] bg-[var(--bg-input)]"}`}>
                         <input type="radio" name="when" checked={!asap} onChange={() => setAsap(false)} className="accent-primary" />
                         <span className="text-sm font-bold whitespace-nowrap">On or after</span>
-                        <input type="date" className={`${inputCls} py-1.5`} value={requestedFor} onChange={e => { setRequestedFor(e.target.value); setAsap(false) }} min={new Date().toISOString().slice(0, 10)} />
+                        <input id="job-date" aria-label="Preferred delivery date and time" aria-invalid={invalidField === "job-date"} aria-describedby={invalidField === "job-date" ? "job-error" : undefined} type="datetime-local" className={`${inputCls} py-1.5`} value={requestedFor} onChange={e => { setRequestedFor(e.target.value); setAsap(false) }} />
                     </label>
                 </div>
             </fieldset>
@@ -211,7 +222,7 @@ function NewDeliveryJobForm() {
                     {vehicles.map((v, i) => (
                         <div key={i} className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-                                <input className={`${inputCls} font-mono uppercase`} placeholder="Reg" value={v.registration ?? ""} onChange={e => setVehicle(i, { registration: e.target.value })} maxLength={10} aria-label="Registration" />
+                                <input id={`vehicle-${i}-registration`} aria-invalid={invalidField === `vehicle-${i}-registration`} aria-describedby={invalidField === `vehicle-${i}-registration` ? "job-error" : undefined} className={`${inputCls} font-mono uppercase`} placeholder="Reg" value={v.registration ?? ""} onChange={e => setVehicle(i, { registration: e.target.value })} maxLength={10} aria-label="Registration" />
                                 <input className={inputCls} placeholder="Make" value={v.make ?? ""} onChange={e => setVehicle(i, { make: e.target.value })} maxLength={60} aria-label="Make" />
                                 <input className={inputCls} placeholder="Model" value={v.model ?? ""} onChange={e => setVehicle(i, { model: e.target.value })} maxLength={60} aria-label="Model" />
                                 <input className={inputCls} placeholder="Year" type="number" min={1900} max={2100} value={v.year ?? ""} onChange={e => setVehicle(i, { year: e.target.value ? Number(e.target.value) : undefined })} aria-label="Year" />
@@ -237,7 +248,7 @@ function NewDeliveryJobForm() {
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <p className="text-xs text-[var(--text-muted)] max-w-sm">
-                    Your job stays open for 7 days. Approved providers see the route and vehicles and compete with quotes — not your name, phone or full address.
+                    Each vehicle needs its registration or both make and model. Your job stays open for 7 days. Approved providers see the route and vehicles and compete with quotes — not your name, phone or full address.
                 </p>
                 <Button type="submit" size="lg" disabled={submitting} className="w-full sm:w-auto">
                     {submitting ? <Loader2 className="animate-spin" size={18} /> : <>Post job <ArrowRight size={16} className="ml-2" /></>}
