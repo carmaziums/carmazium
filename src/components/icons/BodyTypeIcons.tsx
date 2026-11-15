@@ -140,6 +140,18 @@ export function VanIcon({ className }: IconProps) {
     )
 }
 
+// A touring caravan is a towable body, not a motorhome or a van.
+export function CaravanIcon({ className }: IconProps) {
+    return (
+        <svg viewBox="0 0 40 20" fill="currentColor" className={className} xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M5 4h23a5 5 0 0 1 5 5v5H4V7a3 3 0 0 1 1-3zm3 3v4h10V7H8zm13 0v4h7V7h-7z" />
+            <circle cx="11" cy="15" r="3" />
+            <circle cx="27" cy="15" r="3" />
+            <path d="M33 12h4v2h-4z" />
+        </svg>
+    )
+}
+
 // ─── Lookup Map ──────────────────────────────────────────────────────────────
 
 export const BODY_TYPE_ICONS: Record<string, React.FC<IconProps>> = {
