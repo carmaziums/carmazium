@@ -199,6 +199,27 @@ export const SellLandingScreen: React.FC = () => {
           through a £0 dealer auction or £1 retail listing.
         </Text>
 
+        <View style={{ padding: 12, borderRadius: 12, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, gap: 8 }}>
+          <Text style={styles.sectionTitle}>Selling a touring caravan?</Text>
+          <Text style={styles.hint}>Skip the car valuation. No VIN or number plate is required. Add photos, any details you know and your own price.</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity
+              style={[styles.auctionAction, { flex: 1, minHeight: 54, padding: 9 }]}
+              accessibilityRole="button"
+              onPress={() => navigation.navigate('SellCarFlow', { listingType: 'AUCTION', prefill: { bodyType: 'CARAVAN' } })}
+            >
+              <Text style={styles.actionTitle}>Caravan Auction</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.retailAction, { flex: 1, minHeight: 54, padding: 9 }]}
+              accessibilityRole="button"
+              onPress={() => navigation.navigate('SellCarFlow', { listingType: 'CLASSIFIED', prefill: { bodyType: 'CARAVAN' } })}
+            >
+              <Text style={styles.retailTitle}>£1 Caravan Retail</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <View style={styles.valuationCard}>
           <Text style={styles.sectionTitle}>FREE CAR VALUATION</Text>
           <Text style={styles.hint}>Enter your registration or provide vehicle details manually.</Text>
