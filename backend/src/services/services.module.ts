@@ -1,3 +1,4 @@
+import { ServiceJobAlertsService } from './service-job-alerts.service';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '../prisma/prisma.module';
@@ -53,6 +54,7 @@ import { TradeTeamController } from './trade-team.controller';
         ServiceLeadsService,
         ServiceOperationsService,
         ServicesLifecycleService,
+        ServiceJobAlertsService,
         TradeTeamService,
         ContractorGuard,
     ],

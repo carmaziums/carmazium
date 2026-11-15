@@ -1,6 +1,8 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { Prisma } from '@prisma/client';
+import { createHash } from 'node:crypto';
+import { eligibleJobProviderWhere } from '../services/service-job-alert-eligibility';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { EmailService } from '../email/email.service';
@@ -136,7 +138,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
             : nowM >= startM || nowM < endM; // wraps midnight, e.g. 22:00 -> 08:00
     }
 
-    async create(dto: CreateNotificationDto) {
+    async create(dto: CreateNotificationDto, deduplicationKey?: string) {
         // Read preferences before inserting so optional generic-email queue
         // metadata is committed with the notification row itself.
         const user = await this.prisma.user.findUnique({
@@ -169,14 +171,27 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
             }
             : mergedData;
 
-        const notification = await this.prisma.notification.create({
+        // The database primary key deduplicates concurrent deliveries across machines.
+        const hex = deduplicationKey ? createHash('sha256').update(`notification:${deduplicationKey}`).digest('hex') : null;
+        const id = hex ? `${hex.slice(0,8)}-${hex.slice(8,12)}-5${hex.slice(13,16)}-a${hex.slice(17,20)}-${hex.slice(20,32)}` : undefined;
+        let notification;
+        try {
+        notification = await this.prisma.notification.create({
             data: {
                 ...prismaFields,
+                ...(id ? { id } : {}),
                 data: Object.keys(storedData).length > 0
                     ? storedData as Prisma.InputJsonValue
                     : undefined,
             },
         });
+
+        } catch (error) {
+            if (id && (error as { code?: string }).code === 'P2002') {
+                return this.prisma.notification.findUniqueOrThrow({ where: { id } });
+            }
+            throw error;
+        }
 
         // Respect the recipient's saved notification preferences before doing
         // anything interruptive. The row above is still always created; muted
@@ -326,7 +341,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
             FROM picked
             WHERE n.id = picked.id
             RETURNING n.id, n."userId", n.type, n.title, n.message, n.data,
-                      n."isRead", n."createdAt"
+                      n."isRead", n."createdAt", n."entityId"
         `);
     }
 
@@ -424,7 +439,7 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
         const emailState = this.asRecord(data._email);
         const attempts = Number(emailState.attempts || 1);
 
-        if (notification.isRead) {
+        if (notification.isRead && notification.type !== 'SERVICE_JOB_AVAILABLE') {
             await this.updateEmailState(notification, {
                 state: 'skipped',
                 skippedAt: new Date().toISOString(),
@@ -455,6 +470,19 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
                 reason: 'email-preference-disabled',
             });
             return;
+        }
+
+        if (notification.type === 'SERVICE_JOB_AVAILABLE') {
+            const job = typeof notification.entityId === 'string'
+                ? await this.prisma.serviceJob.findUnique({ where: { id: notification.entityId } }) : null;
+            const eligible = job && job.status === 'OPEN' && job.expiresAt > new Date()
+                ? await this.prisma.contractorCapability.findFirst({ where: {
+                    AND: [eligibleJobProviderWhere(job), { contractor: { userId: notification.userId } }],
+                }, select: { id: true } }) : null;
+            if (!eligible) {
+                await this.updateEmailState(notification, { state: 'skipped', skippedAt: new Date().toISOString(), reason: 'job-or-provider-no-longer-eligible' });
+                return;
+            }
         }
 
         const isChat = notification.type === 'MESSAGE_RECEIVED' || notification.type === 'NEW_MESSAGE';
