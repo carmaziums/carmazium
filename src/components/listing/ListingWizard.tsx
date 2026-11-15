@@ -2862,7 +2862,15 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </div>
                             </div>
 
+                            <button type="button"
+                                onClick={() => chooseBodyType('CARAVAN')}
+                                aria-pressed={isCaravan}
+                                className={`w-full rounded-xl border p-3 text-left text-sm font-bold ${isCaravan ? 'border-primary bg-primary/10 text-primary' : 'border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-secondary)]'}`}
+                            >
+                                Selling a touring caravan? Select Caravan — no DVLA registration or mileage required.
+                            </button>
                             {/* VRM + Lookup */}
+                            {!isCaravan && (
                             <div className="space-y-2">
                                 <label htmlFor="listing-required-registration" className="text-sm font-bold uppercase text-[var(--text-muted)]">Registration (VRM) *</label>
                                 <div className="flex flex-col sm:flex-row gap-3">
@@ -3037,8 +3045,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {(dvlaSuccess || motFeedback) && <p role="status" className="text-sm text-[var(--text-secondary)]">{motFeedback ?? motLookupMessage({ motHistory: formData.motHistory })}</p>}
                                 {dvlaError && <p className="text-xs text-red-400">{dvlaError}</p>}
                             </div>
+                            )}
 
-                            {/* Registration & Compliance Details */}
+                            {/* Registration & Compliance Details: motor vehicles only */}
+                            {!isCaravan && (
                             <div className="mt-8">
                                 <h3 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4 flex items-center gap-2">
                                     <Shield size={20} className="text-blue-400" />
@@ -3129,7 +3139,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 )}
                             </div>
 
-                            {/* VIN */}
+                            {/* VIN / CRiS identifier */}
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1.5">VIN <span className="text-[var(--text-secondary)] normal-case font-normal text-xs">(optional)</span></label>
                                 <Input placeholder="17-character VIN" value={formData.vin}
