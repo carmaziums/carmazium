@@ -731,6 +731,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     setBodyType('CARAVAN');
     // Clear motor-vehicle lookup data; never invent a caravan registration.
     setVrm('');
+    setVin('');
     currentVrmRef.current = '';
     setMileage('');
     setFuelType('');
