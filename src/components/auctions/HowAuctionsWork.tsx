@@ -30,7 +30,7 @@ const SELLER_STEPS = [
     {
         icon: FileText,
         title: "List for free.",
-        desc: "Add your car's details (DVLA-assisted), photos, and mark any known damage — CarMazium automatically grades your vehicle's condition from what you report, so you don't need to grade it yourself.",
+        desc: "Add your vehicle details, photos and known damage. Motor vehicles use the registration-assisted form. Touring caravans use manual details, need at least one photo and do not require registration, VIN, mileage or year; you choose your price without an automated valuation.",
     },
     {
         icon: Lock,
@@ -78,7 +78,7 @@ const BUYER_STEPS = [
     {
         icon: Eye,
         title: "Check the vehicle.",
-        desc: "Every listing has a 3D condition viewer showing any seller-reported damage, an automatic 1–5 grade, and DVLA/MOT history.",
+        desc: "Review the seller’s photos, description and disclosures. Motor vehicles show available official history; touring caravans use seller-supplied information without DVLA/MOT history or a car-shaped damage model.",
     },
     {
         icon: TrendingUp,
@@ -103,7 +103,7 @@ const BUYER_STEPS = [
 ]
 
 const RULES = [
-    { icon: Clock, term: "24-Hour Auctions", def: "Every live auction runs for exactly 24 hours." },
+    { icon: Clock, term: "24-Hour Auctions", def: "Auctions start with a 24-hour window. Late bids can extend the end time under the anti-snipe rule." },
     { icon: Zap, term: "Anti-Snipe Rule", def: "A bid in the last 3 minutes extends the auction by 3 minutes — repeats until bidding settles." },
     { icon: Lock, term: "Reserve Price", def: "Set privately by the seller. If it isn't met, there's no sale and nothing is owed by anyone." },
     { icon: Trophy, term: "Buy It Now", def: "Optional — sellers can set an instant-buy price. Buyers can request it; the seller has 24 hours to confirm or decline." },
@@ -115,8 +115,8 @@ const RULES = [
 
 const TRUST = [
     { icon: Gauge, title: "Automatic condition grading (1–5)", desc: "Computed from the damage you report, not self-selected." },
-    { icon: Box, title: "3D Condition & Damage viewer", desc: "Included on every listing, so buyers can inspect before bidding." },
-    { icon: BadgeCheck, title: "DVLA-verified history", desc: "MOT, tax, and registration status pulled directly from official records." },
+    { icon: Box, title: "Condition & damage information", desc: "Review seller photographs and disclosures before bidding. Touring caravans use photographs instead of a car-shaped 3D damage model." },
+    { icon: BadgeCheck, title: "Vehicle history where available", desc: "Motor-vehicle listings show available official MOT and registration information. Touring caravan details are supplied manually by the seller." },
 ]
 
 const FAQS = [

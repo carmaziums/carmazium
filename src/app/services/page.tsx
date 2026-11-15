@@ -1,6 +1,6 @@
 "use client"
 
-import { FinanceProviderContact } from "@/components/finance/FinanceProviderContact"
+import { useAuth } from "@/context/AuthContext"
 import Link from "next/link"
 import { PageJsonLd, SEO_SITE, SEO_TRADEXCHANGE } from "@/components/seo/PageJsonLd"
 import {
@@ -25,6 +25,9 @@ import {
 } from "@/lib/featureFlags"
 
 export default function ServicesPage() {
+    const { user } = useAuth()
+    const partnerHref = user ? "/dashboard/partner" : "/auth/signup?role=dealer"
+    const partnerLabel = user ? "Open Partner Account" : "Create Partner Account"
     const paidJobsEnabled = deliveryServiceEnabled || inspectionServiceEnabled
     const services = [
         {
@@ -33,7 +36,7 @@ export default function ServicesPage() {
             desc: "Run your vehicle sales capability from one Partner Account, with dealer tools, stock workflows and access to the parts of CarMazium built for the motor trade.",
             color: "text-primary",
             bg: "bg-primary/10",
-            link: "/auth/signup?role=dealer",
+            link: partnerHref,
             cta: "Explore dealer access",
             badge: "Partner capability",
         },
@@ -70,12 +73,12 @@ export default function ServicesPage() {
         {
             title: "Warranty",
             icon: GiRibbonMedal,
-            desc: "Contact our team about warranties for your vehicle. CarMazium admin manages warranty partners and applications directly.",
+            desc: "Enter your vehicle details, choose available cover and get a quote. Pay through CarMazium; our team arranges your policy with the warranty provider.",
             color: "text-purple-600 dark:text-purple-400",
             bg: "bg-purple-500/10",
             link: warrantyServiceEnabled ? "/services/warranty" : undefined,
-            cta: warrantyServiceEnabled ? "Contact the warranty team" : "Coming soon",
-            badge: "Admin-managed enquiries",
+            cta: warrantyServiceEnabled ? "Get a warranty quote" : "Coming soon",
+            badge: "Quote and checkout",
         },
     ]
 
@@ -133,8 +136,8 @@ export default function ServicesPage() {
                         </div>
                     ) : (
                         <Button asChild variant="outline" size="lg">
-                            <Link href="/auth/signup?role=dealer">
-                                <Building2 size={17} /> Create Partner Account
+                            <Link href={partnerHref}>
+                                <Building2 size={17} /> {partnerLabel}
                             </Link>
                         </Button>
                     )
@@ -174,7 +177,7 @@ export default function ServicesPage() {
                         <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-primary">How it works</p>
                         <h2 className="text-3xl font-black tracking-tight md:text-4xl">Choose the workflow that fits the job</h2>
                         <p className="mt-4 leading-7 text-[var(--text-muted)]">
-                            TradeXchange separates paid service jobs, warranty enquiries and external finance applications, so customers and automotive businesses can see what happens before they start.
+                            TradeXchange separates paid service jobs, warranty quotes and external finance applications, so customers and automotive businesses can see what happens before they start.
                         </p>
                     </div>
 
@@ -184,21 +187,21 @@ export default function ServicesPage() {
                                 <ClipboardList size={20} />
                             </div>
                             <h3 className="font-bold">1. Pick a service</h3>
-                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Start with the vehicle need — dealer tools, a paid job, or a provider enquiry.</p>
+                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Start with the vehicle need — dealer tools, a paid job, warranty cover or vehicle finance.</p>
                         </div>
                         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
                             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                                 <Search size={20} />
                             </div>
                             <h3 className="font-bold">2. Get the right response</h3>
-                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Paid jobs receive competitive quotes; warranty enquiries go directly to our team. Finance applications continue externally with the selected finance provider.</p>
+                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Paid jobs receive competitive quotes; warranty buyers choose cover, receive a price and pay through CarMazium. Finance applications continue externally with the selected finance provider.</p>
                         </div>
                         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-card)]">
                             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                                 <ShieldCheck size={20} />
                             </div>
                             <h3 className="font-bold">3. Manage it in CarMazium</h3>
-                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Keep the relevant job or enquiry workflow together without changing how the underlying service operates.</p>
+                            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Track posted jobs and warranty orders in your account. Finance applications continue with the selected finance provider.</p>
                         </div>
                     </div>
                 </div>
@@ -280,7 +283,7 @@ export default function ServicesPage() {
                             <div className="mb-5 flex items-center gap-3">
                                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400"><Briefcase size={20} /></div>
                                 <div>
-                                    <p className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">Referrals & enquiries</p>
+                                    <p className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">Finance & warranty cover</p>
                                     <h3 className="text-xl font-bold">Finance & Warranty</h3>
                                 </div>
                             </div>
@@ -289,7 +292,7 @@ export default function ServicesPage() {
                             </p>
                             {(financeServiceEnabled || warrantyServiceEnabled) && (
                                 <Button asChild variant="outline" className="mt-6">
-                                    <Link href="/services/leads">My warranty enquiries</Link>
+                                    <Link href="/dashboard/warranties">My warranty orders</Link>
                                 </Button>
                             )}
                         </div>
@@ -306,7 +309,7 @@ export default function ServicesPage() {
                     </p>
                     <div className="mt-7 flex flex-wrap justify-center gap-3">
                         <Button asChild size="lg">
-                            <Link href="/auth/signup?role=dealer">Create Partner Account</Link>
+                            <Link href={partnerHref}>{partnerLabel}</Link>
                         </Button>
                         <Button asChild variant="outline" size="lg" className="border-white/25 text-white hover:border-white/50 hover:bg-white/10 hover:text-white">
                             <Link href="/dashboard/service/capabilities">View service capabilities</Link>
@@ -314,7 +317,17 @@ export default function ServicesPage() {
                     </div>
                 </div>
             </section>
-        <div className="container mx-auto px-5 py-8"><FinanceProviderContact /></div>
+        <section className="container mx-auto px-5 py-8">
+            <div className="mx-auto max-w-6xl rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
+                <h2 className="text-xl font-bold">Insurance, warranty and finance partnerships</h2>
+                <p className="mt-3 text-sm text-[var(--text-muted)]">Service providers must contact CarMazium directly to discuss integration and partnerships. These services cannot be activated as dealer job add-ons.</p>
+                <div className="mt-4 flex flex-wrap gap-4 text-sm font-semibold text-primary">
+                    <Link href="/contact?topic=insurance-partnership">Insurance partnership</Link>
+                    <Link href="/contact?topic=warranty-partnership">Warranty partnership</Link>
+                    <Link href="/contact?topic=finance-partnership">Finance partnership</Link>
+                </div>
+            </div>
+        </section>
         </main>
     )
 }

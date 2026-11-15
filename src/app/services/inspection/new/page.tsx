@@ -25,9 +25,11 @@ export default function NewInspectionPage() {
     const [busy, setBusy] = React.useState(false)
     const [invalidField, setInvalidField] = React.useState<string | null>(null)
     const [error, setError] = React.useState<string | null>(null)
-    const { value: form, setValue: setForm, clearDraft } = useSessionDraft(
+    const { value: form, setValue: setForm, clearDraft, hydrated, prepareSignIn } = useSessionDraft(
         "tradexchange:inspection:new",
         EMPTY_FORM,
+        user?.id ?? null,
+        loading,
     )
 
     if (!inspectionServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Vehicle Inspection" />
@@ -36,7 +38,9 @@ export default function NewInspectionPage() {
 
     const submit = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (!hydrated || loading || busy) return
         if (!user) {
+            prepareSignIn()
             router.push(`/auth/login?redirect=${encodeURIComponent('/services/inspection/new')}`)
             return
         }
@@ -113,7 +117,7 @@ export default function NewInspectionPage() {
                         <p>The provider quotes a fixed price. If you accept it, payment is made through CarMazium and the provider share is released after completion.</p>
                     </div>
 
-                    <Button type="submit" size="lg" className="w-full" disabled={busy || loading}>
+                    <Button type="submit" size="lg" className="w-full" disabled={busy || loading || !hydrated}>
                         {busy ? <Loader2 size={18} className="animate-spin" /> : user ? "Post inspection request" : "Sign in and continue"}
                     </Button>
                 </form>
