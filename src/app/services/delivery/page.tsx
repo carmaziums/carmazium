@@ -32,7 +32,7 @@ export default function DeliveryLandingPage() {
     if (!deliveryServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Delivery & Recovery" />
 
     const providerHref = user
-        ? "/dashboard/partner"
+        ? "/dashboard/service/capabilities#service-delivery"
         : "/auth/signup?role=DEALER"
 
     return (

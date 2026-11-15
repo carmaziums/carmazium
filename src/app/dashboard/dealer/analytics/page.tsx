@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
+import { analyticsRangeIssue } from "@/lib/analyticsDateRange"
 import { apiClient } from "@/lib/apiClient"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import {
@@ -68,32 +69,33 @@ function formatPrice(val: number): string {
 export default function DealerAnalyticsPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const [loading, setLoading] = React.useState(true)
-    const [analytics, setAnalytics] = React.useState<AnalyticsData | null>(null)
+    const [result, setResult] = React.useState<{ key: string; data: AnalyticsData } | null>(null)
+    const [retry, setRetry] = React.useState(0)
     const [dateRange, setDateRange] = React.useState<DateRangePreset>("30d")
     const [customStart, setCustomStart] = React.useState("")
     const [customEnd, setCustomEnd] = React.useState("")
 
-    React.useEffect(() => {
-        if (!authLoading && user) fetchAnalytics()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user, authLoading, dateRange, customStart, customEnd])
+    const rangeIssue = analyticsRangeIssue(dateRange, customStart, customEnd)
+    const requestKey = `${user?.id}:${dateRange}:${customStart}:${customEnd}:${retry}`
+    const analytics = !rangeIssue && result?.key === requestKey ? result.data : null
 
-    async function fetchAnalytics() {
-        setLoading(true)
-        try {
-            const rangeParam = dateRange === "custom"
-                ? `range=custom&from=${customStart}&to=${customEnd}`
-                : `range=${dateRange}`
-            const res = await apiClient<{ data: AnalyticsData }>(`/dealers/analytics?${rangeParam}`)
-            setAnalytics(res.data)
-        } catch (err) {
-            console.error("Failed to load analytics:", err)
-            // Never present the previous period's results under a new date range.
-            setAnalytics(null)
-        } finally {
+    React.useEffect(() => {
+        let cancelled = false
+        setResult(null)
+        if (authLoading || !user || rangeIssue) {
             setLoading(false)
+            return
         }
-    }
+        setLoading(true)
+        const rangeParam = dateRange === "custom"
+            ? `range=custom&from=${customStart}&to=${customEnd}`
+            : `range=${dateRange}`
+        apiClient<{ data: AnalyticsData }>(`/dealers/analytics?${rangeParam}`)
+            .then(res => { if (!cancelled) setResult({ key: requestKey, data: res.data }) })
+            .catch(err => { if (!cancelled) console.error("Failed to load analytics:", err) })
+            .finally(() => { if (!cancelled) setLoading(false) })
+        return () => { cancelled = true }
+    }, [user, authLoading, dateRange, customStart, customEnd, rangeIssue, requestKey])
 
     function handleExportReport() {
         if (!analytics) return
@@ -238,7 +240,9 @@ export default function DealerAnalyticsPage() {
                         onCustomChange={(s, e) => { setCustomStart(s); setCustomEnd(e) }}
                     />
 
-                    {loading ? (
+                    {rangeIssue ? (
+                        <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm">{rangeIssue}</p>
+                    ) : loading ? (
                         <div className="flex flex-col items-center justify-center py-24 gap-4">
                             <Loader2 className="h-10 w-10 animate-spin text-primary" />
                             <p className="text-[var(--text-muted)] text-xs font-bold uppercase tracking-widest">Crunching your dealership data…</p>
@@ -395,7 +399,7 @@ export default function DealerAnalyticsPage() {
                                 <ArrowUpRight size={32} className="opacity-10" />
                             </div>
                             <p className="text-[var(--text-muted)] text-sm font-bold">Unable to load analytics data.</p>
-                            <Button onClick={fetchAnalytics} variant="outline" size="sm">Retry</Button>
+                            <Button onClick={() => setRetry(value => value + 1)} variant="outline" size="sm">Retry</Button>
                         </div>
                     )}
                 </main>

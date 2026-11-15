@@ -450,7 +450,7 @@ export default function TradeXchangePage() {
                             </div>
                             <Button asChild size="lg" className="shrink-0">
                                 <Link href={providerHref}>
-                                    Create Partner Account <ArrowRight size={16} />
+                                    {user ? "Open Partner Account" : "Create Partner Account"} <ArrowRight size={16} />
                                 </Link>
                             </Button>
                         </div>
