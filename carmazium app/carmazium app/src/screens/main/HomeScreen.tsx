@@ -362,6 +362,7 @@ const BODY_TYPES = [
   { label: 'Coupé', icon: getBodyTypeIcon('COUPE'), color: Colors.accent, bodyType: 'COUPE' },
   { label: 'Convertible', icon: getBodyTypeIcon('CONVERTIBLE'), color: Colors.lightPink, bodyType: 'CONVERTIBLE' },
   { label: 'Van', icon: getBodyTypeIcon('VAN'), color: Colors.lightBlue_6366f1, bodyType: 'VAN' },
+  { label: 'Caravan', icon: getBodyTypeIcon('CARAVAN'), color: Colors.lightBlue_6366f1, bodyType: 'CARAVAN' },
   { label: 'Pickup Truck', icon: getBodyTypeIcon('PICKUP_TRUCK'), color: Colors.midTeal_14b8a6, bodyType: 'PICKUP_TRUCK' },
 ];
 
