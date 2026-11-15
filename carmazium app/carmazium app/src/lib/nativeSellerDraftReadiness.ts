@@ -17,6 +17,14 @@ export function nativeDraftStepOneComplete(
   validTransmission: (value: unknown) => string,
   validBody: (value: unknown, type: ResumableNativeSellerDetails['vehicleType']) => string,
 ): boolean {
+  if (draft.bodyType === 'CARAVAN') {
+    // A caravan is manually listed: its VIN, registration and technical fields
+    // are optional. Only useful advert identity and ownership authority remain.
+    return !!draft.title.trim() && !!draft.location.trim()
+      && !!validBody(draft.bodyType, draft.vehicleType)
+      && (draft.isLegalKeeper !== false || !!draft.notOwnerRelationship.trim())
+      && (!draft.isDepartedSale || !!draft.departedRelationship.trim());
+  }
   return /^[A-Z0-9]{2,8}$/.test(draft.vrm.toUpperCase().replace(/[^A-Z0-9]/g, ''))
     && !!draft.make.trim() && !!draft.model.trim() && !!draft.year.trim()
     && !!draft.title.trim() && !!draft.location.trim() && !!draft.mileage.trim()
