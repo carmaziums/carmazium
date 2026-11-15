@@ -40,7 +40,7 @@ const html = renderToStaticMarkup(React.createElement(load('src/app/HomeClient.t
 
 test('server render exposes one readable hero and the AI form before hydration', () => {
   assert.equal((html.match(/<h1\b/g) || []).length, 1)
-  assert.match(html, /Your car\.<br\/>Your choice\./)
+  assert.match(html, /Your car\.<br\/><span>Your choice\.<\/span>/)
   assert.match(html, /Sell your car through a free dealer auction/)
   assert.match(html, /<form[^>]*aria-busy="false"/)
   assert.match(html, /<label[^>]*for="home-ai-query"[^>]*>Describe the car you want/)
@@ -52,9 +52,9 @@ test('server render exposes one readable hero and the AI form before hydration',
 test('hero is a bounded static image with no autoplay or hydration-dependent theme selection', () => {
   assert.doesNotMatch(html, /<video/)
   assert.doesNotMatch(home, /showHeroVideo|heroPosterSrc|useScroll|useTransform/)
-  assert.match(html, /home-marketplace-cars.webp/)
+  assert.match(html, /marketplace\/hero-mini.webp/)
   assert.match(html, /width="1200" height="800"/)
-  assert.ok(statSync(new URL('../public/assets/images/home-marketplace-cars.webp', import.meta.url)).size < 180000)
+  assert.ok(statSync(new URL('../public/assets/images/marketplace/hero-mini.webp', import.meta.url)).size < 180000)
 })
 
 test('seller entry links carry the real channel and basic package while normal browse stays available', () => {

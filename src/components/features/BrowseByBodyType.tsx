@@ -6,17 +6,17 @@ import Link from "next/link"
 /**
  * Body types displayed on the homepage.
  * Each links to /search?bodyType=KEY.
- * We show a generated car image plus the SVG silhouette icon as a subtle overlay.
+ * Actual marketplace photographs illustrate each category without implying availability.
  */
 const BODY_TYPES = [
-    { key: "COUPE", label: "Coupes", image: "/assets/images/body-coupe.webp" },
-    { key: "CONVERTIBLE", label: "Convertibles", image: "/assets/images/body-convertible.webp" },
-    { key: "HATCHBACK", label: "Hatchbacks", image: "/assets/images/body-hatchback.webp" },
-    { key: "MPV", label: "MPVs", image: "/assets/images/body-mpv.webp" },
-    { key: "PICKUP_TRUCK", label: "Pickup Trucks", image: "/assets/images/body-pickup.webp" },
-    { key: "SEDAN", label: "Saloons", image: "/assets/images/body-saloon.webp" },
-    { key: "SUV", label: "SUVs", image: "/assets/images/body-suv.webp" },
-    { key: "ESTATE", label: "Estates", image: "/assets/images/body-estate.webp" },
+    { key: "COUPE", label: "Coupes", image: "/assets/images/marketplace/coupe.webp" },
+    { key: "CONVERTIBLE", label: "Convertibles", image: "/assets/images/marketplace/convertible.webp" },
+    { key: "HATCHBACK", label: "Hatchbacks", image: "/assets/images/marketplace/hatchback.webp" },
+    { key: "MPV", label: "MPVs", image: "/assets/images/marketplace/mpv.webp" },
+    { key: "PICKUP_TRUCK", label: "Pickup Trucks", image: "/assets/images/marketplace/pickup.webp" },
+    { key: "SEDAN", label: "Saloons", image: "/assets/images/marketplace/saloon.webp" },
+    { key: "SUV", label: "SUVs", image: "/assets/images/marketplace/suv.webp" },
+    { key: "ESTATE", label: "Estates", image: "/assets/images/marketplace/estate.webp" },
 ] as const
 
 export function BrowseByBodyType() {
@@ -29,11 +29,11 @@ export function BrowseByBodyType() {
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
           {BODY_TYPES.map(body => (
-            <Link key={body.key} href={`/search?bodyType=${body.key}`} className="group overflow-hidden rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] text-center transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+            <Link key={body.key} href={`/search?bodyType=${body.key}`} className="group overflow-hidden rounded-lg border border-[var(--border-default)] bg-white dark:bg-[#1b2538] text-center transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
               <div className="relative aspect-[16/9] bg-white">
                 <Image src={body.image} alt={body.label} fill sizes="(max-width: 639px) 45vw, (max-width: 1279px) 23vw, 150px" className="object-cover" />
               </div>
-              <span className="block px-2 py-3 text-sm font-semibold group-hover:text-primary">{body.label}</span>
+              <span className="block border-t-2 border-primary px-2 py-3 text-sm font-bold group-hover:text-primary">{body.label}</span>
             </Link>
           ))}
         </div>

@@ -1,0 +1,68 @@
+[
+  {
+    "file": "hero-mini.webp",
+    "photographer": "Lance Chang",
+    "source": "https://unsplash.com/photos/evhCa8AvACo",
+    "license": "Unsplash License",
+    "note": "Real Oxford car photograph used for illustration, not an availability claim."
+  },
+  {
+    "file": "hatchback.webp",
+    "listing": "mg-mg3-2017-2852",
+    "source": "https://bwtnzmevjlowwronylxm.supabase.co/storage/v1/object/public/listings/0901c0a9-6c87-465b-9d3b-08a8563b1d8e/exterior/1794658212670-245jvi2tf69.jpg",
+    "note": "Existing public marketplace photograph; illustrative category image, not an availability claim."
+  },
+  {
+    "file": "family.webp",
+    "listing": "land-rover-discovery-sport-2018-205e",
+    "source": "https://bwtnzmevjlowwronylxm.supabase.co/storage/v1/object/public/listings/d8ad59bd-c0a7-47fc-9eeb-cac33ccbd024/exterior/1794406914987-g47is0b32xn.jpg",
+    "note": "Existing public marketplace photograph; illustrative category image, not an availability claim."
+  },
+  {
+    "file": "electric.webp",
+    "listing": "jaguar-i-pace-2019-016e",
+    "source": "https://bwtnzmevjlowwronylxm.supabase.co/storage/v1/object/public/listings/8649f8a1-f74f-411c-8f79-de71e9d4136e/exterior/1794469453402-linid2oi15b.jpg",
+    "note": "Existing public marketplace photograph; illustrative category image, not an availability claim."
+  },
+  {
+    "file": "coupe.webp",
+    "listing": "bmw-m4-2016-standard-example-42e7",
+    "source": "https://bwtnzmevjlowwronylxm.supabase.co/storage/v1/object/public/listings/c7968194-21e9-43ef-9d11-9c45d65883ef/exterior/1794602548638-wtqwee1r54.jpg",
+    "note": "Existing public marketplace photograph; illustrative category image, not an availability claim."
+  },
+  {
+    "file": "convertible.webp",
+    "listing": "audi-a5-2011-740e",
+    "source": "https://bwtnzmevjlowwronylxm.supabase.co/storage/v1/object/public/listings/d72bc4a5-01fc-422d-9bae-04e90e8cb9ae/exterior/1794577469317-q4mys421wvp.jpg",
+    "note": "Existing public marketplace photograph; illustrative category image, not an availability claim."
+  },
+  {
+    "file": "mpv.webp",
+    "listing": "kia-venga-2010-23fe",
+    "source": "https://bwtnzmevjlowwronylxm.supabase.co/storage/v1/object/public/listings/6471e614-05ea-41f7-81ab-039254974f1b/exterior/1794671592473-r9uhkwwuoh.jpg",
+    "note": "Existing public marketplace photograph; illustrative category image, not an availability claim."
+  },
+  {
+    "file": "saloon.webp",
+    "listing": "bmw-7-series-2005-9f72",
+    "source": "https://bwtnzmevjlowwronylxm.supabase.co/storage/v1/object/public/listings/8958eacf-b890-450d-a28a-2d1a08aad9e6/exterior/1794670178386-vr624v7hk78.jpg",
+    "note": "Existing public marketplace photograph; illustrative category image, not an availability claim."
+  },
+  {
+    "file": "suv.webp",
+    "listing": "mg-zs-2021-c7ea",
+    "source": "https://bwtnzmevjlowwronylxm.supabase.co/storage/v1/object/public/listings/fdb93e55-569f-4f6f-8bf9-cdefb672b22b/exterior/1794250261192-k7ord7dydr8.jpg",
+    "note": "Existing public marketplace photograph; illustrative category image, not an availability claim."
+  },
+  {
+    "file": "estate.webp",
+    "listing": "toyota-avensis-2009-5868",
+    "source": "https://bwtnzmevjlowwronylxm.supabase.co/storage/v1/object/public/listings/bfba09ab-5e88-4d09-a20d-752c8141b742/exterior/1794643449993-gbnq9okdifb.jpg",
+    "note": "Existing public marketplace photograph; illustrative category image, not an availability claim."
+  },
+  {
+    "file": "pickup.webp",
+    "listing": "toyota-hilux-2021-3b10",
+    "source": "https://bwtnzmevjlowwronylxm.supabase.co/storage/v1/object/public/listings/1789675762399-vow0axaw6y.jpg"
+  }
+]
