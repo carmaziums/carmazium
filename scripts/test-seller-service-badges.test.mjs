@@ -33,3 +33,26 @@ test('both enabled badges remain contact-seller statements, without a platform o
     assert.match(html, /availability, eligibility, prices and terms/);
     assert.doesNotMatch(html, /guaranteed|approved|APR|months|£/i);
 });
+
+test('retail detail renders owner badges in both responsive seller panels', () => {
+    const detail = readFileSync(new URL('../src/app/buy-cars/[slug]/VehicleDetailsPageClient.tsx', import.meta.url), 'utf8');
+    const ast = ts.createSourceFile('detail.tsx', detail, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const panels = [];
+    const visit = node => {
+        if (ts.isJsxElement(node)) {
+            const className = node.openingElement.attributes.properties.find(attr =>
+                ts.isJsxAttribute(attr) && attr.name.text === 'className' && attr.initializer && ts.isStringLiteral(attr.initializer));
+            const classes = className?.initializer.text.split(/\s+/) ?? [];
+            if ((classes.includes('block') && classes.includes('lg:hidden')) ||
+                (classes.includes('hidden') && classes.includes('lg:block') && classes.includes('lg:col-span-1'))) {
+                panels.push(node.getText(ast));
+            }
+        }
+        ts.forEachChild(node, visit);
+    };
+    visit(ast);
+    assert.equal(panels.length, 2, 'mobile and desktop seller panels are both covered');
+    for (const panel of panels) {
+        assert.match(panel, /<SellerServiceBadges seller=\{listing\.seller\?\.dealerProfile\} \/>/);
+    }
+});

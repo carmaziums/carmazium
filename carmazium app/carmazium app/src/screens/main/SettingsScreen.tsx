@@ -1017,7 +1017,7 @@ export const SettingsScreen: React.FC = () => {
               ] as const).map(([label, value, setValue]) => <View key={label} style={styles.toggleRow}>
                 <Text style={styles.toggleTitle}>{label}</Text><Switch accessibilityLabel={label} value={value} onValueChange={setValue} />
               </View>)}
-              <Text style={styles.payoutDesc}>Paid jobs require approved business KYC, the £1 dealer verification payment, verified payouts and a declaration. Collection/delivery/recovery also requires trade insurance; inspection requires no document uploads.</Text>
+              <Text style={styles.payoutDesc}>Paid jobs reuse your approved dealer KYC and one-time £1 account verification. No additional verification payment is required for services. Verified payouts and a declaration are required. Collection/delivery/recovery also requires trade insurance; inspection requires no document uploads.</Text>
               <TouchableOpacity onPress={() => navigation.navigate('ProviderCapabilities')}><Text style={styles.toggleTitle}>Complete service setup</Text></TouchableOpacity>
               <Text style={styles.payoutDesc}>Review generated descriptions before publishing.</Text>
               <View style={styles.cardDivider} />

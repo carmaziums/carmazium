@@ -158,8 +158,8 @@ export default function ProviderVerificationPage() {
                     <label className="flex gap-3 text-sm"><input type="checkbox" checked={business.registeredBusiness} onChange={e => setBusiness({ ...business, registeredBusiness: e.target.checked })} />My business is registered (including a registered sole trader).</label>
                     <label className="flex gap-3 text-sm"><input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} />I confirm these details are accurate and I am responsible for carrying out the services I accept competently and safely.</label>
                     <Button onClick={saveDeclaration} disabled={busy || !accepted || !business.registeredBusiness}>Save declaration</Button>
-                    <p className="text-sm text-[var(--text-muted)]">Approved business KYC and the £1 dealer verification fee are required. Provide bank details through secure payout setup; do not upload bank statements here.</p>
-                    <Link href="/dashboard/dealer" className="block text-primary underline">Complete dealer verification (£1)</Link>
+                    <p className="text-sm text-[var(--text-muted)]">Your approved dealer KYC and one-time £1 account verification are reused. No additional verification payment is required for services. Provide bank details through secure payout setup; do not upload bank statements here.</p>
+                    <Link href="/dashboard/dealer" className="block text-primary underline">View dealer account verification</Link>
                     <Link href="/dashboard/service/capabilities" className="block text-primary underline">Set up or check business payouts</Link>
                 </section>}
                 <section className="space-y-3">

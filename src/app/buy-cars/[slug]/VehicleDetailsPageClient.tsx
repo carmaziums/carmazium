@@ -1361,6 +1361,8 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                     </Link>
                                 )}
 
+                                <SellerServiceBadges seller={listing.seller?.dealerProfile} />
+
                                 {/* Trust panel */}
                                 <div className="mt-2 flex items-center gap-3 p-3 rounded-xl bg-emerald-500/8 border border-emerald-500/20">
                                     <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center shrink-0">
