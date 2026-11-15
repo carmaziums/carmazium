@@ -2,6 +2,13 @@ import { HttpException } from '@nestjs/common';
 import { ChatRateLimitService } from './chat-rate-limit.service';
 
 describe('ChatRateLimitService', () => {
+    it('limits tour audio separately from messages and other accounts', async () => {
+        const limiter = new ChatRateLimitService();
+        for (let i = 0; i < 60; i++) await limiter.consumeTourNarration('tour-user');
+        await expect(limiter.consumeTourNarration('tour-user')).rejects.toBeInstanceOf(HttpException);
+        await expect(limiter.consumeTourNarration('other-user')).resolves.toBeUndefined();
+        await expect(limiter.consumeMessage('tour-user')).resolves.toBeUndefined();
+    });
     const originalRedisUrl = process.env.REDIS_URL;
 
     beforeEach(() => {

@@ -3,6 +3,11 @@ name: Web Listing CI
 on:
   pull_request:
     paths:
+      - "src/components/onboarding/**"
+      - "src/lib/guidedWebsiteTour.ts"
+      - "scripts/generate-tour-narration.mjs"
+      - "scripts/test-website-introduction.test.mjs"
+      - "backend/src/ai/tour-narration.catalog.ts"
       - "src/components/listing/**"
       - "src/components/services/**"
       - "src/components/features/CarCard.tsx"
@@ -169,6 +174,9 @@ jobs:
 
       - name: Seller gearbox and body-type regression tests
         run: npm run test:seller-specs
+
+      - name: Guided tour roles and approved narration catalog
+        run: node --test scripts/test-website-introduction.test.mjs
 
       - name: Caravan buyer facts exclude motor-vehicle reports
         run: node --test scripts/test-caravan-buyer-information.test.mjs

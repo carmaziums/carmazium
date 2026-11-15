@@ -121,6 +121,11 @@ export class ChatRateLimitService implements OnModuleDestroy {
         this.consumeLocal(key, limit, windowMs, message);
     }
 
+    consumeTourNarration(userId: string): Promise<void> {
+        return this.consume(`tour-narration:${userId}`, 60, 60_000,
+            'Voice guidance is being requested too quickly. Please try again in a moment.');
+    }
+
     consumeMessage(userId: string): Promise<void> {
         return this.consume(
             `message:${userId}`,

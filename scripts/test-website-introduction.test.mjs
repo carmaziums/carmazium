@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import ts from 'typescript';
+import { execFileSync } from 'node:child_process';
 const source = readFileSync(new URL('../src/lib/welcomeTour.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
 const exports = {};
@@ -12,6 +13,10 @@ const guided = {};
 new Function('exports', ts.transpileModule(guidedSource, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText)(guided);
 const { getGuidedWebsiteSteps } = guided;
 const account = { id: 'new-user', role: 'BUYER', createdAt: '2026-11-16T00:00:00Z' };
+
+test('natural narration catalog matches every role and current tour wording', () => {
+    execFileSync(process.execPath, [new URL('./generate-tour-narration.mjs', import.meta.url).pathname, '--check']);
+});
 
 test('new users are introduced on a safe first authenticated landing page', () => {
     for (const route of ['/', '/dashboard', '/dashboard/dealer', '/dashboard/user', '/search']) assert.equal(canAutoIntroduce(account, route, ''), true);

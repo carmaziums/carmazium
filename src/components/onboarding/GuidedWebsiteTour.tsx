@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import type { GuidedStep } from "@/lib/guidedWebsiteTour"
+import { TourVoice } from "./TourVoice"
 
 type Highlight = { top: number; left: number; width: number; height: number }
 
@@ -19,10 +20,6 @@ export function GuidedWebsiteTour({ steps, finish }: { steps: GuidedStep[]; fini
     const [placement, setPlacement] = useState<"top" | "bottom" | "center">("center")
     const [status, setStatus] = useState<"loading" | "ready" | "unavailable">("ready")
     const [retry, setRetry] = useState(0)
-    const [voice, setVoice] = useState(false)
-    const [voiceSupported] = useState(() => typeof window !== "undefined" && "speechSynthesis" in window && "SpeechSynthesisUtterance" in window)
-    const [voiceError, setVoiceError] = useState(false)
-    const [narration, setNarration] = useState(0)
     const current = steps[index]
     const location = pathname + (search.toString() ? `?${search.toString()}` : "")
 
@@ -43,7 +40,6 @@ export function GuidedWebsiteTour({ steps, finish }: { steps: GuidedStep[]; fini
 
     // Never click page controls: the walkthrough only follows known, internal routes.
     function go(next: number) {
-        window.speechSynthesis?.cancel()
         setHighlight(null)
         setStatus(steps[next].href ? "loading" : "ready")
         setPlacement("center")
@@ -111,20 +107,6 @@ export function GuidedWebsiteTour({ steps, finish }: { steps: GuidedStep[]; fini
         }
     }, [current, location, retry])
 
-    useEffect(() => {
-        if (!voiceSupported || !voice || status !== "ready") return
-        const synthesis = window.speechSynthesis
-        synthesis.cancel()
-        const utterance = new SpeechSynthesisUtterance(`${current.title}. ${current.description}`)
-        utterance.onstart = () => setVoiceError(false)
-        utterance.lang = "en-GB"
-        const voices = synthesis.getVoices()
-        utterance.voice = voices.find(item => item.lang === "en-GB") ?? voices.find(item => item.lang.startsWith("en")) ?? null
-        utterance.onerror = event => { if (!["canceled", "interrupted"].includes(event.error)) setVoiceError(true) }
-        synthesis.speak(utterance)
-        return () => { utterance.onerror = null; utterance.onstart = null; synthesis.cancel() }
-    }, [voiceSupported, voice, current, status, narration])
-
     return <dialog ref={dialog} aria-labelledby="website-introduction-title" aria-describedby="website-introduction-description" onCancel={event => { event.preventDefault(); finish("tour_skipped") }} className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none overflow-hidden border-0 bg-transparent p-0 text-[var(--text-primary)] backdrop:bg-transparent">
         <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full">
             <defs><mask id={maskId}><rect width="100%" height="100%" fill="white" />{highlight && <rect x={highlight.left} y={highlight.top} width={highlight.width} height={highlight.height} rx="10" fill="black" />}</mask></defs>
@@ -137,12 +119,7 @@ export function GuidedWebsiteTour({ steps, finish }: { steps: GuidedStep[]; fini
             <h2 ref={heading} tabIndex={-1} id="website-introduction-title" className="text-xl font-bold outline-none sm:text-2xl">{current.title}</h2>
             <p id="website-introduction-description" className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)] sm:text-base">{current.description}</p>
             {status !== "ready" && <p role="status" className="mt-2 text-sm">{status === "loading" ? "Opening this page and finding the option…" : <>This option is not visible on this page. It may need account approval or the page may not have loaded. You can continue or <button type="button" className="min-h-11 underline" onClick={() => { if (current.href) router.push(current.href, { scroll: false }); setStatus("loading"); setRetry(value => value + 1) }}>try again</button>.</>}</p>}
-            <div className="mt-3 flex flex-wrap items-center gap-x-3">
-                <label className="flex min-h-11 items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={voice} disabled={!voiceSupported} onChange={event => { setVoice(event.target.checked); if (!event.target.checked) window.speechSynthesis?.cancel() }} className="h-5 w-5 accent-primary" />Voice guidance (optional)</label>
-                {voice && <button type="button" onClick={() => setNarration(value => value + 1)} className="min-h-11 text-sm underline">Read this step again</button>}
-            </div>
-            {!voiceSupported && <p className="text-xs">Voice guidance is unavailable in this browser. All instructions remain on screen.</p>}
-            {voice && voiceError && <p role="status" className="text-xs">Audio could not start. Try “Read this step again”, or continue with the text.</p>}
+            <TourVoice text={`${current.title}. ${current.description}`} ready={status === "ready"} />
             <label className="mt-1 block text-xs font-semibold" htmlFor="website-tour-topic">Jump to a topic</label>
             <select id="website-tour-topic" value={index} onChange={event => go(Number(event.target.value))} className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-2 text-sm">{steps.map((step, position) => <option key={step.id} value={position}>{position + 1}. {step.title}</option>)}</select>
             <div className="mt-3 flex justify-between gap-3 border-t border-[var(--border-default)] pt-3"><button type="button" disabled={index === 0} onClick={() => go(index - 1)} className="min-h-11 rounded-xl border border-[var(--border-default)] px-5 font-semibold disabled:opacity-40">Back</button><button type="button" onClick={() => index === steps.length - 1 ? finish("tour_completed") : go(index + 1)} className="min-h-11 rounded-xl bg-primary px-6 font-bold text-white">{index === 0 ? "Start tour" : index === steps.length - 1 ? "Finish tour" : "Next"}</button></div>
