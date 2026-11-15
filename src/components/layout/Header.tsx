@@ -115,7 +115,7 @@ export function Header() {
 
 
     return (
-        <header className="fixed top-0 left-0 w-full z-[60] border-b shadow-2xl transition-all duration-300"
+        <header className={cn("fixed top-0 left-0 w-full z-[60] border-b transition-all duration-300", pathname === "/" ? "shadow-sm" : "shadow-2xl")}
             style={{
                 borderColor: 'var(--border-default)',
                 color: 'var(--text-primary)',
