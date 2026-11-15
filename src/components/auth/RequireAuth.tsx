@@ -182,7 +182,7 @@ export function RequireAuth({
                         {[
                             "Bid on live trade auctions",
                             "See trade prices and run part exchange",
-                            "Post delivery, inspection and finance jobs",
+                            "Access delivery, recovery and inspection jobs",
                         ].map(item => (
                             <li key={item} className="flex items-start gap-2">
                                 <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />

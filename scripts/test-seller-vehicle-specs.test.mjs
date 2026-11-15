@@ -333,6 +333,9 @@ test("selling on behalf of another keeper is allowed only after their relationsh
         ...completedDeclarations, isLegalRegisteredKeeper: false, notOwnerRelationship: "Family member",
     })
     assert.equal(authorised.length, 0)
+    const caravan = { ...completedDeclarations, bodyType: 'CARAVAN', isLegalRegisteredKeeper: false }
+    assert.deepEqual(Array.from(getMissingSellerDeclarations(caravan)), ['relationship to the caravan owner'])
+    assert.equal(getMissingSellerDeclarations({ ...caravan, notOwnerRelationship: 'Family member' }).length, 0)
 })
 test("multiple missing declarations identify required answers without treating import No as an error", () => {
     const missing = getMissingSellerDeclarations({
