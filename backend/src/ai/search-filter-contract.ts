@@ -1,7 +1,7 @@
 import { VEHICLE_FEATURES } from './search-feature-options';
 /** Public search contract: AI output cannot invent API fields or enum members. */
 const enums: Record<string, string[]> = {
-    bodyType: ['SEDAN', 'HATCHBACK', 'SUV', 'COUPE', 'CONVERTIBLE', 'ESTATE', 'MPV', 'PICKUP_TRUCK', 'VAN', 'CARAVAN', 'STATION_WAGON', 'SPORTS_CAR', 'CROSSOVER', 'MINIVAN'],
+    bodyType: ['SEDAN', 'HATCHBACK', 'SUV', 'COUPE', 'CONVERTIBLE', 'ESTATE', 'MPV', 'PICKUP_TRUCK', 'VAN', 'CARAVAN', 'CAMPERVAN', 'STATION_WAGON', 'SPORTS_CAR', 'CROSSOVER', 'MINIVAN'],
     fuelType: ['PETROL', 'DIESEL', 'HYBRID', 'ELECTRIC', 'PLUGIN_HYBRID', 'LPG', 'HYDROGEN_CELL', 'BI_FUEL', 'NATURAL_GAS', 'PETROL_HYBRID', 'DIESEL_HYBRID', 'PETROL_PLUGIN_HYBRID', 'DIESEL_PLUGIN_HYBRID', 'UNLISTED'],
     transmission: ['MANUAL', 'AUTOMATIC', 'SEMI_AUTOMATIC', 'CVT'],
     vehicleType: ['CAR', 'HGV', 'MOTORCYCLE'], sellerType: ['PRIVATE', 'DEALER'],

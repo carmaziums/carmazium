@@ -679,16 +679,18 @@ function SearchPageContent() {
                             {/* Vehicle Category */}
                             <div className="pb-4 border-b border-[var(--border-default)]">
                                 <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3">Vehicle Category</p>
-                                <div className="grid grid-cols-3 gap-2">
+                                <div className="grid grid-cols-2 gap-2">
                                     {[
-                                        { value: 'CAR', label: '🚗 Cars' },
+                                        { value: 'CAR', label: 'Cars' },
+                                        { value: 'LEISURE', label: 'Caravan / Campervan' },
                                         { value: 'MOTORCYCLE', label: '🏍 Bikes' },
                                         { value: 'HGV', label: '🚛 HGV' },
                                     ].map((opt) => {
-                                        const active = filters.vehicleType === opt.value
+                                        const leisure = ['CARAVAN', 'CAMPERVAN'].includes(filters.bodyType)
+                                        const active = opt.value === 'LEISURE' ? leisure : filters.vehicleType === opt.value && !leisure
                                         return (
                                             <button key={opt.value} type="button"
-                                                onClick={() => setFilters(prev => ({ ...prev, vehicleType: opt.value, bodyType: '', make: '', makes: [], model: '', variant: '' }))}
+                                                onClick={() => setFilters(prev => ({ ...prev, vehicleType: opt.value === 'LEISURE' ? 'CAR' : opt.value, bodyType: opt.value === 'LEISURE' ? 'CARAVAN' : '', make: '', makes: [], model: '', variant: '' }))}
                                                 className={`py-2.5 rounded-lg border text-sm font-semibold transition-all text-center ${
                                                     active
                                                         ? 'border-primary bg-primary/10 text-primary shadow-[0_0_12px_rgba(237,28,36,0.15)]'
@@ -706,12 +708,12 @@ function SearchPageContent() {
                             {filters.vehicleType !== 'MOTORCYCLE' && (
                             <FilterSection title="Body Type">
                                 <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
-                                    {BODY_TYPE_KEYS.map((key) => {
+                                    {BODY_TYPE_KEYS.filter(key => ['CARAVAN', 'CAMPERVAN'].includes(filters.bodyType) ? ['CARAVAN', 'CAMPERVAN'].includes(key) : !['CARAVAN', 'CAMPERVAN'].includes(key)).map((key) => {
                                         const Icon = BODY_TYPE_ICONS[key]
                                         const isActive = filters.bodyType === key
                                         return (
                                             <button key={key} type="button"
-                                                onClick={() => set('bodyType', filters.bodyType === key ? '' : key)}
+                                                onClick={() => set('bodyType', ['CARAVAN', 'CAMPERVAN'].includes(key) ? key : filters.bodyType === key ? '' : key)}
                                                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${isActive ? 'bg-primary/15 text-primary border border-primary/30' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-secondary)] dark:hover:text-white border border-transparent'}`}
                                             >
                                                 <Icon className="w-8 h-4 shrink-0" />{BODY_TYPE_LABELS[key]}

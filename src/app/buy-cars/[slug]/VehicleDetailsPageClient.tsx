@@ -630,7 +630,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
             )}
 
             {/* HPI Report Modal */}
-            {showHpiModal && listing && (
+            {listing.bodyType !== 'CARAVAN' && showHpiModal && listing && (
                 <HpiReportModal listingId={listing.id} onClose={() => setShowHpiModal(false)} />
             )}
             <div className="container mx-auto px-5">
@@ -1157,7 +1157,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                         </div>
 
                         {/* Condition & Damage — always shown, even with zero reported damage */}
-                        {(() => {
+                        {!['CARAVAN', 'CAMPERVAN'].includes(listing.bodyType || '') && (() => {
                             // exteriorGrade is computed automatically by the platform from the
                             // seller's reported damage zones (see backend DamageAnalysisService) —
                             // not seller-chosen. Same value drives the "Grade N" chip on the card.
@@ -1290,7 +1290,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                             so the pending case is common and deliberately styled
                             amber: a green shield next to "being prepared" reads as
                             a check that has already passed. */}
-                        {listing.hpiReport && (() => {
+                        {listing.bodyType !== 'CARAVAN' && listing.hpiReport && (() => {
                             const hpiReady = listing.hpiReport.status === 'COMPLETED'
                             return (
                                 <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-6">

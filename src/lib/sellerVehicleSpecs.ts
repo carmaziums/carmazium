@@ -65,6 +65,12 @@ export function hasCompleteSellerVehicleSpecs<B extends string>(
     data: { transmission?: unknown; bodyType?: unknown; vehicleType?: string },
     allowedBodyTypes: readonly B[],
 ): boolean {
+    if (data.bodyType === "CARAVAN") return !!normalizeSellerBodyType(data.bodyType, allowedBodyTypes)
     return !!normalizeSellerTransmission(data.transmission)
         && (data.vehicleType === "MOTORCYCLE" || !!normalizeSellerBodyType(data.bodyType, allowedBodyTypes))
+}
+
+/** Manual caravans have no registration; their selected type identifies a draft. */
+export function hasSellerDraftIdentity(data: { vrm?: unknown; bodyType?: unknown }): boolean {
+    return data.bodyType === 'CARAVAN' || !!normalizeVehicleRegistration(data.vrm)
 }

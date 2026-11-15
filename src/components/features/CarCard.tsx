@@ -138,7 +138,7 @@ export function CarCard({
                             </div>
                         )}
                         <WriteOffCategoryBadge category={writeOffCategory} />
-                        {(badgeTier === 'STANDARD' || badgeTier === 'PREMIUM') && (
+                        {bodyType !== 'CARAVAN' && (badgeTier === 'STANDARD' || badgeTier === 'PREMIUM') && (
                             <>
                                 {/* A paid display tier is not proof of an independently
                                     verified vehicle or seller. Show only the

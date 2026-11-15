@@ -295,3 +295,10 @@ test('new dealer onboarding retains warranty and explains the separate Jigsaw pr
   assert.match(code, /OPTIONAL BUSINESS INTRODUCTION & SALES SERVICES/);
   assert.match(code, /You can skip this section/)
 });
+
+
+test('native body normalization preserves caravan and campervan as distinct saved types', () => {
+  assert.equal(normalizeNativeBodyType('CAMPERVAN', 'CAR'), 'CAMPERVAN');
+  assert.equal(normalizeNativeBodyType('CARAVAN', 'CAR'), 'CARAVAN');
+  assert.equal(normalizeNativeBodyType('CAMPERVAN', 'MOTORCYCLE'), '');
+});

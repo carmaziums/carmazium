@@ -22,6 +22,9 @@ export function nativeDraftStepOneComplete(
     // are optional. Only useful advert identity and ownership authority remain.
     return !!draft.title.trim() && !!draft.location.trim()
       && !!validBody(draft.bodyType, draft.vehicleType)
+      && !!draft.writeOffCat && draft.stolenRecovered != null
+      && draft.outstandingFinance != null && draft.isLegalKeeper != null
+      && draft.declAcknowledged
       && (draft.isLegalKeeper !== false || !!draft.notOwnerRelationship.trim())
       && (!draft.isDepartedSale || !!draft.departedRelationship.trim());
   }

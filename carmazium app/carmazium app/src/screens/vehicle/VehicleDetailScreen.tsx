@@ -199,6 +199,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     return () => { cancelled = true; };
   }, [listing.id, vehicleFactsAttempt]);
 
+  const isCaravan = listing.bodyTypeRaw === 'CARAVAN' || (fullVehicleFacts as any)?.bodyType === 'CARAVAN';
+
   const images = listing.images ?? [];
 
   // ── Gallery gesture values ──────────────────────────────────────────────────
@@ -1206,7 +1208,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={styles.extraSpecToggleText}>{extraSpecsExpanded ? 'Hide extra specifications' : 'View performance and running costs'}</Text>
             <Ionicons name={extraSpecsExpanded ? 'chevron-up' : 'chevron-down'} size={19} color={Colors.accent} />
           </TouchableOpacity>
-          {SPEC_GROUPS.filter(group => extraSpecsExpanded || (group.title !== 'PERFORMANCE' && group.title !== 'RUNNING COSTS')).map((group) => {
+          {!isCaravan && SPEC_GROUPS.filter(group => extraSpecsExpanded || (group.title !== 'PERFORMANCE' && group.title !== 'RUNNING COSTS')).map((group) => {
             const rows = group.rows(listing).filter((r) => r.value != null && r.value !== '');
             if (rows.length === 0) return null;
             return (
@@ -1329,7 +1331,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
 
           {/* Section: HPI Report CTA */}
-          <View style={styles.sectionContainer}>
+          {!isCaravan && <View style={styles.sectionContainer}>
             {hpiError ? (
               <ErrorBanner message={hpiError} onRetry={handleHpiCheck} />
             ) : null}
@@ -1403,7 +1405,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 }
               </TouchableOpacity>
             )}
-          </View>
+          </View>}
 
           {/* Section: Condition & Damage — always renders (Prompt 6). Grade
               pill is the ONLY place exteriorGrade appears on this screen —
@@ -1413,7 +1415,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <Text style={[styles.sectionHeaderTitle, { marginBottom: 0 }]}>CONDITION & DAMAGE</Text>
               <GradeChip grade={listing.exteriorGrade} variant="pill" />
             </View>
-            <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />
+            {!isCaravan && listing.bodyTypeRaw !== 'CAMPERVAN' && <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />}
             {listing.mechanicalIssues ? (
               <View style={{ marginTop: 14, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(245,158,11,0.28)', backgroundColor: 'rgba(245,158,11,0.07)' }}>
                 <Text style={{ color: Colors.warning, fontFamily: FontFamily.bold, fontSize: 11, marginBottom: 6 }}>KNOWN MECHANICAL PROBLEMS</Text>

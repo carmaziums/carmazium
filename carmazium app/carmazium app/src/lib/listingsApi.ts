@@ -235,6 +235,8 @@ function mapCategory(raw?: string | null): CarListing['category'] {
     case 'MINIVAN':     return 'MPV';
     case 'PICKUP_TRUCK': return 'Pickup';
     case 'VAN':         return 'Van';
+    case 'CARAVAN':     return 'Caravan';
+    case 'CAMPERVAN':   return 'Campervan';
     default:            return raw?.startsWith('HGV_') ? 'HGV' : 'Not specified';
   }
 }

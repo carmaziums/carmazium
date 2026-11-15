@@ -115,6 +115,7 @@ const BODY_TYPES = [
   { id: 'MPV', label: 'MPV', icon: getBodyTypeIcon('MPV') },
   { id: 'VAN', label: 'Van', icon: getBodyTypeIcon('VAN') },
   { id: 'CARAVAN', label: 'Caravan', icon: getBodyTypeIcon('CARAVAN') },
+  { id: 'CAMPERVAN', label: 'Campervan', icon: getBodyTypeIcon('CAMPERVAN') },
   { id: 'PICKUP_TRUCK', label: 'Pickup Truck', icon: getBodyTypeIcon('PICKUP_TRUCK') },
 ];
 const SORT_OPTIONS = [
@@ -1056,7 +1057,7 @@ export const SearchScreen: React.FC = () => {
               {/* Body type */}
               <Text style={s.filterLabel}>BODY TYPE</Text>
               <View style={s.chipGrid}>
-                {BODY_TYPES.map(bt => (
+                {BODY_TYPES.filter(bt => ['CARAVAN', 'CAMPERVAN'].includes(selectedBody) ? ['CARAVAN', 'CAMPERVAN'].includes(bt.id) : !['CARAVAN', 'CAMPERVAN'].includes(bt.id)).map(bt => (
                   <TouchableOpacity
                     key={bt.id}
                     style={[s.bodyChip, selectedBody === bt.id && s.bodyChipActive]}
@@ -1371,20 +1372,21 @@ export const SearchScreen: React.FC = () => {
 
               {/* Vehicle Type */}
               <Text style={s.filterLabel}>VEHICLE TYPE</Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {[
                   { id: '' as const,            label: 'All' },
                   { id: 'CAR' as const,         label: 'Car' },
+                  { id: 'LEISURE' as const,     label: 'Caravan / Campervan' },
                   { id: 'HGV' as const,         label: 'HGV' },
                   { id: 'MOTORCYCLE' as const,  label: 'Motorcycle' },
                 ].map(opt => (
                   <TouchableOpacity
                     key={opt.id}
-                    style={[s.segmentBtn, vehicleType === opt.id && s.segmentBtnActive]}
-                    onPress={() => { setVehicleType(opt.id); setSelectedBody(''); setSelectedMakes([]); setModelFilter(''); setVariantFilter(''); }}
+                    style={[s.segmentBtn, { flex: 0, width: '48%' }, (opt.id === 'LEISURE' ? ['CARAVAN', 'CAMPERVAN'].includes(selectedBody) : vehicleType === opt.id && !['CARAVAN', 'CAMPERVAN'].includes(selectedBody)) && s.segmentBtnActive]}
+                    onPress={() => { setVehicleType(opt.id === 'LEISURE' ? 'CAR' : opt.id); setSelectedBody(opt.id === 'LEISURE' ? 'CARAVAN' : ''); setSelectedMakes([]); setModelFilter(''); setVariantFilter(''); }}
                     activeOpacity={0.7}
                   >
-                    <Text style={[s.segmentBtnText, vehicleType === opt.id && s.segmentBtnTextActive]}>{opt.label}</Text>
+                    <Text style={[s.segmentBtnText, (opt.id === 'LEISURE' ? ['CARAVAN', 'CAMPERVAN'].includes(selectedBody) : vehicleType === opt.id && !['CARAVAN', 'CAMPERVAN'].includes(selectedBody)) && s.segmentBtnTextActive]}>{opt.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>

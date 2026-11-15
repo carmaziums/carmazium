@@ -714,10 +714,10 @@ function SellerLanding() {
 
                         <QuickValuationForm />
                         <p className="mt-4 text-center text-sm text-[var(--text-secondary)]">
-                            Selling a touring caravan without its own DVLA registration?{' '}
+                            Selling a caravan or campervan?{' '}
                             <a href="#sell-options" className="font-bold text-primary underline underline-offset-4">
                                 Skip the car valuation and choose Auction or £1 Retail below
-                            </a>. Enter the caravan VIN/CRiS identifier in the listing form.
+                            </a>. Choose Caravan / Campervan in the form and set your own price. Towable caravans need no registration, VIN or CRiS number; motorised campervans retain vehicle checks.
                         </p>
 
                         <GoogleAdBanner />

@@ -724,14 +724,21 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     () => normalizeNativeBodyType(landingPrefill?.bodyType, 'CAR') || '',
   );
   const isCaravan = bodyType === 'CARAVAN';
+  const isLeisure = isCaravan || bodyType === 'CAMPERVAN';
 
   const selectCaravanBodyType = () => {
+    if (bodyType === 'CARAVAN') return;
     setVehicleType('CAR');
     vehicleTypeRef.current = 'CAR';
     setBodyType('CARAVAN');
     // Clear motor-vehicle lookup data; never invent a caravan registration.
     setVrm('');
     setVin('');
+    setMake('');
+    setModel('');
+    setYear('');
+    setPriceAsking('');
+    setPriceMin('');
     currentVrmRef.current = '';
     setMileage('');
     setFuelType('');
@@ -874,8 +881,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }, [listingType, platformOpeningBid]);
 
   useEffect(() => {
-    if (step !== 3 || vehicleType !== 'CAR' || isCaravan) {
-      if (isCaravan) {
+    if (step !== 3 || vehicleType !== 'CAR' || isLeisure) {
+      if (isLeisure) {
         valuationRequestId.current += 1;
         setBaseValuation(null);
         setValuation(null);
@@ -956,7 +963,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }, [
     step,
     vehicleType,
-    isCaravan,
+    isLeisure,
     vrm,
     make,
     model,
@@ -1089,7 +1096,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       const loaded = await loadSellWizardDraftForUser(currentUserId);
       if (!loaded || cancelled || editMode || landingPrefill?.vrm) return;
       const store = useSellWizardStore.getState();
-      if (!store.make && !store.model && store.lastStep <= 1) return;
+      if (!store.make && !store.model && store.bodyType !== 'CARAVAN' && store.lastStep <= 1) return;
       Alert.alert('Resume draft?', 'You have an unsaved listing. Continue where you left off?', [
         { text: 'Start fresh', onPress: clearDraft, style: 'cancel' },
         { text: 'Resume', onPress: () => {
@@ -1335,8 +1342,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       if ([
         'vrm', 'make', 'model', 'year', 'mileage', 'fuelType', 'transmission',
         'condition', 'serviceHistory', 'mechanicalIssues', 'electricalIssues',
-        'numberOfKeys', 'owners', 'writeOffCat', 'stolenRecovered',
-        'outstandingFinance', 'isLegalKeeper', 'description', 'declAcknowledged',
+        'numberOfKeys', 'owners', 'description',
       ].includes(key)) return null;
     }
     if (key === 'priceAsking') {
@@ -1527,7 +1533,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         setStartingBid('');
       }
       setTransmission('');
-      setBodyType('');
+      setBodyType(prev => prev === 'CAMPERVAN' ? prev : '');
       setDvlaFetched(false);
       // The old in-flight request has been invalidated; do not leave Analyse disabled
       // if its stale finally block correctly refrains from touching a new request.
@@ -2764,37 +2770,39 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
         {/* Vehicle Type */}
         <SectionBox title="Vehicle Type">
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {(['CAR', 'HGV', 'MOTORCYCLE'] as const).map(t => (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {(['CAR', 'LEISURE', 'HGV', 'MOTORCYCLE'] as const).map(t => (
               <TouchableOpacity
                 key={t}
-                style={[s.pill, { flex: 1, justifyContent: 'center' }, vehicleType === t && s.pillActive]}
+                style={[s.pill, { width: '48%', justifyContent: 'center' }, (t === 'LEISURE' ? isLeisure : vehicleType === t && !isLeisure) && s.pillActive]}
                 onPress={() => {
+                  if (t === 'LEISURE') { selectCaravanBodyType(); return; }
                   vehicleTypeRef.current = t;
                   setVehicleType(t);
-                  setBodyType(prev => normalizeNativeBodyType(prev, t));
+                  setBodyType(prev => isLeisure ? '' : normalizeNativeBodyType(prev, t));
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={[s.pillText, vehicleType === t && s.pillTextActive]}>
-                  {t === 'HGV' ? 'HGV / Commercial' : t === 'MOTORCYCLE' ? 'Motorcycle' : 'Car / Caravan'}
+                <Text style={[s.pillText, (t === 'LEISURE' ? isLeisure : vehicleType === t && !isLeisure) && s.pillTextActive]}>
+                  {t === 'HGV' ? 'HGV / Commercial' : t === 'MOTORCYCLE' ? 'Motorcycle' : t === 'LEISURE' ? 'Caravan / Campervan' : 'Car'}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
         </SectionBox>
 
-        <TouchableOpacity
-          style={[s.pill, { marginBottom: 12 }, isCaravan && s.pillActive]}
-          onPress={selectCaravanBodyType}
-          accessibilityRole="button"
-          accessibilityState={{ selected: isCaravan }}
-        >
-          <MaterialCommunityIcons name="caravan" size={19} color={isCaravan ? Colors.onAccent : Colors.textSecondary} />
-          <Text style={[s.pillText, isCaravan && s.pillTextActive]}>Selling a touring caravan? No registration or VIN needed</Text>
-        </TouchableOpacity>
+        {isLeisure && <SectionBox title="Caravan / Campervan">
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {(['CARAVAN', 'CAMPERVAN'] as const).map(body => <TouchableOpacity key={body}
+              accessibilityRole="radio" accessibilityState={{ checked: bodyType === body }}
+              style={[s.pill, { flex: 1 }, bodyType === body && s.pillActive]}
+              onPress={() => body === 'CARAVAN' ? selectCaravanBodyType() : setBodyType('CAMPERVAN')}>
+              <Text style={[s.pillText, bodyType === body && s.pillTextActive]}>{body === 'CARAVAN' ? 'Caravan (towable)' : 'Campervan (motorised)'}</Text>
+            </TouchableOpacity>)}
+          </View>
+        </SectionBox>}
         {isCaravan && <SectionBox title="Caravan details (manual entry)">
-          <Text style={s.fieldHint}>Enter what you know and set your own price. No DVLA lookup, VIN or mileage is required.</Text>
+          <Text style={s.fieldHint}>Enter what you know and set your own price. Add dimensions, berths, equipment and damage in the description and photos. No registration, VIN or mileage is required.</Text>
           <FieldInput label="VIN / CRiS (optional)" value={vin} onChange={setVin} placeholder="17 characters, if known" />
         </SectionBox>}
 
@@ -2981,7 +2989,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         {/* Body Type — no hidden mandatory choice for motorcycles. */}
         {vehicleType !== 'MOTORCYCLE' && <SectionBox title="Body Type *" onLayout={rememberValidationSection("body")}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {(vehicleType === 'HGV' ? HGV_BODY_TYPES : BODY_TYPES).map(bt => (
+            {(vehicleType === 'HGV' ? HGV_BODY_TYPES : BODY_TYPES).filter(bt => isLeisure ? ['CARAVAN', 'CAMPERVAN'].includes(bt.v) : !['CARAVAN', 'CAMPERVAN'].includes(bt.v)).map(bt => (
               <TouchableOpacity
                 key={bt.v}
                 style={[s.pill, s.bodyTypePill, bodyType === bt.v && s.pillActive]}
@@ -3467,7 +3475,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </View>
         )}
 
-        {photoTab !== 'Damage' ? (
+        {photoTab !== 'Damage' || isLeisure ? (
           <>
             {/* Upload Zone */}
             <TouchableOpacity
@@ -3553,11 +3561,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         ) : (
           /* Damage Map */
           <View>
-            {isCaravan ? (
-              <SectionBox title="Caravan damage">
-                <Text style={s.fieldHint}>Photograph any damage and describe known faults. The car-shaped 3D model does not apply to caravans.</Text>
-              </SectionBox>
-            ) : <SectionBox title="Damage Map — Select Damaged Areas" accent={Colors.warning}>
+            <SectionBox title="Damage Map — Select Damaged Areas" accent={Colors.warning}>
               <Text style={s.fieldHint}>
                 Drag to rotate the 3D model. Tap a zone to mark damage, hide it, or attach a photo.
               </Text>
@@ -3569,7 +3573,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 onPhoto={handleZonePhoto}
                 bodyTypeLabel={BODY_TYPES.find(bt => bt.v === bodyType)?.l}
               />
-            </SectionBox>}
+            </SectionBox>
           </View>
         )}
 
@@ -3674,7 +3678,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </View>
         </SectionBox>
 
-        {!isCaravan && <SectionBox title="Vehicle Valuation" accent={Colors.infoBlue}>
+        {!isLeisure && <SectionBox title="Vehicle Valuation" accent={Colors.infoBlue}>
           {valuationLoading ? (
             <View style={s.valuationLoadingRow}>
               <ActivityIndicator size="small" color={Colors.infoBlueLight} />
@@ -3709,8 +3713,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             <Text style={s.fieldHint}>Complete the vehicle make, model, year and mileage to see the current market value.</Text>
           )}
         </SectionBox>}
-        {isCaravan && <SectionBox title="Set your own caravan price">
-          <Text style={s.fieldHint}>No automatic caravan valuation is provided. Enter your own asking price or auction estimate.</Text>
+        {isLeisure && <SectionBox title="Set your own caravan or campervan price">
+          <Text style={s.fieldHint}>No automatic caravan or campervan valuation is provided. Enter your own asking price or auction estimate.</Text>
         </SectionBox>}
 
         <SectionBox title={isAuction ? 'Set Your Auction Value' : 'Set Your Retail Price Range'} accent={Colors.accent} onLayout={rememberValidationSection('pricing')}>

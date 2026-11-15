@@ -1517,7 +1517,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                     )}
 
                                                     {/* MOT & Tax inline */}
-                                                    {(auction.listing.motStatus || auction.listing.taxStatus) && (
+                                                    {auction.listing.bodyType !== 'CARAVAN' && (auction.listing.motStatus || auction.listing.taxStatus) && (
                                                         <>
                                                             <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-4 mb-2 pb-1.5 border-b border-[var(--border-default)]">MOT &amp; Tax</p>
                                                             <div className="space-y-1.5">
@@ -1559,7 +1559,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         )}
 
                                         {/* ── Condition & Damage — always shown, even with zero reported damage ── */}
-                                        {(() => {
+                                        {!['CARAVAN', 'CAMPERVAN'].includes(auction.listing.bodyType || '') && (() => {
                                             // exteriorGrade is computed server-side from the seller's marked
                                             // damage zones. Same value shown as a chip on cards + the /vehicle
                                             // and /buy-cars detail pages, so grade only appears in one place per
@@ -1673,7 +1673,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             An auction can now run with its report still
                                             outstanding, so the pending case is styled amber
                                             rather than wearing a green shield it hasn't earned. */}
-                                        {auction.listing.hpiReport && (() => {
+                                        {auction.listing.bodyType !== 'CARAVAN' && auction.listing.hpiReport && (() => {
                                             const hpiReady = auction.listing.hpiReport.status === 'COMPLETED'
                                             return (
                                                 <div className={`rounded-xl border bg-[var(--bg-input)] p-4 flex items-center justify-between gap-3 ${hpiReady ? 'border-emerald-500/20' : 'border-amber-500/20'}`}>
@@ -2285,7 +2285,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 onClose={() => setDamageLightboxOpen(false)}
             />
 
-            {showHpiModal && (
+            {auction.listing.bodyType !== 'CARAVAN' && showHpiModal && (
                 <HpiReportModal listingId={auction.listing.id} onClose={() => setShowHpiModal(false)} />
             )}
         </div>
