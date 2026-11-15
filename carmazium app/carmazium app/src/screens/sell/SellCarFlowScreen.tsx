@@ -724,6 +724,31 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     () => normalizeNativeBodyType(landingPrefill?.bodyType, 'CAR') || '',
   );
   const isCaravan = bodyType === 'CARAVAN';
+
+  const selectCaravanBodyType = () => {
+    setVehicleType('CAR');
+    vehicleTypeRef.current = 'CAR';
+    setBodyType('CARAVAN');
+    // Clear motor-vehicle lookup data; never invent a caravan registration.
+    setVrm('');
+    currentVrmRef.current = '';
+    setMileage('');
+    setFuelType('');
+    setTransmission('');
+    setEngineSize('');
+    setBhp('');
+    setMotStatus('');
+    setMotExpiry('');
+    setTaxStatus('');
+    setTaxDue('');
+    setMotHistory([]);
+    setOfficialVehicleData(undefined);
+    setBaseValuation(null);
+    setValuation(null);
+    setValuationError(null);
+    setValuationLoading(false);
+    setBadgeTier('BASIC');
+  };
   const [location, setLocation] = useState('');
   const [locatingMe, setLocatingMe] = useState(false);
   // Technical Specs
@@ -2751,15 +2776,29 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 activeOpacity={0.7}
               >
                 <Text style={[s.pillText, vehicleType === t && s.pillTextActive]}>
-                  {t === 'HGV' ? 'HGV / Commercial' : t === 'MOTORCYCLE' ? 'Motorcycle' : 'Car'}
+                  {t === 'HGV' ? 'HGV / Commercial' : t === 'MOTORCYCLE' ? 'Motorcycle' : 'Car / Caravan'}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
         </SectionBox>
 
+        <TouchableOpacity
+          style={[s.pill, { marginBottom: 12 }, isCaravan && s.pillActive]}
+          onPress={selectCaravanBodyType}
+          accessibilityRole="button"
+          accessibilityState={{ selected: isCaravan }}
+        >
+          <MaterialCommunityIcons name="caravan" size={19} color={isCaravan ? Colors.onAccent : Colors.textSecondary} />
+          <Text style={[s.pillText, isCaravan && s.pillTextActive]}>Selling a touring caravan? No registration or VIN needed</Text>
+        </TouchableOpacity>
+        {isCaravan && <SectionBox title="Caravan details (manual entry)">
+          <Text style={s.fieldHint}>Enter what you know and set your own price. No DVLA lookup, VIN or mileage is required.</Text>
+          <FieldInput label="VIN / CRiS (optional)" value={vin} onChange={setVin} placeholder="17 characters, if known" />
+        </SectionBox>}
+
         {/* Registration */}
-        <SectionBox title="Registration (VRM) *" accent={Colors.accent} onLayout={rememberValidationSection("registration")}>
+        {!isCaravan && <SectionBox title="Registration (VRM) *" accent={Colors.accent} onLayout={rememberValidationSection("registration")}>
           <Text style={s.fieldHint}>Enter the UK registration plate and tap Analyse to auto-fill vehicle details.</Text>
           <View style={s.vrmRow}>
             <TextInput
@@ -2794,9 +2833,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <Text style={s.dvlaSuccessText}>DVLA data loaded — these fields are auto-filled but editable.</Text>
             </View>
           )}
-        </SectionBox>
+        </SectionBox>}
 
-        <TouchableOpacity
+        {!isCaravan && <TouchableOpacity
           style={s.optionalSectionToggle}
           onPress={() => setShowDvlaDetails(v => !v)}
           accessibilityRole="button"
@@ -2808,8 +2847,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             <Text style={s.optionalSectionHint}>{motStatus ? `MOT: ${motStatus} · ` : ''}{dvlaFetched ? 'Vehicle data loaded' : 'Review or enter extra registration details'}</Text>
           </View>
           <Ionicons name={showDvlaDetails ? 'chevron-up' : 'chevron-down'} size={21} color={Colors.textSecondary} />
-        </TouchableOpacity>
-        {showDvlaDetails && (
+        </TouchableOpacity>}
+        {!isCaravan && showDvlaDetails && (
           <>
         {/* Registration & Compliance — DVLA auto-filled but editable, matching
             web (ListingWizard.tsx) — these used to render as read-only text
@@ -2945,7 +2984,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <TouchableOpacity
                 key={bt.v}
                 style={[s.pill, s.bodyTypePill, bodyType === bt.v && s.pillActive]}
-                onPress={() => setBodyType(bt.v)}
+                onPress={() => bt.v === 'CARAVAN' ? selectCaravanBodyType() : setBodyType(bt.v)}
                 activeOpacity={0.7}
               >
                 <MaterialCommunityIcons name={bt.icon as any} size={18} color={bodyType === bt.v ? Colors.onAccent : Colors.textSecondary} />
@@ -3363,8 +3402,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   function renderStep2() {
     const tabImages = photoTab === 'Exterior' ? exteriorImages : photoTab === 'Interior' ? interiorImages : damageImages;
     const totalCount = allImages.length;
-    const belowMinimum = totalCount < MIN_PHOTOS;
-    const remaining = MIN_PHOTOS - totalCount;
+    const minPhotos = isCaravan ? 1 : MIN_PHOTOS;
+    const belowMinimum = totalCount < minPhotos;
+    const remaining = minPhotos - totalCount;
 
     return (
       <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
@@ -3380,7 +3420,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               not the tracker's ceiling — showing "3 / 100" while Next is
               disabled tells the seller nothing about why. */}
           <Text style={[s.photoTrackerCount, belowMinimum && s.photoTrackerCountShort]}>
-            {belowMinimum ? `${totalCount} / ${MIN_PHOTOS} MINIMUM` : `${totalCount} / ${MAX_PHOTOS}`}
+            {belowMinimum ? `${totalCount} / ${minPhotos} MINIMUM` : `${totalCount} / ${MAX_PHOTOS}`}
           </Text>
         </View>
         <View style={s.photoTrackerBar}>
