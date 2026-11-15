@@ -99,10 +99,10 @@ export default function AdminAiReportsPage() {
                 <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
 
                 <main className="flex-1 min-w-0 space-y-6">
-                    <section className="rounded-[26px] border border-violet-400/20 bg-gradient-to-br from-violet-500/12 via-slate-900/40 to-fuchsia-500/10 p-5 sm:p-7">
+                    <section className="rounded-[26px] border border-violet-400/20 bg-[var(--bg-card)] p-5 sm:p-7">
                         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                             <div>
-                                <div className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-violet-300">
+                                <div className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-violet-700 dark:text-violet-300">
                                     <Sparkles size={14} /> MaziuM AI safety
                                 </div>
                                 <h1 className="mt-2 text-3xl sm:text-4xl font-black text-[var(--text-primary)]">AI response reports</h1>
