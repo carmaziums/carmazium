@@ -1929,7 +1929,7 @@ export class ListingsService {
                 // Vehicle identity
                 make: createListingDto.make ?? null,
                 model: createListingDto.model ?? null,
-                year: createListingDto.year,
+                year: createListingDto.year ?? null,
                 // Unpowered touring caravans have neither an engine odometer nor an independent DVLA VRM.
                 mileage: isTouringCaravan ? null : createListingDto.mileage,
                 vrm: normalizedVrm || null,
