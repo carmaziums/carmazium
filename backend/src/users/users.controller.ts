@@ -47,6 +47,14 @@ export class UsersController {
         };
     }
 
+    @Patch('me/introduction')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Remember the current account’s website introduction choice' })
+    async updateIntroduction(@CurrentUser() user: any, @Body() body: { action?: unknown }) {
+        return { success: true, data: await this.usersService.updateIntroduction(user.id, body?.action) };
+    }
+
     /**
      * Update current user's basic profile fields.
      */

@@ -1,6 +1,6 @@
 "use client"
 
-import { DealerServicePreferences } from "@/components/dealer/DealerServicePreferences"
+import { DealerServicesNotice } from "@/components/dealer/DealerServicesNotice"
 import * as React from "react"
 import Link from "next/link"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
@@ -285,7 +285,7 @@ export default function DealerDashboard() {
                 </DashboardSidebar>
 
                 <main className="flex-1 space-y-8 min-w-0">
-                    <DealerServicePreferences />
+                    <DealerServicesNotice />
 
                     {/* ── Email Verification Panel ── */}
                     {!isEmailVerified && (

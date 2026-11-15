@@ -1,8 +1,9 @@
 "use client"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
+import { saveIntroduction } from "@/components/onboarding/WebsiteIntroduction"
 
 const options = [
     ["financeOffered", "Finance badge", "Show that you can arrange finance on your own listings."],
@@ -16,6 +17,15 @@ export function DealerServicePreferences() {
     const [busy, setBusy] = useState(false)
     const [message, setMessage] = useState("")
     const dealer = profile?.dealerProfile
+    const acknowledged = useRef<string | null>(null)
+    useEffect(() => {
+        if (!profile?.id || !dealer || profile.preferences?.dealerServicesNoticeV1 || acknowledged.current === profile.id) return
+        acknowledged.current = profile.id
+        void saveIntroduction("services_viewed").then(refreshProfile).catch(() => {
+            // A temporary failure must not block editing service preferences.
+            acknowledged.current = null
+        })
+    }, [profile?.id, profile?.preferences?.dealerServicesNoticeV1, dealer, refreshProfile])
     if (!dealer) return null
     async function toggle(key: string, enabled: boolean) {
         setBusy(true); setMessage("")

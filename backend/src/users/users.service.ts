@@ -133,6 +133,26 @@ export class UsersService {
         return safeUser;
     }
 
+    async updateIntroduction(userId: string, action: unknown) {
+        const actions = ['tour_skipped', 'tour_completed', 'services_dismissed', 'services_viewed'];
+        if (typeof action !== 'string' || !actions.includes(action)) {
+            throw new BadRequestException('Unknown introduction action');
+        }
+        const patch = action.startsWith('tour_')
+            ? { websiteIntroductionV1: { status: action.slice(5), version: 1, updatedAt: new Date().toISOString() } }
+            : { dealerServicesNoticeV1: { status: action.slice(9), updatedAt: new Date().toISOString() } };
+        // Atomic JSON merge preserves unrelated preferences and simultaneous
+        // tour/notice dismissals. Identity comes only from SessionAuthGuard.
+        const count = await this.prisma.$executeRaw`
+            UPDATE "users"
+            SET "preferences" = COALESCE("preferences", '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb,
+                "updatedAt" = NOW()
+            WHERE "id" = ${userId} AND "deletedAt" IS NULL
+        `;
+        if (!count) throw new NotFoundException('User not found');
+        return { saved: true };
+    }
+
     private deletionStorageClient(): SupabaseClient {
         if (!this.supabaseAdmin) {
             throw new ServiceUnavailableException(

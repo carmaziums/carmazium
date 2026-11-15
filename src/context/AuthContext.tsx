@@ -10,6 +10,7 @@ interface UserProfile {
     id: string
     email: string
     role: string
+    createdAt?: string
     firstName?: string
     lastName?: string
     phone?: string
