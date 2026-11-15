@@ -632,7 +632,7 @@ function SearchPageContent() {
 
             <div className="container mx-auto px-5 py-8 flex flex-col lg:flex-row gap-8">
                 {/* Mobile Filter Toggle */}
-                <Button className="lg:hidden w-full flex items-center justify-between" variant="outline"
+                <Button data-tour="search-filters" className="lg:hidden w-full flex items-center justify-between" variant="outline"
                     onClick={() => setIsFilterOpen(!isFilterOpen)}>
                     <span className="flex items-center gap-2">
                         <Filter size={18} /> Filters
@@ -658,7 +658,7 @@ function SearchPageContent() {
                     ${isFilterOpen ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'}
                 `}>
                     <div className="flex justify-between items-center p-6 pb-4 border-b border-[var(--border-default)] lg:px-6 lg:pt-6 lg:pb-4 lg:border-b lg:border-[var(--border-default)] shrink-0">
-                        <h3 className="font-heading font-bold text-xl">Filters</h3>
+                        <h3 data-tour="search-filters" className="font-heading font-bold text-xl">Filters</h3>
                         <div className="flex items-center gap-4">
                             {activeFilterCount > 0 && (
                                 <button onClick={handleResetFilters} className={buttonVariants({ variant: "outline", size: "sm" })}>
@@ -1258,12 +1258,12 @@ function SearchPageContent() {
                                 <Gavel className="text-primary" size={20} />
                                 <h3 className="font-bold text-lg">Live Auctions</h3>
                             </div>
-                            <p className="text-xs text-[var(--text-muted)] mb-3 leading-relaxed">Live marketplace for verified buyers and sellers — coming soon.</p>
+                            <p className="text-xs text-[var(--text-muted)] mb-3 leading-relaxed">Browse live auctions. Bidding is available to verified dealer accounts.</p>
                             <div className="bg-amber-900/20 border border-amber-500/20 rounded-lg p-3">
                                 <h4 className="text-amber-500 font-bold text-xs mb-1 flex items-center gap-1">
-                                    <AlertTriangle size={12} /> Verification Required
+                                    <Gavel size={12} /> Dealer auctions
                                 </h4>
-                                <p className="text-[10px] text-amber-200/70 leading-relaxed">KYC identity verification required to participate.</p>
+                                <Link href="/auctions/browse" className="inline-flex min-h-11 items-center text-xs font-bold text-primary underline">Browse live auctions</Link>
                             </div>
                         </div>
                     </div>

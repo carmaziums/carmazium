@@ -69,9 +69,9 @@ test('both stock card modes use truthful API gearbox, mileage, VRM and photo fal
 });
 
 test('web-style mobile KPI tiles show real price, status, views and HOT LEADS', () => {
-  for (const tile of ['MARKET PRICE', 'STATUS', 'ENGAGEMENT', 'HOT LEADS']) {
+  for (const tile of ['PRICE', 'STATUS', 'ENGAGEMENT', 'HOT LEADS']) {
     assert.ok(native.includes(tile), tile);
-    assert.ok(web.includes(tile.replace('MARKET PRICE','Market Price').replace('HOT LEADS','Hot Leads').replace('ENGAGEMENT','Engagement').replace('STATUS','Status')), tile);
+    assert.ok(web.includes(tile.replace('PRICE','Price').replace('HOT LEADS','Hot Leads').replace('ENGAGEMENT','Engagement').replace('STATUS','Status')), tile);
   }
   assert.ok(native.includes('listing.leads.toLocaleString'), 'real server count, not hardcoded web 0');
   assert.ok(native.includes('listing.views.toLocaleString'));

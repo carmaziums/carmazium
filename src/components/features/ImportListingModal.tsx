@@ -1,5 +1,6 @@
 "use client"
 
+import { AccessibleModal } from "@/components/ui/AccessibleModal"
 import React, { useState } from "react"
 import { X, Link2, Loader2, CheckCircle, AlertTriangle, ExternalLink, Image as ImageIcon, Zap, Shield, Star } from "lucide-react"
 import { Button } from "@/components/ui/Button"
@@ -171,7 +172,7 @@ export function ImportListingModal({ onClose, onImported }: Props) {
     // ── Render ────────────────────────────────────────────────────────────────
 
     return (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+        <AccessibleModal label="Import Listing" onClose={onClose} canClose={!loading && !checkoutLoading && !tierUpdating}>
             <div
                 className="relative bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
                 onClick={e => e.stopPropagation()}
@@ -187,7 +188,7 @@ export function ImportListingModal({ onClose, onImported }: Props) {
                             <p className="text-xs text-[var(--text-muted)]">{stepLabels[step]}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors">
+                    <button type="button" aria-label="Close import listing" disabled={loading || checkoutLoading || tierUpdating} onClick={onClose} className="min-h-11 min-w-11 text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors">
                         <X size={20} />
                     </button>
                 </div>
@@ -421,7 +422,7 @@ export function ImportListingModal({ onClose, onImported }: Props) {
                     )}
                 </div>
             </div>
-        </div>
+        </AccessibleModal>
     )
 }
 

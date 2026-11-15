@@ -92,3 +92,10 @@ export function purchaseDeliveryHref(purchase: Pick<DealerPurchaseDetail, "listi
     if (purchase.vehicle.year != null) params.set("year", String(purchase.vehicle.year))
     return `/services/delivery/new?${params.toString()}`
 }
+
+/** Agreement and physical handover are separate; never imply funds or collection from an accepted offer. */
+export function purchaseHandoverLabel(purchase: Pick<DealerPurchaseDetail, "purchaseStatus" | "buyerCollectedAt">): string {
+    if (purchase.buyerCollectedAt) return "Collected"
+    if (purchase.purchaseStatus === "AWAITING_CONFIRMATION") return "Awaiting handover confirmation"
+    return purchase.purchaseStatus.replace(/_/g, " ").toLowerCase()
+}

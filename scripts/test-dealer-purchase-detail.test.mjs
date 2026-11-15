@@ -105,3 +105,10 @@ test("review fixes: existing delivery job is opened, not duplicated; app honours
     assert.match(app, /if \(!deliveryAvailable\) \{/)
     assert.ok(app.includes("detail.retailSold ? 'Purchased'"))
 })
+
+test("accepted purchases keep handover pending until collection is recorded", () => {
+    assert.equal(exports.purchaseHandoverLabel(purchase), "Awaiting handover confirmation")
+    assert.equal(exports.purchaseHandoverLabel({ ...purchase, buyerCollectedAt: "2026-11-15T12:00:00Z" }), "Collected")
+    assert.equal(exports.purchaseHandoverLabel({ ...purchase, purchaseStatus: "REVIEWING_DOCS" }), "reviewing docs")
+    assert.equal(exports.purchaseHandoverLabel({ ...purchase, purchaseStatus: "CANCELLED" }), "cancelled")
+})

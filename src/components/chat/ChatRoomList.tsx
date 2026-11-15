@@ -11,6 +11,8 @@ interface ChatRoomListProps {
     onSelectRoom: (room: ChatRoom) => void
     selectedRoomId?: string
     roomsOverride?: ChatRoom[]
+    emptyTitle?: string
+    emptyDescription?: string
     showSupportOps?: boolean
 }
 
@@ -23,6 +25,8 @@ export function ChatRoomList({
     selectedRoomId,
     roomsOverride,
     showSupportOps = false,
+    emptyTitle = "No conversations yet",
+    emptyDescription = "Messages from listings you contact land here — or use Contact Support in the sidebar",
 }: ChatRoomListProps) {
     const { rooms, isLoading, hasMoreRooms, isLoadingMoreRooms, loadMoreRooms } = useChat()
     const sourceRooms = roomsOverride ?? rooms
@@ -90,9 +94,9 @@ export function ChatRoomList({
                 {filteredRooms.length === 0 ? (
                     <div className="text-center text-[var(--text-muted)] py-12 px-6">
                         <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-40" strokeWidth={1.5} />
-                        <p className="font-semibold text-[var(--text-secondary)]">No conversations yet</p>
+                        <p className="font-semibold text-[var(--text-secondary)]">{searchTerm ? "No conversations match your search" : emptyTitle}</p>
                         <p className="text-sm mt-1">
-                            Messages from listings you contact land here — or use Contact Support in the sidebar
+                            {searchTerm ? "Try a different name or vehicle, or clear your search." : emptyDescription}
                         </p>
                     </div>
                 ) : (

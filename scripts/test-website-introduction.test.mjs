@@ -6,7 +6,11 @@ const source = readFileSync(new URL('../src/lib/welcomeTour.ts', import.meta.url
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
 const exports = {};
 new Function('exports', compiled)(exports);
-const { canAutoIntroduce, getWelcomeSteps } = exports;
+const { canAutoIntroduce } = exports;
+const guidedSource = readFileSync(new URL('../src/lib/guidedWebsiteTour.ts', import.meta.url), 'utf8');
+const guided = {};
+new Function('exports', ts.transpileModule(guidedSource, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText)(guided);
+const { getGuidedWebsiteSteps } = guided;
 const account = { id: 'new-user', role: 'BUYER', createdAt: '2026-11-16T00:00:00Z' };
 
 test('new users are introduced on a safe first authenticated landing page', () => {
@@ -19,7 +23,7 @@ test('skip and completion survive refresh and different devices via account pref
     for (const status of ['skipped', 'completed']) {
         const reloaded = JSON.parse(JSON.stringify({ ...account, preferences: { websiteIntroductionV1: { status, version: 1 } } }));
         assert.equal(canAutoIntroduce(reloaded, '/dashboard', ''), false);
-        assert.ok(getWelcomeSteps(reloaded).length >= 5, 'manual replay remains available');
+        assert.ok(getGuidedWebsiteSteps(reloaded).length >= 5, 'manual replay remains available');
     }
     assert.equal(canAutoIntroduce({ ...account, id: 'different-user' }, '/dashboard', ''), true);
 });
@@ -27,21 +31,38 @@ test('selling, payment, auth, verification, bidding and message journeys are not
     for (const path of ['/sell', '/pricing', '/auth/login', '/dashboard/dealer/add-listing', '/dashboard/dealer/onboarding', '/dashboard/service/capabilities', '/auctions/123', '/buy-cars/audi', '/messages']) assert.equal(canAutoIntroduce(account, path, ''), false);
     for (const query of ['?session_id=checkout', '?payment=success', '?code=auth', '?cancelled=true']) assert.equal(canAutoIntroduce(account, '/dashboard', query), false);
 });
-test('content follows account roles and retains seller, payment and service safeguards', () => {
-    const buyer = getWelcomeSteps(account);
-    const dealer = getWelcomeSteps({ ...account, dealerProfile: {} });
-    const staff = getWelcomeSteps({ ...account, dealerStaffMemberships: [{}] });
-    const provider = getWelcomeSteps({ ...account, role: 'CONTRACTOR' });
-    assert.equal(buyer.length, 5);
-    assert.equal(dealer.length, 6);
-    assert.deepEqual(staff, dealer);
-    assert.ok(dealer.some(step => step.title === 'Your dealership services'));
-    assert.ok(provider.some(step => step.title === 'Provide services through TradeXchange'));
-    for (const role of ['FINANCE_PARTNER', 'INSURANCE_PARTNER']) assert.ok(getWelcomeSteps({ ...account, role }).some(step => step.title === 'Your partnership dashboard'));
-    assert.match(JSON.stringify(dealer), /paid once/);
+test('guided pages match account roles without treating a stale dealer profile as permission', () => {
+    const buyer = getGuidedWebsiteSteps(account);
+    const dealer = getGuidedWebsiteSteps({ ...account, role: 'DEALER', dealerProfile: {} });
+    const contractor = getGuidedWebsiteSteps({ ...account, role: 'CONTRACTOR' });
+    assert.ok(dealer.some(step => step.href === '/dashboard/dealer/team'));
+    assert.ok(dealer.some(step => step.title === 'My dealership services'));
+    assert.ok(contractor.some(step => step.title === 'Service setup and approval'));
+    assert.ok(!buyer.some(step => step.href?.startsWith('/dashboard/dealer')));
+    assert.deepEqual(getGuidedWebsiteSteps({ ...account, dealerProfile: {} }), buyer);
+    for (const role of ['FINANCE_PARTNER', 'INSURANCE_PARTNER']) {
+        const tour = getGuidedWebsiteSteps({ ...account, role });
+        assert.ok(tour.some(step => step.href === (role === 'FINANCE_PARTNER' ? '/dashboard/finance' : '/dashboard/insurance')));
+        assert.ok(!tour.some(step => step.id === 'settings-payouts'));
+    }
+    assert.match(JSON.stringify(dealer), /not charged again/);
     assert.match(JSON.stringify(dealer), /does not approve/);
     assert.match(JSON.stringify(buyer), /admin approval/);
-    assert.match(JSON.stringify(buyer), /Vehicle funds are paid directly to the seller/);
+    assert.match(JSON.stringify(dealer), /vehicle funds are paid directly to the seller/i);
+});
+test('every guided destination exists, stays internal and avoids checkout, auth and dynamic customer records', () => {
+    for (const role of ['BUYER', 'SELLER', 'DEALER', 'CONTRACTOR', 'FINANCE_PARTNER', 'INSURANCE_PARTNER']) {
+        const steps = getGuidedWebsiteSteps({ ...account, role });
+        assert.equal(new Set(steps.map(step => step.id)).size, steps.length);
+        assert.equal(steps[0].href, undefined, 'welcome waits for explicit Start tour');
+        for (const step of steps.filter(step => step.href)) {
+            assert.match(step.href, /^\/(?!\/)/);
+            assert.doesNotMatch(step.href, /checkout|payment|onboarding|auth|\bid=/);
+            const path = step.href.split('?')[0];
+            assert.ok(existsSync(new URL(`../src/app${path}/page.tsx`, import.meta.url)), `${role}: ${step.href}`);
+            assert.ok(step.target?.selector, `${step.id} needs a visible highlight target`);
+        }
+    }
 });
 test('settings destination exists and dashboards no longer render duplicated service controls', () => {
     assert.ok(existsSync(new URL('../src/app/profile/page.tsx', import.meta.url)));

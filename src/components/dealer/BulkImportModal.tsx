@@ -1,5 +1,6 @@
 ﻿"use client"
 
+import { AccessibleModal } from "@/components/ui/AccessibleModal"
 import * as React from "react"
 import { Upload, X, CheckCircle, Loader2, AlertTriangle, FileSpreadsheet, ArrowRight, Car, Settings2, Download } from "lucide-react"
 import { Button } from "@/components/ui/Button"
@@ -35,13 +36,14 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
     // Reset state when closed
     React.useEffect(() => {
         if (!isOpen) {
-            setTimeout(() => {
+            const timer = setTimeout(() => {
                 setStatus("idle")
                 setProgress({ current: 0, total: 0 })
                 setErrorRows([])
                 setImportedCount(0)
                 setMotPendingCount(0)
             }, 300)
+            return () => clearTimeout(timer)
         }
     }, [isOpen])
 
@@ -228,7 +230,7 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
     }
 
     return (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <AccessibleModal label="Bulk Inventory Import" onClose={onClose} canClose={status !== "importing" && status !== "parsing"}>
             <div className="bg-[var(--bg-dropdown)] border border-[var(--border-default)] rounded-2xl w-full max-w-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[90vh]">
                 {/* Header */}
                 <div className="p-6 border-b border-[var(--border-default)] flex items-center justify-between bg-[var(--bg-input)]">
@@ -241,10 +243,10 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                             <p className="text-xs text-[var(--text-muted)] tracking-wide mt-0.5">Automate your stock sync via CSV</p>
                         </div>
                     </div>
-                    <button 
+                    <button type="button" aria-label="Close bulk import"
                         onClick={onClose} 
-                        disabled={status === "importing"}
-                        className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors disabled:opacity-50"
+                        disabled={status === "importing" || status === "parsing"}
+                        className="min-h-11 min-w-11 text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors disabled:opacity-50"
                     >
                         <X size={24} />
                     </button>
@@ -259,7 +261,7 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                             <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex gap-3 text-sm text-blue-200/80 leading-relaxed">
                                 <Settings2 size={18} className="text-blue-400 shrink-0 mt-0.5" />
                                 <p>
-                                    Instantly generate <strong className="text-[var(--text-primary)]">Draft Listings</strong> using just the vehicle registration (VRM). Our engine systematically pulls all deep technical specifications from the DVLA, leaving you to only upload images and publish.
+                                    Instantly generate <strong className="text-[var(--text-primary)]">Draft Listings</strong> using just the vehicle registration (VRM). We fill available DVLA/MOT details. Review and complete required information, add your own photos and declarations, then submit for review and complete any required listing payment.
                                 </p>
                             </div>
 
@@ -387,6 +389,6 @@ export function BulkImportModal({ isOpen, onClose, onComplete }: BulkImportModal
                     )}
                 </div>
             </div>
-        </div>
+        </AccessibleModal>
     )
 }
