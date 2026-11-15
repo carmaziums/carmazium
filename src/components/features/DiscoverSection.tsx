@@ -3,14 +3,14 @@ import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 
 const CATEGORIES = [
-  { title: "Everyday essentials", description: "Explore hatchbacks for everyday life.", href: "/search?bodyType=HATCHBACK", image: "/assets/images/body-hatchback.webp", alt: "Illustrative silver hatchback" },
-  { title: "Room for more", description: "Find cars with seven seats or more.", href: "/search?minSeats=7", image: "/assets/images/body-suv.webp", alt: "Illustrative family SUV" },
-  { title: "Electric & hybrid", description: "Explore a different way to drive.", href: "/search?fuelTypes=Electric%2CHybrid", image: "/assets/images/body-saloon.webp", alt: "Illustrative saloon car" },
+  { title: "Everyday essentials", description: "Explore hatchbacks for everyday life.", href: "/search?bodyType=HATCHBACK", image: "/assets/images/marketplace/hatchback.webp", alt: "Red MG3 hatchback photographed by a marketplace seller" },
+  { title: "Room for more", description: "Find cars with seven seats or more.", href: "/search?minSeats=7", image: "/assets/images/marketplace/family.webp", alt: "Land Rover Discovery Sport photographed by a marketplace seller" },
+  { title: "Electric & hybrid", description: "Explore a different way to drive.", href: "/search?fuelTypes=Electric%2CHybrid", image: "/assets/images/marketplace/electric.webp", alt: "Blue electric Jaguar I-PACE photographed by a marketplace seller" },
 ]
 
 export function DiscoverSection() {
   return (
-    <section className="py-12 md:py-16" aria-labelledby="home-discover-heading">
+    <section className="py-9 md:py-14" aria-labelledby="home-discover-heading">
       <div className="container mx-auto px-5">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -20,16 +20,16 @@ export function DiscoverSection() {
           </div>
           <Link href="/search" className="inline-flex min-h-11 items-center gap-2 text-sm font-bold underline underline-offset-4">Browse All Cars <ArrowRight size={17} aria-hidden="true" /></Link>
         </div>
-        <div className="grid gap-5 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-3">
           {CATEGORIES.map(category => (
-            <Link key={category.title} href={category.href} className="group block overflow-hidden rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-              <div className="relative aspect-[16/9] overflow-hidden bg-white">
-                <Image src={category.image} alt={category.alt} fill sizes="(max-width: 639px) 100vw, 33vw" className="object-cover" />
+            <Link key={category.title} href={category.href} className="group grid grid-cols-[40%_1fr] sm:block overflow-hidden rounded-xl border border-[var(--border-default)] bg-white dark:bg-[#1b2538] transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+              <div className="relative min-h-[145px] sm:aspect-[4/3] overflow-hidden bg-white">
+                <Image src={category.image} alt={category.alt} fill sizes="(max-width: 639px) 40vw, 33vw" className="object-cover" />
               </div>
-              <div className="p-5">
-                <h3 className="font-heading text-xl font-bold tracking-tight group-hover:text-primary">{category.title}</h3>
+              <div className="p-4 md:p-5 border-b-4 border-primary">
+                <h3 className="font-heading text-lg md:text-xl font-bold tracking-tight group-hover:text-primary">{category.title}</h3>
                 <p className="mt-2 text-sm text-[var(--text-muted)]">{category.description}</p>
-                <span className="mt-4 inline-flex items-center gap-2 text-sm font-bold underline underline-offset-4">Explore cars <ArrowRight size={16} aria-hidden="true" /></span>
+                <span className="mt-3 inline-flex items-center gap-2 text-sm font-bold underline underline-offset-4">Explore cars <ArrowRight size={16} aria-hidden="true" /></span>
               </div>
             </Link>
           ))}

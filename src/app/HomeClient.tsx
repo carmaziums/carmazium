@@ -100,7 +100,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
         <div className={styles.heroGrid}>
           <div className={styles.heroCopy}>
             <p className={styles.eyebrow}>The UK car marketplace</p>
-            <h1 id="home-marketplace-heading" className={styles.headline}>Your car.<br />Your choice.</h1>
+            <h1 id="home-marketplace-heading" className={styles.headline}>Your car.<br /><span>Your choice.</span></h1>
             <p className={styles.proposition}>
               Auction <span>FREE</span>. Retail for <span>£1</span>.
             </p>
@@ -118,13 +118,11 @@ export default function HomeClient({ initialListings, latestRetailListings, late
             <Link href="/sell" className={styles.quietLink}>Get a valuation or explore your options <ArrowRight size={16} aria-hidden="true" /></Link>
           </div>
           <div className={styles.heroVisual}>
-            <div className={styles.priceArtwork} aria-hidden="true">
-              <span>£1</span><p>Retail<br />listing fee</p>
+            <Image src="/assets/images/marketplace/hero-mini.webp" alt="Vibrant orange MINI Cooper photographed on a street in Oxford" width={1200} height={800} sizes="(max-width: 767px) 66vw, (max-width: 1280px) 52vw, 680px" priority className={styles.heroCars} />
+            <div className={styles.priceArtwork}>
+              <span>£1</span><p>List it.<br />Until sold.</p><small>Basic retail listing</small>
             </div>
-            <svg className={styles.ribbon} viewBox="0 0 720 440" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-              <path d="M780 70 C570 80 360 100 430 160 C490 215 730 205 650 280 C565 360 260 320 -30 455 L-50 397 C240 275 460 320 545 269 C608 231 280 220 321 147 C358 82 610 52 780 55Z" fill="#ED1C24" />
-            </svg>
-            <Image src="/assets/images/home-marketplace-cars.webp" alt="Silver hatchback and white SUV illustrating the CarMazium marketplace" width={1200} height={800} sizes="(max-width: 767px) 100vw, (max-width: 1280px) 52vw, 680px" priority className={styles.heroCars} />
+            <p className={styles.photoCaption}>Your next chapter starts here.</p>
           </div>
         </div>
       </section>
@@ -140,7 +138,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
             <input id="home-ai-query" ref={searchInputRef} type="search" value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               aria-describedby="home-ai-search-help"
-              placeholder="An automatic family car under £8,000 near Birmingham"
+              placeholder="Try: automatic under £8,000"
               className={styles.searchInput} />
             <Button type="submit" className={styles.searchSubmit} disabled={aiSearching || !searchQuery.trim()}>
               {aiSearching && <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />}
