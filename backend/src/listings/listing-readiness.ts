@@ -40,13 +40,25 @@ export function listingRequiresHpi(
 export function getListingSubmissionMissingFields(listing: any): string[] {
     const missing: string[] = [];
 
+    const isTouringCaravan = listing?.bodyType === 'CARAVAN';
+    if (isTouringCaravan) {
+        // Touring caravans are manually listed. VIN/CRiS, plate, year,
+        // mileage, engine, equipment and service fields are all optional.
+        if (!Array.isArray(listing?.images) || listing.images.length < 1) missing.push('at least one caravan photo');
+        if (!listing?.title || listing.title.trim().length < 5) missing.push('title');
+        if (!listing?.location?.trim?.()) missing.push('location');
+        if (listing?.isLegalRegisteredKeeper === false && !listing?.notOwnerRelationship?.trim?.()) {
+            missing.push('authority to sell');
+        }
+        if (listing?.isDepartedSale === true && !listing?.departedRelationship?.trim?.()) {
+            missing.push('estate/departed-sale relationship');
+        }
+        return missing;
+    }
     if (!Array.isArray(listing?.images) || listing.images.length < 10) {
         missing.push('at least 10 photos');
     }
-    const isTouringCaravan = listing?.bodyType === 'CARAVAN';
-    if (isTouringCaravan) {
-        if (!/^[A-HJ-NPR-Z0-9]{17}$/i.test(String(listing?.vin ?? ''))) missing.push('17-character caravan VIN (CRiS)');
-    } else if (!listing?.vrm?.trim?.()) missing.push('VRM');
+    if (!listing?.vrm?.trim?.()) missing.push('VRM');
     if (!listing?.make?.trim?.()) missing.push('make');
     if (!listing?.model?.trim?.()) missing.push('model');
     if (!listing?.year) missing.push('year');
