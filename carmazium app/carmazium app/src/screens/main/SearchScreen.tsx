@@ -114,6 +114,7 @@ const BODY_TYPES = [
   { id: 'MINIVAN', label: 'Minivan', icon: getBodyTypeIcon('MINIVAN') },
   { id: 'MPV', label: 'MPV', icon: getBodyTypeIcon('MPV') },
   { id: 'VAN', label: 'Van', icon: getBodyTypeIcon('VAN') },
+  { id: 'CARAVAN', label: 'Caravan', icon: getBodyTypeIcon('CARAVAN') },
   { id: 'PICKUP_TRUCK', label: 'Pickup Truck', icon: getBodyTypeIcon('PICKUP_TRUCK') },
 ];
 const SORT_OPTIONS = [
