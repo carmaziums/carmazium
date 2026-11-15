@@ -134,6 +134,7 @@ const mapBodyType = (body?: DtoBodyType): BodyType | null => {
         STATION_WAGON: 'STATION_WAGON',
         MPV: 'MPV',
         VAN: 'VAN',
+        CARAVAN: 'CARAVAN',
         HGV_TRACTOR_UNIT: 'HGV_TRACTOR_UNIT',
         HGV_BOX: 'HGV_BOX',
         HGV_CURTAIN_SIDER: 'HGV_CURTAIN_SIDER',
@@ -4798,7 +4799,7 @@ export class ListingsService {
             SEDAN: 'SEDAN', SUV: 'SUV', HATCHBACK: 'HATCHBACK', COUPE: 'COUPE',
             CONVERTIBLE: 'CONVERTIBLE', ESTATE: 'ESTATE', CROSSOVER: 'CROSSOVER',
             SPORTS_CAR: 'SPORTS_CAR', MINIVAN: 'MINIVAN', PICKUP_TRUCK: 'PICKUP_TRUCK',
-            STATION_WAGON: 'STATION_WAGON', MPV: 'MPV', VAN: 'VAN',
+            STATION_WAGON: 'STATION_WAGON', MPV: 'MPV', VAN: 'VAN', CARAVAN: 'CARAVAN',
         };
 
         const badgeTier = overrides.badgeTier ?? 'BASIC';
