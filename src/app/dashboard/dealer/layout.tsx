@@ -44,36 +44,39 @@ function DealerPhoneGate({ onSaved }: { onSaved: () => void }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xl" style={{ background: "rgba(2, 6, 23, 0.95)" }}>
-            <div className="w-full max-w-md rounded-2xl border border-white/5 p-8" style={{ background: "var(--bg-card)" }}>
+            <div className="w-full max-w-md rounded-2xl border border-[var(--border-default)] p-8 text-[var(--text-primary)]" style={{ background: "var(--bg-card)" }}>
                 <div className="flex items-center gap-3 mb-2">
                     <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
                         <Phone className="text-primary" size={20} />
                     </div>
                     <div>
-                        <h1 className="text-lg font-black font-heading text-white tracking-tight uppercase">
+                        <h1 className="text-lg font-black font-heading text-[var(--text-primary)] tracking-tight uppercase">
                             Add a Contact Number
                         </h1>
-                        <p className="text-[11px] text-gray-400">Shown to buyers on your listings</p>
+                        <p className="text-[11px] text-[var(--text-muted)]">Shown to buyers on your listings</p>
                     </div>
                 </div>
 
-                <p className="text-xs text-gray-400 leading-relaxed mt-4 mb-6">
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed mt-4 mb-6">
                     A dealership contact phone is now required. It appears on your listings and public dealer profile —
                     hidden from visitors who aren't logged in.
                 </p>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    <label htmlFor="dealer-contact-phone" className="block text-sm font-semibold">Dealership contact number</label>
                     <input
+                        id="dealer-contact-phone"
+                        autoComplete="tel"
                         value={phone}
                         onChange={e => setPhone(e.target.value)}
                         placeholder="01234 567890"
                         type="tel"
                         autoFocus
-                        className="w-full h-11 px-3 rounded-lg bg-slate-900/60 border border-white/10 text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-primary transition-colors"
+                        className="w-full h-11 px-3 rounded-lg bg-[var(--bg-input)] border border-[var(--border-default)] text-[var(--text-primary)] text-sm placeholder:text-[var(--text-muted)] focus:outline-none focus:border-primary transition-colors"
                     />
 
                     {error && (
-                        <div className="flex items-start gap-2 p-3 rounded-lg border border-red-500/20 bg-red-500/5 text-red-400 text-xs">
+                        <div className="flex items-start gap-2 p-3 rounded-lg border border-red-500/20 bg-red-500/5 text-red-700 dark:text-red-300 text-xs">
                             <AlertCircle size={14} className="shrink-0 mt-0.5" />
                             <span>{error}</span>
                         </div>
