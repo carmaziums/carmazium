@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function BusinessSpotlightDirectory() {
   return (
-    <main className="min-h-screen bg-[var(--bg-body)] pb-20 pt-24 text-[var(--text-primary)]">
+    <div className="min-h-screen bg-[var(--bg-body)] pb-20 pt-24 text-[var(--text-primary)]">
       <section className="bg-[#112d3e] px-5 py-16 text-white sm:py-20">
         <div className="container mx-auto max-w-6xl">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8be2d9]">CarMazium partner directory</p>
@@ -76,6 +76,6 @@ export default function BusinessSpotlightDirectory() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   )
 }

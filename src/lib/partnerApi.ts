@@ -149,11 +149,12 @@ export async function regenerateFinancePartnerKey(): Promise<RegeneratedPartnerK
 // INSURANCE PARTNER API
 // ============================================================================
 
-export async function getInsuranceQuotes(page = 1, limit = 20): Promise<PaginatedResponse<InsuranceQuote>> {
-    const res = await apiClient<PaginatedResponse<InsuranceQuote>>(
-        `/insurance/partner?page=${page}&limit=${limit}`
+export async function getInsuranceQuotes(page = 1, limit = 20, status?: string): Promise<PaginatedResponse<InsuranceQuote>> {
+    const res = await apiClient<{ data: InsuranceQuote[]; pagination: { total: number; page: number; limit: number } }>(
+        `/insurance/partner?page=${page}&limit=${limit}${status && status !== "ALL" ? `&status=${encodeURIComponent(status)}` : ""}`
     )
-    return res
+    if (!Array.isArray(res.data) || !Number.isSafeInteger(res.pagination?.total)) throw new Error("Could not load the complete quote list. Please retry.")
+    return { data: res.data, ...res.pagination }
 }
 
 export async function updateInsuranceStatus(

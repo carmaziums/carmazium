@@ -374,7 +374,7 @@ function DealerAuctionsPage() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
-                <main className="flex-1 space-y-6 min-w-0">
+                <div className="flex-1 space-y-6 min-w-0">
                     {/* Sticky so "Create Auction" stays reachable without scrolling
                         back up from deep inside a long auctions table */}
                     <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md pt-2 -mt-2">
@@ -1128,7 +1128,7 @@ function DealerAuctionsPage() {
                             })}
                         </div>
                     )}
-                </main>
+                </div>
             </div>
 
             {resultsAuction && (

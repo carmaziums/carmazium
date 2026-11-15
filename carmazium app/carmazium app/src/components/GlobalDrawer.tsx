@@ -107,7 +107,7 @@ const DEALER_ITEMS: MenuItem[] = [
   { id: 'dealer-stock', section: 'Sell', label: 'Stock', icon: 'car-outline', iconLib: 'ion', requiredPermission: 'VIEW_INVENTORY', tabName: 'DealerStock' },
   { id: 'dealer-customers', section: 'Sell', label: 'Customers', icon: 'people-outline', iconLib: 'ion', requiredPermission: 'MANAGE_CRM', tabName: 'DealerCustomers' },
   { id: 'dealer-auctions', section: 'Sell', label: 'My Auctions', icon: 'gavel', iconLib: 'mci', requiredPermission: 'VIEW_TRADE', stackScreen: 'SellerAuctions' },
-  { id: 'dealer-offers', section: 'Sell', label: 'Offers', icon: 'pricetag-outline', iconLib: 'ion', requiredPermission: 'MANAGE_OFFERS', stackScreen: 'DealerOffers' },
+  { id: 'dealer-offers', section: 'Sell', label: 'Offers received', icon: 'pricetag-outline', iconLib: 'ion', requiredPermission: 'MANAGE_OFFERS', stackScreen: 'DealerOffers' },
   { id: 'dealer-live', section: 'Buy', label: 'Live Auctions', icon: 'gavel', iconLib: 'mci', requiredPermission: 'VIEW_TRADE', tabName: 'DealerBuyBid', tabParams: { initialSection: 'live' } },
   { id: 'dealer-wishlist', section: 'Buy', label: 'Saved', icon: 'heart-outline', iconLib: 'ion', tabName: 'Saved' },
   { id: 'dealer-bids', section: 'Buy', label: 'Bids & Offers', icon: 'pricetag-outline', iconLib: 'ion', requiredPermission: 'VIEW_TRADE', tabName: 'DealerBuyBid', tabParams: { initialSection: 'bids' } },

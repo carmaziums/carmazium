@@ -184,7 +184,7 @@ export default function AdminTransactionsPage() {
             <div className="container mx-auto flex flex-col gap-8 px-5 lg:flex-row">
                 <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
 
-                <main className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1">
                     <Link
                         href="/dashboard/admin"
                         className="mb-4 inline-flex items-center gap-1 rounded-sm text-sm font-semibold text-[var(--text-muted)] transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -343,7 +343,7 @@ export default function AdminTransactionsPage() {
                             </div>
                         </div>
                     </section>
-                </main>
+                </div>
             </div>
 
             <UserDetailModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />

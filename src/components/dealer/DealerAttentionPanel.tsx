@@ -7,7 +7,7 @@ import { CheckCircle2, ChevronRight, Gavel, Handshake, MessageSquare, Receipt, T
 import { useDealerAccess } from "@/context/DealerAccessContext"
 import { useChat } from "@/context/ChatContext"
 import { getPendingOffersCount } from "@/lib/listingApi"
-import { getMyAuctions, getWonAuctions, type Auction } from "@/lib/auctionApi"
+import { getMyAuctions, getAllWonAuctions, type Auction } from "@/lib/auctionApi"
 import { buildAttentionItems, type AttentionAuction, type AttentionKind } from "@/lib/dealerAttention"
 
 const ICONS: Record<AttentionKind, ComponentType<{ size?: number; className?: string }>> = {
@@ -24,8 +24,9 @@ const ICONS: Record<AttentionKind, ComponentType<{ size?: number; className?: st
  */
 export function DealerAttentionPanel() {
     const { loading: accessLoading, hasPermission } = useDealerAccess()
-    const { unreadCount } = useChat()
+    const { unreadCount, unreadStatus, refreshUnreadCount } = useChat()
     const [data, setData] = React.useState<{ pendingOffers: number; won: Auction[]; mine: Auction[] } | null>(null)
+    const [retry, setRetry] = React.useState(0)
     const [failed, setFailed] = React.useState(false)
     const [checkedAt, setCheckedAt] = React.useState(0)
 
@@ -36,15 +37,17 @@ export function DealerAttentionPanel() {
     React.useEffect(() => {
         if (accessLoading) return
         let cancelled = false
+        setData(null)
+        setFailed(false)
         // Each source fails independently, so one slow API never hides the rest.
         Promise.allSettled([
             canManageOffers ? getPendingOffersCount() : Promise.resolve(0),
-            canViewPurchases ? getWonAuctions(1, 50) : Promise.resolve([] as Auction[]),
+            canViewPurchases ? getAllWonAuctions() : Promise.resolve([] as Auction[]),
             canManageInventory ? getMyAuctions() : Promise.resolve([] as Auction[]),
         ]).then(([offers, won, mine]) => {
             if (cancelled) return
             setCheckedAt(Date.now())
-            setFailed([offers, won, mine].every(r => r.status === "rejected"))
+            setFailed([offers, won, mine].some(r => r.status === "rejected"))
             setData({
                 pendingOffers: offers.status === "fulfilled" ? offers.value : 0,
                 won: won.status === "fulfilled" ? won.value : [],
@@ -52,7 +55,7 @@ export function DealerAttentionPanel() {
             })
         })
         return () => { cancelled = true }
-    }, [accessLoading, canManageOffers, canViewPurchases, canManageInventory])
+    }, [accessLoading, canManageOffers, canViewPurchases, canManageInventory, retry])
 
     const items = data
         ? buildAttentionItems({
@@ -76,15 +79,15 @@ export function DealerAttentionPanel() {
                 <p className="text-xs text-[var(--text-muted)] mt-1">Your to-do list, most urgent first.</p>
             </div>
 
-            {!data ? (
+            {(failed || unreadStatus === "error") && <div role="alert" className="rounded-xl border border-amber-500/30 p-4 text-sm text-amber-800 dark:text-amber-300">
+                Some checks failed. The list below may be incomplete; your offers, auctions and messages remain available from the menu.
+                <button type="button" className="block mt-2 font-bold underline" onClick={() => { setRetry(value => value + 1); void refreshUnreadCount() }}>Retry checks</button>
+            </div>}
+            {!data || unreadStatus === "loading" ? (
                 <div className="space-y-2" aria-busy="true">
                     {[1, 2].map(i => <div key={i} className="h-16 rounded-xl bg-[var(--bg-input)] animate-pulse" />)}
                 </div>
-            ) : failed ? (
-                <p className="text-sm text-amber-500 font-semibold">
-                    We couldn&apos;t check your to-do list just now. Your offers, auctions and messages are still available from the menu.
-                </p>
-            ) : items.length === 0 ? (
+            ) : items.length === 0 && !failed && unreadStatus === "ready" ? (
                 <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
                     <CheckCircle2 size={20} className="text-emerald-500 shrink-0" />
                     <p className="text-sm font-semibold text-[var(--text-primary)]">You&apos;re all caught up. Nothing needs your attention right now.</p>

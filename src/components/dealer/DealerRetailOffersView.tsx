@@ -127,7 +127,7 @@ export default function DealerMyOffersPage() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
-                <main className="flex-1 space-y-6 min-w-0">
+                <div className="flex-1 space-y-6 min-w-0">
                     <PageHeader
                         title="Bids & Offers"
                         subHeader="Auction bids and offers you have made on cars."
@@ -447,7 +447,7 @@ export default function DealerMyOffersPage() {
                             </>
                         )}
                     </div>
-                </main>
+                </div>
             </div>
         </div>
     )

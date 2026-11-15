@@ -115,6 +115,14 @@ export class AuctionsController {
         return new StandardResponse(result);
     }
 
+    @Get('my/won/:id')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Get one auction won by the current buyer business' })
+    async findWonAuction(@CurrentUser() user: any, @Param('id') id: string) {
+        return new StandardResponse(await this.auctionsService.findWonAuction(user.id, id));
+    }
+
     @Get(':id')
     @UseGuards(OptionalSessionAuthGuard, TradeAuctionAccessGuard)
     @ApiOperation({ summary: 'Get full Trade Exchange auction details by ID' })

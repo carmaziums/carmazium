@@ -8,6 +8,6 @@ export default function DealerFinancePage() {
     const route = getDealerRoute("/dashboard/dealer/finance")
     return <div className="container mx-auto px-5 py-12 flex flex-col lg:flex-row gap-8">
         <DashboardSidebar role="dealer" userName={profile?.firstName || "Dealer"} userType="Dealer Account" />
-        <main className="flex-1 space-y-6"><h1 className="text-3xl font-bold">{route.title}</h1><FinancePreference /></main>
+        <div className="flex-1 space-y-6"><h1 className="text-3xl font-bold">{route.title}</h1><FinancePreference /></div>
     </div>
 }

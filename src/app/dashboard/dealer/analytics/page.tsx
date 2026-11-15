@@ -219,7 +219,7 @@ export default function DealerAnalyticsPage() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
-                <main className="flex-1 space-y-6 min-w-0">
+                <div className="flex-1 space-y-6 min-w-0">
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                         <PageHeader
@@ -402,7 +402,7 @@ export default function DealerAnalyticsPage() {
                             <Button onClick={() => setRetry(value => value + 1)} variant="outline" size="sm">Retry</Button>
                         </div>
                     )}
-                </main>
+                </div>
             </div>
         </div>
     )

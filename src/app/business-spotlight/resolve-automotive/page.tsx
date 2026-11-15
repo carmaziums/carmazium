@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default function ResolveAutomotiveSpotlight() {
   return (
-    <main className="min-h-screen bg-[var(--bg-body)] pb-20 pt-24 text-[var(--text-primary)]">
+    <div className="min-h-screen bg-[var(--bg-body)] pb-20 pt-24 text-[var(--text-primary)]">
       <section className="bg-[#112d3e] px-5 py-14 text-white sm:py-20">
         <div className="container mx-auto max-w-6xl">
           <Link href="/business-spotlight" className="inline-flex items-center gap-2 text-sm font-semibold text-[#a7e8df] hover:text-white">
@@ -62,6 +62,6 @@ export default function ResolveAutomotiveSpotlight() {
           <strong>Important:</strong> Resolve Automotive is a separate third-party business. CarMazium's feature does not automatically enrol any dealer or transfer any customer complaint. Buyers should first contact the business that sold them the vehicle. Outsourcing complaint handling does not remove a trader's responsibilities under applicable consumer law. Resolve Automotive is not being presented as an official ombudsman or statutory dispute-resolution body.
         </div>
       </section>
-    </main>
+    </div>
   )
 }

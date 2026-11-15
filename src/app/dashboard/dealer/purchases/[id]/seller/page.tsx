@@ -59,7 +59,7 @@ export default function PurchaseSellerDetailsPage() {
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
-                <main className="flex-1 min-w-0 space-y-6">
+                <div className="flex-1 min-w-0 space-y-6">
                     <Link
                         href="/dashboard/dealer/purchases"
                         className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
@@ -206,7 +206,7 @@ export default function PurchaseSellerDetailsPage() {
                             )}
                         </div>
                     )}
-                </main>
+                </div>
             </div>
         </div>
     )

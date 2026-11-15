@@ -24,27 +24,39 @@ export default function InsuranceDashboard() {
     const [updating, setUpdating] = React.useState<string | null>(null)
     const [actionError, setActionError] = React.useState<string | null>(null)
 
+    const [loadError, setLoadError] = React.useState<string | null>(null)
+    const [retry, setRetry] = React.useState(0)
+    const mutationPending = React.useRef(false)
+
     React.useEffect(() => {
+        let alive = true
         async function fetchData() {
             if (!user) return
             try {
                 setLoading(true)
+                setLoadError(null)
+                setQuotes([])
                 const [statsData, quotesData] = await Promise.all([
                     getInsuranceStats(),
                     getInsuranceQuotes(1, 5),
                 ])
+                if (!alive) return
                 setStats(statsData)
                 setQuotes(quotesData.data || [])
             } catch (err) {
+                if (!alive) return
+                setLoadError('Could not load insurance information. Please retry.')
                 console.error('Failed to fetch insurance data:', err)
             } finally {
-                setLoading(false)
+                if (alive) setLoading(false)
             }
         }
-        if (!authLoading && user) fetchData()
-    }, [user, authLoading])
+        if (!authLoading && user) void fetchData()
+        return () => { alive = false }
+    }, [user, authLoading, retry])
 
     const handleStatusUpdate = async (id: string, status: string) => {
+        if (mutationPending.current || loading || loadError) return
         let quotedPrice: number | undefined
         let coverageType: string | undefined
         if (status === 'QUOTED') {
@@ -65,6 +77,7 @@ export default function InsuranceDashboard() {
         }
 
         try {
+            mutationPending.current = true
             setUpdating(id)
             setActionError(null)
             const updated = await updateInsuranceStatus(id, status, quotedPrice, coverageType)
@@ -75,6 +88,7 @@ export default function InsuranceDashboard() {
             console.error('Failed to update status:', err)
             setActionError(err?.message || 'Could not update this record.')
         } finally {
+            mutationPending.current = false
             setUpdating(null)
         }
     }
@@ -94,9 +108,10 @@ export default function InsuranceDashboard() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="insurance" userName={userName} userType="Insurance Partner" />
 
-                <main className="flex-1 space-y-8">
+                <div className="flex-1 min-w-0 space-y-8">
+                    {loadError && <div role="alert" className="rounded-xl border border-red-500/30 p-4 text-sm text-red-700 dark:text-red-300">{loadError}<button type="button" onClick={() => setRetry(value => value + 1)} className="ml-3 font-bold underline">Retry</button></div>}
                     {actionError && (
-                        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300">
                             {actionError}
                         </div>
                     )}
@@ -105,29 +120,29 @@ export default function InsuranceDashboard() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="glass-card p-6 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl hover:bg-white/10 transition-colors">
                             <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-yellow-500/20 rounded-lg"><Clock size={18} className="text-yellow-400" /></div>
+                                <div className="p-2 bg-yellow-500/20 rounded-lg"><Clock size={18} className="text-yellow-700 dark:text-yellow-400" /></div>
                             </div>
                             <p className="text-[var(--text-muted)] text-xs mb-1 uppercase tracking-widest font-bold">Pending</p>
                             <h3 className="text-3xl font-black font-heading">
-                                {loading ? "..." : stats?.pending || 0}
+                                {loading ? "..." : loadError ? "Unavailable" : stats?.pending || 0}
                             </h3>
                         </div>
                         <div className="glass-card p-6 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl hover:bg-white/10 transition-colors">
                             <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-blue-500/20 rounded-lg"><ClipboardList size={18} className="text-blue-400" /></div>
+                                <div className="p-2 bg-blue-500/20 rounded-lg"><ClipboardList size={18} className="text-blue-700 dark:text-blue-400" /></div>
                             </div>
                             <p className="text-[var(--text-muted)] text-xs mb-1 uppercase tracking-widest font-bold">Quoted</p>
-                            <h3 className="text-3xl font-black font-heading text-blue-400">
-                                {loading ? "..." : stats?.approved || 0}
+                            <h3 className="text-3xl font-black font-heading text-blue-700 dark:text-blue-400">
+                                {loading ? "..." : loadError ? "Unavailable" : stats?.approved || 0}
                             </h3>
                         </div>
                         <div className="glass-card p-6 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl hover:bg-white/10 transition-colors">
                             <div className="flex items-center gap-3 mb-2">
-                                <div className="p-2 bg-emerald-500/20 rounded-lg"><CheckCircle size={18} className="text-emerald-400" /></div>
+                                <div className="p-2 bg-emerald-500/20 rounded-lg"><CheckCircle size={18} className="text-emerald-700 dark:text-emerald-400" /></div>
                             </div>
                             <p className="text-[var(--text-muted)] text-xs mb-1 uppercase tracking-widest font-bold">Accepted</p>
-                            <h3 className="text-3xl font-black font-heading text-emerald-400">
-                                {loading ? "..." : stats?.completed || 0}
+                            <h3 className="text-3xl font-black font-heading text-emerald-700 dark:text-emerald-400">
+                                {loading ? "..." : loadError ? "Unavailable" : stats?.completed || 0}
                             </h3>
                         </div>
                         <div className="glass-card p-6 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl hover:bg-white/10 transition-colors">
@@ -136,7 +151,7 @@ export default function InsuranceDashboard() {
                             </div>
                             <p className="text-[var(--text-muted)] text-xs mb-1 uppercase tracking-widest font-bold">Premium Revenue</p>
                             <h3 className="text-2xl font-black font-heading text-primary">
-                                {loading ? "..." : formatCurrency(stats?.totalValue || 0)}
+                                {loading ? "..." : loadError ? "Unavailable" : formatCurrency(stats?.totalValue || 0)}
                             </h3>
                         </div>
                     </div>
@@ -164,7 +179,7 @@ export default function InsuranceDashboard() {
                                 <tbody className="divide-y divide-[var(--border-default)]/80">
                                     {loading ? (
                                         <tr><td colSpan={6} className="px-6 py-12 text-center"><Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /></td></tr>
-                                    ) : quotes.length === 0 ? (
+                                    ) : loadError ? (<tr><td colSpan={6} className="p-6">Quote list unavailable. Retry above.</td></tr>) : quotes.length === 0 ? (
                                         <tr>
                                             <td colSpan={6} className="px-6 py-12 text-center text-[var(--text-muted)] italic">
                                                 No quote requests yet. Requests will appear here once buyers apply for insurance.
@@ -185,10 +200,10 @@ export default function InsuranceDashboard() {
                                                 <td className="px-6 py-4 text-center">{quote.ncbYears} yr</td>
                                                 <td className="px-6 py-4 text-center">
                                                     <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${quote.status === 'PENDING' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
-                                                        quote.status === 'QUOTED' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                                            quote.status === 'ACCEPTED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                                        quote.status === 'QUOTED' ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20' :
+                                                            quote.status === 'ACCEPTED' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20' :
                                                                 quote.status === 'EXPIRED' ? 'bg-gray-500/10 text-[var(--text-muted)] border-gray-500/20' :
-                                                                    'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                                                                    'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20'}`}>
                                                         {quote.status}
                                                     </span>
                                                 </td>
@@ -197,7 +212,7 @@ export default function InsuranceDashboard() {
                                                         <Loader2 size={16} className="animate-spin text-primary inline" />
                                                     ) : quote.status === 'PENDING' ? (
                                                         <div className="flex gap-2 justify-end">
-                                                            <Button size="sm" className="bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-primary dark:hover:text-white border border-blue-500/20 h-8 text-xs"
+                                                            <Button size="sm" className="bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500 hover:text-primary dark:hover:text-white border border-blue-500/20 h-8 text-xs"
                                                                 onClick={() => handleStatusUpdate(quote.id, 'QUOTED')}>
                                                                 Provide Quote
                                                             </Button>
@@ -215,7 +230,7 @@ export default function InsuranceDashboard() {
                             </table>
                         </div>
                     </div>
-                </main>
+                </div>
             </div>
         </div>
     )

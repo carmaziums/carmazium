@@ -75,8 +75,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     {
         href: "/dashboard/dealer/offers",
         requiredPermission: "MANAGE_OFFERS",
-        label: "Offers",
-        title: "Offers Received",
+        label: "Offers received",
+        title: "Offers received",
         subHeader: "Review offers buyers made on your vehicles",
         icon: Tag,
         hidden: true,

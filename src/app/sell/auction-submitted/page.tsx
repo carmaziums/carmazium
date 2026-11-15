@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default function AuctionSubmittedPage() {
     return (
-        <main className="min-h-screen bg-[var(--bg-primary)] px-5 pb-20 pt-32">
+        <div className="min-h-screen bg-[var(--bg-primary)] px-5 pb-20 pt-32">
             <div className="glass-card mx-auto max-w-md p-8 text-center">
                 <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-amber-500/15 text-amber-400">
                     <Hourglass size={40} aria-hidden="true" />
@@ -32,6 +32,6 @@ export default function AuctionSubmittedPage() {
                     </Button>
                 </div>
             </div>
-        </main>
+        </div>
     )
 }

@@ -367,7 +367,7 @@ export default function AdminDealerVerificationPage() {
         <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
           <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
 
-          <main className="flex-1 space-y-8 min-w-0">
+          <div className="flex-1 space-y-8 min-w-0">
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[var(--bg-input)] p-6 rounded-2xl border border-[var(--border-default)] backdrop-blur-md">
               <div>
@@ -526,7 +526,7 @@ export default function AdminDealerVerificationPage() {
                 })}
               </div>
             )}
-          </main>
+          </div>
         </div>
       </div>
     </>

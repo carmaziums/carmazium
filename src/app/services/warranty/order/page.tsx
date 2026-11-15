@@ -30,7 +30,7 @@ function Order() {
             window.location.assign(data.url)
         } catch (e) { await load(); setError(e instanceof Error ? e.message : 'Could not resume payment.'); setBusy(false) }
     }
-    return <main className="container mx-auto max-w-3xl px-5 pt-28 pb-20 space-y-6">
+    return <div className="container mx-auto max-w-3xl px-5 pt-28 pb-20 space-y-6">
         <h1 className="text-3xl font-bold">Your warranty order</h1>
         {error && <div role="alert" className="p-4 rounded-xl border border-red-500/40"><p>{error}</p><Link className="underline" href={`/auth/login?redirect=${encodeURIComponent(`/services/warranty/order?id=${id}`)}`}>Sign in to the account used to order</Link></div>}
         {!order && !error && <p role="status">Checking your order and payment…</p>}
@@ -49,6 +49,6 @@ function Order() {
             <button onClick={() => void load()} className="underline text-primary">Refresh payment status</button>
         </section>}
         <div className="flex flex-wrap gap-5"><Link href="/services/warranty" className="underline">Get a new quote</Link><Link href="/dashboard/warranties" className="underline">My warranty orders</Link><Link href="/contact" className="underline">Contact the team</Link></div>
-    </main>
+    </div>
 }
 export default function WarrantyOrderPage() { return <Suspense fallback={<p className="pt-28 text-center">Loading order…</p>}><Order /></Suspense> }

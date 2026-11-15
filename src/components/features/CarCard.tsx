@@ -49,11 +49,11 @@ interface CarCardProps {
 
 // Motorway-style exterior grade colors: 1 best → 5 worst
 const GRADE_STYLES: Record<number, { dot: string; text: string; border: string; bg: string; label: string }> = {
-    1: { dot: 'bg-emerald-500', text: 'text-emerald-800 dark:text-emerald-400', border: 'border-emerald-500/30', bg: 'bg-emerald-500/10', label: 'Excellent — minimal/no wear' },
-    2: { dot: 'bg-lime-500',    text: 'text-lime-800 dark:text-lime-400',    border: 'border-lime-500/30',    bg: 'bg-lime-500/10',    label: 'Very good — light wear' },
-    3: { dot: 'bg-amber-500',   text: 'text-amber-800 dark:text-amber-400',   border: 'border-amber-500/30',   bg: 'bg-amber-500/10',   label: 'Good — moderate damage' },
-    4: { dot: 'bg-orange-500',  text: 'text-orange-800 dark:text-orange-400',  border: 'border-orange-500/30',  bg: 'bg-orange-500/10',  label: 'Fair — noticeable damage' },
-    5: { dot: 'bg-red-500',     text: 'text-red-800 dark:text-red-400',     border: 'border-red-500/30',     bg: 'bg-red-500/10',     label: 'Poor — heavy damage' },
+    1: { dot: 'bg-emerald-500', text: 'text-emerald-800 dark:text-emerald-400', border: 'border-emerald-500/30', bg: 'bg-emerald-500/10', label: 'Exterior damage grade from seller reports; mechanical condition is not assessed' },
+    2: { dot: 'bg-lime-500',    text: 'text-lime-800 dark:text-lime-400',    border: 'border-lime-500/30',    bg: 'bg-lime-500/10',    label: 'Exterior damage grade from seller reports; mechanical condition is not assessed' },
+    3: { dot: 'bg-amber-500',   text: 'text-amber-800 dark:text-amber-400',   border: 'border-amber-500/30',   bg: 'bg-amber-500/10',   label: 'Exterior damage grade from seller reports; mechanical condition is not assessed' },
+    4: { dot: 'bg-orange-500',  text: 'text-orange-800 dark:text-orange-400',  border: 'border-orange-500/30',  bg: 'bg-orange-500/10',  label: 'Exterior damage grade from seller reports; mechanical condition is not assessed' },
+    5: { dot: 'bg-red-500',     text: 'text-red-800 dark:text-red-400',     border: 'border-red-500/30',     bg: 'bg-red-500/10',     label: 'Exterior damage grade from seller reports; mechanical condition is not assessed' },
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -286,7 +286,7 @@ export function CarCard({
                             className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide ${gradeStyle.bg} ${gradeStyle.text} border ${gradeStyle.border} px-2 py-0.5 rounded-full`}
                         >
                             <span className={`w-1.5 h-1.5 rounded-full ${gradeStyle.dot}`} />
-                            Grade {exteriorGrade}
+                            Exterior grade {exteriorGrade}
                         </span>
                     </div>
                 )}

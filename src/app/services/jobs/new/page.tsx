@@ -29,7 +29,7 @@ export default function NewServiceJobPage() {
 
     return (
         <div className="min-h-screen pt-24 pb-20">
-            <main className="container mx-auto px-5 max-w-4xl">
+            <div className="container mx-auto px-5 max-w-4xl">
                 <Link
                     href="/services"
                     className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary mb-7"
@@ -68,7 +68,7 @@ export default function NewServiceJobPage() {
                 <div className="mt-8 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5 text-sm text-[var(--text-muted)]">
                     Posting is open to signed-in CarMazium users. Only providers approved for the relevant service can submit a quote, helping keep competition genuine and the job marketplace safer.
                 </div>
-            </main>
+            </div>
         </div>
     )
 }

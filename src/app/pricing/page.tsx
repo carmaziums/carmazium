@@ -78,7 +78,7 @@ export default function PricingPage() {
     const auction = PRICING.marketplace.auction
 
     return (
-        <main className="min-h-screen overflow-hidden pb-24 pt-20">
+        <div className="min-h-screen overflow-hidden pb-24 pt-20">
             <PageJsonLd
                 path="/pricing"
                 title="Car Selling Fees & Listing Prices UK | CarMazium"
@@ -322,6 +322,6 @@ export default function PricingPage() {
                     <div className="space-y-3">{FAQS.map((faq) => <FaqItem key={faq.q} q={faq.q} a={faq.a} />)}</div>
                 </div>
             </section>
-        </main>
+        </div>
     )
 }

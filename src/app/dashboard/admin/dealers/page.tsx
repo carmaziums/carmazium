@@ -59,7 +59,7 @@ export default function AdminDealersPage() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
 
-                <main className="flex-1 space-y-8 min-w-0">
+                <div className="flex-1 space-y-8 min-w-0">
                     <div className="bg-[var(--bg-input)] p-6 rounded-2xl border border-[var(--border-default)] backdrop-blur-md">
                         <Link href="/dashboard/admin" className="inline-flex items-center text-[var(--text-muted)] hover:text-primary dark:hover:text-white mb-2 text-sm transition-colors">
                             <ArrowLeft size={16} className="mr-1" /> Back to Overview
@@ -166,7 +166,7 @@ export default function AdminDealersPage() {
                             </div>
                         </div>
                     </div>
-                </main>
+                </div>
             </div>
             <UserDetailModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
         </div>

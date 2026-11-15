@@ -1,4 +1,5 @@
 "use client"
+import { ResponsiveFilterPanel } from "@/components/ui/ResponsiveFilterPanel"
 
 import * as React from "react"
 import Link from "next/link"
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { BODY_TYPE_LABELS, FUEL_TYPE_LABELS } from "@/lib/vehicleLabels"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS as SIDEBAR_BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
+import { sameMake } from "@/lib/makeAliases"
 import { CAR_MAKES, getModelsForMake } from "@/lib/carData"
 import { useLocation } from "@/context/LocationContext"
 import { haversineDistanceMiles } from "@/lib/distance"
@@ -206,11 +208,11 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
     const hasSpecs = l.year || l.mileage != null || l.fuelType || l.transmission || l.bodyType || l.location || l.deliveryAvailable
     const grade = auction.listing.exteriorGrade
     const gradeStyle: { dot: string; text: string; border: string; bg: string; label: string } | null =
-        grade === 1 ? { dot: 'bg-emerald-500', text: 'text-emerald-300', border: 'border-emerald-500/40', bg: 'bg-emerald-500/15', label: 'Excellent — minimal/no wear' } :
-        grade === 2 ? { dot: 'bg-lime-500',    text: 'text-lime-300',    border: 'border-lime-500/40',    bg: 'bg-lime-500/15',    label: 'Very good — light wear' } :
-        grade === 3 ? { dot: 'bg-amber-500',   text: 'text-amber-300',   border: 'border-amber-500/40',   bg: 'bg-amber-500/15',   label: 'Good — moderate damage' } :
-        grade === 4 ? { dot: 'bg-orange-500',  text: 'text-orange-300',  border: 'border-orange-500/40',  bg: 'bg-orange-500/15',  label: 'Fair — noticeable damage' } :
-        grade === 5 ? { dot: 'bg-red-500',     text: 'text-red-300',     border: 'border-red-500/40',     bg: 'bg-red-500/15',     label: 'Poor — heavy damage' } :
+        grade === 1 ? { dot: 'bg-emerald-500', text: 'text-emerald-800 dark:text-emerald-300', border: 'border-emerald-500/40', bg: 'bg-emerald-500/15', label: 'Exterior damage grade from seller reports; mechanical condition is not assessed' } :
+        grade === 2 ? { dot: 'bg-lime-500',    text: 'text-lime-800 dark:text-lime-300',    border: 'border-lime-500/40',    bg: 'bg-lime-500/15',    label: 'Exterior damage grade from seller reports; mechanical condition is not assessed' } :
+        grade === 3 ? { dot: 'bg-amber-500',   text: 'text-amber-800 dark:text-amber-300',   border: 'border-amber-500/40',   bg: 'bg-amber-500/15',   label: 'Exterior damage grade from seller reports; mechanical condition is not assessed' } :
+        grade === 4 ? { dot: 'bg-orange-500',  text: 'text-orange-800 dark:text-orange-300',  border: 'border-orange-500/40',  bg: 'bg-orange-500/15',  label: 'Exterior damage grade from seller reports; mechanical condition is not assessed' } :
+        grade === 5 ? { dot: 'bg-red-500',     text: 'text-red-800 dark:text-red-300',     border: 'border-red-500/40',     bg: 'bg-red-500/15',     label: 'Exterior damage grade from seller reports; mechanical condition is not assessed' } :
         null
 
     return (
@@ -290,7 +292,7 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
                                 className={`inline-flex items-center gap-1.5 backdrop-blur ${gradeStyle.bg} ${gradeStyle.text} border ${gradeStyle.border} px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide`}
                             >
                                 <span className={`w-1.5 h-1.5 rounded-full ${gradeStyle.dot}`} />
-                                Grade {grade}
+                                Exterior grade {grade}
                             </span>
                         )}
                     </div>
@@ -622,7 +624,7 @@ export default function AuctionsBrowsePage() {
                 if (!matchesSearch) return false
             }
             if (appliedFilters.vehicleType && l.vehicleType && l.vehicleType !== appliedFilters.vehicleType) return false
-            if (appliedFilters.make && l.make !== appliedFilters.make) return false
+            if (appliedFilters.make && !sameMake(l.make || "", appliedFilters.make)) return false
             if (appliedFilters.model && l.model !== appliedFilters.model) return false
             if (appliedFilters.bodyType && l.bodyType !== appliedFilters.bodyType) return false
             if (appliedFilters.vehicleType === 'CAR' && !appliedFilters.bodyType && ['CARAVAN', 'CAMPERVAN'].includes(l.bodyType || '')) return false
@@ -917,20 +919,7 @@ export default function AuctionsBrowsePage() {
             {/* ── Auction Grid ──────────────────────────────────────────────── */}
             <div className="container mx-auto px-5 py-8 flex flex-col lg:flex-row gap-8">
 
-                {/* ── Sidebar Overlay (Mobile) ── */}
-                {isFilterOpen && (
-                    <div
-                        className="fixed inset-0 z-[55] bg-slate-950/80 backdrop-blur-sm lg:hidden transition-opacity"
-                        onClick={() => setIsFilterOpen(false)}
-                    />
-                )}
-
-                {/* ── Sidebar ──────────────────────────────────────────────────── */}
-                <aside className={`
-                    fixed inset-x-0 bottom-0 z-[60] lg:z-10 flex flex-col h-[85vh] bg-[var(--bg-dropdown)] border-t border-[var(--border-default)] rounded-t-3xl shadow-2xl transition-transform duration-300
-                    lg:static lg:w-72 lg:flex-shrink-0 lg:glass-card lg:border lg:rounded-2xl lg:shadow-none lg:translate-y-0 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:flex lg:flex-col lg:overflow-visible lg:p-0
-                    ${isFilterOpen ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'}
-                `}>
+                <ResponsiveFilterPanel open={isFilterOpen} onClose={() => setIsFilterOpen(false)}>
                     <div className="flex justify-between items-center p-6 pb-4 border-b border-[var(--border-default)] lg:px-6 lg:pt-6 lg:pb-4 lg:border-b lg:border-[var(--border-default)] shrink-0">
                         <h3 className="font-heading font-bold text-xl">Filters</h3>
                         <div className="flex items-center gap-4">
@@ -941,6 +930,7 @@ export default function AuctionsBrowsePage() {
                             )}
                             <button
                                 onClick={() => setIsFilterOpen(false)}
+                                aria-label="Close filters"
                                 className="lg:hidden text-[var(--text-muted)] hover:text-primary dark:hover:text-white bg-[var(--bg-card)] w-8 h-8 rounded-full flex items-center justify-center"
                             >
                                 <X size={20} />
@@ -1372,7 +1362,7 @@ export default function AuctionsBrowsePage() {
                             <span className="hidden lg:inline">Apply Filters</span>
                         </Button>
                     </div>
-                </aside>
+                </ResponsiveFilterPanel>
 
                 {/* ── Results Column ─────────────────────────────────────────── */}
                 <div className="flex-1 min-w-0">

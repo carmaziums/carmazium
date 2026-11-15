@@ -23,6 +23,16 @@ describe('InsuranceService partner integrity', () => {
         return { prisma, service: new InsuranceService(prisma) };
     }
 
+    it('filters the complete partner queue and total by status before pagination', async () => {
+        const { prisma, service } = build();
+        prisma.insuranceQuote.count.mockResolvedValue(51);
+        const result = await service.findByPartner('partner', 2, 15, 'PENDING');
+        expect(prisma.insuranceQuote.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { partnerId: 'partner', deletedAt: null, status: 'PENDING' }, skip: 15, take: 15 }));
+        expect(prisma.insuranceQuote.count).toHaveBeenCalledWith({ where: { partnerId: 'partner', deletedAt: null, status: 'PENDING' } });
+        expect(result.total).toBe(51);
+        await expect(service.findByPartner('partner', 1, 15, 'FAKE')).rejects.toBeInstanceOf(BadRequestException);
+    });
+
     it('resolves insurance partners through insuranceUserId, not financeUserId', async () => {
         const { prisma, service } = build();
         prisma.partnerProfile.findFirst.mockResolvedValue({ id: 'insurance-profile-1' });

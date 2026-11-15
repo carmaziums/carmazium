@@ -489,7 +489,7 @@ function SellerAuctionsPage() {
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="seller" />
-                <main className="flex-1 space-y-6">
+                <div className="flex-1 space-y-6">
 
                     {/* Header — sticky so "Create Auction" stays reachable without
                         scrolling back up from deep inside a long auctions table */}
@@ -1305,7 +1305,7 @@ function SellerAuctionsPage() {
                             })}
                         </div>
                     )}
-                </main>
+                </div>
             </div>
         </div>
 

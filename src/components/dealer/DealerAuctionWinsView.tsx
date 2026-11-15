@@ -12,9 +12,9 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { useAuth } from "@/context/AuthContext"
-import { getWonAuctions, type Auction } from "@/lib/auctionApi"
+import { getAllWonAuctions, type Auction } from "@/lib/auctionApi"
 import { BuyerFeeCountdown } from "@/components/auctions/BuyerFeeCountdown"
-import { getMyBids, type Bid } from "@/lib/listingApi"
+import { getAllMyBids, type Bid } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { FUEL_TYPE_LABELS, BODY_TYPE_LABELS } from "@/lib/vehicleLabels"
 import { useDealerAccess } from "@/context/DealerAccessContext"
@@ -243,7 +243,6 @@ function CallSellerButton({ phone, phoneAvailable }: { phone?: string | null; ph
     )
 }
 
-const GRADE_LABELS = ['', 'Excellent', 'Great', 'Good', 'Average', 'Below Average']
 
 // ─── Section 1: Won auctions, grouped by handover stage ───────────────────────
 
@@ -306,7 +305,7 @@ function WonAuctionRow({ auction, canPayAuctionFee, purchaseId }: { auction: Auc
                 {l.color && <SpecChip icon={Palette}>{l.color}</SpecChip>}
                 {l.engineSize != null && <SpecChip icon={Gauge}>{(l.engineSize / 1000).toFixed(1)}L</SpecChip>}
                 {l.exteriorGrade != null && (
-                    <SpecChip icon={Award}>Grade {l.exteriorGrade} — {GRADE_LABELS[l.exteriorGrade] ?? ''}</SpecChip>
+                    <SpecChip icon={Award}>Exterior grade {l.exteriorGrade} (seller-reported)</SpecChip>
                 )}
                 {l.hpiReport?.isClear && <SpecChip icon={ShieldCheck}>History Report Clear</SpecChip>}
                 {l.owners && <SpecChip icon={Car}>{l.owners === '1' ? '1 Owner' : `${l.owners} Owners`}</SpecChip>}
@@ -401,19 +400,25 @@ export default function MyBidsPage() {
     const [purchaseByListing, setPurchaseByListing] = React.useState<Record<string, string>>({})
     const [activeBids, setActiveBids] = React.useState<Bid[] | null>(null)
     const [loadError, setLoadError] = React.useState<string | null>(null)
+    const [retry, setRetry] = React.useState(0)
     const [tick, setTick] = React.useState(0)
 
     React.useEffect(() => {
         if (authLoading || !user) return
-        Promise.all([getWonAuctions(), getMyBids(1, 50)])
+        let alive = true
+        setLoadError(null)
+        setWonAuctions(null)
+        setActiveBids(null)
+        Promise.all([getAllWonAuctions(), getAllMyBids()])
             .then(([won, bidsRes]) => {
+                if (!alive) return
                 setWonAuctions(won)
                 // One row per auction, not per bid — keep only their latest bid on
                 // each auction that's still ACTIVE (already-ended auctions surface
                 // through wonAuctions instead, so no duplicate rows).
                 const seen = new Set<string>()
                 const active: Bid[] = []
-                for (const b of bidsRes.data ?? []) {
+                for (const b of bidsRes) {
                     if (b.listing.auction?.status !== "ACTIVE") continue
                     if (seen.has(b.listingId)) continue
                     seen.add(b.listingId)
@@ -421,8 +426,9 @@ export default function MyBidsPage() {
                 }
                 setActiveBids(active)
             })
-            .catch(() => setLoadError("Couldn't load your bids and wins."))
-    }, [authLoading, user])
+            .catch(() => { if (alive) setLoadError("Couldn't load your bids and wins. Please retry.") })
+        return () => { alive = false }
+    }, [authLoading, user, retry])
 
     // The lookup returns only this dealer's Sale IDs. Unrecorded wins still
     // use the auction-specific handover/fee pages; no fake sale is created.
@@ -462,7 +468,7 @@ export default function MyBidsPage() {
         return buckets
     }, [wonAuctions])
 
-    const isLoading = authLoading || wonAuctions === null || activeBids === null
+    const isLoading = authLoading || (!loadError && (wonAuctions === null || activeBids === null))
     const isEmpty = !isLoading && !loadError && wonAuctions !== null && activeBids !== null
         && wonAuctions.length === 0 && activeBids.length === 0
 
@@ -470,7 +476,7 @@ export default function MyBidsPage() {
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" />
-                <main className="flex-1 space-y-8">
+                <div className="flex-1 space-y-8">
                     <PageHeader
                         title="Auction Wins"
                         subHeader="Every auction you're bidding on or have won, and exactly what to do next"
@@ -485,6 +491,7 @@ export default function MyBidsPage() {
                         <div className="dealer-glass-card p-10 flex flex-col items-center gap-3 text-center">
                             <AlertTriangle size={28} className="text-red-400" />
                             <p className="text-sm text-[var(--text-primary)] font-bold">{loadError}</p>
+                            <button type="button" onClick={() => setRetry(value => value + 1)} className="rounded-xl bg-primary px-4 py-2 font-bold text-white">Retry</button>
                         </div>
                     ) : isEmpty ? (
                         <div className="dealer-glass-card p-14 flex flex-col items-center gap-4 text-center">
@@ -581,7 +588,7 @@ export default function MyBidsPage() {
                             <span className="flex items-center gap-1.5"><CreditCard size={13} /> The £125 buyer fee is CarMazium&apos;s fee — up to £100 of it is refunded if handover is denied.</span>
                         </div>
                     )}
-                </main>
+                </div>
             </div>
         </div>
     )

@@ -30,7 +30,7 @@ export default function NewBlogPostPage() {
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
-                <main className="flex-1 space-y-6 min-w-0">
+                <div className="flex-1 space-y-6 min-w-0">
                     <div>
                         <Link href="/dashboard/admin/blog" className="inline-flex items-center text-[var(--text-muted)] hover:text-primary dark:hover:text-white mb-2 text-sm transition-colors">
                             <ArrowLeft size={16} className="mr-1" /> Back to Blog
@@ -41,7 +41,7 @@ export default function NewBlogPostPage() {
                         </h1>
                     </div>
                     <BlogPostForm />
-                </main>
+                </div>
             </div>
         </div>
     )

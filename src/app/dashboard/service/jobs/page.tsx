@@ -111,7 +111,7 @@ function ProviderJobs() {
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="provider" userName={userName} userType="Service Provider" />
-                <main className="flex-1 min-w-0 space-y-6">
+                <div className="flex-1 min-w-0 space-y-6">
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                         <div>
                             <p className="text-primary text-xs font-black uppercase tracking-[0.18em] mb-2">TradeXchange Provider Marketplace</p>
@@ -181,7 +181,7 @@ function ProviderJobs() {
                             {loadingMore ? "Loading…" : "Load more"}
                         </button>
                     </div>}
-                </main>
+                </div>
             </div>
         </div>
     )

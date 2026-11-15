@@ -123,7 +123,7 @@ export default function DealerSavedAuctionsView() {
             <div className="min-h-screen pt-20 pb-12">
                 <div className="container mx-auto px-4 sm:px-5 flex flex-col lg:flex-row gap-8">
                     <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
-                    <main className="flex-1 min-w-0 space-y-5">
+                    <div className="flex-1 min-w-0 space-y-5">
                         <PageHeader
                             title="Saved"
                             subHeader="Auctions and retail cars you have saved."
@@ -257,7 +257,7 @@ export default function DealerSavedAuctionsView() {
                                 </button>
                             </div>
                         )}
-                    </main>
+                    </div>
                 </div>
             </div>
         </RequireAuth>

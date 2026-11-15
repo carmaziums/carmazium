@@ -1,4 +1,5 @@
 "use client"
+import { AccessibleModal } from "@/components/ui/AccessibleModal"
 
 import * as React from "react"
 import Link from "next/link"
@@ -120,10 +121,22 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
         router.push('/')
     }
 
+    const [supportError, setSupportError] = React.useState(false)
+    const supportPending = React.useRef(false)
+    React.useEffect(() => {
+        const media = window.matchMedia("(min-width: 1024px)")
+        const closeOnDesktop = () => { if (media.matches) setIsMobileMenuOpen(false) }
+        media.addEventListener("change", closeOnDesktop)
+        return () => media.removeEventListener("change", closeOnDesktop)
+    }, [])
+    const supportFailure = supportError ? <p role="alert" className="p-3 text-sm text-red-700 dark:text-red-300">Support chat could not open. Please retry using the support button, or <Link href="/contact" className="underline font-bold" onClick={() => setIsMobileMenuOpen(false)}>contact CarMazium</Link>.</p> : null
+
     const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen)
 
     const handleContactSupport = async () => {
-        if (contactingSupport) return
+        if (supportPending.current) return
+        supportPending.current = true
+        setSupportError(false)
         setContactingSupport(true)
         try {
             const room = await getOrCreateSupportRoom()
@@ -131,8 +144,10 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
             router.push(`${base}${base.includes("?") ? "&" : "?"}room=${room.id}`)
             setIsMobileMenuOpen(false)
         } catch (err) {
+            setSupportError(true)
             console.error("Failed to start support chat:", err)
         } finally {
+            supportPending.current = false
             setContactingSupport(false)
         }
     }
@@ -229,7 +244,7 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
             { href: "/dashboard/service", label: "Service Overview", icon: LayoutDashboard, section: "Services" },
             { href: "/dashboard/service/jobs", label: "Available Jobs", icon: Briefcase, section: "Services" },
             { href: "/dashboard/service/jobs?tab=mine", label: "My Work", icon: Briefcase, section: "Services" },
-            { href: "/dashboard/service/capabilities", label: "Service Setup", icon: ShieldCheck, section: "Services" },
+            { href: "/dashboard/service/capabilities", label: "My services", icon: ShieldCheck, section: "Services" },
             { href: "/dashboard/service/messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account" },
             { href: "/profile", label: "Account Settings", icon: Settings, section: "Account" },
         ],
@@ -414,20 +429,9 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
                 </div>
             </div>
 
-            {isMobileMenuOpen && (
-                <div
-                    className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                />
-            )}
-
-            {/* Mobile Full Menu Panel */}
-            <div id="dashboard-mobile-menu" className={`
-                lg:hidden fixed bottom-[72px] left-0 right-0 z-40
-                border-t rounded-t-2xl
-                transition-transform duration-300 ease-out shadow-[0_-10px_40px_rgba(0,0,0,0.5)]
-                ${isMobileMenuOpen ? "translate-y-0" : "translate-y-[120%]"}
-            `} style={{ background: 'var(--bg-dropdown)', borderColor: 'var(--border-default)' }}>
+            {isMobileMenuOpen && <AccessibleModal label="Dashboard menu" onClose={() => setIsMobileMenuOpen(false)} className="fixed inset-x-0 bottom-0 top-auto m-0 max-h-[90dvh] w-full max-w-none border-0 bg-transparent p-0 text-[var(--text-primary)] backdrop:bg-black/70 backdrop:backdrop-blur-sm">
+            <div id="dashboard-mobile-menu" className="border-t rounded-t-2xl" style={{ background: 'var(--bg-dropdown)', borderColor: 'var(--border-default)' }}>
+                <div className="flex justify-between items-center px-5 pt-4"><h2 className="font-bold">Dashboard menu</h2><button type="button" aria-label="Close dashboard menu" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-lg border border-[var(--border-default)]"><X size={20} /></button></div>
                 <div className="p-4 pb-12 max-h-[68vh] overflow-y-auto">
                     <div className="flex items-center gap-3 p-3 rounded-xl mb-4" style={{ background: 'var(--bg-card)' }}>
                         <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm border border-primary/30">
@@ -522,6 +526,7 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
                         </button>
                     )}
 
+                    {supportFailure}
                     {children && <div className="pt-2">{children}</div>}
 
                     <button
@@ -532,6 +537,8 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
                     </button>
                 </div>
             </div>
+
+            </AccessibleModal>}
 
             {/* Desktop Sidebar */}
             <aside className="hidden lg:block w-72 shrink-0 self-start">
@@ -669,6 +676,7 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
                                 {contactingSupport ? <Loader2 size={18} className="animate-spin" /> : <LifeBuoy size={18} />}
                                 Contact Support
                             </button>
+                            {supportFailure}
                         </div>
                     )}
 

@@ -51,7 +51,7 @@ export default function ReconciledPurchasePage() {
         : ""
 
     return (
-        <main className="min-h-screen pt-24 pb-24 px-4">
+        <div className="min-h-screen pt-24 pb-24 px-4">
             <div className="mx-auto max-w-3xl space-y-5">
                 <Link href="/dashboard/dealer/purchases?tab=completed&channel=all"
                     className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary">
@@ -121,6 +121,6 @@ export default function ReconciledPurchasePage() {
                     </>
                 )}
             </div>
-        </main>
+        </div>
     )
 }

@@ -27,9 +27,9 @@ export const DealerFinanceScreen: React.FC = () => {
   };
   return <ScrollView style={{flex:1,backgroundColor:Colors.bgPrimary}} contentContainerStyle={{padding:24,paddingTop:inset.top+20,gap:20}}>
     <HamburgerButton />
-    <Text style={{fontSize:24,fontWeight:'700',color:Colors.textPrimary}}>Listing finance calculator</Text>
+    <Text style={{fontSize:24,fontWeight:'700',color:Colors.textPrimary}}>Show finance calculator</Text>
     <Text style={{color:Colors.textSecondary}}>Show the finance calculator and Apply for Finance button on my current and future retail listings. This is on by default; you can turn it off at any time.</Text>
-    {loading ? <ActivityIndicator /> : <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}><Text style={{flex:1,color:Colors.textPrimary}}>{enabled ? 'On — remove finance calculator from my listings' : 'Off — put finance calculator on my listings'}</Text><Switch value={enabled} disabled={saving} onValueChange={save} accessibilityLabel="Show finance calculator on my listings" /></View>}
+    {loading ? <ActivityIndicator /> : <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}><Text style={{flex:1,color:Colors.textPrimary}}>{enabled ? 'On' : 'Off'}</Text><Switch value={enabled} disabled={saving} onValueChange={save} accessibilityLabel="Show finance calculator on my listings" /></View>}
     <Text style={{color:Colors.textSecondary}}>Buyers enter their name, email and phone, then continue to the application selected by CarMazium admin. CarMazium does not provide finance or make lending decisions.</Text>
   </ScrollView>;
 };

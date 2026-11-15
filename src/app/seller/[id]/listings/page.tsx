@@ -153,7 +153,7 @@ export default async function SellerListingsPage({
     const currentPage = Math.min(Math.max(listings.page, 1), Math.max(listings.totalPages, 1))
 
     return (
-        <main className="min-h-screen">
+        <div className="min-h-screen">
             <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
                 <Link
                     href={`/seller/${id}`}
@@ -255,6 +255,6 @@ export default async function SellerListingsPage({
                     </nav>
                 )}
             </div>
-        </main>
+        </div>
     )
 }

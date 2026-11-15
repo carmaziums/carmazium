@@ -164,7 +164,7 @@ export default function NotificationsPage() {
     }
 
     return (
-        <main className="min-h-screen px-3 pb-24 pt-20 sm:px-5 sm:pt-24">
+        <div className="min-h-screen px-3 pb-24 pt-20 sm:px-5 sm:pt-24">
             <div className="mx-auto w-full max-w-4xl space-y-4">
                 <section className="glass-card overflow-hidden border border-[var(--border-default)]">
                     <div className="flex flex-col gap-4 border-b border-[var(--border-default)] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
@@ -312,6 +312,6 @@ export default function NotificationsPage() {
                     )}
                 </section>
             </div>
-        </main>
+        </div>
     )
 }

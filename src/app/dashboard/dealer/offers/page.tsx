@@ -132,9 +132,9 @@ export default function DealerOffersPage() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
-                <main className="flex-1 space-y-6 min-w-0">
+                <div className="flex-1 space-y-6 min-w-0">
                     <PageHeader
-                        title="Direct Offers"
+                        title="Offers received"
                         subHeader="Manage offers received from buyers on your listings"
                     />
 
@@ -254,7 +254,7 @@ export default function DealerOffersPage() {
                                             <th className="px-6 py-5">Linked Vehicle</th>
                                             <th className="px-6 py-5 text-right">Offer Amount</th>
                                             <th className="px-6 py-5 text-center">Current Status</th>
-                                            <th className="px-6 py-5 text-right">Executive Actions</th>
+                                            <th className="px-6 py-5 text-right">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/[0.03]">
@@ -410,7 +410,7 @@ export default function DealerOffersPage() {
                             </div>{/* end hidden sm:block */}
                         </div>
                     )}
-                </main>
+                </div>
             </div>
         </div>
     )

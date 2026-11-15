@@ -57,7 +57,7 @@ export default function DownloadAppPage() {
   const anyAvailable = Boolean(iosHref || androidHref || windowsHref)
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#101c44] pb-20 pt-24 text-white sm:pt-28">
+    <div className="min-h-screen overflow-x-hidden bg-[#101c44] pb-20 pt-24 text-white sm:pt-28">
       <PageJsonLd path="/download-app" title="Get the CarMazium App | iPhone, Android and Windows" description={metadata.description as string} />
       <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-8">
         <AppPromoShowcase
@@ -219,6 +219,6 @@ export default function DownloadAppPage() {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   )
 }

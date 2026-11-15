@@ -56,7 +56,7 @@ export default function HistoricalAuctionReconciliationPage() {
     <div className="min-h-screen pt-20 pb-12">
       <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
         <DashboardSidebar role="admin" userName={name} userType="Super Admin" />
-        <main className="flex-1 min-w-0 space-y-6">
+        <div className="flex-1 min-w-0 space-y-6">
           <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-6">
             <Link href="/dashboard/admin/handovers" className="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-primary">
               <ArrowLeft size={15}/> Back to handovers
@@ -157,7 +157,7 @@ export default function HistoricalAuctionReconciliationPage() {
               )}
             </>
           )}
-        </main>
+        </div>
       </div>
     </div>
   )

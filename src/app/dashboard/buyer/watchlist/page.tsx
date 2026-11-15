@@ -55,7 +55,7 @@ function SavedCarsPage() {
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="buyer" />
-                <main className="flex-1 space-y-6">
+                <div className="flex-1 space-y-6">
                     <div className="flex justify-between items-center mb-6">
                         <h1 className="text-3xl font-bold font-heading flex items-center gap-3">
                             <Heart className="text-pink-400" /> Saved Cars
@@ -154,7 +154,7 @@ function SavedCarsPage() {
                             )}
                         </>
                     )}
-                </main>
+                </div>
             </div>
         </div>
     )

@@ -197,7 +197,7 @@ function CompareContent() {
     const nextRow = () => rowCounter++
 
     return (
-        <main className="min-h-screen pb-24 pt-20">
+        <div className="min-h-screen pb-24 pt-20">
             <PageHero
                 eyebrow={<><Car size={15} /> Side-by-side comparison</>}
                 title="Compare Vehicles Head-to-Head"
@@ -379,7 +379,7 @@ function CompareContent() {
                     </div>
                 </div>
             )}
-        </main>
+        </div>
     )
 }
 

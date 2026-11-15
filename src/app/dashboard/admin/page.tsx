@@ -551,7 +551,7 @@ export default function AdminDashboard() {
             <div className="container mx-auto px-4 sm:px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
 
-                <main className="flex-1 space-y-7 min-w-0">
+                <div className="flex-1 space-y-7 min-w-0">
                     <section className="relative overflow-hidden rounded-[28px] border border-slate-700/40 bg-[linear-gradient(135deg,#08111f_0%,#121c33_45%,#281226_100%)] p-5 sm:p-7 shadow-[0_26px_70px_rgba(15,23,42,0.30)]">
                         <div
                             className="pointer-events-none absolute inset-0 opacity-[0.16]"
@@ -786,7 +786,7 @@ export default function AdminDashboard() {
                             </div>
                         ))}
                     </section>
-                </main>
+                </div>
             </div>
 
             {cardEditorOpen && (

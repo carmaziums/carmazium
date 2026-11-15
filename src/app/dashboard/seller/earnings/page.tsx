@@ -75,7 +75,7 @@ function EarningsPage() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="seller" userName={userName} userType={profile?.role ? `${profile.role} Account` : "Seller Account"} />
 
-                <main className="flex-1 space-y-8 min-w-0">
+                <div className="flex-1 space-y-8 min-w-0">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
                             <h1 className="text-3xl font-black font-heading uppercase tracking-tight">Revenue & Earnings</h1>
@@ -376,7 +376,7 @@ function EarningsPage() {
                             </div>
                         )}
                     </div>}
-                </main>
+                </div>
             </div>
         </div>
     )

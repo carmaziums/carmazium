@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { AccessibleModal } from "@/components/ui/AccessibleModal"
 import { AlertTriangle, FileImage, Loader2, ShieldCheck, Video } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import {
@@ -15,6 +16,10 @@ export default function AdminSaleCancellationsPage() {
     const [loading, setLoading] = React.useState(true)
     const [busy, setBusy] = React.useState<string | null>(null)
     const [error, setError] = React.useState<string | null>(null)
+    const [reviewing, setReviewing] = React.useState<{ request: SaleCancellationRequest; decision: "APPROVE" | "REJECT" } | null>(null)
+    const [note, setNote] = React.useState("")
+    const [reviewError, setReviewError] = React.useState<string | null>(null)
+    const submitting = React.useRef(false)
     const [search, setSearch] = React.useState("")
     const filteredRequests = requests.filter(request =>
         `${request.listing?.vrm || ""} ${request.listing?.title || ""}`.replace(/\s/g, "").toLowerCase()
@@ -35,34 +40,30 @@ export default function AdminSaleCancellationsPage() {
 
     React.useEffect(() => { void load() }, [load])
 
-    async function review(request: SaleCancellationRequest, decision: "APPROVE" | "REJECT") {
-        const note = window.prompt(
-            decision === "APPROVE"
-                ? (request.status === "PENDING_COUNTERPARTY"
-                    ? "The other party has not accepted this request. Enter the reason for your admin decision (required):"
-                    : "Admin note for this approval:")
-                : "Reason for rejecting this cancellation:",
-            ""
-        )
-        if (note === null) return
+    function openReview(request: SaleCancellationRequest, decision: "APPROVE" | "REJECT") {
+        setNote("")
+        setReviewError(null)
+        setReviewing({ request, decision })
+    }
+
+    async function submitReview(refundBuyerFee?: boolean) {
+        if (!reviewing || submitting.current) return
+        const { request, decision } = reviewing
         if (request.status === "PENDING_COUNTERPARTY" && !note.trim()) {
-            setError("Enter an admin note when deciding before the other party responds.")
+            setReviewError("Enter an admin note when deciding before the other party responds.")
             return
         }
-        let refundBuyerFee: boolean | undefined
-        if (decision === "APPROVE" && request.auctionId) {
-            refundBuyerFee = window.confirm(
-                "Refund the £125 auction buyer fee as part of this cancellation?\n\nChoose OK to refund £125, or Cancel to approve the sale cancellation without refunding the platform fee."
-            )
-        }
-
+        submitting.current = true
         setBusy(request.id)
+        setReviewError(null)
         try {
-            await adminReviewSaleCancellation(request.id, decision, note || undefined, refundBuyerFee)
+            await adminReviewSaleCancellation(request.id, decision, note.trim() || undefined, refundBuyerFee)
+            setReviewing(null)
             await load()
         } catch (err: any) {
-            setError(err?.message || "Could not complete admin review.")
+            setReviewError(err?.message || "Could not complete admin review. Please try again.")
         } finally {
+            submitting.current = false
             setBusy(null)
         }
     }
@@ -71,7 +72,7 @@ export default function AdminSaleCancellationsPage() {
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="admin" />
-                <main className="flex-1 min-w-0 space-y-6">
+                <div className="flex-1 min-w-0 space-y-6">
                     <div>
                         <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">Marketplace controls</p>
                         <h1 className="text-3xl font-black mt-1">Sale Cancellation Review</h1>
@@ -87,17 +88,17 @@ export default function AdminSaleCancellationsPage() {
                                 placeholder="Registration or vehicle name"
                                 className="mt-2 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-3" />
                         </label>
-                        <button type="button" onClick={() => void load()} disabled={loading}
+                        <button type="button" onClick={() => void load()} disabled={loading || !!busy}
                             className="rounded-xl border border-[var(--border-default)] px-4 py-3 text-sm font-bold disabled:opacity-50">Refresh requests</button>
                     </div>
 
-                    {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">{error}</div>}
+                    {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-400">{error}</div>}
 
                     {loading ? (
                         <div className="py-24 flex justify-center"><Loader2 className="animate-spin text-primary" /></div>
-                    ) : filteredRequests.length === 0 ? (
+                    ) : error ? (<p role="alert" className="text-sm text-[var(--text-secondary)]">Requests could not be verified. Use Refresh requests to try again.</p>) : filteredRequests.length === 0 ? (
                         <div className="rounded-2xl border border-dashed border-[var(--border-default)] p-12 text-center">
-                            <ShieldCheck size={30} className="mx-auto text-emerald-400" />
+                            <ShieldCheck size={30} className="mx-auto text-emerald-700 dark:text-emerald-400" />
                             <h2 className="font-black mt-3">{requests.length ? "No requests match this search" : "No open cancellation requests"}</h2>
                         </div>
                     ) : (
@@ -107,7 +108,7 @@ export default function AdminSaleCancellationsPage() {
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <AlertTriangle size={17} className="text-amber-400" />
+                                                <AlertTriangle size={17} className="text-amber-700 dark:text-amber-400" />
                                                 <h2 className="font-black">{request.listing?.title || "Vehicle sale"}</h2>
                                             </div>
                                             {request.listing?.vrm && <p className="font-mono font-black mt-2">{request.listing.vrm}</p>}
@@ -115,7 +116,7 @@ export default function AdminSaleCancellationsPage() {
                                                 {request.requestedByRole} requested · {new Date(request.createdAt).toLocaleString("en-GB")}
                                             </p>
                                         </div>
-                                        <span className="text-xs font-black uppercase tracking-widest text-amber-400">{request.status === "PENDING_COUNTERPARTY" ? "Awaiting other party" : "Admin review"}</span>
+                                        <span className="text-xs font-black uppercase tracking-widest text-amber-700 dark:text-amber-400">{request.status === "PENDING_COUNTERPARTY" ? "Awaiting other party" : "Admin review"}</span>
                                     </div>
 
                                     <div className="rounded-xl bg-[var(--bg-input)] p-4">
@@ -126,7 +127,7 @@ export default function AdminSaleCancellationsPage() {
 
                                     {!!request.linkedServiceJobs?.length && (
                                         <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
-                                            <p className="font-black text-sm text-red-400">Linked TradeXchange work needs separate handling</p>
+                                            <p className="font-black text-sm text-red-700 dark:text-red-400">Linked TradeXchange work needs separate handling</p>
                                             <p className="text-xs text-[var(--text-muted)] mt-1">
                                                 Do not assume cancelling the vehicle sale cancels paid or progressed provider work. Review these jobs separately before approving.
                                             </p>
@@ -134,7 +135,7 @@ export default function AdminSaleCancellationsPage() {
                                                 {request.linkedServiceJobs.map(job => (
                                                     <div key={job.id} className="flex items-center justify-between gap-3 rounded-lg bg-black/10 px-3 py-2 text-xs">
                                                         <span className="font-bold truncate">{job.title}</span>
-                                                        <span className="shrink-0 font-black text-amber-400">{job.serviceType} · {job.status}</span>
+                                                        <span className="shrink-0 font-black text-amber-700 dark:text-amber-400">{job.serviceType} · {job.status}</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -156,16 +157,16 @@ export default function AdminSaleCancellationsPage() {
                                     <div className="flex flex-wrap gap-2 pt-2">
                                         <button
                                             type="button"
-                                            disabled={busy === request.id}
-                                            onClick={() => void review(request, "REJECT")}
-                                            className="rounded-xl border border-red-500/30 px-4 py-2.5 text-sm font-bold text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+                                            disabled={busy !== null}
+                                            onClick={() => openReview(request, "REJECT")}
+                                            className="rounded-xl border border-red-500/30 px-4 py-2.5 text-sm font-bold text-red-700 dark:text-red-400 hover:bg-red-500/10 disabled:opacity-50"
                                         >
                                             Reject cancellation
                                         </button>
                                         <button
                                             type="button"
-                                            disabled={busy === request.id}
-                                            onClick={() => void review(request, "APPROVE")}
+                                            disabled={busy !== null}
+                                            onClick={() => openReview(request, "APPROVE")}
                                             className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-black text-white hover:bg-emerald-500 disabled:opacity-50"
                                         >
                                             {busy === request.id ? "Processing…" : "Approve & reverse sale"}
@@ -175,8 +176,30 @@ export default function AdminSaleCancellationsPage() {
                             ))}
                         </div>
                     )}
-                </main>
+                </div>
             </div>
+            {reviewing && (
+                <AccessibleModal label="Confirm cancellation decision" onClose={() => setReviewing(null)} canClose={!busy}>
+                    <div className="max-h-[90dvh] overflow-y-auto rounded-2xl bg-[var(--bg-card)] p-6 space-y-4 border border-[var(--border-default)]">
+                        <h2 className="text-xl font-black">{reviewing.decision === "APPROVE" ? "Approve this cancellation?" : "Reject this cancellation?"}</h2>
+                        <p className="font-bold">{reviewing.request.listing?.title || "Vehicle sale"} {reviewing.request.listing?.vrm}</p>
+                        <p className="text-sm text-[var(--text-secondary)]">Requested by the {reviewing.request.requestedByRole.toLowerCase()}. {reviewing.decision === "APPROVE" ? "Approving reverses this vehicle sale. Linked TradeXchange work must be handled separately." : "The sale will remain in place."}</p>
+                        {reviewing.request.counterpartResponseNote && <p className="text-sm">Other party’s response: {reviewing.request.counterpartResponseNote}</p>}
+                        <label className="block font-bold text-sm">
+                            Admin note {reviewing.request.status === "PENDING_COUNTERPARTY" ? "(required: the other party has not responded)" : "(optional)"}
+                            <textarea autoFocus value={note} onChange={event => setNote(event.target.value)} disabled={!!busy} rows={3} className="mt-2 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-3" />
+                        </label>
+                        {reviewError && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{reviewError}</p>}
+                        <div className="flex flex-col gap-2">
+                            <button type="button" disabled={!!busy} onClick={() => setReviewing(null)} className="rounded-xl border border-[var(--border-default)] px-4 py-3 font-bold disabled:opacity-50">Go back without making changes</button>
+                            {reviewing.decision === "APPROVE" && reviewing.request.auctionId && <button type="button" disabled={!!busy} onClick={() => void submitReview(true)} className="rounded-xl bg-emerald-700 text-white px-4 py-3 font-bold disabled:opacity-50">Approve and refund £125 buyer fee</button>}
+                            <button type="button" disabled={!!busy} onClick={() => void submitReview(reviewing.decision === "APPROVE" && reviewing.request.auctionId ? false : undefined)} className="rounded-xl bg-primary text-white px-4 py-3 font-bold disabled:opacity-50">
+                                {busy ? "Processing…" : reviewing.decision === "REJECT" ? "Confirm rejection" : reviewing.request.auctionId ? "Approve without refunding buyer fee" : "Approve and reverse sale"}
+                            </button>
+                        </div>
+                    </div>
+                </AccessibleModal>
+            )}
         </div>
     )
 }

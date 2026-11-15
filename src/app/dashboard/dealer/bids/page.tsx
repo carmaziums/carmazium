@@ -123,7 +123,7 @@ function AuctionBidsContent() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
 
-                <main className="flex-1 min-w-0 space-y-6">
+                <div className="flex-1 min-w-0 space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <PageHeader
                             title="Bids & offers"
@@ -292,7 +292,7 @@ function AuctionBidsContent() {
                             })}
                         </div>
                     )}
-                </main>
+                </div>
             </div>
         </div>
     )

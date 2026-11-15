@@ -262,7 +262,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.quickTask} onPress={() => navigation.navigate('ProviderCapabilities')} accessibilityRole="button" accessibilityLabel="Manage services and matching areas" activeOpacity={0.8}>
                     <Ionicons name="options-outline" size={21} color={Colors.accent} />
-                    <Text style={styles.quickTaskText}>Service areas</Text>
+                    <Text style={styles.quickTaskText}>My services</Text>
                     <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
                   </TouchableOpacity>
                   {hasApprovedJobCapability && (

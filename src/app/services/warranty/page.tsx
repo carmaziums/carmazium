@@ -7,7 +7,7 @@ import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemp
 
 export default function WarrantyServicePage() {
     if (!warrantyServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Warranty" />
-    return <main className="container mx-auto px-5 max-w-4xl pt-28 pb-20 space-y-10">
+    return <div className="container mx-auto px-5 max-w-4xl pt-28 pb-20 space-y-10">
         <section className="space-y-5">
             <ShieldCheck className="text-primary" size={40} />
             <h1 className="text-4xl md:text-5xl font-black font-heading">Vehicle warranties</h1>
@@ -16,5 +16,5 @@ export default function WarrantyServicePage() {
         </section>
         <Suspense fallback={<p>Loading warranty form…</p>}><WarrantyQuoteForm /></Suspense>
         <WarrantyProviderContact />
-    </main>
+    </div>
 }

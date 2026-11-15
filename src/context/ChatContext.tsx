@@ -22,6 +22,7 @@ interface ChatContextType {
     // State
     rooms: ChatRoom[]
     unreadCount: number
+    unreadStatus: "loading" | "ready" | "error"
     isConnected: boolean
     isLoading: boolean
     hasMoreRooms: boolean
@@ -68,6 +69,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const { user, profile, loading: authLoading } = useAuth()
     const [rooms, setRooms] = useState<ChatRoom[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
+    const [unreadStatus, setUnreadStatus] = useState<"loading" | "ready" | "error">("loading")
     const [isConnected, setIsConnected] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [hasMoreRooms, setHasMoreRooms] = useState(false)
@@ -82,6 +84,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const roomUpdateCallbacks = useRef<Set<(room: ChatRoom) => void>>(new Set())
     const activeRoomIdRef = useRef<string | null>(null)
     const hasInitiallyLoaded = useRef(false)
+    const unreadGeneration = useRef(0)
+    useEffect(() => {
+        unreadGeneration.current++
+        setUnreadCount(0)
+        setUnreadStatus("loading")
+        hasInitiallyLoaded.current = false
+        return () => { unreadGeneration.current++ }
+    }, [user?.id])
 
     // Initialize socket connection — only after profile is loaded (backend session confirmed)
     useEffect(() => {
@@ -264,10 +274,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     const refreshUnreadCount = useCallback(async () => {
         if (!user) return
+        const generation = ++unreadGeneration.current
+        setUnreadStatus("loading")
         try {
             const count = await getUnreadCount()
+            if (generation !== unreadGeneration.current) return
             setUnreadCount(count)
+            setUnreadStatus("ready")
         } catch (error) {
+            if (generation !== unreadGeneration.current) return
+            setUnreadStatus("error")
             console.error('Failed to fetch unread count:', error)
         }
     }, [user])
@@ -402,6 +418,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const value: ChatContextType = {
         rooms,
         unreadCount,
+        unreadStatus,
         isConnected,
         isLoading,
         hasMoreRooms,

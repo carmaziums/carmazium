@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function AppSupportPage() {
   return (
-    <main className="min-h-screen bg-[var(--bg-primary)] pb-16 pt-24">
+    <div className="min-h-screen bg-[var(--bg-primary)] pb-16 pt-24">
       <div className="container mx-auto max-w-4xl px-5">
         <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Mobile app support</p>
         <h1 className="mt-2 text-4xl font-black tracking-tight text-[var(--text-primary)] md:text-5xl">
@@ -91,6 +91,6 @@ export default function AppSupportPage() {
           CarMazium Ltd · Company number 17053307 · Registered in England and Wales.
         </p>
       </div>
-    </main>
+    </div>
   )
 }

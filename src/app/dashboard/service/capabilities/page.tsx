@@ -119,10 +119,10 @@ export default function CapabilitiesPage() {
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role={isPartner ? "dealer" : "provider"} userName={userName} userType="Partner Account" />
-                <main className="flex-1 space-y-8 max-w-3xl">
+                <div className="flex-1 space-y-8 max-w-3xl">
                     <div>
                         <div className="flex items-center justify-between gap-4 flex-wrap">
-                            <div><h1 className="text-3xl font-bold font-heading mb-1">Service add-ons</h1><p className="text-sm text-[var(--text-muted)]">Add services to the same Partner Account. Adding one never replaces another.</p></div>
+                            <div><h1 className="text-3xl font-bold font-heading mb-1">My services</h1><p className="text-sm text-[var(--text-muted)]">Add services to the same Partner Account. Adding one never replaces another.</p></div>
                             {isPartner && <Link href="/dashboard/partner" className={buttonVariants({ variant: "outline", size: "sm" })}>Partner Dashboard →</Link>}
                         </div>
                     </div>
@@ -186,7 +186,7 @@ export default function CapabilitiesPage() {
                             </div>
                         </section>
                     </>}
-                </main>
+                </div>
             </div>
         </div>
     )

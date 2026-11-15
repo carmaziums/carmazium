@@ -129,7 +129,7 @@ function SellerDashboard() {
                     </Link>
                 </DashboardSidebar>
 
-                <main className="flex-1 space-y-8 min-w-0">
+                <div className="flex-1 space-y-8 min-w-0">
                     {/* Period Toggle Header */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <h2 className="text-2xl font-black font-heading uppercase tracking-tighter">Overview</h2>
@@ -251,7 +251,7 @@ function SellerDashboard() {
                             </table>
                         </div>
                     </div>
-                </main>
+                </div>
             </div>
             {unsoldAuctionNotice && (
                 <div

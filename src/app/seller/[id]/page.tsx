@@ -222,7 +222,7 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
     const memberSince = new Date(user.createdAt).getFullYear()
 
     return (
-        <main className="min-h-screen">
+        <div className="min-h-screen">
             {/* ── Hero: seller identity + score ── */}
             <section className="relative overflow-hidden border-b border-[var(--border-default)] bg-gradient-to-b from-slate-900 to-slate-950 text-white">
                 {/* Background glow */}
@@ -425,7 +425,7 @@ export default async function SellerProfilePage({ params }: { params: Promise<{ 
                     </div>
                 </div>
             </div>
-        </main>
+        </div>
     )
 }
 

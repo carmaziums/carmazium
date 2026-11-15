@@ -41,7 +41,7 @@ test('legacy web addresses redirect to the matching tab, without deleting their 
     assert.ok(source.includes('redirect("' + to + '")'),file)
   }
   assert.match(read('src/app/dashboard/dealer/purchases/page.tsx'),/DealerAuctionWinsView/)
-  assert.match(read('src/components/dealer/DealerAuctionWinsView.tsx'),/getWonAuctions/)
+  assert.match(read('src/components/dealer/DealerAuctionWinsView.tsx'),/getAllWonAuctions/)
   assert.match(read('src/components/dealer/DealerAuctionWinsView.tsx'),/BuyerFeeCountdown/)
   assert.match(read('src/app/dashboard/dealer/layout.tsx'),/searchParams.get\("tab"\) === "retail"/)
 })

@@ -112,7 +112,7 @@ export default function InsuranceSettingsPage() {
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="insurance" userName={userName} userType="Insurance Partner" />
 
-                <main className="flex-1 space-y-8">
+                <div className="flex-1 space-y-8">
                     <h1 className="text-2xl font-black font-heading flex items-center gap-2">
                         <Settings className="text-primary" /> Partner Settings
                     </h1>
@@ -227,7 +227,7 @@ export default function InsuranceSettingsPage() {
                     </div>
 
                     <DeleteAccountSection />
-                </main>
+                </div>
             </div>
         </div>
     )

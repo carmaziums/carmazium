@@ -32,7 +32,7 @@ export default function ServiceLeadDetailPage() {
 
     return (
         <div className="min-h-screen pt-24 pb-20">
-            <main className="container mx-auto px-5 max-w-4xl">
+            <div className="container mx-auto px-5 max-w-4xl">
                 <Link href="/services/leads" className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary mb-6"><ArrowLeft size={15} /> My enquiries</Link>
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
                     <div><p className="text-xs font-black uppercase tracking-widest text-primary mb-2">{SERVICE_LABELS[lead.serviceType]}</p><h1 className="text-3xl font-black font-heading">{[lead.vehicleRegistration, lead.vehicleMake, lead.vehicleModel].filter(Boolean).join(" · ") || "Vehicle enquiry"}</h1><p className="text-sm text-[var(--text-muted)] mt-2">Status: {lead.status} · Shared with {lead.recipientCount ?? 0} matched provider{(lead.recipientCount ?? 0) === 1 ? "" : "s"} · {lead.responseCount ?? lead.responses?.length ?? 0} response{(lead.responseCount ?? lead.responses?.length ?? 0) === 1 ? "" : "s"}</p></div>
@@ -79,7 +79,7 @@ export default function ServiceLeadDetailPage() {
                 )}
 
                 <p className="text-xs text-[var(--text-muted)] mt-8 leading-relaxed">Provider responses are supplied by the provider. For finance, any eligibility assessment, credit check and regulated disclosure is the provider's responsibility. For warranty, read the provider's full policy wording, exclusions and claim limits before buying.</p>
-            </main>
+            </div>
         </div>
     )
 }

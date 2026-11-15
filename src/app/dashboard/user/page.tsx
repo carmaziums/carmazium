@@ -200,7 +200,7 @@ function UnifiedUserDashboardContent() {
                     </Link>
                 </DashboardSidebar>
 
-                <main className="flex-1 space-y-8 min-w-0">
+                <div className="flex-1 space-y-8 min-w-0">
 
                     {showBoostSuccess && (
                         <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
@@ -231,7 +231,7 @@ function UnifiedUserDashboardContent() {
                         {activeTab === "earnings" && <EarningsTab />}
                         {activeTab === "settings" && <SettingsTab profile={profile} refreshProfile={refreshProfile} />}
                     </div>
-                </main>
+                </div>
             </div>
         </div>
     )

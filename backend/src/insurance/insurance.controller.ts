@@ -72,6 +72,7 @@ export class InsuranceController {
         @CurrentUser() user: any,
         @Query('page') page = 1,
         @Query('limit') limit = 20,
+        @Query('status') status?: string,
     ): Promise<PaginatedResponse<InsuranceQuote>> {
         const partnerId = await this.insuranceService.getPartnerProfileId(user.id);
         if (!partnerId) {
@@ -84,6 +85,7 @@ export class InsuranceController {
             partnerId,
             Number(page),
             Number(limit),
+            status,
         );
         // @ts-ignore
         return new PaginatedResponse(result.data, result.total, result.page, result.limit);

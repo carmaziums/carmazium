@@ -77,7 +77,7 @@ export default function NewInspectionPage() {
 
     return (
         <div className="min-h-screen pt-24 pb-20">
-            <main className="container mx-auto px-5 max-w-3xl">
+            <div className="container mx-auto px-5 max-w-3xl">
                 <Link href="/services/inspection" className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary mb-6"><ArrowLeft size={15} /> Vehicle Inspections</Link>
                 <h1 className="text-3xl md:text-4xl font-black font-heading mb-2">Request a vehicle inspection</h1>
                 <p className="text-[var(--text-muted)] mb-8">One request, one vehicle. Approved inspection providers can quote for the work.</p>
@@ -121,7 +121,7 @@ export default function NewInspectionPage() {
                         {busy ? <Loader2 size={18} className="animate-spin" /> : user ? "Post inspection request" : "Sign in and continue"}
                     </Button>
                 </form>
-            </main>
+            </div>
         </div>
     )
 }

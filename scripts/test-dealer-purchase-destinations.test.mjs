@@ -154,7 +154,7 @@ test("historical Auction Wins redirect retains the original fee and purchase-rec
     const wins = read("src/components/dealer/DealerAuctionWinsView.tsx")
     assert.match(wins, /recordHref=\{purchaseId \?/)
     assert.match(wins, /after:absolute after:inset-0/)
-    assert.match(wins, /getWonAuctions/)
+    assert.match(wins, /getAllWonAuctions/)
     assert.match(wins, /BuyerFeeCountdown/)
     assert.match(wins, /purchaseByListing/)
     assert.match(wins, /for \(let i = 0; i < ids.length; i \+= 50\) batches.push/)
