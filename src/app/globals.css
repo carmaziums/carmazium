@@ -116,6 +116,14 @@
     transition: background-color 0.3s ease, color 0.3s ease;
   }
 
+  /* Placeholder hints carry instructions too. Keep a solid theme colour rather
+     than stacking the browser/Tailwind transparency with component opacity. */
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--text-muted);
+    opacity: 1;
+  }
+
   h1,
   h2,
   h3,

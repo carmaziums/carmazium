@@ -132,7 +132,7 @@ export default function ResetPasswordPage() {
                                     required
                                     value={formData.password}
                                     onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                                    className="bg-white/20 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/30 pr-11"
+                                    className="bg-slate-800 border-slate-500 text-white placeholder:text-slate-300 focus:bg-slate-700 pr-11"
                                 />
                                 <button
                                     type="button"
@@ -153,7 +153,7 @@ export default function ResetPasswordPage() {
                                 required
                                 value={formData.confirmPassword}
                                 onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                                className="bg-white/20 border-white/10 text-white placeholder:text-gray-400 focus:bg-white/30"
+                                className="bg-slate-800 border-slate-500 text-white placeholder:text-slate-300 focus:bg-slate-700"
                             />
                         </div>
 

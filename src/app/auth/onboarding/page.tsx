@@ -299,7 +299,7 @@ export default function OnboardingPage() {
                                     value={firstName}
                                     onChange={event => setFirstName(event.target.value)}
                                     placeholder="John"
-                                    className="bg-slate-900/60 border-white/10 text-white placeholder:text-gray-600"
+                                    className="bg-slate-900/60 border-white/10 text-white placeholder:text-slate-300"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -312,7 +312,7 @@ export default function OnboardingPage() {
                                     value={lastName}
                                     onChange={event => setLastName(event.target.value)}
                                     placeholder="Doe"
-                                    className="bg-slate-900/60 border-white/10 text-white placeholder:text-gray-600"
+                                    className="bg-slate-900/60 border-white/10 text-white placeholder:text-slate-300"
                                 />
                             </div>
                         </div>
@@ -345,7 +345,7 @@ export default function OnboardingPage() {
                                 value={phone}
                                 onChange={event => setPhone(event.target.value)}
                                 placeholder="07123 456789"
-                                className="bg-slate-900/60 border-white/10 text-white placeholder:text-gray-600"
+                                className="bg-slate-900/60 border-white/10 text-white placeholder:text-slate-300"
                             />
                         </div>
 
@@ -362,7 +362,7 @@ export default function OnboardingPage() {
                                     value={location}
                                     onChange={event => setLocation(event.target.value)}
                                     placeholder="Birmingham"
-                                    className="bg-slate-900/60 border-white/10 text-white placeholder:text-gray-600"
+                                    className="bg-slate-900/60 border-white/10 text-white placeholder:text-slate-300"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -375,7 +375,7 @@ export default function OnboardingPage() {
                                     value={postcode}
                                     onChange={event => setPostcode(event.target.value.toUpperCase())}
                                     placeholder="B1 1AA"
-                                    className="bg-slate-900/60 border-white/10 text-white placeholder:text-gray-600"
+                                    className="bg-slate-900/60 border-white/10 text-white placeholder:text-slate-300"
                                 />
                             </div>
                         </div>
