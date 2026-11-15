@@ -18,6 +18,7 @@ integration('Account introduction with disposable PostgreSQL', () => {
     });
     afterAll(async () => {
         if (!prisma) return;
+        await prisma.notification.deleteMany({ where: { userId: { in: ids } } });
         await prisma.user.deleteMany({ where: { id: { in: ids } } });
         await prisma.$disconnect();
     });
