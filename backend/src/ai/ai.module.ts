@@ -6,11 +6,13 @@ import { MaziumSupportDispatcher } from './mazium-support-dispatcher.service';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { ChatModule } from '../chat/chat.module';
+import { TourNarrationController } from './tour-narration.controller';
+import { TourNarrationService } from './tour-narration.service';
 
 @Module({
     imports: [AuthModule, PrismaModule, ChatModule],
-    controllers: [AiController],
-    providers: [AiService, MaziumSupportAutoReplyService, MaziumSupportDispatcher],
+    controllers: [AiController, TourNarrationController],
+    providers: [AiService, MaziumSupportAutoReplyService, MaziumSupportDispatcher, TourNarrationService],
     exports: [AiService, MaziumSupportAutoReplyService],
 })
 export class AiModule { }

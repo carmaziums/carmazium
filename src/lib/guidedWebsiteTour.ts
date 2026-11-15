@@ -88,6 +88,6 @@ export function getGuidedWebsiteSteps(profile: TourProfile): GuidedStep[] {
             for (const [key, name, explanation] of services) steps.push({ id: key, title: name, description: explanation, href: "/profile?section=business", target: { selector: `[data-tour='${key}']` } })
         }
     }
-    steps.push({ id: "finish", title: "You’re ready to explore", href: "/profile?section=personal", target: { selector: "button", text: "Replay website introduction" }, description: "You can replay this walkthrough from Account Settings whenever you need it. Use the account menu to return to your dashboard and Contact Support when you need help." })
+    steps.push({ id: "finish", title: "You’re ready to explore", href: "/profile?section=personal", target: { selector: "button", text: "Replay website tour" }, description: "You can replay this walkthrough from Account Settings, under Personal details. Look for the red Replay website tour button. Use the account menu to return to your dashboard and Contact Support when you need help." })
     return steps
 }
