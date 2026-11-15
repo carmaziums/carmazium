@@ -897,6 +897,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 ...prev,
                 vehicleType: 'CAR',
                 bodyType: key,
+                badgeTier: 'BASIC',
                 vrm: '', mileage: '', fuelType: '', transmission: '',
                 engineSize: '', bhp: '', motStatus: '', taxStatus: '',
                 motExpiryDate: '', taxDueDate: '', motHistory: [],
@@ -2842,7 +2843,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Vehicle Type *</label>
                                 <div className="flex gap-3">
                                     {(["CAR", "HGV", "MOTORCYCLE"] as const).map((vt) => {
-                                        const labels: Record<string, string> = { CAR: "Car", HGV: "HGV / Commercial", MOTORCYCLE: "Motorcycle" }
+                                        const labels: Record<string, string> = { CAR: "Car / Caravan", HGV: "HGV / Commercial", MOTORCYCLE: "Motorcycle" }
                                         const active = formData.vehicleType === vt
                                         return (
                                             <button key={vt} type="button"
@@ -3542,7 +3543,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 />
                             </div>
 
-                            {/* Damage Mapping Section */}
+                            {/* A car-shaped 3D damage model would misrepresent caravan damage. */}
+                            {isCaravan ? (
+                                <p className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-[var(--text-secondary)]">
+                                    Photograph every damaged area of the caravan and describe faults in the mandatory declarations. A caravan-specific 3D damage model is not yet available.
+                                </p>
+                            ) : (
                             <div className="pt-8 border-t border-[var(--border-default)]">
                                 <div className="flex items-center gap-3 mb-6">
                                     <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20">
@@ -3560,6 +3566,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     onPendingChange={setDamageEntryPending}
                                 />
                             </div>
+                            )}
 
                             {/* Video Embeds */}
                             <div className="pt-8 border-t border-[var(--border-default)]">
@@ -4306,13 +4313,19 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                             <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4">{isAuction ? "Vehicle Value" : "Pricing"}</h2>
 
-                            <VehicleValuationCard
-                                valuation={valuation}
-                                loading={valuationLoading}
-                                error={valuationError}
-                                mode={isAuction ? "auction" : "retail"}
-                                onApply={applyValuation}
-                            />
+                            {isCaravan ? (
+                                <p className="rounded-xl border border-blue-500/25 bg-blue-500/10 p-4 text-sm text-[var(--text-secondary)]">
+                                    Enter your own caravan value using comparable caravan prices. Automatic car-registration valuations do not apply to towable caravans.
+                                </p>
+                            ) : (
+                                <VehicleValuationCard
+                                    valuation={valuation}
+                                    loading={valuationLoading}
+                                    error={valuationError}
+                                    mode={isAuction ? "auction" : "retail"}
+                                    onApply={applyValuation}
+                                />
+                            )}
 
                             <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
                                 {isAuction ? (
@@ -4460,7 +4473,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 </ul>
                                             </button>
 
-                                            {/* Standard */}
+                                            {!isCaravan && (<>
+                                             {/* Standard */}
                                             <button type="button"
                                                 onClick={() => set('badgeTier', 'STANDARD')}
                                                 className={`relative rounded-xl border p-4 text-left transition-all ${formData.badgeTier === 'STANDARD'
@@ -4496,6 +4510,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Featured Boost included for 28 days</li>
                                                 </ul>
                                             </button>
+
+                                         </>)}
                                         </>
                                     )}
                                 </div>
