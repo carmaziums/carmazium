@@ -269,7 +269,7 @@ export default function TradeXchangePage() {
                         >
                             One trade platform.
                             <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-red-400">Services and partnerships.</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-300 to-red-200">Services and partnerships.</span>
                         </motion.h1>
                         <motion.p
                             initial={{ opacity: 0, y: 16 }}
