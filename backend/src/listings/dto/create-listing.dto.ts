@@ -73,6 +73,7 @@ export enum BodyType {
     STATION_WAGON = 'STATION_WAGON',
     MPV = 'MPV',
     VAN = 'VAN',
+    CARAVAN = 'CARAVAN',
     HGV_TRACTOR_UNIT = 'HGV_TRACTOR_UNIT',
     HGV_BOX = 'HGV_BOX',
     HGV_CURTAIN_SIDER = 'HGV_CURTAIN_SIDER',

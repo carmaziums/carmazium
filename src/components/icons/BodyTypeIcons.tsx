@@ -140,6 +140,18 @@ export function VanIcon({ className }: IconProps) {
     )
 }
 
+// A touring caravan is a towable body, not a motorhome or a van.
+export function CaravanIcon({ className }: IconProps) {
+    return (
+        <svg viewBox="0 0 40 20" fill="currentColor" className={className} xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M5 4h23a5 5 0 0 1 5 5v5H4V7a3 3 0 0 1 1-3zm3 3v4h10V7H8zm13 0v4h7V7h-7z" />
+            <circle cx="11" cy="15" r="3" />
+            <circle cx="27" cy="15" r="3" />
+            <path d="M33 12h4v2h-4z" />
+        </svg>
+    )
+}
+
 // ─── Lookup Map ──────────────────────────────────────────────────────────────
 
 export const BODY_TYPE_ICONS: Record<string, React.FC<IconProps>> = {
@@ -156,6 +168,7 @@ export const BODY_TYPE_ICONS: Record<string, React.FC<IconProps>> = {
     STATION_WAGON: StationWagonIcon,
     MPV: MPVIcon,
     VAN: VanIcon,
+    CARAVAN: CaravanIcon,
     HGV_TRACTOR_UNIT: PickupTruckIcon,
     HGV_BOX: VanIcon,
     HGV_CURTAIN_SIDER: VanIcon,
@@ -181,6 +194,7 @@ export const BODY_TYPE_LABELS: Record<string, string> = {
     STATION_WAGON: 'Station Wagon',
     MPV: 'MPV',
     VAN: 'Van',
+    CARAVAN: 'Caravan',
     HGV_TRACTOR_UNIT: 'Tractor Unit',
     HGV_BOX: 'Box',
     HGV_CURTAIN_SIDER: 'Curtain Sider',
@@ -194,7 +208,7 @@ export const BODY_TYPE_LABELS: Record<string, string> = {
 
 export const BODY_TYPE_KEYS = [
     'SEDAN', 'SUV', 'HATCHBACK', 'COUPE', 'CONVERTIBLE', 'ESTATE',
-    'CROSSOVER', 'SPORTS_CAR', 'MINIVAN', 'PICKUP_TRUCK', 'STATION_WAGON', 'MPV', 'VAN',
+    'CROSSOVER', 'SPORTS_CAR', 'MINIVAN', 'PICKUP_TRUCK', 'STATION_WAGON', 'MPV', 'VAN', 'CARAVAN',
 ] as const
 
 export const HGV_BODY_TYPE_KEYS = [

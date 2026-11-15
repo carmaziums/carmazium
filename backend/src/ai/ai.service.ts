@@ -50,6 +50,7 @@ export interface VehicleSpecEnrichment {
         | 'STATION_WAGON'
         | 'MPV'
         | 'VAN'
+        | 'CARAVAN'
         | null;
     driveType: 'FWD' | 'RWD' | 'AWD' | '4WD' | null;
     doors: number | null;
@@ -481,7 +482,7 @@ export class AiService {
                                     enum: [
                                         'SEDAN', 'SUV', 'HATCHBACK', 'COUPE', 'CONVERTIBLE',
                                         'ESTATE', 'CROSSOVER', 'SPORTS_CAR', 'MINIVAN',
-                                        'PICKUP_TRUCK', 'STATION_WAGON', 'MPV', 'VAN', null,
+                                        'PICKUP_TRUCK', 'STATION_WAGON', 'MPV', 'VAN', 'CARAVAN', null,
                                     ],
                                 },
                                 driveType: {
