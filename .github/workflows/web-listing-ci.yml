@@ -170,6 +170,9 @@ jobs:
       - name: Seller gearbox and body-type regression tests
         run: npm run test:seller-specs
 
+      - name: Caravan buyer facts exclude motor-vehicle reports
+        run: node --test scripts/test-caravan-buyer-information.test.mjs
+
       - name: Buyer filter request serialization
         run: node --test scripts/test-listing-filter-serialization.test.mjs scripts/test-search-postcode.test.mjs scripts/test-search-app-parity.test.mjs scripts/test-native-search-postcode.test.mjs
 

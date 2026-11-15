@@ -49,6 +49,19 @@ function FactGroup({ title, icon, facts }: { title: string; icon: React.ReactNod
 /** Both buyer routes render only fields saved with the listing; no public API calls or inferred values. */
 export function BuyerVehicleInformation({ listing }: { listing: Listing }) {
     const [showAllMot, setShowAllMot] = React.useState(false)
+    if (listing.bodyType === 'CARAVAN') {
+        return <section className="space-y-4" aria-label="Caravan information">
+            <p className="text-sm text-[var(--text-muted)]">Manually supplied caravan details. See the seller’s photographs and description for equipment, dimensions and any damage.</p>
+            <FactGroup title="Caravan details (seller)" icon={<ClipboardList size={18} />} facts={[
+                { label: 'Make', value: listing.make }, { label: 'Model', value: listing.model },
+                { label: 'Year', value: listing.year }, { label: 'VIN / CRiS (optional)', value: listing.vin },
+                { label: 'Condition', value: listing.condition }, { label: 'Service history', value: listing.serviceHistory },
+                { label: 'Keys', value: listing.numberOfKeys }, { label: 'Collection area', value: listing.location },
+                { label: 'Mechanical issues (seller)', value: listing.mechanicalIssues },
+                { label: 'Electrical issues (seller)', value: listing.electricalIssues },
+            ]} />
+        </section>
+    }
     const official = listing.officialVehicleData
     const mot = (Array.isArray(listing.motHistory) ? listing.motHistory : [])
         .filter((item): item is ListingMotHistoryEntry =>

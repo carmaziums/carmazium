@@ -9,6 +9,7 @@ function load(name) {
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, context)
   return context.exports
 }
+const { getMissingSellerDeclarations } = load('sellerDeclarationValidation')
 const { faultDeclarationError, isNoKnownFaults } = load('sellerFaultDeclaration')
 const { registrationLookupReset } = load('listingRegistrationChange')
 const { listingDetailsInputIssue, isValidListingPrice } = load('listingInputValidation')
@@ -71,7 +72,7 @@ const completeForm = {
 }
 function wizardContext(formData) {
   return {
-    formData, currentStep: 1, listingDetailsInputIssue, faultDeclarationError, missingSellerDeclarations: [], bodyTypeKeys: ['SUV', 'CARAVAN'],
+    formData, currentStep: 1, listingDetailsInputIssue, faultDeclarationError, missingSellerDeclarations: getMissingSellerDeclarations(formData), bodyTypeKeys: ['SUV', 'CARAVAN'],
     isCaravan: formData.bodyType === 'CARAVAN',
     normalizeSellerTransmission: value => value, normalizeSellerBodyType: value => value,
   }
@@ -83,8 +84,6 @@ test('both caravan listing methods accept manual details without VRM, VIN, year 
       mileage: '', make: '', model: '', year: '', fuelType: '', transmission: '',
       serviceHistory: '', numberOfKeys: '', owners: '', condition: '',
       mechanicalIssues: '', electricalIssues: '',
-      stolenRecovered: null, hasOutstandingFinance: null,
-      isLegalRegisteredKeeper: null, declarationAcknowledged: false,
       images: ['photo-one'],
     };
     const ctx = wizardContext(draft);
@@ -204,3 +203,14 @@ test('native validates blank or bare Yes answers, and accepts explicit no or des
     }
   }
 })
+
+ test('caravan forms retain ownership, finance and confirmation safeguards in both channels', () => {
+  for (const listingType of ['AUCTION', 'CLASSIFIED']) {
+    for (const [field, value] of [['stolenRecovered', null], ['hasOutstandingFinance', null], ['isLegalRegisteredKeeper', null], ['declarationAcknowledged', false]]) {
+      const draft = { ...completeForm, listingType, bodyType: 'CARAVAN', vrm: '', vin: '', year: '', mileage: '', [field]: value };
+      const ctx = wizardContext(draft);
+      assert.ok(wizardFunction(wizardFile, 'getStepValidationError', ctx)(1));
+      assert.ok(wizardFunction(wizardFile, 'firstInvalidField', ctx)(1));
+    }
+  }
+});

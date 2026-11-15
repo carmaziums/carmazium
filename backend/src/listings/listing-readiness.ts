@@ -47,6 +47,10 @@ export function getListingSubmissionMissingFields(listing: any): string[] {
         if (!Array.isArray(listing?.images) || listing.images.length < 1) missing.push('at least one caravan photo');
         if (!listing?.title || listing.title.trim().length < 5) missing.push('title');
         if (!listing?.location?.trim?.()) missing.push('location');
+        if (listing?.stolenRecovered == null) missing.push('stolen/recovered declaration');
+        if (listing?.hasOutstandingFinance == null) missing.push('outstanding finance declaration');
+        if (listing?.isLegalRegisteredKeeper == null) missing.push('ownership declaration');
+        if (!listing?.partnerDistributionAcceptedAt) missing.push('seller declaration confirmation');
         if (listing?.isLegalRegisteredKeeper === false && !listing?.notOwnerRelationship?.trim?.()) {
             missing.push('authority to sell');
         }

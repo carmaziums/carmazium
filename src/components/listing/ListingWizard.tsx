@@ -896,9 +896,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             setFormData(prev => ({
                 ...prev,
                 vehicleType: 'CAR',
+                ...registrationLookupReset(prev.vrm, ''),
                 bodyType: key,
                 badgeTier: 'BASIC',
-                vrm: '', vin: '', mileage: '', fuelType: '', transmission: '',
+                vrm: '', vin: '', make: '', model: '', year: '', variant: '',
+                priceAsking: '', priceMin: '', mileage: '', fuelType: '', transmission: '',
                 engineSize: '', bhp: '', motStatus: '', taxStatus: '',
                 motExpiryDate: '', taxDueDate: '', motHistory: [],
                 officialVehicleData: undefined, euroStandard: '',
@@ -1081,7 +1083,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         )
     }, [isAuction, platformOpeningBid])
 
-    const missingSellerDeclarations = isCaravan ? [] : getMissingSellerDeclarations(formData)
+    const missingSellerDeclarations = getMissingSellerDeclarations(formData)
     const declarationError = hasAttemptedNext
         ? sellerDeclarationErrorMessage(missingSellerDeclarations)
         : null
@@ -1260,8 +1262,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     const missing: string[] = []
                     if (!formData.title || formData.title.trim().length < 5) missing.push('listing title')
                     if (!formData.location.trim()) missing.push('location')
-                    if (formData.isLegalRegisteredKeeper === false && !formData.notOwnerRelationship?.trim()) missing.push('authority to sell')
-                    if (formData.isDepartedSale && !formData.departedRelationship?.trim()) missing.push('estate/departed-sale relationship')
+                    missing.push(...missingSellerDeclarations)
                     return missing.length ? `Please complete: ${missing.join(', ')}.` : null
                 }
                 const missing: string[] = []
@@ -1389,6 +1390,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     ['body', 'Body Type', !normalizeSellerBodyType(formData.bodyType, bodyTypeKeys)],
                     ['title', 'Listing Title', formData.title.trim().length < 5],
                     ['location', 'Location', !formData.location.trim()],
+                    ['writeoff', 'Insurance Write-Off Status', !formData.writeOffCategory],
+                    ['stolen', 'Stolen / Recovered', formData.stolenRecovered === null],
+                    ['finance', 'Outstanding Finance', formData.hasOutstandingFinance === null],
+                    ['keeper', 'Legal Owner', formData.isLegalRegisteredKeeper === null],
+                    ['confirmation', 'Declaration Confirmation', !formData.declarationAcknowledged],
                     ['relationship', 'Authority to Sell', formData.isLegalRegisteredKeeper === false && !formData.notOwnerRelationship?.trim()],
                     ['estate', 'Estate Relationship', formData.isDepartedSale && !formData.departedRelationship?.trim()],
                 ]
@@ -1868,7 +1874,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 mileage: isCaravan ? null : parseInt(formData.mileage),
                 year: formData.year ? parseInt(formData.year) : null,
                 vrm: isCaravan ? '' : formData.vrm,
-                vin: formData.vin || undefined,
+                vin: formData.vin || (isCaravan ? '' : undefined),
                 images: formData.images,
                 listingType: formData.listingType,
                 partnerDistributionAccepted: formData.declarationAcknowledged,
@@ -3891,10 +3897,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <Input aria-label="Listing Title" id="listing-required-title" placeholder="e.g. BMW M4 Competition 2023" value={formData.title} onChange={(e) => set("title", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.title ? 'border-red-500' : ''}`} />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Description *</label>
+                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">{isCaravan ? 'Caravan description (optional)' : 'Description *'}</label>
                                 <Textarea
                                     aria-label="Description" id="listing-required-description"
-                                    placeholder="Describe service history, any extras, reason for selling..."
+                                    placeholder={isCaravan ? "Add dimensions, berths, equipment, service history and any damage you know about..." : "Describe service history, any extras, reason for selling..."}
                                     value={formData.description}
                                     onChange={(e) => set("description", e.target.value)}
                                     rows={5}
@@ -4324,7 +4330,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             )}
 
                             {/* Optional HPI add-on (shown after VRM lookup) */}
-                            {dvlaSuccess && (
+                            {!isCaravan && dvlaSuccess && (
                                 <HpiBaitSection
                                     isUnlocked={isHpiUnlocked}
                                     onUnlock={() => setShowHpiModal(true)}

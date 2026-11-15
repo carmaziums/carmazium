@@ -882,7 +882,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
             <LoginModal />
 
             {/* Enquire Modal */}
-            {showHpiModal && listing && (
+            {listing.bodyType !== 'CARAVAN' && showHpiModal && listing && (
                 <HpiReportModal listingId={listing.id} onClose={() => setShowHpiModal(false)} />
             )}
 
@@ -1124,7 +1124,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                         )}
 
                         {/* Condition & Damage — always shown (same 3D model + auto grade as the Buy Cars page), even with zero reported damage */}
-                        {(() => {
+                        {listing.bodyType !== 'CARAVAN' && (() => {
                             // The listing API includes damageRecords (an empty array when the seller
                             // reported none). If the field is missing, say so rather than "no damage".
                             const damageDataAvailable = Array.isArray((listing as any).damageRecords)
@@ -1231,7 +1231,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                             any check having run, and its "Unlock" button did nothing. Only a real
                             report is offered now, opened in the same modal as the Buy Cars page;
                             the modal fetches the findings and shows pending/error states. */}
-                        {listing.hpiReport && (() => {
+                        {listing.bodyType !== 'CARAVAN' && listing.hpiReport && (() => {
                             const hpiReady = listing.hpiReport?.status === 'COMPLETED'
                             return (
                                 <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-6">

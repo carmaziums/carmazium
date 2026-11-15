@@ -32,6 +32,19 @@ export function BuyerVehicleFacts({ record }: { record: object | null | undefine
   const [expandedTest, setExpandedTest] = useState<string | null>(null);
   if (!record) return null;
   const data = record as Record<string, unknown>;
+  if (data.bodyType === 'CARAVAN' || data.bodyTypeRaw === 'CARAVAN') {
+    const facts = [['Make', data.make], ['Model', data.model], ['Year', data.year],
+      ['VIN / CRiS (optional)', data.vin], ['Condition', data.condition],
+      ['Service history', data.serviceHistory], ['Keys', data.numberOfKeys],
+      ['Collection area', data.location], ['Mechanical issues (seller)', data.mechanicalIssues],
+      ['Electrical issues (seller)', data.electricalIssues]];
+    return <View style={styles.root}>
+      <Text style={styles.heading}>CARAVAN DETAILS (SELLER)</Text>
+      <Text style={styles.note}>Manually supplied details. See the photographs and description for equipment, dimensions and any damage.</Text>
+      {facts.filter(([, value]) => readable(value) !== null).map(([label, value]) =>
+        <View key={String(label)} style={styles.row}><Text style={styles.key}>{String(label)}</Text><Text style={styles.value}>{readable(value)}</Text></View>)}
+    </View>;
+  }
   const official = data.officialVehicleData && typeof data.officialVehicleData === 'object'
     ? data.officialVehicleData as OfficialVehicleData : undefined;
   const history = (Array.isArray(data.motHistory) ? data.motHistory : [])

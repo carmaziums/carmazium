@@ -732,6 +732,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     // Clear motor-vehicle lookup data; never invent a caravan registration.
     setVrm('');
     setVin('');
+    setMake('');
+    setModel('');
+    setYear('');
+    setPriceAsking('');
+    setPriceMin('');
     currentVrmRef.current = '';
     setMileage('');
     setFuelType('');
@@ -1335,8 +1340,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       if ([
         'vrm', 'make', 'model', 'year', 'mileage', 'fuelType', 'transmission',
         'condition', 'serviceHistory', 'mechanicalIssues', 'electricalIssues',
-        'numberOfKeys', 'owners', 'writeOffCat', 'stolenRecovered',
-        'outstandingFinance', 'isLegalKeeper', 'description', 'declAcknowledged',
+        'numberOfKeys', 'owners', 'description',
       ].includes(key)) return null;
     }
     if (key === 'priceAsking') {
@@ -2794,7 +2798,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <Text style={[s.pillText, isCaravan && s.pillTextActive]}>Selling a touring caravan? No registration or VIN needed</Text>
         </TouchableOpacity>
         {isCaravan && <SectionBox title="Caravan details (manual entry)">
-          <Text style={s.fieldHint}>Enter what you know and set your own price. No DVLA lookup, VIN or mileage is required.</Text>
+          <Text style={s.fieldHint}>Enter what you know and set your own price. Add dimensions, berths, equipment and damage in the description and photos. No registration, VIN or mileage is required.</Text>
           <FieldInput label="VIN / CRiS (optional)" value={vin} onChange={setVin} placeholder="17 characters, if known" />
         </SectionBox>}
 

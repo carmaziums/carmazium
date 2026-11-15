@@ -360,6 +360,28 @@ describe('ListingsService', () => {
             ...overrides,
         });
 
+        it.each(['AUCTION', 'CLASSIFIED'])('creates a one-photo manual caravan %s with no fabricated vehicle identity', async (listingType) => {
+            prisma.listing.create.mockResolvedValue({ id: 'caravan-new', sellerId, type: listingType, status: 'DRAFT' });
+            prisma.auction.create.mockResolvedValue({ id: 'caravan-auction' });
+            await service.create({
+                title: 'Synthetic caravan QA', price: 6900, bodyType: 'CARAVAN', listingType,
+                images: [tenImages[0]], badgeTier: 'BASIC',
+                ...(listingType === 'AUCTION' ? {
+                    auctionStartTime: new Date(Date.now() + 60_000).toISOString(),
+                    auctionReservePrice: 6000, auctionMinIncrement: 100,
+                } : {}),
+            } as any, sellerId);
+            expect(prisma.listing.create.mock.calls[0][0].data).toEqual(expect.objectContaining({
+                bodyType: 'CARAVAN', status: 'DRAFT', vrm: null, vin: null, year: null,
+                mileage: null, fuelType: null, transmission: null, price: 6900,
+                badgeTier: listingType === 'AUCTION' ? 'FREE' : 'BASIC',
+            }));
+            if (listingType === 'AUCTION') expect(prisma.auction.create.mock.calls[0][0].data).toEqual(expect.objectContaining({
+                reservePrice: 6000, startingBid: 4830, status: 'SCHEDULED',
+            }));
+            else expect(prisma.auction.create).not.toHaveBeenCalled();
+        });
+
         it('creates Listing + Auction explicitly inside one transaction and keeps the listing DRAFT', async () => {
             prisma.listing.findMany.mockResolvedValue([]);
             prisma.listing.create.mockResolvedValue({
@@ -1049,6 +1071,23 @@ describe('ListingsService', () => {
             isLegalRegisteredKeeper: true,
             isDepartedSale: false,
         };
+
+        it.each(['AUCTION', 'CLASSIFIED'])('keeps manual caravan %s behind the correct payment/review gate', async (type) => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'caravan-review', sellerId: 'seller-1', type, badgeTier: type === 'AUCTION' ? 'FREE' : 'BASIC',
+                status: 'DRAFT', bodyType: 'CARAVAN', title: 'Synthetic caravan QA', price: 6900,
+                location: 'Birmingham', images: ['photo-one'], stolenRecovered: false,
+                hasOutstandingFinance: false, isLegalRegisteredKeeper: true,
+                partnerDistributionAcceptedAt: new Date(),
+            });
+            prisma.user.findUnique.mockResolvedValue({ role: 'USER' });
+            prisma.transaction.findMany.mockResolvedValue([]);
+            prisma.auction.findUnique.mockResolvedValue({ id: 'caravan-auction', status: 'SCHEDULED', deletedAt: null });
+            expect(await service.publishListing('caravan-review', 'seller-1')).toEqual(type === 'AUCTION'
+                ? { activated: false, pendingReview: true } : { activated: false, requiresPayment: true });
+            if (type === 'CLASSIFIED') expect(prisma.listing.update).not.toHaveBeenCalled();
+            else expect(prisma.listing.update).toHaveBeenCalledWith({ where: { id: 'caravan-review' }, data: { status: 'PENDING_REVIEW', rejectionReason: null } });
+        });
 
         it('rejects incomplete listings before any payment/review decision', async () => {
             prisma.listing.findUnique.mockResolvedValue({

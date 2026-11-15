@@ -118,6 +118,16 @@ const mapTransmission = (trans?: DtoTransmission): TransmissionType | null => {
     return map[trans] ?? null;
 };
 
+// A caravan has no motor-vehicle registration, odometer or government record.
+const caravanMotorFields = {
+    vrm: null, mileage: null, fuelType: null, transmission: null,
+    engineSize: null, bhp: null, euroStandard: null, co2Emissions: null, ulezCompliant: null,
+    motStatus: null, taxStatus: null, motExpiryDate: null, taxDueDate: null,
+    monthOfFirstRegistration: null, firstUsedDate: null, dateOfLastV5CIssued: null,
+    wheelplan: null, typeApproval: null, markedForExport: null,
+    motHistory: [], officialVehicleData: Prisma.DbNull,
+};
+
 const mapBodyType = (body?: DtoBodyType): BodyType | null => {
     if (!body) return null;
     const map: Record<string, BodyType> = {
@@ -1821,9 +1831,10 @@ export class ListingsService {
                 );
             }
 
-            if (originalImages.length < 10) {
+            const minimumPhotos = isTouringCaravan ? 1 : 10;
+            if (originalImages.length < minimumPhotos) {
                 throw new BadRequestException(
-                    `Auctions require at least 10 photos before scheduling. You have ${originalImages.length}.`,
+                    `Auctions require at least ${minimumPhotos} photo(s) before scheduling. You have ${originalImages.length}.`,
                 );
             }
 
@@ -1996,7 +2007,7 @@ export class ListingsService {
                 // Exterior grade is never seller-set — it's computed automatically from
                 // marked damage zones (see DamageAnalysisService.saveDamageRecords). A
                 // fresh listing with no damage reported yet starts at the best grade.
-                exteriorGrade: 1,
+                exteriorGrade: isTouringCaravan ? null : 1,
                 bannerLabel: createListingDto.bannerLabel ?? null,
                 // Phase 13: departed/estate sale
                 isDepartedSale: createListingDto.isDepartedSale ?? false,
@@ -2006,6 +2017,7 @@ export class ListingsService {
                 deliveryAvailable: createListingDto.deliveryAvailable ?? false,
                 deliveryPricePerMile: createListingDto.deliveryPricePerMile ?? null,
                 deliveryMaxMiles: createListingDto.deliveryMaxMiles ?? null,
+                ...(isTouringCaravan ? caravanMotorFields : {}),
             },
             });
 
@@ -2811,6 +2823,13 @@ export class ListingsService {
         if (updateListingDto.deliveryMaxMiles !== undefined) updateData.deliveryMaxMiles = updateListingDto.deliveryMaxMiles ?? null;
         if (updateListingDto.partnerDistributionAccepted !== undefined) {
             updateData.partnerDistributionAcceptedAt = updateListingDto.partnerDistributionAccepted ? new Date() : null;
+        }
+
+        if ((updateListingDto.bodyType ?? listing.bodyType) === 'CARAVAN') {
+            Object.assign(updateData, caravanMotorFields);
+            if (updateListingDto.year !== undefined) updateData.year = updateListingDto.year ?? null;
+            // Clearing an optional VIN must not retain a previous vehicle's identity.
+            if (updateListingDto.vin !== undefined) updateData.vin = updateListingDto.vin || null;
         }
 
         // A linked auction and retail listing describe the same physical car.

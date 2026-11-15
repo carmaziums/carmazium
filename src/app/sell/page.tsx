@@ -717,7 +717,7 @@ function SellerLanding() {
                             Selling a touring caravan without its own DVLA registration?{' '}
                             <a href="#sell-options" className="font-bold text-primary underline underline-offset-4">
                                 Skip the car valuation and choose Auction or £1 Retail below
-                            </a>. Enter the caravan VIN/CRiS identifier in the listing form.
+                            </a>. No registration, VIN or CRiS number is required. Add the details you know, your photos and your own price.
                         </p>
 
                         <GoogleAdBanner />
