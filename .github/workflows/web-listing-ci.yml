@@ -33,6 +33,8 @@ on:
       - "src/components/listing/**"
       - "src/components/services/**"
       - "src/components/features/CarCard.tsx"
+      - "src/components/features/ImageLightbox.tsx"
+      - "scripts/test-image-lightbox-counter.test.mjs"
       - "src/app/services/warranty/**"
       - "src/lib/servicesApi.ts"
       - "scripts/test-retail-warranty-cta.test.mjs"
@@ -242,6 +244,9 @@ jobs:
 
       - name: Verify retail transmission badges and all card data paths
         run: node --test scripts/test-retail-card-transmission.test.mjs
+
+      - name: Fullscreen photo counter regression
+        run: node --test scripts/test-image-lightbox-counter.test.mjs
 
       - name: Verify true auction bidding prices across search, detail and native cards
         run: node --test scripts/test-auction-price-display.test.mjs
