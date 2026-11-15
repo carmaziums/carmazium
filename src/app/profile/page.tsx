@@ -1,5 +1,6 @@
 "use client"
 import { DealerServicePreferences } from "@/components/dealer/DealerServicePreferences"
+import { ReplayIntroduction } from "@/components/onboarding/WebsiteIntroduction"
 
 import * as React from "react"
 import { FinanceProviderContact } from "@/components/finance/FinanceProviderContact"
@@ -416,7 +417,7 @@ export default function ProfilePage() {
             <Link href="/dashboard" className="inline-flex min-h-11 items-center text-sm font-semibold text-primary mb-3">Back to dashboard</Link>
             <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
                 <div><h1 className="text-3xl font-bold font-heading">Account Settings</h1><p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>{isPartner ? 'One place for your profile, business, notifications, payouts and security.' : 'Manage your personal profile, notifications, payouts and security.'}</p></div>
-                {profile?.id && <Link href={`/profile/${profile.id}`}><Button variant="outline">View Public Profile</Button></Link>}
+                {profile?.id && <div className="flex flex-wrap gap-3"><ReplayIntroduction /><Link href={`/profile/${profile.id}`}><Button variant="outline">View Public Profile</Button></Link></div>}
             </div>
 
             <div className="glass-card p-5 sm:p-8 mb-6">

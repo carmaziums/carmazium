@@ -12,6 +12,7 @@ import { MarketplaceJsonLd } from "@/components/seo/JsonLd";
 import { Providers } from "@/components/providers/Providers";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
+import { WebsiteIntroduction } from "@/components/onboarding/WebsiteIntroduction";
 import { ChatProvider } from "@/context/ChatContext";
 import { CompareProvider } from "@/context/CompareContext";
 import { LocationProvider } from "@/context/LocationContext";
@@ -130,6 +131,7 @@ export default function RootLayout({
           <TikTokPixel />
           <ThemeProvider>
             <AuthProvider>
+              <WebsiteIntroduction>
               <MetaAdvancedMatching />
               <ChatProvider>
                 <CompareProvider>
@@ -155,6 +157,7 @@ export default function RootLayout({
                   </LocationProvider>
                 </CompareProvider>
               </ChatProvider>
+              </WebsiteIntroduction>
             </AuthProvider>
           </ThemeProvider>
         </ConsentProvider>

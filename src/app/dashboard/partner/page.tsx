@@ -1,6 +1,6 @@
 "use client"
 
-import { DealerServicePreferences } from "@/components/dealer/DealerServicePreferences"
+import { DealerServicesNotice } from "@/components/dealer/DealerServicesNotice"
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -260,7 +260,7 @@ export default function PartnerDashboardPage() {
                         <Link href="/profile?section=business"><Button variant="outline">Edit business details</Button></Link>
                     </section>
 
-                    <DealerServicePreferences />
+                    <DealerServicesNotice />
                     <section>
                         <div className="flex items-end justify-between gap-4 mb-5">
                             <div><h2 className="text-2xl font-black font-heading">Your add-ons</h2><p className="text-sm text-[var(--text-muted)]">Activate one service or several. Adding one never removes another.</p></div>
