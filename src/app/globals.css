@@ -50,6 +50,9 @@
 /* ─── Theme Variables ──────────────────────────────────────────────────────── */
 
 :root {
+  /* Deeper UI red keeps small links and white button labels legible on light
+     surfaces. Logo artwork is unchanged; dark mode retains the original red. */
+  --color-primary: #c91620;
   /* Match the existing brand typography without requiring a font download in CI. */
   --font-poppins: "Poppins", Arial, sans-serif;
   --font-montserrat: "Montserrat", Arial, sans-serif;
@@ -62,8 +65,8 @@
   --bg-dropdown: #ffffff;
   --text-primary: #0f172a;
   --text-secondary: #334155;
-  --text-muted: #64748b;
-  --text-faint: #94a3b8;
+  --text-muted: #526078;
+  --text-faint: #5b6b80;
   --border-default: #d5e1ec;
   --border-hover: #b8cadd;
   --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 18px rgba(51, 65, 85, 0.08);
@@ -77,6 +80,7 @@
 }
 
 .dark {
+  --color-primary: #ed1c24;
   /* Keep CarMazium dark by default, but lift the navy surfaces by roughly 10%
      so pages feel less black/heavy without becoming a light theme. */
   --bg-body: #1b2538;

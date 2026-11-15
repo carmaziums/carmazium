@@ -45,12 +45,12 @@ export function OnlineNowCard() {
         </div>
         <div>
           <p className="flex items-center gap-2 text-xs font-bold text-[var(--text-muted)]"><Globe className="h-4 w-4" /> On the website</p>
-          <p className="mt-1 font-mono text-3xl font-black text-emerald-500">{v(data?.web.total)}</p>
+          <p className="mt-1 font-mono text-3xl font-black text-emerald-700 dark:text-emerald-400">{v(data?.web.total)}</p>
           <p className="text-xs text-[var(--text-muted)]">{data ? `${data.web.desktop} desktop · ${data.web.mobile} mobile · ${data.web.installed} installed` : " "}</p>
         </div>
         <div>
           <p className="flex items-center gap-2 text-xs font-bold text-[var(--text-muted)]"><Smartphone className="h-4 w-4" /> In the app</p>
-          <p className="mt-1 font-mono text-3xl font-black text-emerald-500">{v(data?.app.total)}</p>
+          <p className="mt-1 font-mono text-3xl font-black text-emerald-700 dark:text-emerald-400">{v(data?.app.total)}</p>
           <p className="text-xs text-[var(--text-muted)]">{data ? `${data.app.android} Android · ${data.app.ios} iPhone` : " "}</p>
         </div>
       </div>

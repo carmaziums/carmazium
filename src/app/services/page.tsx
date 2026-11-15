@@ -44,7 +44,7 @@ export default function ServicesPage() {
             title: "Delivery & Recovery",
             icon: GiTowTruck,
             desc: "Post a single-car, multi-car or recovery job and let approved transport businesses compete with fixed-price quotes.",
-            color: "text-blue-500 dark:text-blue-400",
+            color: "text-blue-700 dark:text-blue-400",
             bg: "bg-blue-500/10",
             link: deliveryServiceEnabled ? "/services/delivery" : undefined,
             cta: deliveryServiceEnabled ? "Arrange transport" : "Coming soon",
@@ -159,7 +159,7 @@ export default function ServicesPage() {
                         </div>
                         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 md:p-7">
                             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500"><Search size={20} /></div>
-                            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-500">For providers</p>
+                            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700 dark:text-blue-400">For providers</p>
                             <h2 className="mt-2 text-xl font-bold">See matching jobs and compete with quotes</h2>
                             <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">Approved Partner businesses see open work matching their Delivery or Inspection capabilities. Staff can act for the business where permission is granted.</p>
                             <div className="mt-5 flex flex-wrap gap-2">

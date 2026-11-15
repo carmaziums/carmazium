@@ -349,7 +349,7 @@ export function UserDetailModal({
                         <div className="flex justify-center py-16"><Loader2 className="animate-spin text-primary" size={28} /></div>
                     )}
                     {error && (
-                        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300 text-sm mb-4">{error}</div>
+                        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-700 dark:text-red-300 text-sm mb-4">{error}</div>
                     )}
 
                     {detail && (
@@ -362,11 +362,11 @@ export function UserDetailModal({
                                         <span className="text-xs font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">{detail.role}</span>
                                         {detail.deletedAt && (isSelfDeletedEmail(detail.email)
                                             ? <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-500/10 text-[var(--text-muted)] border border-slate-500/20">DELETED BY USER</span>
-                                            : <span className="text-xs font-bold px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">BANNED</span>)}
+                                            : <span className="text-xs font-bold px-2 py-0.5 rounded bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/20">BANNED</span>)}
                                         {detail.lockoutUntil && new Date(detail.lockoutUntil) > new Date() && (
-                                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">LOCKED</span>
+                                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-800 dark:text-yellow-400 border border-yellow-500/20">LOCKED</span>
                                         )}
-                                        {detail.isEmailVerified && <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1"><BadgeCheck size={11} /> Verified</span>}
+                                        {detail.isEmailVerified && <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1"><BadgeCheck size={11} /> Verified</span>}
                                     </div>
                                 </div>
                             </div>
@@ -387,14 +387,14 @@ export function UserDetailModal({
                             ) : (
                             <div className="flex gap-2 mb-4">
                                 {detail.deletedAt ? (
-                                    <button disabled={acting} onClick={() => handleAction("unban")} className="flex-1 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-widest hover:bg-emerald-500/20 disabled:opacity-50 cursor-pointer">Unban</button>
+                                    <button disabled={acting} onClick={() => handleAction("unban")} className="flex-1 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold uppercase tracking-widest hover:bg-emerald-500/20 disabled:opacity-50 cursor-pointer">Unban</button>
                                 ) : (
-                                    <button disabled={acting} onClick={() => handleAction("ban")} className="flex-1 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold uppercase tracking-widest hover:bg-red-500/20 disabled:opacity-50 inline-flex items-center justify-center gap-1.5 cursor-pointer"><Ban size={13} /> Ban</button>
+                                    <button disabled={acting} onClick={() => handleAction("ban")} className="flex-1 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-400 text-xs font-bold uppercase tracking-widest hover:bg-red-500/20 disabled:opacity-50 inline-flex items-center justify-center gap-1.5 cursor-pointer"><Ban size={13} /> Ban</button>
                                 )}
                                 {detail.lockoutUntil && new Date(detail.lockoutUntil) > new Date() ? (
-                                    <button disabled={acting} onClick={() => handleAction("unlock")} className="flex-1 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-bold uppercase tracking-widest hover:bg-blue-500/20 disabled:opacity-50 inline-flex items-center justify-center gap-1.5 cursor-pointer"><LockKeyholeOpen size={13} /> Unlock</button>
+                                    <button disabled={acting} onClick={() => handleAction("unlock")} className="flex-1 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-700 dark:text-blue-400 text-xs font-bold uppercase tracking-widest hover:bg-blue-500/20 disabled:opacity-50 inline-flex items-center justify-center gap-1.5 cursor-pointer"><LockKeyholeOpen size={13} /> Unlock</button>
                                 ) : (
-                                    <button disabled={acting} onClick={() => handleAction("lock")} className="flex-1 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs font-bold uppercase tracking-widest hover:bg-yellow-500/20 disabled:opacity-50 inline-flex items-center justify-center gap-1.5 cursor-pointer"><LockKeyhole size={13} /> Lock</button>
+                                    <button disabled={acting} onClick={() => handleAction("lock")} className="flex-1 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-800 dark:text-yellow-400 text-xs font-bold uppercase tracking-widest hover:bg-yellow-500/20 disabled:opacity-50 inline-flex items-center justify-center gap-1.5 cursor-pointer"><LockKeyhole size={13} /> Lock</button>
                                 )}
                             </div>
                             )}
@@ -524,7 +524,7 @@ export function UserDetailModal({
                                     <Field label="SSO Account" value={detail.authActivity?.source === "SUPABASE" ? (detail.authActivity?.isSsoUser ? "Yes" : "No") : "—"} />
                                 </div>
                                 {detail.authActivity?.source === "UNAVAILABLE" && (
-                                    <p className="mt-3 text-xs text-amber-400">Authentication history could not be read. Account details remain available.</p>
+                                    <p className="mt-3 text-xs text-amber-700 dark:text-amber-400">Authentication history could not be read. Account details remain available.</p>
                                 )}
                             </Section>
 
@@ -561,9 +561,9 @@ export function UserDetailModal({
                                 <Section title="KYC Record" icon={ShieldCheck}>
                                     <div className="flex items-center gap-2 mb-3">
                                         <span className={`text-xs font-bold px-2 py-0.5 rounded border ${
-                                            kyc.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                            kyc.status === 'REJECTED' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                                            'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                            kyc.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20' :
+                                            kyc.status === 'REJECTED' ? 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20' :
+                                            'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
                                         }`}>{kyc.status}</span>
                                         <span className="text-xs text-[var(--text-muted)]">Submitted {fmtDateTime(kyc.submittedAt)}</span>
                                     </div>
@@ -591,7 +591,7 @@ export function UserDetailModal({
                                                     <span className="flex items-center gap-1.5 text-[var(--text-secondary)]"><FileText size={12} /> {label}</span>
                                                     <div className="flex items-center gap-2 shrink-0">
                                                         {fieldStatus && (
-                                                            <span className={`font-bold ${fieldStatus.status === 'APPROVED' ? 'text-emerald-400' : fieldStatus.status === 'REJECTED' ? 'text-red-400' : 'text-amber-400'}`}>{fieldStatus.status}</span>
+                                                            <span className={`font-bold ${fieldStatus.status === 'APPROVED' ? 'text-emerald-700 dark:text-emerald-400' : fieldStatus.status === 'REJECTED' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'}`}>{fieldStatus.status}</span>
                                                         )}
                                                         {url ? (
                                                             <a href={url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">View <ExternalLink size={11} /></a>
@@ -605,7 +605,7 @@ export function UserDetailModal({
                                     </div>
                                     {Object.entries(documentStatuses).some(([, v]) => v.status === 'REJECTED' && v.note) && (
                                         <div className="p-2.5 rounded-lg bg-red-500/5 border border-red-500/20 text-xs space-y-1">
-                                            <p className="font-bold text-red-400 flex items-center gap-1"><AlertTriangle size={11} /> Rejection notes</p>
+                                            <p className="font-bold text-red-700 dark:text-red-400 flex items-center gap-1"><AlertTriangle size={11} /> Rejection notes</p>
                                             {Object.entries(documentStatuses).filter(([, v]) => v.status === 'REJECTED' && v.note).map(([field, v]) => (
                                                 <p key={field} className="text-[var(--text-muted)]"><span className="font-bold">{field}:</span> {v.note}</p>
                                             ))}

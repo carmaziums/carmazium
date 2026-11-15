@@ -31,10 +31,10 @@ const REASON_LABEL: Record<AiReportReason, string> = {
 }
 
 const STATUS_CLASS: Record<AiReportStatus, string> = {
-    OPEN: "border-amber-400/30 bg-amber-400/10 text-amber-300",
-    REVIEWING: "border-cyan-400/30 bg-cyan-400/10 text-cyan-300",
-    RESOLVED: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
-    DISMISSED: "border-slate-400/30 bg-slate-400/10 text-slate-300",
+    OPEN: "border-amber-400/30 bg-amber-400/10 text-amber-700 dark:text-amber-300",
+    REVIEWING: "border-cyan-400/30 bg-cyan-400/10 text-cyan-700 dark:text-cyan-300",
+    RESOLVED: "border-emerald-400/30 bg-emerald-400/10 text-emerald-700 dark:text-emerald-300",
+    DISMISSED: "border-slate-400/30 bg-slate-400/10 text-slate-700 dark:text-slate-300",
 }
 
 export default function AdminAiReportsPage() {
@@ -140,7 +140,7 @@ export default function AdminAiReportsPage() {
                     </section>
 
                     {error && (
-                        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+                        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-300">
                             {error}
                         </div>
                     )}
@@ -162,7 +162,7 @@ export default function AdminAiReportsPage() {
                                     <article key={item.id} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black ${STATUS_CLASS[item.status]}`}>{item.status}</span>
-                                            <span className="rounded-full border border-red-400/25 bg-red-400/10 px-2.5 py-1 text-[10px] font-black text-red-300">
+                                            <span className="rounded-full border border-red-400/25 bg-red-400/10 px-2.5 py-1 text-[10px] font-black text-red-700 dark:text-red-300">
                                                 {REASON_LABEL[item.reason]}
                                             </span>
                                             <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">{item.surface}</span>
@@ -185,7 +185,7 @@ export default function AdminAiReportsPage() {
 
                                         {item.details && (
                                             <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3">
-                                                <AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-300" />
+                                                <AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-300" />
                                                 <p className="text-xs leading-5 text-[var(--text-secondary)]">{item.details}</p>
                                             </div>
                                         )}
@@ -195,7 +195,7 @@ export default function AdminAiReportsPage() {
                                                 <button
                                                     onClick={() => void update(item, "REVIEWING")}
                                                     disabled={busy}
-                                                    className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-black text-cyan-300 disabled:opacity-50"
+                                                    className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-black text-cyan-700 dark:text-cyan-300 disabled:opacity-50"
                                                 >
                                                     {busy ? <Loader2 size={13} className="animate-spin" /> : <Flag size={13} />} Start review
                                                 </button>
@@ -205,14 +205,14 @@ export default function AdminAiReportsPage() {
                                                     <button
                                                         onClick={() => void update(item, "RESOLVED")}
                                                         disabled={busy}
-                                                        className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs font-black text-emerald-300 disabled:opacity-50"
+                                                        className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs font-black text-emerald-700 dark:text-emerald-300 disabled:opacity-50"
                                                     >
                                                         <CheckCircle2 size={13} /> Resolve
                                                     </button>
                                                     <button
                                                         onClick={() => void update(item, "DISMISSED")}
                                                         disabled={busy}
-                                                        className="inline-flex items-center gap-2 rounded-xl border border-slate-400/30 bg-slate-400/10 px-3 py-2 text-xs font-black text-slate-300 disabled:opacity-50"
+                                                        className="inline-flex items-center gap-2 rounded-xl border border-slate-400/30 bg-slate-400/10 px-3 py-2 text-xs font-black text-slate-700 dark:text-slate-300 disabled:opacity-50"
                                                     >
                                                         <XCircle size={13} /> Dismiss
                                                     </button>

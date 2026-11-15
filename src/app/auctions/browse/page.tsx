@@ -715,8 +715,8 @@ export default function AuctionsBrowsePage() {
                     priority
                     className="object-cover object-center"
                 />
-                {/* Overlays keep text readable: a lighter left-anchored scrim in light mode (so the photo still shows through on the right), a fuller dark wash in dark mode */}
-                <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent dark:bg-gradient-to-b dark:from-slate-900/80 dark:via-slate-900/70 dark:to-slate-900" />
+                {/* Keep copy readable over bright parts of the photo in either theme. */}
+                <div className="absolute inset-0 bg-slate-950/75" />
                 <div className="absolute inset-0 dark:bg-[radial-gradient(ellipse_at_top_left,rgba(237,28,36,0.18)_0%,transparent_55%)]" />
                 <div className="absolute inset-0 dark:bg-[radial-gradient(ellipse_at_bottom_right,rgba(15,23,42,0.85)_0%,transparent_60%)]" />
 
@@ -729,7 +729,7 @@ export default function AuctionsBrowsePage() {
                             className="inline-flex items-center gap-2.5 bg-red-600/10 border border-red-500/20 rounded-full px-4 py-1.5 mb-6"
                         >
                             <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                            <span className="text-xs font-bold text-red-400 uppercase tracking-widest">
+                            <span className="text-xs font-bold text-red-300 uppercase tracking-widest">
                                 {visibleLiveAuctions.length > 0 ? `${visibleLiveAuctions.length} Auction${visibleLiveAuctions.length !== 1 ? "s" : ""} Live Now` : "CarMazium Live Auctions"}
                             </span>
                         </motion.div>
@@ -741,7 +741,7 @@ export default function AuctionsBrowsePage() {
                             className="text-5xl md:text-7xl font-black font-heading tracking-tight leading-[0.92] mb-5"
                         >
                             The Gavel<br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-red-700">
+                            <span className="text-red-300">
                                 Drops Here.
                             </span>
                         </motion.h1>
@@ -750,7 +750,7 @@ export default function AuctionsBrowsePage() {
                             initial={{ opacity: 0, y: 16 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.12 }}
-                            className="text-slate-400 text-lg max-w-lg leading-relaxed mb-8"
+                            className="text-slate-200 text-lg max-w-lg leading-relaxed mb-8"
                         >
                             Real-time bidding on verified vehicles. Compete live, win fairly, connect with sellers instantly.
                         </motion.p>
@@ -764,9 +764,9 @@ export default function AuctionsBrowsePage() {
                         >
                             {[
                                 // Signed-out visitors don't see how many auctions are running.
-                                { icon: Flame, label: user ? `${visibleLiveAuctions.length} Live` : "Live auctions", color: "text-red-400" },
-                                { icon: Calendar, label: user ? `${scheduledAuctions.length} Upcoming` : "Upcoming auctions", color: "text-slate-400" },
-                                { icon: Timer, label: "24-Hour Auctions", color: "text-slate-400" },
+                                { icon: Flame, label: user ? `${visibleLiveAuctions.length} Live` : "Live auctions", color: "text-red-300" },
+                                { icon: Calendar, label: user ? `${scheduledAuctions.length} Upcoming` : "Upcoming auctions", color: "text-slate-200" },
+                                { icon: Timer, label: "24-Hour Auctions", color: "text-slate-200" },
                                 { icon: Zap, label: "Anti-Snipe Rule", color: "text-amber-400" },
                                 { icon: CheckCircle, label: "Free to List", color: "text-emerald-400" },
                             ].map(({ icon: Icon, label, color }) => (

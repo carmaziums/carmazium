@@ -96,7 +96,7 @@ test('buyer home uses the current website sale-first proposition and brand heade
   const home = app('screens/main/HomeScreen.tsx');
   const webHero = read('src/app/HomeClient.tsx');
   assert.ok(webHero.includes('Sell Your Car'));
-  assert.ok(webHero.includes('Auction <span className="text-primary">FREE</span>'));
+  assert.match(webHero, /Auction <span[^>]*>FREE<\/span>/);
   assert.ok(home.includes('<WebsiteTopBar />'));
   assert.ok(home.includes('<Text style={s.greetingLine}>Sell your car</Text>'));
   assert.ok(home.includes('<Text style={s.greetingAccent}>your way.</Text>'));

@@ -217,7 +217,7 @@ export default function DealerOffersPage() {
                                                     <div className="relative">
                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] font-bold">£</span>
                                                         <input type="number"
-                                                            className="w-full bg-black/40 border border-[var(--border-default)] text-white rounded-xl pl-8 pr-3 min-h-[46px] text-base font-bold focus:outline-none focus:border-blue-500 transition-colors"
+                                                            className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] text-[var(--text-primary)] rounded-xl pl-8 pr-3 min-h-[46px] text-base font-bold focus:outline-none focus:border-blue-500 transition-colors"
                                                             value={counterAmount || ''}
                                                             onChange={e => setCounterAmount(Number(e.target.value))}
                                                             autoFocus />
@@ -233,7 +233,7 @@ export default function DealerOffersPage() {
                                             )}
                                             {offer.status === 'ACCEPTED' && isCapturingPostcode && (
                                                 <div className="mt-3 space-y-2">
-                                                    <input type="text" placeholder="Postcode (optional)" maxLength={8} value={postcodeCapture?.postcode ?? ''} onChange={e => setPostcodeCapture(p => p ? { ...p, postcode: e.target.value.toUpperCase() } : null)} className="w-full bg-black/40 border border-[var(--border-default)] text-white rounded-xl px-3 min-h-[46px] text-base font-bold focus:outline-none focus:border-emerald-500 uppercase" />
+                                                    <input type="text" placeholder="Postcode (optional)" maxLength={8} value={postcodeCapture?.postcode ?? ''} onChange={e => setPostcodeCapture(p => p ? { ...p, postcode: e.target.value.toUpperCase() } : null)} className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] text-[var(--text-primary)] rounded-xl px-3 min-h-[46px] text-base font-bold focus:outline-none focus:border-emerald-500 uppercase" />
                                                     <div className="grid grid-cols-2 gap-2">
                                                         <button onClick={confirmMarkSold} disabled={confirmingSale} className="min-h-[46px] rounded-xl bg-emerald-600 text-white font-bold text-sm disabled:opacity-60">{confirmingSale ? 'Saving…' : 'Confirm'}</button>
                                                         <button onClick={() => setPostcodeCapture(null)} className="min-h-[46px] rounded-xl border border-[var(--border-default)] text-[var(--text-muted)] font-bold text-sm">Cancel</button>
@@ -331,7 +331,7 @@ export default function DealerOffersPage() {
                                                                     <div className="relative">
                                                                         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-xs font-black">£</span>
                                                                         <input type="number"
-                                                                            className="bg-black/40 border border-[var(--border-default)] text-white rounded-lg pl-6 pr-2 py-1.5 w-24 text-xs font-black focus:outline-none focus:border-blue-500 transition-colors"
+                                                                            className="bg-[var(--bg-input)] border border-[var(--border-default)] text-[var(--text-primary)] rounded-lg pl-6 pr-2 py-1.5 w-24 text-xs font-black focus:outline-none focus:border-blue-500 transition-colors"
                                                                             value={counterAmount || ''}
                                                                             onChange={e => setCounterAmount(Number(e.target.value))}
                                                                             autoFocus />
@@ -375,7 +375,7 @@ export default function DealerOffersPage() {
                                                                             type="text"
                                                                             placeholder="Postcode (opt.)"
                                                                             maxLength={8}
-                                                                            className="bg-black/40 border border-[var(--border-default)] text-white rounded-lg pl-7 pr-2 py-1.5 w-32 text-xs font-bold focus:outline-none focus:border-emerald-500 transition-colors uppercase placeholder:normal-case placeholder:text-gray-600"
+                                                                            className="bg-[var(--bg-input)] border border-[var(--border-default)] text-[var(--text-primary)] rounded-lg pl-7 pr-2 py-1.5 w-32 text-xs font-bold focus:outline-none focus:border-emerald-500 transition-colors uppercase placeholder:normal-case placeholder:text-[var(--text-muted)]"
                                                                             value={postcodeCapture?.postcode ?? ''}
                                                                             onChange={e => setPostcodeCapture(p => p ? { ...p, postcode: e.target.value.toUpperCase() } : null)}
                                                                             autoFocus

@@ -526,7 +526,7 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
 
                     <button
                         onClick={handleSignOut}
-                        className="w-full flex items-center gap-3 px-4 py-3 mt-2 text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+                        className="w-full flex items-center gap-3 px-4 py-3 mt-2 text-red-700 dark:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
                     >
                         <LogOut size={18} /> Sign Out
                     </button>
@@ -681,7 +681,7 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
                     <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-default)' }}>
                         <button
                             onClick={handleSignOut}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all text-sm"
+                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all text-sm"
                             style={{ color: 'var(--text-muted)' }}
                         >
                             <LogOut size={18} /> Sign Out
