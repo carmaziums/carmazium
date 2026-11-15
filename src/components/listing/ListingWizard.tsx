@@ -887,12 +887,38 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         setFormData(prev => ({ ...prev, [key]: val }))
 
     const isAuction = formData.listingType === 'AUCTION'
+    const isCaravan = formData.bodyType === 'CARAVAN'
+    // A touring caravan is a VIN/CRiS-identified trailer, not a DVLA-registered motor vehicle.
+    const chooseBodyType = (key: BodyTypeValue) => {
+        lookupRequestRef.current += 1
+        setDvlaLoading(false)
+        if (key === 'CARAVAN') {
+            setFormData(prev => ({
+                ...prev,
+                vehicleType: 'CAR',
+                bodyType: key,
+                vrm: '', mileage: '', fuelType: '', transmission: '',
+                engineSize: '', bhp: '', motStatus: '', taxStatus: '',
+                motExpiryDate: '', taxDueDate: '', motHistory: [],
+                officialVehicleData: undefined, euroStandard: '',
+                co2Emissions: '', ulezCompliant: null,
+            }))
+            setDvlaSuccess(false)
+            setMotFeedback(null)
+            setDvlaError(null)
+            setBaseValuation(null)
+            setValuation(null)
+        } else {
+            set('bodyType', key)
+        }
+    }
     const bodyTypeKeys = getBodyTypeKeysForVehicleType(formData.vehicleType)
     const automaticExteriorGrade = computeExteriorGradeFromDefectCount(damageRecords.length)
 
     // The backend returns one unchanged retail+auction quote per vehicle for
     // 24 hours. Seller inputs remain listing details, not a new quote.
     const valuationReady =
+        !isCaravan &&
         formData.vehicleType === 'CAR' &&
         !!formData.make &&
         !!formData.model &&
@@ -1081,8 +1107,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // rather than changes, the existing DVLA/MOT lookup, validation and rules.
     const stepGuide = currentStep === 1
         ? {
-            what: "Enter your registration and check the vehicle details. Answer the condition, ownership and legal questions truthfully.",
-            why: "Registration can fill available DVLA/MOT details for you. Accurate information helps buyers understand the vehicle and avoids delays at review.",
+            what: isCaravan
+                ? "Enter the caravan VIN/CRiS identifier, make, model, condition and ownership details. A UK number plate is not required."
+                : "Enter your registration and check the vehicle details. Answer the condition, ownership and legal questions truthfully.",
+            why: isCaravan
+                ? "Touring caravans are not independently DVLA registered. Your accurate VIN and seller declarations help buyers check the caravan."
+                : "Registration can fill available DVLA/MOT details for you. Accurate information helps buyers understand the vehicle and avoids delays at review.",
             reminder: "Items marked * are required. Extra vehicle information is optional unless marked.",
         }
         : currentStep === 2
@@ -1224,13 +1254,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 const inputIssue = listingDetailsInputIssue(formData)
                 if (inputIssue) return inputIssue.message
                 const missing: string[] = []
-                if (!formData.vrm.trim()) missing.push('registration')
+                if (!isCaravan && !formData.vrm.trim()) missing.push('registration')
+                if (isCaravan && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(formData.vin.trim())) missing.push('17-character caravan VIN (CRiS)')
                 if (!formData.make.trim()) missing.push('make')
                 if (!formData.model.trim()) missing.push('model')
                 if (!formData.year) missing.push('year')
-                if (!formData.mileage) missing.push('mileage')
-                if (!formData.fuelType) missing.push('fuel type')
-                if (!normalizeSellerTransmission(formData.transmission)) missing.push('transmission')
+                if (!isCaravan && !formData.mileage) missing.push('mileage')
+                if (!isCaravan && !formData.fuelType) missing.push('fuel type')
+                if (!isCaravan && !normalizeSellerTransmission(formData.transmission)) missing.push('transmission')
                 if (formData.vehicleType !== 'MOTORCYCLE' && !normalizeSellerBodyType(formData.bodyType, bodyTypeKeys)) missing.push('body type')
                 if (!formData.title || formData.title.length < 5) missing.push('listing title')
                 if (!formData.location.trim()) missing.push('location')
@@ -1342,7 +1373,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             const inputIssue = listingDetailsInputIssue(formData)
             if (inputIssue) return inputIssue
             const required: Array<[string, string, boolean]> = [
-                ['registration', 'Registration', !formData.vrm.trim()],
+                ['registration', 'Registration', !isCaravan && !formData.vrm.trim()],
+                ['vin', 'Caravan VIN (CRiS)', isCaravan && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(formData.vin.trim())],
                 ['make', 'Make', !formData.make.trim()],
                 ['model', 'Model', !formData.model.trim()],
                 ['year', 'Year', !formData.year.trim()],
@@ -1353,9 +1385,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 ['numberOfKeys', 'Number of Keys', !formData.numberOfKeys.trim()],
                 ['body', 'Body Type', formData.vehicleType !== 'MOTORCYCLE' && !normalizeSellerBodyType(formData.bodyType, bodyTypeKeys)],
                 ['location', 'Location', !formData.location.trim()],
-                ['mileage', 'Mileage', !formData.mileage.trim()],
-                ['fuel', 'Fuel Type', !formData.fuelType],
-                ['transmission', 'Transmission', !normalizeSellerTransmission(formData.transmission)],
+                ['mileage', 'Mileage', !isCaravan && !formData.mileage.trim()],
+                ['fuel', 'Fuel Type', !isCaravan && !formData.fuelType],
+                ['transmission', 'Transmission', !isCaravan && !normalizeSellerTransmission(formData.transmission)],
                 ['title', 'Listing Title', !formData.title || formData.title.length < 5],
                 ['description', 'Description', !formData.description.trim()],
                 ['owners', 'Previous Keepers', !formData.owners],
@@ -1809,9 +1841,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 // Market Value / guide price. Retail-only offer bounds are omitted.
                 price: displayPrice,
                 ...(!isAuctionListing ? { priceMin, priceMax } : {}),
-                mileage: parseInt(formData.mileage),
+                // Request contract retains its numeric mileage field; the backend
+                // persists NULL for a caravan rather than a fictitious zero.
+                mileage: isCaravan ? 0 : parseInt(formData.mileage),
                 year: parseInt(formData.year),
-                vrm: formData.vrm,
+                vrm: isCaravan ? '' : formData.vrm,
                 vin: formData.vin || undefined,
                 images: formData.images,
                 listingType: formData.listingType,
