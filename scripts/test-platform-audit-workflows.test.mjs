@@ -132,3 +132,19 @@ test('warranty filters ignore late responses and remove stale actionable rows wh
  h.find('button','Refresh').props.onClick();h.render();assert.doesNotMatch(h.text(),/NEW123/);assert.match(h.text(),/Loading orders/);
  pending[2].reject(Error('Offline'));await h.settle();assert.match(h.text(),/Offline/);assert.doesNotMatch(h.text(),/No orders match/);
 });
+
+test('finance search shows loading, empty and error states and ignores an older initial response',async()=>{
+ const pending=[];
+ const h=harness('src/app/dashboard/admin/finance-providers/page.tsx',{
+  '@/lib/apiClient':{apiClient:url=>url.includes('/listings')?new Promise((resolve,reject)=>pending.push({url,resolve,reject})):Promise.resolve({data:[]})},
+ });
+ const row={id:'old',title:'Older initial vehicle',vrm:'OLD123',status:'ACTIVE',financeRouting:null};
+ h.render();assert.match(h.text(),/Loading matching vehicles/);assert.doesNotMatch(h.text(),/No vehicles match/);
+ const searchForm=()=>h.find('form','Search');
+ const submit=searchForm().props.onSubmit({preventDefault(){}});h.render();assert.equal(pending.length,2);
+ pending[1].resolve({data:[]});await submit;await h.settle();assert.match(h.text(),/No vehicles match/);
+ pending[0].resolve({data:[row]});await h.settle();assert.doesNotMatch(h.text(),/Older initial vehicle/);assert.match(h.text(),/No vehicles match/);
+ const failed=searchForm().props.onSubmit({preventDefault(){}});h.render();assert.doesNotMatch(h.text(),/No vehicles match/);
+ pending[2].reject(Error('Offline'));await failed;await h.settle();assert.match(h.text(),/Press Search to try again/);assert.doesNotMatch(h.text(),/No vehicles match/);
+ const recovered=searchForm().props.onSubmit({preventDefault(){}});h.render();pending[3].resolve({data:[row]});await recovered;await h.settle();assert.match(h.text(),/Older initial vehicle/);assert.doesNotMatch(h.text(),/Press Search to try again/);
+});
