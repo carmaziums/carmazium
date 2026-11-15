@@ -1315,26 +1315,30 @@ export class DealersService {
     async getLeads(userId: string, status?: string, page = 1, limit = 20) {
         const actor = await resolveDealerActor(this.prisma, userId);
         assertDealerPermission(actor, 'MANAGE_CRM');
+        if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+            throw new BadRequestException('Page must be positive and limit must be between 1 and 100');
+        }
+        if (status && !Object.values(LeadStatus).includes(status as LeadStatus)) throw new BadRequestException('Invalid customer stage');
         const profile = await this.getDealerProfile(userId);
-
-        const where: any = { dealerProfileId: profile.id };
-        if (status) where.status = status;
-
+        const where: Prisma.LeadWhereInput = { dealerProfileId: actor.dealerProfileId, ...(status ? { status: status as LeadStatus } : {}) };
         const [data, total] = await Promise.all([
             this.prisma.lead.findMany({
-                where,
-                orderBy: { createdAt: 'desc' },
-                skip: (page - 1) * limit,
-                take: limit,
+                where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: (page - 1) * limit, take: limit,
                 include: {
-                    listing: { select: { id: true, title: true, slug: true, images: true, price: true } },
+                    listing: { select: { id: true, title: true, slug: true, images: true, price: true, sellerId: true, deletedAt: true } },
                     assignedTo: { select: { id: true, firstName: true, lastName: true, email: true } },
                 },
             }),
             this.prisma.lead.count({ where }),
         ]);
-
-        return { data, total };
+        // Also hide foreign/removed references in any older rows; do not rewrite customer history.
+        const allowedAssignees = new Set([actor.ownerUserId, ...(profile.staff ?? []).filter(member => member.isActive).map(member => member.userId)]);
+        return { data: data.map(lead => {
+            const listing = lead.listing?.sellerId === actor.ownerUserId && !lead.listing.deletedAt
+                ? { id: lead.listing.id, title: lead.listing.title, slug: lead.listing.slug, images: lead.listing.images, price: lead.listing.price }
+                : null;
+            return { ...lead, listing, listingId: listing ? lead.listingId : null, assignedToId: lead.assignedTo && allowedAssignees.has(lead.assignedTo.id) ? lead.assignedToId : null, assignedTo: lead.assignedTo && allowedAssignees.has(lead.assignedTo.id) ? lead.assignedTo : null };
+        }), total };
     }
 
     private leadStatusRank(status: LeadStatus): number {
@@ -1558,10 +1562,24 @@ export class DealersService {
         });
     }
 
+    private async assertLeadReferences(ownerUserId: string, dealerProfileId: string, dto: { listingId?: string; assignedToId?: string | null }) {
+        if (dto.listingId !== undefined) {
+            const listing = await this.prisma.listing.findFirst({ where: { id: dto.listingId, sellerId: ownerUserId, deletedAt: null }, select: { id: true } });
+            if (!listing) throw new NotFoundException('Listing not found in your dealership');
+        }
+        if (dto.assignedToId && dto.assignedToId !== ownerUserId) {
+            const member = await this.prisma.dealerStaff.findFirst({
+                where: { dealerProfileId, userId: dto.assignedToId, isActive: true, user: { deletedAt: null } }, select: { id: true },
+            });
+            if (!member) throw new BadRequestException('Choose an active member of your dealership');
+        }
+    }
+
     async createLead(userId: string, dto: CreateLeadDto) {
         const actor = await resolveDealerActor(this.prisma, userId);
         assertDealerPermission(actor, 'MANAGE_CRM');
         const profile = await this.getDealerProfile(userId);
+        await this.assertLeadReferences(actor.ownerUserId, actor.dealerProfileId, dto);
 
         return this.prisma.lead.create({
             data: {
@@ -1573,6 +1591,7 @@ export class DealersService {
                 listingId: dto.listingId,
                 assignedToId: dto.assignedToId,
                 source: dto.source,
+                status: dto.status ?? LeadStatus.NEW,
                 notes: dto.notes,
                 nextFollowUpAt: dto.nextFollowUpAt ? new Date(dto.nextFollowUpAt) : undefined,
                 lastActivityAt: new Date(),
@@ -1593,11 +1612,12 @@ export class DealersService {
             where: { id: leadId, dealerProfileId: profile.id },
         });
         if (!lead) throw new NotFoundException('Lead not found');
+        await this.assertLeadReferences(actor.ownerUserId, actor.dealerProfileId, dto);
 
-        return this.prisma.lead.update({
+        const updated = await this.prisma.lead.update({
             where: { id: leadId },
             data: {
-                ...(dto.status && { status: dto.status as any }),
+                ...(dto.status && { status: dto.status }),
                 ...(dto.assignedToId !== undefined && { assignedToId: dto.assignedToId }),
                 ...(dto.notes !== undefined && { notes: dto.notes }),
                 ...(dto.nextFollowUpAt !== undefined && {
@@ -1606,10 +1626,18 @@ export class DealersService {
                 lastActivityAt: new Date(),
             },
             include: {
-                listing: { select: { id: true, title: true } },
+                listing: { select: { id: true, title: true, sellerId: true, deletedAt: true } },
                 assignedTo: { select: { id: true, firstName: true, lastName: true } },
             },
         });
+        const validListing = updated.listing?.sellerId === actor.ownerUserId && !updated.listing.deletedAt;
+        const validAssignee = updated.assignedToId === actor.ownerUserId || (profile.staff ?? []).some(member => member.isActive && member.userId === updated.assignedToId);
+        return { ...updated,
+            listingId: validListing ? updated.listingId : null,
+            listing: validListing ? { id: updated.listing!.id, title: updated.listing!.title } : null,
+            assignedToId: validAssignee ? updated.assignedToId : null,
+            assignedTo: validAssignee ? updated.assignedTo : null,
+        };
     }
 
     // ─── Staff (RBAC) ───────────────────────────────────────────────

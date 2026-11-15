@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useSearchParams, useRouter } from "next/navigation"
 import { buttonVariants } from "@/components/ui/buttonVariants"
 import { Briefcase, AlertCircle, Inbox, ArrowLeft } from "lucide-react"
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/AsyncState"
@@ -19,8 +20,19 @@ import { loadProviderJobLists } from "@/lib/tradeXchangeProviderJobLoad"
  * box.
  */
 export default function ContractorJobsPage() {
+    const { user, loading } = useAuth()
+    if (loading || !user) return <LoadingState label="Loading your account…" />
+    return <React.Suspense fallback={<LoadingState label="Loading jobs…" />}><ProviderJobs key={user.id} /></React.Suspense>
+}
+
+function ProviderJobs() {
     const { user, profile, loading: authLoading } = useAuth()
-    const [tab, setTab] = React.useState<"open" | "mine">("open")
+    const search = useSearchParams()
+    const router = useRouter()
+    const tab = search.get("tab") === "mine" ? "mine" : "open"
+    const setTab = (value: "open" | "mine") => router.replace(`/dashboard/service/jobs?tab=${value}`, { scroll: false })
+    const sequence = React.useRef(0)
+    const morePending = React.useRef(false)
     const [feed, setFeed] = React.useState<ServiceJob[] | null>(null)
     const [mine, setMine] = React.useState<ServiceJob[] | null>(null)
     const [notApproved, setNotApproved] = React.useState(false)
@@ -32,6 +44,11 @@ export default function ContractorJobsPage() {
 
     const loadJobs = React.useCallback(async () => {
         if (authLoading || !user) return
+        const request = ++sequence.current
+        morePending.current = false
+        setLoadingMore(false)
+        setFeedCursor(null)
+        setMineCursor(null)
         setAvailableError(null)
         setAssignedError(null)
         setNotApproved(false)
@@ -41,6 +58,7 @@ export default function ContractorJobsPage() {
         // Approval gates new quotations, not the right to finish an existing
         // paid job. A 403 on Available must never empty the My Work tab.
         const result = await loadProviderJobLists(getJobFeedPage, getAssignedJobsPage)
+        if (request !== sequence.current) return
         setFeed(result.available?.items ?? [])
         setFeedCursor(result.available?.nextCursor ?? null)
         setMine(result.assigned?.items ?? [])
@@ -52,28 +70,36 @@ export default function ContractorJobsPage() {
 
     React.useEffect(() => {
         void loadJobs()
+        const currentSequence = sequence
+        return () => { currentSequence.current++ }
     }, [loadJobs])
 
     const loadMore = async () => {
-        if (loadingMore) return
+        if (morePending.current) return
         const cursor = tab === "open" ? feedCursor : mineCursor
         if (!cursor) return
+        morePending.current = true
+        const request = sequence.current
         setLoadingMore(true)
         try {
             if (tab === "open") {
                 const page = await getJobFeedPage(undefined, cursor)
-                setFeed(current => [...(current ?? []), ...page.items])
+                if (request !== sequence.current) return
+                setFeed(current => [...new Map([...(current ?? []), ...page.items].map(job => [job.id, job])).values()])
                 setFeedCursor(page.nextCursor)
             } else {
                 const page = await getAssignedJobsPage(cursor)
-                setMine(current => [...(current ?? []), ...page.items])
+                if (request !== sequence.current) return
+                setMine(current => [...new Map([...(current ?? []), ...page.items].map(job => [job.id, job])).values()])
                 setMineCursor(page.nextCursor)
             }
-        } catch (e: any) {
-            if (tab === "open") setAvailableError(e?.message || "Could not load more jobs")
-            else setAssignedError(e?.message || "Could not load more jobs")
+        } catch (e: unknown) {
+            if (request !== sequence.current) return
+            const message = e instanceof Error ? e.message : "Could not load more jobs"
+            if (tab === "open") setAvailableError(message)
+            else setAssignedError(message)
         } finally {
-            setLoadingMore(false)
+            if (request === sequence.current) { morePending.current = false; setLoadingMore(false) }
         }
     }
 
@@ -85,15 +111,16 @@ export default function ContractorJobsPage() {
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="provider" userName={userName} userType="Service Provider" />
-                <main className="flex-1 space-y-6">
+                <main className="flex-1 min-w-0 space-y-6">
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                         <div>
                             <p className="text-primary text-xs font-black uppercase tracking-[0.18em] mb-2">TradeXchange Provider Marketplace</p>
-                            <h1 className="text-3xl font-bold font-heading mb-1">Available Jobs</h1>
+                            <h1 className="text-3xl font-bold font-heading mb-1">{tab === "mine" ? "My Work" : "Available Jobs"}</h1>
                             <p className="text-sm text-[var(--text-muted)] max-w-2xl">These are customer-posted Delivery, Recovery and Inspection jobs your approved Partner business can compete for. Send a quote on suitable work; jobs you win stay under My Work.</p>
                         </div>
-                        <Link href="/services" className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-default)] px-4 py-2.5 text-xs font-black uppercase tracking-widest hover:border-primary/40 transition-colors">
-                            <ArrowLeft size={14} /> TradeXchange Services
+                        <button type="button" onClick={loadJobs} disabled={!feed || !mine} className="text-sm font-bold text-primary underline disabled:opacity-50">Refresh jobs</button>
+                        <Link href="/dashboard/service" className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-default)] px-4 py-2.5 text-xs font-black uppercase tracking-widest hover:border-primary/40 transition-colors">
+                            <ArrowLeft size={14} /> Provider overview
                         </Link>
                     </div>
 
@@ -102,8 +129,8 @@ export default function ContractorJobsPage() {
                     </div>
 
                     <div className="flex items-center gap-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl p-1 w-fit max-w-full">
-                        {([["open", `Available${feed ? ` (${feed.length})` : ""}`], ["mine", `My Work${mine ? ` (${mine.length})` : ""}`]] as const).map(([k, label]) => (
-                            <button key={k} type="button" onClick={() => setTab(k)}
+                        {([["open", `Available${feed ? ` (${feed.length}${feedCursor ? "+" : ""})` : ""}`], ["mine", `My Work${mine ? ` (${mine.length}${mineCursor ? "+" : ""})` : ""}`]] as const).map(([k, label]) => (
+                            <button key={k} type="button" onClick={() => setTab(k)} aria-pressed={tab === k}
                                 className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${tab === k ? "bg-primary text-white" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>
                                 {label}
                             </button>
@@ -115,7 +142,7 @@ export default function ContractorJobsPage() {
                             <AlertCircle size={22} className="text-amber-500 shrink-0" />
                             <div className="flex-1">
                                 <p className="font-bold text-sm">Verification required for new jobs</p>
-                                <p className="text-xs text-[var(--text-muted)] mt-0.5">Apply for a service, upload its verification documents and complete Stripe Connect. You can still view and finish previously accepted jobs under My Work.</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-0.5">Complete business verification, verified payouts and the declaration. Delivery and recovery require trade insurance; inspections need no inspection documents. Your original £1 dealer verification is reused. Previously accepted jobs remain under My Work.</p>
                             </div>
                             <Link href="/dashboard/service/capabilities" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>Review verification →</Link>
                         </div>
@@ -128,7 +155,7 @@ export default function ContractorJobsPage() {
                             icon={tab === "open" ? Inbox : Briefcase}
                             title={tab === "open" ? "No matching jobs right now" : "No won jobs yet"}
                             description={tab === "open"
-                                ? "New customer jobs appear here automatically when they match one of your approved service areas."
+                                ? "Refresh to check for jobs matching your approved services. Eligible providers also receive account and email notifications for new matching jobs."
                                 : "Quote on Available Jobs to start building your completed work history."}
                         />
                     )}

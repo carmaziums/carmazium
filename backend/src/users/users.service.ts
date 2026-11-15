@@ -133,13 +133,14 @@ export class UsersService {
         return safeUser;
     }
 
-    async updateIntroduction(userId: string, action: unknown) {
+    async updateIntroduction(userId: string, action: unknown, version: unknown = 1) {
         const actions = ['tour_skipped', 'tour_completed', 'services_dismissed', 'services_viewed'];
         if (typeof action !== 'string' || !actions.includes(action)) {
             throw new BadRequestException('Unknown introduction action');
         }
+        if (action.startsWith('tour_') && version !== 1 && version !== 2) throw new BadRequestException('Unknown introduction version');
         const patch = action.startsWith('tour_')
-            ? { websiteIntroductionV1: { status: action.slice(5), version: 1, updatedAt: new Date().toISOString() } }
+            ? { [`websiteIntroductionV${version}`]: { status: action.slice(5), version, updatedAt: new Date().toISOString() } }
             : { dealerServicesNoticeV1: { status: action.slice(9), updatedAt: new Date().toISOString() } };
         // Atomic JSON merge preserves unrelated preferences and simultaneous
         // tour/notice dismissals. Identity comes only from SessionAuthGuard.

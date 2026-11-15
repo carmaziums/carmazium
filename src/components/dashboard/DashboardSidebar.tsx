@@ -230,7 +230,7 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
             ...(isPartnerOwner ? [{ href: "/dashboard/partner", label: "Partner Home", icon: Building2, section: "Business" }] : []),
             { href: "/dashboard/service", label: "Service Overview", icon: LayoutDashboard, section: "Services" },
             { href: "/dashboard/service/jobs", label: "Available Jobs", icon: Briefcase, section: "Services" },
-            { href: "/dashboard/service/capabilities", label: "Service Areas", icon: ShieldCheck, section: "Services" },
+            { href: "/dashboard/service/capabilities", label: "Service Setup", icon: ShieldCheck, section: "Services" },
             { href: "/dashboard/service/messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account" },
             { href: "/profile", label: "Account Settings", icon: Settings, section: "Account" },
         ],

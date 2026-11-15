@@ -7,7 +7,6 @@ import {
     Briefcase,
     CheckCircle,
     ChevronRight,
-    ClipboardList,
     Inbox,
     Loader2,
     PoundSterling,
@@ -17,14 +16,15 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { JobListCard } from "@/components/services/JobBits"
 import { useAuth } from "@/context/AuthContext"
 import {
-    SERVICE_LABELS,
     formatPence,
-    getAssignedJobs,
-    getJobFeed,
+    getAssignedJobsPage,
+    getJobFeedPage,
     getMyCapabilities,
     type MyCapabilities,
     type ServiceJob,
 } from "@/lib/servicesApi"
+
+import { loadAllProviderJobs, loadProviderJobLists } from "@/lib/tradeXchangeProviderJobLoad"
 
 /**
  * TradeXchange provider overview.
@@ -35,12 +35,22 @@ import {
  * Finance/Warranty lead inbox.
  */
 export default function ServiceDashboard() {
+    const { user, loading } = useAuth()
+    if (loading || !user) return <div className="p-12 text-center">Loading your provider dashboard…</div>
+    return <ProviderOverview key={user.id} />
+}
+
+function ProviderOverview() {
     const { user, profile, loading: authLoading } = useAuth()
     const [capabilities, setCapabilities] = React.useState<MyCapabilities | null>(null)
-    const [feed, setFeed] = React.useState<ServiceJob[]>([])
-    const [assigned, setAssigned] = React.useState<ServiceJob[]>([])
+    const [feed, setFeed] = React.useState<ServiceJob[] | null>(null)
+    const [assigned, setAssigned] = React.useState<ServiceJob[] | null>(null)
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
+
+    const [refresh, setRefresh] = React.useState(0)
+    const [approvalRequired, setApprovalRequired] = React.useState(false)
+    const [assignedError, setAssignedError] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         if (authLoading || !user) return
@@ -50,32 +60,33 @@ export default function ServiceDashboard() {
             setLoading(true)
             setError(null)
 
-            const [capResult, feedResult, assignedResult] = await Promise.allSettled([
+            const [capResult, listsResult] = await Promise.allSettled([
                 getMyCapabilities(),
-                getJobFeed(),
-                getAssignedJobs(),
+                loadProviderJobLists(
+                    () => loadAllProviderJobs(cursor => getJobFeedPage(undefined, cursor, 50)),
+                    () => loadAllProviderJobs(cursor => getAssignedJobsPage(cursor, 50)),
+                ),
             ])
-
             if (cancelled) return
-
-            if (capResult.status === "fulfilled") setCapabilities(capResult.value)
-            else setCapabilities({ profile: null, capabilities: [], stripeConnect: { connected: false, complete: false } })
-
-            setFeed(feedResult.status === "fulfilled" ? feedResult.value : [])
-            setAssigned(assignedResult.status === "fulfilled" ? assignedResult.value : [])
-
-            // A provider may legitimately get 403 from one marketplace if they
-            // are approved only for the other. Only show an error when even the
-            // capability summary itself cannot be loaded.
-            if (capResult.status === "rejected") {
-                setError(capResult.reason?.message || "Could not load your service provider profile.")
-            }
+            setCapabilities(capResult.status === "fulfilled" ? capResult.value : null)
+            const lists = listsResult.status === "fulfilled" ? listsResult.value : null
+            setFeed(lists?.available?.items ?? null)
+            setAssigned(lists?.assigned?.items ?? null)
+            setApprovalRequired(lists?.approvalRequired ?? false)
+            setAssignedError(lists?.assignedError ?? (lists ? null : "Could not load assigned jobs."))
+            const failures = [
+                capResult.status === "rejected" ? "Could not load your service approvals." : null,
+                lists?.availableError,
+                lists?.assignedError,
+                !lists ? "Could not load service jobs." : null,
+            ].filter(Boolean)
+            setError(failures.length ? failures.join(" ") : null)
             setLoading(false)
         }
 
         load()
         return () => { cancelled = true }
-    }, [authLoading, user])
+    }, [authLoading, user, refresh])
 
     if (authLoading) {
         return (
@@ -90,11 +101,11 @@ export default function ServiceDashboard() {
         : user?.email?.split("@")[0] || "Provider"
 
     const approvedCount = capabilities?.capabilities.filter(c => c.status === "APPROVED" && (c.serviceType === "DELIVERY" || c.serviceType === "INSPECTION")).length ?? 0
-    const activeAssigned = assigned.filter(j => !["RELEASED", "CANCELLED", "EXPIRED"].includes(j.status))
-    const releasedEarnings = assigned
+    const activeAssigned = (assigned ?? []).filter(j => !["RELEASED", "CANCELLED", "EXPIRED"].includes(j.status))
+    const releasedEarnings = (assigned ?? [])
         .filter(j => j.status === "RELEASED")
         .reduce((sum, job) => sum + (job.contractorAmountPence ?? 0), 0)
-    const recentAssigned = [...assigned]
+    const recentAssigned = [...(assigned ?? [])]
         .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
         .slice(0, 4)
 
@@ -114,13 +125,15 @@ export default function ServiceDashboard() {
                         </div>
                         <div className="flex flex-wrap gap-2">
                             <Link href="/dashboard/service/capabilities" className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-default)] px-4 py-2.5 text-xs font-black uppercase tracking-widest hover:border-primary/40 transition-colors">
-                                <ShieldCheck size={15} /> Service areas
+                                <ShieldCheck size={15} /> Service setup & payouts
                             </Link>
-                            <Link href="/services" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-black uppercase tracking-widest text-white hover:bg-primary/90 transition-colors">
-                                Service hub <ChevronRight size={15} />
+                            <Link href="/dashboard/service/jobs" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-black uppercase tracking-widest text-white hover:bg-primary/90 transition-colors">
+                                Find jobs <ChevronRight size={15} />
                             </Link>
                         </div>
                     </div>
+
+                    <button type="button" disabled={loading} onClick={() => setRefresh(value => value + 1)} className="text-sm font-bold text-primary underline disabled:opacity-50">{loading ? "Refreshing…" : "Refresh dashboard"}</button>
 
                     {error && (
                         <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-sm text-red-500">
@@ -129,10 +142,10 @@ export default function ServiceDashboard() {
                     )}
 
                     <section className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
-                        <StatCard icon={ShieldCheck} label="Approved areas" value={loading ? "…" : String(approvedCount)} />
-                        <StatCard icon={Inbox} label="Open jobs" value={loading ? "…" : String(feed.length)} />
-                        <StatCard icon={Briefcase} label="My active jobs" value={loading ? "…" : String(activeAssigned.length)} />
-                        <StatCard icon={PoundSterling} label="Released earnings" value={loading ? "…" : formatPence(releasedEarnings)} />
+                        <StatCard icon={ShieldCheck} label="Approved services" value={loading ? "…" : capabilities ? String(approvedCount) : "Unavailable"} />
+                        <StatCard icon={Inbox} label="Available jobs" value={loading ? "…" : feed ? String(feed.length) : approvalRequired ? "Setup needed" : "Unavailable"} />
+                        <StatCard icon={Briefcase} label="My active jobs" value={loading ? "…" : assigned ? String(activeAssigned.length) : "Unavailable"} />
+                        <StatCard icon={PoundSterling} label="Released earnings" value={loading ? "…" : assigned ? formatPence(releasedEarnings) : "Unavailable"} />
                     </section>
 
                     <section className="grid lg:grid-cols-2 gap-5">
@@ -149,7 +162,10 @@ export default function ServiceDashboard() {
                             </div>
                         </Link>
 
-
+                        <Link href="/dashboard/service/jobs?tab=mine" className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 hover:border-primary/40">
+                            <h2 className="font-heading font-bold text-lg">My work</h2>
+                            <p className="text-sm text-[var(--text-muted)] mt-1">Continue jobs assigned to your business and review completed work. Existing jobs remain accessible when approval for new work needs renewal.</p>
+                        </Link>
                     </section>
 
                     <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] overflow-hidden">
@@ -158,12 +174,12 @@ export default function ServiceDashboard() {
                                 <h2 className="text-xl font-bold font-heading">My recent assigned jobs</h2>
                                 <p className="text-xs text-[var(--text-muted)] mt-1">Delivery and Inspection jobs assigned to your business.</p>
                             </div>
-                            <Link href="/dashboard/service/jobs" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>View all</Link>
+                            <Link href="/dashboard/service/jobs?tab=mine" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>View all</Link>
                         </div>
 
                         {loading ? (
                             <div className="py-14 flex justify-center"><Loader2 className="animate-spin text-primary" /></div>
-                        ) : recentAssigned.length === 0 ? (
+                        ) : assignedError || assigned === null ? (<p role="status" className="p-6 text-sm">Assigned jobs are unavailable. Refresh the dashboard to try again.</p>) : recentAssigned.length === 0 ? (
                             <div className="p-8 md:p-10 text-center">
                                 <Briefcase size={28} className="mx-auto text-[var(--text-muted)] mb-3" />
                                 <p className="text-sm text-[var(--text-muted)]">No assigned jobs yet. Approved Delivery or Inspection providers can quote on open jobs.</p>
@@ -190,13 +206,13 @@ export default function ServiceDashboard() {
                             <div className="flex gap-3">
                                 <CheckCircle size={21} className="text-emerald-500 shrink-0 mt-0.5" />
                                 <div>
-                                    <h2 className="font-bold">How your service areas work</h2>
+                                    <h2 className="font-bold">What you need before taking jobs</h2>
                                     <p className="text-sm text-[var(--text-muted)] mt-1 leading-relaxed">
-                                        Delivery & Recovery and Vehicle Inspections use competitive quotes with the 9% / 91% job-payment split. Finance and warranty partnerships are arranged directly with our team. Buyers apply externally with the finance provider selected by admin.
+                                        Complete business verification, verified payouts and the declaration. Collection, delivery and recovery require trade insurance. Inspections need no inspection documents. Your original £1 dealer verification is reused; no further £1 service verification is required. CarMazium retains 9% of the agreed job price and your business receives 91% after release. Finance, warranty and insurance providers should contact CarMazium directly about partnerships.
                                     </p>
                                 </div>
                             </div>
-                            <Link href="/dashboard/service/capabilities" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>Manage approvals</Link>
+                            <Link href="/dashboard/service/capabilities" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>Complete service setup</Link>
                         </div>
                     </section>
                 </main>
@@ -217,8 +233,8 @@ function StatCard({
     return (
         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 md:p-5 min-w-0">
             <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4"><Icon size={17} /></div>
-            <p className="text-[10px] md:text-xs font-black uppercase tracking-widest text-[var(--text-muted)] truncate">{label}</p>
-            <p className="text-xl md:text-2xl font-black font-heading mt-1 truncate">{value}</p>
+            <p className="text-[10px] md:text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">{label}</p>
+            <p className="text-xl md:text-2xl font-black font-heading mt-1 break-words">{value}</p>
         </div>
     )
 }

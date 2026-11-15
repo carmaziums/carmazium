@@ -1,16 +1,17 @@
-import { IsString, IsOptional, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsEnum } from 'class-validator';
+import { LeadStatus } from '@prisma/client';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateLeadDto {
     @ApiPropertyOptional({ enum: ['NEW', 'CONTACTED', 'QUALIFIED', 'NEGOTIATING', 'WON', 'LOST'] })
     @IsOptional()
-    @IsString()
-    status?: string;
+    @IsEnum(LeadStatus)
+    status?: LeadStatus;
 
     @ApiPropertyOptional({ description: 'Sales agent user ID to reassign the lead to' })
     @IsOptional()
     @IsString()
-    assignedToId?: string;
+    assignedToId?: string | null;
 
     @ApiPropertyOptional({ description: 'Notes about the lead' })
     @IsOptional()

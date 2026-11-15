@@ -1,6 +1,5 @@
-export const WELCOME_TOUR_VERSION = 1
-// Existing accounts can replay from Settings without an unexpected full-screen tour.
-export const WELCOME_TOUR_LAUNCH = "2026-11-15T14:55:00.000Z"
+export const WELCOME_TOUR_VERSION = 2
+// Reintroduce this release once to every account, including existing accounts.
 
 export type TourProfile = {
     id: string
@@ -13,11 +12,12 @@ export type TourProfile = {
 }
 
 export function canAutoIntroduce(profile: TourProfile, pathname: string, search: string) {
-    const safePages = ["/", "/search", "/buy-cars", "/dashboard", "/dashboard/user", "/dashboard/buyer", "/dashboard/seller", "/dashboard/dealer", "/dashboard/partner", "/dashboard/finance", "/dashboard/insurance"]
-    return profile.role !== "ADMIN"
-        && Number.isFinite(Date.parse(profile.createdAt ?? ""))
-        && Date.parse(profile.createdAt!) >= Date.parse(WELCOME_TOUR_LAUNCH)
-        && !profile.preferences?.websiteIntroductionV1
+    const safePages = ["/", "/search", "/buy-cars", "/dashboard", "/dashboard/user", "/dashboard/buyer", "/dashboard/seller", "/dashboard/dealer", "/dashboard/partner", "/dashboard/finance", "/dashboard/insurance", "/dashboard/service", "/dashboard/admin"]
+    const acknowledgement = profile.preferences?.websiteIntroductionV2 as { version?: unknown; status?: unknown } | undefined
+    const acknowledged = acknowledgement?.version === WELCOME_TOUR_VERSION
+        && ["skipped", "completed"].includes(String(acknowledgement?.status))
+    return ["BUYER", "SELLER", "DEALER", "CONTRACTOR", "FINANCE_PARTNER", "INSURANCE_PARTNER", "ADMIN"].includes(profile.role)
+        && !acknowledged
         && safePages.includes(pathname)
         && !search
 }
