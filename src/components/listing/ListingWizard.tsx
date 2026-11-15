@@ -3138,15 +3138,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </div>
                                 )}
                             </div>
+                            )}
 
                             {/* VIN / CRiS identifier */}
                             <div className="space-y-2">
-                                <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1.5">VIN <span className="text-[var(--text-secondary)] normal-case font-normal text-xs">(optional)</span></label>
-                                <Input placeholder="17-character VIN" value={formData.vin}
+                                <label htmlFor="listing-required-vin" className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1.5">{isCaravan ? 'Caravan VIN / CRiS *' : 'VIN'} {!isCaravan && <span className="text-[var(--text-secondary)] normal-case font-normal text-xs">(optional)</span>}</label>
+                                <Input id="listing-required-vin" placeholder="17-character VIN" value={formData.vin}
                                     maxLength={17}
                                     onChange={(e) => set("vin", e.target.value.toUpperCase())}
-                                    className={`${inputCls} font-mono tracking-wider`} />
-                                <p className="text-xs text-[var(--text-secondary)]">Vehicle Identification Number — increases buyer trust.</p>
+                                    className={`${inputCls} font-mono tracking-wider ${hasAttemptedNext && isCaravan && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(formData.vin.trim()) ? 'border-red-500' : ''}`} />
+                                <p className="text-xs text-[var(--text-secondary)]">{isCaravan ? 'Enter the 17-character chassis VIN found on the caravan/CRiS documents. This is seller-provided information, not automatically CRiS-verified.' : 'Vehicle Identification Number — increases buyer trust.'}</p>
                             </div>
 
                             {/* Make / Model / Year */}
@@ -3443,7 +3444,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     key={key}
                                                     type="button"
                                                     aria-pressed={formData.bodyType === key}
-                                                    onClick={() => set("bodyType", key)}
+                                                    onClick={() => chooseBodyType(key)}
                                                     className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${formData.bodyType === key ? "border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(237,28,36,0.2)]" : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-white/30"}`}
                                                 >
                                                     <Icon className="w-10 h-5" />
@@ -3630,6 +3631,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4 mt-8">Technical Specs</h2>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                {!isCaravan && (<>
                                 {/* Mileage */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Mileage *</label>
@@ -3686,6 +3688,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         { value: "CVT", label: "CVT" },
                                     ]}
                                 />
+                                </>)}
 
                                 {/* Colour */}
                                 <div className="space-y-2">
@@ -3693,6 +3696,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <Input placeholder="e.g. Alpine White" value={formData.color} onChange={(e) => set("color", e.target.value)} className={inputCls} />
                                 </div>
 
+                                {!isCaravan && (<>
                                 {/* Engine */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Engine Size (cc)</label>
@@ -3705,6 +3709,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     <Input type="number" placeholder="e.g. 503" value={formData.bhp} onChange={(e) => set("bhp", e.target.value)} className={inputCls} />
                                 </div>
 
+                                </>)}
                                 {/* Doors (not for motorcycles) */}
                                 {formData.vehicleType !== 'MOTORCYCLE' && (
                                     <div className="space-y-2">
