@@ -163,7 +163,7 @@ export default function ProviderVerificationPage() {
                     <Link href="/dashboard/service/capabilities" className="block text-primary underline">Set up or check business payouts</Link>
                 </section>}
                 <section className="space-y-3">
-                    <div><h2 className="font-heading font-bold text-lg">{capability?.serviceType === "INSPECTION" ? "No inspection documents required" : "Trade insurance"}</h2><p className="text-xs text-[var(--text-muted)] mt-1">Only the items below must be approved before CarMazium can verify your application.</p></div>
+                    <div><h2 className="font-heading font-bold text-lg">{capability?.serviceType === "INSPECTION" ? "No inspection documents required" : "Trade insurance"}</h2><p className="text-xs text-[var(--text-muted)] mt-1">{capability?.serviceType === "INSPECTION" ? "Complete your business details, declaration and verified payout setup. No inspection documents need to be uploaded." : "Your trade insurance must be approved alongside your business details, declaration and verified payout setup."}</p></div>
                     {detail.verification.requirements.filter(req => !req.optional).map(req => <div key={req.type} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                         <div className="flex items-start justify-between gap-4">
                             <div className="flex gap-3">
@@ -201,6 +201,7 @@ export default function ProviderVerificationPage() {
                 </>}
                 <section className="space-y-3">
                     <h2 className="font-heading font-bold text-lg">Evidence history ({detail.attachments.length})</h2>
+                    <p className="text-xs text-[var(--text-muted)]">Previously uploaded evidence is retained for your records. Historical documents are not additional requirements for a new application.</p>
                     {detail.attachments.length === 0 && <div className="rounded-2xl border border-dashed border-[var(--border-default)] p-8 text-center text-sm text-[var(--text-muted)]">No verification evidence uploaded yet.</div>}
                     {detail.attachments.map(entry => <div key={entry.id} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4">
                         <div className="flex items-start justify-between gap-4">
