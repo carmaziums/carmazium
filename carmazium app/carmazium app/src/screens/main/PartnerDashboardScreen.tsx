@@ -291,7 +291,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 ] as const).map(([key, label]) => <View key={key} style={styles.rowBetween}>
                   <Text style={[styles.cardText, { flex: 1 }]}>{label}</Text><Switch accessibilityLabel={label} disabled={!!busy} value={profile.dealerProfile?.[key] !== false} onValueChange={value => toggleService(key, value)} />
                 </View>)}
-                <Text style={styles.cardText}>Paid jobs require approved business KYC, the £1 verification fee, verified payouts and a declaration. Only trade insurance is uploaded for collection/delivery/recovery. No inspection documents are required.</Text>
+                <Text style={styles.cardText}>Paid jobs reuse your approved dealer KYC and one-time £1 account verification. No additional verification payment is required for services. Verified payouts and a declaration are required. Only trade insurance is uploaded for collection/delivery/recovery. No inspection documents are required.</Text>
               </View>
               {SERVICE_ORDER.map((type) => {
 

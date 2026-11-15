@@ -543,8 +543,8 @@ export class TradeTeamService {
             type: 'SERVICE_CAPABILITY_APPLIED',
             title: `Complete your ${label} setup`,
             message: serviceType === ServiceType.INSPECTION
-                ? "Complete your business declaration, dealer verification (£1) and business payout setup. No inspection documents are required."
-                : "Complete your business declaration, dealer verification (£1), business payout setup and upload trade insurance for collection, delivery and recovery.",
+                ? "Complete your business declaration and business payout setup. Your existing dealer verification is reused; there is no additional £1 verification payment. No inspection documents are required."
+                : "Complete your business declaration and business payout setup, and upload trade insurance for collection, delivery and recovery. Your existing dealer verification is reused; there is no additional £1 verification payment.",
             link: `/dashboard/service/capabilities/${capabilityId}/verification`,
             entityType: 'SERVICE_CAPABILITY',
             entityId: capabilityId,

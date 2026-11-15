@@ -224,7 +224,7 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
                 <Text style={styles.cardText}>I confirm these details are accurate and I am responsible for carrying out the services I accept competently and safely.</Text>
                 <Switch accessibilityLabel="Accept service declaration" value={accepted} onValueChange={setAccepted} />
                 <TouchableOpacity accessibilityRole="button" disabled={busy || !accepted || !business.registeredBusiness} onPress={saveDeclaration} style={styles.fileButton}><Text style={styles.fileButtonText}>SAVE DECLARATION</Text></TouchableOpacity>
-                <Text style={styles.cardText}>Approved business KYC, the £1 dealer verification payment and verified business payouts are required. Enter bank details through secure payout setup.</Text>
+                <Text style={styles.cardText}>Your approved dealer KYC and one-time £1 account verification are reused. No additional verification payment is required for services. Verified business payouts are required. Enter bank details through secure payout setup.</Text>
                 <TouchableOpacity onPress={() => navigation.navigate('ProviderCapabilities')}><Text style={styles.cardText}>Check payout setup and service status</Text></TouchableOpacity>
               </View>}
               <Text style={styles.sectionTitle}>Requirements</Text>

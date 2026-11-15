@@ -60,12 +60,20 @@ integration('TradeXchange: real PostgreSQL transactions, synthetic Stripe only',
       expect(await eligible()).toEqual([]);
       await db.dealerKyc.update({ where: { id: kyc.id }, data: { stripeChargedAt: new Date() } });
       expect(await eligible()).toHaveLength(1);
+      for (const field of ['paymentReference', 'paymentScreenshot']) {
+        await db.dealerKyc.update({ where: { id: kyc.id }, data: { stripeChargedAt: null, documentStatuses: { [field]: { status: 'APPROVED' } } } });
+        expect(await eligible()).toHaveLength(1);
+        await db.dealerKyc.update({ where: { id: kyc.id }, data: { documentStatuses: { [field]: { status: 'PENDING' } } } });
+        expect(await eligible()).toEqual([]);
+      }
+      await db.dealerKyc.update({ where: { id: kyc.id }, data: { stripeChargedAt: new Date('2020-01-01T00:00:00Z'), documentStatuses: {} } });
+      expect(await eligible()).toHaveLength(1);
       await db.dealerProfile.update({ where: { id: dealer.id }, data: { inspectionServicesEnabled: false } });
       expect(await eligible()).toEqual([]);
       await db.user.update({ where: { id: providerUser.id }, data: { role: 'CONTRACTOR' } });
       expect(await eligible()).toEqual([]);
     } finally {
-      await db.dealerKyc.update({ where: { id: kyc.id }, data: { status: 'APPROVED', stripeChargedAt: new Date() } });
+      await db.dealerKyc.update({ where: { id: kyc.id }, data: { status: 'APPROVED', stripeChargedAt: new Date(), documentStatuses: {} } });
       await db.dealerProfile.update({ where: { id: dealer.id }, data: { inspectionServicesEnabled: true } });
       await db.user.update({ where: { id: providerUser.id }, data: { role: 'DEALER' } });
     }

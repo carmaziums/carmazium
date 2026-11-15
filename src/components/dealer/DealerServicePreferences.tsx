@@ -36,7 +36,7 @@ export function DealerServicePreferences() {
                 <span><span className="block font-semibold">{title}</span><span className="block mt-1 text-sm text-[var(--text-muted)]">{description}</span></span>
             </label>
         })}</div>
-        <p className="text-sm text-[var(--text-muted)]">Paid jobs require approved business KYC, the £1 dealer verification payment and a verified business payout account. Turning a service on does not approve your application.</p>
+        <p className="text-sm text-[var(--text-muted)]">Paid jobs reuse your approved dealer KYC and one-time £1 account verification. No additional verification payment is required for services. A verified business payout account is required. Turning a service on does not approve your application.</p>
         <Link className="inline-block font-semibold text-primary underline" href="/dashboard/service/capabilities">Complete service setup</Link>
         {message && <p role="status" className="text-sm">{message}</p>}
     </section>

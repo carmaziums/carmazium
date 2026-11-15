@@ -115,6 +115,17 @@ describe('DealersService — KYC: createKycCheckoutSession', () => {
         expect(mockSessionsCreate).not.toHaveBeenCalled();
     });
 
+    it.each(['paymentReference', 'paymentScreenshot'])('does not create another checkout for an approved legacy %s payment', field => {
+        prisma.dealerProfile.findUnique.mockResolvedValue({
+            id: 'profile-1', userId: 'user-1', companyName: 'Test Motors',
+            kyc: { id: 'kyc-1', stripeChargedAt: null, documentStatuses: { [field]: { status: 'APPROVED' } } },
+        });
+        return service.createKycCheckoutSession('user-1').then(result => {
+            expect(result).toEqual({ alreadyPaid: true });
+            expect(mockSessionsCreate).not.toHaveBeenCalled();
+        });
+    });
+
     it('reuses an existing open Checkout Session instead of creating a duplicate', async () => {
         prisma.dealerProfile.findUnique.mockResolvedValue({
             id: 'profile-1',
