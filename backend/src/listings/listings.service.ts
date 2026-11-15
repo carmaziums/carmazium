@@ -1774,7 +1774,11 @@ export class ListingsService {
      */
     async create(createListingDto: CreateListingDto, userId?: string): Promise<Listing> {
         const slug = this.generateSlug(createListingDto.title);
-        const normalizedVrm = this.normalizeVrm(createListingDto.vrm);
+        const isTouringCaravan = createListingDto.bodyType === DtoBodyType.CARAVAN;
+        if (isTouringCaravan && createListingDto.vrm?.trim()) {
+            throw new BadRequestException('A touring caravan uses its VIN/CRiS identifier, not a separate DVLA registration.');
+        }
+        const normalizedVrm = isTouringCaravan ? '' : this.normalizeVrm(createListingDto.vrm);
         const originalImages = createListingDto.images ?? [];
         const sellerId = userId
             ? await this.resolveInventorySellerId(userId, 'MANAGE_INVENTORY')
@@ -1926,12 +1930,13 @@ export class ListingsService {
                 make: createListingDto.make ?? null,
                 model: createListingDto.model ?? null,
                 year: createListingDto.year,
-                mileage: createListingDto.mileage,
+                // Unpowered touring caravans have neither an engine odometer nor an independent DVLA VRM.
+                mileage: isTouringCaravan ? null : createListingDto.mileage,
                 vrm: normalizedVrm || null,
                 vin: createListingDto.vin ?? null,
                 // Technical specs
-                fuelType: mapFuelType(createListingDto.fuelType),
-                transmission: mapTransmission(createListingDto.transmission),
+                fuelType: isTouringCaravan ? null : mapFuelType(createListingDto.fuelType),
+                transmission: isTouringCaravan ? null : mapTransmission(createListingDto.transmission),
                 color: createListingDto.color ?? null,
                 doors: createListingDto.doors ?? null,
                 seats: createListingDto.seats ?? null,
