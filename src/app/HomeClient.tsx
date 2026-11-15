@@ -376,6 +376,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
                 transition={{ duration: 0.4, delay: i * 0.08 }}
               >
                 <CarCard
+                  sellerServices={listing.sellerServices}
                   title={listing.title}
                   make={listing.make}
                   model={listing.model}
@@ -426,6 +427,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
             {moreRetailCars.map((listing) => (
               <div key={listing.id} className="snap-start shrink-0 w-[min(83vw,320px)] sm:w-auto">
                 <CarCard
+                  sellerServices={listing.sellerServices}
                 key={listing.id}
                 title={listing.title}
                 make={listing.make}

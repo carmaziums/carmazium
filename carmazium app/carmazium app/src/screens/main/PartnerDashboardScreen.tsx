@@ -1,3 +1,4 @@
+import { apiClient } from '../../lib/apiClient';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -6,6 +7,7 @@ import {
   Linking,
   ScrollView,
   StatusBar,
+  Switch,
   StyleSheet,
   Text,
   TextInput,
@@ -154,6 +156,15 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const toggleService = async (key: string, enabled: boolean) => {
+    setBusy(key); setError(null);
+    try {
+      await apiClient('/users/dealer-profile', { method: 'PATCH', body: JSON.stringify({ [key]: enabled }) });
+      await load();
+    } catch (e: any) { setError(e?.message || 'Could not save preference.'); }
+    finally { setBusy(null); }
+  };
+
   const startStripe = async () => {
     setBusy('stripe');
     setError(null);
@@ -271,6 +282,17 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 <Button label="Manage" onPress={() => navigation.navigate('ProviderCapabilities')} variant="outline" size="sm" />
               </View>
 
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>My dealership services</Text>
+                <Text style={styles.cardText}>New accounts start with all four on. Turn off services you do not offer. Finance and warranty badges apply only to your listings; buyers should contact you for details.</Text>
+                {([
+                  ['financeOffered', 'Finance badge'], ['warrantyOffered', 'Warranty badge'],
+                  ['deliveryServicesEnabled', 'Collection, delivery and recovery'], ['inspectionServicesEnabled', 'Vehicle inspection'],
+                ] as const).map(([key, label]) => <View key={key} style={styles.rowBetween}>
+                  <Text style={[styles.cardText, { flex: 1 }]}>{label}</Text><Switch accessibilityLabel={label} disabled={!!busy} value={profile.dealerProfile?.[key] !== false} onValueChange={value => toggleService(key, value)} />
+                </View>)}
+                <Text style={styles.cardText}>Paid jobs require approved business KYC, the £1 verification fee, verified payouts and a declaration. Only trade insurance is uploaded for collection/delivery/recovery. No inspection documents are required.</Text>
+              </View>
               {SERVICE_ORDER.map((type) => {
 
 

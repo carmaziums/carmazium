@@ -1,5 +1,6 @@
 "use client"
 
+import { SellerServiceBadges } from "@/components/listing/SellerServiceBadges"
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
@@ -1812,6 +1813,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             </div>
                                             <div>
                                                 <h3 className="font-bold text-[var(--text-primary)] text-sm">{getSellerName(auction)}</h3>
+                                                <SellerServiceBadges seller={seller?.dealerProfile} />
                                                 <div className="flex items-center gap-1 text-emerald-400 text-xs font-bold mt-0.5">
                                                     <ShieldCheck size={11} /> Verified Seller
                                                 </div>

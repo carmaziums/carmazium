@@ -112,6 +112,8 @@ export interface AuctionListingDetail {
     firstName: string;
     lastName: string;
     dealerProfile?: {
+      financeOffered?: boolean;
+      warrantyOffered?: boolean;
       companyName: string;
       logo?: string | null;
     } | null;

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { getMyCapabilities, SERVICE_LABELS, type ContractorCapability } from "@/lib/servicesApi"
 import {
+    submitProviderDeclaration,
     deleteCapabilityAttachment,
     getCapabilityVerification,
     uploadCapabilityAttachment,
@@ -38,6 +39,8 @@ export default function ProviderVerificationPage() {
     const [validFrom, setValidFrom] = React.useState("")
     const [expiresAt, setExpiresAt] = React.useState("")
     const [file, setFile] = React.useState<File | null>(null)
+    const [business, setBusiness] = React.useState({ businessName: "", businessAddress: "", phone: "", registeredBusiness: false })
+    const [accepted, setAccepted] = React.useState(false)
     const [busy, setBusy] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [notice, setNotice] = React.useState<string | null>(null)
@@ -53,6 +56,8 @@ export default function ProviderVerificationPage() {
             if (cap.serviceType === "WARRANTY" || cap.serviceType === "FINANCE") { setDetail(null); return }
             const verification = await getCapabilityVerification(id)
             setDetail(verification)
+            const declaration = verification.verification.declaration
+            setBusiness({ businessName: declaration?.businessName ?? mine.profile?.businessName ?? "", businessAddress: declaration?.businessAddress ?? "", phone: declaration?.phone ?? mine.profile?.phone ?? "", registeredBusiness: declaration?.registeredBusiness ?? false })
             setEvidenceType(current => {
                 if (current && verification.verification.requirements.some(r => r.type === current)) return current
                 const next = verification.verification.requirements.find(r => !r.optional && r.state !== "SATISFIED")
@@ -94,6 +99,15 @@ export default function ProviderVerificationPage() {
         } finally { setBusy(false) }
     }
 
+    const saveDeclaration = async () => {
+        setBusy(true); setError(null); setNotice(null)
+        try {
+            const result = await submitProviderDeclaration(id, { ...business, accepted })
+            setDetail(result); setAccepted(false); setNotice("Business declaration saved. Complete payout setup and any remaining checks for approval.")
+        } catch (e: any) { setError(e?.message || "Could not save your declaration.") }
+        finally { setBusy(false) }
+    }
+
     const remove = async (entry: ServiceCaseEntry) => {
         if (entry.evidenceStatus !== "PENDING") return
         setBusy(true); setError(null); setNotice(null)
@@ -116,7 +130,7 @@ export default function ProviderVerificationPage() {
             <div>
                 <Link href="/dashboard/service/capabilities" className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] hover:text-primary mb-5"><ArrowLeft size={14}/> Service areas</Link>
                 <h1 className="text-3xl font-bold font-heading">Provider verification</h1>
-                <p className="text-sm text-[var(--text-muted)] mt-1">{capability ? SERVICE_LABELS[capability.serviceType] : "Service application"} · complete every required evidence item before CarMazium approval.</p>
+                <p className="text-sm text-[var(--text-muted)] mt-1">{capability ? SERVICE_LABELS[capability.serviceType] : "Service application"} · business details, declaration and secure payout setup. Delivery/collection/recovery requires trade insurance only; inspection requires no uploads.</p>
             </div>
 
             {error && <div role="alert" className="p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-300 text-sm flex items-start gap-3"><AlertCircle size={18} className="shrink-0 mt-0.5"/>{error}</div>}
@@ -137,8 +151,19 @@ export default function ProviderVerificationPage() {
                     {detail.verification.verificationExpiresAt && <p className="text-sm mt-4">Current verification expires <strong>{new Date(detail.verification.verificationExpiresAt).toLocaleDateString("en-GB")}</strong>.</p>}
                 </section>
 
+                {detail.verification.declarationRequired && <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 space-y-4">
+                    <h2 className="text-lg font-bold">Business details and declaration</h2>
+                    {detail.verification.declarationCurrent && <p className="text-sm text-emerald-500">Declaration saved on {new Date(detail.verification.declaration!.acceptedAt!).toLocaleDateString("en-GB")}.</p>}
+                    {([['businessName', 'Business / trading name'], ['businessAddress', 'Registered business address'], ['phone', 'Business phone']] as const).map(([key, label]) => <label key={key} className="block text-sm font-semibold">{label}<input className={inputCls} maxLength={500} value={business[key]} onChange={e => setBusiness({ ...business, [key]: e.target.value })} /></label>)}
+                    <label className="flex gap-3 text-sm"><input type="checkbox" checked={business.registeredBusiness} onChange={e => setBusiness({ ...business, registeredBusiness: e.target.checked })} />My business is registered (including a registered sole trader).</label>
+                    <label className="flex gap-3 text-sm"><input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} />I confirm these details are accurate and I am responsible for carrying out the services I accept competently and safely.</label>
+                    <Button onClick={saveDeclaration} disabled={busy || !accepted || !business.registeredBusiness}>Save declaration</Button>
+                    <p className="text-sm text-[var(--text-muted)]">Approved business KYC and the £1 dealer verification fee are required. Provide bank details through secure payout setup; do not upload bank statements here.</p>
+                    <Link href="/dashboard/dealer" className="block text-primary underline">Complete dealer verification (£1)</Link>
+                    <Link href="/dashboard/service/capabilities" className="block text-primary underline">Set up or check business payouts</Link>
+                </section>}
                 <section className="space-y-3">
-                    <div><h2 className="font-heading font-bold text-lg">Required evidence</h2><p className="text-xs text-[var(--text-muted)] mt-1">Only the items below must be approved before CarMazium can verify your application.</p></div>
+                    <div><h2 className="font-heading font-bold text-lg">{capability?.serviceType === "INSPECTION" ? "No inspection documents required" : "Trade insurance"}</h2><p className="text-xs text-[var(--text-muted)] mt-1">Only the items below must be approved before CarMazium can verify your application.</p></div>
                     {detail.verification.requirements.filter(req => !req.optional).map(req => <div key={req.type} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                         <div className="flex items-start justify-between gap-4">
                             <div className="flex gap-3">
@@ -155,16 +180,17 @@ export default function ProviderVerificationPage() {
                     <p className="text-xs text-[var(--text-muted)] leading-relaxed">Formal certificates are not required to join as a Vehicle Inspection provider. Experienced businesses and providers using third-party mechanics may apply. You may upload references, sample reports or certificates if available; none are required for onboarding. Your business remains responsible for competent inspections and appropriate insurance, including subcontracted work.</p>
                 </section>}
 
+                {capability?.serviceType === "DELIVERY" && <>
                 <section className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
-                    <div className="flex gap-3"><ShieldCheck size={20} className="text-amber-500 shrink-0 mt-0.5"/><div><h2 className="font-bold">Business evidence only</h2><p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">Upload business, insurance or regulatory evidence for this service. Optional inspection experience or qualifications can also be provided. Do not upload passports, driving licences, personal bank statements or unrelated identity documents.</p></div></div>
+                    <div className="flex gap-3"><ShieldCheck size={20} className="text-amber-500 shrink-0 mt-0.5"/><div><h2 className="font-bold">Business evidence only</h2><p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">Upload only trade insurance covering collection, delivery and recovery. Do not upload passports, driving licences, personal bank statements or unrelated identity documents.</p></div></div>
                 </section>
 
                 <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 space-y-5">
                     <div><h2 className="font-heading font-bold text-lg">Upload evidence</h2><p className="text-xs text-[var(--text-muted)] mt-1">PDF, JPG, PNG or WEBP, maximum 10 MB each. Reviewed evidence is retained for audit.</p></div>
                     <div><label className={labelCls}>Requirement</label><select className={inputCls} value={evidenceType} onChange={e => setEvidenceType(e.target.value as CapabilityEvidenceType)}>{detail.verification.requirements.map(req => <option key={req.type} value={req.type}>{req.title}{req.optional ? " — optional" : ""}</option>)}</select></div>
                     <div className="grid sm:grid-cols-2 gap-4">
-                        <div><label className={labelCls}>Issuer / organisation</label><input className={inputCls} value={issuer} onChange={e => setIssuer(e.target.value)} placeholder="Insurer, FCA principal, awarding body..."/></div>
-                        <div><label className={labelCls}>Policy / FRN / certificate reference</label><input className={inputCls} value={reference} onChange={e => setReference(e.target.value)} placeholder="Reference number"/></div>
+                        <div><label className={labelCls}>Issuer / organisation</label><input className={inputCls} value={issuer} onChange={e => setIssuer(e.target.value)} placeholder="Insurer"/></div>
+                        <div><label className={labelCls}>Policy reference</label><input className={inputCls} value={reference} onChange={e => setReference(e.target.value)} placeholder="Reference number"/></div>
                         <div><label className={labelCls}>Valid from</label><input className={inputCls} type="date" value={validFrom} onChange={e => setValidFrom(e.target.value)}/></div>
                         <div><label className={labelCls}>Expiry {selectedRequirement?.expiryRequired ? "(required)" : "(if applicable)"}</label><input className={inputCls} type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)}/></div>
                     </div>
@@ -172,6 +198,7 @@ export default function ProviderVerificationPage() {
                     <Button onClick={upload} disabled={busy || !file || !evidenceType}>{busy ? <Loader2 size={16} className="animate-spin mr-2"/> : <Upload size={16} className="mr-2"/>}Upload for review</Button>
                 </section>
 
+                </>}
                 <section className="space-y-3">
                     <h2 className="font-heading font-bold text-lg">Evidence history ({detail.attachments.length})</h2>
                     {detail.attachments.length === 0 && <div className="rounded-2xl border border-dashed border-[var(--border-default)] p-8 text-center text-sm text-[var(--text-muted)]">No verification evidence uploaded yet.</div>}

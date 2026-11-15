@@ -44,7 +44,10 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [introduction, setIntroduction] = useState('');
-  const [warrantyOffered, setWarrantyOffered] = useState(false);
+  const [warrantyOffered, setWarrantyOffered] = useState(true);
+  const [financeOffered, setFinanceOffered] = useState(true);
+  const [deliveryServicesEnabled, setDeliveryServicesEnabled] = useState(true);
+  const [inspectionServicesEnabled, setInspectionServicesEnabled] = useState(true);
   const [warrantyDetails, setWarrantyDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ tradingName?: string; vatNumber?: string }>({});
@@ -100,12 +103,6 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
     if (!isSoleTrader && !trimmedVat) nextFieldErrors.vatNumber = 'VAT number is required';
     setFieldErrors(nextFieldErrors);
     if (Object.keys(nextFieldErrors).length > 0) return;
-    if (warrantyOffered && !warrantyDetails.trim()) {
-      setSubmitError('Add warranty terms and exclusions, or switch Warranty off.');
-      return;
-    }
-
-
     setSubmitting(true);
     try {
       // Step 1: elevate to DEALER if this account isn't one yet.
@@ -129,6 +126,7 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
           ...(address.trim() && { businessAddress: address.trim() }),
           ...(phone.trim() && { phone: phone.trim() }),
           description: introduction.trim(),
+          financeOffered, deliveryServicesEnabled, inspectionServicesEnabled,
           warrantyOffered, warrantyDetails: warrantyOffered ? warrantyDetails.trim() : null,
         }),
       });
@@ -318,22 +316,14 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
               placeholder="Introduce your dealership and how you help buyers."
               placeholderTextColor={Colors.iconMuted} />
           </View>
-          <View style={styles.formGroup}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={styles.inputLabel}>WE OFFER A WARRANTY</Text>
-              <Switch value={warrantyOffered} onValueChange={setWarrantyOffered}
-                accessibilityLabel="Warranty offered" />
-            </View>
-            {warrantyOffered && (
-              <TextInput style={[styles.textInput, { minHeight: 110, textAlignVertical: 'top', paddingTop: 12 }]}
-                multiline maxLength={1000} value={warrantyDetails} onChangeText={setWarrantyDetails}
-                placeholder="Enter duration, covered components, limits and exclusions."
-                placeholderTextColor={Colors.iconMuted} />
-            )}
-          </View>
-          <Text style={styles.inputLabel}>FINANCE</Text>
-          <Text style={styles.signInText}>After setting up your account, choose whether to show the finance calculator and application link selected by CarMazium admin under Settings → Listing finance calculator. Finance providers must contact the CarMazium team directly to discuss a partnership.</Text>
-
+          <Text style={styles.signInText}>Your own-listing badges and service preferences start on. Switch off anything you do not offer. Paid jobs remain locked until business KYC, the £1 verification fee, payout setup and service checks are complete.</Text>
+          {([
+            ['Finance badge', financeOffered, setFinanceOffered], ['Warranty badge', warrantyOffered, setWarrantyOffered],
+            ['Collection, delivery and recovery', deliveryServicesEnabled, setDeliveryServicesEnabled],
+            ['Vehicle inspection', inspectionServicesEnabled, setInspectionServicesEnabled],
+          ] as const).map(([label, value, setValue]) => <View key={label} style={styles.formGroup}>
+            <Text style={styles.inputLabel}>{label}</Text><Switch accessibilityLabel={label} value={value} onValueChange={setValue} />
+          </View>)}
           <View style={styles.signInRow}>
              <Text style={styles.signInText}>Already have a dealer account? <Text style={styles.signInLink}>Sign in</Text></Text>
           </View>

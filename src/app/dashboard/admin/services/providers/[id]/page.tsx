@@ -320,7 +320,7 @@ export default function AdminProviderReviewPage() {
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                             <div>
                                 <h2 className="font-heading font-bold text-lg">Verification checklist</h2>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">Every mandatory requirement must show SATISFIED before the provider can be approved. Formal inspection qualifications are optional.</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">Check the business declaration, KYC, £1 dealer verification and payouts. Collection/delivery/recovery requires trade insurance only. Inspection requires no documents.</p>
                             </div>
                             <div className="text-right text-xs">
                                 <span className={`inline-flex rounded-full border px-3 py-1 font-black uppercase tracking-wider ${data.verification.ready ? "text-emerald-500 border-emerald-500/30 bg-emerald-500/5" : "text-amber-500 border-amber-500/30 bg-amber-500/5"}`}>
@@ -330,6 +330,14 @@ export default function AdminProviderReviewPage() {
                             </div>
                         </div>
                         <div className="space-y-3">
+                            {data.verification.declarationRequired && <div className="rounded-xl border border-[var(--border-default)] p-4 text-sm space-y-2">
+                                <p className="font-bold">Business declaration: {data.verification.declarationCurrent ? "Complete" : "Required"}</p>
+                                {data.verification.declaration && <>
+                                    <p>{data.verification.declaration.businessName}</p><p>{data.verification.declaration.businessAddress}</p><p>{data.verification.declaration.phone}</p>
+                                    <p>Registered business: {data.verification.declaration.registeredBusiness ? "Yes" : "No"}</p>
+                                    <p>Accepted: {data.verification.declaration.acceptedAt ? new Date(data.verification.declaration.acceptedAt).toLocaleString("en-GB") : "Not supplied"}</p>
+                                </>}
+                            </div>}
                             {data.verification.requirements.filter(req => !req.optional).map(req => <div key={req.type} className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4 flex items-start justify-between gap-4">
                                 <div>
                                     <p className="font-bold text-sm">{req.title}</p>
@@ -342,6 +350,7 @@ export default function AdminProviderReviewPage() {
                         {data.verification.requirements.some(req => req.optional) && <div className="rounded-xl border border-[var(--border-default)] p-4 text-xs text-[var(--text-muted)] leading-relaxed">Vehicle Inspection qualifications or experience documents are optional supporting evidence, not an approval requirement. Businesses may use competent third-party mechanics; confirm that the reviewed insurance covers their inspection arrangements. Rejecting or omitting an optional certificate must not block an otherwise eligible application.</div>}
                     </section>
 
+                    {data.verification.requirements.length > 0 && <>
                     <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 space-y-5">
                         <div>
                             <h2 className="font-heading font-bold text-lg">Upload evidence on behalf of provider</h2>
@@ -381,6 +390,7 @@ export default function AdminProviderReviewPage() {
                         </Button>
                     </section>
 
+                    </>}
                     <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
                         <div className="flex items-center justify-between gap-4 mb-4">
                             <div>

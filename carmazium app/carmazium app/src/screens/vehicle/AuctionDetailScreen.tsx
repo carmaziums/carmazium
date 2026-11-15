@@ -1,3 +1,4 @@
+import { SellerServiceBadges } from '../../components/SellerServiceBadges';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useScrollLocked } from '../../lib/scrollLock';
 import {
@@ -2260,6 +2261,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.sellerName}>{sellerName}</Text>
+                  <SellerServiceBadges seller={auction?.listing.seller?.dealerProfile} />
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
                   <Ionicons name="shield-checkmark" size={11} color={Colors.accentGreen} />
                   <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accentGreen }}>Verified Seller</Text>

@@ -1,5 +1,6 @@
 "use client"
 
+import { DealerServicePreferences } from "@/components/dealer/DealerServicePreferences"
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -259,6 +260,7 @@ export default function PartnerDashboardPage() {
                         <Link href="/profile?section=business"><Button variant="outline">Edit business details</Button></Link>
                     </section>
 
+                    <DealerServicePreferences />
                     <section>
                         <div className="flex items-end justify-between gap-4 mb-5">
                             <div><h2 className="text-2xl font-black font-heading">Your add-ons</h2><p className="text-sm text-[var(--text-muted)]">Activate one service or several. Adding one never removes another.</p></div>
@@ -267,7 +269,7 @@ export default function PartnerDashboardPage() {
                             <AddonCard
                                 icon={Building2}
                                 title="Vehicle Dealer"
-                                description="List retail stock, bid in auctions, manage inventory, CRM and dealer tools. Dealer KYC is required only for this add-on."
+                                description="List retail stock, bid in auctions, manage inventory, CRM and dealer tools. Business KYC and the £1 verification payment are required before taking paid jobs."
                                 status={dealerActive ? "Active" : partnerBusiness?.kyc?.status === "PENDING" ? "Awaiting verification" : "Not activated"}
                                 active={dealerActive}
                                 action={<Link href="/dashboard/dealer"><Button size="sm" variant={dealerActive ? "outline" : "default"}>{dealerActive ? "Open dealer tools" : "Add Vehicle Dealer"}</Button></Link>}
@@ -281,8 +283,8 @@ export default function PartnerDashboardPage() {
                                 action={delivery?.status === "APPROVED"
                                     ? <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">Open jobs</Button></Link>
                                     : delivery?.status === "PENDING"
-                                        ? <Link href={`/dashboard/service/capabilities/${delivery.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Upload verification documents</Button></Link>
-                                        : <Button size="sm" onClick={() => applyService("DELIVERY")} disabled={busy === "DELIVERY"}>{busy === "DELIVERY" ? <Loader2 className="animate-spin" size={14} /> : "Add service"}</Button>}
+                                        ? <Link href={`/dashboard/service/capabilities/${delivery.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Complete service setup</Button></Link>
+                                        : <Button size="sm" onClick={() => applyService("DELIVERY")} disabled={busy === "DELIVERY"}>{busy === "DELIVERY" ? <Loader2 className="animate-spin" size={14} /> : "Complete setup"}</Button>}
                             />
                             <AddonCard
                                 icon={Wrench}
@@ -293,8 +295,8 @@ export default function PartnerDashboardPage() {
                                 action={inspection?.status === "APPROVED"
                                     ? <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">Open jobs</Button></Link>
                                     : inspection?.status === "PENDING"
-                                        ? <Link href={`/dashboard/service/capabilities/${inspection.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Upload verification documents</Button></Link>
-                                        : <Button size="sm" onClick={() => applyService("INSPECTION")} disabled={busy === "INSPECTION"}>{busy === "INSPECTION" ? <Loader2 className="animate-spin" size={14} /> : "Add service"}</Button>}
+                                        ? <Link href={`/dashboard/service/capabilities/${inspection.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Complete service setup</Button></Link>
+                                        : <Button size="sm" onClick={() => applyService("INSPECTION")} disabled={busy === "INSPECTION"}>{busy === "INSPECTION" ? <Loader2 className="animate-spin" size={14} /> : "Complete setup"}</Button>}
                             />
 
 

@@ -61,10 +61,10 @@ test("MaziuM dealer copy is sourced from profile and consent uses the expanded d
     assert.match(wizard, /Dealer profiles add an introduction, location/);
     assert.match(wizard, /Add or review your dealer warranty and introduction/);
     assert.match(wizard, /serviceHistory: formData\.serviceHistory/);
-    assert.match(profile, /warrantyOffered: businessForm\.warrantyOffered/);
+    assert.match(profile, /<DealerServicePreferences/);
     assert.doesNotMatch(profile, /financeOffered: businessForm\.financeOffered/);
     assert.match(profile, /<FinancePreference/);
-    assert.match(profile, /We offer a vehicle warranty/);
+    assert.match(profile, /About Your Dealership/);
     assert.doesNotMatch(profile, /We can offer or arrange finance/);
     assert.match(usersService, /warrantyOffered/);
     assert.match(usersService, /financeDetails/);

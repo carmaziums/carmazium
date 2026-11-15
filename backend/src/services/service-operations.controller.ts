@@ -55,6 +55,11 @@ export class ServiceOperationsController {
         return new StandardResponse(await this.operations.providerCapabilityEntries(user.id, id));
     }
 
+    @Post('capabilities/:id/declaration')
+    async declaration(@CurrentUser() user: any, @Param('id') id: string, @Body() body: Record<string, unknown>) {
+        return new StandardResponse(await this.operations.declareProviderBusiness(user.id, id, body));
+    }
+
     @Get('capabilities/:id/verification')
     @ApiOperation({ summary: 'Service-specific provider verification checklist and evidence state' })
     async capabilityVerification(@CurrentUser() user: any, @Param('id') id: string) {

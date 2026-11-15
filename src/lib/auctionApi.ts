@@ -29,6 +29,8 @@ export interface AuctionSeller {
     email?: string | null;
     emailAvailable?: boolean;
     dealerProfile?: {
+            financeOffered?: boolean
+            warrantyOffered?: boolean
         companyName: string;
         logo: string | null;
         businessAddress?: string | null;

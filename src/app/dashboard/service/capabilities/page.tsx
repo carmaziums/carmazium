@@ -162,7 +162,7 @@ export default function CapabilitiesPage() {
                                             {payout && !data.stripeConnect.complete && <p className="text-[11px] text-amber-500 mt-2">Stripe Connect must be completed before admin can approve this paid-job service.</p>}
                                             {cap?.reviewNote && (cap.status === "REJECTED" || cap.status === "SUSPENDED") && <p className="text-xs text-red-500 mt-2">{cap.reviewNote}</p>}
                                             {cap && <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2">
-                                                <Link href={`/dashboard/service/capabilities/${cap.id}/verification`} className={buttonVariants({ variant: "outline", size: "sm" })}><FileText size={13} /> Verification documents</Link>
+                                                <Link href={`/dashboard/service/capabilities/${cap.id}/verification`} className={buttonVariants({ variant: "outline", size: "sm" })}><FileText size={13} /> Service declaration and insurance</Link>
                                                 <Link href={`/dashboard/service/capabilities/${cap.id}/matching`} className={buttonVariants({ variant: "outline", size: "sm" })}>Matching settings</Link>
                                             </div>}
                                             {cap && (type === "FINANCE" || type === "WARRANTY") && !cap.leadNationwide && cap.leadPostcodeAreas.length === 0 && <p className="text-[11px] text-amber-500 mt-2">Configure matching coverage before this service can receive enquiries.</p>}

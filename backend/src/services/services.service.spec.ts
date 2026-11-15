@@ -273,9 +273,8 @@ const notificationsTo = (userId: string) => notify.mock.calls.filter((c) => c[0]
 
 const addVerifiedEvidence = (capabilityId: string, serviceType: 'DELIVERY' | 'INSPECTION') => {
     const expiry = new Date(Date.now() + 180 * 86_400_000);
-    const evidenceTypes = serviceType === 'DELIVERY'
-        ? ['BUSINESS_IDENTITY', 'DELIVERY_BUSINESS_INSURANCE', 'DELIVERY_GOODS_IN_TRANSIT']
-        : ['BUSINESS_IDENTITY', 'INSPECTION_BUSINESS_INSURANCE']; // formal qualifications are voluntary
+    db.one('contractorCapability', { id: capabilityId })!.providerDeclaration = { version: 1, registeredBusiness: true, acceptedAt: new Date().toISOString() };
+    const evidenceTypes = serviceType === 'DELIVERY' ? ['DELIVERY_BUSINESS_INSURANCE'] : [];
     for (const evidenceType of evidenceTypes) {
         db.tables.serviceCaseEntry.push({
             id: uid('evidence'),

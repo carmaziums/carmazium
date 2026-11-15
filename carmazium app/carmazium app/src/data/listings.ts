@@ -95,6 +95,8 @@ export interface CarListing {
    * dropped at the mapper.
    */
   seller?: {
+    financeOffered?: boolean;
+    warrantyOffered?: boolean;
     id: string;
     profileImage?: string | null;
     memberSince?: string | null;

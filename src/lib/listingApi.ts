@@ -332,6 +332,8 @@ export interface Listing {
         phone?: string | null
         phoneAvailable?: boolean
         dealerProfile?: {
+            financeOffered?: boolean
+            warrantyOffered?: boolean
             id: string
             companyName: string
             logo: string | null
