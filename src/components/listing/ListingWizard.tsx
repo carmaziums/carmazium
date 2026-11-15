@@ -3176,7 +3176,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 <div className="space-y-2">
                                     <label id="listing-required-make" className="text-sm font-bold uppercase text-[var(--text-muted)]">{isCaravan ? 'Make (optional)' : 'Make *'}</label>
-                                    {(() => {
+                                    {isCaravan ? (
+                                        <Input aria-label="Caravan make" placeholder="e.g. Swift, Bailey, Elddis" value={formData.make} onChange={e => set("make", e.target.value)} className={inputCls} />
+                                    ) : (() => {
                                         // Case-insensitive match — DVLA returns uppercase (e.g. "TOYOTA")
                                         const matchedMake = CAR_MAKES.find(m => m.toLowerCase() === formData.make.trim().toLowerCase())
                                         const isCustomMake = manualMakeEntry || (formData.make.trim() !== "" && !matchedMake)
@@ -3214,7 +3216,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </div>
                                 <div className="space-y-2">
                                     <label id="listing-required-model" className="text-sm font-bold uppercase text-[var(--text-muted)]">{isCaravan ? 'Model (optional)' : 'Model *'}</label>
-                                    {(() => {
+                                    {isCaravan ? (
+                                        <Input aria-label="Caravan model" placeholder="e.g. Sprite, Pegasus, Avante" value={formData.model} onChange={e => set("model", e.target.value)} className={inputCls} />
+                                    ) : (() => {
                                         // getModelsForMake is already case-insensitive
                                         const models = getModelsForMake(formData.make)
                                         if (models.length === 0) {
@@ -3385,10 +3389,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                                     {/* Number of Keys */}
                                     <div id="listing-required-keys" role="group" aria-labelledby="listing-keys-label"
-                                        aria-invalid={hasAttemptedNext && !formData.numberOfKeys.trim()}
-                                        aria-describedby={hasAttemptedNext && !formData.numberOfKeys.trim() ? "listing-keys-error" : undefined}
-                                        className={`space-y-2 scroll-mt-28 rounded-xl p-3 border ${hasAttemptedNext && !formData.numberOfKeys.trim() ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
-                                        <label id="listing-keys-label" className="text-sm font-bold uppercase text-[var(--text-muted)]">Number of Keys <span className="text-red-500">*</span></label>
+                                        aria-invalid={hasAttemptedNext && !isCaravan && !formData.numberOfKeys.trim()}
+                                        aria-describedby={hasAttemptedNext && !isCaravan && !formData.numberOfKeys.trim() ? "listing-keys-error" : undefined}
+                                        className={`space-y-2 scroll-mt-28 rounded-xl p-3 border ${hasAttemptedNext && !isCaravan && !formData.numberOfKeys.trim() ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
+                                        <label id="listing-keys-label" className="text-sm font-bold uppercase text-[var(--text-muted)]">Number of Keys {!isCaravan && <span className="text-red-500">*</span>}</label>
                                         <div className="flex gap-2">
                                             {(["0", "1", "2", "3"] as const).map((k) => (
                                                 <button key={k} type="button"
@@ -3399,7 +3403,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             ))}
                                         </div>
                                         <p className="text-xs text-[var(--text-secondary)]">Confirm the keys included with the vehicle. Select 0 if there are no keys.</p>
-                                        {hasAttemptedNext && !formData.numberOfKeys.trim() && (
+                                        {hasAttemptedNext && !isCaravan && !formData.numberOfKeys.trim() && (
                                             <p id="listing-keys-error" role="alert" className="text-xs text-red-400 font-medium">Please select the number of keys to continue.</p>
                                         )}
                                     </div>
@@ -3969,7 +3973,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             {/* Ownership */}
                             <div className="space-y-3">
-                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Number of Owners *</label>
+                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">{isCaravan ? 'Previous Owners (optional)' : 'Number of Owners *'}</label>
                                 <div className="flex flex-wrap gap-2">
                                     {(['1', '2', '3', '4', '5+'] as const).map((opt) => (
                                         <button
