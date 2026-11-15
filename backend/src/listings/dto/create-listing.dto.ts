@@ -163,7 +163,8 @@ export class CreateListingDto {
     @Min(0)
     mileage: number;
 
-    @ApiProperty({ description: 'Year of manufacture', example: 2015 })
+    @ApiProperty({ description: 'Year of manufacture; optional for caravans when unknown', example: 2015 })
+    @ValidateIf((o: CreateListingDto) => o.bodyType !== BodyType.CARAVAN || o.year != null)
     @Type(() => Number)
     @IsInt()
     @Min(1900)
@@ -177,8 +178,8 @@ export class CreateListingDto {
     @Length(2, 15)
     vrm: string;
 
-    @ApiProperty({ description: '17-character VIN. Required for touring caravans (CRiS identifier), optional for motor vehicles.', example: 'WAUZZZ4G4EN006369', required: false })
-    @ValidateIf((o: CreateListingDto) => o.bodyType === BodyType.CARAVAN || o.vin !== undefined)
+    @ApiProperty({ description: 'Optional 17-character VIN/CRiS identifier for caravans and motor vehicles.', example: 'WAUZZZ4G4EN006369', required: false })
+    @ValidateIf((o: CreateListingDto) => o.vin !== undefined && o.vin !== null && o.vin !== '')
     @IsString()
     @IsNotEmpty()
     @Matches(/^[A-HJ-NPR-Z0-9]{17}$/i, { message: 'VIN must be a valid 17-character alphanumeric code' })
