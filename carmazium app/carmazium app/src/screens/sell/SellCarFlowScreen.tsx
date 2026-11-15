@@ -3552,7 +3552,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         ) : (
           /* Damage Map */
           <View>
-            <SectionBox title="Damage Map — Select Damaged Areas" accent={Colors.warning}>
+            {isCaravan ? (
+              <SectionBox title="Caravan damage">
+                <Text style={s.fieldHint}>Photograph any damage and describe known faults. The car-shaped 3D model does not apply to caravans.</Text>
+              </SectionBox>
+            ) : <SectionBox title="Damage Map — Select Damaged Areas" accent={Colors.warning}>
               <Text style={s.fieldHint}>
                 Drag to rotate the 3D model. Tap a zone to mark damage, hide it, or attach a photo.
               </Text>
@@ -3564,7 +3568,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 onPhoto={handleZonePhoto}
                 bodyTypeLabel={BODY_TYPES.find(bt => bt.v === bodyType)?.l}
               />
-            </SectionBox>
+            </SectionBox>}
           </View>
         )}
 
@@ -4221,7 +4225,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
         {/* HPI is optional. Standard/Premium already include it in the
             listing package, so never offer those sellers a second £9.99 charge. */}
-        {hpiUnlocked ? (
+        {!isCaravan && (hpiUnlocked ? (
           <View style={s.hpiCallout}>
             <View style={s.hpiCalloutIcon}>
               <Ionicons name="shield-checkmark" size={22} color={Colors.accentGreen} />
@@ -4270,7 +4274,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <Text style={s.hpiCalloutPrice}>{hpiUnlocking ? '...' : '£9.99'}</Text>
             </View>
           </TouchableOpacity>
-        )}
+        ))}
 
       </ScrollView>
     );
