@@ -559,7 +559,7 @@ const InventoryRow: React.FC<{
       {/* Match website's mobile 2-column price/status/engagement/leads grid. */}
       <View style={styles.stockMetrics}>
         <View style={styles.stockMetricTile}>
-          <Text style={styles.stockMetricLabel}>MARKET PRICE</Text>
+          <Text style={styles.stockMetricLabel}>PRICE</Text>
           <Text style={styles.stockPrice}>{listing.price}</Text>
         </View>
         <View style={styles.stockMetricTile}>

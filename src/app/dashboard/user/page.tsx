@@ -211,7 +211,7 @@ function UnifiedUserDashboardContent() {
                     )}
 
                     {/* Tab Content */}
-                    <div className="min-h-[60vh] w-full min-w-0">
+                    <div data-tour="personal-dashboard-content" className="min-h-[60vh] w-full min-w-0">
                         {activeTab === "overview" && (
                             <OverviewTab
                                 data={dashboardData}

@@ -6,7 +6,7 @@ import * as React from "react"
 import { FinanceProviderContact } from "@/components/finance/FinanceProviderContact"
 import { FinancePreference } from "@/components/finance/FinancePreference"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
     AlertCircle,
     Building2,
@@ -54,6 +54,11 @@ type ReviewItem = {
 }
 
 export default function ProfilePage() {
+    return <React.Suspense fallback={<div className="p-8" role="status">Loading account settings…</div>}><ProfileContent /></React.Suspense>
+}
+
+function ProfileContent() {
+    const searchParams = useSearchParams()
     const { profile, refreshProfile, loading: authLoading } = useAuth()
     const router = useRouter()
     const [loading, setLoading] = React.useState(false)
@@ -85,16 +90,9 @@ export default function ProfilePage() {
     const [passwordSaving, setPasswordSaving] = React.useState(false)
 
     React.useEffect(() => {
-        // Bookmarkable single settings destination; back/forward keeps the selected section.
-        const readSection = () => {
-            const value = new URLSearchParams(window.location.search).get("section")
-            if (value && SETTINGS_SECTIONS.has(value as SettingsSection)) setActiveSection(value as SettingsSection)
-            else setActiveSection("personal")
-        }
-        readSection()
-        window.addEventListener("popstate", readSection)
-        return () => window.removeEventListener("popstate", readSection)
-    }, [])
+        const section = searchParams.get("section")
+        setActiveSection(section && SETTINGS_SECTIONS.has(section as SettingsSection) ? section as SettingsSection : "personal")
+    }, [searchParams])
     const selectSection = (section: SettingsSection) => {
         setActiveSection(section)
         window.history.pushState(null, "", `/profile?section=${section}`)
@@ -490,7 +488,7 @@ export default function ProfilePage() {
                 <section className="mb-12">
                     <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><Building2 className="text-primary" /> Partner Account</h3>
                     <div className="glass-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-5">
-                        <div><p className="font-bold">One business account, multiple services</p><p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Your approved Vehicle Dealer, Delivery & Recovery, Vehicle Inspection and Warranty services can live under the same Partner Account.</p></div>
+                        <div><p className="font-bold">One business account, multiple services</p><p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Manage vehicle sales, approved delivery and recovery, and inspection services under one Partner Account. Finance and warranty badges apply only to your own listings.</p></div>
                         <Link href="/dashboard/partner"><Button>Open Partner Dashboard</Button></Link>
                     </div>
                 </section>
@@ -524,9 +522,9 @@ export default function ProfilePage() {
                             <Field label="Website" type="url" value={businessForm.website} onChange={(value) => setBusinessForm({ ...businessForm, website: value })} />
                             <div className="md:col-span-2"><Field label="Business Address / Service Area" value={businessForm.businessAddress} onChange={(value) => setBusinessForm({ ...businessForm, businessAddress: value })} /></div>
                             <div className="space-y-2 md:col-span-2">
-                                <label className="text-sm font-bold uppercase" style={{ color: "var(--text-muted)" }}>About Your Dealership</label>
+                                <label htmlFor="dealership-description" className="text-sm font-bold uppercase" style={{ color: "var(--text-muted)" }}>About Your Dealership</label>
                                 <p className="mb-2 text-xs text-[var(--text-secondary)]">Tell buyers what your business does and what makes it different. MaziuM can add this introduction to your vehicle descriptions. Do not include phone numbers or website links in Auction copy.</p>
-                                <textarea value={businessForm.description} onChange={(event) => setBusinessForm({ ...businessForm, description: event.target.value })} rows={4} maxLength={2000} className="w-full border rounded-lg px-4 py-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none" style={{ background: "var(--bg-input)", borderColor: "var(--border-default)", color: "var(--text-primary)" }} />
+                                <textarea id="dealership-description" value={businessForm.description} onChange={(event) => setBusinessForm({ ...businessForm, description: event.target.value })} rows={4} maxLength={2000} className="w-full border rounded-lg px-4 py-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none" style={{ background: "var(--bg-input)", borderColor: "var(--border-default)", color: "var(--text-primary)" }} />
                             </div>
                         </div>
                         <DealerServicePreferences />
@@ -614,7 +612,7 @@ export default function ProfilePage() {
                 <section className="mb-8">
                     <h3 className="text-xl font-bold mb-5">Payouts & bank account</h3>
                     <div className="glass-card p-5 sm:p-7 space-y-6">
-                        <p className="text-sm" style={{ color: "var(--text-muted)" }}>Vehicle buyers pay sellers directly. These details are for eligible CarMazium incentive payments, not collecting vehicle purchase money.</p>
+                        <p className="text-sm" style={{ color: "var(--text-muted)" }}>Vehicle buyers pay sellers directly. Use a verified Stripe payout connection for service-job payments. The bank details below are for eligible CarMazium seller incentives.</p>
                         <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--border-default)] p-4">
                             <div><strong className="block">Stripe payout connection</strong><p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>{stripeStatus?.payoutsEnabled ? "Payouts enabled" : stripeStatus?.connected ? "Connection needs attention or additional onboarding" : stripeStatusFailed ? "We couldn't check your payout status. Refresh the page before connecting." : "Not connected"}</p></div>
                             <Button variant="outline" onClick={connectStripe} disabled={stripeLoading || !!stripeStatus?.payoutsEnabled}>{stripeLoading ? <Loader2 size={16} className="animate-spin" /> : <ExternalLink size={16} className="mr-2" />}{stripeStatus?.payoutsEnabled ? "Payouts enabled" : stripeStatus?.connected ? "Complete onboarding" : "Connect payout account"}</Button>
@@ -667,9 +665,9 @@ export default function ProfilePage() {
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {!isPersonal && <AccountCard icon={User} label="Personal Account" sub="Buy and sell vehicles as an individual" button="Switch to Personal Account" loading={loading} onClick={() => handleRoleElevation("BUYER")} />}
-                    <FinancePreference />
+                    {!isPartner && <FinancePreference />}
                     <FinanceProviderContact />
-                    {!isPartner && <AccountCard icon={Building2} label="Partner Account" sub="One business login with Dealer, Delivery, Inspection and Warranty add-ons; contact us about finance partnerships" button="Create Partner Account" loading={loading} onClick={() => handleRoleElevation("DEALER")} />}
+                    {!isPartner && <AccountCard icon={Building2} label="Partner Account" sub="One business login for vehicle sales, delivery, recovery and inspection; contact us about finance and warranty partnerships" button="Create Partner Account" loading={loading} onClick={() => handleRoleElevation("DEALER")} />}
                 </div>
             </section>}
         </div>
@@ -700,7 +698,8 @@ function ReviewPanel({ title, items, mode }: { title: string; items: ReviewItem[
 }
 
 function Field({ label, value, onChange, type = "text", placeholder }: { label: string; value: string; onChange: (value: string) => void; type?: string; placeholder?: string }) {
-    return <div className="space-y-2"><label className="text-sm font-bold uppercase" style={{ color: "var(--text-muted)" }}>{label}</label><input type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className="w-full border rounded-lg px-4 py-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none" style={{ background: "var(--bg-input)", borderColor: "var(--border-default)", color: "var(--text-primary)" }} /></div>
+    const id = React.useId()
+    return <div className="space-y-2"><label htmlFor={id} className="text-sm font-bold uppercase" style={{ color: "var(--text-muted)" }}>{label}</label><input id={id} type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className="w-full border rounded-lg px-4 py-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none" style={{ background: "var(--bg-input)", borderColor: "var(--border-default)", color: "var(--text-primary)" }} /></div>
 }
 
 function AccountCard({ icon: Icon, label, sub, button, loading, onClick }: { icon: React.ComponentType<{ size?: number; className?: string }>; label: string; sub: string; button: string; loading: boolean; onClick: () => void }) {

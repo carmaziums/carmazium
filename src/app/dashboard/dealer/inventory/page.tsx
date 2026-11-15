@@ -420,10 +420,10 @@ export default function DealerInventoryPage() {
                                         {/* Mobile parity grid: same information as desktop columns, adapted to a narrow screen. */}
                                         <div className="grid grid-cols-2 gap-2 mt-4">
                                             <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 min-w-0">
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Market Price</p>
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Price</p>
                                                 <p className="text-xl font-black mt-1">£{listing.price?.toLocaleString()}</p>
                                                 <p className="text-[10px] text-emerald-400 font-black uppercase tracking-widest inline-flex items-center gap-1 mt-0.5">
-                                                    <TrendingUp size={9} /> Market Value Plus
+                                                    <TrendingUp size={9} /> {listing.type === "AUCTION" ? "Auction estimate" : "Asking price"}
                                                 </p>
                                             </div>
 
@@ -564,7 +564,7 @@ export default function DealerInventoryPage() {
                                 <thead className="vip-table-header">
                                     <tr>
                                         <th className="px-8 py-5">Vehicle Showcase</th>
-                                        <th className="px-6 py-5">Market Price</th>
+                                        <th className="px-6 py-5">Price</th>
                                         <th className="px-6 py-5 text-center">Status</th>
                                         <th className="px-6 py-5 text-center">Engagement</th>
                                         <th className="px-6 py-5 text-center">Hot Leads</th>
@@ -636,7 +636,7 @@ export default function DealerInventoryPage() {
                                                         <div className="flex flex-col">
                                                             <span className="font-black text-lg tracking-tight">£{listing.price?.toLocaleString()}</span>
                                                             <span className="text-xs text-emerald-400 font-black uppercase tracking-widest inline-flex items-center gap-1">
-                                                                <TrendingUp size={8} /> Market Value Plus
+                                                                <TrendingUp size={8} /> {listing.type === "AUCTION" ? "Auction estimate" : "Asking price"}
                                                             </span>
                                                         </div>
                                                     </td>
