@@ -9,6 +9,7 @@ on:
       - "scripts/test-service-setup-routing.test.mjs"
       - "scripts/test-service-job-form-validation.test.mjs"
       - "src/lib/serviceJobFormValidation.ts"
+      - "src/lib/notificationEmailPreference.ts"
       - "src/app/services/delivery/new/page.tsx"
       - "src/app/services/inspection/new/page.tsx"
       - "src/app/auctions/page.tsx"
