@@ -250,3 +250,22 @@ test('manual caravan drafts can be saved and resumed without a registration or t
   assert.match(source, /if \(!hasSellerDraftIdentity\(parsed\)\) return/);
   assert.match(source, /sellingMethod === 'list' && hasSellerDraftIdentity\(formData\)/);
 });
+
+test('switching to caravan clears motor facts and valuation while preserving the free auction or Basic retail tier', () => {
+  for (const listingType of ['AUCTION', 'CLASSIFIED']) {
+    const original = { ...completeForm, listingType, vin: 'old-vin', priceAsking: '9000', badgeTier: 'STANDARD' };
+    let next;
+    const noop = () => {};
+    wizardFunction(wizardFile, 'chooseBodyType', {
+      formData: original, lookupRequestRef: { current: 0 }, registrationLookupReset,
+      setFormData: fn => { next = fn(original); }, set: noop,
+      setDvlaLoading: noop, setDvlaSuccess: noop, setMotFeedback: noop,
+      setDvlaError: noop, setBaseValuation: noop, setValuation: noop, setDamageRecords: noop,
+    })('CARAVAN');
+    assert.equal(next.bodyType, 'CARAVAN');
+    assert.equal(next.vin, '');
+    assert.equal(next.vrm, '');
+    assert.equal(next.priceAsking, '');
+    assert.equal(next.badgeTier, listingType === 'AUCTION' ? 'FREE' : 'BASIC');
+  }
+});

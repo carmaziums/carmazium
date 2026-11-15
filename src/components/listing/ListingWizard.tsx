@@ -900,7 +900,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 vehicleType: 'CAR',
                 ...registrationLookupReset(prev.vrm, ''),
                 bodyType: key,
-                badgeTier: 'BASIC',
+                badgeTier: prev.listingType === 'AUCTION' ? 'FREE' : 'BASIC',
                 vrm: '', vin: '', make: '', model: '', year: '', variant: '',
                 priceAsking: '', priceMin: '', mileage: '', fuelType: '', transmission: '',
                 engineSize: '', bhp: '', motStatus: '', taxStatus: '',
@@ -4980,14 +4980,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         {formData.badgeTier === 'BASIC' && (
                                             <span className="text-xs bg-white/10 text-[var(--text-muted)] px-2 py-0.5 rounded-md">Basic — £1</span>
                                         )}
-                                        {formData.badgeTier === 'STANDARD' && (
+                                        {!isCaravan && formData.badgeTier === 'STANDARD' && (
                                             <>
                                                 <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-md flex items-center gap-1"><BadgeCheck size={10} /> Standard — £10</span>
                                                 <span className="text-xs bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-md">History Report Included</span>
                                                 <span className="text-xs bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-md">Verified</span>
                                             </>
                                         )}
-                                        {formData.badgeTier === 'PREMIUM' && (
+                                        {!isCaravan && formData.badgeTier === 'PREMIUM' && (
                                             <>
                                                 <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-md flex items-center gap-1"><Star size={10} /> Premium — £25 · History Report + 28-day Boost</span>
                                                 <span className="text-xs bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-md">History Report Included</span>
