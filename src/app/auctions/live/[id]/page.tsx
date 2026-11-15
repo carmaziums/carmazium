@@ -1559,7 +1559,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         )}
 
                                         {/* ── Condition & Damage — always shown, even with zero reported damage ── */}
-                                        {auction.listing.bodyType !== 'CARAVAN' && (() => {
+                                        {!['CARAVAN', 'CAMPERVAN'].includes(auction.listing.bodyType || '') && (() => {
                                             // exteriorGrade is computed server-side from the seller's marked
                                             // damage zones. Same value shown as a chip on cards + the /vehicle
                                             // and /buy-cars detail pages, so grade only appears in one place per

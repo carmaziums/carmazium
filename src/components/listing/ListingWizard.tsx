@@ -53,7 +53,7 @@ import { getAuctionOpeningBid, getAuctionReserveGuide } from "@/lib/auctionPrici
 import { getVehicleValuation, type VehicleValuation } from "@/lib/valuationApi"
 import { computeExteriorGradeFromDefectCount } from "@/lib/exteriorGrade"
 import { VehicleValuationCard } from "./VehicleValuationCard"
-import { normalizeSellerTransmission, normalizeSellerBodyType, normalizeVehicleRegistration, resolveSellerVehicleSpecs, hasCompleteSellerVehicleSpecs } from "@/lib/sellerVehicleSpecs"
+import { normalizeSellerTransmission, normalizeSellerBodyType, normalizeVehicleRegistration, resolveSellerVehicleSpecs, hasCompleteSellerVehicleSpecs, hasSellerDraftIdentity } from "@/lib/sellerVehicleSpecs"
 import { saveSellerHandoff, readSellerHandoff, clearSellerHandoff } from "@/lib/pendingSellerHandoff"
 import { sellerDraftKeys, discardUnownedLegacySellerDraft, createHpiBinding, parseHpiBinding, matchesHpiReturn } from "@/lib/sellerDraftIsolation"
 import { getMissingSellerDeclarations, sellerDeclarationErrorMessage } from "@/lib/sellerDeclarationValidation"
@@ -636,11 +636,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
         try {
             const parsed = JSON.parse(saved) as Partial<FormData>
-            if (!parsed.vrm) return
+            if (!hasSellerDraftIdentity(parsed)) return
 
             const urlVrm = searchParams.get('vrm')
             const normaliseVrm = (value: string) => value.replace(/\s/g, '').toUpperCase()
-            if (urlVrm && normaliseVrm(urlVrm) !== normaliseVrm(parsed.vrm)) return
+            if (urlVrm && normaliseVrm(urlVrm) !== normaliseVrm(parsed.vrm || '')) return
 
             setFormData(prev => ({
                 ...prev, ...parsed,
@@ -747,7 +747,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         // the new-listing draft, where it could be published as a duplicate.
         if (editId) return
         if (!authLoading && user?.id && readyDraftOwner === user.id && activeDraftOwnerRef.current === user.id
-            && sellingMethod === 'list' && formData.vrm) {
+            && sellingMethod === 'list' && hasSellerDraftIdentity(formData)) {
             localStorage.setItem(draftKeys.draft, JSON.stringify(formData))
             localStorage.setItem(draftKeys.step, String(currentStep))
             if (formData.listingType === 'AUCTION') {
@@ -888,8 +888,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
     const isAuction = formData.listingType === 'AUCTION'
     const isCaravan = formData.bodyType === 'CARAVAN'
+    const isLeisure = isCaravan || formData.bodyType === 'CAMPERVAN'
     // A touring caravan is a VIN/CRiS-identified trailer, not a DVLA-registered motor vehicle.
     const chooseBodyType = (key: BodyTypeValue) => {
+        if (formData.bodyType === key) return
         lookupRequestRef.current += 1
         setDvlaLoading(false)
         if (key === 'CARAVAN') {
@@ -922,7 +924,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // The backend returns one unchanged retail+auction quote per vehicle for
     // 24 hours. Seller inputs remain listing details, not a new quote.
     const valuationReady =
-        !isCaravan &&
+        !isLeisure &&
         formData.vehicleType === 'CAR' &&
         !!formData.make &&
         !!formData.model &&
@@ -2868,19 +2870,21 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {/* Vehicle Type Selector */}
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Vehicle Type *</label>
-                                <div className="flex gap-3">
-                                    {(["CAR", "HGV", "MOTORCYCLE"] as const).map((vt) => {
-                                        const labels: Record<string, string> = { CAR: "Car / Caravan", HGV: "HGV / Commercial", MOTORCYCLE: "Motorcycle" }
-                                        const active = formData.vehicleType === vt
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    {(["CAR", "LEISURE", "HGV", "MOTORCYCLE"] as const).map((vt) => {
+                                        const labels: Record<string, string> = { CAR: "Car", LEISURE: "Caravan / Campervan", HGV: "HGV / Commercial", MOTORCYCLE: "Motorcycle" }
+                                        const active = vt === 'LEISURE' ? isLeisure : formData.vehicleType === vt && !isLeisure
                                         return (
                                             <button key={vt} type="button"
-                                                onClick={() => setFormData(prev => {
+                                                onClick={() => {
+                                                    if (vt === 'LEISURE') { chooseBodyType('CARAVAN'); return }
+                                                    setFormData(prev => {
                                                     const allowedBodyTypes = getBodyTypeKeysForVehicleType(vt)
-                                                    const bodyType = prev.bodyType && allowedBodyTypes.includes(prev.bodyType)
+                                                    const bodyType = !isLeisure && prev.bodyType && allowedBodyTypes.includes(prev.bodyType)
                                                         ? prev.bodyType
                                                         : ""
                                                     return { ...prev, vehicleType: vt, bodyType }
-                                                })}
+                                                })}}
                                                 className={`flex-1 py-3 px-2 sm:px-3 rounded-xl border text-xs sm:text-sm font-bold transition-all flex items-center justify-center text-center ${active ? "border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(237,28,36,0.2)]" : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"}`}
                                             >
                                                 <span className="whitespace-normal break-words leading-tight">{labels[vt]}</span>
@@ -2890,14 +2894,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </div>
                             </div>
 
-                            <button type="button"
-                                onClick={() => chooseBodyType('CARAVAN')}
-                                aria-pressed={isCaravan}
-                                className={`w-full rounded-xl border p-3 text-left text-sm font-bold ${isCaravan ? 'border-primary bg-primary/10 text-primary' : 'border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-secondary)]'}`}
-                            >
-                                Selling a touring caravan? Select Caravan — no DVLA registration or mileage required.
-                            </button>
-                            {/* VRM + Lookup */}
+                            {isLeisure && <div className="space-y-3" aria-label="Caravan or campervan">
+                                <div className="grid grid-cols-2 gap-3">
+                                    {(['CARAVAN', 'CAMPERVAN'] as const).map(body => <button key={body} type="button"
+                                        aria-pressed={formData.bodyType === body} onClick={() => chooseBodyType(body)}
+                                        className={`rounded-xl border p-3 font-bold ${formData.bodyType === body ? 'border-primary text-primary bg-primary/10' : 'border-[var(--border-default)]'}`}>
+                                        {body === 'CARAVAN' ? 'Caravan (towable)' : 'Campervan (motorised)'}
+                                    </button>)}
+                                </div>
+                                <p className="text-sm text-[var(--text-secondary)]">{isCaravan ? 'Manual caravan listing. No registration, VIN or CRiS number is required. Add your photos and your own price.' : 'Enter the campervan registration and motor-vehicle details, add photos and set your own price.'}</p>
+                            </div>}
+
                             {!isCaravan && (
                             <div className="space-y-2">
                                 <label htmlFor="listing-required-registration" className="text-sm font-bold uppercase text-[var(--text-muted)]">Registration (VRM) *</label>
@@ -2910,7 +2917,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             setDvlaLoading(false)
                                             setFormData(prev => ({
                                                 ...prev, vrm: nextVrm,
-                                                ...registrationLookupReset(prev.vrm, nextVrm),
+                                                ...registrationLookupReset(prev.vrm, nextVrm, prev.bodyType),
                                             }))
                                             setManualMakeEntry(false); setManualModelEntry(false); setManualVariantEntry(false)
                                             setDvlaSuccess(false); setMotFeedback(null)
@@ -3469,7 +3476,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         {formData.vehicleType === 'HGV' ? 'HGV Body Type *' : 'Body Type *'}
                                     </label>
                                     <div className={`grid gap-2.5 ${formData.vehicleType === 'HGV' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-5' : 'grid-cols-3 md:grid-cols-5'}`}>
-                                        {bodyTypeKeys.map((key) => {
+                                        {bodyTypeKeys.filter(key => isLeisure ? ['CARAVAN', 'CAMPERVAN'].includes(key) : !['CARAVAN', 'CAMPERVAN'].includes(key)).map((key) => {
                                             const Icon = BODY_TYPE_ICONS[key]
                                             return (
                                                 <button
@@ -3574,10 +3581,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 />
                             </div>
 
-                            {/* A car-shaped 3D damage model would misrepresent caravan damage. */}
-                            {isCaravan ? (
+                            {/* Use photos instead of a car-shaped model for leisure vehicles. */}
+                            {isLeisure ? (
                                 <p className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-[var(--text-secondary)]">
-                                    Photograph every damaged area of the caravan and describe faults in the mandatory declarations. A caravan-specific 3D damage model is not yet available.
+                                    Photograph every damaged area of your caravan or campervan and describe any known faults.
                                 </p>
                             ) : (
                             <div className="pt-8 border-t border-[var(--border-default)]">
@@ -3679,7 +3686,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {/* Give sellers value guidance immediately after the
                                     minimum valuation inputs are known, not only after
                                     photos and declarations are complete. */}
-                                {!isCaravan && <div className="md:col-span-2">
+                                {!isLeisure && <div className="md:col-span-2">
                                     <VehicleValuationCard
                                         valuation={valuation}
                                         loading={valuationLoading}
@@ -4344,9 +4351,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                             <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4">{isAuction ? "Vehicle Value" : "Pricing"}</h2>
 
-                            {isCaravan ? (
+                            {isLeisure ? (
                                 <p className="rounded-xl border border-blue-500/25 bg-blue-500/10 p-4 text-sm text-[var(--text-secondary)]">
-                                    Enter your own caravan value using comparable caravan prices. Automatic car-registration valuations do not apply to towable caravans.
+                                    Enter your own caravan or campervan price. CarMazium does not suggest an automated valuation for this category.
                                 </p>
                             ) : (
                                 <VehicleValuationCard

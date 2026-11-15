@@ -214,3 +214,39 @@ test('native validates blank or bare Yes answers, and accepts explicit no or des
     }
   }
 });
+
+
+test('campervan selection survives new registration entry while old motor facts are cleared', () => {
+  const reset = registrationLookupReset('', 'AB12CDE', 'CAMPERVAN');
+  assert.equal(reset.bodyType, 'CAMPERVAN');
+  assert.equal(reset.vin, '');
+  assert.equal(reset.make, '');
+  assert.equal(reset.year, '');
+  assert.equal(reset.motHistory.length, 0);
+  assert.equal(registrationLookupReset('AB12CDE', 'CD34EFG', 'SUV').bodyType, '');
+});
+test('campervans retain registration, year, mileage and motor photo minimum in both listing methods', () => {
+  for (const listingType of ['AUCTION', 'CLASSIFIED']) {
+    const draft = { ...completeForm, listingType, bodyType: 'CAMPERVAN', images: ['one-photo'] };
+    const ctx = { ...wizardContext(draft), damageEntryPending: false };
+    assert.equal(wizardFunction(wizardFile, 'getStepValidationError', ctx)(1), null);
+    assert.match(wizardFunction(wizardFile, 'getStepValidationError', ctx)(2), /9 more photo/);
+    for (const field of ['vrm', 'year', 'mileage']) {
+      const incomplete = wizardContext({ ...draft, [field]: '' });
+      assert.ok(wizardFunction(wizardFile, 'getStepValidationError', incomplete)(1));
+    }
+  }
+});
+
+
+test('manual caravan drafts can be saved and resumed without a registration or transmission', () => {
+  const { hasSellerDraftIdentity, hasCompleteSellerVehicleSpecs } = load('sellerVehicleSpecs');
+  const draft = { vrm: '', bodyType: 'CARAVAN', vehicleType: 'CAR', transmission: '' };
+  assert.equal(hasSellerDraftIdentity(draft), true);
+  assert.equal(hasCompleteSellerVehicleSpecs(draft, ['CARAVAN', 'CAMPERVAN']), true);
+  assert.equal(hasSellerDraftIdentity({ ...draft, bodyType: 'CAMPERVAN' }), false);
+  assert.equal(hasCompleteSellerVehicleSpecs({ ...draft, bodyType: 'CAMPERVAN' }, ['CARAVAN', 'CAMPERVAN']), false);
+  const source = readFileSync(new URL(wizardFile, import.meta.url), 'utf8');
+  assert.match(source, /if \(!hasSellerDraftIdentity\(parsed\)\) return/);
+  assert.match(source, /sellingMethod === 'list' && hasSellerDraftIdentity\(formData\)/);
+});

@@ -158,6 +158,24 @@ describe('PaymentsService — createListingSession retail payment gate', () => {
         mockCheckoutSessionsCreate.mockResolvedValue({ id: 'cs_mock', url: 'https://checkout.stripe.test/session' });
     });
 
+    it('starts exactly £1 Basic checkout for a one-photo caravan without motor details or HPI', async () => {
+        prisma.listing.findUnique.mockResolvedValue(readyRetailListing({
+            bodyType: 'CARAVAN', title: 'Synthetic caravan QA', price: 6900,
+            images: ['synthetic-photo'], vrm: null, vin: null, year: null, mileage: null,
+            make: null, model: null, fuelType: null, transmission: null, hpiReport: null,
+            owners: null, numberOfKeys: null, serviceHistory: null, condition: null,
+            mechanicalIssues: null, electricalIssues: null, description: null,
+            partnerDistributionAcceptedAt: new Date(),
+        }));
+        await expect(service.createListingSession('BASIC', 'user-1', 'listing-1'))
+            .resolves.toEqual({ url: 'https://checkout.stripe.test/session' });
+        expect(prisma.transaction.create).toHaveBeenCalledWith({ data: expect.objectContaining({ amount: 1 }) });
+        expect(mockCheckoutSessionsCreate).toHaveBeenCalledWith(expect.objectContaining({
+            line_items: [expect.objectContaining({ price_data: expect.objectContaining({ unit_amount: 100 }) })],
+        }));
+        expect(mockHpiCreatePendingReport).not.toHaveBeenCalled();
+    });
+
     it('charges the persisted BASIC tier even if the browser asks for PREMIUM', async () => {
         prisma.listing.findUnique.mockResolvedValue(readyRetailListing());
 

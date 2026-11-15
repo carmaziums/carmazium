@@ -2559,6 +2559,23 @@ describe('ListingsService', () => {
     });
 
     describe('marketplace filter correctness', () => {
+        it('keeps Car search separate from caravan and campervan while retaining legacy unclassified cars', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            prisma.listing.count.mockResolvedValue(0);
+            await service.findAll({ vehicleType: 'CAR' } as any);
+            expect(prisma.listing.findMany.mock.calls[0][0].where.AND).toContainEqual({
+                OR: [{ bodyType: null }, { bodyType: { notIn: ['CARAVAN', 'CAMPERVAN'] } }],
+            });
+        });
+        it.each(['CARAVAN', 'CAMPERVAN'])('finds explicit %s listings without applying the car-only exclusion', async (bodyType) => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            prisma.listing.count.mockResolvedValue(0);
+            await service.findAll({ vehicleType: 'CAR', bodyType } as any);
+            const where = prisma.listing.findMany.mock.calls[0][0].where;
+            expect(where.bodyType).toBe(bodyType);
+            expect(JSON.stringify(where.AND || [])).not.toContain('notIn');
+        });
+
         it('applies radius to the complete filtered inventory before skip/take and counting', async () => {
             prisma.listing.findMany
                 .mockResolvedValueOnce([

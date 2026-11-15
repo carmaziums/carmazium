@@ -145,6 +145,7 @@ const mapBodyType = (body?: DtoBodyType): BodyType | null => {
         MPV: 'MPV',
         VAN: 'VAN',
         CARAVAN: 'CARAVAN',
+        CAMPERVAN: 'CAMPERVAN',
         HGV_TRACTOR_UNIT: 'HGV_TRACTOR_UNIT',
         HGV_BOX: 'HGV_BOX',
         HGV_CURTAIN_SIDER: 'HGV_CURTAIN_SIDER',
@@ -2165,6 +2166,11 @@ export class ListingsService {
         if (gradeSearch.writeOffMatch) where.AND = [...(where.AND || []), gradeSearch.writeOffMatch];
         if (euroStandard) where.euroStandard = euroStandard;
         if (vehicleType) where.vehicleType = vehicleType;
+        if (vehicleType === 'CAR' && !bodyType) {
+            where.AND = [...(where.AND || []), { OR: [
+                { bodyType: null }, { bodyType: { notIn: ['CARAVAN', 'CAMPERVAN'] } },
+            ] }];
+        }
 
         // ─── Features (legacy-aware, all selected options required) ──────────
         // Imported listings and older seller forms use equivalent labels (e.g.

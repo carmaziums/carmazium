@@ -2165,7 +2165,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
                 <GradeChip grade={(auction?.listing as any)?.exteriorGrade} variant="pill" />
               </View>
-              {auction?.listing?.bodyType !== 'CARAVAN' && <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />}
+              {!['CARAVAN', 'CAMPERVAN'].includes(auction?.listing?.bodyType || '') && <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />}
               {(auction?.listing as any)?.mechanicalIssues ? (
                 <View style={{ marginTop: 12, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(245,158,11,0.28)', backgroundColor: 'rgba(245,158,11,0.07)' }}>
                   <Text style={[s.specKey, { color: Colors.warning, marginBottom: 5 }]}>KNOWN MECHANICAL PROBLEMS</Text>

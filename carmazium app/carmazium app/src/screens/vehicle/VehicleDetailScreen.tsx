@@ -1415,7 +1415,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <Text style={[styles.sectionHeaderTitle, { marginBottom: 0 }]}>CONDITION & DAMAGE</Text>
               <GradeChip grade={listing.exteriorGrade} variant="pill" />
             </View>
-            {!isCaravan && <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />}
+            {!isCaravan && listing.bodyTypeRaw !== 'CAMPERVAN' && <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />}
             {listing.mechanicalIssues ? (
               <View style={{ marginTop: 14, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(245,158,11,0.28)', backgroundColor: 'rgba(245,158,11,0.07)' }}>
                 <Text style={{ color: Colors.warning, fontFamily: FontFamily.bold, fontSize: 11, marginBottom: 6 }}>KNOWN MECHANICAL PROBLEMS</Text>

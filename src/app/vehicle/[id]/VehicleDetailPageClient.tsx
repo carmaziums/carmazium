@@ -1124,7 +1124,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                         )}
 
                         {/* Condition & Damage — always shown (same 3D model + auto grade as the Buy Cars page), even with zero reported damage */}
-                        {listing.bodyType !== 'CARAVAN' && (() => {
+                        {!['CARAVAN', 'CAMPERVAN'].includes(listing.bodyType || '') && (() => {
                             // The listing API includes damageRecords (an empty array when the seller
                             // reported none). If the field is missing, say so rather than "no damage".
                             const damageDataAvailable = Array.isArray((listing as any).damageRecords)

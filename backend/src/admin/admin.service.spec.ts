@@ -132,6 +132,31 @@ describe('AdminService listing approval readiness', () => {
         },
     };
 
+    const manualCaravan = {
+        ...validLinkedAuction, linkedListingId: null, linkedListing: null,
+        bodyType: 'CARAVAN', title: 'Synthetic caravan QA', images: ['synthetic-photo'],
+        vrm: null, vin: null, make: null, model: null, year: null, mileage: null,
+        fuelType: null, transmission: null, owners: null, numberOfKeys: null,
+        serviceHistory: null, mechanicalIssues: null, electricalIssues: null,
+        description: null, condition: null, partnerDistributionAcceptedAt: new Date(),
+    };
+    it.each(['AUCTION', 'CLASSIFIED'])('admin can approve a complete manual %s caravan without invented motor details', async (type) => {
+        const listing = { ...manualCaravan, type, badgeTier: type === 'AUCTION' ? 'FREE' : 'BASIC' };
+        const { service, prisma } = makeService(listing);
+        prisma.user.findUnique.mockResolvedValue({ role: 'SELLER' });
+        prisma.transaction.findFirst.mockResolvedValue({ id: 'synthetic-paid-fee' });
+        prisma.listing.update.mockResolvedValue({ ...listing, status: 'ACTIVE' });
+        await expect(service.approveListing(listing.id)).resolves.toMatchObject({ status: 'ACTIVE' });
+        expect(prisma.listing.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'ACTIVE' }) }));
+    });
+    it('admin cannot approve an unpaid retail caravan', async () => {
+        const { service, prisma } = makeService({ ...manualCaravan, type: 'CLASSIFIED', badgeTier: 'BASIC' });
+        prisma.user.findUnique.mockResolvedValue({ role: 'SELLER' });
+        prisma.transaction.findFirst.mockResolvedValue(null);
+        await expect(service.approveListing(manualCaravan.id)).rejects.toThrow(/fee has not been paid/);
+        expect(prisma.listing.update).not.toHaveBeenCalled();
+    });
+
     describe('admin inventory status filters', () => {
         it.each(['ACTIVE', 'PENDING_REVIEW', 'DRAFT', 'OFFER_ACCEPTED', 'SOLD', 'REJECTED', 'WITHDRAWN'])(
             'filters and paginates non-deleted %s listings on the server',

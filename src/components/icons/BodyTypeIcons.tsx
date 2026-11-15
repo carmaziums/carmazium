@@ -170,6 +170,7 @@ export const BODY_TYPE_ICONS: Record<string, React.FC<IconProps>> = {
     MPV: MPVIcon,
     VAN: VanIcon,
     CARAVAN: CaravanIcon,
+    CAMPERVAN: VanIcon,
     HGV_TRACTOR_UNIT: PickupTruckIcon,
     HGV_BOX: VanIcon,
     HGV_CURTAIN_SIDER: VanIcon,
@@ -196,6 +197,7 @@ export const BODY_TYPE_LABELS: Record<string, string> = {
     MPV: 'MPV',
     VAN: 'Van',
     CARAVAN: 'Caravan',
+    CAMPERVAN: 'Campervan',
     HGV_TRACTOR_UNIT: 'Tractor Unit',
     HGV_BOX: 'Box',
     HGV_CURTAIN_SIDER: 'Curtain Sider',
@@ -209,7 +211,7 @@ export const BODY_TYPE_LABELS: Record<string, string> = {
 
 export const BODY_TYPE_KEYS = [
     'SEDAN', 'SUV', 'HATCHBACK', 'COUPE', 'CONVERTIBLE', 'ESTATE',
-    'CROSSOVER', 'SPORTS_CAR', 'MINIVAN', 'PICKUP_TRUCK', 'STATION_WAGON', 'MPV', 'VAN', 'CARAVAN',
+    'CROSSOVER', 'SPORTS_CAR', 'MINIVAN', 'PICKUP_TRUCK', 'STATION_WAGON', 'MPV', 'VAN', 'CARAVAN', 'CAMPERVAN',
 ] as const
 
 export const HGV_BODY_TYPE_KEYS = [

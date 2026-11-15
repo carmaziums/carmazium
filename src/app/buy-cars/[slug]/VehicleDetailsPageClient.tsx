@@ -1157,7 +1157,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                         </div>
 
                         {/* Condition & Damage — always shown, even with zero reported damage */}
-                        {listing.bodyType !== 'CARAVAN' && (() => {
+                        {!['CARAVAN', 'CAMPERVAN'].includes(listing.bodyType || '') && (() => {
                             // exteriorGrade is computed automatically by the platform from the
                             // seller's reported damage zones (see backend DamageAnalysisService) —
                             // not seller-chosen. Same value drives the "Grade N" chip on the card.

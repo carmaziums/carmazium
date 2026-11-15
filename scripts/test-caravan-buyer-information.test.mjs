@@ -24,9 +24,9 @@ test('caravan buyer facts render manual details and omit stale motor-vehicle fac
   assert.match(html, /Birmingham/);
   assert.doesNotMatch(html.replace(/<[^>]*>/g, ''), /MOT|DVLA|OLDVRM|DIESEL|2000|Engine/);
 });
-test('motor vehicles retain MOT and technical facts', () => {
+for (const bodyType of ['HATCHBACK', 'CAMPERVAN']) test(`${bodyType} motor vehicles retain MOT and technical facts`, () => {
   const html = renderToStaticMarkup(React.createElement(BuyerVehicleInformation, { listing: {
-    bodyType: 'HATCHBACK', make: 'Synthetic car', motStatus: 'Valid', engineSize: 2000,
+    bodyType, make: 'Synthetic car', motStatus: 'Valid', engineSize: 2000,
   } }));
   assert.match(html, /MOT test history/);
   assert.match(html, /2000 cc/);

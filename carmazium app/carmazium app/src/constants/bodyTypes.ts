@@ -37,6 +37,7 @@ export const BODY_TYPE_ICONS: BodyTypeIcon[] = [
   { value: 'MPV', label: 'MPV', icon: 'car-2-plus' },
   { value: 'VAN', label: 'Van', icon: 'van-utility' },
   { value: 'CARAVAN', label: 'Caravan', icon: 'caravan' },
+  { value: 'CAMPERVAN', label: 'Campervan', icon: 'rv-truck' },
   { value: 'PICKUP_TRUCK', label: 'Pickup Truck', icon: 'car-pickup' },
 ];
 
