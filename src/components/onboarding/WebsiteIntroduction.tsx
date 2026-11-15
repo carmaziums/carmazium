@@ -4,7 +4,7 @@ import { createContext, Suspense, useContext, useEffect, useMemo, useRef, useSta
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
-import { canAutoIntroduce } from "@/lib/welcomeTour"
+import { WELCOME_TOUR_VERSION, canAutoIntroduce } from "@/lib/welcomeTour"
 import { getGuidedWebsiteSteps } from "@/lib/guidedWebsiteTour"
 import { GuidedWebsiteTour } from "./GuidedWebsiteTour"
 import Link from "next/link"
@@ -12,7 +12,7 @@ import { PlayCircle } from "lucide-react"
 
 type IntroductionAction = "tour_skipped" | "tour_completed" | "services_dismissed" | "services_viewed"
 export async function saveIntroduction(action: IntroductionAction) {
-    await apiClient("/users/me/introduction", { method: "PATCH", body: JSON.stringify({ action }) })
+    await apiClient("/users/me/introduction", { method: "PATCH", body: JSON.stringify({ action, version: WELCOME_TOUR_VERSION }) })
 }
 
 const IntroductionContext = createContext({ replay: () => {}, saving: false })

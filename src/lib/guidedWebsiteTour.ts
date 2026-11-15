@@ -30,6 +30,22 @@ export function getGuidedWebsiteSteps(profile: TourProfile): GuidedStep[] {
         id: "pricing", title: "Listing packages", href: "/pricing", target: heading,
         description: "Compare Basic, Standard and Premium before choosing a retail package. Check the included features and price. Payment and admin approval requirements still apply; this walkthrough never purchases a package.",
     }]
+    if (profile.role === "ADMIN") {
+        const modules = [
+            ["overview", "Admin dashboard", "", "Review platform activity and outstanding work. Open the relevant module to investigate; this guide never approves, publishes or charges anything."],
+            ["listings", "Listing moderation", "/listings", "Review listing details, photographs and declarations before making a moderation decision."],
+            ["dealers", "Dealer verification", "/dealer-verification", "Review business and account verification. The original dealer verification payment is reused for service applications."],
+            ["services", "Service jobs and providers", "/services", "Review provider approvals, service jobs and disputes. Delivery and recovery require trade insurance; inspections require the declaration and verified business and payout details."],
+            ["users", "Account management", "/users", "Find the correct account before reviewing its details or permissions."],
+            ["transactions", "Transactions", "/transactions", "Review recorded payment statuses. Vehicle buyers pay sellers directly; listing fees and service payments are separate."],
+            ["handovers", "Vehicle handovers", "/handovers", "Review collection evidence and required confirmations before approving an eligible seller incentive."],
+            ["cancellations", "Sale cancellations", "/cancellations", "Review each cancellation request and its evidence before deciding."],
+            ["warranties", "Warranty orders", "/warranty-orders", "Review customer warranty orders, payments and fulfilment status."],
+            ["messages", "Messages and support", "/messages", "Check the account and vehicle context before responding to a conversation."],
+        ]
+        return [steps[0], ...modules.map(([id, title, path, description]) => ({ id: `admin-${id}`, title, description, href: `/dashboard/admin${path}`, target: heading })),
+            { id: "finish", title: "Replay whenever you need", href: "/profile?section=personal", target: { selector: "button", text: "Replay website tour" }, description: "Open Account Settings, Personal details, and choose the red Replay website tour button to return to this guide. Voice guidance is optional." }]
+    }
     if (dealer) steps.push(
         { id: "stock", title: "Manage your stock", href: "/dashboard/dealer/inventory", target: { selector: "input[aria-label='Search stock by make, model or registration']" }, description: "Search your stock by vehicle or registration. Use Live, Under review, Rejected, Draft and Sold to see each stage. The action menu on a vehicle gives you its available viewing and management options." },
         { id: "add", title: "Add a vehicle", href: "/dashboard/dealer/inventory", target: { selector: "a", text: "Add Vehicle" }, description: "Add Vehicle opens the listing wizard for auction or retail. Supply truthful details and your own photographs, complete the required declarations, and review before submitting. Drafts let you return later." },
@@ -61,10 +77,11 @@ export function getGuidedWebsiteSteps(profile: TourProfile): GuidedStep[] {
         { id: "cancellations", title: "Sale cancellations", href: "/dashboard/cancellations", target: heading, description: "Review cancellation requests and their status here. Follow the displayed response and admin review process; a request alone does not mean the sale is cancelled." },
     )
     if (dealer || contractor) steps.push(
-        { id: "partner", title: "Partner services", href: "/dashboard/partner", target: heading, description: "The Partner dashboard is for your delivery, recovery and inspection activity. Dealership finance and warranty badges describe what you offer on your own listings; they do not make you a platform-wide provider." },
+        { id: "partner", title: "Provider overview", href: "/dashboard/service", target: heading, description: "The Provider overview shows your delivery, recovery and inspection jobs, service approvals and released earnings. Dealership finance and warranty badges describe what you offer on your own listings; they do not make you a platform-wide provider." },
         { id: "capabilities", title: "Service setup and approval", href: "/dashboard/service/capabilities", target: heading, description: "Complete business verification, verified payouts and the declaration. Collection, delivery and recovery need trade insurance. Inspection requires no inspection documents. Your original £1 dealer verification is not charged again for services." },
         { id: "jobs", title: "Available service jobs", href: "/dashboard/service/jobs", target: heading, description: "Review jobs available to your approved services and submit quotes only when eligible. Enabling a service preference does not approve an application or bypass insurance and payout checks." },
     )
+    if (dealer || contractor) steps.push({ id: "my-work", title: "Your accepted service jobs", href: "/dashboard/service/jobs?tab=mine", target: heading, description: "My Work contains jobs assigned to your business. Open a job to follow its payment, progress and completion requirements. Previously accepted work stays accessible even if approval for new jobs needs renewal." })
     const settings: Array<[string, string, string]> = [
         ["personal", "Personal details", "Keep your name, contact information and location up to date. Review your changes before saving."],
         ...(dealer || contractor ? [["business", dealer && profile.dealerProfile ? "My dealership services" : "Partner Business Profile", "Manage your business profile and four service switches here. Finance and warranty badges appear only on your listings. Turn off services you do not offer. The platform finance calculator is a separate option."] as [string, string, string]] : []),

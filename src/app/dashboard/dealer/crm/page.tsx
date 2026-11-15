@@ -5,13 +5,15 @@ import Link from "next/link"
 import { Button } from "@/components/ui/Button"
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/AsyncState"
 import {
-    Kanban, PlusCircle, User, MessageSquare,
-    Loader2, ChevronRight, Phone, Mail, ArrowUpRight,
+    PlusCircle, User, MessageSquare,
+    Loader2, ChevronRight, Phone, Mail,
     TrendingUp, ShieldCheck, Activity, X, Search, CheckCircle,
     Clock3, Sparkles,
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
+import { loadCompleteDealerLeads, rollbackLeadStage, type DealerLead, type DealerLeadPage } from "@/lib/dealerCrm"
+import type { Listing } from "@/lib/listingApi"
 import { apiClient } from "@/lib/apiClient"
 import { getCompletePrivateListings } from "@/lib/privateCarsListings"
 import { PageHeader } from "@/components/dashboard/PageHeader"
@@ -56,7 +58,7 @@ function formatActivityTime(value?: string | null) {
     return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
 }
 
-function isFollowUpOverdue(lead: any) {
+function isFollowUpOverdue(lead: DealerLead) {
     return Boolean(
         lead?.nextFollowUpAt &&
         !["WON", "LOST"].includes(lead.status) &&
@@ -71,7 +73,7 @@ function AddLeadModal({
     onCreated,
 }: {
     onClose: () => void
-    onCreated: (lead: any) => void
+    onCreated: (lead: DealerLead) => void
 }) {
     const [form, setForm] = React.useState({
         buyerName: "",
@@ -80,9 +82,9 @@ function AddLeadModal({
         source: "",
         notes: "",
     })
-    const [listings, setListings] = React.useState<any[]>([])
+    const [listings, setListings] = React.useState<Listing[]>([])
     const [listingSearch, setListingSearch] = React.useState("")
-    const [selectedListing, setSelectedListing] = React.useState<any | null>(null)
+    const [selectedListing, setSelectedListing] = React.useState<Listing | null>(null)
     const [loadingListings, setLoadingListings] = React.useState(false)
     const [submitting, setSubmitting] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
@@ -103,15 +105,17 @@ function AddLeadModal({
         l.vrm?.replace(/\s/g, '').toLowerCase().includes(listingSearch.replace(/\s/g, '').toLowerCase())
     )
 
-    const set = (k: string, v: string) => setForm(prev => ({ ...prev, [k]: v }))
+    const set = (k: keyof typeof form, v: string) => setForm(prev => ({ ...prev, [k]: v }))
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (submitting) return
         if (!form.buyerName.trim()) { setError("Buyer name is required"); return }
+        if (!SOURCES.some(source => source === form.source)) { setError("Choose the enquiry source"); return }
         setSubmitting(true)
         setError(null)
         try {
-            const res = await apiClient<{ data: any }>('/dealers/leads', {
+            const res = await apiClient<{ data: DealerLead }>('/dealers/leads', {
                 method: 'POST',
                 body: JSON.stringify({
                     buyerName: form.buyerName.trim(),
@@ -125,8 +129,8 @@ function AddLeadModal({
             })
             onCreated(res.data)
             onClose()
-        } catch (err: any) {
-            setError(err.message || "Failed to create lead")
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Failed to create lead")
         } finally {
             setSubmitting(false)
         }
@@ -146,7 +150,7 @@ function AddLeadModal({
                     {/* Buyer Name */}
                     <div>
                         <label htmlFor="customer-buyerName" className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Buyer Name *</label>
-                        <input id="customer-buyerName"
+                        <input id="customer-buyerName" required
                             type="text"
                             value={form.buyerName}
                             onChange={e => set('buyerName', e.target.value)}
@@ -271,11 +275,19 @@ function AddLeadModal({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function DealerCRMPage() {
+    const { user, loading } = useAuth()
+    if (loading || !user) return <LoadingState label="Loading your customer account…" />
+    return <DealerCRMContent key={user.id} />
+}
+
+function DealerCRMContent() {
     const { user, profile, loading: authLoading } = useAuth()
-    const [leads, setLeads] = React.useState<any[]>([])
+    const [leads, setLeads] = React.useState<DealerLead[]>([])
     const [loading, setLoading] = React.useState(true)
     const [loadError, setLoadError] = React.useState<string | null>(null)
-    const [updatingLeadId, setUpdatingLeadId] = React.useState<string | null>(null)
+    const pendingLeadIds = React.useRef(new Set<string>())
+    const [updatingLeadIds, setUpdatingLeadIds] = React.useState(new Set<string>())
+    const loadSequence = React.useRef(0)
     const [showAddModal, setShowAddModal] = React.useState(false)
     const [startingChat, setStartingChat] = React.useState<string | null>(null)
     const [toast, setToast] = React.useState<string | null>(null)
@@ -284,63 +296,74 @@ export default function DealerCRMPage() {
 
     React.useEffect(() => {
         if (!authLoading && user) {
-            fetchLeads()
+            void fetchLeads()
         }
+        const sequence = loadSequence
+        return () => { sequence.current++ }
     }, [user, authLoading])
 
     async function fetchLeads() {
+        const sequence = ++loadSequence.current
         setLoading(true)
         setLoadError(null)
         try {
-            const res = await apiClient<{ data: any[] }>('/dealers/leads')
-            setLeads(res?.data ?? [])
-        } catch (err: any) {
+            const result = await loadCompleteDealerLeads((page, limit) => apiClient<DealerLeadPage>(`/dealers/leads?page=${page}&limit=${limit}`))
+            if (sequence !== loadSequence.current) return
+            setLeads(result)
+        } catch (err: unknown) {
+            if (sequence !== loadSequence.current) return
             console.error('Failed to load leads:', err)
             setLeads([])
-            setLoadError(err?.message || 'We could not load your customers. Check your connection and try again.')
+            setLoadError(err instanceof Error ? err.message : 'We could not load your customers. Check your connection and try again.')
         } finally {
-            setLoading(false)
+            if (sequence === loadSequence.current) setLoading(false)
         }
+    }
+
+    function beginLeadUpdate(leadId: string) {
+        if (pendingLeadIds.current.has(leadId)) return false
+        pendingLeadIds.current.add(leadId)
+        setUpdatingLeadIds(new Set(pendingLeadIds.current))
+        return true
+    }
+
+    function finishLeadUpdate(leadId: string) {
+        pendingLeadIds.current.delete(leadId)
+        setUpdatingLeadIds(new Set(pendingLeadIds.current))
     }
 
     async function updateLeadStatus(leadId: string, status: string) {
-        // Optimistic update: Update the UI immediately
-        const previousLeads = [...leads]
-        setLeads(current => current.map(lead => 
-            lead.id === leadId ? { ...lead, status } : lead
-        ))
-        
-        setUpdatingLeadId(leadId)
+        const previous = leads.find(lead => lead.id === leadId)?.status
+        if (!previous || previous === status || !beginLeadUpdate(leadId)) return
+        setLeads(current => current.map(lead => lead.id === leadId ? { ...lead, status } : lead))
         try {
-            const res = await apiClient<{ data: any }>(`/dealers/leads/${leadId}`, {
-                method: "PATCH",
-                body: JSON.stringify({ status }),
+            const res = await apiClient<{ data: DealerLead }>(`/dealers/leads/${leadId}`, {
+                method: "PATCH", body: JSON.stringify({ status }),
             })
-            // Sync with actual server data (in case there are other changes like updatedAt)
-            const updatedLead = res?.data
-            setLeads(prev => prev.map(lead => (lead.id === leadId ? { ...lead, ...updatedLead } : lead)))
+            setLeads(current => current.map(lead => lead.id === leadId
+                ? { ...lead, status: res.data.status, lastActivityAt: res.data.lastActivityAt, updatedAt: res.data.updatedAt }
+                : lead))
         } catch (err) {
             console.error("Failed to update lead status:", err)
-            // Rollback on error
-            setLeads(previousLeads)
+            setLeads(current => rollbackLeadStage(current, leadId, previous, status))
             showToast("Failed to update lead status")
-        } finally {
-            setUpdatingLeadId(null)
-        }
+        } finally { finishLeadUpdate(leadId) }
     }
 
     async function setLeadFollowUp(leadId: string, nextFollowUpAt: string | null) {
+        if (!beginLeadUpdate(leadId)) return
         try {
-            const res = await apiClient<{ data: any }>(`/dealers/leads/${leadId}`, {
-                method: "PATCH",
-                body: JSON.stringify({ nextFollowUpAt }),
+            const res = await apiClient<{ data: DealerLead }>(`/dealers/leads/${leadId}`, {
+                method: "PATCH", body: JSON.stringify({ nextFollowUpAt }),
             })
-            setLeads(prev => prev.map(lead => lead.id === leadId ? { ...lead, ...res.data } : lead))
+            setLeads(current => current.map(lead => lead.id === leadId
+                ? { ...lead, nextFollowUpAt: res.data.nextFollowUpAt, lastActivityAt: res.data.lastActivityAt, updatedAt: res.data.updatedAt }
+                : lead))
             showToast(nextFollowUpAt ? "Follow-up reminder set" : "Follow-up reminder cleared")
         } catch (err) {
             console.error("Failed to update follow-up reminder:", err)
             showToast("Failed to update follow-up reminder")
-        }
+        } finally { finishLeadUpdate(leadId) }
     }
 
     function followUpTomorrow(leadId: string) {
@@ -350,17 +373,17 @@ export default function DealerCRMPage() {
         setLeadFollowUp(leadId, next.toISOString())
     }
 
-    async function handleMessageBuyer(lead: any) {
+    async function handleMessageBuyer(lead: DealerLead) {
         if (!lead.buyerId) {
             showToast("This lead has no linked buyer account. Use email/phone to contact them.")
             return
         }
         setStartingChat(lead.id)
         try {
-            const room = await createChatRoom(lead.buyerId, lead.listingId)
+            const room = await createChatRoom(lead.buyerId, lead.listingId ?? undefined)
             router.push(`/dashboard/dealer/messages?room=${room.id}`)
-        } catch (err: any) {
-            showToast(err.message || "Failed to start chat")
+        } catch (err: unknown) {
+            showToast(err instanceof Error ? err.message : "Failed to start chat")
         } finally {
             setStartingChat(null)
         }
@@ -541,10 +564,10 @@ export default function DealerCRMPage() {
                                                 <p className="text-gray-600 text-xs font-black uppercase tracking-widest">Empty</p>
                                             </div>
                                         ) : (
-                                            leadsByStatus(col.key).map((lead: any) => (
+                                            leadsByStatus(col.key).map((lead: DealerLead) => (
                                                 <div 
                                                     key={lead.id} 
-                                                    draggable
+                                                    draggable={!updatingLeadIds.has(lead.id)}
                                                     onDragStart={(e) => {
                                                         e.dataTransfer.setData("leadId", lead.id)
                                                         e.dataTransfer.effectAllowed = "move"
@@ -563,7 +586,7 @@ export default function DealerCRMPage() {
                                                             </div>
                                                             <div>
                                                                 <p className="font-black text-sm tracking-tight">{lead.buyerName}</p>
-                                                                <p className="text-xs font-bold text-primary uppercase tracking-widest">{SOURCE_LABELS[lead.source] || lead.source?.replace(/_/g, ' ') || 'Unknown source'}</p>
+                                                                <p className="text-xs font-bold text-primary uppercase tracking-widest">{SOURCE_LABELS[lead.source ?? ""] || lead.source?.replace(/_/g, ' ') || 'Unknown source'}</p>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -622,6 +645,7 @@ export default function DealerCRMPage() {
                                                         </span>
                                                         <button
                                                             type="button"
+                                                            disabled={updatingLeadIds.has(lead.id)}
                                                             onClick={() => lead.nextFollowUpAt ? setLeadFollowUp(lead.id, null) : followUpTomorrow(lead.id)}
                                                             className={`flex items-center gap-1 rounded-lg px-2 py-1 font-black ${
                                                                 isFollowUpOverdue(lead)
@@ -638,12 +662,12 @@ export default function DealerCRMPage() {
                                                     <div className="pt-4 border-t border-[var(--border-default)]">
                                                         <div className="flex items-center justify-between mb-2">
                                                             <label className="text-[8px] text-[var(--text-muted)] uppercase font-black tracking-widest">Phase Status</label>
-                                                            {updatingLeadId === lead.id && <Loader2 size={10} className="animate-spin text-primary" />}
+                                                            {updatingLeadIds.has(lead.id) && <Loader2 size={10} className="animate-spin text-primary" />}
                                                         </div>
                                                         <select
                                                             aria-label={`Customer stage for ${lead.buyerName}`}
                                                             value={lead.status}
-                                                            disabled={updatingLeadId === lead.id}
+                                                            disabled={updatingLeadIds.has(lead.id)}
                                                             onChange={e => updateLeadStatus(lead.id, e.target.value)}
                                                             className="w-full bg-black/40 border border-[var(--border-default)] text-white rounded-xl px-3 py-2 text-xs font-bold tracking-widest uppercase focus:outline-none focus:ring-1 focus:ring-primary/40 appearance-none cursor-pointer hover:bg-black/60 transition-colors"
                                                         >

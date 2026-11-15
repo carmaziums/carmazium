@@ -6,7 +6,7 @@ const source = readFileSync(new URL('../src/lib/guidedWebsiteTour.ts', import.me
 const exports = {};
 new Function('exports', ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText)(exports);
 const scripts = {};
-for (const role of ['BUYER', 'SELLER', 'DEALER', 'CONTRACTOR', 'FINANCE_PARTNER', 'INSURANCE_PARTNER']) {
+for (const role of ['BUYER', 'SELLER', 'DEALER', 'CONTRACTOR', 'FINANCE_PARTNER', 'INSURANCE_PARTNER', 'ADMIN']) {
     for (const dealerProfile of [undefined, {}]) {
         for (const step of exports.getGuidedWebsiteSteps({ id: 'catalog', role, dealerProfile })) {
             const text = `${step.title}. ${step.description}`;

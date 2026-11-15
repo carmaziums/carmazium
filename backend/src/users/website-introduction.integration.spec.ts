@@ -38,6 +38,13 @@ integration('Account introduction with disposable PostgreSQL', () => {
         await service.updateIntroduction(ids[1], 'services_viewed');
         expect((await service.getProfile(ids[1])).preferences).toMatchObject({ dealerServicesNoticeV1: { status: 'viewed' } });
     });
+    it('rollout 2 persists across reads and old clients cannot acknowledge it or erase it', async () => {
+        await service.updateIntroduction(ids[0], 'tour_skipped', 2);
+        await service.updateIntroduction(ids[0], 'tour_completed');
+        expect((await service.getProfile(ids[0])).preferences).toMatchObject({ theme: 'dark', websiteIntroductionV1: { status: 'completed', version: 1 }, websiteIntroductionV2: { status: 'skipped', version: 2 } });
+        await service.updateIntroduction(ids[0], 'tour_completed', 2);
+        expect((await service.getProfile(ids[0])).preferences).toMatchObject({ websiteIntroductionV2: { status: 'completed', version: 2 } });
+    });
     it('never modifies a deleted account', async () => {
         await prisma.user.update({ where: { id: ids[1] }, data: { deletedAt: new Date() } });
         await expect(service.updateIntroduction(ids[1], 'tour_completed')).rejects.toThrow('User not found');

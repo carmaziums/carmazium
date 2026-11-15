@@ -1,9 +1,11 @@
-import { IsString, IsOptional, IsEmail, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsEmail, IsDateString, IsEnum, IsIn, Matches } from 'class-validator';
+import { LeadStatus } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateLeadDto {
     @ApiProperty({ description: 'Name of the prospective buyer' })
     @IsString()
+    @Matches(/\S/, { message: 'Buyer name is required' })
     buyerName: string;
 
     @ApiPropertyOptional({ description: 'Buyer email address' })
@@ -33,7 +35,7 @@ export class CreateLeadDto {
 
     @ApiPropertyOptional({ description: 'Lead source: listing_enquiry, chat, offer, walk_in, phone' })
     @IsOptional()
-    @IsString()
+    @IsIn(['listing_enquiry', 'chat', 'offer', 'walk_in', 'phone'])
     source?: string;
 
     @ApiPropertyOptional({ description: 'Notes about the lead' })
@@ -48,6 +50,6 @@ export class CreateLeadDto {
 
     @ApiPropertyOptional({ enum: ['NEW', 'CONTACTED', 'QUALIFIED', 'NEGOTIATING', 'WON', 'LOST'] })
     @IsOptional()
-    @IsString()
-    status?: string;
+    @IsEnum(LeadStatus)
+    status?: LeadStatus;
 }

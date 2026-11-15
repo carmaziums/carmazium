@@ -19,7 +19,6 @@ import {
     X,
     ChevronRight,
     ChevronDown,
-    FileText,
     Shield,
     ShieldCheck,
     ClipboardList,
@@ -35,7 +34,6 @@ import {
     Loader2,
     Gift,
     Sparkles,
-    Truck,
     Smartphone,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
@@ -230,7 +228,8 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
             ...(isPartnerOwner ? [{ href: "/dashboard/partner", label: "Partner Home", icon: Building2, section: "Business" }] : []),
             { href: "/dashboard/service", label: "Service Overview", icon: LayoutDashboard, section: "Services" },
             { href: "/dashboard/service/jobs", label: "Available Jobs", icon: Briefcase, section: "Services" },
-            { href: "/dashboard/service/capabilities", label: "Service Areas", icon: ShieldCheck, section: "Services" },
+            { href: "/dashboard/service/jobs?tab=mine", label: "My Work", icon: Briefcase, section: "Services" },
+            { href: "/dashboard/service/capabilities", label: "Service Setup", icon: ShieldCheck, section: "Services" },
             { href: "/dashboard/service/messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account" },
             { href: "/profile", label: "Account Settings", icon: Settings, section: "Account" },
         ],
@@ -348,6 +347,9 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
         if (pathname === "/dashboard/admin/services" && linkPath === pathname) {
             const warrantyView = searchParams.get("serviceType") === "WARRANTY"
             return href.includes("serviceType=WARRANTY") ? warrantyView : !warrantyView
+        }
+        if (pathname === "/dashboard/service/jobs" && linkPath === pathname) {
+            return href.includes("tab=mine") ? searchParams.get("tab") === "mine" : searchParams.get("tab") !== "mine"
         }
         // Dealer menu items also stay highlighted on their related pages
         // (e.g. Buy & Bid while on My Bids or Auction Wins).

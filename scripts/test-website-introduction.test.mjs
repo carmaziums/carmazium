@@ -21,12 +21,12 @@ test('natural narration catalog matches every role and current tour wording', ()
 test('new users are introduced on a safe first authenticated landing page', () => {
     for (const route of ['/', '/dashboard', '/dashboard/dealer', '/dashboard/user', '/search']) assert.equal(canAutoIntroduce(account, route, ''), true);
 });
-test('existing accounts, admins and unknown creation dates are not interrupted', () => {
-    for (const profile of [{ ...account, createdAt: '2026-11-01T00:00:00Z' }, { ...account, role: 'ADMIN' }, { ...account, createdAt: undefined }, { ...account, createdAt: 'invalid' }]) assert.equal(canAutoIntroduce(profile, '/dashboard', ''), false);
+test('existing accounts, admins and unknown creation dates receive the new introduction once', () => {
+    for (const profile of [{ ...account, createdAt: '2026-11-01T00:00:00Z' }, { ...account, role: 'ADMIN' }, { ...account, createdAt: undefined }, { ...account, createdAt: 'invalid' }]) assert.equal(canAutoIntroduce(profile, '/dashboard', ''), true);
 });
 test('skip and completion survive refresh and different devices via account preferences', () => {
     for (const status of ['skipped', 'completed']) {
-        const reloaded = JSON.parse(JSON.stringify({ ...account, preferences: { websiteIntroductionV1: { status, version: 1 } } }));
+        const reloaded = JSON.parse(JSON.stringify({ ...account, preferences: { websiteIntroductionV2: { status, version: 2 } } }));
         assert.equal(canAutoIntroduce(reloaded, '/dashboard', ''), false);
         assert.ok(getGuidedWebsiteSteps(reloaded).length >= 5, 'manual replay remains available');
     }
@@ -56,7 +56,7 @@ test('guided pages match account roles without treating a stale dealer profile a
     assert.match(JSON.stringify(dealer), /vehicle funds are paid directly to the seller/i);
 });
 test('every guided destination exists, stays internal and avoids checkout, auth and dynamic customer records', () => {
-    for (const role of ['BUYER', 'SELLER', 'DEALER', 'CONTRACTOR', 'FINANCE_PARTNER', 'INSURANCE_PARTNER']) {
+    for (const role of ['BUYER', 'SELLER', 'DEALER', 'CONTRACTOR', 'FINANCE_PARTNER', 'INSURANCE_PARTNER', 'ADMIN']) {
         const steps = getGuidedWebsiteSteps({ ...account, role });
         assert.equal(new Set(steps.map(step => step.id)).size, steps.length);
         assert.equal(steps[0].href, undefined, 'welcome waits for explicit Start tour');
@@ -76,4 +76,10 @@ test('settings destination exists and dashboards no longer render duplicated ser
         assert.doesNotMatch(page, /DealerServicePreferences/);
         assert.match(page, /<DealerServicesNotice/);
     }
+});
+
+test('previous rollout acknowledgement does not suppress this rollout', () => {
+    assert.equal(canAutoIntroduce({ ...account, preferences: { websiteIntroductionV1: { status: 'completed', version: 1 } } }, '/dashboard', ''), true);
+    for (const role of ['BUYER', 'SELLER', 'DEALER', 'CONTRACTOR', 'FINANCE_PARTNER', 'INSURANCE_PARTNER', 'ADMIN']) assert.equal(canAutoIntroduce({ id: role, role }, '/dashboard', ''), true);
+    assert.equal(canAutoIntroduce({ ...account, role: 'unknown' }, '/dashboard', ''), false);
 });

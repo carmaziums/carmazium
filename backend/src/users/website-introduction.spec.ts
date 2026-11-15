@@ -38,6 +38,19 @@ describe('website introduction preferences', () => {
         const guards = Reflect.getMetadata('__guards__', controller.updateIntroduction);
         expect(guards).toContain(SessionAuthGuard);
         await controller.updateIntroduction({ id: 'authenticated-user' }, { action: 'tour_skipped', userId: 'other-user', isVerified: true } as any);
-        expect(service.updateIntroduction).toHaveBeenCalledWith('authenticated-user', 'tour_skipped');
+        expect(service.updateIntroduction).toHaveBeenCalledWith('authenticated-user', 'tour_skipped', undefined);
     });
+    it.each(['tour_skipped', 'tour_completed'])('records rollout 2 independently for %s', async action => {
+        const { prisma, service } = setup();
+        await service.updateIntroduction('old-user', action, 2);
+        const [, patch, identity] = prisma.$executeRaw.mock.calls[0];
+        expect(identity).toBe('old-user');
+        expect(JSON.parse(patch)).toEqual({ websiteIntroductionV2: { status: action.slice(5), version: 2, updatedAt: expect.any(String) } });
+    });
+    it.each([0, 3, '2', null, {}])('rejects unsupported rollout %p without writes', async version => {
+        const { prisma, service } = setup();
+        await expect(service.updateIntroduction('user-a', 'tour_skipped', version)).rejects.toThrow('Unknown introduction version');
+        expect(prisma.$executeRaw).not.toHaveBeenCalled();
+    });
+
 });
