@@ -2901,7 +2901,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         <SectionBox title="Make / Model / Year" onLayout={rememberValidationSection("identity")}>
           <View style={{ gap: 12 }}>
             <View>
-              <PickerField
+              {isCaravan ? <FieldInput label="CARAVAN MAKE (OPTIONAL)" value={make} onChange={setMake} placeholder="e.g. Swift, Bailey, Elddis" /> : <PickerField
                 label="MAKE *"
                 value={make}
                 options={CAR_MAKES}
@@ -2915,10 +2915,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 placeholder="e.g. BMW"
                 required
                 error={fieldError('make') ?? undefined}
-              />
+              />}
             </View>
             <View>
-              <PickerField
+              {isCaravan ? <FieldInput label="CARAVAN MODEL (OPTIONAL)" value={model} onChange={setModel} placeholder="e.g. Sprite, Pegasus" /> : <PickerField
                 label="MODEL *"
                 value={model}
                 options={getModelsForMake(make)}
@@ -2927,16 +2927,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 required
                 hint={!make.trim() ? 'Pick a Make first for a model list' : undefined}
                 error={fieldError('model') ?? undefined}
-              />
+              />}
             </View>
             <View>
               <FieldInput
-                label="YEAR *"
+                label={isCaravan ? 'YEAR (OPTIONAL)' : 'YEAR *'}
                 value={year}
                 onChange={v => { setYear(v); if (touched.year) setTouched(prev => ({ ...prev, year: true })); }}
                 placeholder="2021"
                 keyboardType="number-pad"
-                required
+                required={!isCaravan}
                 error={fieldError('year') ?? undefined}
               />
             </View>
@@ -2949,7 +2949,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <PillRow label="DRIVE TYPE" options={DRIVE_TYPES} value={driveType as any} onSelect={setDriveType} />
           <View onLayout={rememberNestedField('model-details', 'serviceHistory')}>
             <PillRow label="SERVICE HISTORY" options={SERVICE_HISTORY_OPTS} value={serviceHistory as any} onSelect={setServiceHistory}
-              required error={fieldError('serviceHistory') ?? undefined} />
+              required={!isCaravan} error={fieldError('serviceHistory') ?? undefined} />
           </View>
           <View onLayout={rememberNestedField('model-details', 'mechanicalIssues')}>
             <FaultDeclarationField kind="mechanical" value={mechanicalIssues} onChange={setMechanicalIssues}
@@ -2960,7 +2960,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               error={fieldError('electricalIssues') ?? undefined} />
           </View>
           <View onLayout={rememberNestedField('model-details', 'numberOfKeys')}>
-            <SL label="NUMBER OF KEYS" required />
+            <SL label={isCaravan ? 'NUMBER OF KEYS (OPTIONAL)' : 'NUMBER OF KEYS'} required={!isCaravan} />
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {['0', '1', '2', '3'].map(k => (
                 <TouchableOpacity
@@ -3014,8 +3014,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </TouchableOpacity>
         </SectionBox>
 
-        {/* Technical Specs */}
-        <SectionBox title="Technical Specs" onLayout={rememberValidationSection("technical")}>
+        {/* Technical Specs: caravans are unpowered, with no odometer or gearbox. */}
+        {isCaravan ? (
+        <SectionBox title="Caravan appearance">
+          <FieldInput label="COLOUR (OPTIONAL)" value={colour} onChange={setColour} placeholder="e.g. White" />
+        </SectionBox>
+        ) : <SectionBox title="Technical Specs" onLayout={rememberValidationSection("technical")}>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <View style={{ flex: 1 }}>
               <SL label="MILEAGE" required />
@@ -3054,7 +3058,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <FieldInput label="SEATS" value={seats} onChange={setSeats} placeholder="e.g. 5" keyboardType="number-pad" />
             </View>
           </View>
-        </SectionBox>
+        </SectionBox>}
 
         {/* Listing Title & Description */}
         <SectionBox title="Listing Title & Description" onLayout={rememberValidationSection("description")}>
