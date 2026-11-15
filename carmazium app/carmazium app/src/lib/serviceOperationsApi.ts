@@ -37,10 +37,16 @@ export interface ServiceCaseEntry {
   evidenceReviewNote?: string | null;
 }
 
+export interface ProviderBusinessDeclaration {
+  businessName: string; businessAddress: string; phone: string; registeredBusiness: boolean; acceptedAt?: string;
+}
 export interface CapabilityVerificationDetail {
   capabilityId: string;
   serviceType: 'DELIVERY' | 'INSPECTION' | 'FINANCE' | 'WARRANTY';
   verification: {
+    declarationRequired?: boolean;
+    declarationCurrent?: boolean;
+    declaration?: ProviderBusinessDeclaration | null;
     capabilityId: string;
     serviceType: 'DELIVERY' | 'INSPECTION' | 'FINANCE' | 'WARRANTY';
     capabilityStatus: string;
@@ -112,4 +118,9 @@ export async function deleteCapabilityAttachment(
     `/services/operations/capabilities/${id}/attachments/${entryId}`,
     { method: 'DELETE' },
   );
+}
+
+export async function submitProviderDeclaration(id: string, declaration: ProviderBusinessDeclaration & { accepted: boolean }): Promise<CapabilityVerificationDetail> {
+  const r = await apiClient<{ data: CapabilityVerificationDetail }>(`/services/operations/capabilities/${id}/declaration`, { method: 'POST', body: JSON.stringify(declaration) });
+  return r.data;
 }

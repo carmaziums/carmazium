@@ -2321,6 +2321,8 @@ export class ListingsService {
                                 select: {
                                     id: true,
                                     companyName: true,
+                                    financeOffered: true,
+                                    warrantyOffered: true,
                                     logo: true,
                                     isVerified: true,
                                     description: true,
@@ -2422,7 +2424,7 @@ export class ListingsService {
                         lastName: true,
                         profileImage: true,
                         dealerProfile: {
-                            select: { id: true, companyName: true, logo: true, isVerified: true },
+                            select: { id: true, companyName: true, logo: true, isVerified: true, financeOffered: true, warrantyOffered: true },
                         },
                         sellerProfile: {
                             select: { reliabilityScore: true },

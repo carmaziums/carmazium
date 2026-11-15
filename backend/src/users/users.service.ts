@@ -834,6 +834,8 @@ export class UsersService {
             warrantyOffered?: boolean;
             warrantyDetails?: string | null;
             financeOffered?: boolean;
+            deliveryServicesEnabled?: boolean;
+            inspectionServicesEnabled?: boolean;
             financeDetails?: string | null;
         },
     ) {
@@ -873,7 +875,7 @@ export class UsersService {
                 allowed[key] = (raw[key] as string).trim();
             }
         }
-        for (const field of ['warrantyOffered', 'financeOffered'] as const) {
+        for (const field of ['warrantyOffered', 'financeOffered', 'deliveryServicesEnabled', 'inspectionServicesEnabled'] as const) {
             if (raw[field] !== undefined) {
                 if (typeof raw[field] !== 'boolean') throw new BadRequestException(`${field} must be true or false`);
                 allowed[field] = raw[field];
@@ -899,9 +901,6 @@ export class UsersService {
             const detailsKey = prefix === 'warranty' ? 'warrantyDetails' : 'financeDetails';
             const offered = allowed[offeredKey] ?? existing?.[offeredKey] ?? false;
             if (offered === false) allowed[detailsKey] = null;
-            if (offered === true && !(String(allowed[detailsKey] ?? existing?.[detailsKey] ?? '').trim())) {
-                throw new BadRequestException(`Provide ${prefix} details before advertising this service`);
-            }
         }
 
         if (existing) {
@@ -930,9 +929,11 @@ export class UsersService {
                 website: data.website,
                 description: data.description,
                 logo: data.logo,
-                warrantyOffered: allowed.warrantyOffered === true,
+                warrantyOffered: allowed.warrantyOffered !== false,
                 warrantyDetails: allowed.warrantyDetails as string | null | undefined,
-                financeOffered: allowed.financeOffered === true,
+                financeOffered: allowed.financeOffered !== false,
+                deliveryServicesEnabled: allowed.deliveryServicesEnabled !== false,
+                inspectionServicesEnabled: allowed.inspectionServicesEnabled !== false,
                 financeDetails: allowed.financeDetails as string | null | undefined,
                 openingHours: allowed.openingHours as any,
             },

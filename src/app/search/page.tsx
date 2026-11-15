@@ -1407,6 +1407,7 @@ function SearchPageContent() {
                                     <CarCard
                                         key={listing.id}
                                         listingId={listing.id}
+                                        sellerServices={listing.seller?.dealerProfile}
                                         title={listing.title}
                                         make={listing.make}
                                         model={listing.model}
@@ -1450,6 +1451,7 @@ function SearchPageContent() {
                                 <CarCard
                                     key={listing.id}
                                     listingId={listing.id}
+                                        sellerServices={listing.seller?.dealerProfile}
                                     title={listing.title}
                                     make={listing.make}
                                     model={listing.model}

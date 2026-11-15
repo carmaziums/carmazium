@@ -240,9 +240,11 @@ export const SettingsScreen: React.FC = () => {
             setDealerPhone(dp.phone ?? '');
             setDealerWebsite(dp.website ?? '');
             setDealerDescription(dp.description ?? '');
-            setDealerWarrantyOffered(dp.warrantyOffered === true);
+            setDealerWarrantyOffered(dp.warrantyOffered !== false);
             setDealerWarrantyDetails(dp.warrantyDetails ?? '');
-            setDealerFinanceOffered(dp.financeOffered === true);
+            setDealerFinanceOffered(dp.financeOffered !== false);
+            setDeliveryEnabled(dp.deliveryServicesEnabled !== false);
+            setInspectionEnabled(dp.inspectionServicesEnabled !== false);
             setDealerFinanceDetails(dp.financeDetails ?? '');
             setDealerLogo(dp.logo ?? '');
             setDealerBusinessType(dp.kyc?.businessType === 'SOLE_PROPRIETORSHIP' ? 'SOLE_PROPRIETORSHIP' : 'PRIVATE_LIMITED');
@@ -292,9 +294,11 @@ export const SettingsScreen: React.FC = () => {
   const [dealerPhone, setDealerPhone] = useState('');
   const [dealerWebsite, setDealerWebsite] = useState('');
   const [dealerDescription, setDealerDescription] = useState('');
-  const [dealerWarrantyOffered, setDealerWarrantyOffered] = useState(false);
+  const [dealerWarrantyOffered, setDealerWarrantyOffered] = useState(true);
+  const [deliveryEnabled, setDeliveryEnabled] = useState(true);
+  const [inspectionEnabled, setInspectionEnabled] = useState(true);
   const [dealerWarrantyDetails, setDealerWarrantyDetails] = useState('');
-  const [dealerFinanceOffered, setDealerFinanceOffered] = useState(false);
+  const [dealerFinanceOffered, setDealerFinanceOffered] = useState(true);
   const [dealerFinanceDetails, setDealerFinanceDetails] = useState('');
   const [dealerLogo, setDealerLogo] = useState('');
   const [dealerSaving, setDealerSaving] = useState(false);
@@ -332,12 +336,6 @@ export const SettingsScreen: React.FC = () => {
     if (!isSoleTraderDealer && !trimmedVat) nextFieldErrors.vatNumber = 'VAT number is required';
     setDealerFieldErrors(nextFieldErrors);
     if (Object.keys(nextFieldErrors).length > 0) return;
-    if (dealerWarrantyOffered && !dealerWarrantyDetails.trim()) {
-      Alert.alert('Warranty details needed', 'Provide warranty cover, duration and exclusions, or switch Warranty off.');
-      return;
-    }
-
-
     setDealerSaving(true);
     try {
       await apiClient('/users/dealer-profile', {
@@ -352,6 +350,9 @@ export const SettingsScreen: React.FC = () => {
           phone: dealerPhone.trim(),
           website: dealerWebsite.trim(),
           description: dealerDescription.trim(),
+          financeOffered: dealerFinanceOffered,
+          deliveryServicesEnabled: deliveryEnabled,
+          inspectionServicesEnabled: inspectionEnabled,
           warrantyOffered: dealerWarrantyOffered,
           warrantyDetails: dealerWarrantyOffered ? dealerWarrantyDetails.trim() : null,
           logo: dealerLogo,
@@ -1007,25 +1008,17 @@ export const SettingsScreen: React.FC = () => {
               </View>
 
               <Text style={styles.payoutDesc}>MaziuM can add your business introduction and verified location to future vehicle descriptions. The dealer profile is the source of truth; AI will not invent your policies.</Text>
-              <View style={styles.toggleRow}>
-                <Text style={styles.toggleTitle}>We offer a vehicle warranty</Text>
-                <Switch value={dealerWarrantyOffered} onValueChange={setDealerWarrantyOffered}
-                  accessibilityLabel="Warranty offered" trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }} />
-              </View>
-              {dealerWarrantyOffered && (
-                <View>
-                  <FieldLabel label="WARRANTY DURATION, COVER, LIMITS & EXCLUSIONS" />
-                  <TextInput style={[styles.inputField, { minHeight: 105, textAlignVertical: 'top' }]}
-                    multiline maxLength={1000} value={dealerWarrantyDetails}
-                    onChangeText={setDealerWarrantyDetails}
-                    placeholder="Enter your actual warranty terms. Do not promise cover not provided."
-                    placeholderTextColor={Colors.iconMuted} />
-                </View>
-              )}
-              <TouchableOpacity onPress={() => navigation.navigate('FinancePreferences')}>
-                <Text style={styles.toggleTitle}>Finance calculator settings</Text>
-                <Text style={styles.payoutDesc}>Choose whether to show the calculator and admin-selected finance application link on your listings. Finance providers must contact the team directly.</Text>
-              </TouchableOpacity>
+              <Text style={styles.payoutDesc}>These options default to on for new dealer accounts. Badges apply only to your listings. Buyers should contact you for details.</Text>
+              {([
+                ['Finance badge', dealerFinanceOffered, setDealerFinanceOffered],
+                ['Warranty badge', dealerWarrantyOffered, setDealerWarrantyOffered],
+                ['Collection, delivery and recovery', deliveryEnabled, setDeliveryEnabled],
+                ['Vehicle inspection', inspectionEnabled, setInspectionEnabled],
+              ] as const).map(([label, value, setValue]) => <View key={label} style={styles.toggleRow}>
+                <Text style={styles.toggleTitle}>{label}</Text><Switch accessibilityLabel={label} value={value} onValueChange={setValue} />
+              </View>)}
+              <Text style={styles.payoutDesc}>Paid jobs require approved business KYC, the £1 dealer verification payment, verified payouts and a declaration. Collection/delivery/recovery also requires trade insurance; inspection requires no document uploads.</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('ProviderCapabilities')}><Text style={styles.toggleTitle}>Complete service setup</Text></TouchableOpacity>
               <Text style={styles.payoutDesc}>Review generated descriptions before publishing.</Text>
               <View style={styles.cardDivider} />
               <TouchableOpacity

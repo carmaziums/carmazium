@@ -1,3 +1,4 @@
+import { dealerServiceEligibilityWhere, assertDealerServiceReady } from './dealer-service-eligibility';
 import {
     Injectable,
     Logger,
@@ -158,6 +159,7 @@ export class ServicesService {
                     contractorId: contractorProfileId,
                     serviceType,
                 },
+                AND: [dealerServiceEligibilityWhere()],
             },
             select: {
                 status: true,
@@ -214,6 +216,7 @@ export class ServicesService {
             where: {
                 serviceType,
                 ...verifiedCapabilityWhere(new Date()),
+                AND: [dealerServiceEligibilityWhere()],
                 contractor: {
                     deletedAt: null,
                     user: {
@@ -535,7 +538,7 @@ export class ServicesService {
     async adminReviewCapability(adminId: string, id: string, dto: ReviewCapabilityDto) {
         const cap = await this.prisma.contractorCapability.findUnique({
             where: { id },
-            include: { contractor: { include: { user: true } } },
+            include: { contractor: { include: { user: { include: { dealerProfile: { include: { kyc: true } } } } } } },
         });
         if (!cap) throw new NotFoundException('Application not found');
 
@@ -552,6 +555,7 @@ export class ServicesService {
                 );
             }
             const u = cap.contractor.user;
+            assertDealerServiceReady(u, cap.serviceType);
             if (!u.stripeConnectAccountId) {
                 throw new BadRequestException(
                     'This provider has not completed Stripe Connect onboarding. Approve once payouts are enabled.',
@@ -1530,6 +1534,7 @@ export class ServicesService {
                 contractorId: contractorProfileId,
                 serviceType: { in: types },
                 ...verifiedCapabilityWhere(new Date()),
+                AND: [dealerServiceEligibilityWhere()],
             },
             select: {
                 serviceType: true,

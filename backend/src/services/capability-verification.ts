@@ -73,37 +73,13 @@ const BUSINESS_IDENTITY: CapabilityVerificationRequirement = {
 };
 
 export const CAPABILITY_VERIFICATION_REQUIREMENTS: Record<ServiceType, CapabilityVerificationRequirement[]> = {
-    [ServiceType.DELIVERY]: [
-        BUSINESS_IDENTITY,
-        {
-            type: 'DELIVERY_BUSINESS_INSURANCE',
-            title: 'Delivery / transport insurance',
-            description: 'Current business, motor-trade or vehicle-transport insurance covering the delivery activity.',
-            expiryRequired: true,
-        },
-        {
-            type: 'DELIVERY_GOODS_IN_TRANSIT',
-            title: 'Goods-in-transit cover',
-            description: 'Current goods-in-transit or vehicle-in-custody cover appropriate to transported vehicles.',
-            expiryRequired: true,
-        },
-    ],
-    [ServiceType.INSPECTION]: [
-        BUSINESS_IDENTITY,
-        {
-            type: 'INSPECTION_BUSINESS_INSURANCE',
-            title: 'Inspection liability insurance',
-            description: 'Current business, public or professional liability insurance covering vehicle inspection work.',
-            expiryRequired: true,
-        },
-        {
-            type: 'INSPECTION_QUALIFICATION',
-            title: 'Experience / qualifications (optional)',
-            description: 'Optional certificates, references, example inspection reports or experience evidence from your business or third-party mechanics. No formal qualification is required for CarMazium onboarding.',
-            expiryRequired: false,
-            optional: true,
-        },
-    ],
+    [ServiceType.DELIVERY]: [{
+        type: 'DELIVERY_BUSINESS_INSURANCE',
+        title: 'Trade insurance',
+        description: 'Current trade insurance covering your vehicle collection, delivery and recovery work.',
+        expiryRequired: true,
+    }],
+    [ServiceType.INSPECTION]: [],
     [ServiceType.FINANCE]: [
         BUSINESS_IDENTITY,
         {
@@ -158,6 +134,7 @@ export async function getCapabilityVerificationSummary(
         select: {
             id: true,
             serviceType: true,
+            providerDeclaration: true,
             status: true,
             verificationStatus: true,
             verificationCompletedAt: true,
@@ -201,11 +178,20 @@ export async function getCapabilityVerificationSummary(
     });
 
     const mandatory = requirements.filter((requirement) => !requirement.optional);
-    const ready = mandatory.length > 0 && mandatory.every((requirement) => requirement.state === 'SATISFIED');
+    const declarationRequired = capability.serviceType === ServiceType.DELIVERY || capability.serviceType === ServiceType.INSPECTION;
+    const declaration = capability.providerDeclaration as Record<string, any> | null;
+    const acceptedAt = declaration?.acceptedAt ? new Date(declaration.acceptedAt) : null;
+    const declarationCurrent = !!acceptedAt && !Number.isNaN(acceptedAt.getTime())
+        && acceptedAt <= now && acceptedAt.getTime() + CAPABILITY_VERIFICATION_MAX_DAYS * 86_400_000 > now.getTime()
+        && declaration?.version === 1 && declaration?.registeredBusiness === true;
+    const ready = (!declarationRequired || declarationCurrent)
+        && (declarationRequired || mandatory.length > 0)
+        && mandatory.every((requirement) => requirement.state === 'SATISFIED');
     const approvedExpiries = mandatory
         .map((requirement) => requirement.evidenceExpiresAt ? new Date(requirement.evidenceExpiresAt) : null)
         .filter((value): value is Date => !!value && !Number.isNaN(value.getTime()));
     const annualReview = new Date(now.getTime() + CAPABILITY_VERIFICATION_MAX_DAYS * 86_400_000);
+    if (declarationRequired && acceptedAt) approvedExpiries.push(new Date(acceptedAt.getTime() + CAPABILITY_VERIFICATION_MAX_DAYS * 86_400_000));
     const recommendedExpiresAt = approvedExpiries.reduce(
         (earliest, value) => value < earliest ? value : earliest,
         annualReview,
@@ -219,6 +205,9 @@ export async function getCapabilityVerificationSummary(
         verificationCompletedAt: capability.verificationCompletedAt,
         verificationExpiresAt: capability.verificationExpiresAt,
         ready,
+        declarationRequired,
+        declarationCurrent,
+        declaration: declarationRequired ? declaration : null,
         recommendedExpiresAt: ready ? recommendedExpiresAt : null,
         requirements,
     };
@@ -237,6 +226,7 @@ export async function assertCapabilityVerificationReady(
         const missing = summary.requirements
             .filter((requirement) => !requirement.optional && requirement.state !== 'SATISFIED')
             .map((requirement) => requirement.title);
+        if (summary.declarationRequired && !summary.declarationCurrent) missing.unshift('business details and declaration');
         throw new BadRequestException(
             `Provider verification is incomplete. Complete and approve: ${missing.join(', ') || 'required evidence'}.`,
         );
@@ -246,9 +236,11 @@ export async function assertCapabilityVerificationReady(
 
 export function pendingVerificationStatus(
     requirements: Array<{ state: string; optional?: boolean }>,
+    declarationCurrent?: boolean,
 ): CapabilityVerificationStatus {
     const mandatory = requirements.filter((requirement) => !requirement.optional);
-    if (mandatory.length && mandatory.every((requirement) => requirement.state === 'SATISFIED')) {
+    if (declarationCurrent === false) return 'IN_REVIEW';
+    if ((mandatory.length || declarationCurrent === true) && mandatory.every((requirement) => requirement.state === 'SATISFIED')) {
         return 'READY';
     }
     if (mandatory.some((requirement) => requirement.state === 'PENDING' || requirement.state === 'SATISFIED')) {

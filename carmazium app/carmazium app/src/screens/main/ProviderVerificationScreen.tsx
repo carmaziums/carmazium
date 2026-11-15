@@ -5,6 +5,7 @@ import {
   Linking,
   ScrollView,
   StatusBar,
+  Switch,
   StyleSheet,
   Text,
   TextInput,
@@ -27,6 +28,7 @@ import {
   ServiceCaseEntry,
   deleteCapabilityAttachment,
   getCapabilityVerification,
+  submitProviderDeclaration,
   uploadCapabilityAttachment,
 } from '../../lib/serviceOperationsApi';
 import { IconButton } from '../../components/IconButton';
@@ -52,6 +54,8 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
   const [expiresAt, setExpiresAt] = useState('');
   const [label, setLabel] = useState('');
   const [loading, setLoading] = useState(true);
+  const [business, setBusiness] = useState({ businessName: '', businessAddress: '', phone: '', registeredBusiness: false });
+  const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,6 +70,8 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
       if (cap.serviceType === 'FINANCE' || cap.serviceType === 'WARRANTY') throw new Error('Finance and warranty verification is managed directly by CarMazium admin.');
       const verification = await getCapabilityVerification(capabilityId);
       setDetail(verification);
+      const declaration = verification.verification.declaration;
+      setBusiness({ businessName: declaration?.businessName ?? mine.profile?.businessName ?? '', businessAddress: declaration?.businessAddress ?? '', phone: declaration?.phone ?? mine.profile?.phone ?? '', registeredBusiness: declaration?.registeredBusiness ?? false });
       setEvidenceType((current) => {
         if (current && verification.verification.requirements.some((r) => r.type === current)) return current;
         return verification.verification.requirements.find((r) => r.state !== 'SATISFIED')?.type
@@ -140,6 +146,16 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
     }
   };
 
+  const saveDeclaration = async () => {
+    setBusy(true); setError(null);
+    try {
+      const result = await submitProviderDeclaration(capabilityId, { ...business, accepted });
+      setDetail(result); setAccepted(false);
+      Alert.alert('Declaration saved', 'Complete business verification and secure payout setup before taking jobs.');
+    } catch (e: any) { setError(e?.message || 'Could not save declaration.'); }
+    finally { setBusy(false); }
+  };
+
   const remove = (entry: ServiceCaseEntry) => {
     if (entry.evidenceStatus !== 'PENDING') return;
     Alert.alert(
@@ -178,7 +194,7 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
       {loading ? <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View> : (
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.title}>{serviceType ? SERVICE_LABELS[serviceType] : 'Service application'}</Text>
-          <Text style={styles.sub}>Complete every required business evidence item before CarMazium approval.</Text>
+          <Text style={styles.sub}>Complete business details, the declaration and secure payout setup. Only trade insurance is uploaded for collection, delivery and recovery. No inspection documents are required.</Text>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -197,6 +213,20 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
                 <Ionicons name="shield-checkmark-outline" size={30} color={stateColor(detail.verification.verificationStatus)} />
               </View>
 
+              {detail.verification.declarationRequired && <View style={styles.card}>
+                <Text style={styles.sectionTitle}>Business details and declaration</Text>
+                {detail.verification.declarationCurrent && <Text style={styles.cardText}>Declaration saved.</Text>}
+                {([['businessName', 'Business / trading name'], ['businessAddress', 'Registered business address'], ['phone', 'Business phone']] as const).map(([key, label]) => <View key={key}>
+                  <Text style={styles.cardText}>{label}</Text><TextInput accessibilityLabel={label} style={styles.input} value={business[key]} maxLength={500} onChangeText={value => setBusiness({ ...business, [key]: value })} />
+                </View>)}
+                <Text style={styles.cardText}>My business is registered, including a registered sole trader.</Text>
+                <Switch accessibilityLabel="Business registered" value={business.registeredBusiness} onValueChange={value => setBusiness({ ...business, registeredBusiness: value })} />
+                <Text style={styles.cardText}>I confirm these details are accurate and I am responsible for carrying out the services I accept competently and safely.</Text>
+                <Switch accessibilityLabel="Accept service declaration" value={accepted} onValueChange={setAccepted} />
+                <TouchableOpacity accessibilityRole="button" disabled={busy || !accepted || !business.registeredBusiness} onPress={saveDeclaration} style={styles.fileButton}><Text style={styles.fileButtonText}>SAVE DECLARATION</Text></TouchableOpacity>
+                <Text style={styles.cardText}>Approved business KYC, the £1 dealer verification payment and verified business payouts are required. Enter bank details through secure payout setup.</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('ProviderCapabilities')}><Text style={styles.cardText}>Check payout setup and service status</Text></TouchableOpacity>
+              </View>}
               <Text style={styles.sectionTitle}>Requirements</Text>
               {detail.verification.requirements.map((req) => (
                 <TouchableOpacity
@@ -218,10 +248,11 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
                 </TouchableOpacity>
               ))}
 
+              {serviceType === 'DELIVERY' && <>
               <View style={styles.warningCard}>
                 <Ionicons name="business-outline" size={18} color={Colors.warning} />
                 <Text style={styles.warningText}>
-                  Upload business, insurance, qualification or regulatory evidence only. Do not upload passports, driving licences, personal bank statements or unrelated identity documents.
+                  Upload only trade insurance covering collection, delivery and recovery. Do not upload passports, driving licences, personal bank statements or unrelated identity documents.
                 </Text>
               </View>
 
@@ -250,6 +281,7 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
                 </TouchableOpacity>
               </View>
 
+              </>}
               <Text style={styles.sectionTitle}>Evidence history ({detail.attachments.length})</Text>
               {detail.attachments.length === 0 ? (
                 <View style={styles.empty}><Text style={styles.cardText}>No verification evidence uploaded yet.</Text></View>

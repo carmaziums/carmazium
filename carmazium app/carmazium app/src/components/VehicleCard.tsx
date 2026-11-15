@@ -1,3 +1,4 @@
+import { SellerServiceBadges } from './SellerServiceBadges';
 import React, { useState } from 'react';
 import {
   View,
@@ -184,6 +185,7 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
       {/* Card body */}
       <View style={styles.body}>
         {/* Make + Model */}
+        <SellerServiceBadges seller={listing.seller} />
         <View style={styles.titleRow}>
           <View style={styles.titleLeft}>
             <Text style={styles.make} numberOfLines={1}>

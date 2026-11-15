@@ -61,6 +61,8 @@ export interface ApiListing {
     // declared only three of its fields, so the dealer's description, website
     // and business address were discarded before they reached any screen.
     dealerProfile?: {
+      financeOffered?: boolean;
+      warrantyOffered?: boolean;
       companyName?: string;
       logo?: string | null;
       isVerified?: boolean;
@@ -308,6 +310,8 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
           memberSince: l.seller.createdAt ?? null,
           isVerifiedDealer: l.seller.dealerProfile?.isVerified === true,
           companyName: l.seller.dealerProfile?.companyName ?? null,
+          financeOffered: l.seller.dealerProfile?.financeOffered === true,
+          warrantyOffered: l.seller.dealerProfile?.warrantyOffered === true,
           description: l.seller.dealerProfile?.description ?? null,
           website: l.seller.dealerProfile?.website ?? null,
           businessAddress: l.seller.dealerProfile?.businessAddress ?? null,

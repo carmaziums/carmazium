@@ -1,3 +1,4 @@
+import { SellerServiceBadges } from "@/components/listing/SellerServiceBadges"
 import Link from "next/link"
 import { VehicleWarrantyCta } from "@/components/services/VehicleWarrantyCta"
 import { Button } from "@/components/ui/Button"
@@ -13,6 +14,7 @@ import { BODY_TYPE_LABELS, FUEL_TYPE_LABELS, TRANSMISSION_LABELS } from "@/lib/v
 // ─── Props ───────────────────────────────────────────────────────────────────
 
 interface CarCardProps {
+    sellerServices?: import("@/components/listing/SellerServiceBadges").SellerServices
     title: string
     listingId?: string
     make?: string | null
@@ -73,7 +75,7 @@ const DEFAULT_BANNER_COLOR = 'bg-primary'
 export function CarCard({
     title, listingId, make, model, price, listingType, auction, image, images, href = "#",
     year, mileage, fuelType, transmission, bodyType, location, distanceMi,
-    sellerId, sellerScore, isFeatured = false, badgeTier, status, bannerLabel, hasLinkedAuction,
+    sellerServices, sellerId, sellerScore, isFeatured = false, badgeTier, status, bannerLabel, hasLinkedAuction,
     isDepartedSale, deliveryAvailable, exteriorGrade, writeOffCategory, isImported
 }: CarCardProps) {
     const makeModelLine = [make, model].filter(Boolean).join(" ").trim()
@@ -214,6 +216,7 @@ export function CarCard({
                 className="p-6 relative z-10 flex flex-col flex-1 border-t bg-gradient-to-b from-primary/5 dark:from-white/5 to-transparent rounded-b-2xl"
                 style={{ borderColor: 'var(--border-default)' }}
             >
+                <SellerServiceBadges seller={sellerServices} compact />
                 <div className="flex justify-between items-start mb-2 gap-2">
                     <div className="min-w-0 flex-1">
                         <h3 className="text-lg md:text-xl font-bold font-heading tracking-wide group-hover:text-primary transition-colors duration-300 line-clamp-2">{title}</h3>

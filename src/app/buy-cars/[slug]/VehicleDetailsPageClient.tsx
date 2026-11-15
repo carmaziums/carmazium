@@ -21,6 +21,7 @@ import { createChatRoom } from "@/lib/chatApi"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Input } from "@/components/ui/Input"
+import { SellerServiceBadges } from "@/components/listing/SellerServiceBadges"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { WriteOffCategoryBadge } from "@/components/ui/WriteOffCategoryBadge"
@@ -926,6 +927,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                     )}
                                     
                                     {/* Dealership Info */}
+                                    <SellerServiceBadges seller={listing.seller?.dealerProfile} />
                                     {listing.seller?.role === 'DEALER' && listing.seller?.dealerProfile && (
                                         <div className="mb-6 space-y-2 text-sm text-[var(--text-secondary)]">
                                             {listing.seller.dealerProfile.description && (

@@ -11,7 +11,8 @@ export const HOME_CARD_FIELDS = [
     "writeOffCategory", "isImported",
 ] as const satisfies readonly (keyof Listing)[]
 
-export type HomeCardListing = Pick<Listing, (typeof HOME_CARD_FIELDS)[number]>
+export const HOME_CARD_DERIVED_FIELDS = ["sellerServices"] as const
+export type HomeCardListing = Pick<Listing, (typeof HOME_CARD_FIELDS)[number]> & Record<(typeof HOME_CARD_DERIVED_FIELDS)[number], { financeOffered: boolean; warrantyOffered: boolean }>
 
 /**
  * Full listing records include MOT history, official DVLA data, VIN,
@@ -22,5 +23,9 @@ export type HomeCardListing = Pick<Listing, (typeof HOME_CARD_FIELDS)[number]>
 export function toHomeCard(listing: Listing): HomeCardListing {
     const card: Record<string, unknown> = {}
     for (const key of HOME_CARD_FIELDS) card[key] = listing[key]
+    card.sellerServices = {
+        financeOffered: listing.seller?.dealerProfile?.financeOffered === true,
+        warrantyOffered: listing.seller?.dealerProfile?.warrantyOffered === true,
+    }
     return card as HomeCardListing
 }

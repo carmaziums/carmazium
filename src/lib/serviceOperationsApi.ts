@@ -60,7 +60,17 @@ export interface CapabilityVerificationRequirement {
   evidenceExpiresAt: string | null;
 }
 
+export interface ProviderBusinessDeclaration {
+  businessName: string;
+  businessAddress: string;
+  phone: string;
+  registeredBusiness: boolean;
+  acceptedAt?: string;
+}
 export interface CapabilityVerificationSummary {
+  declarationRequired?: boolean;
+  declarationCurrent?: boolean;
+  declaration?: ProviderBusinessDeclaration | null;
   capabilityId: string;
   serviceType: 'DELIVERY' | 'INSPECTION' | 'FINANCE' | 'WARRANTY';
   capabilityStatus: string;
@@ -347,5 +357,10 @@ export async function adminResolveDisputeWithCase(
     method: 'POST',
     body: JSON.stringify(input),
   });
+  return r.data;
+}
+
+export async function submitProviderDeclaration(id: string, declaration: ProviderBusinessDeclaration & { accepted: boolean }): Promise<CapabilityVerificationDetail> {
+  const r = await apiClient<{ data: CapabilityVerificationDetail }>(`/services/operations/capabilities/${id}/declaration`, { method: 'POST', body: JSON.stringify(declaration) });
   return r.data;
 }

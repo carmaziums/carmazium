@@ -23,6 +23,30 @@ describe('ServiceOperationsService', () => {
         service = new ServiceOperationsService(prisma, services, notifications);
     });
 
+    it('rejects another account attempting to declare for a provider', async () => {
+        prisma.contractorCapability.findUnique.mockResolvedValue({ serviceType: 'INSPECTION', contractor: { userId: 'owner-1' } });
+        await expect(service.declareProviderBusiness('attacker', 'cap-1', { accepted: true, registeredBusiness: true })).rejects.toBeInstanceOf(ForbiddenException);
+        expect(prisma.contractorCapability.update).not.toHaveBeenCalled();
+    });
+
+    it.each([{ accepted: false, registeredBusiness: true }, { accepted: true, registeredBusiness: false }, { accepted: true, registeredBusiness: true, businessName: '' }])('rejects incomplete declaration %j', async input => {
+        prisma.contractorCapability.findUnique.mockResolvedValue({ serviceType: 'INSPECTION', contractor: { userId: 'owner-1' } });
+        await expect(service.declareProviderBusiness('owner-1', 'cap-1', input)).rejects.toBeInstanceOf(BadRequestException);
+        expect(prisma.contractorCapability.update).not.toHaveBeenCalled();
+    });
+
+    it('records the server-timed declaration without self-approving work or payouts', async () => {
+        const cap = { id: 'cap-1', status: 'PENDING', serviceType: 'INSPECTION', contractor: { userId: 'owner-1' }, providerDeclaration: null };
+        prisma.contractorCapability.findUnique.mockResolvedValue(cap);
+        prisma.contractorCapability.update.mockImplementation(async ({ data }: any) => Object.assign(cap, data));
+        prisma.$queryRaw.mockResolvedValue([]);
+        jest.spyOn(service, 'providerCapabilityVerification').mockResolvedValue({} as any);
+        await service.declareProviderBusiness('owner-1', 'cap-1', { accepted: true, registeredBusiness: true, businessName: 'Test', businessAddress: 'Test address', phone: '07000000000', acceptedAt: '2000-01-01', status: 'APPROVED' });
+        expect(cap).toMatchObject({ status: 'PENDING', verificationStatus: 'READY', providerDeclaration: { acceptedBy: 'owner-1', registeredBusiness: true, version: 1 } });
+        expect((cap.providerDeclaration as any).acceptedAt).not.toBe('2000-01-01');
+        expect(prisma.$queryRaw.mock.calls.some(([sql]: any) => sql.sql.includes('INSERT INTO "service_case_entries"'))).toBe(true);
+    });
+
     const pdf = {
         originalname: 'insurance.pdf',
         mimetype: 'application/pdf',
@@ -120,8 +144,8 @@ describe('ServiceOperationsService', () => {
             'cap-1',
             pdf,
             {
-                evidenceType: 'DELIVERY_GOODS_IN_TRANSIT',
-                label: 'Goods in transit insurance',
+                evidenceType: 'DELIVERY_BUSINESS_INSURANCE',
+                label: 'Trade insurance',
                 issuer: 'Example Insurer',
                 reference: 'GIT-1',
                 expiresAt: '2027-01-01',

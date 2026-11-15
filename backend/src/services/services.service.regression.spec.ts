@@ -1,3 +1,4 @@
+import { dealerServiceEligibilityWhere } from './dealer-service-eligibility';
 import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import {
     CapabilityStatus,
@@ -183,6 +184,7 @@ describe('ServicesService TradeXchange hardening regressions', () => {
                         contractorId: 'contractor-1',
                         serviceType: ServiceType.DELIVERY,
                     },
+                    AND: [dealerServiceEligibilityWhere()],
                 },
                 select: {
                     status: true,

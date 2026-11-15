@@ -407,6 +407,29 @@ export class ServiceOperationsService {
         return this.listCapabilityEvidence(capabilityId);
     }
 
+    async declareProviderBusiness(userId: string, capabilityId: string, input: Record<string, unknown>) {
+        const capability = await this.ownedCapability(userId, capabilityId);
+        if (capability.status === CapabilityStatus.SUSPENDED) throw new ForbiddenException('Contact CarMazium about this suspended service.');
+        if (input?.accepted !== true || input?.registeredBusiness !== true) {
+            throw new BadRequestException('Confirm your registered business details and accept the service declaration.');
+        }
+        const details: Record<string, string | boolean | number> = {};
+        for (const field of ['businessName', 'businessAddress', 'phone'] as const) {
+            const value = input[field];
+            if (typeof value !== 'string' || !value.trim() || value.length > 500) throw new BadRequestException(`Enter valid ${field} details.`);
+            details[field] = value.trim();
+        }
+        const declaration = { ...details, registeredBusiness: true, version: 1, acceptedAt: new Date().toISOString(), acceptedBy: userId };
+        await this.prisma.contractorCapability.update({ where: { id: capabilityId }, data: { providerDeclaration: declaration } });
+        // Retain an audit entry for every declaration, including renewals.
+        await this.addCapabilityAuditNote(userId, capabilityId, `Business declaration v1 accepted: ${JSON.stringify(declaration)}`);
+        const summary = await getCapabilityVerificationSummary(this.prisma, capabilityId);
+        if (capability.status !== CapabilityStatus.APPROVED) {
+            await this.prisma.contractorCapability.update({ where: { id: capabilityId }, data: { verificationStatus: summary.ready ? 'READY' : 'IN_REVIEW' } });
+        }
+        return this.providerCapabilityVerification(userId, capabilityId);
+    }
+
     async providerCapabilityVerification(userId: string, capabilityId: string) {
         const capability = await this.ownedCapability(userId, capabilityId);
         const [verification, attachments] = await Promise.all([
@@ -517,7 +540,7 @@ export class ServiceOperationsService {
             const summary = await getCapabilityVerificationSummary(this.prisma, capabilityId);
             await this.prisma.contractorCapability.update({
                 where: { id: capabilityId },
-                data: { verificationStatus: pendingVerificationStatus(summary.requirements) },
+                data: { verificationStatus: pendingVerificationStatus(summary.requirements, summary.declarationRequired ? summary.declarationCurrent : undefined) },
             });
         }
         return result;
@@ -560,7 +583,7 @@ export class ServiceOperationsService {
             await this.prisma.contractorCapability.update({
                 where: { id: capabilityId },
                 data: {
-                    verificationStatus: pendingVerificationStatus(summary.requirements),
+                    verificationStatus: pendingVerificationStatus(summary.requirements, summary.declarationRequired ? summary.declarationCurrent : undefined),
                     verificationCompletedAt: null,
                     verificationExpiresAt: null,
                     verificationReminder30SentAt: null,
@@ -923,7 +946,7 @@ export class ServiceOperationsService {
                         reviewNote: 'Verification evidence is no longer sufficient. Re-verification is required before taking new work.',
                     }
                     : {
-                        verificationStatus: pendingVerificationStatus(summary.requirements),
+                        verificationStatus: pendingVerificationStatus(summary.requirements, summary.declarationRequired ? summary.declarationCurrent : undefined),
                         verificationCompletedAt: null,
                         verificationExpiresAt: null,
                         verificationReminder30SentAt: null,

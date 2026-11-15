@@ -527,9 +527,11 @@ model DealerProfile {
   /// Business introduction written by the dealer for buyers.
   description        String?
   /// Public terms supplied by the dealer, never inferred from vehicle data.
-  warrantyOffered    Boolean   @default(false)
+  warrantyOffered    Boolean   @default(true)
   warrantyDetails    String?
-  financeOffered     Boolean   @default(false)
+  financeOffered     Boolean   @default(true)
+  deliveryServicesEnabled Boolean @default(true)
+  inspectionServicesEnabled Boolean @default(true)
   financeDetails     String?
   /// Contact phone number
   phone              String?
@@ -2100,6 +2102,8 @@ model AddressVerification {
 /// A contractor's permission to take work in one service area. One row per
 /// contractor per service; admin-approved.
 model ContractorCapability {
+  /// Business declaration submitted by the account owner; never grants approval by itself.
+  providerDeclaration Json?
   id           String           @id @default(uuid())
   contractorId String
   serviceType  ServiceType

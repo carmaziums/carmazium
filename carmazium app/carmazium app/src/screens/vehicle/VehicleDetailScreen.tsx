@@ -1,3 +1,4 @@
+import { SellerServiceBadges } from '../../components/SellerServiceBadges';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useScrollLocked } from '../../lib/scrollLock';
 import {
@@ -1430,6 +1431,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             ) : null}
           </View>
 
+          <SellerServiceBadges seller={listing.seller} />
           {/* Section: Seller */}
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionHeaderTitle}>SELLER</Text>

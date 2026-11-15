@@ -89,6 +89,10 @@ export interface PartnerProfile {
   lastName?: string | null;
   phone?: string | null;
   dealerProfile?: {
+    financeOffered?: boolean;
+    warrantyOffered?: boolean;
+    deliveryServicesEnabled?: boolean;
+    inspectionServicesEnabled?: boolean;
     id?: string;
     companyName?: string | null;
     phone?: string | null;

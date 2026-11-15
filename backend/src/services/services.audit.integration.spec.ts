@@ -1,3 +1,4 @@
+import { dealerServiceEligibilityWhere } from './dealer-service-eligibility';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -23,6 +24,12 @@ integration('TradeXchange: real PostgreSQL transactions, synthetic Stripe only',
     const id = randomUUID();
     customer = await db.user.create({ data: { email: `trade-c-${id}@invalid.example`, passwordHash: 'synthetic', role: 'BUYER' } });
     providerUser = await db.user.create({ data: { email: `trade-p-${id}@invalid.example`, passwordHash: 'synthetic', role: 'DEALER', stripeConnectAccountId: 'acct_synthetic' } });
+    const dealer = await db.dealerProfile.create({ data: { userId: providerUser.id, companyName: 'Synthetic service test', vatNumber: 'SYNTHETIC', isVerified: true } });
+    const kyc = await db.dealerKyc.create({ data: {
+        dealerProfileId: dealer.id, companyHouseName: 'Synthetic service test', representativeName: 'Synthetic owner', representativePosition: 'Owner',
+        vatNumber: 'SYNTHETIC', companyRegistrationNumber: 'SYNTHETIC', personOfSignificantControl: 'Synthetic owner', directorName: 'Synthetic owner',
+        businessWebsite: 'https://synthetic.invalid', businessRegisteredAddress: 'Synthetic CI only', status: 'APPROVED', stripeChargedAt: new Date(),
+      } });
     outsider = await db.user.create({ data: { email: `trade-o-${id}@invalid.example`, passwordHash: 'synthetic', role: 'BUYER' } });
     provider = await db.contractorProfile.create({ data: { userId: providerUser.id, businessName: 'Synthetic Trade QA', serviceTypes: ['DELIVERY','INSPECTION'], certifications: [] } });
     for (const serviceType of ['DELIVERY', 'INSPECTION'] as const) await db.contractorCapability.create({ data: { contractorId: provider.id, serviceType, status: 'APPROVED', verificationStatus: 'VERIFIED', verificationExpiresAt: new Date(Date.now()+86400000), jobNationwide: true } });
@@ -40,6 +47,30 @@ integration('TradeXchange: real PostgreSQL transactions, synthetic Stripe only',
     payments = { getStripeClient: async () => stripe, refreshConnectAccountReadiness: jest.fn().mockResolvedValue({ ready: true, accountId: 'acct_synthetic' }) };
     service = new ServicesService(db, notify as any, email as any, payments as any, config as any);
   });
+  it('gates dealer work on KYC, confirmed £1 payment and the relevant opt-out in real PostgreSQL', async () => {
+    const dealer = await db.dealerProfile.findUniqueOrThrow({ where: { userId: providerUser.id } });
+    const cap = await db.contractorCapability.findUniqueOrThrow({ where: { contractorId_serviceType: { contractorId: provider.id, serviceType: 'INSPECTION' } } });
+    const kyc = await db.dealerKyc.findUniqueOrThrow({ where: { dealerProfileId: dealer.id } });
+    const eligible = () => db.contractorCapability.findMany({ where: { id: cap.id, AND: [dealerServiceEligibilityWhere()] } });
+    try {
+      expect(dealer).toMatchObject({ financeOffered: true, warrantyOffered: true, deliveryServicesEnabled: true, inspectionServicesEnabled: true });
+      await db.dealerKyc.update({ where: { id: kyc.id }, data: { status: 'PENDING', stripeChargedAt: null } });
+      expect(await eligible()).toEqual([]);
+      await db.dealerKyc.update({ where: { id: kyc.id }, data: { status: 'APPROVED' } });
+      expect(await eligible()).toEqual([]);
+      await db.dealerKyc.update({ where: { id: kyc.id }, data: { stripeChargedAt: new Date() } });
+      expect(await eligible()).toHaveLength(1);
+      await db.dealerProfile.update({ where: { id: dealer.id }, data: { inspectionServicesEnabled: false } });
+      expect(await eligible()).toEqual([]);
+      await db.user.update({ where: { id: providerUser.id }, data: { role: 'CONTRACTOR' } });
+      expect(await eligible()).toEqual([]);
+    } finally {
+      await db.dealerKyc.update({ where: { id: kyc.id }, data: { status: 'APPROVED', stripeChargedAt: new Date() } });
+      await db.dealerProfile.update({ where: { id: dealer.id }, data: { inspectionServicesEnabled: true } });
+      await db.user.update({ where: { id: providerUser.id }, data: { role: 'DEALER' } });
+    }
+  });
+
   async function job(status: any = 'COMPLETED') {
     const j = await db.serviceJob.create({ data: { customerId: customer.id, contractorId: provider.id, serviceType: 'DELIVERY', title: 'Synthetic audit job', status, pickupPostcode: 'B1 1AA', deliveryPostcode: 'B2 2BB', workPostcodeArea: 'B', expiresAt: new Date(Date.now()+86400000), startedAt: ['IN_PROGRESS','COMPLETED','RELEASED'].includes(status) ? new Date(Date.now()-120000) : null, completedAt: ['COMPLETED','RELEASED'].includes(status) ? new Date(Date.now()-60000) : null } });
     const p = await db.servicePayment.create({ data: { jobId: j.id, customerId: customer.id, contractorId: provider.id, grossPence: 10000, platformFeeRate: .09, platformFeePence: 900, contractorPence: 9100, status: status === 'ACCEPTED' ? 'PENDING' : status === 'RELEASED' ? 'RELEASED' : 'PAID', stripePaymentIntentId: `pi_${randomUUID()}`, stripeCheckoutSessionId: `cs_${randomUUID()}`, stripeTransferId: status === 'RELEASED' ? `tr_${randomUUID()}` : null } });

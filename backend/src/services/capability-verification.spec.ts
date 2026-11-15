@@ -10,6 +10,8 @@ import {
 
 describe('TradeXchange provider verification standard', () => {
     const now = new Date('2026-09-19T12:00:00Z');
+    beforeEach(() => { jest.useFakeTimers(); jest.setSystemTime(now); });
+    afterEach(() => jest.useRealTimers());
 
     const prismaFor = (serviceType: ServiceType, evidence: any[], capability: Record<string, any> = {}) => ({
         contractorCapability: {
@@ -20,6 +22,7 @@ describe('TradeXchange provider verification standard', () => {
                 verificationStatus: 'IN_REVIEW',
                 verificationCompletedAt: null,
                 verificationExpiresAt: null,
+                providerDeclaration: { version: 1, registeredBusiness: true, acceptedAt: now.toISOString() },
                 ...capability,
             }),
         },
@@ -40,68 +43,26 @@ describe('TradeXchange provider verification standard', () => {
         createdAt: now,
     });
 
-    it('defines separate evidence requirements for all four services', () => {
-        expect(capabilityRequirements(ServiceType.DELIVERY).map(r => r.type)).toEqual([
-            'BUSINESS_IDENTITY',
-            'DELIVERY_BUSINESS_INSURANCE',
-            'DELIVERY_GOODS_IN_TRANSIT',
-        ]);
-        expect(capabilityRequirements(ServiceType.INSPECTION).map(r => r.type)).toEqual([
-            'BUSINESS_IDENTITY',
-            'INSPECTION_BUSINESS_INSURANCE',
-            'INSPECTION_QUALIFICATION',
-        ]);
-        expect(capabilityRequirements(ServiceType.INSPECTION).filter(r => !r.optional).map(r => r.type)).toEqual([
-            'BUSINESS_IDENTITY',
-            'INSPECTION_BUSINESS_INSURANCE',
-        ]);
-        expect(capabilityRequirements(ServiceType.INSPECTION).find(r => r.type === 'INSPECTION_QUALIFICATION')?.optional).toBe(true);
-        expect(capabilityRequirements(ServiceType.FINANCE).map(r => r.type)).toEqual([
-            'BUSINESS_IDENTITY',
-            'FINANCE_REGULATORY_AUTHORITY',
-        ]);
-        expect(capabilityRequirements(ServiceType.WARRANTY).map(r => r.type)).toEqual([
-            'BUSINESS_IDENTITY',
-            'WARRANTY_REGULATORY_AUTHORITY',
-            'WARRANTY_PRODUCT_AUTHORITY',
-        ]);
+    it('requires only trade insurance for delivery and no inspection uploads while preserving partnership checks', () => {
+        expect(capabilityRequirements(ServiceType.DELIVERY).map(r => r.type)).toEqual(['DELIVERY_BUSINESS_INSURANCE']);
+        expect(capabilityRequirements(ServiceType.INSPECTION)).toEqual([]);
+        expect(capabilityRequirements(ServiceType.FINANCE).map(r => r.type)).toEqual(['BUSINESS_IDENTITY', 'FINANCE_REGULATORY_AUTHORITY']);
+        expect(capabilityRequirements(ServiceType.WARRANTY).map(r => r.type)).toEqual(['BUSINESS_IDENTITY', 'WARRANTY_REGULATORY_AUTHORITY', 'WARRANTY_PRODUCT_AUTHORITY']);
     });
 
-
-    it('approves an experienced inspection business with only identity and liability insurance, without a formal certificate', async () => {
-        const expires = new Date('2027-01-10T00:00:00Z');
-        const prisma = prismaFor(ServiceType.INSPECTION, [
-            approved('BUSINESS_IDENTITY'),
-            approved('INSPECTION_BUSINESS_INSURANCE', expires),
-        ]);
-        const summary = await assertCapabilityVerificationReady(prisma, 'cap-1', ServiceType.INSPECTION);
+    it('allows inspection review with a current registered-business declaration and no documents', async () => {
+        const summary = await assertCapabilityVerificationReady(prismaFor(ServiceType.INSPECTION, []), 'cap-1', ServiceType.INSPECTION);
         expect(summary.ready).toBe(true);
-        expect(summary.requirements.find(r => r.type === 'INSPECTION_QUALIFICATION')).toMatchObject({
-            state: 'MISSING',
-            optional: true,
-        });
-        expect(summary.recommendedExpiresAt?.toISOString()).toBe(expires.toISOString());
-        expect(pendingVerificationStatus(summary.requirements)).toBe('READY');
+        expect(summary.requirements).toEqual([]);
     });
 
-    it.each(['PENDING', 'REJECTED'])('does not block inspection approval because voluntary qualification evidence is %s', async (evidenceStatus) => {
-        const prisma = prismaFor(ServiceType.INSPECTION, [
-            approved('BUSINESS_IDENTITY'),
-            approved('INSPECTION_BUSINESS_INSURANCE', new Date('2027-01-10T00:00:00Z')),
-            { ...approved('INSPECTION_QUALIFICATION'), evidenceStatus },
-        ]);
-        const summary = await assertCapabilityVerificationReady(prisma, 'cap-1', ServiceType.INSPECTION);
-        expect(summary.ready).toBe(true);
-        expect(pendingVerificationStatus(summary.requirements)).toBe('READY');
+    it.each([null, { version: 1, registeredBusiness: false, acceptedAt: now.toISOString() }, { version: 1, registeredBusiness: true, acceptedAt: '2025-01-01' }])('blocks missing, unregistered or expired declarations (%j)', async providerDeclaration => {
+        await expect(assertCapabilityVerificationReady(prismaFor(ServiceType.INSPECTION, [], { providerDeclaration }), 'cap-1', ServiceType.INSPECTION)).rejects.toThrow(/business details and declaration/);
     });
 
-    it('continues to require identity and valid inspection liability insurance even when optional experience is approved', async () => {
-        const prisma = prismaFor(ServiceType.INSPECTION, [
-            approved('INSPECTION_QUALIFICATION'),
-            approved('BUSINESS_IDENTITY'),
-        ]);
-        await expect(assertCapabilityVerificationReady(prisma, 'cap-1', ServiceType.INSPECTION))
-            .rejects.toThrow(/Inspection liability insurance/);
+    it('does not allow approved insurance to replace a delivery declaration', async () => {
+        const summary = await getCapabilityVerificationSummary(prismaFor(ServiceType.DELIVERY, [approved('DELIVERY_BUSINESS_INSURANCE', new Date('2027-01-01'))], { providerDeclaration: null }), 'cap-1', now);
+        expect(summary.ready).toBe(false);
     });
 
     it('does not satisfy expiry-required Delivery evidence without a current expiry date', async () => {
@@ -118,16 +79,16 @@ describe('TradeXchange provider verification standard', () => {
     });
 
     it('treats expired evidence as missing even when an admin previously approved it', async () => {
-        const prisma = prismaFor(ServiceType.INSPECTION, [
+        const prisma = prismaFor(ServiceType.DELIVERY, [
             approved('BUSINESS_IDENTITY'),
-            approved('INSPECTION_BUSINESS_INSURANCE', new Date('2026-09-18T00:00:00Z')),
+            approved('DELIVERY_BUSINESS_INSURANCE', new Date('2026-09-18T00:00:00Z')),
             approved('INSPECTION_QUALIFICATION'),
         ]);
 
         const summary = await getCapabilityVerificationSummary(prisma, 'cap-1', now);
 
         expect(summary.ready).toBe(false);
-        expect(summary.requirements.find(r => r.type === 'INSPECTION_BUSINESS_INSURANCE')?.state).toBe('MISSING');
+        expect(summary.requirements.find(r => r.type === 'DELIVERY_BUSINESS_INSURANCE')?.state).toBe('MISSING');
     });
 
     it('caps approval at the earliest evidence expiry when it is under 12 months', async () => {

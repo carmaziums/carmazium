@@ -1,3 +1,4 @@
+import { SellerServiceBadges } from './SellerServiceBadges';
 import React, { useState } from 'react';
 import {
   View,
@@ -141,6 +142,7 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
         </Text>
 
         {/* Title: Make & Model */}
+        <SellerServiceBadges seller={listing.seller} />
         <Text style={styles.titleText} numberOfLines={2}>
           {listing.make} {listing.model}
         </Text>

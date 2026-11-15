@@ -541,8 +541,10 @@ export class TradeTeamService {
         await send({
             userId: ownerUserId,
             type: 'SERVICE_CAPABILITY_APPLIED',
-            title: `Next step: upload your ${label} documents`,
-            message: `Your ${label} application is pending. Upload the required verification documents so CarMazium can review and approve it.`,
+            title: `Complete your ${label} setup`,
+            message: serviceType === ServiceType.INSPECTION
+                ? "Complete your business declaration, dealer verification (£1) and business payout setup. No inspection documents are required."
+                : "Complete your business declaration, dealer verification (£1), business payout setup and upload trade insurance for collection, delivery and recovery.",
             link: `/dashboard/service/capabilities/${capabilityId}/verification`,
             entityType: 'SERVICE_CAPABILITY',
             entityId: capabilityId,

@@ -1,4 +1,5 @@
 "use client"
+import { DealerServicePreferences } from "@/components/dealer/DealerServicePreferences"
 
 import * as React from "react"
 import { FinanceProviderContact } from "@/components/finance/FinanceProviderContact"
@@ -301,8 +302,7 @@ export default function ProfilePage() {
         ...(businessForm.phone.trim() ? { phone: businessForm.phone.trim() } : {}),
         ...(businessForm.website.trim() ? { website: businessForm.website.trim() } : {}),
         description: businessForm.description.trim(),
-        warrantyOffered: businessForm.warrantyOffered,
-        warrantyDetails: businessForm.warrantyOffered ? businessForm.warrantyDetails.trim() : null,
+
         openingHours: Object.fromEntries(Object.entries(businessForm.openingHours).filter(([, value]) => value.trim())),
         ...extra,
     }), [businessForm, isSoleTraderKyc])
@@ -310,10 +310,6 @@ export default function ProfilePage() {
     const handleUpdateBusiness = async () => {
         if (!businessForm.companyName.trim()) {
             setRoleError("Business / trading name is required.")
-            return
-        }
-        if (businessForm.warrantyOffered && !businessForm.warrantyDetails.trim()) {
-            setRoleError("Enter the warranty duration, cover and exclusions, or switch Warranty Offered off.")
             return
         }
         setBusinessLoading(true)
@@ -532,28 +528,8 @@ export default function ProfilePage() {
                                 <textarea value={businessForm.description} onChange={(event) => setBusinessForm({ ...businessForm, description: event.target.value })} rows={4} maxLength={2000} className="w-full border rounded-lg px-4 py-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none" style={{ background: "var(--bg-input)", borderColor: "var(--border-default)", color: "var(--text-primary)" }} />
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div className="space-y-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
-                                <label className="flex items-center gap-3 text-sm font-bold">
-                                    <input type="checkbox" checked={businessForm.warrantyOffered}
-                                        onChange={event => setBusinessForm({ ...businessForm, warrantyOffered: event.target.checked })} />
-                                    We offer a vehicle warranty
-                                </label>
-                                {businessForm.warrantyOffered && (
-                                    <>
-                                        <label className="block text-xs font-semibold text-[var(--text-secondary)]" htmlFor="dealer-warranty-details">Warranty duration, coverage, limits and exclusions</label>
-                                        <textarea id="dealer-warranty-details" rows={5} maxLength={1000} required
-                                            value={businessForm.warrantyDetails}
-                                            onChange={event => setBusinessForm({ ...businessForm, warrantyDetails: event.target.value })}
-                                            placeholder="e.g. 3-month engine and gearbox warranty, with details of cover, claims limits and exclusions..."
-                                            className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] p-3 text-sm text-[var(--text-primary)]" />
-                                    </>
-                                )}
-                                <p className="text-xs text-[var(--text-muted)]">Only warranty terms you supply will be included. Do not promise cover the buyer will not receive.</p>
-                            </div>
-                            <FinancePreference />
-                        </div>
-                        <p className="text-xs text-[var(--text-muted)]">These optional statements appear in future MaziuM descriptions when you generate them. Review every description before publishing. Your existing listings will not be rewritten automatically.</p>
+                        <DealerServicePreferences />
+                        <FinancePreference />
                         <div>
                             <h4 className="font-bold mb-3">Opening Hours</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
