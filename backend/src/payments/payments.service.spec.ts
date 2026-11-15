@@ -31,6 +31,7 @@ jest.mock('stripe', () => {
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { PaymentsService } from './payments.service';
+import { SaleCancellationsService } from '../sale-cancellations/sale-cancellations.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { HpiService } from '../hpi/hpi.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -1057,6 +1058,7 @@ describe('PaymentsService — auction buyer-fee refunds', () => {
     beforeEach(async () => {
         mockCheckoutSessionsRetrieve.mockReset();
         mockRefundsCreate.mockReset();
+        mockRefundsCreate.mockImplementation(async ({ amount }) => ({ id: 're_synthetic', amount, status: 'succeeded' }));
         mockRefundsList.mockReset();
         mockRefundsList.mockResolvedValue({ data: [] });
         prisma = buildPrismaMock();
@@ -1081,7 +1083,7 @@ describe('PaymentsService — auction buyer-fee refunds', () => {
         expect(mockRefundsCreate).toHaveBeenCalledWith({
             payment_intent: 'pi_native_commission',
             amount: 10000,
-        });
+        }, { idempotencyKey: 'auction-buyer-fee-refund-txn-commission-10000-10000' });
         expect(prisma.transaction.update).toHaveBeenCalledWith({
             where: { id: 'txn-commission' },
             data: { status: 'REFUNDED' },
@@ -1103,7 +1105,7 @@ describe('PaymentsService — auction buyer-fee refunds', () => {
         expect(mockRefundsCreate).toHaveBeenCalledWith({
             payment_intent: 'pi_from_checkout',
             amount: 10000,
-        });
+        }, { idempotencyKey: 'auction-buyer-fee-refund-txn-commission-10000-10000' });
     });
 
     it('refunds the full £125 after a faulted purchase-linked inspection', async () => {
@@ -1121,7 +1123,7 @@ describe('PaymentsService — auction buyer-fee refunds', () => {
                 amount: 12500,
             },
             {
-                idempotencyKey: 'auction-inspection-refusal-txn-commission-12500',
+                idempotencyKey: 'auction-buyer-fee-refund-txn-commission-12500-12500',
             },
         );
         expect(prisma.transaction.update).toHaveBeenCalledWith({
@@ -1148,7 +1150,7 @@ describe('PaymentsService — auction buyer-fee refunds', () => {
                 amount: 2500,
             },
             {
-                idempotencyKey: 'auction-inspection-refusal-txn-commission-2500',
+                idempotencyKey: 'auction-buyer-fee-refund-txn-commission-12500-2500',
             },
         );
         expect(prisma.transaction.update).not.toHaveBeenCalled();
@@ -1167,6 +1169,98 @@ describe('PaymentsService — auction buyer-fee refunds', () => {
         await service.issueFullRefundForAuctionInspection('auction-1');
 
         expect(mockRefundsCreate).not.toHaveBeenCalled();
+        expect(prisma.transaction.update).not.toHaveBeenCalled();
+    });
+
+    it.each(['pending', 'requires_action'])('does not declare a %s existing full refund complete', async status => {
+        prisma.transaction.findUnique.mockResolvedValue({ id: 'txn-commission', status: 'COMPLETED', stripePaymentId: 'pi_native_commission' });
+        mockRefundsList.mockResolvedValue({ data: [{ id: 're_waiting', amount: 12500, status }] });
+        await expect(service.issueFullRefundForAuctionCancellation('auction-1')).rejects.toThrow(/refund.*pending|refund.*processing/i);
+        expect(mockRefundsCreate).not.toHaveBeenCalled();
+        expect(prisma.transaction.update).not.toHaveBeenCalled();
+    });
+
+    it.each(['pending', 'requires_action', 'failed', 'canceled', null])('does not finalize a newly created refund with status %s', async status => {
+        prisma.transaction.findUnique.mockResolvedValue({ id: 'txn-commission', status: 'COMPLETED', stripePaymentId: 'pi_native_commission' });
+        mockRefundsCreate.mockResolvedValue({ id: 're_new', amount: 12500, status });
+        await expect(service.issueFullRefundForAuctionInspection('auction-1')).rejects.toThrow(/refund/i);
+        expect(prisma.transaction.update).not.toHaveBeenCalled();
+    });
+
+    it('holds the remaining amount while an earlier partial refund is pending', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({ id: 'txn-commission', status: 'COMPLETED', stripePaymentId: 'pi_native_commission' });
+        mockRefundsList.mockResolvedValue({ data: [{ id: 're_partial', amount: 10000, status: 'pending' }] });
+        await expect(service.issueFullRefundForAuctionCancellation('auction-1')).rejects.toThrow(/refund/i);
+        expect(mockRefundsCreate).not.toHaveBeenCalled();
+        expect(prisma.transaction.update).not.toHaveBeenCalled();
+    });
+
+    it('finishes a retry after Stripe confirms the existing refund succeeded without sending money again', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({ id: 'txn-commission', status: 'COMPLETED', stripePaymentId: 'pi_native_commission' });
+        mockRefundsList.mockResolvedValueOnce({ data: [{ id: 're_waiting', amount: 12500, status: 'pending' }] })
+            .mockResolvedValueOnce({ data: [{ id: 're_waiting', amount: 12500, status: 'succeeded' }] });
+        await expect(service.issueFullRefundForAuctionCancellation('auction-1')).rejects.toThrow();
+        await expect(service.issueFullRefundForAuctionCancellation('auction-1')).resolves.toBe(125);
+        expect(mockRefundsCreate).not.toHaveBeenCalled();
+        expect(prisma.transaction.update).toHaveBeenCalledTimes(1);
+    });
+
+    it('fails closed when the refund list is incomplete', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({ id: 'txn-commission', status: 'COMPLETED', stripePaymentId: 'pi_native_commission' });
+        mockRefundsList.mockResolvedValue({ data: [], has_more: true });
+        await expect(service.issueFullRefundForAuctionCancellation('auction-1')).rejects.toThrow(/review|history/i);
+        expect(mockRefundsCreate).not.toHaveBeenCalled();
+        expect(prisma.transaction.update).not.toHaveBeenCalled();
+    });
+
+    it('uses the same retry key across cancellation and inspection of the same fee', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({ id: 'txn-commission', status: 'COMPLETED', stripePaymentId: 'pi_native_commission' });
+        mockRefundsCreate.mockRejectedValue(new Error('Synthetic network timeout'));
+        await expect(service.issueFullRefundForAuctionCancellation('auction-1')).rejects.toThrow('timeout');
+        await expect(service.issueFullRefundForAuctionInspection('auction-1')).rejects.toThrow('timeout');
+        expect(mockRefundsCreate.mock.calls[0][1].idempotencyKey).toBe(mockRefundsCreate.mock.calls[1][1].idempotencyKey);
+        expect(prisma.transaction.update).not.toHaveBeenCalled();
+    });
+
+    it('does not reverse a sale or notify customers of completion while its refund is pending', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({ id: 'txn-commission', status: 'COMPLETED', stripePaymentId: 'pi_native_commission' });
+        mockRefundsCreate.mockResolvedValue({ id: 're_pending', amount: 12500, status: 'pending' });
+        prisma.saleCancellationRequest = { findUnique: jest.fn().mockResolvedValue({ id: 'request', listingId: 'listing', sellerId: 'seller', buyerId: 'buyer', auctionId: 'auction-1', status: 'PENDING_ADMIN' }), update: jest.fn() };
+        const notifications: any = { create: jest.fn() };
+        const cancellations = new SaleCancellationsService(prisma, notifications, service, {} as any, {} as any);
+        jest.spyOn(cancellations as any, 'context').mockResolvedValue({ sellerId: 'seller', buyerId: 'buyer', listing: { id: 'listing', title: 'Synthetic QA vehicle' }, auction: { id: 'auction-1', buyerFeePaid: true, buyerFeeTransactionId: 'txn-commission' } });
+        await expect(cancellations.adminReview('request', 'admin', 'APPROVE', 'Reviewed', true)).rejects.toThrow(/processing/i);
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+        expect(prisma.listing.update).not.toHaveBeenCalled();
+        expect(prisma.saleCancellationRequest.update).not.toHaveBeenCalled();
+        expect(notifications.create).not.toHaveBeenCalled();
+    });
+
+    it('does not issue a second legacy £100 refund when that amount already succeeded', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({ id: 'txn-commission', status: 'REFUNDED', stripePaymentId: 'pi_native_commission' });
+        mockRefundsList.mockResolvedValue({ data: [{ id: 're_existing', amount: 10000, status: 'succeeded' }] });
+        await expect(service.issueRefundForAuction('auction-1')).resolves.toBe(100);
+        expect(mockRefundsCreate).not.toHaveBeenCalled();
+    });
+
+    it('does not mark a legacy £100 refund completed while it is pending', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({ id: 'txn-commission', status: 'COMPLETED', stripePaymentId: 'pi_native_commission' });
+        mockRefundsCreate.mockResolvedValue({ id: 're_pending', amount: 10000, status: 'pending' });
+        await expect(service.issueRefundForAuction('auction-1')).rejects.toThrow(/processing/i);
+        expect(prisma.transaction.update).not.toHaveBeenCalled();
+    });
+
+    it('does not count a failed earlier refund toward the amount owed', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({ id: 'txn-commission', status: 'COMPLETED', stripePaymentId: 'pi_native_commission' });
+        mockRefundsList.mockResolvedValue({ data: [{ id: 're_failed', amount: 10000, status: 'failed' }] });
+        await expect(service.issueFullRefundForAuctionCancellation('auction-1')).resolves.toBe(125);
+        expect(mockRefundsCreate).toHaveBeenCalledWith({ payment_intent: 'pi_native_commission', amount: 12500 }, expect.anything());
+    });
+
+    it('rejects a succeeded response for the wrong amount', async () => {
+        prisma.transaction.findUnique.mockResolvedValue({ id: 'txn-commission', status: 'COMPLETED', stripePaymentId: 'pi_native_commission' });
+        mockRefundsCreate.mockResolvedValue({ id: 're_wrong', amount: 100, status: 'succeeded' });
+        await expect(service.issueFullRefundForAuctionCancellation('auction-1')).rejects.toThrow(/not been confirmed/i);
         expect(prisma.transaction.update).not.toHaveBeenCalled();
     });
 
