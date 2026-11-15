@@ -3669,7 +3669,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </View>
         </SectionBox>
 
-        <SectionBox title="Vehicle Valuation" accent={Colors.infoBlue}>
+        {!isCaravan && <SectionBox title="Vehicle Valuation" accent={Colors.infoBlue}>
           {valuationLoading ? (
             <View style={s.valuationLoadingRow}>
               <ActivityIndicator size="small" color={Colors.infoBlueLight} />
@@ -3703,12 +3703,15 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           ) : (
             <Text style={s.fieldHint}>Complete the vehicle make, model, year and mileage to see the current market value.</Text>
           )}
-        </SectionBox>
+        </SectionBox>}
+        {isCaravan && <SectionBox title="Set your own caravan price">
+          <Text style={s.fieldHint}>No automatic caravan valuation is provided. Enter your own asking price or auction estimate.</Text>
+        </SectionBox>}
 
         <SectionBox title={isAuction ? 'Set Your Auction Value' : 'Set Your Retail Price Range'} accent={Colors.accent} onLayout={rememberValidationSection('pricing')}>
           {isAuction ? (
             <Text style={s.fieldHint}>
-              Use the current market value as a starting point. CarMazium automatically sets the Opening Bid at 70% of the value you enter, while you remain in control of the reserve.
+              {isCaravan ? 'Enter your own caravan auction estimate. CarMazium calculates the opening bid from your chosen value; no market price is suggested.' : 'Use the current market value as a starting point. CarMazium automatically sets the Opening Bid at 70% of the value you enter, while you remain in control of the reserve.'}
             </Text>
           ) : (
             <Text style={s.fieldHint}>
@@ -3883,7 +3886,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             Boost buyer confidence with trust badges on your listing. Badges increase buyer engagement and sell rates.
           </Text>
           <View style={{ gap: 10, marginTop: 8 }}>
-            {BADGES.filter(badge => (badge.listingType === 'AUCTION') === (listingType === 'AUCTION')).map(badge => {
+            {BADGES.filter(badge =>
+              (badge.listingType === 'AUCTION') === (listingType === 'AUCTION')
+              && (!isCaravan || badge.id === (isAuction ? 'FREE' : 'BASIC'))
+            ).map(badge => {
               const active = badgeTier === badge.id;
               return (
                 <TouchableOpacity
