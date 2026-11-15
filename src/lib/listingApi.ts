@@ -30,8 +30,8 @@ import type { OfficialVehicleData } from './dvlaApi'
 export interface CreateListingRequest {
     title: string
     price: number
-    mileage: number
-    year: number
+    mileage: number | null
+    year: number | null
     vrm: string
     images: string[]
     listingType: 'AUCTION' | 'CLASSIFIED'
