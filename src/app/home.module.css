@@ -60,11 +60,11 @@
 .quietLink { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
 .quietLink:hover { color: var(--color-primary); }
 .heroVisual { position: relative; align-self: stretch; min-width: 0; min-height: 430px; }
-.priceArtwork { position: absolute; inset: -36px auto auto 5%; display: flex; align-items: center; gap: 20px; }
+.priceArtwork { z-index: 1; position: absolute; inset: -36px auto auto 5%; display: flex; align-items: center; gap: 20px; }
 .priceArtwork > span { color: #ed1c24; font-family: Arial, sans-serif; font-size: clamp(180px, 22vw, 300px); font-weight: 900; line-height: 1; letter-spacing: -.08em; }
-.priceArtwork p { font-size: 16px; font-weight: 800; line-height: 1.25; padding-left: 18px; border-left: 1px solid var(--home-ink); text-transform: uppercase; }
+.priceArtwork p { align-self: flex-start; margin-top: 65px; font-size: 16px; font-weight: 800; line-height: 1.25; padding-left: 18px; border-left: 1px solid var(--home-ink); text-transform: uppercase; }
 .ribbon { position: absolute; width: 125%; height: 100%; right: -13%; bottom: -5%; }
-.heroCars { position: absolute; width: 105%; max-width: none; height: auto; bottom: -8%; right: -4%; z-index: 1; }
+.heroCars { position: absolute; width: 105%; max-width: none; height: auto; bottom: -8%; right: -4%; z-index: 2; }
 .aiSection { background: var(--home-soft); padding-block: 32px 30px; border-top: 1px solid var(--border-default); }
 .aiSection .eyebrow { margin-bottom: 8px; }
 .sectionHeading { font-family: var(--font-poppins); font-size: clamp(28px, 3.3vw, 44px); line-height: 1.2; font-weight: 700; letter-spacing: -.045em; margin-bottom: 22px; }
@@ -104,7 +104,7 @@
   .heroGrid { gap: 12px; min-height: 490px; padding-block: 36px; }
   .heroVisual { min-height: 360px; }
   .priceArtwork { top: 0; left: 0; gap: 12px; }
-  .priceArtwork p { font-size: 12px; padding-left: 10px; }
+  .priceArtwork p { margin-top: 35px; font-size: 12px; padding-left: 10px; }
   .heroCars { bottom: 0; width: 115%; right: -10%; }
   .heroActions { gap: 8px; }
   .primaryAction, .secondaryAction { font-size: 13px; padding-inline: 12px; }
@@ -124,7 +124,7 @@
   .heroVisual { height: clamp(235px, 64vw, 360px); min-height: 0; margin-top: 10px; }
   .priceArtwork { top: -5px; left: 9%; }
   .priceArtwork > span { font-size: clamp(160px, 43vw, 240px); }
-  .priceArtwork p { font-size: 13px; }
+  .priceArtwork p { margin-top: 25px; font-size: 13px; }
   .heroCars { width: 88%; right: -1%; bottom: -10%; }
   .ribbon { width: 115%; height: 90%; bottom: -10%; right: -10%; }
   .aiSection { padding-block: 26px; }
