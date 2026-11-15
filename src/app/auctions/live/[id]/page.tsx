@@ -1,5 +1,7 @@
 "use client"
 
+import { VehicleShareDialog } from "@/components/listing/VehicleShareDialog"
+
 import { SellerServiceBadges } from "@/components/listing/SellerServiceBadges"
 import * as React from "react"
 import Image from "next/image"
@@ -127,7 +129,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const [endTime, setEndTime] = React.useState<Date | null>(null)
     const [startTime, setStartTime] = React.useState<Date | null>(null)
     const [auctionClockExpired, setAuctionClockExpired] = React.useState(false)
-    const [copied, setCopied] = React.useState(false)
+    const [shareOpen, setShareOpen] = React.useState(false)
     const [connectingChat, setConnectingChat] = React.useState(false)
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
     // A failed load must not read as "No damage reported" to a bidding dealer.
@@ -625,11 +627,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     }, [auction, acceptingBid, endTime])
 
     // ── Share ─────────────────────────────────────────────────────────────────
-    const handleShare = React.useCallback(() => {
-        navigator.clipboard.writeText(window.location.href).catch(() => {})
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
-    }, [])
+    const handleShare = () => setShareOpen(true)
 
     // ── Buy It Now ────────────────────────────────────────────────────────────
     async function handleBinTrigger() {
@@ -836,6 +834,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             message="Sign up as a dealer to view this vehicle and bid in the live auction room."
         >
         <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-body)' }}>
+            {shareOpen && <VehicleShareDialog vehicle={auction.listing} auctionId={auction.id} onClose={() => setShareOpen(false)} />}
 
             {/* ── Accept Bid Confirmation Modal ─────────────────────────────── */}
             <AnimatePresence>
@@ -1024,15 +1023,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                         </div>
                         <button
                             onClick={handleShare}
-                            className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors relative"
-                            title="Copy link"
+                            className="flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-bold text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors"
+                            title="Share this vehicle" aria-label="Share this vehicle"
                         >
                             <Share2 size={15} />
-                            {copied && (
-                                <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[9px] bg-slate-700 text-white px-2 py-0.5 rounded font-bold whitespace-nowrap">
-                                    Copied!
-                                </span>
-                            )}
+                            <span className="hidden sm:inline">Share</span>
                         </button>
                     </div>
                 </div>

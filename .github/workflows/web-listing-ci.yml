@@ -3,6 +3,8 @@ name: Web Listing CI
 on:
   pull_request:
     paths:
+      - "src/lib/vehicleSharing.ts"
+      - "scripts/test-vehicle-sharing.test.mjs"
       - "src/components/onboarding/**"
       - "src/lib/serviceSetupRouting.ts"
       - "src/lib/sessionDraftStorage.ts"
@@ -195,6 +197,8 @@ jobs:
       - name: Seller gearbox and body-type regression tests
         run: npm run test:seller-specs
 
+      - name: Vehicle sharing links, privacy and native payload parity
+        run: node --test scripts/test-vehicle-sharing.test.mjs
       - name: CRM pagination, isolated rollback and complete provider totals
         run: node --test scripts/test-dealer-crm-audit.test.mjs
       - name: Guided tour roles and approved narration catalog

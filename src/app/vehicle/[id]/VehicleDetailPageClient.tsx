@@ -1,5 +1,7 @@
 "use client"
 
+import { VehicleShareDialog } from "@/components/listing/VehicleShareDialog"
+
 import * as React from "react"
 import { BuyerVehicleInformation } from "@/components/listing/BuyerVehicleInformation"
 import Image from "next/image"
@@ -463,7 +465,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
     const [offerSuccess, setOfferSuccess] = React.useState(false)
     const [isWatchlisted, setIsWatchlisted] = React.useState(false)
     const [watchlistLoading, setWatchlistLoading] = React.useState(false)
-    const [shareToast, setShareToast] = React.useState(false)
+    const [shareOpen, setShareOpen] = React.useState(false)
     const [enquiring, setEnquiring] = React.useState(false)
 
     const handleDealerPhoneClick = React.useCallback(() => {
@@ -574,25 +576,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
         setOfferSuccess(true)
     }
 
-    const handleShare = async () => {
-        const url = window.location.href
-        const shareData = {
-            title: listing?.title || 'Vehicle',
-            text: `Check out this ${listing?.title} — ${formatPrice(listing?.price ?? 0)} on CarMazium`,
-            url,
-        }
-        try {
-            if (navigator.share) {
-                await navigator.share(shareData)
-            } else {
-                await navigator.clipboard.writeText(url)
-                setShareToast(true)
-                setTimeout(() => setShareToast(false), 2500)
-            }
-        } catch {
-            // User cancelled share dialog
-        }
-    }
+    const handleShare = () => setShareOpen(true)
 
     const handleWatchlist = async () => {
         if (!listing) return
@@ -921,14 +905,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                 </div>
             )}
 
-            {/* Share toast */}
-            {shareToast && (
-                <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-blue-500/20 border border-blue-500/40 text-blue-300 px-5 py-3 rounded-xl shadow-2xl animate-in slide-in-from-bottom-4">
-                    <Share2 size={16} />
-                    <span className="text-sm font-semibold">Link copied to clipboard!</span>
-                    <button onClick={() => setShareToast(false)} className="ml-2"><X size={14} /></button>
-                </div>
-            )}
+            {shareOpen && <VehicleShareDialog vehicle={listing} onClose={() => setShareOpen(false)} />}
 
             <div className="container mx-auto px-5">
                 {/* Breadcrumb & Header */}
@@ -998,8 +975,8 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                             >
                                 <Scale size={18} className="mr-2" /> Compare
                             </Button>
-                            <Button variant="outline" size="icon" className="rounded-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:border-primary/40" onClick={handleShare}>
-                                <Share2 size={18} />
+                            <Button variant="outline" className="rounded-full border-[var(--border-default)] text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:border-primary/40" onClick={handleShare} aria-label="Share this vehicle">
+                                <Share2 size={18} className="mr-2" /> Share
                             </Button>
                             <Button
                                 variant="outline"
