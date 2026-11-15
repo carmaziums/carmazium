@@ -723,6 +723,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [bodyType, setBodyType] = useState(
     () => normalizeNativeBodyType(landingPrefill?.bodyType, 'CAR') || '',
   );
+  const isCaravan = bodyType === 'CARAVAN';
   const [location, setLocation] = useState('');
   const [locatingMe, setLocatingMe] = useState(false);
   // Technical Specs
@@ -847,7 +848,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }, [listingType, platformOpeningBid]);
 
   useEffect(() => {
-    if (step !== 3 || vehicleType !== 'CAR') return;
+    if (step !== 3 || vehicleType !== 'CAR' || isCaravan) {
+      if (isCaravan) {
+        valuationRequestId.current += 1;
+        setBaseValuation(null);
+        setValuation(null);
+        setValuationError(null);
+        setValuationLoading(false);
+      }
+      return;
+    }
 
     const yearNumber = Number(year);
     const mileageNumber = Number(String(mileage).replace(/[^0-9]/g, ''));
@@ -920,6 +930,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }, [
     step,
     vehicleType,
+    isCaravan,
     vrm,
     make,
     model,
@@ -1292,6 +1303,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // it force-touches it, instead of going through the touched-gated wrapper
   // and reading the pre-update `touched` state from its own render closure.
   const fieldErrorRaw = (key: string): string | null => {
+    if (isCaravan) {
+      // Caravan sellers only need a useful advert, a location and their own
+      // price. Do not demand DVLA plates, odometer or car-only declarations.
+      if ([
+        'vrm', 'make', 'model', 'year', 'mileage', 'fuelType', 'transmission',
+        'condition', 'serviceHistory', 'mechanicalIssues', 'electricalIssues',
+        'numberOfKeys', 'owners', 'writeOffCat', 'stolenRecovered',
+        'outstandingFinance', 'isLegalKeeper', 'description', 'declAcknowledged',
+      ].includes(key)) return null;
+    }
     if (key === 'priceAsking') {
       const v = parseFloat(priceAsking.replace(/[^0-9.]/g, ''));
       if (!priceAsking.trim() || isNaN(v) || v <= 0) return 'Enter a valid asking price (e.g. 12500)';
@@ -1827,8 +1848,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     if (s === 2) {
       // Tapping Next explains the minimum instead of silently disabling it;
       // the existing rule is unchanged and is still enforced at publication.
-      if (allImages.length < MIN_PHOTOS) {
-        setValidationIssue({ field: 'photos', message: `Add ${MIN_PHOTOS - allImages.length} more photo(s) to continue (minimum ${MIN_PHOTOS}).` });
+      const minPhotos = isCaravan ? 1 : MIN_PHOTOS;
+      if (allImages.length < minPhotos) {
+        setValidationIssue({ field: 'photos', message: `Add ${minPhotos - allImages.length} more photo(s) to continue (minimum ${minPhotos}).` });
         scrollToMissingField('photos');
         return false;
       }
@@ -2070,13 +2092,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       Alert.alert('Review auction settings', 'Please complete the auction settings before publishing.');
       return;
     }
-    if (allImages.length < MIN_PHOTOS) {
+    if (allImages.length < (isCaravan ? 1 : MIN_PHOTOS)) {
+      // The backend requires one caravan photo or 10 photos for motor vehicles.
       // Was `=== 0`. The backend's publish guard is 10 and runs before the
       // badge-tier branch, so anything below it used to reach the payment sheet
       // and only fail afterwards (SELL-005).
       Alert.alert(
         'More Photos Needed',
-        `Listings need at least ${MIN_PHOTOS} photos before they can be published. You have ${allImages.length}. Go back to the Media step to add more.`,
+        `Listings need at least ${isCaravan ? 1 : MIN_PHOTOS} photo(s) before they can be published. You have ${allImages.length}. Go back to Media to add photos.`,
       );
       return;
     }
@@ -2088,12 +2111,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
       const payload: Record<string, any> = {
         vehicleType,
-        vrm: vrm.replace(/\s/g, '').toUpperCase(),
+        vrm: isCaravan ? '' : vrm.replace(/\s/g, '').toUpperCase(),
         vin: isValidVin ? vinTrimmed : undefined, make, model, year: year ? parseInt(year) : undefined,
         bodyType, location,
-        mileage: mileage ? parseInt(mileage.replace(/[^0-9]/g, '')) : undefined,
-        fuelType, transmission, color: colour, engineSize: engineSize ? parseInt(engineSize) : undefined,
-        bhp: bhp ? parseInt(bhp) : undefined,
+        mileage: isCaravan ? undefined : (mileage ? parseInt(mileage.replace(/[^0-9]/g, '')) : undefined),
+        fuelType: isCaravan ? undefined : fuelType, transmission: isCaravan ? undefined : transmission,
+        color: colour, engineSize: isCaravan ? undefined : (engineSize ? parseInt(engineSize) : undefined),
+        bhp: isCaravan ? undefined : (bhp ? parseInt(bhp) : undefined),
         doors: doors ? parseInt(doors) : undefined,
         seats: seats ? parseInt(seats) : undefined,
         variant, driveType,
