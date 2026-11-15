@@ -13,6 +13,7 @@ import {
     IsObject,
     IsUrl,
     IsOptional,
+    ValidateIf,
     IsBoolean,
     Length,
     Matches,
@@ -155,7 +156,8 @@ export class CreateListingDto {
     @IsOptional()
     priceMax?: number;
 
-    @ApiProperty({ description: 'Mileage in miles', example: 45000 })
+    @ApiProperty({ description: 'Mileage in miles; not applicable to unpowered touring caravans', example: 45000 })
+    @ValidateIf((o: CreateListingDto) => o.bodyType !== BodyType.CARAVAN)
     @Type(() => Number)
     @IsInt()
     @Min(0)
@@ -168,15 +170,17 @@ export class CreateListingDto {
     @Max(new Date().getFullYear() + 1)
     year: number;
 
-    @ApiProperty({ description: 'UK Vehicle Registration Mark (VRM)', example: 'AB12 CDE' })
+    @ApiProperty({ description: 'UK registration; not applicable to unpowered touring caravans', example: 'AB12 CDE' })
+    @ValidateIf((o: CreateListingDto) => o.bodyType !== BodyType.CARAVAN)
     @IsString()
     @IsNotEmpty()
     @Length(2, 15)
     vrm: string;
 
-    @ApiProperty({ description: 'Vehicle Identification Number (VIN, 17 characters)', example: 'WAUZZZ4G4EN006369', required: false })
+    @ApiProperty({ description: '17-character VIN. Required for touring caravans (CRiS identifier), optional for motor vehicles.', example: 'WAUZZZ4G4EN006369', required: false })
+    @ValidateIf((o: CreateListingDto) => o.bodyType === BodyType.CARAVAN || o.vin !== undefined)
     @IsString()
-    @IsOptional()
+    @IsNotEmpty()
     @Matches(/^[A-HJ-NPR-Z0-9]{17}$/i, { message: 'VIN must be a valid 17-character alphanumeric code' })
     vin?: string;
 
