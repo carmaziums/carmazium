@@ -49,23 +49,32 @@ export function ImageLightbox({ images, alt, startIndex = 0, open, onClose }: Pr
     const closeBtnRef = React.useRef<HTMLButtonElement>(null)
     const previousFocusRef = React.useRef<HTMLElement | null>(null)
 
-    React.useEffect(() => {
-        if (open) setIndex(startIndex)
-    }, [open, startIndex])
+    const [shouldMount, setShouldMount] = React.useState(false)
+    const [visible, setVisible] = React.useState(false)
+    const [domReady, setDomReady] = React.useState(false)
 
-    // Position the scroll track at startIndex once the track is mounted.
-    // A short setTimeout, not rAF (see the mount-lifecycle effect below for
-    // why) — the track needs a layout pass before scrollTo's clientWidth
-    // read is meaningful.
+    // The portal is mounted in a second render. Wait for that render before
+    // positioning it; an effect depending only on `open` sees a null track.
     React.useEffect(() => {
-        if (!open) return
+        if (!open || !shouldMount || !domReady) return
         const el = trackRef.current
         if (!el) return
+        const initialIndex = Math.max(0, Math.min(images.length - 1, startIndex))
         const t = window.setTimeout(() => {
-            el.scrollTo({ left: startIndex * el.clientWidth, behavior: "auto" })
+            el.scrollTo({ left: initialIndex * el.clientWidth, behavior: "instant" })
+            setIndex(initialIndex)
         }, 10)
         return () => window.clearTimeout(t)
-    }, [open, startIndex])
+    }, [open, shouldMount, domReady, startIndex, images.length])
+
+    // Native touch, momentum, buttons and keyboard all move this same track.
+    // Bind directly to the mounted element so every swipe updates the counter.
+    const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
+        const el = event.currentTarget
+        if (el.clientWidth === 0) return
+        const next = Math.max(0, Math.min(images.length - 1, Math.round(el.scrollLeft / el.clientWidth)))
+        setIndex(next)
+    }
 
     // Body scroll lock — restore the original overflow on close so we
     // don't strand the page in overflow:hidden.
@@ -97,7 +106,7 @@ export function ImageLightbox({ images, alt, startIndex = 0, open, onClose }: Pr
         const clamped = Math.max(0, Math.min(images.length - 1, index + delta))
         el.scrollTo({ left: clamped * el.clientWidth, behavior: "smooth" })
         // Update the counter immediately so users get feedback while the
-        // smooth scroll animates. IntersectionObserver will confirm on settle.
+        // smooth scroll animates. Native scroll events confirm the visible slide.
         setIndex(clamped)
     }, [images.length, index])
 
@@ -151,33 +160,6 @@ export function ImageLightbox({ images, alt, startIndex = 0, open, onClose }: Pr
         return () => window.removeEventListener("keydown", handler)
     }, [open, onClose, scrollBy])
 
-    // IntersectionObserver is the source of truth for which slide is active —
-    // it fires reliably for both native touch swipe and programmatic scrollTo,
-    // whereas the raw `scroll` event on this snap container has been
-    // inconsistent in practice (and framer-motion wrappers can eat React's
-    // `onScroll` prop). The button/keyboard handlers below also nudge `index`
-    // directly for instant counter feedback while the smooth scroll animates.
-    React.useEffect(() => {
-        if (!open) return
-        const root = trackRef.current
-        if (!root) return
-        const slides = root.querySelectorAll<HTMLElement>("[data-slide-index]")
-        if (slides.length === 0) return
-        const observer = new IntersectionObserver(
-            (entries) => {
-                entries.forEach((entry) => {
-                    if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
-                        const i = Number(entry.target.getAttribute("data-slide-index"))
-                        if (!Number.isNaN(i)) setIndex((prev) => (prev === i ? prev : i))
-                    }
-                })
-            },
-            { root, threshold: [0.5, 0.9] },
-        )
-        slides.forEach((s) => observer.observe(s))
-        return () => observer.disconnect()
-    }, [open, images.length])
-
     // Deterministic mount/unmount: `shouldMount` controls DOM presence,
     // `visible` controls the CSS transition state. On open we mount first,
     // then flip to visible a frame later so the transition actually runs.
@@ -185,9 +167,6 @@ export function ImageLightbox({ images, alt, startIndex = 0, open, onClose }: Pr
     // unmount via a plain setTimeout matched to TRANSITION_MS — this is a
     // deterministic remove-from-DOM regardless of how the animation is
     // rendered, so the backdrop can never get stuck invisible-but-present.
-    const [shouldMount, setShouldMount] = React.useState(false)
-    const [visible, setVisible] = React.useState(false)
-
     React.useEffect(() => {
         if (open) {
             setShouldMount(true)
@@ -209,7 +188,6 @@ export function ImageLightbox({ images, alt, startIndex = 0, open, onClose }: Pr
     // `transform: translateZ(0)` on its image wrapper, which without this
     // would clip a `fixed inset-0` modal to the card's image area instead
     // of the viewport.
-    const [domReady, setDomReady] = React.useState(false)
     React.useEffect(() => { setDomReady(true) }, [])
     if (!domReady || !shouldMount || images.length === 0) return null
 
@@ -236,7 +214,7 @@ export function ImageLightbox({ images, alt, startIndex = 0, open, onClose }: Pr
 
             {/* Counter — top-right */}
             <div className="absolute top-3 right-3 md:top-4 md:right-4 z-20 pointer-events-none">
-                <span className="text-white text-xs md:text-sm font-semibold bg-black/60 px-3 py-1.5 rounded-full">
+                <span role="status" aria-live="polite" aria-atomic="true" className="text-white text-xs md:text-sm font-semibold bg-black/60 px-3 py-1.5 rounded-full">
                     {index + 1} / {images.length}
                 </span>
             </div>
@@ -246,6 +224,7 @@ export function ImageLightbox({ images, alt, startIndex = 0, open, onClose }: Pr
                 the modal a soft zoom-in/out to match the backdrop's fade. */}
             <div
                 ref={trackRef}
+                onScroll={handleScroll}
                 onClick={(e) => e.stopPropagation()}
                 className={`w-full h-full flex overflow-x-auto snap-x snap-mandatory transition-transform ease-out [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${visible ? "scale-100" : "scale-95"}`}
                 style={{ overscrollBehaviorX: "contain", transitionDuration: `${TRANSITION_MS}ms` }}
