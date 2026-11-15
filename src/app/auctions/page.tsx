@@ -109,7 +109,7 @@ function PillarCard({ pillar, index }: { pillar: Pillar; index: number }) {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05, duration: 0.4 }}
-            className="h-full"
+            className="h-full min-w-0"
         >
             {live ? (
                 <Link
@@ -120,7 +120,7 @@ function PillarCard({ pillar, index }: { pillar: Pillar; index: number }) {
                         <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
                             <Icon size={22} className="text-primary" />
                         </div>
-                        <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-500">
+                        <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                             {pillar.partnership ? 'Contact our team' : 'Open now'}
                         </span>
                     </div>
@@ -135,9 +135,9 @@ function PillarCard({ pillar, index }: { pillar: Pillar; index: number }) {
                             </li>
                         ))}
                     </ul>
-                    <span className={buttonVariants({ className: "mt-auto w-full justify-between" })}>
+                    <span className={buttonVariants({ className: "mt-auto w-full min-h-11 h-auto py-3 justify-between whitespace-normal text-left" })}>
                         {cta}
-                        <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+                        <ArrowRight size={16} className="shrink-0 transition-transform group-hover:translate-x-1" />
                     </span>
                 </Link>
             ) : (
@@ -358,7 +358,7 @@ export default function TradeXchangePage() {
                     </p>
                 </div>
 
-                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
                     {PILLARS.map((pillar, index) => (
                         <PillarCard key={pillar.title} pillar={pillar} index={index} />
                     ))}

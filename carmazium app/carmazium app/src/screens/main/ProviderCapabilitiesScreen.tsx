@@ -99,7 +99,7 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
       <View style={styles.header}>
         <IconButton style={styles.headerButton} icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Service add-ons</Text>
+        <Text style={styles.headerTitle}>My services</Text>
         <View style={styles.headerButton} />
       </View>
 

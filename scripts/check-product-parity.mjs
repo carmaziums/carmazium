@@ -1016,19 +1016,19 @@ if (
 if (
   !webDealerRoutes.includes('label: "Stock"') ||
   !webDealerRoutes.includes('label: "Customers"') ||
-  !webDealerRoutes.includes('label: "Offers"') ||
+  !webDealerRoutes.includes('label: "Offers received"') ||
   !webDealerRoutes.includes('label: "Partner Account"') ||
   !webDealerRoutes.includes('label: "Service Jobs"') ||
   !mobileDealerDrawer.includes("label: 'Stock'") ||
   !mobileDealerDrawer.includes("label: 'Customers'") ||
-  !mobileDealerDrawer.includes("label: 'Offers'") ||
+  !mobileDealerDrawer.includes("label: 'Offers received'") ||
   !mobileDealerDrawer.includes("label: 'Bids & Offers'") ||
   !mobileDealerDrawer.includes("label: 'Saved'") ||
   !mobileDealerDrawer.includes("label: 'Live Auctions'") ||
   !webDealerRoutes.includes('label: "Finance Calculator"') ||
   !mobileDealerDrawer.includes("label: 'Finance Calculator'") ||
   !mobileDealerCustomers.includes('>Customers</Text>') ||
-  !mobileDealerOffers.includes('>Offers Received</Text>') ||
+  !mobileDealerOffers.includes('>Offers received</Text>') ||
   !mobilePartnerDashboard.includes('>Service Jobs</Text>') ||
   !mobileProviderJobs.includes('>Service Jobs</Text>')
 ) {
