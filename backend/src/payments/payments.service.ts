@@ -1819,52 +1819,11 @@ export class PaymentsService {
 
     /**
      * Issue a partial Stripe refund of £100 to the auction buyer (platform keeps £25).
-     * Called by admin when denying a handover proof.
+     * Legacy compatibility entry point; current handover evidence rejection does
+     * not itself refund a fee. Repeated calls reconcile the original refund.
      */
     async issueRefundForAuction(auctionId: string): Promise<number> {
-        const auction = await this.prisma.auction.findUnique({ where: { id: auctionId } });
-        if (!auction?.buyerFeeTransactionId) return 0;
-
-        const transaction = await this.prisma.transaction.findUnique({
-            where: { id: auction.buyerFeeTransactionId },
-        });
-
-        // A Free Purchase Grant records a legitimate £0 COMMISSION. There is
-        // no Stripe charge to refund when handover proof is denied; keep the
-        // completed waiver in place so the seller may submit corrected proof.
-        if (isAdminGrantedFreePurchaseTransaction(transaction)) return 0;
-        if (!transaction?.stripePaymentId) return 0;
-
-        const stripe = await this.getStripe();
-
-        // Web stores a Checkout Session id (cs_...) while native Payment Sheet
-        // stores the PaymentIntent id (pi_...) directly. Refund the same buyer
-        // fee regardless of which client collected it.
-        let paymentIntentId: string | null = null;
-        if (transaction.stripePaymentId.startsWith('pi_')) {
-            paymentIntentId = transaction.stripePaymentId;
-        } else {
-            const session = await stripe.checkout.sessions.retrieve(transaction.stripePaymentId);
-            paymentIntentId =
-                typeof session.payment_intent === 'string'
-                    ? session.payment_intent
-                    : session.payment_intent?.id ?? null;
-        }
-
-        if (!paymentIntentId) {
-            throw new BadRequestException('Buyer fee payment could not be resolved for refund');
-        }
-
-        await stripe.refunds.create({
-            payment_intent: paymentIntentId,
-            amount: 10000, // £100 in pence — platform keeps the £25 fee
-        });
-
-        await this.prisma.transaction.update({
-            where: { id: auction.buyerFeeTransactionId },
-            data: { status: 'REFUNDED' as any },
-        });
-        return 100;
+        return this.issueAuctionBuyerFeeRefund(auctionId, 10000);
     }
 
     /**
@@ -1873,24 +1832,25 @@ export class PaymentsService {
      * succeeds but the subsequent auction-state transaction has to be retried.
      */
     async issueFullRefundForAuctionInspection(auctionId: string): Promise<number> {
-        return this.issueFullAuctionBuyerFeeRefund(auctionId, 'auction-inspection-refusal');
+        return this.issueAuctionBuyerFeeRefund(auctionId, 12500);
     }
 
     /**
      * Full £125 buyer-fee refund for an approved post-sale cancellation.
-     * Kept separate from inspection refusal so Stripe idempotency keys and
-     * operational audit trails state why the refund happened.
+     * The workflow records the reason; both entry points share a payment-level
+     * retry key so simultaneous review paths cannot initiate separate refunds.
      */
     async issueFullRefundForAuctionCancellation(auctionId: string): Promise<number> {
-        return this.issueFullAuctionBuyerFeeRefund(auctionId, 'auction-sale-cancellation');
+        return this.issueAuctionBuyerFeeRefund(auctionId, 12500);
     }
 
-    private async issueFullAuctionBuyerFeeRefund(
+    private async issueAuctionBuyerFeeRefund(
         auctionId: string,
-        idempotencyPrefix: string,
+        targetPence: 10000 | 12500,
     ): Promise<number> {
         const auction = await this.prisma.auction.findUnique({ where: { id: auctionId } });
         if (!auction?.buyerFeeTransactionId) {
+            if (targetPence === 10000) return 0;
             throw new BadRequestException('No paid auction buyer fee is recorded');
         }
 
@@ -1902,7 +1862,7 @@ export class PaymentsService {
         // closes the audit transaction without attempting an impossible Stripe
         // refund. Returning 0 lets callers accurately report what was refunded.
         if (isAdminGrantedFreePurchaseTransaction(transaction)) {
-            if (transaction?.status !== ('REFUNDED' as any)) {
+            if (targetPence === 12500 && transaction?.status !== ('REFUNDED' as any)) {
                 await this.prisma.transaction.update({
                     where: { id: transaction!.id },
                     data: { status: 'REFUNDED' as any },
@@ -1912,6 +1872,7 @@ export class PaymentsService {
         }
 
         if (!transaction?.stripePaymentId) {
+            if (targetPence === 10000) return 0;
             throw new BadRequestException('Buyer fee payment reference is missing');
         }
 
@@ -1938,21 +1899,31 @@ export class PaymentsService {
             payment_intent: paymentIntentId,
             limit: 100,
         });
+        // Stripe can accept a refund while it is still pending or requires
+        // action. Neither is evidence that money has been returned. Keep the
+        // calling sale/inspection workflow unresolved until a retry confirms it.
+        if (existingRefunds.has_more) {
+            throw new ConflictException('Buyer-fee refund history needs review in Stripe before continuing.');
+        }
+        if (existingRefunds.data.some(refund => !['succeeded', 'failed', 'canceled'].includes(refund.status ?? ''))) {
+            throw new ConflictException('The buyer-fee refund is still pending in Stripe. No additional refund was sent. Retry this action after Stripe confirms completion.');
+        }
         const alreadyRefunded = existingRefunds.data
-            .filter((refund: any) => refund.status !== 'failed' && refund.status !== 'canceled')
-            .reduce((sum: number, refund: any) => sum + Number(refund.amount || 0), 0);
-        const remainingPence = Math.max(0, 12500 - alreadyRefunded);
+            .filter(refund => refund.status === 'succeeded')
+            .reduce((sum, refund) => sum + refund.amount, 0);
+        const remainingPence = Math.max(0, targetPence - alreadyRefunded);
 
         if (remainingPence > 0) {
-            await stripe.refunds.create(
-                {
-                    payment_intent: paymentIntentId,
-                    amount: remainingPence,
-                },
-                {
-                    idempotencyKey: `${idempotencyPrefix}-${transaction.id}-${remainingPence}`,
-                },
+            const refund = await stripe.refunds.create(
+                { payment_intent: paymentIntentId, amount: remainingPence },
+                { idempotencyKey: `auction-buyer-fee-refund-${transaction.id}-${targetPence}-${remainingPence}` },
             );
+            if (refund.status === 'pending' || refund.status === 'requires_action') {
+                throw new ConflictException('The buyer-fee refund is processing in Stripe. Retry this action after Stripe confirms completion.');
+            }
+            if (refund.status !== 'succeeded' || refund.amount !== remainingPence) {
+                throw new ConflictException('The buyer-fee refund has not been confirmed. Review the refund in Stripe before continuing.');
+            }
         }
 
         if (transaction.status !== ('REFUNDED' as any)) {
@@ -1961,7 +1932,7 @@ export class PaymentsService {
                 data: { status: 'REFUNDED' as any },
             });
         }
-        return 125;
+        return targetPence / 100;
     }
 
     /**
