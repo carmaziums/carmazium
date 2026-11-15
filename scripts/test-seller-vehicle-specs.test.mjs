@@ -225,7 +225,7 @@ test("handoff is tab-scoped, consumable and expires after twenty minutes", () =>
 
 test("restored historical invalid specs require details; motorcycles never need hidden body type", () => {
     const { hasCompleteSellerVehicleSpecs } = exports
-    assert.equal(hasCompleteSellerVehicleSpecs({ transmission: "MANUAL", bodyType: "SUV", vehicleType: "CAR" }, carBodies), true)
+    assert.equal(hasCompleteSellerVehicleSpecs({ transmission: "MANUAL", bodyType: "SUV", vehicleType: "CAR", doors: "5", seats: "5" }, carBodies), true)
     assert.equal(hasCompleteSellerVehicleSpecs({ transmission: "", bodyType: "SUV", vehicleType: "CAR" }, carBodies), false)
     assert.equal(hasCompleteSellerVehicleSpecs({ transmission: "MANUAL", bodyType: "HGV_BOX", vehicleType: "CAR" }, carBodies), false)
     assert.equal(hasCompleteSellerVehicleSpecs({ transmission: "CVT", vehicleType: "MOTORCYCLE" }, []), true)

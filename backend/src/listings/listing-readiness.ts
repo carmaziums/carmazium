@@ -76,6 +76,10 @@ export function getListingSubmissionMissingFields(listing: any): string[] {
     if (listing?.vehicleType !== 'MOTORCYCLE' && !listing?.bodyType) {
         missing.push('body type');
     }
+    if (listing?.vehicleType !== 'MOTORCYCLE') {
+        if (!Number.isInteger(listing?.doors) || listing.doors < 2 || listing.doors > 8) missing.push('number of doors');
+        if (!Number.isInteger(listing?.seats) || listing.seats < 1 || listing.seats > 20) missing.push('number of seats');
+    }
     if (!listing?.title || listing.title.trim().length < 5) missing.push('title');
     if (!listing?.location?.trim?.()) missing.push('location');
     if (!listing?.owners?.trim?.()) missing.push('previous keepers');

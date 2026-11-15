@@ -72,7 +72,7 @@ const completeDraft = {
   mileage: '49000', title: 'Ford Focus 2019', location: 'Birmingham',
   fuelType: 'PETROL', transmission: 'MANUAL', bodyType: 'HATCHBACK',
   vehicleType: 'CAR', description: 'Vehicle description', condition: 'GOOD',
-  owners: '2', writeOffCat: 'NONE', stolenRecovered: false,
+  doors: '5', seats: '5', owners: '2', writeOffCat: 'NONE', stolenRecovered: false,
   serviceHistory: 'Partial', numberOfKeys: '0', mechanicalIssues: 'No known faults', electricalIssues: 'No known faults',
   outstandingFinance: false, isLegalKeeper: true, notOwnerRelationship: '',
   isDepartedSale: false, departedRelationship: '', declAcknowledged: true,
@@ -80,7 +80,7 @@ const completeDraft = {
 test('full persisted Step 1 only resumes later step when all mandatory answers survive restart', () => {
   const valid = d => draftHelper.nativeDraftStepOneComplete(d, normalizeNativeTransmission, normalizeNativeBodyType);
   assert.equal(valid(completeDraft), true);
-  for (const field of ['location', 'condition', 'owners', 'writeOffCat', 'description', 'transmission', 'bodyType', 'fuelType', 'serviceHistory', 'numberOfKeys', 'mechanicalIssues', 'electricalIssues']) {
+  for (const field of ['doors', 'seats', 'location', 'condition', 'owners', 'writeOffCat', 'description', 'transmission', 'bodyType', 'fuelType', 'serviceHistory', 'numberOfKeys', 'mechanicalIssues', 'electricalIssues']) {
     assert.equal(valid({ ...completeDraft, [field]: '' }), false, `blank ${field} must re-open details`);
   }
   for (const field of ['stolenRecovered', 'outstandingFinance', 'isLegalKeeper']) {

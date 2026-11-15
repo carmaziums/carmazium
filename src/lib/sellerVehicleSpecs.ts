@@ -62,11 +62,13 @@ export function resolveSellerVehicleSpecs<B extends string>(
 
 /** One shared readiness check for resumed drafts and final seller submissions. */
 export function hasCompleteSellerVehicleSpecs<B extends string>(
-    data: { transmission?: unknown; bodyType?: unknown; vehicleType?: string },
+    data: { transmission?: unknown; bodyType?: unknown; vehicleType?: string; doors?: unknown; seats?: unknown },
     allowedBodyTypes: readonly B[],
 ): boolean {
     if (data.bodyType === "CARAVAN") return !!normalizeSellerBodyType(data.bodyType, allowedBodyTypes)
-    return !!normalizeSellerTransmission(data.transmission)
+    const countsValid = /^\d+$/.test(String(data.doors ?? '').trim()) && Number(data.doors) >= 2 && Number(data.doors) <= 8
+        && /^\d+$/.test(String(data.seats ?? '').trim()) && Number(data.seats) >= 1 && Number(data.seats) <= 20
+    return (data.vehicleType === 'MOTORCYCLE' || countsValid) && !!normalizeSellerTransmission(data.transmission)
         && (data.vehicleType === "MOTORCYCLE" || !!normalizeSellerBodyType(data.bodyType, allowedBodyTypes))
 }
 

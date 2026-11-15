@@ -20,6 +20,8 @@ const completeDraft = {
     bodyType: 'SUV',
     location: 'Birmingham',
     owners: '1',
+    doors: 5,
+    seats: 5,
     numberOfKeys: 2,
     serviceHistory: 'Partial',
     mechanicalIssues: 'No known faults',

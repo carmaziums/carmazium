@@ -1473,6 +1473,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             body: 'body-type-field',
             location: 'listing-required-location',
             mileage: 'listing-required-mileage',
+            doors: 'listing-required-doors',
+            seats: 'listing-required-seats',
             title: 'listing-required-title',
             description: 'listing-required-description',
             confirmation: 'seller-declaration-acknowledged',
@@ -2382,6 +2384,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // ─── Shared ──────────────────────────────────────────────────────────────────
 
     const inputCls = "bg-[var(--bg-input)] border-[var(--border-default)] placeholder:text-[var(--text-secondary)] focus:border-primary text-base md:text-sm"
+    const doorsInvalid = hasAttemptedNext && !isCaravan && (!/^\d+$/.test(formData.doors.trim()) || Number(formData.doors) < 2 || Number(formData.doors) > 8)
+    const seatsInvalid = hasAttemptedNext && !isCaravan && (!/^\d+$/.test(formData.seats.trim()) || Number(formData.seats) < 1 || Number(formData.seats) > 20)
 
     // ─── Login Modal ─────────────────────────────────────────────────────────────
 
@@ -3766,16 +3770,24 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {/* Doors (not for motorcycles) */}
                                 {formData.vehicleType !== 'MOTORCYCLE' && (
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Doors</label>
-                                        <Input type="number" placeholder="e.g. 4" min={2} max={8} value={formData.doors} onChange={(e) => set("doors", e.target.value)} className={inputCls} />
+                                        <label htmlFor="listing-required-doors" className="text-sm font-bold uppercase text-[var(--text-muted)]">Doors{!isCaravan && ' *'}</label>
+                                        <Input id="listing-required-doors" type="number" required={!isCaravan} step={1} placeholder="e.g. 4" min={2} max={8} value={formData.doors} onChange={(e) => set("doors", e.target.value)}
+                                            aria-invalid={doorsInvalid}
+                                            aria-describedby={doorsInvalid ? 'listing-doors-error' : undefined}
+                                            className={`${inputCls} ${doorsInvalid ? 'border-red-500 ring-1 ring-red-500' : ''}`} />
+                                        {doorsInvalid && <p id="listing-doors-error" role="alert" className="text-sm text-red-500">Enter the number of doors (2–8).</p>}
                                     </div>
                                 )}
 
                                 {/* Seats (not for motorcycles) */}
                                 {formData.vehicleType !== 'MOTORCYCLE' && (
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Seats</label>
-                                        <Input type="number" placeholder="e.g. 5" min={1} max={20} value={formData.seats} onChange={(e) => set("seats", e.target.value)} className={inputCls} />
+                                        <label htmlFor="listing-required-seats" className="text-sm font-bold uppercase text-[var(--text-muted)]">Seats{!isCaravan && ' *'}</label>
+                                        <Input id="listing-required-seats" type="number" required={!isCaravan} step={1} placeholder="e.g. 5" min={1} max={20} value={formData.seats} onChange={(e) => set("seats", e.target.value)}
+                                            aria-invalid={seatsInvalid}
+                                            aria-describedby={seatsInvalid ? 'listing-seats-error' : undefined}
+                                            className={`${inputCls} ${seatsInvalid ? 'border-red-500 ring-1 ring-red-500' : ''}`} />
+                                        {seatsInvalid && <p id="listing-seats-error" role="alert" className="text-sm text-red-500">Enter the number of seats (1–20).</p>}
                                     </div>
                                 )}
                             </div>

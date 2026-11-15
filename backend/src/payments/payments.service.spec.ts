@@ -129,6 +129,8 @@ function readyRetailListing(overrides: Record<string, unknown> = {}) {
         bodyType: 'COUPE',
         location: 'Birmingham',
         owners: '1',
+        doors: 5,
+        seats: 5,
         numberOfKeys: 2,
         serviceHistory: 'Partial',
         mechanicalIssues: 'No known faults',
@@ -239,6 +241,17 @@ describe('PaymentsService — createListingSession retail payment gate', () => {
 
         expect(prisma.transaction.create).not.toHaveBeenCalled();
         expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
+    });
+
+    it.each(['doors', 'seats'])('rejects missing %s before hosted or native listing payment', async field => {
+        prisma.listing.findUnique.mockResolvedValue(readyRetailListing({ [field]: null }));
+        await expect(service.createListingSession('BASIC', 'user-1', 'listing-1'))
+            .rejects.toThrow(new RegExp(`number of ${field}`));
+        await expect(service.createPaymentSheet('listing-1', 'user-1', 1, 'LISTING_FEE', 'gbp', 'BASIC'))
+            .rejects.toThrow(new RegExp(`number of ${field}`));
+        expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
+        expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
     });
 
     it('allows hosted checkout when HPI has not been requested', async () => {
