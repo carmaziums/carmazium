@@ -147,11 +147,19 @@ function ProfileContent() {
         if (!bankName.trim() || !bankSortCode.trim() || !bankAccountNumber.trim()) {
             setRoleError("Complete all three bank details before saving."); return
         }
+        const sortCode = bankSortCode.replace(/[\s-]/g, "")
+        const accountNumber = bankAccountNumber.replace(/\s/g, "")
+        if (!/^\d{6}$/.test(sortCode) || !/^\d{8}$/.test(accountNumber)) {
+            setRoleError("Enter a 6-digit UK sort code and an 8-digit account number."); return
+        }
         setBankSaving(true)
         setRoleError(null)
+        setSuccess(null)
         try {
-            await updateBankDetails({ bankAccountName: bankName.trim(), bankSortCode: bankSortCode.trim(), bankAccountNumber: bankAccountNumber.trim() })
-            setSuccess("Payout bank details updated.")
+            await updateBankDetails({ bankAccountName: bankName.trim(), bankSortCode: sortCode, bankAccountNumber: accountNumber })
+            setBankSortCode(sortCode)
+            setBankAccountNumber(accountNumber)
+            setSuccess("Bank details saved for your seller bonus. Payment is arranged after your eligible handover is approved.")
         } catch (error) {
             setRoleError(error instanceof Error ? error.message : "Could not save payout details.")
         } finally {
@@ -620,17 +628,17 @@ function ProfileContent() {
                 <section className="mb-8">
                     <h3 className="text-xl font-bold mb-5">Payouts & bank account</h3>
                     <div className="glass-card p-5 sm:p-7 space-y-6">
-                        <p className="text-sm" style={{ color: "var(--text-muted)" }}>Vehicle buyers pay sellers directly. Use a verified Stripe payout connection for service-job payments. The bank details below are for eligible CarMazium seller incentives.</p>
-                        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--border-default)] p-4">
-                            <div><strong className="block">Stripe payout connection</strong><p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>{stripeStatus?.payoutsEnabled ? "Payouts enabled" : stripeStatus?.connected ? "Connection needs attention or additional onboarding" : stripeStatusFailed ? "We couldn't check your payout status. Refresh the page before connecting." : "Not connected"}</p></div>
-                            <Button variant="outline" onClick={connectStripe} disabled={stripeLoading || !!stripeStatus?.payoutsEnabled}>{stripeLoading ? <Loader2 size={16} className="animate-spin" /> : <ExternalLink size={16} className="mr-2" />}{stripeStatus?.payoutsEnabled ? "Payouts enabled" : stripeStatus?.connected ? "Complete onboarding" : "Connect payout account"}</Button>
-                        </div>
+                        <p className="text-sm" style={{ color: "var(--text-muted)" }}>Vehicle buyers pay sellers directly. Add your bank details below for an eligible £100 CarMazium seller bonus after approved handover. CarMazium can use these details to arrange a bank transfer without you opening a Stripe account. Saving details does not mean a payment has been sent.</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <Field label="Account holder name" value={bankName} onChange={setBankName} />
                             <Field label="Sort code" value={bankSortCode} onChange={setBankSortCode} />
                             <div className="sm:col-span-2"><Field label="Account number" value={bankAccountNumber} onChange={setBankAccountNumber} /></div>
                         </div>
                         <Button onClick={saveBank} disabled={bankSaving}>{bankSaving && <Loader2 size={16} className="animate-spin mr-2" />}Save bank details</Button>
+                        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--border-default)] p-4">
+                            <div><strong className="block">Stripe Connect payouts</strong><p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>For service-provider payments and seller bonuses sent through Stripe Connect. This is separate from the bank details above.</p><p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>{stripeStatus?.payoutsEnabled ? "Payouts enabled" : stripeStatus?.connected ? "Connection needs attention or additional onboarding" : stripeStatusFailed ? "We couldn't check your payout status. Refresh the page before connecting." : "Not connected"}</p></div>
+                            <Button variant="outline" onClick={connectStripe} disabled={stripeLoading || !!stripeStatus?.payoutsEnabled}>{stripeLoading ? <Loader2 size={16} className="animate-spin" /> : <ExternalLink size={16} className="mr-2" />}{stripeStatus?.payoutsEnabled ? "Payouts enabled" : stripeStatus?.connected ? "Complete onboarding" : "Connect payout account"}</Button>
+                        </div>
                     </div>
                 </section>
             )}

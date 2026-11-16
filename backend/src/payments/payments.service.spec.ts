@@ -668,6 +668,13 @@ describe('PaymentsService — createPaymentSheet (F2: server-side amount, ignore
         },
     );
 
+    it('rejects a non-GBP auction fee before reserving or charging it', async () => {
+        await expect(service.createCheckoutSession('listing-1', 'user-1', 125, 'COMMISSION', 'usd'))
+            .rejects.toThrow('must be paid in GBP');
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
+        expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
+    });
+
     it('charges the fixed £125 auction buyer fee for COMMISSION regardless of client-supplied amount', async () => {
         prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null });
         prisma.auction.findFirst.mockResolvedValue({
@@ -1378,6 +1385,11 @@ describe('PaymentsService — createCheckoutSession (F6: server-side amount, sam
         });
 
         await service.createCheckoutSession('listing-1', 'user-1', 1, 'COMMISSION', 'gbp');
+        const checkout = mockCheckoutSessionsCreate.mock.calls[0][0];
+        expect(checkout).not.toHaveProperty('payment_method_types');
+        expect(checkout).not.toHaveProperty('payment_intent_data.transfer_data');
+        expect(checkout.line_items[0].price_data.currency).toBe('gbp');
+
 
         expect(mockCheckoutSessionsCreate).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -1645,3 +1657,46 @@ describe('PaymentsService — confirmed status-only listing fee reconciliation',
     });
 });
 
+
+
+describe('PaymentsService — Pay by Bank settlement gate for every hosted product', () => {
+    let service: PaymentsService;
+    let prisma: any;
+    beforeEach(async () => {
+        mockConstructEvent.mockReset();
+        mockHpiCreatePendingReport.mockReset();
+        prisma = buildPrismaMock();
+        const module = await buildModule(prisma);
+        service = module.get<PaymentsService>(PaymentsService);
+    });
+
+    it.each(['COMMISSION', 'LISTING_FEE', 'SERVICE_JOB', 'HPI_REPORT', 'HPI_REPORT_EMAIL', 'KYC_VERIFICATION', 'FEATURED_BOOST'])(
+        'does not fulfill %s when bank authorization completes without confirmed funds', async type => {
+            const kyc = jest.spyOn(service as any, 'markKycFeePaid').mockResolvedValue(undefined);
+            const serviceJob = jest.spyOn(service as any, 'markServiceJobPaid').mockResolvedValue(undefined);
+            mockConstructEvent.mockReturnValue({
+                type: 'checkout.session.completed',
+                data: { object: { id: 'cs_bank_pending', payment_status: 'unpaid',
+                    metadata: { type, transactionId: 'txn-1', listingId: 'listing-1',
+                        boostId: 'boost-1', kycId: 'kyc-1', jobId: 'job-1', paymentId: 'payment-1' } } },
+            });
+            await service.handleWebhook(Buffer.from('{}'), 'sig');
+            expect(prisma.transaction.update).not.toHaveBeenCalled();
+            expect(prisma.listing.update).not.toHaveBeenCalled();
+            expect(kyc).not.toHaveBeenCalled();
+            expect(serviceJob).not.toHaveBeenCalled();
+            expect(mockHpiCreatePendingReport).not.toHaveBeenCalled();
+        },
+    );
+
+    it('records a failed bank attempt only while the transaction is pending', async () => {
+        mockConstructEvent.mockReturnValue({ type: 'checkout.session.async_payment_failed',
+            data: { object: { id: 'cs_bank_failed', metadata: { type: 'COMMISSION', transactionId: 'txn-1' } } },
+        });
+        await service.handleWebhook(Buffer.from('{}'), 'sig');
+        expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
+            where: { id: 'txn-1', status: 'PENDING' }, data: { status: 'FAILED' },
+        });
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+});
