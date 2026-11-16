@@ -1281,7 +1281,7 @@ export class ServicesService {
         }
 
         const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
+            // Stripe settings select eligible cards and bank payment methods.
             mode: 'payment',
             line_items: [{
                 price_data: {

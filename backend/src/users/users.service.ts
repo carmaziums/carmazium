@@ -1,4 +1,5 @@
 import { DELETED_EMAIL_DOMAIN, SELF_DELETED_PASSWORD_MARKER } from './account-deletion';
+import { normalizeBankDetails } from './bank-details';
 import {
     Injectable,
     NotFoundException,
@@ -1264,6 +1265,7 @@ export class UsersService {
             payoutPreference?: string;
         },
     ) {
+        dto = normalizeBankDetails(dto);
         const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
         if (!user) throw new NotFoundException('User not found');
 

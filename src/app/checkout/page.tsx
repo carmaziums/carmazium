@@ -326,7 +326,7 @@ function CheckoutContent() {
                         ) : (
                             <>
                                 <Lock size={20} />
-                                Pay £{AUCTION_BUYER_FEE} Buyer Fee
+                                Pay £{AUCTION_BUYER_FEE} to CarMazium
                             </>
                         )}
                     </Button>

@@ -497,6 +497,10 @@ export class PaymentsService {
             );
         }
 
+        if (currency.toLowerCase() !== 'gbp') {
+            throw new BadRequestException('The auction buyer fee must be paid in GBP.');
+        }
+
         const listing = await this.prisma.listing.findUnique({
             where: { id: listingId },
         });
@@ -547,7 +551,7 @@ export class PaymentsService {
         };
 
         const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
+            // Eligible methods (including Pay by Bank) are controlled in Stripe settings.
             mode: 'payment',
             line_items: [
                 {
@@ -635,7 +639,7 @@ export class PaymentsService {
         });
 
         const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
+            // Eligible methods (including Pay by Bank) are controlled in Stripe settings.
             mode: 'payment',
             line_items: [
                 {
@@ -707,7 +711,7 @@ export class PaymentsService {
         });
 
         const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
+            // Eligible methods (including Pay by Bank) are controlled in Stripe settings.
             mode: 'payment',
             line_items: [
                 {
@@ -1290,17 +1294,10 @@ export class PaymentsService {
                 const session = event.data.object;
                 const { transactionId, listingId, type, boostId, kycId } = session.metadata ?? {};
 
-                // A completed checkout may still be unpaid when using a delayed
-                // payment method. Only Stripe-confirmed funds may unlock Retail.
-                if (type === 'LISTING_FEE' && session.payment_status !== 'paid') {
-                    this.logger.warn('Keeping unpaid retail checkout pending: ' + session.id);
-                    break;
-                }
-
-                // Checkout completion is not always payment settlement.
-                // A delayed/async buyer fee must never unlock an auction before Stripe confirms payment.
-                if (type === 'COMMISSION' && session.payment_status !== 'paid') {
-                    this.logger.warn('Ignoring unpaid auction Checkout completion: ' + session.id);
+                // All Checkout products must wait for confirmed funds. Bank
+                // authorization / completed checkout alone is not settlement.
+                if (session.payment_status !== 'paid') {
+                    this.logger.warn('Keeping unpaid checkout pending: ' + session.id);
                     break;
                 }
 
