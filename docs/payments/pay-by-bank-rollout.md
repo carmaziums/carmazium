@@ -1,6 +1,6 @@
 # Pay by Bank and seller bank payouts
 
-Status: prepared changes; provider activation and end-to-end bank testing are outstanding. No real payments or payouts were initiated during development.
+Status: code prepared and automated checks passed; Pay by Bank is enabled in the actual Carmazium live account. End-to-end bank testing is outstanding. No real payments or payouts were initiated during development.
 
 ## Incoming platform payments
 
@@ -8,14 +8,16 @@ The £125 GBP winning dealer fee and service-job hosted checkouts now use Stripe
 
 All hosted products handled by the payments webhook must have payment_status=paid before fulfillment. Existing signed webhooks handle later success and failure events. Existing auction eligibility, winner authorization, fee reservation and payout duplicate guards remain in place.
 
-Provider status checked on 16 November 2026: the connected Mazium live account has Pay by Bank set off/unavailable in its default payment-method configuration. No v2 money-management financial accounts were returned. The Stripe Dashboard requires sign-in; activation was not attempted with fabricated details.
+Provider status checked on 16 November 2026: Pay by Bank is ENABLED in the actual Carmazium live account's default payment-method configuration. An earlier connector read referred to a different account named Mazium; it is not evidence about production Carmazium and no settings were changed in that account.
 
-Before release:
+The existing production Fly webhook was verified active with 75 deliveries and zero failures for the displayed week. Its subscriptions were extended from four to eighteen events, retaining the original four and adding checkout.session.async_payment_succeeded/failed, payment_intent.succeeded/canceled, refund.created/updated/failed, transfer.created/updated/reversed, charge.dispute.created/updated/closed and charge.refunded. The endpoint URL, signing secret and API version were not changed.
 
-1. Sign in to the Mazium Stripe Dashboard and activate Pay by Bank in Payment methods, completing any provider requirements.
-2. Review the other enabled methods because dynamic Checkout can display other eligible Dashboard-enabled methods. Card payment remains available.
-3. In an authorized Stripe sandbox, test paid, pending, cancelled, failed and duplicate webhook cases for the £125 dealer fee, listing fees, warranties and service jobs. Verify exact amounts, payee, receipt and auction status. A checkout return URL alone is never proof of payment.
-4. Deploy through the normal repository CI and verify that live Checkout offers Pay by Bank to an eligible UK customer. Do not create real fees or charge customers merely for QA.
+Stripe Checkout branding was updated with the repository's official CarMazium logo, a white background, accessible red button (#c91620), Inter typography and rounded controls. Customer support email/URL and existing terms/privacy URLs were supplied and enabled on Checkout. The generic statement descriptor is now CARMAZIUM instead of CARMAZIUM SELLER FEE.
+
+Release validation:
+
+1. Deploy through the normal repository CI and verify that live Checkout offers Pay by Bank to an eligible UK customer. Do not create real fees or charge customers merely for QA.
+2. In an authorized Stripe sandbox, test paid, pending, cancelled, failed and duplicate webhook cases for the £125 dealer fee, listing fees, warranties and service jobs. Verify exact amounts, payee, receipt and auction status. A checkout return URL alone is never proof of payment.
 
 ## Seller bonus payouts
 
