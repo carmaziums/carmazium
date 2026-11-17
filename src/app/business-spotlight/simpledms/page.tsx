@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { ArrowLeft, CheckCircle2, Mail } from "lucide-react"
+import { ArrowLeft, ArrowUpRight, CheckCircle2, Mail } from "lucide-react"
 import { businessSpotlights } from "@/lib/businessSpotlights"
 
 const business = businessSpotlights.find((item) => item.slug === "simpledms")!
@@ -8,7 +8,7 @@ const business = businessSpotlights.find((item) => item.slug === "simpledms")!
 export const metadata: Metadata = {
   title: "SimpleDMS | Dealer Management Software | CarMazium",
   description:
-    "Discover SimpleDMS, a mobile-first dealer management platform for independent UK used-car dealers, featured in CarMazium Business Spotlight.",
+    "Discover SimpleDMS BuySmart buying intelligence and dealer management for independent UK used-car dealers in CarMazium Business Spotlight.",
   alternates: { canonical: "/business-spotlight/simpledms" },
 }
 
@@ -27,10 +27,10 @@ export default function SimpleDmsSpotlight() {
           <p className="mt-5 max-w-3xl text-2xl font-semibold text-[#b3eee8]">{business.strapline}</p>
           <p className="mt-6 max-w-3xl text-base leading-8 text-slate-200">{business.summary}</p>
           <a
-            href={`mailto:${business.email}?subject=SimpleDMS%20Enquiry%20via%20CarMazium`}
+            href={business.website} target="_blank" rel="noopener noreferrer sponsored"
             className="mt-8 inline-flex min-h-12 items-center gap-2 rounded-lg bg-[#38b4a6] px-6 py-3 font-bold text-[#0c2f3f] transition hover:bg-[#8de9df]"
           >
-            <Mail size={18} aria-hidden="true" /> Enquire with SimpleDMS
+            <ArrowUpRight size={18} aria-hidden="true" /> Explore SimpleDMS BuySmart
           </a>
         </div>
       </section>
@@ -39,7 +39,7 @@ export default function SimpleDmsSpotlight() {
         <div>
           <h2 className="text-2xl font-black tracking-tight sm:text-3xl">What SimpleDMS offers</h2>
           <p className="mt-4 text-sm leading-7 text-[var(--text-secondary)]">
-            SimpleDMS provides dealer-management software designed for independent used-car dealerships, helping teams manage stock, customer enquiries and sales activity through a connected workspace. Confirm availability and subscription details directly with SimpleDMS.
+            SimpleDMS combines buying intelligence with dealership-management services. Its BuySmart promotional material presents auction research, vehicle history and buying guidance. Confirm available products and subscription details directly with SimpleDMS.
           </p>
           <ul className="mt-7 space-y-5">
             {business.highlights.map((highlight) => (
@@ -54,7 +54,7 @@ export default function SimpleDmsSpotlight() {
           <p className="text-xs font-black uppercase tracking-[0.12em] text-[#2bab9e]">For independent motor dealers</p>
           <h2 className="mt-3 text-2xl font-black">Talk to SimpleDMS</h2>
           <p className="mt-4 text-sm leading-7 text-[var(--text-secondary)]">
-            Ask about the dealer software, supported features, onboarding and current pricing.
+            Explore BuySmart or ask SimpleDMS directly about its services, onboarding and current pricing.
           </p>
           <a href={`mailto:${business.email}`} className="mt-6 block break-all font-bold text-[#2b9f94] underline underline-offset-4">
             {business.email}
