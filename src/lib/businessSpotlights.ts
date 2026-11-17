@@ -11,6 +11,7 @@ export type BusinessSpotlight = {
   strapline: string
   summary: string
   email: string
+  website?: string
   priceNote?: string
   highlights: string[]
   featured: boolean
@@ -38,15 +39,16 @@ export const businessSpotlights: BusinessSpotlight[] = [
     slug: "simpledms",
     name: "SimpleDMS",
     category: "Dealer management software",
-    strapline: "Your dealership in your pocket.",
+    strapline: "Buying intelligence for UK dealers.",
     summary:
-      "SimpleDMS is a mobile-first dealer management platform for UK independent used-car dealers, bringing stock, leads, customer records, deals and invoicing into one workspace.",
+      "SimpleDMS brings buying intelligence and dealer management together for independent UK car dealers, including stock, customers, deals and dealer websites, from phone or desktop.",
     email: "info@simpledms.co.uk",
+    website: "https://www.simpledms.co.uk/buysmart?utm_source=carmazium&utm_medium=referral&utm_campaign=partners_page",
     highlights: [
-      "Vehicle stock, leads and customer records",
-      "Sales deals and invoicing workflows",
-      "Connected dealer website options",
-      "Mobile-friendly dealership management",
+      "Buying intelligence and auction research for dealers",
+      "Vehicle stock, customer and deal management",
+      "Dealer website options",
+      "Accessible from phone or desktop",
     ],
     featured: true,
   },
