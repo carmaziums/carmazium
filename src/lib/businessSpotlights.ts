@@ -12,6 +12,9 @@ export type BusinessSpotlight = {
   summary: string
   email: string
   website?: string
+  logoUrl?: string
+  bannerDesktopUrl?: string
+  bannerMobileUrl?: string
   priceNote?: string
   highlights: string[]
   featured: boolean
@@ -44,6 +47,9 @@ export const businessSpotlights: BusinessSpotlight[] = [
       "SimpleDMS brings buying intelligence and dealer management together for independent UK car dealers, including stock, customers, deals and dealer websites, from phone or desktop.",
     email: "info@simpledms.co.uk",
     website: "https://www.simpledms.co.uk/buysmart?utm_source=carmazium&utm_medium=referral&utm_campaign=partners_page",
+    logoUrl: "/assets/partners/simpledms/SimpleDMS-SD-Logo.png",
+    bannerDesktopUrl: "/assets/partners/simpledms/SimpleDMS-BuySmart-Desktop-1920x960.png",
+    bannerMobileUrl: "/assets/partners/simpledms/SimpleDMS-BuySmart-Mobile-1080x1920.png",
     highlights: [
       "Buying intelligence and auction research for dealers",
       "Vehicle stock, customer and deal management",
