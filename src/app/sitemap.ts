@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next"
 import { serverBackendFetch } from "@/lib/serverBackendFetch"
+import { businessSpotlights } from "@/lib/businessSpotlights"
 
 // Keep the established, working sitemap URL and the site's www canonical host.
 const BASE_URL = "https://www.carmazium.com"
@@ -32,6 +33,8 @@ const STATIC_ROUTES = [
     "/download-app",
     "/contact",
     "/services",
+    "/business-spotlight",
+    ...businessSpotlights.map((business) => `/business-spotlight/${business.slug}`),
     "/services/delivery",
     "/services/inspection",
     "/services/finance",

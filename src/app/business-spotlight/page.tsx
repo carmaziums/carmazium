@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
+import Image from "next/image"
 import Link from "next/link"
-import { ArrowRight, Building2, Mail } from "lucide-react"
+import { ArrowRight, ArrowUpRight, Building2, Mail } from "lucide-react"
 import { businessSpotlights } from "@/lib/businessSpotlights"
 
 export const metadata: Metadata = {
@@ -38,11 +39,26 @@ export default function BusinessSpotlightDirectory() {
                 <span className="inline-flex rounded-full border border-[#7be4d8]/50 bg-[#2da99b]/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-[#aaf0e8]">
                   {business.category}
                 </span>
+                {business.logoUrl && (
+                  <Image src={business.logoUrl} alt="Official SimpleDMS brand logo" width={800} height={188} sizes="(max-width: 640px) 80vw, 340px" className="mt-5 h-auto w-full max-w-[340px]" />
+                )}
                 <h3 className="mt-5 text-3xl font-black tracking-tight">{business.name}</h3>
                 <p className="mt-2 text-lg font-semibold text-[#b3eee8]">{business.strapline}</p>
               </div>
               <div className="p-7 sm:p-9">
                 <p className="text-sm leading-7 text-[var(--text-secondary)]">{business.summary}</p>
+                {business.bannerDesktopUrl && (
+                  <div className="mt-6 overflow-hidden rounded-xl border border-[var(--border-default)] bg-[#06121e]">
+                    <Image
+                      src={business.bannerDesktopUrl}
+                      alt="SimpleDMS BuySmart original advertisement with example buying research reports"
+                      width={1920}
+                      height={960}
+                      sizes="(max-width: 1024px) 100vw, 550px"
+                      className="h-auto w-full"
+                    />
+                  </div>
+                )}
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
                     href={`/business-spotlight/${business.slug}`}
@@ -50,6 +66,16 @@ export default function BusinessSpotlightDirectory() {
                   >
                     Read business profile <ArrowRight size={16} aria-hidden="true" />
                   </Link>
+                  {business.website && (
+                    <a
+                      href={business.website}
+                      target="_blank"
+                      rel="noopener noreferrer sponsored"
+                      className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] px-5 py-3 text-sm font-bold transition hover:bg-[var(--bg-hover)]"
+                    >
+                      Visit BuySmart <ArrowUpRight size={16} aria-hidden="true" />
+                    </a>
+                  )}
                   <a
                     href={`mailto:${business.email}`}
                     className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border-default)] px-5 py-3 text-sm font-semibold transition hover:bg-[var(--bg-hover)]"
