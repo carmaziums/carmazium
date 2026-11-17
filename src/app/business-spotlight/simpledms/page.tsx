@@ -1,7 +1,9 @@
 import type { Metadata } from "next"
+import Image from "next/image"
 import Link from "next/link"
 import { ArrowLeft, ArrowUpRight, CheckCircle2, Mail } from "lucide-react"
 import { businessSpotlights } from "@/lib/businessSpotlights"
+import { SimpleDmsBanner } from "@/components/features/SimpleDmsBanner"
 
 const business = businessSpotlights.find((item) => item.slug === "simpledms")!
 
@@ -23,7 +25,10 @@ export default function SimpleDmsSpotlight() {
           <p className="mt-8 text-xs font-black uppercase tracking-[0.18em] text-[#8be2d9]">
             CarMazium featured business partner • Dealer management software
           </p>
-          <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-6xl">{business.name}</h1>
+          <div className="mt-7 w-full max-w-[360px]">
+            <Image src="/assets/partners/simpledms/SimpleDMS-SD-Logo.png" alt="Official SimpleDMS logo" width={800} height={188} sizes="(max-width: 640px) 90vw, 360px" className="h-auto w-full" />
+          </div>
+          <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-6xl">{business.name} BuySmart</h1>
           <p className="mt-5 max-w-3xl text-2xl font-semibold text-[#b3eee8]">{business.strapline}</p>
           <p className="mt-6 max-w-3xl text-base leading-8 text-slate-200">{business.summary}</p>
           <a
@@ -35,11 +40,27 @@ export default function SimpleDmsSpotlight() {
         </div>
       </section>
 
+      <section aria-labelledby="simpledms-banner-heading" className="container mx-auto max-w-6xl px-5 pt-12">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.15em] text-[#208c85] dark:text-[#8be2d9]">Official partner promotional artwork</p>
+            <h2 id="simpledms-banner-heading" className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">Discover BuySmart</h2>
+          </div>
+          <a href={business.website} target="_blank" rel="noopener noreferrer sponsored" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#16756f] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#105c57]">
+            See BuySmart in action <ArrowUpRight size={18} aria-hidden="true" />
+          </a>
+        </div>
+        <SimpleDmsBanner />
+        <p className="mt-3 text-xs leading-6 text-[var(--text-muted)]">
+          Supplier-provided advertisement. Vehicle examples, numbers and report values shown in the artwork are illustrative. Some third-party features require separate dealer authorisation.
+        </p>
+      </section>
+
       <section className="container mx-auto grid max-w-6xl gap-10 px-5 py-14 lg:grid-cols-[1.25fr_0.75fr]">
         <div>
           <h2 className="text-2xl font-black tracking-tight sm:text-3xl">What SimpleDMS offers</h2>
           <p className="mt-4 text-sm leading-7 text-[var(--text-secondary)]">
-            SimpleDMS combines buying intelligence with dealership-management services. Its BuySmart promotional material presents auction research, vehicle history and buying guidance. Confirm available products and subscription details directly with SimpleDMS.
+            {business.summary} Confirm available features, pricing and any third-party data permissions directly with SimpleDMS.
           </p>
           <ul className="mt-7 space-y-5">
             {business.highlights.map((highlight) => (
@@ -56,9 +77,10 @@ export default function SimpleDmsSpotlight() {
           <p className="mt-4 text-sm leading-7 text-[var(--text-secondary)]">
             Explore BuySmart or ask SimpleDMS directly about its services, onboarding and current pricing.
           </p>
-          <a href={`mailto:${business.email}`} className="mt-6 block break-all font-bold text-[#2b9f94] underline underline-offset-4">
-            {business.email}
+          <a href={business.website} target="_blank" rel="noopener noreferrer sponsored" className="mt-6 block break-all font-bold text-[#2b9f94] underline underline-offset-4">
+            Visit SimpleDMS BuySmart
           </a>
+          <a href={`mailto:${business.email}`} className="mt-4 block break-all text-sm font-semibold text-[#2b9f94] underline underline-offset-4">{business.email}</a>
         </aside>
       </section>
 
