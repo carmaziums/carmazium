@@ -34,6 +34,22 @@ export const businessSpotlights: BusinessSpotlight[] = [
     ],
     featured: true,
   },
+  {
+    slug: "simpledms",
+    name: "SimpleDMS",
+    category: "Dealer management software",
+    strapline: "Your dealership in your pocket.",
+    summary:
+      "SimpleDMS is a mobile-first dealer management platform for UK independent used-car dealers, bringing stock, leads, customer records, deals and invoicing into one workspace.",
+    email: "info@simpledms.co.uk",
+    highlights: [
+      "Vehicle stock, leads and customer records",
+      "Sales deals and invoicing workflows",
+      "Connected dealer website options",
+      "Mobile-friendly dealership management",
+    ],
+    featured: true,
+  },
 ]
 
 export function featuredBusinessSpotlight(): BusinessSpotlight | undefined {
