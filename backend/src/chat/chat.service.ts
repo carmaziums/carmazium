@@ -1,5 +1,5 @@
 import { SupportMessageEvents } from './support-message-events';
-import { supportReplyPlan, SUPPORT_UNAVAILABLE_REPLY } from './support-automatic-responses';
+import { supportReplyPlan, SUPPORT_UNAVAILABLE_REPLY, HUMAN_HANDOFF_REPLY } from './support-automatic-responses';
 import { BadRequestException, Optional, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BlockChatRoomDto, CreateRoomDto, OpenDisputeDto, ReportChatMessageDto, SendChatAttachmentDto, SendMessageDto, UpdateChatReportDto } from './dto';
@@ -2603,7 +2603,7 @@ export class ChatService {
         roomId: string,
         senderId: string,
         dto: SendMessageDto,
-    ): Promise<{ message: any; created: boolean }> {
+    ): Promise<{ message: any; created: boolean; automaticReply?: any }> {
         const room = await this.assertCanMessageRoom(roomId, senderId);
         if (dto.clientMessageId?.startsWith('mazium-support-')) {
             throw new BadRequestException('This message identifier is reserved for CarMazium system messages.');
@@ -2689,10 +2689,30 @@ export class ChatService {
             }
         }
 
-        if (room.context === ChatContext.SUPPORT && !supportSenderIsAdmin) {
+        // A customer asking for a person must receive an actual persisted reply
+        // in the same request, not merely a status banner or an optional worker
+        // event. The existing fixed-reply persistence enforces bot identity,
+        // room locking, opt-out and one receipt per source message.
+        let automaticReply: any | undefined;
+        const humanHandoff = room.context === ChatContext.SUPPORT
+            && !supportSenderIsAdmin && requestsHumanSupport(dto.content);
+        if (humanHandoff) {
+            try {
+                const botId = process.env.MAZIUM_SUPPORT_BOT_USER_ID;
+                if (botId) {
+                    const result = await this.persistSupportAutoReply(
+                        roomId, message.id, botId, HUMAN_HANDOFF_REPLY, 'FIXED',
+                    );
+                    if (result.created) automaticReply = result.message;
+                }
+            } catch (error) {
+                console.warn('[ChatService] Immediate human-support acknowledgement failed; recovery will retry', error);
+            }
+        }
+        if (room.context === ChatContext.SUPPORT && !supportSenderIsAdmin && !automaticReply) {
             this.supportEvents?.publish(roomId, message.id);
         }
-        return { message, created: true };
+        return { message, created: true, automaticReply };
     }
 
     private assertIdempotentAttachmentMatches(
