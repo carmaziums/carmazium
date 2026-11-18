@@ -362,7 +362,7 @@ export class ChatController {
         @Body() sendMessageDto: SendMessageDto,
     ) {
         await this.chatRateLimit.consumeMessage(user.id);
-        const { message, created } = await this.chatService.sendMessage(
+        const { message, created, automaticReply } = await this.chatService.sendMessage(
             roomId,
             user.id,
             sendMessageDto,
@@ -373,6 +373,9 @@ export class ChatController {
         // same realtime broadcast as WebSocket-saved messages.
         if (created) {
             this.chatGateway.broadcastMessage(roomId, message);
+        }
+        if (automaticReply) {
+            this.chatGateway.broadcastMessage(roomId, automaticReply);
         }
 
         return new StandardResponse(message);
