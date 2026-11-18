@@ -10,6 +10,7 @@ import { X, Send, Search, ArrowRight, Flag, ShieldCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
+import Link from "next/link"
 
 import { useAuth } from "@/context/AuthContext"
 import { aiChat, reportAiResponse, type AiReportReason } from "@/lib/aiApi"
@@ -379,7 +380,7 @@ export function MaziumWidget() {
                                                     try {
                                                         const url = new URL(href || '', 'https://www.carmazium.com')
                                                         if (href && ['https://www.carmazium.com', 'https://carmazium.com'].includes(url.origin)) {
-                                                            return <a href={url.pathname + url.search + url.hash} className="font-medium underline underline-offset-2">{children}</a>
+                                                            return <Link href={url.pathname + url.search + url.hash} className="font-medium underline underline-offset-2">{children}</Link>
                                                         }
                                                     } catch { /* Render unsupported destinations as plain text. */ }
                                                     return <span>{children}</span>
