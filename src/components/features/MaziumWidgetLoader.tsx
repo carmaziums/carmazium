@@ -24,7 +24,9 @@ export function MaziumWidgetLoader() {
     const [ready, setReady] = React.useState(false)
 
     React.useEffect(() => {
-        setReady(false)
+        // Defer only the first mount. Unmounting on each route change discards
+        // the active conversation, composer and pending answer.
+        if (ready) return
 
         // /sell is a paid-search landing page. Keep MaziuM available, but do
         // not let its larger chat chunk compete with the valuation form,
@@ -46,7 +48,7 @@ export function MaziumWidgetLoader() {
 
         const id = window.setTimeout(() => setReady(true), 1200)
         return () => window.clearTimeout(id)
-    }, [pathname])
+    }, [pathname, ready])
 
     return ready ? <MaziumWidget /> : null
 }
