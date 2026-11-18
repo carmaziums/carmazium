@@ -154,7 +154,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         facts: [
             'Where a participating listing offers finance, buyers select Apply for Finance on that listing; the first referral form collects their name, email and phone, then continues to the provider selected by CarMazium admin.',
             'The listing finance calculator/badge is seller-configurable where supported. Current customer route for general explanation: /services/finance.',
-            'CarMazium does not lend money, approve credit or guarantee eligibility or rates. The appointed finance provider handles the formal application, disclosures and decisions.',
+            'CarMazium does not lend money, approve credit or guarantee eligibility or rates. The appointed finance partner handles the formal application and disclosures; finance remains subject to status and lender approval. Do not assume that a referral or broking partner is itself the lender or makes the final lending decision.',
             'Finance providers seeking integration/partnership contact the CarMazium team directly, not an ordinary dealership self-service provider registration.'
         ].join(' '),
         sources: ['src/app/services/finance/page.tsx','src/components/finance/FinanceReferralForm.tsx','backend/src/ai/ai.service.ts']

@@ -901,12 +901,13 @@
     "messages": [
       {
         "role": "user",
-        "content": "Is CarMazium the lender?"
+        "content": "Is CarMazium the lender, and does the finance referral partner guarantee the final lending decision?"
       }
     ],
     "must": [
       "not|no",
-      "lender|Jigsaw|finance"
+      "lender|Jigsaw|finance",
+      "lender.{0,45}(approval|decision)|approval.{0,30}lender"
     ]
   },
   {
