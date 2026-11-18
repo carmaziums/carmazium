@@ -3,7 +3,7 @@
   "sources": {
     "backend/prisma/schema.prisma": "096f6a9e2deb2749d4a761a40a792f5a4e0531814e26b01f2bbf55e55b600683",
     "backend/src/ai/ai.controller.ts": "9ff65932480e9a99085249bed84354ac513965877b380b25f54f1c6293ad4011",
-    "backend/src/ai/ai.service.ts": "c7d1ce68b8d36c0c01a6b175d466b6acd5c60f3a9efe1e798ea5d28e563db697",
+    "backend/src/ai/ai.service.ts": "d8cd1811e762fb938da6810c598642303a69bf924dcbf9191391c0b2bbff6a40",
     "backend/src/ai/search-filter-contract.ts": "c5a2069778baacf2acaf9de36087009b9f3782a803b226b97a678cb4cc69a8d8",
     "backend/src/chat/chat.service.ts": "44b015a35b6124018d43cf095a108d50730c6bafc7a89a58983c11aa46179f89",
     "backend/src/chat/support-automatic-responses.ts": "b793b1c6b08ce0318dcd544f6fcd2718d0c679676cf45510b1056d45cc902bde",

@@ -453,8 +453,8 @@ export class AiService {
     ): Promise<string | null> {
         if (!this.configService.get<string>('OPENAI_API_KEY')) return null;
         const latest = [...messages].reverse().find((m) => m.role === 'user');
-        if (!latest?.content.trim() || !(await this.supportTextIsSafe(latest.content))) return null;
-        const context = boundedConversation(messages);
+        if (!latest?.content.trim() || !(await this.supportTextIsSafe(redactMaziumText(latest.content)))) return null;
+        const context = boundedConversation(messages).map(m => ({ ...m, content: redactMaziumText(m.content) }));
         if (!(await this.supportTextIsSafe(context.map(m => m.content).join('\n')))) return null;
         const result = await this.chatCompletion(context, { userId: options.userId });
         if (!result.text || result.text.length > 6000 || hasUnverifiedNavigationPath(result.text) ||

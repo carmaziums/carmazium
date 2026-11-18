@@ -27,6 +27,23 @@ describe('automatic support delivery', () => {
         expect(ai.draftSupportReply).not.toHaveBeenCalled();
         expect(chat.persistSupportAutoReply).toHaveBeenCalledWith('room', 'source', 'bot', SUPPORT_UNAVAILABLE_REPLY, 'FIXED');
     });
+    it('preserves follow-up context while withholding earlier sensitive messages and attachments', async () => {
+        const { service, chat, ai } = setup({ kind: 'AI' });
+        chat.getRoomMessages.mockResolvedValue({ data: [
+            { senderId: 'customer', content: 'I am a private buyer.' },
+            { senderId: 'bot', content: 'You can use Retail.' },
+            { senderId: 'customer', content: 'my password is private' },
+            { senderId: 'customer', content: 'Attachment', attachmentPath: 'private-document' },
+            { senderId: 'customer', content: 'And what does that cost?' },
+        ] } as any);
+        await service.processCustomerMessage('room', 'source');
+        expect(chat.getRoomMessages).toHaveBeenCalledWith('room', 'customer', 1, 40);
+        const context = ai.draftSupportReply.mock.calls[0][0];
+        expect(context[0]).toEqual({ role: 'user', content: 'I am a private buyer.' });
+        expect(context[1].role).toBe('assistant');
+        expect(context.at(-1).content).toBe('And what does that cost?');
+        expect(JSON.stringify(context)).not.toMatch(/password is private|private-document|Attachment/);
+    });
     it('never broadcasts a reply rejected by the final race/duplicate check', async () => {
         const { service, chat, gateway } = setup({ kind: 'AI' });
         chat.persistSupportAutoReply.mockResolvedValue({ created: false, reason: 'SOURCE_CHANGED_OR_SENSITIVE' } as any);

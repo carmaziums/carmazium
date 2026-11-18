@@ -28,7 +28,7 @@ describe('MaziuM authenticated tools', () => {
  });
  it('verified finance managers can view trade but cannot place bids', async () => {
   const db=setup('DEALER');db.dealerStaff.findFirst.mockResolvedValue({role:'FINANCE_MANAGER',dealerProfile:{id:'d',userId:'owner',isVerified:true}});
-  expect(await runMaziumTool(db,'staff','read_my_account',{})).toMatchObject({canViewTrade:true,canPlaceBid:false});
+  expect(await runMaziumTool(db,'staff','read_my_account',{})).toMatchObject({dealerStaffRole:'FINANCE_MANAGER',canViewTrade:true,canPlaceBid:false});
  });
  it('unverified dealership owners cannot place bids', async () => {
   const db=setup('DEALER');db.dealerProfile.findUnique.mockResolvedValue({id:'d',userId:'owner',isVerified:false});

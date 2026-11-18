@@ -122,7 +122,8 @@ export function supportAutoReplyClientMessageId(incomingMessageId: string): stri
  */
 export function requestsHumanSupport(message: string): boolean {
     return [
-        /\b(human|real person|actual person|live agent|support agent|staff member|manager|supervisor)\b/i,
+        /^(?:a |an |the )?(?:human|real person|actual person|live agent|support agent|staff member|manager|supervisor)(?: please)?[.!? ]*$/i,
+        /\b(?:want|need|prefer|request|speak|talk|chat|connect|transfer|put me through|pass me|escalate)\b.{0,40}\b(?:human|real person|actual person|live agent|support agent|staff member|manager|supervisor)\b/i,
         /\b(?:speak|talk|chat|connect|transfer|put me through)\s+(?:me\s+)?(?:to|with)\s+(?:a|an|the|someone|somebody)?\s*(?:person|representative|someone|somebody|agent)\b/i,
         /\b(stop|disable|turn off|opt out of|no more) (?:the |your )?(?:ai|bot|automated|automatic)\b/i,
         /\b(don't|do not|no longer) (?:want to )?(?:talk to|chat with|speak to) (?:an? )?(?:ai|bot|robot)\b/i,
