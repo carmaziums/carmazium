@@ -51,6 +51,11 @@ export function routineSupportAnswer(message: string): string | null {
     if (/\b(how|what|why|do i)\b/i.test(text) && /\b(service history|number of keys|mechanical faults?|electrical faults?)\b/i.test(text)) {
         return 'Enter the actual number of keys and the service history supported by your records. For mechanical and electrical faults, choose No known faults or Yes and describe the problem. These are separate required answers; DVLA/MOT cannot supply them. Missing answers are highlighted when you try to continue.';
     }
+    if (/\b(?:caravan|campervan)\b/i.test(text) && /\b(?:photo|picture|image)s?\b/i.test(text)) {
+        return /\bcaravan\b/i.test(text) && !/\bcampervan\b/i.test(text)
+            ? 'A towable caravan needs at least one clear photo before publication. You can enter the details manually without a registration or VIN/CRiS number. Show its condition and disclose any faults honestly.'
+            : 'A motorised campervan needs at least 10 clear photos, including exterior, interior and any damage. It follows the normal motor-vehicle registration and specification requirements.';
+    }
     if (/\b(how many|minimum|required|what photos|what pictures|which photos|need to upload)\b/i.test(text) && /\b(photos?|pictures?|images?)\b/i.test(text)) {
         return 'A listing needs at least 10 vehicle photos. Include clear exterior and interior views and show any damage honestly. Add them in the Photos step; the first photo is the cover. If an upload fails, tell me the error shown and the device you are using.';
     }
