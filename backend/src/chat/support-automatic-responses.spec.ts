@@ -1,5 +1,5 @@
 import { classifySupportMessage, safeAutomaticSupportReply } from './mazium-support-policy';
-import { fixedSupportReply, supportReplyPlan, supportNeedsHumanReply, HUMAN_HANDOFF_REPLY, HUMAN_REVIEW_REPLY, SUPPORT_UNAVAILABLE_REPLY } from './support-automatic-responses';
+import { fixedSupportReply, supportReplyPlan, supportNeedsHumanReply, HUMAN_HANDOFF_REPLY, HUMAN_REVIEW_REPLY, SUPPORT_UNAVAILABLE_REPLY, SUPPORT_HELP_OFFER, SUPPORT_HELP_ACCEPTED } from './support-automatic-responses';
 
 describe('automatic support answers', () => {
     const now = new Date();
@@ -49,7 +49,8 @@ describe('automatic support answers', () => {
         'Please connect me with your team',
         'I would prefer a human being',
     ])('hands a natural request to staff without requiring a button: %s', text => {
-        expect(supportReplyPlan({}, text, now)).toEqual({ kind: 'FIXED', reply: HUMAN_HANDOFF_REPLY });
+        expect(supportReplyPlan({}, text, now)).toEqual({ kind: 'FIXED', reply: SUPPORT_HELP_OFFER });
+        expect(supportReplyPlan({ supportHelpOffered: true }, text, now)).toEqual({ kind: 'FIXED', reply: HUMAN_HANDOFF_REPLY });
     });
     it.each([
         'Please email me at customer@example.com about my account',
@@ -83,4 +84,29 @@ describe('automatic support answers', () => {
         expect(supportNeedsHumanReply({ aiGenerated: true, content: SUPPORT_UNAVAILABLE_REPLY })).toBe(true);
     });
 
+});
+
+describe('conversation-first support handoff', () => {
+    const now = new Date();
+    it.each(['I still want a human', 'Stop the bot', "I don't want to talk to a bot", 'Just connect me to customer support'])('does not obstruct a firm request: %s', text => {
+        expect(supportReplyPlan({}, text, now)).toEqual({ kind: 'FIXED', reply: HUMAN_HANDOFF_REPLY });
+    });
+    it('hands off yes only in response to its own offer', () => {
+        expect(supportReplyPlan({}, 'yes please', now)).toEqual({ kind: 'AI' });
+        expect(supportReplyPlan({ supportHelpOfferPending: true }, 'yes please', now)).toEqual({ kind: 'FIXED', reply: HUMAN_HANDOFF_REPLY });
+        expect(supportReplyPlan({ supportHelpOfferPending: true }, 'no thanks', now)).toEqual({ kind: 'FIXED', reply: SUPPORT_HELP_ACCEPTED });
+    });
+    it('continues helping when a customer explains the issue after the offer', () => {
+        expect(supportReplyPlan({ supportHelpOffered: true }, 'i want to upload a car', now)?.kind).toBe('FIXED');
+    });
+    it.each(['I already tried uploading a car but it failed', 'How much is a listing? Also how do I edit one?'])('does not bury a complex problem under generic FAQs: %s', text => {
+        expect(supportReplyPlan({}, text, now)).toEqual({ kind: 'AI' });
+    });
+    it('keeps sensitive handoff requests out of the persuasion step', () => {
+        expect(supportReplyPlan({}, 'I want a human to refund my fee', now)).toEqual({ kind: 'FIXED', reply: HUMAN_HANDOFF_REPLY });
+    });
+    it('does not claim a human is queued while offering automatic help', () => {
+        expect(supportNeedsHumanReply({ aiGenerated: true, content: SUPPORT_HELP_OFFER })).toBe(false);
+        expect(HUMAN_HANDOFF_REPLY).not.toContain('higher volume');
+    });
 });
