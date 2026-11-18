@@ -1,6 +1,6 @@
 import { SupportMessageEvents } from './support-message-events';
 import { supportReplyPlan, SUPPORT_UNAVAILABLE_REPLY, HUMAN_HANDOFF_REPLY } from './support-automatic-responses';
-import { BadRequestException, Optional, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, Optional, Injectable, NotFoundException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BlockChatRoomDto, CreateRoomDto, OpenDisputeDto, ReportChatMessageDto, SendChatAttachmentDto, SendMessageDto, UpdateChatReportDto } from './dto';
 import { ChatContext, ChatReportStatus, DisputeStatus, Message, Prisma, ServicePaymentStatus, UserRole } from '@prisma/client';
@@ -11,7 +11,7 @@ import { ChatAttachmentService } from './chat-attachment.service';
 import { TradeTeamService } from '../services/trade-team.service';
 import { DealersService } from '../dealers/dealers.service';
 import { ChatContentSafetyService } from './chat-content-safety.service';
-import { requestsHumanSupport } from './mazium-support-policy';
+import { requestsHumanSupport, supportAutoReplyClientMessageId } from './mazium-support-policy';
 
 /**
  * Chat service handling all chat room and message operations
@@ -2595,6 +2595,82 @@ export class ChatService {
     }
 
     /**
+     * Human handoff receipts are part of the same database transaction as the
+     * customer's support request. They cannot silently fail after the UI says
+     * the request was delivered. The locked system user is verified inside the
+     * transaction; the customer never controls the reply author or wording.
+     *
+     * This fixed receipt is not AI-generated content and does not require
+     * consent to send text to an external AI service.
+     */
+    private async createHumanSupportRequestWithReceipt(
+        room: any,
+        senderId: string,
+        data: Prisma.MessageUncheckedCreateInput,
+    ): Promise<{ message: any; automaticReply: any }> {
+        const botUserId = process.env.MAZIUM_SUPPORT_BOT_USER_ID;
+        if (!botUserId) {
+            throw new ServiceUnavailableException('Human support receipt is temporarily unavailable. Please try again.');
+        }
+        return this.prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT id FROM "chat_rooms" WHERE id = ${room.id} FOR UPDATE`;
+            const currentRoom = await tx.chatRoom.findUnique({
+                where: { id: room.id },
+                include: {
+                    initiator: { select: { role: true } },
+                    participant: { select: { role: true } },
+                },
+            });
+            if (!currentRoom || currentRoom.context !== ChatContext.SUPPORT ||
+                currentRoom.deletedAt || currentRoom.supportClosedAt) {
+                throw new NotFoundException('Open support conversation not found');
+            }
+            const adminId = currentRoom.initiator.role === UserRole.ADMIN &&
+                currentRoom.participant.role !== UserRole.ADMIN
+                    ? currentRoom.initiatorId
+                    : currentRoom.participant.role === UserRole.ADMIN &&
+                        currentRoom.initiator.role !== UserRole.ADMIN
+                        ? currentRoom.participantId : null;
+            const customerId = adminId === currentRoom.initiatorId
+                ? currentRoom.participantId : currentRoom.initiatorId;
+            if (!adminId || senderId !== customerId || botUserId === adminId ||
+                botUserId === currentRoom.initiatorId || botUserId === currentRoom.participantId) {
+                throw new ForbiddenException('Invalid human-support sender or room identity');
+            }
+            const bot = await tx.user.findUnique({
+                where: { id: botUserId },
+                select: { role: true, deletedAt: true, lockoutUntil: true },
+            });
+            if (!bot || bot.role === UserRole.ADMIN || bot.deletedAt ||
+                !bot.lockoutUntil || bot.lockoutUntil.getTime() <= Date.now()) {
+                throw new ServiceUnavailableException('Human support receipt is temporarily unavailable. Please try again.');
+            }
+            const now = new Date();
+            await tx.chatRoom.update({
+                where: { id: room.id },
+                data: { supportAiOptedOutAt: now, supportHumanTakeoverAt: now },
+            });
+            const message = await tx.message.create({
+                data,
+                include: this.messageInclude,
+            });
+            const automaticReply = await tx.message.create({
+                data: {
+                    chatRoomId: room.id,
+                    senderId: botUserId,
+                    clientMessageId: supportAutoReplyClientMessageId(message.id),
+                    aiGenerated: true,
+                    aiSourceMessageId: message.id,
+                    content: HUMAN_HANDOFF_REPLY,
+                },
+                include: this.messageInclude,
+            });
+            await tx.chatRoom.update({ where: { id: room.id }, data: { updatedAt: new Date() } });
+            return { message, automaticReply };
+        });
+    }
+
+    /**
      * Persist a message exactly once. The client-generated message ID survives
      * WebSocket timeouts and HTTP fallback retries, so a lost acknowledgement
      * cannot create a duplicate message.
@@ -2624,14 +2700,29 @@ export class ChatService {
             }
         }
 
+        const supportSender = room.context === ChatContext.SUPPORT
+            ? await this.prisma.user.findUnique({
+                where: { id: senderId }, select: { role: true },
+            })
+            : null;
+        const supportSenderIsAdmin = supportSender?.role === UserRole.ADMIN;
         let message: any;
+        let automaticReply: any | undefined;
         try {
-            message = await this.createInboundMessage(room, senderId, {
-                    chatRoomId: roomId,
-                    senderId,
-                    clientMessageId: dto.clientMessageId,
-                    content: dto.content,
-            });
+            const data = {
+                chatRoomId: roomId,
+                senderId,
+                clientMessageId: dto.clientMessageId,
+                content: dto.content,
+            };
+            if (room.context === ChatContext.SUPPORT && !supportSenderIsAdmin &&
+                requestsHumanSupport(dto.content)) {
+                ({ message, automaticReply } = await this.createHumanSupportRequestWithReceipt(
+                    room, senderId, data,
+                ));
+            } else {
+                message = await this.createInboundMessage(room, senderId, data);
+            }
         } catch (error) {
             // Two retries can race. The unique sender/clientMessageId index is
             // the final authority; if another request won, return that exact
@@ -2652,13 +2743,6 @@ export class ChatService {
             }
             throw error;
         }
-
-        const supportSender = room.context === ChatContext.SUPPORT
-            ? await this.prisma.user.findUnique({
-                where: { id: senderId }, select: { role: true },
-            })
-            : null;
-        const supportSenderIsAdmin = supportSender?.role === UserRole.ADMIN;
 
         const routing = await this.resolveMessageRouting(room, senderId);
         await this.prisma.chatRoom.update({
@@ -2689,25 +2773,16 @@ export class ChatService {
             }
         }
 
-        // A customer asking for a person must receive an actual persisted reply
-        // in the same request, not merely a status banner or an optional worker
-        // event. The existing fixed-reply persistence enforces bot identity,
-        // room locking, opt-out and one receipt per source message.
-        let automaticReply: any | undefined;
-        const humanHandoff = room.context === ChatContext.SUPPORT
-            && !supportSenderIsAdmin && requestsHumanSupport(dto.content);
-        if (humanHandoff) {
-            try {
-                const botId = process.env.MAZIUM_SUPPORT_BOT_USER_ID;
-                if (botId) {
-                    const result = await this.persistSupportAutoReply(
-                        roomId, message.id, botId, HUMAN_HANDOFF_REPLY, 'FIXED',
-                    );
-                    if (result.created) automaticReply = result.message;
-                }
-            } catch (error) {
-                console.warn('[ChatService] Immediate human-support acknowledgement failed; recovery will retry', error);
-            }
+        // No separate acknowledgement attempt is needed: explicit handoffs
+        // were persisted atomically with their receipts before this point.
+        // Other support messages continue through the existing dispatcher.
+        if (automaticReply) {
+            await this.notifyMessageRecipients(
+                [{ id: senderId, role: supportSender!.role }],
+                roomId, automaticReply.id, 'CarMazium support acknowledgement',
+                HUMAN_HANDOFF_REPLY.substring(0, 50) + '...',
+                { aiGenerated: true },
+            );
         }
         if (room.context === ChatContext.SUPPORT && !supportSenderIsAdmin && !automaticReply) {
             this.supportEvents?.publish(roomId, message.id);
