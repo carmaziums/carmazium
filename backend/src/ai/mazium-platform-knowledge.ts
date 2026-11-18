@@ -217,6 +217,96 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         sources: ['backend/src/sale-cancellations/sale-cancellations.service.ts','src/app/terms/page.tsx','src/app/auctions/won/[id]/page.tsx']
     },
     {
+        id: 'vehicle-valuation-and-dvla',
+        triggers: /\b(?:valuation|value my car|car worth|estimated value|trade value|market value|dvla|mot history|registration lookup|number plate|vrm|make model year|valuation error)\b/i,
+        facts: [
+            'The car valuation journey is part of /sell, not a separate invented /valuation page. Start with the vehicle registration; a supported manual make/model/year valuation route is available when a registration lookup cannot be completed.',
+            'CarMazium estimates auction and retail price guidance from available vehicle and market information; suggestions are not a binding offer or guaranteed sale price.',
+            'DVLA and MOT records do not prove actual service history, number of keys, mechanical condition, electrical faults or HPI clearance. The seller supplies truthful declarations.',
+            'A touring caravan is listed manually and does not receive the normal registration-based valuation.',
+            'If the lookup fails, advise checking the registration and entering correct make/model/year via the available manual option; do not invent a valuation or promise that external data is available.'
+        ].join(' '),
+        sources: ['src/app/sell/page.tsx','src/lib/valuationApi.ts','backend/src/listings/listings.service.ts']
+    },
+    {
+        id: 'listing-validation-review',
+        triggers: /\b(?:missing field|mandatory|required|doors|seats|service history|keys|photos?|pictures?|images?|upload failed|fault declaration|damage|review|approval|rejected|draft|publish|not live|listing pending)\b/i,
+        facts: [
+            'The Listing Wizard requires accurate vehicle details, service history, keys, separately declared mechanical and electrical faults, and images. Missing required answers are highlighted during submission.',
+            'Normal car listings require at least 10 photos to publish; touring caravans have a one-photo minimum. Up to 100 uploaded images are supported; the 10-photo rule is not reimposed merely when editing a previously saved listing.',
+            'Listing status progresses through Draft, Pending Review, and approved Active publication; rejection may have a reason. Saving a draft or paying for retail advertising is not proof that a listing is publicly live.',
+            'Check the status and any review feedback in the seller My Cars or dealer Inventory dashboard; only authorised staff can confirm why a particular listing was rejected or why an approval failed.',
+            'If photos fail to upload, ask for the device and exact error, then give the relevant upload troubleshooting steps without pretending to inspect their files.'
+        ].join(' '),
+        sources: ['src/components/listing/ListingWizard.tsx','backend/src/listings/listings.service.ts','src/app/dashboard/dealer/inventory/page.tsx']
+    },
+    {
+        id: 'listing-status-and-relisting',
+        triggers: /\b(?:relist|re-list|list again|withdraw|remove listing|mark sold|mark as sold|sold elsewhere|expired|auction ended|reserve not met|draft to retail|convert to retail|switch to retail|also list retail|listing status)\b/i,
+        facts: [
+            'Owners can locate existing listings in private seller My Cars (/dashboard/user?tab=cars) or dealer Stock / Inventory (/dashboard/dealer/inventory). Statuses include Draft, Pending Review, Rejected, Active, Offer Accepted and Sold, with actions dependent on status.',
+            'If a vehicle sold elsewhere, use the relevant Mark Sold workflow and identify the outside sale correctly rather than implying that a CarMazium buyer paid or collected it.',
+            'An auction ending without meeting reserve is not automatically a completed sale. Depending on its recorded state, the seller dashboard can offer re-auction or moving the saved vehicle details to Retail.',
+            'Existing listing edit and relist actions should start with the saved vehicle, not creating an unrelated new listing at /sell; live auction bidding can restrict changes.',
+            'Only the owner or authorised team can determine eligibility for a particular status change; MaziuM must not claim it has marked, relisted or approved a vehicle.'
+        ].join(' '),
+        sources: ['src/app/dashboard/user/page.tsx','src/app/dashboard/dealer/inventory/page.tsx','src/app/dashboard/seller/auctions/page.tsx','backend/src/listings/listings.service.ts']
+    },
+    {
+        id: 'bidding-reserve-and-provisional',
+        triggers: /\b(?:bid|place a bid|reserve price|below reserve|reserve offer|provisional|accept bid|reject bid|counter offer|auction extension|anti.snipe|close auction|cancel auction|auction countdown)\b/i,
+        facts: [
+            'Only verified eligible dealers can bid in trader-only auctions; public browsing is not a bidding entitlement. The status of a bid and whether reserve has been met must be checked in the actual auction.',
+            'A seller may receive a provisional offer below reserve after the auction ends. Acceptance is a separate workflow, not an automatic sale; a pending offer can expire if not accepted.',
+            'Some late bids extend an active auction, so the visible end time can change. A seller can close or cancel an auction only when the corresponding status and permissions allow it.',
+            'Sellers manage auction results and offers from their auction dashboard. Do not claim that a reserve offer is accepted, a winner is final or a vehicle is collected without checking recorded transactions.'
+        ].join(' '),
+        sources: ['src/app/dashboard/seller/auctions/page.tsx','src/app/auctions/live/[id]/page.tsx','backend/src/auctions/auctions.service.ts']
+    },
+    {
+        id: 'checkout-and-platform-payments',
+        triggers: /\b(?:checkout|pay the fee|paying|payment|stripe|card payment|deposit|escrow|direct to seller|receipt for payment|charge|invoice|payment failed)\b/i,
+        facts: [
+            'CarMazium checkout processes its platform charges (such as the winning auction buyer fee, paid retail listing tier and eligible add-ons), not the car purchase price or a vehicle deposit.',
+            'For an auction purchase, the winning dealer pays the £125 platform fee where applicable, then agrees and settles the vehicle purchase price directly with the seller.',
+            'A successful payment screen or payment-processing message must not be mistaken for proof of vehicle collection, seller settlement, listing publication, warranty issuance or payout approval.',
+            'When checkout fails or is charged twice, do not create a second payment blindly or promise a refund; direct the customer to the relevant payment details and support with evidence.'
+        ].join(' '),
+        sources: ['src/app/checkout/page.tsx','backend/src/payments/payments.service.ts','src/app/pricing/page.tsx']
+    },
+    {
+        id: 'dealer-purchase-destinations',
+        triggers: /\b(?:auction wins|retail purchases|all purchases|purchase history|where is my purchase|missing win|missing purchase|sales receipt|purchase receipt|purchase record|purchased car)\b/i,
+        facts: [
+            'Dealer buy-side activity has four separate navigation views: Auction Wins (/dashboard/dealer/auctions/won), Retail Purchases (/dashboard/dealer/purchases/retail), All Purchases (/dashboard/dealer/purchases), and Purchase History (/dashboard/dealer/purchases/history).',
+            'Auction Wins is for auction-winning deals; Retail Purchases is for retail deals; All Purchases includes recorded activity still in progress; Purchase History focuses on completed or cancelled records.',
+            'A purchase record, buyer-fee checkout and collection confirmation represent different stages. A missing purchase or receipt requires an authenticated lookup by support, not a fabricated document or status.',
+            'Only authorised dealership users with purchase permissions can access those views; dashboards and mobile UI labels can differ.'
+        ].join(' '),
+        sources: ['src/lib/purchaseDestinations.ts','src/components/dealer/DealerPurchasesView.tsx','src/app/dashboard/dealer/auctions/won/page.tsx']
+    },
+    {
+        id: 'messaging-notifications',
+        triggers: /\b(?:message|inbox|chat|seller chat|chat with|notifications?|alerts?|email notification|unread|talk to staff|support chat|reply to seller)\b/i,
+        facts: [
+            'Use the listing chat or conversation tools to contact the relevant buyer or seller; support questions go to the official CarMazium support conversation, which is separate from private buyer/seller messaging.',
+            'The account notification centre is /notifications, where messages can be marked read; notification preferences including email can be managed from the relevant account settings.',
+            'A notification can link to a listing, auction or transaction depending on its type; do not promise all notifications are emails or that a device received a push alert.',
+            'MaziuM can explain how chat works, but it cannot view private conversations in the public assistant or impersonate another customer. A request to speak to a human is handed to staff through the official support chat.'
+        ].join(' '),
+        sources: ['src/app/notifications/page.tsx','src/components/chat/ChatWindow.tsx','backend/src/chat/chat.service.ts']
+    },
+    {
+        id: 'mobile-app-and-installation',
+        triggers: /\b(?:mobile app|android|iphone|ios|apple app|play store|apk|download app|install app|app login|mobile menu|phone app|browser app)\b/i,
+        facts: [
+            'Use /download-app for CarMazium mobile-app download and current installation choices. An installed native app can differ from the latest mobile website until a new app release is distributed.',
+            'Account information and listing status come from CarMazium account services; a screenshot from an older app build is not proof that an updated website feature is present in that app.',
+            'For device-specific issues, ask whether the customer is using Android, iPhone, or a browser, and request the precise screen/error. Never invent a Play Store or App Store release date.'
+        ].join(' '),
+        sources: ['src/app/download-app/page.tsx','carmazium app/carmazium app/src/screens/main/ChatScreen.tsx','src/components/features/MaziumWidget.tsx']
+    },
+    {
         id: 'customer-support',
         triggers: /\b(?:help|support|talk to person|human|contact|customer service|agent|report ai|bug|not working|technical problem|failed to load)\b/i,
         facts: [
@@ -237,9 +327,43 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
  */
 export function platformKnowledgeFor(query: string, maxTopics = 5): string {
     const text = query.trim().slice(0, 600);
+    // Specific user journeys must outrank broad words such as "seller",
+    // "dealer", "account" and "support". Otherwise the first five generic
+    // catalogue entries can displace the topic the customer actually asked.
+    const priority: Readonly<Record<string, number>> = {
+        'edit-existing-listing': 110,
+        'listing-status-and-relisting': 105,
+        'listing-validation-review': 100,
+        'dealer-purchase-destinations': 100,
+        'bidding-reserve-and-provisional': 95,
+        'sale-handover-reward': 95,
+        'checkout-and-platform-payments': 90,
+        'vehicle-valuation-and-dvla': 90,
+        'verification-and-kyc': 88,
+        'retail-listing-packages': 86,
+        'warranty': 86,
+        'vehicle-finance': 85,
+        'tradexchange-jobs': 85,
+        'dealer-services-and-partners': 82,
+        'retail-buyer-offers': 80,
+        'buyer-and-dealer-purchases': 80,
+        'dealer-auctions': 78,
+        'sell-caravan-campervan': 78,
+        'create-new-listing': 75,
+        'messages-and-notifications': 75,
+        'mobile-app-and-installation': 75,
+        'search-buying': 68,
+        'account-security-privacy': 67,
+        'cancellations-disputes': 89,
+        'customer-support': 15,
+        'accounts-and-roles': 10,
+    };
     const matched = PLATFORM_KNOWLEDGE
-        .filter(topic => topic.triggers.test(text))
-        .slice(0, Math.max(1, Math.min(8, maxTopics)));
+        .map((topic, index) => ({ topic, index }))
+        .filter(({ topic }) => topic.triggers.test(text))
+        .sort((a, b) => (priority[b.topic.id] ?? 50) - (priority[a.topic.id] ?? 50) || a.index - b.index)
+        .slice(0, Math.max(1, Math.min(8, maxTopics)))
+        .map(({ topic }) => topic);
     const topics = matched.length ? matched : [
         PLATFORM_KNOWLEDGE.find(t => t.id === 'accounts-and-roles')!,
         PLATFORM_KNOWLEDGE.find(t => t.id === 'customer-support')!,
