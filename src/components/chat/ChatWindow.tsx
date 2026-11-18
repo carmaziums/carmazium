@@ -36,10 +36,6 @@ function supportAiEnabled(room: ChatRoom): boolean {
     return true
 }
 
-function typedHumanRequest(message: string): boolean {
-    return /\b(?:human|real person|live agent|support agent|customer service|customer support|customer department|speak to (?:a |an |the )?person|talk to (?:a |an |the )?person|turn off (?:the )?(?:bot|ai))\b/i.test(message)
-}
-
 // Common replies for the admin fielding support conversations — inserted
 // into the input for a quick edit before sending, never sent unreviewed.
 const ADMIN_QUICK_REPLIES = [
@@ -66,7 +62,6 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const [aiEnabled, setAiEnabled] = React.useState(supportAiEnabled(room))
     const [consentBusy, setConsentBusy] = React.useState(false)
     const [showAiOptions, setShowAiOptions] = React.useState(false)
-    const [humanRequestSent, setHumanRequestSent] = React.useState(false)
     const [consentError, setConsentError] = React.useState<string | null>(null)
     const [loading, setLoading] = React.useState(true)
     const [loadingOlder, setLoadingOlder] = React.useState(false)
@@ -125,7 +120,6 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     }, [room.id, room.supportAiOptedOutAt, room.supportHumanTakeoverAt])
 
     React.useEffect(() => {
-        setHumanRequestSent(false)
         setShowAiOptions(false)
     }, [room.id])
 
@@ -626,13 +620,8 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         setNewMessage("")
         const sent = await sendText(content)
         if (sent && room.context === 'SUPPORT') {
-            // Human requests are handled atomically by the backend; the UI
-            // reflects the handoff without showing a separate support button.
-            if (typedHumanRequest(content)) {
-                setHumanRequestSent(true)
-                setAiEnabled(false)
-                setShowAiOptions(false)
-            }
+            // The backend distinguishes the first offer of help from a confirmed
+            // handoff. Refresh its decision instead of guessing from user wording.
             await refreshRooms()
         }
     }
@@ -876,7 +865,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         </p>
                     ) : room.context === 'SUPPORT' && !isAdminViewer ? (
                         <p className="text-xs text-[var(--text-muted)] truncate">
-                            {humanRequestSent || room.supportHumanTakeoverAt
+                            {!aiEnabled && room.supportHumanTakeoverAt
                                 ? 'Human support requested'
                                 : aiEnabled ? 'MaziuM AI' : 'MaziuM AI paused'}
                         </p>
