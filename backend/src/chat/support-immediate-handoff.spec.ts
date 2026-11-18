@@ -16,7 +16,7 @@ describe('atomic human support requests', () => {
     });
 
     const setup = (role = 'BUYER') => {
-        const room = {
+        const room: any = {
             id: 'room', context: ChatContext.SUPPORT,
             initiatorId: customerId, participantId: adminId,
             initiator: { role: 'BUYER' }, participant: { role: 'ADMIN' },
@@ -41,7 +41,7 @@ describe('atomic human support requests', () => {
         const receipt = { id: 'receipt', aiGenerated: true, content: HUMAN_HANDOFF_REPLY };
         const createPaired = jest.spyOn(service as any, 'createHumanSupportRequestWithReceipt')
             .mockResolvedValue({ message: { id: 'source', senderId: customerId }, automaticReply: receipt });
-        return { service, prisma, events, createNormal, createPaired, receipt };
+        return { service, prisma, events, createNormal, createPaired, receipt, room };
     };
 
     it('returns an already-persisted receipt without a second dispatcher attempt', async () => {
@@ -66,11 +66,35 @@ describe('atomic human support requests', () => {
     it('routes normal support messages to the existing dispatcher unchanged', async () => {
         const { service, createPaired, createNormal, events } = setup();
         const result = await service.sendMessage('room', customerId,
-            { content: 'How much does a retail listing cost?' });
+            { content: 'Why does my browser close after I upload a photo?' });
         expect(result.automaticReply).toBeUndefined();
         expect(createPaired).not.toHaveBeenCalled();
         expect(createNormal).toHaveBeenCalledTimes(1);
         expect(events.publish).toHaveBeenCalledWith('room', 'source');
+    });
+
+    it.each(['hi can you help me', 'i want to upload a car'])(
+        'persists known answers in the same request without relying on dispatcher: %s', async content => {
+            const { service, createPaired, createNormal, events } = setup();
+            const result = await service.sendMessage('room', customerId, { content });
+            expect(result.created).toBe(true);
+            expect(result.automaticReply).toBeDefined();
+            expect(createPaired).toHaveBeenCalledWith(
+                expect.objectContaining({ id: 'room' }), customerId,
+                expect.objectContaining({ content }),
+                expect.objectContaining({ humanHandoff: false, reply: expect.any(String) }),
+            );
+            expect(createNormal).not.toHaveBeenCalled();
+            expect(events.publish).not.toHaveBeenCalled();
+        },
+    );
+    it('does not send a local automatic reply after a customer explicitly paused AI', async () => {
+        const { service, createPaired, createNormal, events, room } = setup();
+        room.supportAiOptedOutAt = new Date();
+        await service.sendMessage('room', customerId, { content: 'i want to upload a car' });
+        expect(createPaired).not.toHaveBeenCalled();
+        expect(createNormal).toHaveBeenCalledTimes(1);
+        expect(events.publish).toHaveBeenCalledTimes(1);
     });
 
     it('never sends an automatic human receipt to a staff sender', async () => {
