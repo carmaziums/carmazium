@@ -92,6 +92,44 @@ describe('AiService safety and reporting', () => {
         expect(completionCreate).not.toHaveBeenCalled();
     });
 
+    it('answers edit-existing-listing from verified routes before asking the model', async () => {
+        const { service, completionCreate } = build();
+        const result = await service.chatCompletion([
+            { role: 'user', content: 'how can i update existing listing?' },
+        ]);
+        expect(result.text).toContain('/dashboard/user?tab=cars');
+        expect(result.text).toContain('/dashboard/dealer/inventory');
+        expect(completionCreate).not.toHaveBeenCalled();
+    });
+
+    it('grounds dealer purchase guidance in current first-party route information', async () => {
+        const { service, completionCreate } = build();
+        await service.chatCompletion([
+            { role: 'user', content: 'Where can a dealer find the Retail Purchases and Auction Wins screens?' },
+        ]);
+        const systemPrompts = completionCreate.mock.calls[0][0].messages
+            .filter((message: any) => message.role === 'system')
+            .map((message: any) => message.content).join(' ');
+        expect(systemPrompts).toContain('/dashboard/dealer/purchases/retail');
+        expect(systemPrompts).toContain('/dashboard/dealer/auctions/won');
+        expect(systemPrompts).toContain('verified');
+    });
+
+    it('never sends customers to an invented edit route even if the model generates it', async () => {
+        const { service, completionCreate } = build();
+        completionCreate.mockResolvedValueOnce({
+            choices: [{ message: { content: JSON.stringify({
+                text: 'Go to /dashboard/dealer/listings to edit your vehicle.',
+                filterCard: null,
+            }) } }],
+        });
+        const result = await service.chatCompletion([
+            { role: 'user', content: 'Where is the dealer inventory overview?' },
+        ]);
+        expect(result.text).not.toContain('/dashboard/dealer/listings');
+        expect(result.text).toContain('wrong page');
+    });
+
     it('allows an ordinary automotive question through moderation and generation', async () => {
         const { service, completionCreate } = build();
 
