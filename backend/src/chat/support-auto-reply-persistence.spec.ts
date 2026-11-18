@@ -37,9 +37,15 @@ describe('support reply persistence and identity', () => {
         expect((await service.persistSupportAutoReply('room', sourceId, botId, 'I will refund you.', 'FIXED')).created).toBe(false);
         expect(prisma.message.create).not.toHaveBeenCalled();
     });
-    it('allows local FAQ answers but forbids model replies without consent', async () => {
-        const { service, source } = setup();
+    it('allows routine model replies by default but rejects them after explicit opt-out', async () => {
+        const { service, source, room } = setup();
         expect((await service.persistSupportAutoReply('room', sourceId, botId, fixedSupportReply(source.content)!, 'FIXED')).created).toBe(true);
+        expect((await service.persistSupportAutoReply('room', sourceId, botId, 'Try updating your browser.', 'AI')).created).toBe(false);
+        // A known local FAQ must stay a canonical fixed reply; ordinary
+        // unmatched questions use AI, provided the customer did not opt out.
+        source.content = 'Why does the upload screen close?';
+        expect((await service.persistSupportAutoReply('room', sourceId, botId, 'Try updating your browser.', 'AI')).created).toBe(true);
+        room.supportAiOptedOutAt = new Date();
         expect((await service.persistSupportAutoReply('room', sourceId, botId, 'Try updating your browser.', 'AI')).created).toBe(false);
     });
     it('rejects duplicate delivery, changed source, private rooms and bot impersonation', async () => {

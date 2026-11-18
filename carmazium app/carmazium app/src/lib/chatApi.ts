@@ -79,6 +79,9 @@ export interface ChatRoom {
   blockReason?: string | null;
   canBlockChat?: boolean;
   canUnblockChat?: boolean;
+  supportAiConsentAt?: string | null;
+  supportAiOptedOutAt?: string | null;
+  supportHumanTakeoverAt?: string | null;
 }
 
 export interface ChatAttachmentUploadTicket {
@@ -168,6 +171,16 @@ export async function getOrCreateServiceJobRoom(jobId: string): Promise<ChatRoom
     { method: 'POST' },
   );
   return response.data.room;
+}
+
+/** Pause or resume MaziuM replies in an official SUPPORT room.
+ * The older endpoint name is retained for mobile API compatibility.
+ */
+export async function setSupportAiEnabled(roomId: string, enabled: boolean): Promise<void> {
+  await apiClient(`/chat/rooms/${encodeURIComponent(roomId)}/support-ai-consent`, {
+    method: 'PATCH',
+    body: JSON.stringify({ consent: enabled }),
+  });
 }
 
 export async function getChatMessages(

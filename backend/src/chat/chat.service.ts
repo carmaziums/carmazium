@@ -1,5 +1,5 @@
 import { SupportMessageEvents } from './support-message-events';
-import { supportReplyPlan, SUPPORT_UNAVAILABLE_REPLY, HUMAN_HANDOFF_REPLY } from './support-automatic-responses';
+import { supportReplyPlan, supportNeedsHumanReply, SUPPORT_UNAVAILABLE_REPLY, HUMAN_HANDOFF_REPLY } from './support-automatic-responses';
 import { BadRequestException, Optional, Injectable, NotFoundException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BlockChatRoomDto, CreateRoomDto, OpenDisputeDto, ReportChatMessageDto, SendChatAttachmentDto, SendMessageDto, UpdateChatReportDto } from './dto';
@@ -1975,6 +1975,7 @@ export class ChatService {
                         content: true,
                         attachmentPath: true,
                         senderId: true,
+                        aiGenerated: true,
                         isRead: true,
                         createdAt: true,
                         sender: { select: { role: true } },
@@ -2063,15 +2064,21 @@ export class ChatService {
                 const { otherUser } = roomView;
                 const lastMessage = room.messages[0] || null;
                 const needsReply = room.context === ChatContext.SUPPORT
-                    && !!lastMessage
-                    && lastMessage.sender?.role !== UserRole.ADMIN
-                    && !room.supportClosedAt;
+                    && !room.supportClosedAt
+                    && supportNeedsHumanReply(lastMessage);
 
                 return {
                     id: room.id,
                     context: room.context,
                     conversationKey: room.conversationKey,
                     otherUser,
+                    // Give every client the actual support preference and
+                    // takeover status after reload, not a fabricated default.
+                    ...(room.context === ChatContext.SUPPORT ? {
+                        supportAiConsentAt: room.supportAiConsentAt,
+                        supportAiOptedOutAt: room.supportAiOptedOutAt,
+                        supportHumanTakeoverAt: room.supportHumanTakeoverAt,
+                    } : {}),
                     listing: room.listing,
                     serviceJob: room.serviceJob,
                     listingUnavailable: !!room.listing && (
@@ -2146,9 +2153,14 @@ export class ChatService {
     }
 
     /**
-     * Customer-controlled AI consent for the official support chat only.
-     * Revocation is immediate and also marks the conversation as opted out.
-     * This never enables AI delivery by itself.
+     * Customer-controlled pause/resume for automated official support.
+     * Routine AI help is available by default under the published support
+     * privacy notice. An opt-out is respected by the final delivery gate,
+     * including during races with an in-flight AI response.
+     *
+     * The existing endpoint/body remain for mobile compatibility; the
+     * "consent" flag now expresses an on/off preference, not a claim that
+     * the user granted UK GDPR consent.
      */
     async setSupportAiConsent(roomId: string, userId: string, consent: boolean) {
         const room = await this.prisma.chatRoom.findUnique({

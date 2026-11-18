@@ -1,5 +1,5 @@
 import { classifySupportMessage, safeAutomaticSupportReply } from './mazium-support-policy';
-import { fixedSupportReply, supportReplyPlan, HUMAN_HANDOFF_REPLY, HUMAN_REVIEW_REPLY, SUPPORT_UNAVAILABLE_REPLY } from './support-automatic-responses';
+import { fixedSupportReply, supportReplyPlan, supportNeedsHumanReply, HUMAN_HANDOFF_REPLY, HUMAN_REVIEW_REPLY, SUPPORT_UNAVAILABLE_REPLY } from './support-automatic-responses';
 
 describe('automatic support answers', () => {
     const now = new Date();
@@ -23,12 +23,39 @@ describe('automatic support answers', () => {
         expect(supportReplyPlan({ supportHumanTakeoverAt: now }, 'How much to list?', now)).toBeNull();
         expect(supportReplyPlan({ supportHumanTakeoverAt: new Date(now.getTime() - 3600000) }, 'How much to list my car?', now)?.kind).toBe('FIXED');
     });
-    it('requires active consent before sending an unmatched question to the model', () => {
+    it('answers general unmatched questions with MaziuM by default, without an opt-in panel', () => {
         const text = 'Why does the app close when I select a photo?';
-        expect(supportReplyPlan({}, text, now)).toEqual({ kind: 'FIXED', reply: SUPPORT_UNAVAILABLE_REPLY });
-        expect(supportReplyPlan({ supportAiConsentAt: new Date(now.getTime() - 1000) }, text, now)).toEqual({ kind: 'AI' });
-        expect(supportReplyPlan({ supportAiConsentAt: new Date(now.getTime() + 1000) }, text, now)?.kind).toBe('FIXED');
+        expect(supportReplyPlan({}, text, now)).toEqual({ kind: 'AI' });
+        expect(supportReplyPlan({ supportAiConsentAt: new Date(now.getTime() + 1000) }, text, now)).toEqual({ kind: 'AI' });
+        expect(supportReplyPlan({ supportAiOptedOutAt: now }, text, now)).toBeNull();
+    });
+    it.each([
+        'Please put me through to customer service',
+        'I want to speak with the support department',
+        'Please connect me with your team',
+        'I would prefer a human being',
+    ])('hands a natural request to staff without requiring a button: %s', text => {
+        expect(supportReplyPlan({}, text, now)).toEqual({ kind: 'FIXED', reply: HUMAN_HANDOFF_REPLY });
+    });
+    it.each([
+        'Please email me at customer@example.com about my account',
+        'My phone number is 07911 123456, can you call me?',
+        'I need to discuss my medical condition with customer support',
+        'My date of birth is in the listing details',
+    ])('does not send obvious personal details to the external AI model: %s', text => {
+        expect(classifySupportMessage(text).action).toBe('ESCALATE');
+        expect(supportReplyPlan({}, text, now)).toEqual({ kind: 'FIXED', reply: HUMAN_REVIEW_REPLY });
     });
     it.each(['I will refund you £100.', 'Your payout has been approved.', "I'm a human agent.", 'Send us your password.'])('blocks unsupported commitments: %s', reply => expect(safeAutomaticSupportReply(reply)).toBe(false));
     it('allows factual fee information', () => expect(safeAutomaticSupportReply('A Basic retail listing costs £1 until sold.')).toBe(true));
+    it('keeps only pending handoffs and unresolved questions in the staff queue', () => {
+        expect(supportNeedsHumanReply(null)).toBe(false);
+        expect(supportNeedsHumanReply({ aiGenerated: false, content: 'Question', sender: { role: 'BUYER' } })).toBe(true);
+        expect(supportNeedsHumanReply({ aiGenerated: false, content: 'Staff reply', sender: { role: 'ADMIN' } })).toBe(false);
+        expect(supportNeedsHumanReply({ aiGenerated: true, content: 'A basic listing costs £1', sender: { role: 'BUYER' } })).toBe(false);
+        expect(supportNeedsHumanReply({ aiGenerated: true, content: HUMAN_HANDOFF_REPLY })).toBe(true);
+        expect(supportNeedsHumanReply({ aiGenerated: true, content: HUMAN_REVIEW_REPLY })).toBe(true);
+        expect(supportNeedsHumanReply({ aiGenerated: true, content: SUPPORT_UNAVAILABLE_REPLY })).toBe(true);
+    });
+
 });

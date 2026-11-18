@@ -14,6 +14,7 @@ import {
   Animated,
   Dimensions,
   Modal,
+  Linking,
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -35,6 +36,7 @@ import {
   reportChatMessage,
   sendChatAttachment,
   sendChatMessage,
+  setSupportAiEnabled,
   unblockChatRoom,
   type ChatHistoryCursor,
   type ChatMessage,
@@ -354,6 +356,10 @@ export const ChatScreen: React.FC = () => {
   const [hasMore, setHasMore] = useState(false);
   const [historyCursor, setHistoryCursor] = useState<ChatHistoryCursor | null>(null);
   const [inputVal, setInputVal] = useState('');
+  const [aiOptionsOpen, setAiOptionsOpen] = useState(false);
+  const [aiPreferenceBusy, setAiPreferenceBusy] = useState(false);
+  const [aiPreferenceError, setAiPreferenceError] = useState<string | null>(null);
+  const [localAiOptOut, setLocalAiOptOut] = useState<boolean | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   // Must live here, not after the `if (!room) return` guard below — a hook
@@ -366,6 +372,34 @@ export const ChatScreen: React.FC = () => {
   const [reporting, setReporting] = useState(false);
   const [reportedMessageIds, setReportedMessageIds] = useState<Set<string>>(new Set());
   const [changingBlock, setChangingBlock] = useState(false);
+
+  const isSupportCustomer = room?.context === 'SUPPORT' && room.otherUser?.role === 'ADMIN';
+  const humanTakeoverRecent = Boolean(room?.supportHumanTakeoverAt &&
+    Date.now() - new Date(room.supportHumanTakeoverAt).getTime() < 15 * 60_000);
+  const aiPaused = (localAiOptOut ?? Boolean(room?.supportAiOptedOutAt)) || humanTakeoverRecent;
+
+  useEffect(() => {
+    setAiOptionsOpen(false);
+    setAiPreferenceError(null);
+    setLocalAiOptOut(null);
+  }, [threadId]);
+
+  const toggleSupportAi = async () => {
+    if (!room || aiPreferenceBusy || (aiPaused && humanTakeoverRecent)) return;
+    setAiPreferenceBusy(true);
+    setAiPreferenceError(null);
+    try {
+      const enabled = aiPaused;
+      await setSupportAiEnabled(room.id, enabled);
+      setLocalAiOptOut(!enabled);
+      setAiOptionsOpen(false);
+      await refreshRooms();
+    } catch (error) {
+      setAiPreferenceError(error instanceof Error ? error.message : 'Could not update AI replies.');
+    } finally {
+      setAiPreferenceBusy(false);
+    }
+  };
 
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -1132,6 +1166,58 @@ export const ChatScreen: React.FC = () => {
           looked like an offer, sat next to the composer and were easy to tap by
           mistake. Offers are made and answered on the Offers screens, as on
           the website. */}
+      {/* Routine AI support is on by default. No consent popup or human CTA;
+          a one-line disclosure is always visible before the customer types. */}
+      {isSupportCustomer && !room.chatBlocked && (
+        <View style={styles.supportAiWrap}>
+          <View style={styles.supportAiStatusRow}>
+            <View style={styles.supportAiStatusText}>
+              <Text style={styles.supportAiTitle}>{aiPaused ? 'MaziuM AI · Paused' : 'MaziuM AI · On'}</Text>
+              <Text style={styles.supportAiFinePrint} numberOfLines={1}>
+                {aiPaused ? 'A team member can respond here.' : 'Routine questions may be processed by OpenAI.'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.supportAiOptionsButton}
+              onPress={() => setAiOptionsOpen((open) => !open)}
+              accessibilityRole="button"
+              accessibilityLabel={aiOptionsOpen ? 'Hide AI support options' : 'Show AI support options'}
+              accessibilityState={{ expanded: aiOptionsOpen }}
+            >
+              <Text style={styles.supportAiOptionsText}>Options</Text>
+              <Ionicons name={aiOptionsOpen ? 'chevron-up' : 'chevron-down'} size={13} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          {aiOptionsOpen && (
+            <View style={styles.supportAiDisclosure}>
+              <Text style={styles.supportAiDisclosureText}>
+                MaziuM answers routine support questions automatically. General questions may be shared with OpenAI. Never send passwords, bank details or sensitive personal information. For a person, simply type “I want human support” in the chat.
+              </Text>
+              <TouchableOpacity
+                onPress={() => { void Linking.openURL('https://www.carmazium.com/privacy-policy'); }}
+                accessibilityRole="link"
+                accessibilityLabel="Read CarMazium AI privacy policy"
+              >
+                <Text style={styles.supportAiPrivacyLink}>How we use AI and your data</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.supportAiToggle}
+                onPress={() => void toggleSupportAi()}
+                disabled={aiPreferenceBusy || (aiPaused && humanTakeoverRecent)}
+                accessibilityRole="button"
+                accessibilityLabel={aiPaused ? 'Resume AI replies' : 'Pause AI replies'}
+                accessibilityState={{ disabled: aiPreferenceBusy || (aiPaused && humanTakeoverRecent) }}
+              >
+                <Text style={styles.supportAiToggleText}>
+                  {aiPreferenceBusy ? 'Saving…' : aiPaused ? 'Resume AI replies' : 'Pause AI replies'}
+                </Text>
+              </TouchableOpacity>
+              {aiPreferenceError && <Text style={styles.supportAiError} accessibilityRole="alert">{aiPreferenceError}</Text>}
+            </View>
+          )}
+        </View>
+      )}
+
       {/* Bottom Text bar (hide if blocked) */}
       {!shouldBlockChat && !room.chatBlocked && (
         <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
@@ -1150,7 +1236,7 @@ export const ChatScreen: React.FC = () => {
             style={styles.textInput}
             value={inputVal}
             onChangeText={handleTextChange}
-            placeholder="Type a message..."
+            placeholder={isSupportCustomer ? "Ask MaziuM or request a person..." : "Type a message..."}
             placeholderTextColor={Colors.textMuted}
             multiline
             accessibilityLabel="Message"
@@ -1276,6 +1362,45 @@ export const ChatScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  supportAiWrap: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderSubtle,
+    backgroundColor: Colors.bgSecondary,
+  },
+  supportAiStatusRow: {
+    minHeight: 35,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  supportAiStatusText: { flex: 1 },
+  supportAiTitle: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 12 },
+  supportAiFinePrint: { color: Colors.textSecondary, fontSize: 10, marginTop: 2 },
+  supportAiOptionsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+  },
+  supportAiOptionsText: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 11 },
+  supportAiDisclosure: {
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    gap: 9,
+    maxHeight: 190,
+  },
+  supportAiDisclosureText: { color: Colors.textSecondary, fontSize: 11, lineHeight: 16 },
+  supportAiPrivacyLink: { color: Colors.accent, textDecorationLine: 'underline', fontSize: 11, fontFamily: FontFamily.bold },
+  supportAiToggle: { borderWidth: 1, borderColor: Colors.borderSubtle, alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
+  supportAiToggleText: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 11 },
+  supportAiError: { color: Colors.warning, fontSize: 11 },
   aiLabel: {
     fontSize: 10,
     fontWeight: '700',

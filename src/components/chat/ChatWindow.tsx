@@ -24,6 +24,19 @@ function profileHref(userId: string) {
     return `/profile/${encodeURIComponent(userId)}`
 }
 
+/** The official support channel uses MaziuM by default; an explicit opt-out
+ * or a recent human takeover pauses automated answers. */
+function supportAiEnabled(room: ChatRoom): boolean {
+    if (room.supportAiOptedOutAt) return false
+    if (room.supportHumanTakeoverAt &&
+        Date.now() - new Date(room.supportHumanTakeoverAt).getTime() < 15 * 60_000) return false
+    return true
+}
+
+function typedHumanRequest(message: string): boolean {
+    return /\b(?:human|real person|live agent|support agent|customer service|customer support|customer department|speak to (?:a |an |the )?person|talk to (?:a |an |the )?person|turn off (?:the )?(?:bot|ai))\b/i.test(message)
+}
+
 // Common replies for the admin fielding support conversations — inserted
 // into the input for a quick edit before sending, never sent unreviewed.
 const ADMIN_QUICK_REPLIES = [
@@ -47,7 +60,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const [newMessage, setNewMessage] = React.useState("")
     const [generatingSupportDraft, setGeneratingSupportDraft] = React.useState(false)
     const [supportDraftNotice, setSupportDraftNotice] = React.useState<string | null>(null)
-    const [aiConsent, setAiConsent] = React.useState(Boolean(room.supportAiConsentAt && !room.supportAiOptedOutAt))
+    const [aiEnabled, setAiEnabled] = React.useState(supportAiEnabled(room))
     const [consentBusy, setConsentBusy] = React.useState(false)
     const [showAiOptions, setShowAiOptions] = React.useState(false)
     const [humanRequestSent, setHumanRequestSent] = React.useState(false)
@@ -86,7 +99,6 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const attachmentInputRef = React.useRef<HTMLInputElement>(null)
     const typingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
     const typingActiveRef = React.useRef(false)
-    const humanRequestPendingRef = React.useRef(false)
     const isInitialLoad = React.useRef(true)
 
     const isDispute = room.context === 'DISPUTE'
@@ -105,26 +117,25 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     }, [canDraftSupport, room.id])
 
     React.useEffect(() => {
-        setAiConsent(Boolean(room.supportAiConsentAt && !room.supportAiOptedOutAt))
+        setAiEnabled(supportAiEnabled(room))
         setConsentError(null)
-    }, [room.id, room.supportAiConsentAt, room.supportAiOptedOutAt])
+    }, [room.id, room.supportAiOptedOutAt, room.supportHumanTakeoverAt])
 
     React.useEffect(() => {
         setHumanRequestSent(false)
         setShowAiOptions(false)
-        humanRequestPendingRef.current = false
     }, [room.id])
 
-    const updateAiConsent = async (consent: boolean) => {
+    const updateAiEnabled = async (enabled: boolean) => {
         if (consentBusy) return
         setConsentBusy(true)
         setConsentError(null)
         try {
             await apiClient(`/chat/rooms/${encodeURIComponent(room.id)}/support-ai-consent`, {
                 method: 'PATCH',
-                body: JSON.stringify({ consent }),
+                body: JSON.stringify({ consent: enabled }),
             })
-            setAiConsent(consent)
+            setAiEnabled(enabled)
             setShowAiOptions(false)
             await refreshRooms()
         } catch (error: any) {
@@ -572,33 +583,16 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
 
         const content = newMessage.trim()
         setNewMessage("")
-        await sendText(content)
-    }
-
-    const requestHumanSupport = async () => {
-        if (sending || humanRequestPendingRef.current || humanRequestSent || room.supportHumanTakeoverAt) return
-        humanRequestPendingRef.current = true
-        try {
-            const sent = await sendText("I'd like to speak to a human support agent, please.")
-            if (sent) {
+        const sent = await sendText(content)
+        if (sent && room.context === 'SUPPORT') {
+            // Human requests are handled atomically by the backend; the UI
+            // reflects the handoff without showing a separate support button.
+            if (typedHumanRequest(content)) {
                 setHumanRequestSent(true)
-                setAiConsent(false)
+                setAiEnabled(false)
                 setShowAiOptions(false)
-                await refreshRooms()
-                // Socket messages arrive live; this read also displays the
-                // persisted acknowledgement on HTTP fallback or reconnect.
-                try {
-                    const latest = await getChatMessages(room.id)
-                    setMessages(prev => {
-                        const existing = new Set(prev.map(item => item.id))
-                        return [...prev, ...latest.data.filter(item => !existing.has(item.id))]
-                    })
-                } catch {
-                    // The request was sent; a later refresh can still load the receipt.
-                }
             }
-        } finally {
-            humanRequestPendingRef.current = false
+            await refreshRooms()
         }
     }
 
@@ -1272,42 +1266,45 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                     </div>
                 )}
                 {!isAdminViewer && room.context === 'SUPPORT' && !room.supportClosedAt && (
-                    // Only the compact toolbar is visible by default. Keeping the disclosure
-                    // out of the permanent composer restores room for the chat on phones.
                     <div className="shrink-0 px-3 pt-1.5 sm:px-4">
-                        <div className="flex min-h-9 items-center justify-between gap-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-2.5 py-1 text-xs">
-                            <span className="min-w-0 truncate text-[var(--text-secondary)]" role="status">
-                                {aiConsent ? 'MaziuM AI on' : humanRequestSent || room.supportHumanTakeoverAt
-                                    ? 'Human support requested · AI off'
-                                    : 'MaziuM AI off'}
-                            </span>
-                            <div className="flex shrink-0 items-center gap-2">
-                                {!room.supportHumanTakeoverAt && !humanRequestSent && (
-                                    <button type="button" onClick={() => void requestHumanSupport()}
-                                        disabled={sending || humanRequestPendingRef.current}
-                                        className="whitespace-nowrap font-semibold text-[var(--text-primary)] underline underline-offset-2 disabled:opacity-50">
-                                        Talk to a person
-                                    </button>
-                                )}
-                                <button type="button" onClick={() => setShowAiOptions(open => !open)}
-                                    aria-expanded={showAiOptions}
-                                    aria-label={showAiOptions ? 'Hide AI support options' : 'Show AI support options'}
-                                    className="inline-flex shrink-0 items-center gap-1 rounded-md border border-[var(--border-default)] bg-[var(--bg-card)] px-2 py-1 font-semibold text-[var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
-                                    Options
-                                    {showAiOptions ? <ChevronUp size={13} aria-hidden="true" /> : <ChevronDown size={13} aria-hidden="true" />}
-                                </button>
+                        <div className="flex min-h-10 items-center justify-between gap-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-2.5 py-1 text-xs">
+                            <div className="min-w-0">
+                                <p role="status" className="truncate font-semibold text-[var(--text-primary)]">
+                                    {aiEnabled ? 'MaziuM AI · Active' : (humanRequestSent || room.supportHumanTakeoverAt) ? 'Human support · AI paused' : 'MaziuM AI · Paused'}
+                                </p>
+                                <p className="truncate text-[10px] text-[var(--text-muted)]">
+                                    {aiEnabled ? 'Routine questions may be processed by OpenAI.' : 'Your messages remain with the support team.'}
+                                </p>
                             </div>
+                            <button type="button" onClick={() => setShowAiOptions(open => !open)}
+                                aria-expanded={showAiOptions}
+                                aria-label={showAiOptions ? 'Hide MaziuM support options' : 'Show MaziuM support options'}
+                                className="inline-flex shrink-0 items-center gap-1 rounded-md border border-[var(--border-default)] bg-[var(--bg-card)] px-2 py-1 font-semibold text-[var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+                                Options
+                                {showAiOptions ? <ChevronUp size={13} aria-hidden="true" /> : <ChevronDown size={13} aria-hidden="true" />}
+                            </button>
                         </div>
                         {showAiOptions && (
                             <div className="mt-1.5 max-h-[35dvh] overflow-y-auto rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] p-3 text-xs">
-                                <p className="font-semibold">MaziuM AI support (optional)</p>
-                                <p className="mt-1 text-[var(--text-secondary)]">MaziuM can answer common questions when you allow AI assistance. Your messages for AI assistance are shared with our AI provider. A request for human support receives an automatic acknowledgement without enabling AI. Financial decisions remain with our team.</p>
-                                <label className="mt-2 flex items-center gap-2">
-                                    <input type="checkbox" checked={aiConsent} disabled={consentBusy || humanRequestSent || Boolean(room.supportHumanTakeoverAt && Date.now() - new Date(room.supportHumanTakeoverAt).getTime() < 15 * 60_000)} onChange={(event) => void updateAiConsent(event.target.checked)} />
-                                    <span>{aiConsent ? 'AI assistance permitted' : 'Allow AI assistance'}</span>
-                                </label>
+                                <p className="font-semibold">MaziuM customer support</p>
+                                <p className="mt-1 text-[var(--text-secondary)]">
+                                    MaziuM answers routine support questions automatically. We may share your question with our AI provider, OpenAI, to generate a reply. Do not include passwords, bank details or sensitive personal information. Our team handles account-specific, refund and payment decisions.
+                                </p>
+                                <p className="mt-2 text-[var(--text-secondary)]">
+                                    Simply type “I want to speak to a person” in the chat to reach our human support team. No separate button is needed.
+                                </p>
+                                <Link href="/privacy-policy" className="mt-2 inline-block font-semibold text-primary underline underline-offset-2">How we use AI and your data</Link>
+                                <div className="mt-3 flex items-center justify-between gap-3">
+                                    <span className="font-semibold">{aiEnabled ? 'Automated replies are on' : 'Automated replies are paused'}</span>
+                                    <button type="button"
+                                        onClick={() => void updateAiEnabled(!aiEnabled)}
+                                        disabled={consentBusy || Boolean(!aiEnabled && room.supportHumanTakeoverAt && Date.now() - new Date(room.supportHumanTakeoverAt).getTime() < 15 * 60_000)}
+                                        className="shrink-0 rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-1.5 font-semibold text-[var(--text-primary)] disabled:opacity-50">
+                                        {consentBusy ? 'Saving…' : aiEnabled ? 'Pause AI replies' : 'Resume AI replies'}
+                                    </button>
+                                </div>
                                 {(humanRequestSent || room.supportHumanTakeoverAt) && (
-                                    <p className="mt-2 text-[var(--text-secondary)]">Human support has been requested. You can leave more details in the chat while a team member reviews your enquiry.</p>
+                                    <p className="mt-2 text-[var(--text-secondary)]">Your request for a person has been recorded. A team member can reply in this conversation.</p>
                                 )}
                                 {consentError && <p role="alert" className="mt-2 text-red-500">{consentError}</p>}
                             </div>
@@ -1363,7 +1360,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         value={newMessage}
                         onChange={(e) => handleMessageInput(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder="Type a message..."
+                        placeholder={room.context === 'SUPPORT' ? "Ask MaziuM or request a person..." : "Type a message..."}
                         className="min-w-0 flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary/50"
                         disabled={sending || uploadingAttachment}
                     />
