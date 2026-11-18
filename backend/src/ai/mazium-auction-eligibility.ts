@@ -1,7 +1,7 @@
 /**
  * Source of truth: VerifiedDealerGuard and the live auction bidding page.
- * A public visitor may browse an auction but only an authorised verified
- * motor-trade dealer account may bid. Do not let an LLM redefine this rule.
+ * Public introduction pages do not grant trade inventory or bidding access.
+ * Only an authorised verified motor-trade dealer account may bid. Do not let an LLM redefine this rule.
  */
 export type MaziumConversationMessage = {
     role: 'user' | 'assistant';
@@ -71,12 +71,18 @@ export function verifiedAuctionEligibilityReply(messages: MaziumConversationMess
  * future prompt change causes a policy-critical answer to reach the model.
  */
 export function contradictsDealerOnlyAuctionRule(answer: string): boolean {
-    const text = answer.replace(/\s+/g, ' ');
-    if (!AUCTION_TOPIC.test(text)) return false;
-    if (/\b(?:anyone|everybody|all users)\s+(?:can|may|are allowed to)\s+(?:place |make )?(?:a )?bid\b/i.test(text)) return true;
-    if (/\b(?:private (?:buyers?|sellers?|customers?|people|person)|non[- ]?dealers?|individuals?)\b.{0,95}\b(?:can|may|is allowed to|are allowed to|is eligible to|are eligible to)\b.{0,65}\b(?:bid|place a bid|participate)\b/i.test(text)
-        && !/\b(?:cannot|can't|not allowed|not eligible|not permitted)\b.{0,100}\b(?:bid|participate)/i.test(text)) return true;
-    if (/\b(?:private (?:buyers?|sellers?|customers?|people|person)|non[- ]?dealers?)\b.{0,150}\b(?:place a bid directly|bid directly|participate in public auctions)\b/i.test(text)
-        && !/\b(?:cannot|can't|not allowed|not permitted)\b.{0,100}\b(?:bid|participate)/i.test(text)) return true;
-    return false;
+    if (!AUCTION_TOPIC.test(answer)) return false;
+    // Do not join independent sentences: “Private buyers can buy retail. Only
+    // dealers can bid” must not become an alleged private-bidding permission.
+    const clauses = answer.replace(/[’]/g, "'").split(/[.!?;\n]+|\bbut\b|\bwhereas\b/i);
+    return clauses.some(clause => {
+        const text = clause.replace(/\s+/g, ' ');
+        const subject = /\b(?:private (?:buyers?|sellers?|customers?|people|person)|non[- ]?dealers?|individuals?|anyone|everybody|all users)\b/i;
+        const start = text.search(subject);
+        if (start < 0) return false;
+        const claim = text.slice(start);
+        if (/\b(?:cannot|can't|can not|may not|not allowed|not eligible|not permitted|are not allowed|aren't allowed)\b.{0,100}\b(?:bid|participate)/i.test(claim)) return false;
+        return /\b(?:can|may|is allowed to|are allowed to|is eligible to|are eligible to)\b.{0,65}\b(?:bid|place a bid|participate)\b/i.test(claim)
+            || /\b(?:place a bid directly|bid directly|participate in public auctions)\b/i.test(claim);
+    });
 }

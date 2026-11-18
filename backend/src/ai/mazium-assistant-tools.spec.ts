@@ -99,3 +99,23 @@ describe('MaziuM reasoning tool loop', () => {
   expect(input).toContain('LOOKUP_UNAVAILABLE');expect(input).not.toContain('private SQL');
  });
 });
+
+
+describe('MaziuM complete answer repair', () => {
+ it('repairs a permission hallucination while retaining finance and warranty questions', async () => {
+  const service=new AiService({get:(k:string)=>k==='OPENAI_API_KEY'?'test-key':undefined} as any,{} as any);
+  const responses=jest.fn().mockResolvedValueOnce({output:[],output_text:JSON.stringify({text:'Private buyers can bid at auction.'})})
+   .mockResolvedValueOnce({output:[],output_text:JSON.stringify({text:'Private buyers cannot bid at auction. Use Retail at /search. Finance is subject to provider approval, and warranty payment is separate from policy issuance.'})});
+  (service as any).openai={responses:{create:responses},moderations:{create:jest.fn().mockResolvedValue({results:[{flagged:false}]})}};
+  const r=await service.chatCompletion([{role:'user',content:'I am private and want an auction car, finance and warranty.'}]);
+  expect(responses).toHaveBeenCalledTimes(2);expect(r.text).toMatch(/Finance/);expect(r.text).toMatch(/warranty/);expect(r.requiresHumanReview).toBeUndefined();
+  expect(JSON.stringify(responses.mock.calls[1][0].input)).toContain('EVERY part');
+ });
+ it('withholds a repeated false permission and flags human review', async () => {
+  const service=new AiService({get:(k:string)=>k==='OPENAI_API_KEY'?'test-key':undefined} as any,{} as any);
+  const responses=jest.fn().mockResolvedValue({output:[],output_text:JSON.stringify({text:'Private buyers can bid at auction.'})});
+  (service as any).openai={responses:{create:responses},moderations:{create:jest.fn().mockResolvedValue({results:[{flagged:false}]})}};
+  const r=await service.chatCompletion([{role:'user',content:'Can private buyers bid?'}]);
+  expect(responses).toHaveBeenCalledTimes(2);expect(r.requiresHumanReview).toBe(true);expect(r.text).not.toContain('Private buyers can bid');
+ });
+});

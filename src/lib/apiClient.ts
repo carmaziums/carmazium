@@ -130,7 +130,7 @@ export async function apiClient<T>(
             const controller = new AbortController();
             const timer = setTimeout(
                 () => controller.abort(new Error('Request timed out')),
-                endpoint === '/ai/chat' ? 160000 : 30000,
+                endpoint === '/ai/chat' ? 190000 : 30000,
             );
 
             try {
