@@ -43,3 +43,5 @@ Second run 44420732683: 124/125 contract passes. The genuine multi-part failure 
 Manual review additionally tightened ambiguous £1 explanations: distinguish Basic Retail advertising from the separate dealer verification charge instead of assuming the customer means verification. MZ-101 now explicitly requires the advertising distinction as well as retail, finance and warranty.
 
 Integrated concurrent support-context release #901 without dropping its safer yes/no handoff handling, navigation improvements, sensitive-content boundaries or support answer validation. All 50 source fingerprints were reviewed for the combined revision.
+
+The floating assistant also renders formatted answers and clickable same-site links with HTML/images excluded and unrelated link origins rendered as plain text. This matches the richer support response presentation while retaining safe navigation.
