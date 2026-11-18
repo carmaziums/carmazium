@@ -31,12 +31,21 @@ const OWNER_APPROVAL = [
     /\b(?:medical condition|disability|anxiety disorder|mental health|pregnancy|diagnosis|health records?|medical records?)\b/i,
 ];
 
+export function hasSensitiveSupportContent(message: string): boolean {
+    return OWNER_APPROVAL.some(pattern => pattern.test(message));
+}
+
+/** A firm refusal or repeated request must bypass the one-time offer. */
+export function requiresImmediateHumanSupport(message: string): boolean {
+    return /\b(?:stop|disable|turn off|opt out|no more|don'?t|do not|no longer|instead|still|insist|already asked|asked before|just connect|just transfer|human only|person only)\b/i.test(message);
+}
+
 export function classifySupportMessage(message: string): SupportDecision {
     const content = message.trim();
     if (!content || content.length > 4000) {
         return { action: 'ESCALATE', reason: 'EMPTY_OR_OVERSIZED' };
     }
-    if (requestsHumanSupport(content) || OWNER_APPROVAL.some((pattern) => pattern.test(content))) {
+    if (requestsHumanSupport(content) || hasSensitiveSupportContent(content)) {
         return { action: 'ESCALATE', reason: 'SENSITIVE_OR_APPROVAL_REQUIRED' };
     }
     return { action: 'DRAFT', reason: 'ROUTINE_SUPPORT' };

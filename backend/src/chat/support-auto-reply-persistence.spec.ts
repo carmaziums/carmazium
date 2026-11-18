@@ -61,7 +61,7 @@ describe('support reply persistence and identity', () => {
         expect(prisma.message.create).not.toHaveBeenCalled();
     });
     it('keeps handoff acknowledgement working when the generation budget is exhausted', async () => {
-        const {service,prisma} = setup('Please connect me with a person');
+        const {service,prisma} = setup('Please connect me with a person', {supportAiOptedOutAt: new Date()});
         prisma.message.count.mockResolvedValue(100000);
         expect((await service.persistSupportAutoReply('room',sourceId,botId,HUMAN_HANDOFF_REPLY,'FIXED')).created).toBe(true);
     });
