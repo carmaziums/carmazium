@@ -1,3 +1,4 @@
+import { MaziumSessionGuard } from './mazium-session.guard';
 import { Module } from '@nestjs/common';
 import { AiController } from './ai.controller';
 import { AiService } from './ai.service';
@@ -12,7 +13,7 @@ import { TourNarrationService } from './tour-narration.service';
 @Module({
     imports: [AuthModule, PrismaModule, ChatModule],
     controllers: [AiController, TourNarrationController],
-    providers: [AiService, MaziumSupportAutoReplyService, MaziumSupportDispatcher, TourNarrationService],
+    providers: [MaziumSessionGuard, AiService, MaziumSupportAutoReplyService, MaziumSupportDispatcher, TourNarrationService],
     exports: [AiService, MaziumSupportAutoReplyService],
 })
 export class AiModule { }

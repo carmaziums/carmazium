@@ -24,10 +24,11 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'CarMazium supports individual buyer/seller accounts and verified motor-trade Partner/Dealer accounts.',
             'The same login can access its role-appropriate dashboard; never promise a customer has a particular permission or approval.',
             'Dealers need business verification before bidding at dealer-only auctions. Partner accounts manage eligible service capabilities.',
+            'Within an approved dealership, the owner, dealer Admin and Sales Agent roles have bidding permission. A Finance Manager can view trade stock and pay auction/listing fees but cannot place bids. Sales Agents cannot pay auction/listing fees; the owner, Admin or Finance Manager handles those. Active staff use the dealership owner verification, not a separate staff dealership profile. These permissions do not override auction status.',
             'Account/profile settings: /profile. It contains personal/business details, verification, notification choices, payouts, appearance and account/security controls.',
-            'The public assistant cannot see whether a particular account has passed KYC, changed password or been suspended.'
+            'Only a successful authenticated account tool can establish recorded dealer approval and permissions. It cannot inspect passwords or private KYC documents.'
         ].join(' '),
-        sources: ['src/app/profile/page.tsx','src/app/dashboard/partner/page.tsx','src/app/pricing/traders/page.tsx']
+        sources: ['src/app/profile/page.tsx','src/app/dashboard/partner/page.tsx','src/app/pricing/traders/page.tsx','backend/src/dealers/dealer-access.ts']
     },
     {
         id: 'create-new-listing',
@@ -80,7 +81,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         triggers: /\b(?:auction|bid|bidding|reserve|winning|winner|anti-snipe|provisional|dealer fee|buyer fee)\b/i,
         facts: [
             'CarMazium seller auctions are free to list and normally run for 24 hours, with verified motor traders eligible to bid.',
-            'CarMazium auctions are visible publicly, but ALL live auction bidding is restricted to approved verified motor-trade dealers. Private buyers and private sellers cannot bid or buy directly through these auctions; retail cars for the general public are at /search. Selling a car via a free auction is not the same as being eligible to bid.',
+            'Trade auction access and ALL live auction bidding is restricted to approved verified motor-trade dealers. Private buyers and private sellers cannot bid or buy directly through these auctions; retail cars for the general public are at /search. Selling a car via a free auction is not the same as being eligible to bid.',
             'Winning dealer auction fee is £125 one-off (subject to authorised grants), payable within the prescribed 72-hour period; a losing bidder does not pay that fee.',
             'After the fee is paid, seller contact and deal details can unlock; the winning dealer pays the actual vehicle purchase price directly to the seller.',
             'Do not claim that a bid, a reserve offer, a sale or a fee refund is automatically final without checking its status in the relevant dashboard.',
@@ -94,9 +95,9 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         facts: [
             'Vehicle purchase proceeds are paid by the buyer directly to the seller; CarMazium is not an escrow for the vehicle price.',
             'For qualifying completed auction sales, the seller confirms payment and uploads approved handover evidence/photo; a £100 seller reward may then be released.',
-            'A payout is not automatic merely because an auction ended. Successful sale, approved handover and payout/account checks matter.',
+            'A payout is not automatic merely because an auction ended. The buyer fee must be recorded paid, the sale completed, seller funds confirmed where required, handover approved and payout/account checks completed. Approval and actual payout are separate states.',
             'Sellers can review auction progress in /dashboard/seller/auctions; bank/payout setup is available in /profile?section=payouts.',
-            'Never claim that you have checked a payout, released funds or guaranteed a payout date.'
+            'Only a successful authenticated tool can establish recorded payout status. Handover approval (sellerBonusReleased) is not payment. A Stripe transfer record is not proof of arrival in the seller bank; never promise a payout date.'
         ].join(' '),
         sources: ['src/app/pricing/page.tsx','src/app/how-it-works/page.tsx','src/app/dashboard/seller/auctions/page.tsx','src/app/profile/page.tsx']
     },
@@ -141,6 +142,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'Warranty quotation is available from /services/warranty when enabled. Customers enter eligible vehicle information, select cover and see the actual priced quote before paying.',
             'The platform arranges 12-month Warrantywise cover through Pulse Cars Limited as broker; CarMazium does not issue the warranty itself. Admin arranges issuance after payment.',
             'The backend current VAT-inclusive standard 12-month tariff is £360 for a car or £445 for an SUV at £2,000 per-repair limit and £75/hr labour, before extras.',
+            'The currently implemented repair limits are £1,000 and £2,000, and labour choices £75, £100, £150 and £200 per hour. Any different requested cover must be confirmed with the team. Airbags, Driver Assistance and Emissions each add £20; Multimedia adds £80.',
             'Other coverage/labour/extras affect the exact price; refer to the live quote form rather than inventing prices or cover. Purchases are not the same as an issued policy.',
             'Warranty claims and exclusions are governed by the actual policy terms; the assistant must not approve a claim.'
         ].join(' '),
@@ -165,10 +167,11 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'Any signed-in customer can post an eligible service job at /services/jobs/new; see posted jobs at /services/jobs.',
             'Approved and eligible provider businesses see matching available jobs at /dashboard/service/jobs and can quote. Service capability setup is /dashboard/service/capabilities.',
             'Customers compare quotes, accept one, complete the required checkout and can track or confirm service completion in the job detail.',
+            'Paid TradeXchange service jobs use a 9% platform and 91% provider split, rounded in pence. Service-job payment is separate from the vehicle sale price paid directly to the vehicle seller. Service funds follow job completion, confirmation, dispute and release rules; never promise immediate payout.',
             'Only approved providers for the relevant service can quote; never guarantee an available provider, service price or immediate booking.',
             'Some service types can be temporarily switched off; refer to /services for actual availability.'
         ].join(' '),
-        sources: ['src/app/services/page.tsx','src/app/services/jobs/[id]/page.tsx','src/lib/featureFlags.ts']
+        sources: ['src/app/services/page.tsx','src/app/services/jobs/[id]/page.tsx','src/lib/featureFlags.ts','backend/src/services/services.service.ts']
     },
     {
         id: 'dealer-services-and-partners',
@@ -186,7 +189,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         id: 'search-buying',
         triggers: /\b(?:search|find a car|find cars|filter|body type|automatic|diesel|petrol|ev|electric|ulez|postcode|near me|budget|price range|saved cars|favourites|hpi|mot)\b/i,
         facts: [
-            'Search and filter retail cars at /search; auctions can be browsed at /auctions. Filters include eligible body, fuel, transmission, price, age, mileage and other supported attributes.',
+            'Search and filter public retail cars at /search; approved dealers with trade access use /auctions. Filters include eligible body, fuel, transmission, price, age, mileage and other supported attributes.',
             'MaziuM may return a structured filter card only for filters explicitly requested in the CURRENT message; never carry unrequested filters forward.',
             'Information such as DVLA/MOT history, vehicle provenance/HPI and ULEZ suitability can depend on the listing or a provider check; do not state a specific car is safe, HPI clear, compliant or finance-approved without verified records.',
             'A seller’s description and photos are declarations, not independent guarantees. If data is missing, say it is not shown.'
@@ -197,13 +200,14 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         id: 'account-security-privacy',
         triggers: /\b(?:privacy|gdpr|delete my account|close account|data|notification|settings|password|reset|2fa|security|payouts?|payout bank|bank payout|payout details|stripe connect|bank details)\b/i,
         facts: [
+            'To reset a forgotten password, use /auth/forgot-password, follow the email link, and request a new link if it expires. Never share passwords or reset tokens in chat.',
             'Personal account settings are at /profile. Sections include personal details, notifications, payouts, appearance, security and account controls.',
             'For reward/service payouts, the owner may need to complete the authorised bank or Stripe Connect setup in the Payouts section; never request bank information inside the AI chat.',
             'For support, MaziuM can help with generic instructions but cannot personally access/change bank details, account identity, passwords or credentials.',
             'AI interaction and data-sharing details are in /privacy-policy; customers can stop AI sharing through the AI control where present.',
             'For legal data deletion requests, follow the profile/account controls or human support, subject to lawful retention obligations.'
         ].join(' '),
-        sources: ['src/app/profile/page.tsx','src/app/privacy-policy/page.tsx','docs/privacy/ACCOUNT_DELETION_RETENTION.md']
+        sources: ['src/app/auth/login/page.tsx','src/app/auth/forgot-password/page.tsx','src/app/profile/page.tsx','src/app/privacy-policy/page.tsx','docs/privacy/ACCOUNT_DELETION_RETENTION.md']
     },
     {
         id: 'cancellations-disputes',
@@ -221,6 +225,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         triggers: /\b(?:valuation|value my car|car worth|estimated value|trade value|market value|dvla|mot history|registration lookup|number plate|vrm|make model year|valuation error)\b/i,
         facts: [
             'The car valuation journey is part of /sell, not a separate invented /valuation page. Start with the vehicle registration; a supported manual make/model/year valuation route is available when a registration lookup cannot be completed.',
+            'The implemented alignment uses the market-evidence low as auction market value, and rounds auction value times 1.20 for retail suggested asking. For an auction guide of £5,000 this gives £6,000 retail; this is not the same calculation as taking 20% off retail. It is guidance, not a guaranteed sale.',
             'CarMazium estimates auction and retail price guidance from available vehicle and market information; suggestions are not a binding offer or guaranteed sale price.',
             'DVLA and MOT records do not prove actual service history, number of keys, mechanical condition, electrical faults or HPI clearance. The seller supplies truthful declarations.',
             'A touring caravan is listed manually and does not receive the normal registration-based valuation.',
@@ -257,7 +262,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         id: 'bidding-reserve-and-provisional',
         triggers: /\b(?:bid|place a bid|reserve price|below reserve|reserve offer|provisional|accept bid|reject bid|counter offer|auction extension|anti.snipe|close auction|cancel auction|auction countdown)\b/i,
         facts: [
-            'Only verified, authorised motor-trade dealers can place auction bids. Private buyers/sellers cannot bid even if they can browse auction listings; private customers should buy from Retail listings at /search. Check the actual auction status, dealer approval, and permission before attempting to bid.',
+            'Only verified, authorised motor-trade dealers can place auction bids. Private buyers/sellers cannot bid; private customers should buy from Retail listings at /search. Check the actual auction status, dealer approval, and permission before attempting to bid.',
             'A seller may receive a provisional offer below reserve after the auction ends. From /dashboard/seller/auctions, open the ended auction results and choose Review & Accept on the provisional offer when available. Acceptance is a separate workflow, not an automatic sale; provisional offers expire after 72 hours and an expired offer cannot be accepted.',
             'Some late bids extend an active auction, so the visible end time can change. A seller can close or cancel an auction only when the corresponding status and permissions allow it.',
             'Sellers manage auction results and offers from their auction dashboard. Do not claim that a reserve offer is accepted, a winner is final or a vehicle is collected without checking recorded transactions.'
@@ -315,7 +320,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'Official human handoffs are acknowledged and placed in the existing support conversation. The AI should not promise a response time or say an agent is online.',
             'For inaccurate MaziuM answers, the floating assistant offers Report AI response; reports are reviewed by staff.',
             'Never claim a payment, listing edit, message delivery or account problem has been resolved unless verified by an authorised transaction.',
-            'An AI conversation is guidance, not an authorised agent operating the customer account.'
+            'AI may use permission-scoped read-only account tools. It cannot modify a listing, bid, payment or account.'
         ].join(' '),
         sources: ['backend/src/chat/support-automatic-responses.ts','backend/src/ai/ai.controller.ts','src/components/features/MaziumWidget.tsx']
     },

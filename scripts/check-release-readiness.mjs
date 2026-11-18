@@ -261,7 +261,9 @@ if (
 
 if (
   !webMazium.includes('mazium_ai_consent_v1') ||
-  !webMazium.includes('I understand & continue') ||
+  !webMazium.includes('Pause AI') ||
+  !webMazium.includes('Resume AI') ||
+  !webMazium.includes('"declined"') ||
   !webMazium.includes('Report AI response') ||
   !webAiApi.includes('reportAiResponse') ||
   !nativeMazium.includes('mazium_ai_consent_v1') ||
@@ -271,7 +273,7 @@ if (
 ) {
   fail('AI consent/report controls must remain available on both web and native');
 } else {
-  ok('Web and native require first-use AI acknowledgement and expose in-app reporting');
+  ok('Web pause/resume, native acknowledgement and AI reporting remain available');
 }
 
 if (

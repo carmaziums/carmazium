@@ -106,6 +106,8 @@ describe('MaziuM source-verified public platform knowledge', () => {
         'Accept/reject an offer from /dashboard/seller/auctions.',
         'Open [Offers Received](/dashboard/user?tab=offers).',
         'Outgoing offers are at /dashboard/user?tab=bids.',
+        'Saved Cars: /dashboard/user?tab=watchlist. Purchases: /dashboard/user?tab=purchases.',
+        'Use /auth/forgot-password if you cannot sign in at /auth/login.',
     ])('does not mistake ordinary slash-separated prose for a website path: %s', answer => {
         expect(hasUnverifiedNavigationPath(answer)).toBe(false);
     });

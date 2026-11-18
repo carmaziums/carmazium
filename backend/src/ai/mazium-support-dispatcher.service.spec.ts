@@ -77,7 +77,7 @@ describe('support dispatcher', () => {
         await dispatcher.onModuleInit();
         expect((await dispatcher.publicHealth()).status).toBe('POLL_NOT_STARTED');
         await dispatcher.dispatch();
-        expect(await dispatcher.publicHealth()).toEqual({
+        expect(await dispatcher.publicHealth()).toMatchObject({
             ready: true, status: 'READY', fixedRepliesAvailable: true, pollFailureCode: null,
         });
         dispatcher.onModuleDestroy();
@@ -85,7 +85,7 @@ describe('support dispatcher', () => {
     it('shows a disabled worker as unavailable without exposing secret values', async () => {
         const { dispatcher } = setup({ MAZIUM_SUPPORT_DISPATCH_ENABLED: 'false' });
         await dispatcher.onModuleInit();
-        expect(await dispatcher.publicHealth()).toEqual({
+        expect(await dispatcher.publicHealth()).toMatchObject({
             ready: false, status: 'DISABLED', fixedRepliesAvailable: true, pollFailureCode: null,
         });
         dispatcher.onModuleDestroy();

@@ -95,10 +95,36 @@ jobs:
       - name: Test owner, outsider, photo and dealer role with real transactions
         run: npm test -- --runInBand src/damage/damage.integration.spec.ts src/services/services.audit.integration.spec.ts src/analytics/valuation-reliability.integration.spec.ts src/warranties/warranties.integration.spec.ts src/listings/caravan.integration.spec.ts src/users/website-introduction.integration.spec.ts src/dealers/dealers.crm.integration.spec.ts src/chat/support-human-handoff.integration.spec.ts src/ai/mazium-support-dispatcher.integration.spec.ts
 
+  intelligence-evaluation:
+    name: Evaluate MaziuM on 120 conversations and 5 account fixtures
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [test-build, integration-security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --prefix backend
+      - run: npm run build --prefix backend
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Evaluate candidate code without customer data or production DB access
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: node scripts/run-mazium-model-eval-on-fly.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mazium-model-evaluation
+          path: /tmp/mazium-model-evaluation.jsonl
+
   deploy:
     name: Deploy backend to Fly.io
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [test-build, integration-security]
+    needs: [test-build, integration-security, intelligence-evaluation]
     runs-on: ubuntu-latest
     defaults:
       run:

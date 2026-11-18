@@ -1,6 +1,10 @@
 import { canAutoReplyToSupport, canPrepareSupportDraft, classifySupportMessage, supportAutoReplyClientMessageId, requestsHumanSupport, isInboundCustomerSupportMessage } from './mazium-support-policy';
 
 describe('MaziuM support safety policy', () => {
+    it.each(['I am a finance manager. Why can I not bid?', 'Is the assistant a human or AI?', 'Can a dealership manager list cars?'])('keeps ordinary role and identity questions with AI: %s', message => {
+        expect(requestsHumanSupport(message)).toBe(false);
+        expect(classifySupportMessage(message).action).toBe('DRAFT');
+    });
     it.each([
         'Please refund my listing fee',
         'I want to dispute this sale',

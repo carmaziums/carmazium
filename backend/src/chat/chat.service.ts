@@ -2276,7 +2276,7 @@ export class ChatService {
                 AND: [{ OR: [{ createdAt: { lt: latest.createdAt } },
                     { createdAt: latest.createdAt, id: { lte: latest.id } }] }],
             },
-            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 10,
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 40,
             select: { content: true, senderId: true, aiGenerated: true },
         }) : [];
         const { safeSupportConversation } = await import('./support-conversation-context');
@@ -2305,7 +2305,7 @@ export class ChatService {
             || botUserId !== process.env.MAZIUM_SUPPORT_BOT_USER_ID) {
             throw new ForbiddenException('MaziuM automatic support replies are disabled or bot identity is invalid');
         }
-        if (!botUserId || !reply.trim() || reply.length > 1200) {
+        if (!botUserId || !reply.trim() || reply.length > 6000) {
             throw new BadRequestException('Invalid MaziuM reply');
         }
         const { safeAutomaticSupportReply, supportAutoReplyClientMessageId } =

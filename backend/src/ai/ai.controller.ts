@@ -1,3 +1,5 @@
+import { MaziumSessionGuard } from './mazium-session.guard';
+import { Throttle } from '@nestjs/throttler';
 import { MaziumSupportDispatcher } from './mazium-support-dispatcher.service';
 import { Controller, Post, Get, Patch, Body, Param, Query, Req, UsePipes, ValidationPipe, UseGuards, BadRequestException } from '@nestjs/common';
 import { AiService } from './ai.service';
@@ -46,9 +48,12 @@ export class AiController {
     }
 
     @Post('chat')
+    @UseGuards(MaziumSessionGuard)
+    @Throttle({ default: { limit: 20, ttl: 60000 } })
+    @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
     @ApiOperation({ summary: 'AI assistant chat' })
-    async chat(@Body() dto: AiChatDto) {
-        const result = await this.aiService.chatCompletion(dto.messages);
+    async chat(@Body() dto: AiChatDto, @Req() req: any) {
+        const result = await this.aiService.chatCompletion(dto.messages, { userId: req.user?.id, page: dto.page });
         return { success: true, data: result };
     }
 

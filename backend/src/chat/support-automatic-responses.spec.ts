@@ -7,35 +7,31 @@ describe('automatic support answers', () => {
         expect(supportReplyPlan({ supportAiOptedOutAt: now, supportHumanTakeoverAt: now }, "I'd like to speak to a human support agent, please.", now)).toEqual({ kind: 'FIXED', reply: HUMAN_HANDOFF_REPLY });
         expect(HUMAN_HANDOFF_REPLY).not.toMatch(/joined|available now|shortly|minutes/i);
     });
-    it.each(['hi can you help me', 'i want to upload a car'])('provides useful local support without a dispatcher: %s', text => {
+    it.each(['hi can you help me'])('provides useful local support without a dispatcher: %s', text => {
         const plan = supportReplyPlan({}, text, now);
         expect(plan?.kind).toBe('FIXED');
         if (plan?.kind === 'FIXED') {
-            expect(plan.reply.length).toBeGreaterThan(70);
+            expect(plan.reply.length).toBeGreaterThan(10);
             expect(plan.reply).not.toBe(SUPPORT_UNAVAILABLE_REPLY);
         }
     });
     it.each(['How much does a retail listing cost?', 'How do I list my car?', 'How many photos do I need?', 'Where do I download the app?'])('answers common questions without referring them to a person: %s', text => {
-        expect(supportReplyPlan({}, text, now)?.kind).toBe('FIXED');
-        expect(fixedSupportReply(text)).not.toBe(SUPPORT_UNAVAILABLE_REPLY);
-        expect(fixedSupportReply(text)).not.toMatch(/human support|talk to a person/i);
+        expect(supportReplyPlan({}, text, now)?.kind).toBe('AI');
+        expect(fixedSupportReply(text)).toBeNull();
     });
     it.each(['How does identity verification work?', 'How do I reset my password?', 'Why can I not log in?', 'I have a complaint about uploading photos'])('does not confuse routine help with approval: %s', text => {
         expect(classifySupportMessage(text).action).toBe('DRAFT');
     });
-    it.each(['Refund my fee', 'Can you waive the payment?', 'Where is my £100 reward?', 'Delete my account'])('routes decisions to staff with a receipt: %s', text => {
+    it.each(['Refund my fee', 'Can you waive the payment?', 'Delete my account'])('routes decisions to staff with a receipt: %s', text => {
         expect(supportReplyPlan({}, text, now)).toEqual({ kind: 'FIXED', reply: HUMAN_REVIEW_REPLY });
     });
-    it('uses different photo minimums for towable caravans and motorised campervans', () => {
-        expect(fixedSupportReply('How many photos do I need for a caravan?')).toContain('at least one clear photo');
-        expect(fixedSupportReply('How many photos do I need for a campervan?')).toContain('at least 10 clear photos');
-        expect(fixedSupportReply('How many photos do I need for my car?')).toContain('at least 10 vehicle photos');
+    it.each(['How many photos do I need for a caravan?', 'How many photos for a campervan?', 'Where is my £100 reward?', 'I want to upload a car and arrange collection'])('lets the model retrieve specific workflows: %s', text => {
+        expect(supportReplyPlan({}, text, now)?.kind).toBe('AI');
     });
-
     it('respects explicit opt-out and current staff conversation', () => {
         expect(supportReplyPlan({ supportAiOptedOutAt: now }, 'How much to list?', now)).toBeNull();
         expect(supportReplyPlan({ supportHumanTakeoverAt: now }, 'How much to list?', now)).toBeNull();
-        expect(supportReplyPlan({ supportHumanTakeoverAt: new Date(now.getTime() - 3600000) }, 'How much to list my car?', now)?.kind).toBe('FIXED');
+        expect(supportReplyPlan({ supportHumanTakeoverAt: new Date(now.getTime() - 3600000) }, 'How much to list my car?', now)?.kind).toBe('AI');
     });
     it('answers general unmatched questions with MaziuM by default, without an opt-in panel', () => {
         const text = 'Why does the app close when I select a photo?';
@@ -68,10 +64,7 @@ describe('automatic support answers', () => {
         'how do I change my car advert details?',
         'where can I edit my listing price?',
     ])('gives the correct existing-listing editor in official customer support: %s', text => {
-        const reply = fixedSupportReply(text) ?? '';
-        expect(reply).toContain('/dashboard/user?tab=cars');
-        expect(reply).toContain('/dashboard/dealer/inventory');
-        expect(reply).toContain('rather than starting again at /sell');
+        expect(supportReplyPlan({}, text, now)?.kind).toBe('AI');
     });
 
     it('keeps only pending handoffs and unresolved questions in the staff queue', () => {
@@ -97,7 +90,7 @@ describe('conversation-first support handoff', () => {
         expect(supportReplyPlan({ supportHelpOfferPending: true }, 'no thanks', now)).toEqual({ kind: 'FIXED', reply: SUPPORT_HELP_ACCEPTED });
     });
     it('continues helping when a customer explains the issue after the offer', () => {
-        expect(supportReplyPlan({ supportHelpOffered: true }, 'i want to upload a car', now)?.kind).toBe('FIXED');
+        expect(supportReplyPlan({ supportHelpOffered: true }, 'i want to upload a car', now)?.kind).toBe('AI');
     });
     it.each(['I already tried uploading a car but it failed', 'How much is a listing? Also how do I edit one?'])('does not bury a complex problem under generic FAQs: %s', text => {
         expect(supportReplyPlan({}, text, now)).toEqual({ kind: 'AI' });

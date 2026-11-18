@@ -1213,7 +1213,9 @@ const aiDtoConsent = read('backend/src/ai/ai.dto.ts');
 
 if (
   !webMaziumSafety.includes('mazium_ai_consent_v1') ||
-  !webMaziumSafety.includes('I understand & continue') ||
+  !webMaziumSafety.includes('Resume AI') ||
+  !webMaziumSafety.includes('Pause AI') ||
+  !webMaziumSafety.includes('declined') ||
   !webMaziumSafety.includes('Report AI response') ||
   !mobileMaziumSafety.includes('mazium_ai_consent_v1') ||
   !mobileMaziumSafety.includes('I understand & continue') ||
@@ -1221,9 +1223,9 @@ if (
   !webAiApiSafety.includes('reportAiResponse') ||
   !mobileAiApiSafety.includes('reportAiResponse')
 ) {
-  fail('MaziuM AI first-use consent or reporting controls drifted across web/native');
+  fail('MaziuM AI privacy choice or reporting controls drifted');
 } else {
-  ok('Web and native MaziuM AI share first-use disclosure and in-app reporting');
+  ok('Web default-on pause/resume and native first-use disclosure preserve privacy choice and in-app reporting');
 }
 
 if (

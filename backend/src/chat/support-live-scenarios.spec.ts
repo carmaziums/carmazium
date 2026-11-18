@@ -9,6 +9,7 @@ describe('customer support journey routing', () => {
         'how can i updat existing listing?',
         'I am a private seller. I want to change the price but I cannot see Edit. What should I do?',
         'How do I set up my payouts to receive the seller reward?',
+        'Where is my £100 reward?', 'My payout has not arrived',
         'How can I update my bank details in settings?',
         'How does the £100 seller reward work and when does a seller qualify?',
         'What is the refund policy?',
@@ -47,7 +48,6 @@ describe('customer support journey routing', () => {
     it.each([
         'How do I request a refund if I paid twice for a listing?',
         'Please refund my listing fee', 'Release my payout now',
-        'Where is my £100 reward?', 'My payout has not arrived',
         'How do payouts work? Also transfer my money now.',
         'Can you guarantee finance approval and approve my dealer verification now?',
         'Change my bank account', 'Delete my account', 'My account was hacked',

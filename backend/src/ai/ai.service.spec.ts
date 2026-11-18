@@ -21,7 +21,7 @@ describe('AiService safety and reporting', () => {
             },
         };
         const config: any = {
-            get: jest.fn((key: string) => key === 'OPENAI_API_KEY' ? 'test-key' : undefined),
+            get: jest.fn((key: string) => key === 'OPENAI_API_KEY' ? 'test-key' : key === 'OPENAI_MAZIUM_CHAT_MODEL' ? 'gpt-4.1' : undefined),
         };
         const service = new AiService(config, prisma);
 
@@ -92,14 +92,12 @@ describe('AiService safety and reporting', () => {
         expect(completionCreate).not.toHaveBeenCalled();
     });
 
-    it('answers edit-existing-listing from verified routes before asking the model', async () => {
+    it('reasons about existing-listing questions using verified editor routes', async () => {
         const { service, completionCreate } = build();
-        const result = await service.chatCompletion([
-            { role: 'user', content: 'how can i update existing listing?' },
-        ]);
-        expect(result.text).toContain('/dashboard/user?tab=cars');
-        expect(result.text).toContain('/dashboard/dealer/inventory');
-        expect(completionCreate).not.toHaveBeenCalled();
+        await service.chatCompletion([{ role: 'user', content: 'how can i update existing listing and change its retail package?' }]);
+        const request = completionCreate.mock.calls[0][0];
+        expect(JSON.stringify(request.messages)).toContain('/dashboard/user?tab=cars');
+        expect(request.tools.some((t: any) => t.function.name === 'read_platform_knowledge')).toBe(true);
     });
 
     it('grounds dealer purchase guidance in current first-party route information', async () => {
@@ -130,26 +128,18 @@ describe('AiService safety and reporting', () => {
         expect(result.text).toContain('wrong page');
     });
 
-    it('rejects non-dealer auction bidding with clear retail alternative before model generation', async () => {
+    it('preserves all screenshot turns and authoritative dealer-only guidance for reasoning', async () => {
         const { service, completionCreate } = build();
-        const result = await service.chatCompletion([
-            { role: 'user', content: 'tell me how to bid on auction cars if you are not dealer' },
-        ]);
-        expect(result.text).toContain('verified motor-trade dealers only');
-        expect(result.text).toContain('/search');
-        expect(completionCreate).not.toHaveBeenCalled();
-    });
-
-    it('keeps non-dealer status through the exact screenshot follow-up rather than following a wrong previous assistant', async () => {
-        const { service, completionCreate } = build();
-        const result = await service.chatCompletion([
-            { role: 'user', content: 'tell me how to bid on auction cars if you are not dealer' },
-            { role: 'assistant', content: "I'm sorry, but I can't assist with auction bidding processes for non-dealers." },
-            { role: 'user', content: 'but i want to buy from auctions' },
-        ]);
-        expect(result.text).toContain('A private buyer or seller cannot place bids');
-        expect(result.text).toContain('/search');
-        expect(completionCreate).not.toHaveBeenCalled();
+        const messages: any[] = [
+            { role: 'user', content: 'I am not a dealer. How do I bid?' },
+            { role: 'assistant', content: 'Incorrect prior permission to bid.' },
+            { role: 'user', content: 'But I want to buy at auction and need finance too.' },
+        ];
+        await service.chatCompletion(messages);
+        const request = completionCreate.mock.calls[0][0];
+        expect(request.messages.slice(-3)).toEqual(messages);
+        expect(JSON.stringify(request.messages)).toContain('Private buyers, private sellers and unverified dealers CANNOT');
+        expect(JSON.stringify(request.tools)).toContain('vehicle-finance');
     });
 
     it('withholds an invented private-auction entitlement even if the model generates it on an unrelated query', async () => {

@@ -29,6 +29,7 @@ export function hasSensitiveSupportContent(message: string): boolean {
 /** Separate private data from requests requiring a staff decision. Public help
  * about payouts, refunds or listing prices is not itself a financial action. */
 const STAFF_ACTION = [
+    /\b(?:send|release|approve|process|make|issue|pay|expedite|guarantee)\b.{0,45}\b(?:payout|bonus|reward|£?100|money|payment)\b/i,
     /^(?:please )?(?:change|update) my bank (?:account|details)\b/i,
     /\b(?:delete|close) (?:my |the )?account\b/i,
     /\b(?:change|waive|reduce|cancel) (?:the |my )?(?:fee|payment|invoice|role)\b/i,
@@ -38,8 +39,6 @@ const STAFF_ACTION = [
     /\b(?:hacked|unauthorised access|stolen account|security breach|phishing|privacy complaint|data breach|identity theft)\b/i,
     /\b(?:dispute this sale|chargeback|compensate me|compensation for|reverse (?:a |the )?charge)\b/i,
     /\b(?:refund|reimburse|repay|release|withdraw|transfer)\b.{0,35}\b(?:my|me|our|money|funds|payment|fee|reward)\b/i,
-    /\b(?:my|our) (?:refund|payout|withdrawal|reimbursement)\b.{0,40}\b(?:missing|late|failed|wrong|not received|not arrived|hasn.t|has not)\b/i,
-    /\b(?:where|when)\b.*\b(?:my|the) (?:£?100|reward|money|payment|payout|refund)\b/i,
     /\b(?:paid|charged|debited) (?:twice|two times)|\bduplicate (?:charge|payment)\b/i,
 ];
 
@@ -145,7 +144,8 @@ export function supportAutoReplyClientMessageId(incomingMessageId: string): stri
  */
 export function requestsHumanSupport(message: string): boolean {
     return [
-        /\b(human|real person|actual person|live agent|support agent|staff member|manager|supervisor)\b/i,
+        /^(?:a |an |the )?(?:human|real person|actual person|live agent|support agent|staff member|manager|supervisor)(?: please)?[.!? ]*$/i,
+        /\b(?:want|need|prefer|request|speak|talk|chat|connect|transfer|put me through|pass me|escalate)\b.{0,40}\b(?:human|real person|actual person|live agent|support agent|staff member|manager|supervisor)\b/i,
         /\b(?:speak|talk|chat|connect|transfer|put me through)\s+(?:me\s+)?(?:to|with)\s+(?:a|an|the|someone|somebody)?\s*(?:person|representative|someone|somebody|agent)\b/i,
         /\b(stop|disable|turn off|opt out of|no more) (?:the |your )?(?:ai|bot|automated|automatic)\b/i,
         /\b(don't|do not|no longer) (?:want to )?(?:talk to|chat with|speak to) (?:an? )?(?:ai|bot|robot)\b/i,
@@ -179,7 +179,7 @@ export function isInboundCustomerSupportMessage(input: {
 
 /** Informational wording about money is allowed; commitments and impersonation are not. */
 export function safeAutomaticSupportReply(reply: string): boolean {
-    return !!reply.trim() && reply.length <= 1200
+    return !!reply.trim() && reply.length <= 6000
         && !/\b(?:I|we)(?:'ve| have| will| can| shall|'ll)?\s+(?:already\s+)?(?:approved|approve|authorised|authorize|authorise|issued|issue|processed|process|sent|send|pay|paid|refund|refunded|waive|waived|guarantee|guaranteed|changed|deleted|verified)\b/i.test(reply)
         && !/\b(?:I am|I'm) (?:a |your )?(?:human|real person|human agent)\b/i.test(reply)
         && !/\b(?:your (?:refund|payout|payment|reward) (?:is|has been) (?:approved|processed|sent|guaranteed)|send (?:me|us) (?:your )?(?:password|otp|card number|bank details))\b/i.test(reply);

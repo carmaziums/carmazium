@@ -1052,7 +1052,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
             )}
 
             {/* Messages */}
-            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div ref={messagesContainerRef} className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain p-4 space-y-4">
                 {loading ? (
                     <div className="flex justify-center py-8">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -1061,10 +1061,10 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                     <div className="text-center text-[var(--text-muted)] py-8">
                         <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-40" strokeWidth={1.5} />
                         <p className="font-semibold text-[var(--text-secondary)]">
-                            {isSupportUser(room.otherUser) ? 'Ask CarMazium anything' : 'No messages yet'}
+                            {isSupportUser(room.otherUser) ? (aiEnabled ? "Hi, I'm MaziuM. How can I help?" : 'How can we help?') : 'No messages yet'}
                         </p>
                         <p className="text-sm mt-0.5 max-w-xs mx-auto">
-                            {isSupportUser(room.otherUser) ? 'We typically respond within 12–24 hours' : 'Send a message to start the conversation'}
+                            {isSupportUser(room.otherUser) ? '' : 'Send a message to start the conversation'}
                         </p>
                     </div>
                 ) : (
@@ -1352,7 +1352,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         onChange={(e) => handleMessageInput(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={room.context === 'SUPPORT' ? "Ask MaziuM or request a person..." : "Type a message..."}
-                        className="min-w-0 flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="min-w-0 flex-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 text-base placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary/50"
                         disabled={sending || uploadingAttachment}
                     />
                     <Button

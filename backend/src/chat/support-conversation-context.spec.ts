@@ -23,8 +23,8 @@ describe('support conversation memory', () => {
         expect(turns).toEqual([{ role: 'user', content: 'How do I add photos?' }]);
     });
     it('bounds context while always retaining the latest question', () => {
-        const turns = safeSupportConversation(Array.from({ length: 30 }, (_, i) => user(`Question ${i}`)), 'customer', 'Latest question');
-        expect(turns).toHaveLength(10);
+        const turns = safeSupportConversation(Array.from({ length: 60 }, (_, i) => user(`Question ${i}`)), 'customer', 'Latest question');
+        expect(turns).toHaveLength(40);
         expect(turns.at(-1)?.content).toBe('Latest question');
     });
     it('retains a reward explanation and its offered next step for yes please', () => {

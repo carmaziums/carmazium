@@ -25,8 +25,13 @@ class ChatMessageDto {
 }
 
 export class AiChatDto {
+    @IsOptional()
+    @IsString()
+    @MaxLength(200)
+    page?: string;
+
     @IsArray()
-    @ArrayMaxSize(10)
+    @ArrayMaxSize(40)
     @ValidateNested({ each: true })
     @Type(() => ChatMessageDto)
     messages: ChatMessageDto[];

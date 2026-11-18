@@ -4,7 +4,7 @@ import { HUMAN_HANDOFF_REPLY, SUPPORT_UNAVAILABLE_REPLY } from '../chat/support-
 describe('automatic support delivery', () => {
     const setup = (plan: any) => {
         const config = { get: jest.fn(key => ({ MAZIUM_SUPPORT_AUTO_REPLY_ENABLED: 'true', MAZIUM_SUPPORT_BOT_USER_ID: 'bot' })[key]) };
-        const chat = { inspectSupportAutoReply: jest.fn().mockResolvedValue({ eligible: true, content: 'Question', conversation: [{ role: 'user', content: 'Question' }], plan }), persistSupportAutoReply: jest.fn().mockResolvedValue({ created: true, message: { id: 'reply' } }) };
+        const chat = { getRoomMessages: jest.fn().mockResolvedValue({ data: [{ senderId: 'customer', content: 'Question' }] }), inspectSupportAutoReply: jest.fn().mockResolvedValue({ eligible: true, customerId: 'customer', content: 'Question', conversation: [{ role: 'user', content: 'Question' }], plan }), persistSupportAutoReply: jest.fn().mockResolvedValue({ created: true, message: { id: 'reply' } }) };
         const gateway = { broadcastMessage: jest.fn() };
         const ai = { draftSupportReply: jest.fn().mockResolvedValue('Try choosing a smaller photo and uploading again.') };
         return { service: new MaziumSupportAutoReplyService(config as any, chat as any, gateway as any, ai as any), chat, ai, gateway };
@@ -19,7 +19,7 @@ describe('automatic support delivery', () => {
     it('answers eligible questions directly as the disclosed assistant', async () => {
         const { service, ai } = setup({ kind: 'AI' });
         await service.processCustomerMessage('room', 'source');
-        expect(ai.draftSupportReply).toHaveBeenCalledWith([{ role: 'user', content: 'Question' }], { automatic: true });
+        expect(ai.draftSupportReply).toHaveBeenCalledWith([{ role: 'user', content: 'Question' }], { automatic: true, userId: 'customer' });
     });
     it('passes conversation context and the authenticated role to the support model', async () => {
         const { service, chat, ai } = setup({ kind: 'AI' });
@@ -28,9 +28,9 @@ describe('automatic support delivery', () => {
             { role: 'assistant', content: 'Try uploading one photo.' },
             { role: 'user', content: 'I tried that already' },
         ];
-        chat.inspectSupportAutoReply.mockResolvedValue({ eligible: true, plan: { kind: 'AI' }, content: 'I tried that already', conversation, customerRole: 'DEALER' } as any);
+        chat.inspectSupportAutoReply.mockResolvedValue({ eligible: true, plan: { kind: 'AI' }, content: 'I tried that already', conversation, customerId: 'customer' } as any);
         await service.processCustomerMessage('room', 'source');
-        expect(ai.draftSupportReply).toHaveBeenCalledWith(conversation, { automatic: true, customerRole: 'DEALER' });
+        expect(ai.draftSupportReply).toHaveBeenCalledWith(conversation, { automatic: true, userId: 'customer' });
     });
     it('provides a receipt if generation is unavailable or budget is reached', async () => {
         const { service, chat, ai } = setup({ kind: 'AI' });
