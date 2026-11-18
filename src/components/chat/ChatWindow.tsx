@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { MessageSquare, Send, Loader2, ArrowLeft, User, Check, Zap, Paperclip, ShieldAlert, CheckCircle2, Ban, Flag, X, ChevronDown, ChevronUp } from "lucide-react"
+import { MessageSquare, Send, Loader2, ArrowLeft, User, Check, Zap, Paperclip, ShieldAlert, CheckCircle2, Ban, Flag, X, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import Image from "next/image"
@@ -833,6 +833,12 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         <p className="text-xs text-[var(--text-muted)] truncate">
                             Job: {room.serviceJob.title}
                         </p>
+                    ) : room.context === 'SUPPORT' && !isAdminViewer ? (
+                        <p className="text-xs text-[var(--text-muted)] truncate">
+                            {humanRequestSent || room.supportHumanTakeoverAt
+                                ? 'Human support requested'
+                                : aiEnabled ? 'MaziuM AI' : 'MaziuM AI paused'}
+                        </p>
                     ) : (
                         <div className="flex items-center gap-1.5">
                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${otherUserOnline ? 'bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.8)]' : 'bg-[var(--text-muted)]'}`} />
@@ -842,6 +848,37 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         </div>
                     )}
                 </div>
+                {!isAdminViewer && room.context === 'SUPPORT' && !room.supportClosedAt && (
+                    <div className="relative shrink-0">
+                        <button
+                            type="button"
+                            aria-label="MaziuM support menu"
+                            aria-expanded={showAiOptions}
+                            aria-haspopup="menu"
+                            onClick={() => setShowAiOptions(open => !open)}
+                            className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--text-secondary)] hover:bg-[var(--bg-card)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                        >
+                            <MoreHorizontal size={20} aria-hidden="true" />
+                        </button>
+                        {showAiOptions && (
+                            <div role="menu" aria-label="MaziuM support settings"
+                                className="absolute right-0 top-full z-40 mt-1 w-44 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-1.5 text-sm shadow-xl">
+                                <button type="button" role="menuitem"
+                                    onClick={() => void updateAiEnabled(!aiEnabled)}
+                                    disabled={consentBusy || Boolean(!aiEnabled && room.supportHumanTakeoverAt && Date.now() - new Date(room.supportHumanTakeoverAt).getTime() < 15 * 60_000)}
+                                    className="block w-full rounded-lg px-3 py-2 text-left text-[var(--text-primary)] hover:bg-[var(--bg-input)] disabled:opacity-50">
+                                    {consentBusy ? 'Saving…' : aiEnabled ? 'Pause AI replies' : 'Resume AI replies'}
+                                </button>
+                                <Link role="menuitem" href="/privacy-policy"
+                                    onClick={() => setShowAiOptions(false)}
+                                    className="block rounded-lg px-3 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">
+                                    Privacy information
+                                </Link>
+                                {consentError && <p role="alert" className="px-3 py-1 text-xs text-red-500">{consentError}</p>}
+                            </div>
+                        )}
+                    </div>
+                )}
                 {/* My own connection state — only worth surfacing when it's degraded */}
                 {!isConnected && (
                     <span className="text-xs text-yellow-500 flex items-center gap-1.5 shrink-0" title="Reconnecting — messages will send once you're back online">
@@ -1263,52 +1300,6 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                 {qr.label}
                             </button>
                         ))}
-                    </div>
-                )}
-                {!isAdminViewer && room.context === 'SUPPORT' && !room.supportClosedAt && (
-                    <div className="shrink-0 px-3 pt-1.5 sm:px-4">
-                        <div className="flex min-h-10 items-center justify-between gap-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-2.5 py-1 text-xs">
-                            <div className="min-w-0">
-                                <p role="status" className="truncate font-semibold text-[var(--text-primary)]">
-                                    {aiEnabled ? 'MaziuM AI · Active' : (humanRequestSent || room.supportHumanTakeoverAt) ? 'Human support · AI paused' : 'MaziuM AI · Paused'}
-                                </p>
-                                <p className="truncate text-[10px] text-[var(--text-muted)]">
-                                    {aiEnabled ? 'Routine questions may be processed by OpenAI.' : 'Your messages remain with the support team.'}
-                                </p>
-                            </div>
-                            <button type="button" onClick={() => setShowAiOptions(open => !open)}
-                                aria-expanded={showAiOptions}
-                                aria-label={showAiOptions ? 'Hide MaziuM support options' : 'Show MaziuM support options'}
-                                className="inline-flex shrink-0 items-center gap-1 rounded-md border border-[var(--border-default)] bg-[var(--bg-card)] px-2 py-1 font-semibold text-[var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
-                                Options
-                                {showAiOptions ? <ChevronUp size={13} aria-hidden="true" /> : <ChevronDown size={13} aria-hidden="true" />}
-                            </button>
-                        </div>
-                        {showAiOptions && (
-                            <div className="mt-1.5 max-h-[35dvh] overflow-y-auto rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] p-3 text-xs">
-                                <p className="font-semibold">MaziuM customer support</p>
-                                <p className="mt-1 text-[var(--text-secondary)]">
-                                    MaziuM answers routine support questions automatically. We may share your question with our AI provider, OpenAI, to generate a reply. Do not include passwords, bank details or sensitive personal information. Our team handles account-specific, refund and payment decisions.
-                                </p>
-                                <p className="mt-2 text-[var(--text-secondary)]">
-                                    Simply type “I want to speak to a person” in the chat to reach our human support team. No separate button is needed.
-                                </p>
-                                <Link href="/privacy-policy" className="mt-2 inline-block font-semibold text-primary underline underline-offset-2">How we use AI and your data</Link>
-                                <div className="mt-3 flex items-center justify-between gap-3">
-                                    <span className="font-semibold">{aiEnabled ? 'Automated replies are on' : 'Automated replies are paused'}</span>
-                                    <button type="button"
-                                        onClick={() => void updateAiEnabled(!aiEnabled)}
-                                        disabled={consentBusy || Boolean(!aiEnabled && room.supportHumanTakeoverAt && Date.now() - new Date(room.supportHumanTakeoverAt).getTime() < 15 * 60_000)}
-                                        className="shrink-0 rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-1.5 font-semibold text-[var(--text-primary)] disabled:opacity-50">
-                                        {consentBusy ? 'Saving…' : aiEnabled ? 'Pause AI replies' : 'Resume AI replies'}
-                                    </button>
-                                </div>
-                                {(humanRequestSent || room.supportHumanTakeoverAt) && (
-                                    <p className="mt-2 text-[var(--text-secondary)]">Your request for a person has been recorded. A team member can reply in this conversation.</p>
-                                )}
-                                {consentError && <p role="alert" className="mt-2 text-red-500">{consentError}</p>}
-                            </div>
-                        )}
                     </div>
                 )}
                 {canDraftSupport && automationStatus && <p role="status" className="px-4 pt-2 text-xs text-[var(--text-secondary)]">{automationStatus}</p>}
