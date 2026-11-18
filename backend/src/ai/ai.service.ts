@@ -85,7 +85,7 @@ ${SEARCH_FILTER_GUIDANCE}
 
 If the user's query doesn't contain enough information for filters, still provide a helpful recommendation and omit the filterCard. Keep your text warm and helpful. Always respond in JSON only — no markdown wrappers.`;
 
-const CHAT_SYSTEM_PROMPT = `You are Mazium AI, the friendly car-buying assistant for CarMazium — UK's trusted car marketplace.
+const CHAT_SYSTEM_PROMPT = `You are MaziuM AI, the accurate, friendly customer assistant for CarMazium — a UK vehicle marketplace.
 
 About CarMazium:
 - A platform to buy and sell cars in UK
@@ -99,7 +99,11 @@ Your personality:
 - Warm, knowledgeable, and efficient
 - British English (colour, tyre, boot, bonnet, etc.)
 - Keep responses concise (2-4 sentences usually)
-- Guide buyers, sellers and traders through their actual platform workflows, not only car buying. Never make up routes, navigation options, account states, service availability or prices.
+- Guide buyers, private sellers, dealers and service providers through their actual platform workflows, not only car buying.
+- Use verified catalogue facts and route names for every platform instruction. Do not improvise a menu, fee, workflow, page, button, feature state or eligibility.
+- Explain a process step by step where needed, but answer routine questions briefly; never dump the entire knowledge base into the conversation.
+- When a feature depends on approval, current listing status, a user's account, payment, a service-provider decision or live stock, clearly say what must be checked in the dashboard; you have no account access in this public AI chat.
+- If verified knowledge cannot answer an exact route or feature, say that it is unverified and ask only the most useful clarifying question. Never guess.
 - If the user asks about a specific car type, suggest search filters
 - CRITICAL: When suggesting filters in filterCard, ONLY extract parameters explicitly requested in the user's CURRENT message! DO NOT merge or carry over filters from previous messages.
 - Do not provide instructions that facilitate violence, sexual exploitation, fraud, credential theft, harassment, self-harm, dangerous wrongdoing, or deceptive document creation.
@@ -312,10 +316,10 @@ export class AiService {
         try {
             // Build messages array with system prompt + last 10 conversation messages
             const conversationMessages = messages.slice(-10);
-            // Last user turn wins. A small context window enables natural
-            // follow-ups without leaking private account state into prompts.
-            const recentQuestion = conversationMessages.filter(m => m.role === 'user')
-                .slice(-2).map(m => m.content).join(' ');
+            // Retrieve verified knowledge for the latest question rather than
+            // letting an earlier unrelated user query displace the current topic.
+            // Previous turns still remain in the conversation history for follow-ups.
+            const recentQuestion = latestUser?.content ?? '';
             const openAiMessages: OpenAI.ChatCompletionMessageParam[] = [
                 { role: 'system', content: CHAT_SYSTEM_PROMPT },
                 { role: 'system', content: platformKnowledgeFor(recentQuestion) },
@@ -328,7 +332,7 @@ export class AiService {
             const completion = await this.openai.chat.completions.create({
                 model: 'gpt-4o-mini',
                 messages: openAiMessages,
-                temperature: 0.7,
+                temperature: 0.2,
                 max_tokens: 500,
                 response_format: { type: 'json_object' },
             });
@@ -418,7 +422,8 @@ export class AiService {
                             'CarMazium does not collect vehicle sale proceeds; buyers pay sellers directly.',
                             'Do not promise payouts, refunds, account changes, KYC approvals, timelines, or outcomes.',
                             'Do not request credentials or banking details. Do not invent account-specific facts.',
-                            'Answer straightforward questions directly. Do not ask whether the customer wants a human or tell them to contact support instead of answering.',
+                            'Answer straightforward questions directly. Give short numbered steps only when useful; do not present a long policy introduction.', 
+                            'Do not ask whether the customer wants a human or tell them to contact support instead of answering.',
                             'Explain general account, listing, verification and fee information. Financial decisions and privileged account actions must be made by staff.',
                             'Listing requires at least 10 photos, number of keys, service history, and separate mechanical/electrical fault declarations. No known faults is an explicit choice; Yes requires details.',
                             'Use /sell only to CREATE a new listing; existing listings must be edited through the role-appropriate dashboard. See verified knowledge below.',
