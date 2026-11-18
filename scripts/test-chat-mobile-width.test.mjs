@@ -60,3 +60,16 @@ test("AI-first support fits the mobile chat, keeps privacy available and has nat
     const expander = src.indexOf('{showAiOptions && (')
     assert.ok(expander !== -1 && disclosure > expander)
 })
+
+test("native support shows default AI disclosure and a pause control without a human button", () => {
+    const src = readFileSync("carmazium app/carmazium app/src/screens/main/ChatScreen.tsx", "utf8")
+    assert.match(src, /MaziuM AI · On/)
+    assert.match(src, /Routine questions may be processed by OpenAI/)
+    assert.match(src, /setSupportAiEnabled/)
+    assert.match(src, /How we use AI and your data/)
+    assert.match(src, /Ask MaziuM or request a person/)
+    assert.match(src, /Pause AI replies/)
+    assert.match(src, /Resume AI replies/)
+    assert.match(src, /isSupportCustomer && !room\.chatBlocked/)
+    assert.doesNotMatch(src, /Talk to a person instead/)
+})
