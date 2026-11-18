@@ -1,4 +1,5 @@
 import { classifySupportMessage, requestsHumanSupport } from './mazium-support-policy';
+import { verifiedNavigationReply } from '../ai/mazium-site-navigation';
 
 export const HUMAN_HANDOFF_REPLY = "Thank you for contacting CarMazium. We have received your request to speak with a member of our support team.\n\nWe are currently experiencing a higher volume of enquiries than usual, so our response may take a little longer. A member of our team will respond here as soon as they can. Please bear with us.\n\nIn the meantime, you are welcome to leave details of your enquiry in this chat so we can assist you more efficiently.\n\nThank you for your patience.\nCarMazium Customer Support";
 export const HUMAN_REVIEW_REPLY = "Thanks for your message. I've passed this to our support team for review. A team member will reply here; I can't authorise a financial or account decision.";
@@ -22,6 +23,11 @@ export function supportNeedsHumanReply(lastMessage: {
 export function routineSupportAnswer(message: string): string | null {
     if (classifySupportMessage(message).action !== 'DRAFT') return null;
     const text = message.trim();
+    // Authoritative navigation answers are shared by public MaziuM and
+    // official support. Never send someone creating a duplicate advert at
+    // /sell when their request is to edit an existing listing.
+    const verifiedRoute = verifiedNavigationReply(text);
+    if (verifiedRoute) return verifiedRoute;
     // Lightweight local conversational help should work even when the
     // external model or background worker is unavailable.
     if (text.length <= 55 && /^(?:hi|hello|hey|good (?:morning|afternoon|evening))(?:[,! .]+(?:can you help me|i need help|anyone there))?[!? .]*$/i.test(text)) {
@@ -38,14 +44,17 @@ export function routineSupportAnswer(message: string): string | null {
     if (/\b(how|where)\b/i.test(text) && /\b(list|advertise|sell)\b.*\b(car|vehicle)\b/i.test(text)) {
         return 'Open https://www.carmazium.com/sell, enter your registration, then choose Auction or Retail. Complete the vehicle details and seller declarations, add at least 10 photos, and follow the review and submission steps. Auctions are free to list; a Basic retail listing is £1 until sold.';
     }
-    if (/\b(how|where)\b/i.test(text) && /\b(edit|change|update|lower|reduce)\b.*\b(listing|advert|asking price|reserve)\b/i.test(text)) {
-        return 'Open your dashboard, go to Listings (or your dealer Inventory), choose the vehicle and select Edit. Save your changes there. Live auctions may restrict changes to bidding terms. If you see an error, tell me the exact wording so I can help.';
-    }
+
     if (/\b(how|where)\b/i.test(text) && /\b(mark|car|vehicle)\b.*\bsold\b/i.test(text)) {
         return 'Open your dashboard and find the vehicle under Listings or Inventory. Use Mark as sold and follow the confirmation steps. If it sold elsewhere, choose that option so it is not recorded as a CarMazium buyer purchase.';
     }
     if (/\b(how|what|why|do i)\b/i.test(text) && /\b(service history|number of keys|mechanical faults?|electrical faults?)\b/i.test(text)) {
         return 'Enter the actual number of keys and the service history supported by your records. For mechanical and electrical faults, choose No known faults or Yes and describe the problem. These are separate required answers; DVLA/MOT cannot supply them. Missing answers are highlighted when you try to continue.';
+    }
+    if (/\b(?:caravan|campervan)\b/i.test(text) && /\b(?:photo|picture|image)s?\b/i.test(text)) {
+        return /\bcaravan\b/i.test(text) && !/\bcampervan\b/i.test(text)
+            ? 'A towable caravan needs at least one clear photo before publication. You can enter the details manually without a registration or VIN/CRiS number. Show its condition and disclose any faults honestly.'
+            : 'A motorised campervan needs at least 10 clear photos, including exterior, interior and any damage. It follows the normal motor-vehicle registration and specification requirements.';
     }
     if (/\b(how many|minimum|required|what photos|what pictures|which photos|need to upload)\b/i.test(text) && /\b(photos?|pictures?|images?)\b/i.test(text)) {
         return 'A listing needs at least 10 vehicle photos. Include clear exterior and interior views and show any damage honestly. Add them in the Photos step; the first photo is the cover. If an upload fails, tell me the error shown and the device you are using.';

@@ -26,6 +26,12 @@ describe('automatic support answers', () => {
     it.each(['Refund my fee', 'Can you waive the payment?', 'Where is my £100 reward?', 'Delete my account'])('routes decisions to staff with a receipt: %s', text => {
         expect(supportReplyPlan({}, text, now)).toEqual({ kind: 'FIXED', reply: HUMAN_REVIEW_REPLY });
     });
+    it('uses different photo minimums for towable caravans and motorised campervans', () => {
+        expect(fixedSupportReply('How many photos do I need for a caravan?')).toContain('at least one clear photo');
+        expect(fixedSupportReply('How many photos do I need for a campervan?')).toContain('at least 10 clear photos');
+        expect(fixedSupportReply('How many photos do I need for my car?')).toContain('at least 10 vehicle photos');
+    });
+
     it('respects explicit opt-out and current staff conversation', () => {
         expect(supportReplyPlan({ supportAiOptedOutAt: now }, 'How much to list?', now)).toBeNull();
         expect(supportReplyPlan({ supportHumanTakeoverAt: now }, 'How much to list?', now)).toBeNull();
@@ -56,6 +62,17 @@ describe('automatic support answers', () => {
     });
     it.each(['I will refund you £100.', 'Your payout has been approved.', "I'm a human agent.", 'Send us your password.'])('blocks unsupported commitments: %s', reply => expect(safeAutomaticSupportReply(reply)).toBe(false));
     it('allows factual fee information', () => expect(safeAutomaticSupportReply('A Basic retail listing costs £1 until sold.')).toBe(true));
+    it.each([
+        'how can i update existing listing?',
+        'how do I change my car advert details?',
+        'where can I edit my listing price?',
+    ])('gives the correct existing-listing editor in official customer support: %s', text => {
+        const reply = fixedSupportReply(text) ?? '';
+        expect(reply).toContain('/dashboard/user?tab=cars');
+        expect(reply).toContain('/dashboard/dealer/inventory');
+        expect(reply).toContain('rather than starting again at /sell');
+    });
+
     it('keeps only pending handoffs and unresolved questions in the staff queue', () => {
         expect(supportNeedsHumanReply(null)).toBe(false);
         expect(supportNeedsHumanReply({ aiGenerated: false, content: 'Question', sender: { role: 'BUYER' } })).toBe(true);
