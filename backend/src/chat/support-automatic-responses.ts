@@ -45,7 +45,7 @@ export function fixedSupportReply(message: string): string | null {
 
 /** A one-off handoff receipt is allowed even when the customer has opted out. */
 export function supportReplyPlan(room: {
-    supportAiConsentAt?: Date | null;
+    supportAiConsentAt?: Date | null; // Legacy opt-in: no longer required for routine support
     supportAiOptedOutAt?: Date | null;
     supportHumanTakeoverAt?: Date | null;
 }, content: string, createdAt: Date): { kind: 'FIXED'; reply: string } | { kind: 'AI' } | null {
@@ -56,6 +56,9 @@ export function supportReplyPlan(room: {
         && createdAt.getTime() - room.supportHumanTakeoverAt.getTime() < 15 * 60_000)) return null;
     const fixed = fixedSupportReply(content);
     if (fixed) return { kind: 'FIXED', reply: fixed };
-    if (room.supportAiConsentAt && createdAt >= room.supportAiConsentAt) return { kind: 'AI' };
-    return { kind: 'FIXED', reply: SUPPORT_UNAVAILABLE_REPLY };
+    // General, non-sensitive support questions use MaziuM by default. The
+    // customer is told AI is operating before typing and can pause AI at any
+    // time. Only official SUPPORT rooms reach this plan; private marketplace
+    // conversations and financial decisions never go to the model.
+    return { kind: 'AI' };
 }
