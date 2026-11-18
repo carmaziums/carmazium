@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { ChatService } from '../chat/chat.service';
 import { ChatGateway } from '../chat/chat.gateway';
 import { AiService } from './ai.service';
-import { safeAutomaticSupportReply } from '../chat/mazium-support-policy';
+import { classifySupportMessage, safeAutomaticSupportReply } from '../chat/mazium-support-policy';
 import { SUPPORT_UNAVAILABLE_REPLY } from '../chat/support-automatic-responses';
 
 @Injectable()
@@ -25,7 +25,17 @@ export class MaziumSupportAutoReplyService {
             let kind: 'FIXED' | 'AI' = 'FIXED';
             let reply = eligible.plan.kind === 'FIXED' ? eligible.plan.reply : SUPPORT_UNAVAILABLE_REPLY;
             if (eligible.plan.kind === 'AI' && allowGeneration) {
-                const draft = await this.ai.draftSupportReply([{ role: 'user', content: eligible.content }], { automatic: true });
+                // Read through the existing room-membership check. Never use a transcript
+                // supplied by the browser or another customer's room.
+                const transcript = await this.chat.getRoomMessages(roomId, eligible.customerId, 1, 40);
+                const context = transcript.data.filter((m: any) => !m.deletedAt && !m.attachmentPath && m.content?.trim())
+                    .map((m: any) => ({
+                        role: m.senderId === eligible.customerId ? 'user' as const : 'assistant' as const,
+                        // Do not send earlier sensitive messages merely because the latest one is routine.
+                        content: classifySupportMessage(m.content).action === 'ESCALATE'
+                            ? '[Earlier message withheld for private human handling]' : m.content,
+                    }));
+                const draft = await this.ai.draftSupportReply(context, { automatic: true, userId: eligible.customerId });
                 if (draft && safeAutomaticSupportReply(draft)) { reply = draft; kind = 'AI'; }
             }
             let saved = await this.chat.persistSupportAutoReply(roomId, sourceMessageId, botUserId, reply, kind);

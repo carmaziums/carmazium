@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 
+import { useAuth } from "@/context/AuthContext"
 import { aiChat, reportAiResponse, type AiReportReason } from "@/lib/aiApi"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -49,13 +50,14 @@ const ALL_QUICK_REPLIES: QuickReply[] = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function MaziumWidget() {
+    const { user } = useAuth()
     const router = useRouter()
     const pathname = usePathname()
     const [isOpen, setIsOpen] = React.useState(false)
     const [messages, setMessages] = React.useState<ChatMessage[]>([
         {
             role: "bot",
-            text: "Hi, I'm MaziuM. Ask me about buying, selling, auctions or using CarMazium.",
+            text: "Hi, I'm MaziuM. How can I help?",
         },
     ])
     const [input, setInput] = React.useState("")
@@ -71,11 +73,13 @@ export function MaziumWidget() {
     const [reportDetails, setReportDetails] = React.useState("")
     const [isReporting, setIsReporting] = React.useState(false)
     const [reportedResponses, setReportedResponses] = React.useState<Set<string>>(new Set())
+    const transcriptRef = React.useRef<HTMLDivElement>(null)
+    const [viewport, setViewport] = React.useState<{height: number; top: number} | null>(null)
     const messagesEndRef = React.useRef<HTMLDivElement>(null)
     const greetingIntervalRef = React.useRef<NodeJS.Timeout | null>(null)
 
     React.useEffect(() => {
-        setHasAiConsent(localStorage.getItem("mazium_ai_consent_v1") === "accepted")
+        setHasAiConsent(localStorage.getItem("mazium_ai_consent_v1") !== "declined")
     }, [])
 
     // Set daily dynamic quick replies on mount
@@ -91,10 +95,33 @@ export function MaziumWidget() {
         setQuickReplies(replies)
     }, [])
 
-    // Auto-scroll to latest message
     React.useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+        const node = transcriptRef.current
+        if (node) node.scrollTo({ top: node.scrollHeight, behavior: "smooth" })
     }, [messages, isThinking])
+
+    React.useEffect(() => {
+        // Clear private results and invalidate in-flight replies on account changes.
+        aiConsentEpochRef.current += 1
+        setMessages([{ role: "bot", text: "Hi, I'm MaziuM. How can I help?" }])
+        setIsThinking(false)
+        setInput("")
+    }, [user?.id])
+
+    React.useEffect(() => {
+        const vv = window.visualViewport
+        const update = () => setViewport(window.innerWidth < 1024
+            ? { height: vv?.height ?? window.innerHeight, top: vv?.offsetTop ?? 0 } : null)
+        update()
+        vv?.addEventListener("resize", update)
+        vv?.addEventListener("scroll", update)
+        window.addEventListener("resize", update)
+        return () => {
+            vv?.removeEventListener("resize", update)
+            vv?.removeEventListener("scroll", update)
+            window.removeEventListener("resize", update)
+        }
+    }, [])
 
     // On mount: respect permanent dismissal stored in localStorage
     React.useEffect(() => {
@@ -129,13 +156,13 @@ export function MaziumWidget() {
         try {
             // Build conversation history for the API (last 10 messages)
             // handleSend already added this message; do not duplicate it in API context.
-            const history = currentMessages.slice(-10)
+            const history = currentMessages.slice(-40)
                 .map((m) => ({
                     role: (m.role === "bot" ? "assistant" : "user") as "user" | "assistant",
                     content: m.text,
                 }))
 
-            const result = await aiChat(history)
+            const result = await aiChat(history, pathname)
 
             return {
                 role: "bot",
@@ -148,7 +175,7 @@ export function MaziumWidget() {
             console.error("AI chat error:", error)
             return {
                 role: "bot",
-                text: "Something went wrong. Please try again! 🔄",
+                text: "Something went wrong. Please try again.",
             }
         }
     }
@@ -158,7 +185,7 @@ export function MaziumWidget() {
         if (!text || hasAiConsent !== true || isThinking) return
         const sendEpoch = aiConsentEpochRef.current
         const canShowReply = () => aiConsentEpochRef.current === sendEpoch &&
-            localStorage.getItem("mazium_ai_consent_v1") === "accepted"
+            localStorage.getItem("mazium_ai_consent_v1") !== "declined"
         setInput("")
 
         // Add user message
@@ -187,7 +214,7 @@ export function MaziumWidget() {
     const withdrawAiConsent = () => {
         // Stop future requests immediately; never display a late reply from an old session.
         aiConsentEpochRef.current += 1
-        localStorage.removeItem("mazium_ai_consent_v1")
+        localStorage.setItem("mazium_ai_consent_v1", "declined")
         setHasAiConsent(false)
         setIsThinking(false)
         setInput("")
@@ -228,10 +255,7 @@ export function MaziumWidget() {
     }
     // Search shortcuts belong to car-search conversations, not auction
     // eligibility, seller operations or customer support questions.
-    const lastCustomerMessage = [...messages].reverse().find(message => message.role === "user")?.text ?? ""
-    const showSearchShortcuts = !lastCustomerMessage ||
-        (/\b(?:show|search|find|looking for|recommend|suv|hatchback|electric car|diesel car|under £|under \d|budget)\b/i.test(lastCustomerMessage)
-            && !/\b(?:auctions?|bids?|bidding|listings?|upload|payout|refund|dealer account|service|fees?|verification|support)\b/i.test(lastCustomerMessage))
+    const showSearchShortcuts = messages.length === 1
 
     return (
         <>
@@ -242,16 +266,17 @@ export function MaziumWidget() {
                     onClick={() => setIsOpen(false)}
                 />
             )}
-            <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-24 right-4 sm:right-6 z-[60] flex flex-col items-end opacity-100">
+            <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-24 right-4 sm:right-6 z-[60] flex flex-col items-end opacity-100" style={isOpen && viewport ? { top: viewport.top + 8, bottom: "auto" } : undefined}>
             {/* Chat Window */}
             <div
                 className={cn(
                     "rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ease-in-out border flex flex-col",
                     isOpen
-                        ? "w-[min(340px,calc(100vw_-_2rem))] h-[min(540px,calc(100dvh_-_16rem_-_env(safe-area-inset-bottom)))] lg:h-[min(540px,calc(100dvh_-_16.5rem))] opacity-100 translate-y-0 mb-4"
+                        ? "w-[min(420px,calc(100vw_-_2rem))] h-[min(620px,calc(100dvh_-_8rem))] opacity-100 translate-y-0 mb-4"
                         : "w-0 h-0 opacity-0 translate-y-10 pointer-events-none mb-0"
                 )}
                 style={{
+                    height: isOpen && viewport ? Math.max(180, viewport.height - 16) : undefined,
                     background: "var(--bg-dropdown)",
                     borderColor: "var(--border-default)",
                 }}
@@ -272,6 +297,7 @@ export function MaziumWidget() {
                     </div>
                     <button
                         onClick={() => setIsOpen(false)}
+                        aria-label="Close MaziuM chat"
                         className="text-gray-300 hover:text-white transition-colors"
                     >
                         <X size={20} />
@@ -279,7 +305,7 @@ export function MaziumWidget() {
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 custom-scrollbar"
+                <div ref={transcriptRef} role="log" aria-live="polite" className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain p-4 space-y-4 custom-scrollbar"
                     style={{ background: "var(--bg-card)" }}
                 >
                     {hasAiConsent === false && (
@@ -288,15 +314,15 @@ export function MaziumWidget() {
                         >
                             <div className="flex items-center gap-2 font-bold mb-1" style={{ color: "var(--text-primary)" }}>
                                 <ShieldCheck size={14} className="text-primary" />
-                                Before you use Mazium AI
+                                MaziuM AI paused
                             </div>
-                            <p>Your message and recent Mazium chat context are sent to OpenAI to generate a response. AI can make mistakes, so verify important vehicle or finance information. Do not include passwords, payment credentials or unnecessary sensitive personal information.</p>
+                            <p>AI replies are paused. Resume when you are ready.</p>
                             <div className="mt-3 flex items-center gap-2">
                                 <button
                                     onClick={acceptAiConsent}
                                     className="rounded-lg bg-primary px-3 py-2 font-bold text-white"
                                 >
-                                    I understand & continue
+                                    Resume AI
                                 </button>
                                 <button
                                     onClick={() => router.push("/privacy-policy")}
@@ -319,10 +345,10 @@ export function MaziumWidget() {
                                     : "justify-start"
                             )}
                         >
-                            <div className="max-w-[85%] space-y-2">
+                            <div className="min-w-0 max-w-[95%] space-y-2">
                                 <div
                                     className={cn(
-                                        "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+                                        "rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]",
                                         msg.role === "user"
                                             ? "bg-primary text-white rounded-br-none"
                                             : "rounded-bl-none border shadow-sm"
@@ -469,7 +495,7 @@ export function MaziumWidget() {
                 </div>
 
                 {/* Suggestions only make sense during vehicle-search questions. */}
-                {showSearchShortcuts && <div className="shrink-0 px-3 py-2 flex gap-2 overflow-x-auto border-t custom-scrollbar"
+                {showSearchShortcuts && <div className="shrink-0 px-3 py-2 flex flex-wrap gap-2 border-t"
                     style={{ borderColor: "var(--border-default)" }}
                 >
                     {quickReplies.map((chip) => (
@@ -497,19 +523,22 @@ export function MaziumWidget() {
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Ask MaziuM about CarMazium..."
-                        className="h-10 text-sm"
+                        className="h-10 min-w-0 text-base"
+                        maxLength={4000}
+                        aria-label="Message MaziuM"
                         style={{
                             background: "var(--bg-input)",
                             borderColor: "var(--border-default)",
                             color: "var(--text-primary)",
                         }}
                         onKeyDown={(e) =>
-                            e.key === "Enter" && !isThinking && handleSend()
+                            e.key === "Enter" && !e.nativeEvent.isComposing && !isThinking && handleSend()
                         }
                         disabled={isThinking || hasAiConsent !== true}
                     />
                     <Button
                         size="icon"
+                        aria-label="Send message"
                         className="h-10 w-10 shrink-0 rounded-full shadow-neon"
                         onClick={() => handleSend()}
                         disabled={isThinking || hasAiConsent !== true || !input.trim()}
@@ -528,7 +557,7 @@ export function MaziumWidget() {
                         </button>
                         <span aria-hidden="true">·</span>
                         <button type="button" onClick={withdrawAiConsent} className="hover:underline">
-                            Stop AI sharing
+                            Pause AI
                         </button>
                     </div>
                 )}
@@ -557,7 +586,7 @@ export function MaziumWidget() {
                         </div>
                         <div className="min-w-0">
                             <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
-                                Hi, I&apos;m Mazium! 👋
+                                Hi, I&apos;m MaziuM!
                             </p>
                             <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                                 How can I help you today?
@@ -590,8 +619,8 @@ export function MaziumWidget() {
                 )}
             </AnimatePresence>
 
-            {/* Toggle Button */}
-            <button
+            {/* One close control in the header while chatting. */}
+            {!isOpen && <button
                 type="button"
                 aria-label={isOpen ? "Close Mazium AI assistant" : "Open Mazium AI assistant"}
                 onClick={handleToggle}
@@ -625,7 +654,7 @@ export function MaziumWidget() {
                         />
                     </span>
                 )}
-            </button>
+            </button>}
             </div>
         </>
     )

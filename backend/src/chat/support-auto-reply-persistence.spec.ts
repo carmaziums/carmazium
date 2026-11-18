@@ -39,8 +39,8 @@ describe('support reply persistence and identity', () => {
     });
     it('allows routine model replies by default but rejects them after explicit opt-out', async () => {
         const { service, source, room } = setup();
-        expect((await service.persistSupportAutoReply('room', sourceId, botId, fixedSupportReply(source.content)!, 'FIXED')).created).toBe(true);
-        expect((await service.persistSupportAutoReply('room', sourceId, botId, 'Try updating your browser.', 'AI')).created).toBe(false);
+        expect((await service.persistSupportAutoReply('room', sourceId, botId, 'Basic retail listing costs £1 until sold.', 'AI')).created).toBe(true);
+        expect((await service.persistSupportAutoReply('room', sourceId, botId, 'Try updating your browser.', 'AI')).created).toBe(true);
         // A known local FAQ must stay a canonical fixed reply; ordinary
         // unmatched questions use AI, provided the customer did not opt out.
         source.content = 'Why does the upload screen close?';

@@ -100,7 +100,7 @@ const VERIFIED_ROUTES = new Set([
  * Static route listing is intentional: generated customer/vehicle IDs are not trusted.
  */
 export function hasUnverifiedNavigationPath(answer: string): boolean {
-    const matches = answer.matchAll(/(?:https?:\/\/(?:www\.)?carmazium\.com)?\/(?:[a-z][a-z0-9-]*)(?:\/[a-z][a-z0-9-]*)*(?:\?[a-z0-9_=&%.-]+)?/gi);
+    const matches = answer.matchAll(/(?<![a-z0-9])(?:https?:\/\/(?:www\.)?carmazium\.com)?\/(?:[a-z][a-z0-9-]*)(?:\/[a-z][a-z0-9-]*)*(?:\?[a-z0-9_=&%.-]+)?/gi);
     for (const match of matches) {
         const url = new URL(match[0], 'https://www.carmazium.com');
         const path = url.pathname.replace(/\/$/, '') || '/';

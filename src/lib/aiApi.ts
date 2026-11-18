@@ -35,11 +35,12 @@ export async function aiSearch(query: string): Promise<AiSearchResult> {
  * AI chat — send conversation history and get a contextual response.
  */
 export async function aiChat(
-    messages: { role: 'user' | 'assistant'; content: string }[]
+    messages: { role: 'user' | 'assistant'; content: string }[],
+    page?: string
 ): Promise<AiChatResult> {
     const json = await apiClient<{ data: AiChatResult }>('/ai/chat', {
         method: 'POST',
-        body: JSON.stringify({ messages, aiConsentAcknowledged: true }),
+        body: JSON.stringify({ messages, page, aiConsentAcknowledged: true }),
     });
     return json.data;
 }

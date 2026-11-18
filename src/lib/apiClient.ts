@@ -129,8 +129,8 @@ export async function apiClient<T>(
             // Keep mutations single-attempt with the existing 30 s ceiling.
             const controller = new AbortController();
             const timer = setTimeout(
-                () => controller.abort(new Error('Request timed out after 30 s')),
-                30000,
+                () => controller.abort(new Error('Request timed out')),
+                endpoint === '/ai/chat' ? 160000 : 30000,
             );
 
             try {

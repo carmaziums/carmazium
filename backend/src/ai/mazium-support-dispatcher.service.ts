@@ -50,6 +50,8 @@ export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
             !details.modelAvailable ? 'MODEL_UNAVAILABLE' : 'READY';
         return {
             ready: reason === 'READY',
+            assistantVersion: 'context-tools-v1',
+            configuredModel: this.config.get<string>('OPENAI_MAZIUM_CHAT_MODEL') || 'gpt-6.2-sol',
             status: reason,
             fixedRepliesAvailable: details.botReady,
             // Safe class/code only, never raw database SQL or message content.

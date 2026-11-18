@@ -2262,7 +2262,7 @@ export class ChatService {
             || botUserId !== process.env.MAZIUM_SUPPORT_BOT_USER_ID) {
             throw new ForbiddenException('MaziuM automatic support replies are disabled or bot identity is invalid');
         }
-        if (!botUserId || !reply.trim() || reply.length > 1200) {
+        if (!botUserId || !reply.trim() || reply.length > 6000) {
             throw new BadRequestException('Invalid MaziuM reply');
         }
         const { safeAutomaticSupportReply, supportAutoReplyClientMessageId } =

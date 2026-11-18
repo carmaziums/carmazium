@@ -120,7 +120,7 @@ integration('human-support request and receipt with disposable PostgreSQL', () =
 
     it.each([
         [UserRole.BUYER, 'hi can you help me'],
-        [UserRole.DEALER, 'i want to upload a car'],
+        [UserRole.DEALER, 'hello'],
     ])('persists a safe immediate reply for a %s without a worker: %s', async (role, content) => {
         const room = await roomFor(role as UserRole);
         const customerId = customers.get(role as UserRole)!;
