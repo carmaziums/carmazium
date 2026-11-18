@@ -80,13 +80,13 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         triggers: /\b(?:auction|bid|bidding|reserve|winning|winner|anti-snipe|provisional|dealer fee|buyer fee)\b/i,
         facts: [
             'CarMazium seller auctions are free to list and normally run for 24 hours, with verified motor traders eligible to bid.',
-            'Browse public auction information at /auctions or /auctions/browse. Only eligible verified motor traders may participate in dealer-only bidding.',
+            'CarMazium auctions are visible publicly, but ALL live auction bidding is restricted to approved verified motor-trade dealers. Private buyers and private sellers cannot bid or buy directly through these auctions; retail cars for the general public are at /search. Selling a car via a free auction is not the same as being eligible to bid.',
             'Winning dealer auction fee is £125 one-off (subject to authorised grants), payable within the prescribed 72-hour period; a losing bidder does not pay that fee.',
             'After the fee is paid, seller contact and deal details can unlock; the winning dealer pays the actual vehicle purchase price directly to the seller.',
             'Do not claim that a bid, a reserve offer, a sale or a fee refund is automatically final without checking its status in the relevant dashboard.',
             'Private seller auction management: /dashboard/seller/auctions. Dealer auction management: /dashboard/dealer/auctions.',
         ].join(' '),
-        sources: ['src/app/pricing/traders/page.tsx','src/app/pricing/page.tsx','src/app/auctions/won/[id]/page.tsx','src/lib/auctionApi.ts']
+        sources: ['src/app/pricing/traders/page.tsx','src/app/pricing/page.tsx','src/app/auctions/won/[id]/page.tsx','src/lib/auctionApi.ts','backend/src/auth/guards/verified-dealer.guard.ts']
     },
     {
         id: 'sale-handover-reward',
@@ -256,7 +256,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         id: 'bidding-reserve-and-provisional',
         triggers: /\b(?:bid|place a bid|reserve price|below reserve|reserve offer|provisional|accept bid|reject bid|counter offer|auction extension|anti.snipe|close auction|cancel auction|auction countdown)\b/i,
         facts: [
-            'Only verified eligible dealers can bid in trader-only auctions; public browsing is not a bidding entitlement. The status of a bid and whether reserve has been met must be checked in the actual auction.',
+            'Only verified, authorised motor-trade dealers can place auction bids. Private buyers/sellers cannot bid even if they can browse auction listings; private customers should buy from Retail listings at /search. Check the actual auction status, dealer approval, and permission before attempting to bid.',
             'A seller may receive a provisional offer below reserve after the auction ends. Acceptance is a separate workflow, not an automatic sale; a pending offer can expire if not accepted.',
             'Some late bids extend an active auction, so the visible end time can change. A seller can close or cancel an auction only when the corresponding status and permissions allow it.',
             'Sellers manage auction results and offers from their auction dashboard. Do not claim that a reserve offer is accepted, a winner is final or a vehicle is collected without checking recorded transactions.'
