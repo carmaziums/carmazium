@@ -13,6 +13,9 @@ export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
     private readonly logger = new Logger(MaziumSupportDispatcher.name);
     private running = false;
     private startedAt = new Date();
+    private lastPollAt: Date | null = null;
+    private lastSuccessfulPollAt: Date | null = null;
+    private lastPollError: string | null = null;
     private unsubscribe?: () => void;
     private botReady = false;
     constructor(private readonly config: ConfigService, private readonly prisma: PrismaService,
@@ -28,7 +31,23 @@ export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
         return { enabled: this.enabled(), audience: this.config.get<string>('MAZIUM_SUPPORT_AUDIENCE') || 'test',
             botReady: !!bot && bot.role !== UserRole.ADMIN && !bot.deletedAt && !!bot.lockoutUntil && bot.lockoutUntil > new Date(),
             dispatcherReady: Boolean(this.unsubscribe) && this.botReady,
-            modelAvailable: !!this.config.get<string>('OPENAI_API_KEY') };
+            modelAvailable: !!this.config.get<string>('OPENAI_API_KEY'),
+            lastPollAt: this.lastPollAt?.toISOString() ?? null,
+            lastSuccessfulPollAt: this.lastSuccessfulPollAt?.toISOString() ?? null,
+            recentSuccessfulPoll: Boolean(this.lastSuccessfulPollAt &&
+                Date.now() - this.lastSuccessfulPollAt.getTime() < 30_000),
+            lastPollError: this.lastPollError };
+    }
+    /** Coarse operational status safe to expose without customer data or secrets. */
+    async publicHealth() {
+        const details = await this.status();
+        const reason = !details.enabled ? 'DISABLED' :
+            !details.botReady ? 'BOT_NOT_READY' :
+            !details.dispatcherReady ? 'DISPATCHER_NOT_READY' :
+            !details.recentSuccessfulPoll ? 'POLL_UNAVAILABLE' :
+            !details.modelAvailable ? 'MODEL_UNAVAILABLE' : 'READY';
+        return { ready: reason === 'READY', status: reason, fixedRepliesAvailable: details.botReady };
+    }
     }
     private allowedCustomer(id: string) {
         return this.config.get<string>('MAZIUM_SUPPORT_AUDIENCE') === 'all'
@@ -93,6 +112,7 @@ export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
     async dispatch(): Promise<void> {
         if (this.running || !this.enabled() || !(await this.ensureBot())) return;
         this.running = true;
+        this.lastPollAt = new Date();
         try {
             const since = new Date(Math.max(this.startedAt.getTime(), Date.now() - 2 * 60 * 1000));
             const testUsers = (this.config.get<string>('MAZIUM_SUPPORT_TEST_USER_IDS') || '').split(',').map(id => id.trim()).filter(Boolean);
@@ -125,7 +145,15 @@ export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
             for (const message of missedHandoffs) {
                 if (requestsHumanSupport(message.content)) await this.processOne(message.chatRoomId, message.id);
             }
-        } catch { this.logger.warn('Support dispatcher deferred to human support'); }
+            this.lastSuccessfulPollAt = new Date();
+            this.lastPollError = null;
+        } catch (error) {
+            // Do not log customer text or raw SQL containing personal data.
+            const code = typeof error === 'object' && error && 'code' in error
+                ? String(error.code).slice(0, 40) : null;
+            this.lastPollError = code || (error instanceof Error ? error.name : 'UnknownError');
+            this.logger.warn('Support dispatcher poll failed: ' + this.lastPollError);
+        }
         finally { this.running = false; }
     }
 }
