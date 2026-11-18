@@ -579,7 +579,19 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
             const sent = await sendText("I'd like to speak to a human support agent, please.")
             if (sent) {
                 setHumanRequestSent(true)
+                setAiConsent(false)
                 await refreshRooms()
+                // Socket messages arrive live; this read also displays the
+                // persisted acknowledgement on HTTP fallback or reconnect.
+                try {
+                    const latest = await getChatMessages(room.id)
+                    setMessages(prev => {
+                        const existing = new Set(prev.map(item => item.id))
+                        return [...prev, ...latest.data.filter(item => !existing.has(item.id))]
+                    })
+                } catch {
+                    // The request was sent; a later refresh can still load the receipt.
+                }
             }
         } finally {
             humanRequestPendingRef.current = false
@@ -1260,7 +1272,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         <p className="font-semibold">MaziuM AI support (optional)</p>
                         <p className="mt-1 text-[var(--text-secondary)]">MaziuM automatically answers common questions and acknowledges human-support requests. Allow AI assistance for other questions; your message is then shared with our AI provider. Financial decisions stay with our team.</p>
                         <label className="mt-2 flex items-center gap-2">
-                            <input type="checkbox" checked={aiConsent} disabled={consentBusy || Boolean(room.supportHumanTakeoverAt && Date.now() - new Date(room.supportHumanTakeoverAt).getTime() < 15 * 60_000)} onChange={(event) => void updateAiConsent(event.target.checked)} />
+                            <input type="checkbox" checked={aiConsent} disabled={consentBusy || humanRequestSent || Boolean(room.supportHumanTakeoverAt && Date.now() - new Date(room.supportHumanTakeoverAt).getTime() < 15 * 60_000)} onChange={(event) => void updateAiConsent(event.target.checked)} />
                             <span>{aiConsent ? 'AI assistance permitted' : 'Allow AI assistance'}</span>
                         </label>
                         {!room.supportHumanTakeoverAt && !humanRequestSent && (
@@ -1270,7 +1282,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                 Talk to a person instead
                             </button>
                         )}
-                        {humanRequestSent && <p role="status" className="mt-2 text-[var(--text-secondary)]">Your human-support request was sent. A staff member can reply in this chat.</p>}
+                        {humanRequestSent && <p role="status" className="mt-2 text-[var(--text-secondary)]">Human support requested. You can add more details in this chat while a member of our team reviews your enquiry.</p>}
                         {room.supportHumanTakeoverAt && <p className="mt-1 text-[var(--text-secondary)]">A human-support request or staff reply is recorded here. Your explicit request for a person pauses further AI answers; you can opt back in when the checkbox is available.</p>}
                         {consentError && <p role="alert" className="mt-1 text-red-500">{consentError}</p>}
                     </div>
