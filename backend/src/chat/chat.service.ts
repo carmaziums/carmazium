@@ -2146,9 +2146,14 @@ export class ChatService {
     }
 
     /**
-     * Customer-controlled AI consent for the official support chat only.
-     * Revocation is immediate and also marks the conversation as opted out.
-     * This never enables AI delivery by itself.
+     * Customer-controlled pause/resume for automated official support.
+     * Routine AI help is available by default under the published support
+     * privacy notice. An opt-out is respected by the final delivery gate,
+     * including during races with an in-flight AI response.
+     *
+     * The existing endpoint/body remain for mobile compatibility; the
+     * "consent" flag now expresses an on/off preference, not a claim that
+     * the user granted UK GDPR consent.
      */
     async setSupportAiConsent(roomId: string, userId: string, consent: boolean) {
         const room = await this.prisma.chatRoom.findUnique({
