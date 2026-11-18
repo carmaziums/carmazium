@@ -4,7 +4,7 @@ import { SupportMessageEvents } from '../chat/support-message-events';
 describe('support dispatcher', () => {
     const botId = 'e641510d-0b2c-4eb1-96c6-8874bb9e6b53';
     const setup = (settings = {}) => {
-        const values = { MAZIUM_SUPPORT_AUTO_REPLY_ENABLED: 'true', MAZIUM_SUPPORT_DISPATCH_ENABLED: 'true', MAZIUM_SUPPORT_BOT_USER_ID: botId, MAZIUM_SUPPORT_AUDIENCE: 'all', ...settings };
+        const values = { MAZIUM_SUPPORT_AUTO_REPLY_ENABLED: 'true', MAZIUM_SUPPORT_DISPATCH_ENABLED: 'true', MAZIUM_SUPPORT_BOT_USER_ID: botId, MAZIUM_SUPPORT_AUDIENCE: 'all', OPENAI_API_KEY: 'synthetic-test-key', ...settings };
         const config = { get: jest.fn(key => values[key]) };
         const bot = { id: botId, email: `mazium-support-${botId}@system.carmazium.invalid`, role: 'BUYER', deletedAt: null, lockoutUntil: new Date('9999-01-01') };
         const prisma: any = { user: { upsert: jest.fn().mockResolvedValue(bot), findUnique: jest.fn().mockResolvedValue(bot) },
@@ -72,4 +72,23 @@ describe('support dispatcher', () => {
         expect(prisma.message.findMany.mock.calls[0][0].where).toMatchObject({ aiGenerated: false, sender: { role: { not: 'ADMIN' } }, chatRoom: { context: 'SUPPORT', deletedAt: null, supportClosedAt: null } });
         dispatcher.onModuleDestroy();
     });
+    it('exposes ready only after a successful scheduled worker poll', async () => {
+        const { dispatcher } = setup();
+        await dispatcher.onModuleInit();
+        expect((await dispatcher.publicHealth()).status).toBe('POLL_UNAVAILABLE');
+        await dispatcher.dispatch();
+        expect(await dispatcher.publicHealth()).toEqual({
+            ready: true, status: 'READY', fixedRepliesAvailable: true,
+        });
+        dispatcher.onModuleDestroy();
+    });
+    it('shows a disabled worker as unavailable without exposing secret values', async () => {
+        const { dispatcher } = setup({ MAZIUM_SUPPORT_DISPATCH_ENABLED: 'false' });
+        await dispatcher.onModuleInit();
+        expect(await dispatcher.publicHealth()).toEqual({
+            ready: false, status: 'DISABLED', fixedRepliesAvailable: true,
+        });
+        dispatcher.onModuleDestroy();
+    });
+
 });

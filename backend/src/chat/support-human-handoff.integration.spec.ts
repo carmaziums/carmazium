@@ -114,6 +114,35 @@ integration('human-support request and receipt with disposable PostgreSQL', () =
         },
     );
 
+    it.each([
+        [UserRole.BUYER, 'hi can you help me'],
+        [UserRole.DEALER, 'i want to upload a car'],
+    ])('persists a safe immediate reply for a %s without a worker: %s', async (role, content) => {
+        const room = await roomFor(role as UserRole);
+        const customerId = customers.get(role as UserRole)!;
+        const result = await service.sendMessage(room.id, customerId, {
+            content: content as string,
+            clientMessageId: randomUUID(),
+        });
+        expect(result.created).toBe(true);
+        expect(result.automaticReply?.content).toEqual(expect.any(String));
+        expect(result.automaticReply?.aiGenerated).toBe(true);
+        const saved = await prisma.message.findMany({
+            where: { chatRoomId: room.id },
+            orderBy: { createdAt: 'asc' },
+        });
+        expect(saved).toHaveLength(2);
+        expect(saved[1]).toMatchObject({
+            senderId: botId,
+            aiGenerated: true,
+            aiSourceMessageId: saved[0].id,
+            content: result.automaticReply.content,
+        });
+        const updated = await prisma.chatRoom.findUniqueOrThrow({ where: { id: room.id } });
+        expect(updated.supportAiOptedOutAt).toBeNull();
+        expect(updated.supportHumanTakeoverAt).toBeNull();
+    });
+
     it('rolls back both messages and opt-out if the trusted bot identity is missing', async () => {
         const room = await roomFor(UserRole.BUYER);
         const original = process.env.MAZIUM_SUPPORT_BOT_USER_ID;

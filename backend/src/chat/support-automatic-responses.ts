@@ -22,6 +22,14 @@ export function supportNeedsHumanReply(lastMessage: {
 export function routineSupportAnswer(message: string): string | null {
     if (classifySupportMessage(message).action !== 'DRAFT') return null;
     const text = message.trim();
+    // Lightweight local conversational help should work even when the
+    // external model or background worker is unavailable.
+    if (text.length <= 55 && /^(?:hi|hello|hey|good (?:morning|afternoon|evening))(?:[,! .]+(?:can you help me|i need help|anyone there))?[!? .]*$/i.test(text)) {
+        return "Hi! I'm MaziuM. I can help with selling a car, creating a listing, auctions, and CarMazium account questions. What would you like help with?";
+    }
+    if (/\b(?:i (?:want|would like|need) to|help me|can i|how do i|where can i)\b.*\b(?:upload|list|advertise|sell)\b.*\b(?:a |my |the )?(?:car|vehicle)\b/i.test(text)) {
+        return "I can help you list a car. Open https://www.carmazium.com/sell, enter the registration, then choose Auction (free) or Retail (Basic £1 until sold). Complete the details, photos and declarations. Tell me which step you need help with.";
+    }
     // Only a single, clearly identified topic should use a fixed answer. Other
     // questions go to the conversational model (with the customer's permission).
     if (/\b(how much|costs?|fees?|free)\b/i.test(text) && /\b(list|listing|advertis|sell|auction|retail|buyer)\w*/i.test(text)) {

@@ -25,6 +25,12 @@ export class AiController {
         private readonly supportDispatcher: MaziumSupportDispatcher,
     ) { }
 
+    /** Public operational probe: no customer information or secret values. */
+    @Get('support/health')
+    async supportHealth() {
+        return { success: true, data: await this.supportDispatcher.publicHealth() };
+    }
+
     @Get('admin/support-automation-status')
     @UseGuards(SessionAuthGuard, RolesGuard)
     @Roles(UserRole.ADMIN)

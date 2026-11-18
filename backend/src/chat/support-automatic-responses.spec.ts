@@ -7,6 +7,14 @@ describe('automatic support answers', () => {
         expect(supportReplyPlan({ supportAiOptedOutAt: now, supportHumanTakeoverAt: now }, "I'd like to speak to a human support agent, please.", now)).toEqual({ kind: 'FIXED', reply: HUMAN_HANDOFF_REPLY });
         expect(HUMAN_HANDOFF_REPLY).not.toMatch(/joined|available now|shortly|minutes/i);
     });
+    it.each(['hi can you help me', 'i want to upload a car'])('provides useful local support without a dispatcher: %s', text => {
+        const plan = supportReplyPlan({}, text, now);
+        expect(plan?.kind).toBe('FIXED');
+        if (plan?.kind === 'FIXED') {
+            expect(plan.reply.length).toBeGreaterThan(70);
+            expect(plan.reply).not.toBe(SUPPORT_UNAVAILABLE_REPLY);
+        }
+    });
     it.each(['How much does a retail listing cost?', 'How do I list my car?', 'How many photos do I need?', 'Where do I download the app?'])('answers common questions without referring them to a person: %s', text => {
         expect(supportReplyPlan({}, text, now)?.kind).toBe('FIXED');
         expect(fixedSupportReply(text)).not.toBe(SUPPORT_UNAVAILABLE_REPLY);
