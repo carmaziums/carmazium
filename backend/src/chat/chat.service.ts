@@ -1818,6 +1818,9 @@ export class ChatService {
                 context: true,
                 supportAssignedAdminId: true,
                 supportClosedAt: true,
+                supportAiConsentAt: true,
+                supportAiOptedOutAt: true,
+                supportHumanTakeoverAt: true,
                 deletedAt: true,
                 disputeCase: {
                     select: {
