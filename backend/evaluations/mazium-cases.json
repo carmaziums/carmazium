@@ -65,8 +65,10 @@
       }
     ],
     "must": [
-      "dealer|motor.trade",
-      "retail|/search"
+      "no|cannot|can.t|not allowed",
+      "private|personal",
+      "dealer",
+      "verif|approv|authoris|permission"
     ]
   },
   {
@@ -1359,7 +1361,9 @@
       "retail",
       "dealer",
       "finance",
-      "warranty"
+      "warranty",
+      "£1",
+      "advert|listing"
     ]
   },
   {
