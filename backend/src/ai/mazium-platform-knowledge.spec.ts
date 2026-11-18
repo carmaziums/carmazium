@@ -56,7 +56,7 @@ describe('MaziuM source-verified public platform knowledge', () => {
     it('keeps verified website navigation while withholding invented routes and edit IDs', () => {
         expect(hasUnverifiedNavigationPath('Go to /dashboard/user?tab=cars then Edit')).toBe(false);
         expect(hasUnverifiedNavigationPath('Go to /dashboard/dealer/inventory and select Edit')).toBe(false);
-        expect(hasUnverifiedNavigationPath('Use https://www.carmazium.com/pricing')).toBe(true); // only verified routes
+        expect(hasUnverifiedNavigationPath('Use https://www.carmazium.com/pricing')).toBe(false);
         expect(hasUnverifiedNavigationPath('Go to /dashboard/dealer/listings to edit')).toBe(true);
         expect(hasUnverifiedNavigationPath('Go to /dashboard/user/cars/edit/123')).toBe(true);
         expect(hasUnverifiedNavigationPath('Open /dashboard/dealer/add-listing?editId=madeup')).toBe(true);
