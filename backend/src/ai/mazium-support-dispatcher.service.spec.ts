@@ -75,10 +75,10 @@ describe('support dispatcher', () => {
     it('exposes ready only after a successful scheduled worker poll', async () => {
         const { dispatcher } = setup();
         await dispatcher.onModuleInit();
-        expect((await dispatcher.publicHealth()).status).toBe('POLL_UNAVAILABLE');
+        expect((await dispatcher.publicHealth()).status).toBe('POLL_NOT_STARTED');
         await dispatcher.dispatch();
         expect(await dispatcher.publicHealth()).toEqual({
-            ready: true, status: 'READY', fixedRepliesAvailable: true,
+            ready: true, status: 'READY', fixedRepliesAvailable: true, pollFailureCode: null,
         });
         dispatcher.onModuleDestroy();
     });
@@ -86,7 +86,7 @@ describe('support dispatcher', () => {
         const { dispatcher } = setup({ MAZIUM_SUPPORT_DISPATCH_ENABLED: 'false' });
         await dispatcher.onModuleInit();
         expect(await dispatcher.publicHealth()).toEqual({
-            ready: false, status: 'DISABLED', fixedRepliesAvailable: true,
+            ready: false, status: 'DISABLED', fixedRepliesAvailable: true, pollFailureCode: null,
         });
         dispatcher.onModuleDestroy();
     });

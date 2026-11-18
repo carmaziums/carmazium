@@ -2321,7 +2321,7 @@ export class ChatService {
             if (duplicate) return { created: false, reason: 'ALREADY_REPLIED' } as const;
             // Serialize the daily cap across different support rooms. A room
             // lock alone does not prevent two rooms exceeding the quota.
-            await tx.$queryRaw`SELECT pg_advisory_xact_lock(186729, 1)`;
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(186729, 1)::text`;
             // Global daily cap and room cooldown are checked inside the
             // transaction. The advisory lock serialises the global quota,
             // but provider-side spending limits are still necessary.

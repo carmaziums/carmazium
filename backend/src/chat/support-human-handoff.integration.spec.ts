@@ -15,6 +15,7 @@ integration('human-support request and receipt with disposable PostgreSQL', () =
     let adminId: string;
     let botId: string;
     const previousBotId = process.env.MAZIUM_SUPPORT_BOT_USER_ID;
+    const previousAutoReplyEnabled = process.env.MAZIUM_SUPPORT_AUTO_REPLY_ENABLED;
 
     beforeAll(async () => {
         if (!process.env.DATABASE_URL?.includes('@127.0.0.1:5432/carmazium_damage_qa')) {
@@ -36,6 +37,7 @@ integration('human-support request and receipt with disposable PostgreSQL', () =
         adminId = await makeUser(UserRole.ADMIN);
         botId = await makeUser(UserRole.BUYER, true);
         process.env.MAZIUM_SUPPORT_BOT_USER_ID = botId;
+        process.env.MAZIUM_SUPPORT_AUTO_REPLY_ENABLED = 'true';
         for (const role of [UserRole.BUYER, UserRole.SELLER, UserRole.DEALER]) {
             customers.set(role, await makeUser(role));
         }
@@ -63,6 +65,8 @@ integration('human-support request and receipt with disposable PostgreSQL', () =
         await prisma.$disconnect();
         if (previousBotId === undefined) delete process.env.MAZIUM_SUPPORT_BOT_USER_ID;
         else process.env.MAZIUM_SUPPORT_BOT_USER_ID = previousBotId;
+        if (previousAutoReplyEnabled === undefined) delete process.env.MAZIUM_SUPPORT_AUTO_REPLY_ENABLED;
+        else process.env.MAZIUM_SUPPORT_AUTO_REPLY_ENABLED = previousAutoReplyEnabled;
     });
 
     const roomFor = async (role: UserRole) => {
@@ -141,6 +145,26 @@ integration('human-support request and receipt with disposable PostgreSQL', () =
         const updated = await prisma.chatRoom.findUniqueOrThrow({ where: { id: room.id } });
         expect(updated.supportAiOptedOutAt).toBeNull();
         expect(updated.supportHumanTakeoverAt).toBeNull();
+    });
+
+    it('saves AI replies through the Prisma-safe global advisory lock', async () => {
+        const room = await roomFor(UserRole.BUYER);
+        const customerId = customers.get(UserRole.BUYER)!;
+        const source = await prisma.message.create({
+            data: { chatRoomId: room.id, senderId: customerId,
+                content: 'Why does my photo upload fail unexpectedly?' },
+        });
+        const reply = 'Please check your connection and try the photo upload again. If it fails, tell us the exact error displayed.';
+        const result = await service.persistSupportAutoReply(room.id, source.id, botId, reply, 'AI');
+        expect(result.created).toBe(true);
+        if (!result.created) throw new Error('AI reply persistence failed');
+        const saved = await prisma.message.findUniqueOrThrow({
+            where: { aiSourceMessageId: source.id },
+        });
+        expect(saved.content).toBe(reply);
+        expect(saved.aiGenerated).toBe(true);
+        expect(saved.senderId).toBe(botId);
+        expect(await prisma.message.count({ where: { chatRoomId: room.id } })).toBe(2);
     });
 
     it('rolls back both messages and opt-out if the trusted bot identity is missing', async () => {

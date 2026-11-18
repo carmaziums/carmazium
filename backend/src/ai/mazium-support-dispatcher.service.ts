@@ -44,9 +44,17 @@ export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
         const reason = !details.enabled ? 'DISABLED' :
             !details.botReady ? 'BOT_NOT_READY' :
             !details.dispatcherReady ? 'DISPATCHER_NOT_READY' :
-            !details.recentSuccessfulPoll ? 'POLL_UNAVAILABLE' :
+            !details.lastPollAt ? 'POLL_NOT_STARTED' :
+            details.lastPollError ? 'POLL_FAILED' :
+            !details.recentSuccessfulPoll ? 'POLL_STALLED' :
             !details.modelAvailable ? 'MODEL_UNAVAILABLE' : 'READY';
-        return { ready: reason === 'READY', status: reason, fixedRepliesAvailable: details.botReady };
+        return {
+            ready: reason === 'READY',
+            status: reason,
+            fixedRepliesAvailable: details.botReady,
+            // Safe class/code only, never raw database SQL or message content.
+            pollFailureCode: reason === 'POLL_FAILED' ? details.lastPollError : null,
+        };
     }
     private allowedCustomer(id: string) {
         return this.config.get<string>('MAZIUM_SUPPORT_AUDIENCE') === 'all'
@@ -89,7 +97,7 @@ export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
         const handoff = typeof eligible.content === 'string' && requestsHumanSupport(eligible.content);
         const minCreatedAt = handoff ? new Date(Date.now() - 24 * 60 * 60 * 1000) : this.startedAt;
         const claimed = await this.prisma.$transaction(async tx => {
-            await tx.$queryRaw`SELECT pg_advisory_xact_lock(186729, 2)`;
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(186729, 2)::text`;
             const maxDaily = Math.min(1000, Math.max(1, Number(this.config.get<string>('MAZIUM_SUPPORT_MAX_DAILY_REPLIES') || 200) || 200));
             const today = new Date(); today.setUTCHours(0, 0, 0, 0);
             const attempts = eligible.plan.kind === 'AI' ? await tx.message.count({ where: { aiSupportAttemptedAt: { gte: today } } }) : 0;
