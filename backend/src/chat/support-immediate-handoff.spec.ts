@@ -74,7 +74,7 @@ describe('atomic human support requests', () => {
         expect(events.publish).toHaveBeenCalledWith('room', 'source');
     });
 
-    it.each(['hi can you help me', 'i want to upload a car'])(
+    it.each(['hi can you help me', 'hello'])(
         'persists known answers in the same request without relying on dispatcher: %s', async content => {
             const { service, createPaired, createNormal, events } = setup();
             const result = await service.sendMessage('room', customerId, { content });

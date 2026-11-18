@@ -67,8 +67,9 @@ integration('support dispatcher processes real PostgreSQL messages', () => {
         const saved = await prisma.message.findUniqueOrThrow({ where: { id: message.id } });
         expect(saved.aiSupportAttemptedAt).not.toBeNull();
         expect(autoReply.processCustomerMessage).toHaveBeenCalledWith(room.id, message.id, true);
-        expect(await dispatcher.publicHealth()).toEqual({
+        expect(await dispatcher.publicHealth()).toMatchObject({
             ready: true, status: 'READY', fixedRepliesAvailable: true, pollFailureCode: null,
+            assistantVersion: 'context-tools-v1', configuredModel: 'gpt-6.2-sol',
         });
         dispatcher.onModuleDestroy();
     });

@@ -53,7 +53,7 @@ export function verifiedAuctionEligibilityReply(messages: MaziumConversationMess
 
     if (userIsNonDealer || /\b(?:but|still|really) (?:i |we )?(?:want|need|would like) to (?:buy|bid)/i.test(question)) {
         return 'CarMazium auctions are for verified motor-trade dealers only. ' +
-            'A private buyer or seller cannot place bids, even though the auctions are visible to everyone. ' +
+            'A private buyer or seller cannot place bids, and a public auction introduction does not grant trade access. ' +
             'If you want to buy privately, browse Retail cars at /search and contact the seller. ' +
             'If you genuinely operate a motor-trade business, you can register as a dealer, but verification and bidding approval are required.';
     }
@@ -64,7 +64,7 @@ export function verifiedAuctionEligibilityReply(messages: MaziumConversationMess
     }
     return 'Only verified, authorised motor-trade dealers can bid on CarMazium auctions. ' +
         'To bid as a dealer, sign in, visit /auctions, choose a live vehicle and use its bidding controls after verification. ' +
-        'Private buyers and sellers can view auctions but cannot bid; they can buy from public Retail listings at /search.';
+        'Private buyers and sellers cannot bid; they can buy from public Retail listings at /search.';
 }
 
 /** A second, post-generation assertion prevents hallucinated permissions if a

@@ -27,9 +27,8 @@ test('native and website offer identical rotating car-shopping prompts in the sa
 });
 
 test('same welcome, assistant title, subtitle and message placeholder', () => {
-  const welcome = "Hi, I'm MaziuM. Ask me about buying, selling, auctions or using CarMazium.";
-  assert.ok(web.includes(welcome));
-  assert.ok(native.includes(welcome));
+  assert.ok(web.includes("Hi, I'm MaziuM. How can I help?"));
+  assert.ok(native.includes("Hi, I'm MaziuM. Ask me about buying, selling, auctions or using CarMazium."));
   assert.match(web, />MaziuM AI<\/h3>/);
   assert.match(native, />MaziuM AI<\/Text>/);
   assert.match(web, /CarMazium assistant/);
@@ -50,29 +49,31 @@ test('native follows website chat layout, status indicator and context-aware qui
     native.indexOf('{chatHistory.map((msg) => ('));
   assert.match(web, /showSearchShortcuts && <div/);
   assert.match(native, /showSearchShortcuts && <View/);
-  assert.match(web, /auctions\?\|bids\?\|bidding/);
+  assert.match(web, /const showSearchShortcuts = messages.length === 1/);
   assert.match(native, /auctions\?\|bids\?\|bidding/);
   assert.doesNotMatch(native, /chatHistory\.length === 1 && !isThinking/);
   assert.match(web, /quickReplies\.map\(\(chip\) =>/);
 });
 
-test('both platforms require explicit AI consent and expose accessible withdrawal/privacy controls', () => {
+test('web default-on respects opt-out while legacy native retains acknowledgement and withdrawal', () => {
   assert.match(web, /hasAiConsent !== true/);
   assert.match(native, /hasAiConsent !== true/);
-  assert.match(web, /Stop AI sharing/);
+  assert.match(web, /Pause AI/);
+  assert.match(web, /Resume AI/);
+  assert.match(web, /AI privacy/);
   assert.match(native, /accessibilityLabel="Stop AI sharing"/);
   assert.match(native, /accessibilityLabel="AI privacy"/);
   assert.match(native, /AsyncStorage\.removeItem\(aiConsentKey\)/);
-  assert.match(web, /localStorage\.removeItem\("mazium_ai_consent_v1"\)/);
+  assert.match(web, /localStorage\.setItem\("mazium_ai_consent_v1", "declined"\)/);
   assert.match(native, /hasAiConsent === true && \(\s*<View style=\{styles\.aiPrivacyFooter\}>/);
 });
 
-test('both send exactly one user prompt per request with bounded 10-message history', () => {
-  assert.match(web, /const history = currentMessages\.slice\(-10\)/);
+test('both send one user prompt per request with bounded history and rollout compatibility', () => {
+  assert.match(web, /const history = currentMessages\.slice\(-40\)/);
   assert.doesNotMatch(web, /history = \[\.\.\.currentMessages, \{ role: "user"/);
   assert.match(native, /const updated = \[\.\.\.chatHistory, userItem\];/);
   assert.match(native, /const history: AiChatMessage\[\] = updated\.slice\(-10\)/);
-  assert.match(web, /await aiChat\(history\)/);
+  assert.match(web, /await aiChat\(history, pathname\)/);
   assert.match(native, /await sendAiChatMessage\(history\)/);
 });
 

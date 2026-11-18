@@ -33,6 +33,7 @@ export function RoleMessagesInbox({
     const [selectedRoom, setSelectedRoom] = React.useState<ChatRoom | null>(null)
     const [filter, setFilter] = React.useState<InboxFilter>("all")
     const [mobileChat, setMobileChat] = React.useState(false)
+    const [chatViewport, setChatViewport] = React.useState<{ top: number; height: number } | null>(null)
     const autoSelectedRef = React.useRef(false)
 
     React.useEffect(() => {
@@ -49,10 +50,19 @@ export function RoleMessagesInbox({
 
     React.useEffect(() => {
         if (!mobileChat || !selectedRoom) return
+        const viewport = window.visualViewport
+        const resize = () => setChatViewport({ top: viewport?.offsetTop ?? 0, height: viewport?.height ?? window.innerHeight })
+        resize()
+        viewport?.addEventListener("resize", resize)
+        viewport?.addEventListener("scroll", resize)
+        window.addEventListener("resize", resize)
         const previous = document.body.style.overflow
         document.body.style.overflow = "hidden"
         return () => {
             document.body.style.overflow = previous
+            viewport?.removeEventListener("resize", resize)
+            viewport?.removeEventListener("scroll", resize)
+            window.removeEventListener("resize", resize)
         }
     }, [mobileChat, selectedRoom])
 
@@ -176,6 +186,7 @@ export function RoleMessagesInbox({
             {mobileChat && selectedRoom && typeof document !== "undefined" && createPortal(
                 <div
                     className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[var(--bg-card)]"
+                    style={chatViewport ? { top: chatViewport.top, height: chatViewport.height, bottom: "auto" } : undefined}
                     role="dialog"
                     aria-modal="true"
                     aria-label="Customer conversation"

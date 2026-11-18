@@ -27,5 +27,5 @@ export function safeSupportConversation(
     if (turns.at(-1)?.role !== 'user' || turns.at(-1)?.content !== latest.trim()) {
         if (classifySupportMessage(latest).action === 'DRAFT') turns.push({ role: 'user', content: latest.trim() });
     }
-    return turns.slice(-10);
+    return turns.slice(-40);
 }

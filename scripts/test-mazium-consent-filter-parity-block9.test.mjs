@@ -35,9 +35,9 @@ test('website also suppresses old AI results after consent withdrawal', () => {
   assert.match(web, /const aiConsentEpochRef = React\.useRef\(0\)/);
   assert.match(web, /const sendEpoch = aiConsentEpochRef\.current/);
   assert.match(web, /const canShowReply = \(\) => aiConsentEpochRef\.current === sendEpoch &&/);
-  assert.match(web, /localStorage\.getItem\("mazium_ai_consent_v1"\) === "accepted"/);
+  assert.match(web, /localStorage\.getItem\("mazium_ai_consent_v1"\) !== "declined"/);
   assert.match(web, /if \(canShowReply\(\)\) setMessages/);
-  assert.match(web, /aiConsentEpochRef\.current \+= 1\s*localStorage\.removeItem\("mazium_ai_consent_v1"\)/);
+  assert.match(web, /aiConsentEpochRef\.current \+= 1\s*localStorage\.setItem\("mazium_ai_consent_v1", "declined"\)/);
   assert.match(web, /if \(canShowReply\(\)\) setIsThinking\(false\)/);
   assert.doesNotMatch(web, /await aiChat\(\[\]\)/);
 });

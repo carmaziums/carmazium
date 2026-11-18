@@ -11,18 +11,18 @@ export type SupportDecision =
 // Financial commitments and privileged actions require a person. Merely
 // mentioning a fee, verification, a complaint or an account is not a decision.
 const OWNER_APPROVAL = [
-    /\b(refund|reimburse|chargeback|compensation|payout|withdrawal|transfer money)\b/i,
+    /\b(refund|reimburse|chargeback|compensation|withdrawal|transfer money)\b/i,
     /\b(bank (?:transfer details|details|account)|sort code|iban|card number|account number|payment details|sortcode)\b/i,
     /\b(?:delete|close) (?:my |the )?account\b/i,
     /\b(?:change|waive|reduce|cancel) (?:the |my )?(?:fee|payment|invoice|price|role)\b/i,
     /\b(?:approve|reject|override|reinstate|ban|suspend) (?:my |the |this |a )?(?:account|payment|refund|listing|verification|kyc|user)\b/i,
     /\b(?:api key|one.time code|otp|cvv|my password is|password[:=])\b/i,
-    /\b(?:refunds?|reimbursements?|chargebacks?|payouts?|withdrawals?|compensate|compensated)\b/i,
+    /\b(?:refunds?|reimbursements?|chargebacks?|withdrawals?|compensate|compensated)\b/i,
     /\b(?:gdpr|data erasure|personal data request|subject access|remove my data)\b/i,
     /\b(?:legal action|solicitor|court|sue|lawsuit|litigation|small claims|trading standards)\b/i,
     /\b(?:hacked|unauthorised access|stolen account|security breach|phishing|privacy complaint|data breach|identity theft)\b/i,
     /\b(?:dispute this sale|refund(?:ing|ed)?|repay(?:ment)?|reverse (?:a |the )?charge)\b/i,
-    /\b(?:where|when)\b.*\b(?:my|the) (?:£?100|reward|money|payment)\b/i,
+    /\b(?:send|release|approve|process|make|issue|pay|expedite|guarantee)\b.{0,45}\b(?:payout|bonus|reward|£?100|money|payment)\b/i,
     // Never send obviously sensitive free-text support enquiries to an
     // external model on a default-on support channel; a staff member reviews.
     /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
@@ -131,7 +131,8 @@ export function supportAutoReplyClientMessageId(incomingMessageId: string): stri
  */
 export function requestsHumanSupport(message: string): boolean {
     return [
-        /\b(human|real person|actual person|live agent|support agent|staff member|manager|supervisor)\b/i,
+        /^(?:a |an |the )?(?:human|real person|actual person|live agent|support agent|staff member|manager|supervisor)(?: please)?[.!? ]*$/i,
+        /\b(?:want|need|prefer|request|speak|talk|chat|connect|transfer|put me through|pass me|escalate)\b.{0,40}\b(?:human|real person|actual person|live agent|support agent|staff member|manager|supervisor)\b/i,
         /\b(?:speak|talk|chat|connect|transfer|put me through)\s+(?:me\s+)?(?:to|with)\s+(?:a|an|the|someone|somebody)?\s*(?:person|representative|someone|somebody|agent)\b/i,
         /\b(stop|disable|turn off|opt out of|no more) (?:the |your )?(?:ai|bot|automated|automatic)\b/i,
         /\b(don't|do not|no longer) (?:want to )?(?:talk to|chat with|speak to) (?:an? )?(?:ai|bot|robot)\b/i,
@@ -165,7 +166,7 @@ export function isInboundCustomerSupportMessage(input: {
 
 /** Informational wording about money is allowed; commitments and impersonation are not. */
 export function safeAutomaticSupportReply(reply: string): boolean {
-    return !!reply.trim() && reply.length <= 1200
+    return !!reply.trim() && reply.length <= 6000
         && !/\b(?:I|we)(?:'ve| have| will| can| shall|'ll)?\s+(?:already\s+)?(?:approved|approve|authorised|authorize|authorise|issued|issue|processed|process|sent|send|pay|paid|refund|refunded|waive|waived|guarantee|guaranteed|changed|deleted|verified)\b/i.test(reply)
         && !/\b(?:I am|I'm) (?:a |your )?(?:human|real person|human agent)\b/i.test(reply)
         && !/\b(?:your (?:refund|payout|payment|reward) (?:is|has been) (?:approved|processed|sent|guaranteed)|send (?:me|us) (?:your )?(?:password|otp|card number|bank details))\b/i.test(reply);

@@ -8,7 +8,7 @@ const web = read('src/components/features/MaziumWidget.tsx');
 const native = read('carmazium app/carmazium app/src/components/GlobalAIChatBot.tsx');
 
 test('native greeting uses the real website mascot, copy, green status and speech arrow', () => {
-  assert.match(web, /Hi, I&apos;m Mazium!/);
+  assert.match(web, /Hi, I&apos;m MaziuM!/);
   assert.match(web, /How can I help you today\?/);
   assert.match(native, /Hi, I'm Mazium! 👋/);
   assert.match(native, /How can I help you today\?/);

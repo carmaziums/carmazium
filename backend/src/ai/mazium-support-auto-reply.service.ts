@@ -25,7 +25,7 @@ export class MaziumSupportAutoReplyService {
             let kind: 'FIXED' | 'AI' = 'FIXED';
             let reply = eligible.plan.kind === 'FIXED' ? eligible.plan.reply : SUPPORT_UNAVAILABLE_REPLY;
             if (eligible.plan.kind === 'AI' && allowGeneration) {
-                const draft = await this.ai.draftSupportReply(eligible.conversation, { automatic: true, customerRole: eligible.customerRole });
+                const draft = await this.ai.draftSupportReply(eligible.conversation, { automatic: true, userId: eligible.customerId });
                 if (draft && safeAutomaticSupportReply(draft)) { reply = draft; kind = 'AI'; }
             }
             let saved = await this.chat.persistSupportAutoReply(roomId, sourceMessageId, botUserId, reply, kind);
