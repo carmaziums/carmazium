@@ -206,7 +206,9 @@ integration('human-support request and receipt with disposable PostgreSQL', () =
         const customerId = customers.get(UserRole.BUYER)!;
         await service.sendMessage(room.id, customerId, { content: 'I want a human', clientMessageId: randomUUID() });
         const help = await service.sendMessage(room.id, customerId, { content: 'i want to upload a car', clientMessageId: randomUUID() });
-        expect(help.automaticReply.content).toContain('/sell');
+        expect(help.automaticReply).toBeUndefined();
+        const pending = await service.inspectSupportAutoReply(room.id, help.id);
+        expect(pending).toMatchObject({ eligible: true, plan: { kind: 'AI' } });
         expect((await prisma.chatRoom.findUniqueOrThrow({ where: { id: room.id } })).supportAiOptedOutAt).toBeNull();
         const human = await service.sendMessage(room.id, customerId, { content: 'I want a human', clientMessageId: randomUUID() });
         expect(human.automaticReply.content).toBe(HUMAN_HANDOFF_REPLY);

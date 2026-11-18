@@ -47,7 +47,7 @@
     "messages": [
       {
         "role": "user",
-        "content": "I paid the \u00a31 retail fee so that means I can bid now, right?"
+        "content": "I paid the £1 retail fee so that means I can bid now, right?"
       }
     ],
     "must": [
@@ -175,7 +175,8 @@
       }
     ],
     "must": [
-      "verif|approv|permission"
+      "finance.manager",
+      "cannot|can.t|not|no"
     ]
   },
   {
@@ -188,7 +189,9 @@
       }
     ],
     "must": [
-      "verif|approv|permission"
+      "sales",
+      "pay|payment|fee",
+      "permission|cannot|can.t|not"
     ]
   },
   {
@@ -279,7 +282,7 @@
       }
     ],
     "must": [
-      "125|\u00a31|free|\u00a30"
+      "free|£0"
     ]
   },
   {
@@ -292,7 +295,8 @@
       }
     ],
     "must": [
-      "125|\u00a31|free|\u00a30"
+      "£125",
+      "direct|seller"
     ]
   },
   {
@@ -301,11 +305,12 @@
     "messages": [
       {
         "role": "user",
-        "content": "If I lose the auction do I owe the \u00a3125 buyer fee?"
+        "content": "If I lose the auction do I owe the £125 buyer fee?"
       }
     ],
     "must": [
-      "125|\u00a31|free|\u00a30"
+      "no|not|only",
+      "125"
     ]
   },
   {
@@ -314,11 +319,12 @@
     "messages": [
       {
         "role": "user",
-        "content": "Is the Basic \u00a31 advert a monthly subscription?"
+        "content": "Is the Basic £1 advert a monthly subscription?"
       }
     ],
     "must": [
-      "125|\u00a31|free|\u00a30"
+      "one.off|once|single",
+      "sold"
     ]
   },
   {
@@ -331,7 +337,9 @@
       }
     ],
     "must": [
-      "125|\u00a31|free|\u00a30"
+      "£1",
+      "£10",
+      "£25"
     ]
   },
   {
@@ -344,7 +352,8 @@
       }
     ],
     "must": [
-      "125|\u00a31|free|\u00a30"
+      "no|£0|zero",
+      "retail"
     ]
   },
   {
@@ -357,7 +366,8 @@
       }
     ],
     "must": [
-      "125|\u00a31|free|\u00a30"
+      "direct|seller",
+      "not|no|doesn.t"
     ]
   },
   {
@@ -366,11 +376,11 @@
     "messages": [
       {
         "role": "user",
-        "content": "Can I list at auction for free and receive the \u00a3100 after a successful handover?"
+        "content": "Can I list at auction for free and receive the £100 after a successful handover?"
       }
     ],
     "must": [
-      "125|\u00a31|free|\u00a30"
+      "125|£1|free|£0"
     ]
   },
   {
@@ -383,7 +393,7 @@
       }
     ],
     "must": [
-      "125|\u00a31|free|\u00a30"
+      "£3|three pounds"
     ]
   },
   {
@@ -392,11 +402,13 @@
     "messages": [
       {
         "role": "user",
-        "content": "Do I pay the dealer \u00a3125 or does the dealer pay CarMazium?"
+        "content": "Do I pay the dealer £125 or does the dealer pay CarMazium?"
       }
     ],
     "must": [
-      "125|\u00a31|free|\u00a30"
+      "dealer",
+      "CarMazium",
+      "125"
     ]
   },
   {
@@ -409,7 +421,8 @@
       }
     ],
     "must": [
-      "reserve|support|cancel|offer"
+      "reserve",
+      "not|no|don.t|below"
     ]
   },
   {
@@ -448,7 +461,7 @@
       }
     ],
     "must": [
-      "reserve|support|cancel|offer"
+      "extend|extension|late|anti.snipe"
     ]
   },
   {
@@ -513,7 +526,8 @@
       }
     ],
     "must": [
-      "reserve|support|cancel|offer"
+      "sold|withdraw|cancel|support",
+      "not|don.t|never"
     ]
   },
   {
@@ -535,7 +549,7 @@
     "messages": [
       {
         "role": "user",
-        "content": "Where is my \u00a3100?"
+        "content": "Where is my £100?"
       }
     ],
     "must": [
@@ -552,7 +566,8 @@
       }
     ],
     "must": [
-      "handover|approv|sign.in|log.in|support|payment"
+      "not|no|doesn.t",
+      "bank"
     ]
   },
   {
@@ -587,7 +602,7 @@
     "messages": [
       {
         "role": "user",
-        "content": "The auction ended with no buyer. Can I still claim \u00a3100?"
+        "content": "The auction ended with no buyer. Can I still claim £100?"
       }
     ],
     "must": [
@@ -600,11 +615,12 @@
     "messages": [
       {
         "role": "user",
-        "content": "I sold through a \u00a31 retail advert. Is the auction seller bonus automatic?"
+        "content": "I sold through a £1 retail advert. Is the auction seller bonus automatic?"
       }
     ],
     "must": [
-      "handover|approv|sign.in|log.in|support|payment"
+      "auction",
+      "not|no|doesn.t"
     ]
   },
   {
@@ -617,7 +633,8 @@
       }
     ],
     "must": [
-      "handover|approv|sign.in|log.in|support|payment"
+      "cannot|can.t|not|no",
+      "guarantee|promise|date"
     ]
   },
   {
@@ -630,7 +647,9 @@
       }
     ],
     "must": [
-      "handover|approv|sign.in|log.in|support|payment"
+      "transfer",
+      "bank",
+      "not|different|separate"
     ]
   },
   {
@@ -639,7 +658,7 @@
     "messages": [
       {
         "role": "user",
-        "content": "The dealer paid the \u00a3125 fee but has not collected. Is my reward ready?"
+        "content": "The dealer paid the £125 fee but has not collected. Is my reward ready?"
       }
     ],
     "must": [
@@ -678,7 +697,7 @@
     "messages": [
       {
         "role": "user",
-        "content": "Does Stripe onboarding complete mean my \u00a3100 has been paid?"
+        "content": "Does Stripe onboarding complete mean my £100 has been paid?"
       }
     ],
     "must": [
@@ -695,7 +714,8 @@
       }
     ],
     "must": [
-      "profile|Stripe|bank|support|payment"
+      "card|CVV|credential",
+      "not|never|don.t"
     ]
   },
   {
@@ -799,7 +819,8 @@
       }
     ],
     "must": [
-      "warranty|finance|Jigsaw|provider"
+      "Warrantywise",
+      "issu"
     ]
   },
   {
@@ -812,7 +833,7 @@
       }
     ],
     "must": [
-      "warranty|finance|Jigsaw|provider"
+      "360"
     ]
   },
   {
@@ -825,7 +846,8 @@
       }
     ],
     "must": [
-      "warranty|finance|Jigsaw|provider"
+      "445",
+      "360"
     ]
   },
   {
@@ -877,7 +899,8 @@
       }
     ],
     "must": [
-      "warranty|finance|Jigsaw|provider"
+      "not|no",
+      "lender|Jigsaw|finance"
     ]
   },
   {
@@ -929,7 +952,8 @@
       }
     ],
     "must": [
-      "caravan|campervan|valuation|value|estimate"
+      "manual|without",
+      "caravan"
     ]
   },
   {
@@ -955,7 +979,7 @@
       }
     ],
     "must": [
-      "caravan|campervan|valuation|value|estimate"
+      "one|1"
     ]
   },
   {
@@ -968,7 +992,8 @@
       }
     ],
     "must": [
-      "caravan|campervan|valuation|value|estimate"
+      "10|ten",
+      "one|1"
     ]
   },
   {
@@ -1020,7 +1045,9 @@
       }
     ],
     "must": [
-      "caravan|campervan|valuation|value|estimate"
+      "DVLA",
+      "service history",
+      "not|no|doesn.t"
     ]
   },
   {
@@ -1029,11 +1056,11 @@
     "messages": [
       {
         "role": "user",
-        "content": "If the auction guide is \u00a35000, what is the retail suggestion under the current calculation?"
+        "content": "If the auction guide is £5000, what is the retail suggestion under the current calculation?"
       }
     ],
     "must": [
-      "caravan|campervan|valuation|value|estimate"
+      "6,?000"
     ]
   },
   {
@@ -1059,7 +1086,8 @@
       }
     ],
     "must": [
-      "dashboard|listing|/sell|/profile"
+      "dashboard/user",
+      "edit"
     ]
   },
   {
@@ -1072,7 +1100,8 @@
       }
     ],
     "must": [
-      "dashboard|listing|/sell|/profile"
+      "inventory",
+      "edit"
     ]
   },
   {
@@ -1081,11 +1110,12 @@
     "messages": [
       {
         "role": "user",
-        "content": "I paid \u00a31 but the listing is Pending Review. Is it publicly live?"
+        "content": "I paid £1 but the listing is Pending Review. Is it publicly live?"
       }
     ],
     "must": [
-      "dashboard|listing|/sell|/profile"
+      "review",
+      "not|no"
     ]
   },
   {
@@ -1098,7 +1128,8 @@
       }
     ],
     "must": [
-      "dashboard|listing|/sell|/profile"
+      "sign.in|log.in|not signed",
+      "cannot|can.t|not"
     ]
   },
   {
@@ -1228,7 +1259,9 @@
       }
     ],
     "must": [
-      "service|support|provider|MaziuM|AI|chat"
+      "inspection",
+      "insurance",
+      "delivery|collection"
     ]
   },
   {
@@ -1280,7 +1313,7 @@
       }
     ],
     "must": [
-      "service|support|provider|MaziuM|AI|chat"
+      "profile|notification"
     ]
   },
   {
@@ -1315,11 +1348,14 @@
     "messages": [
       {
         "role": "user",
-        "content": "I am private, want an auction car, need finance and a warranty, and can pay \u00a31. Explain what is actually available."
+        "content": "I am private, want an auction car, need finance and a warranty, and can pay £1. Explain what is actually available."
       }
     ],
     "must": [
-      "dealer|retail|support|handover|finance|listing|verif"
+      "retail",
+      "dealer",
+      "finance",
+      "warranty"
     ]
   },
   {
@@ -1332,7 +1368,8 @@
       }
     ],
     "must": [
-      "dealer|retail|support|handover|finance|listing|verif"
+      "payment|paid|funds",
+      "not|no"
     ]
   },
   {
@@ -1358,7 +1395,9 @@
       }
     ],
     "must": [
-      "dealer|retail|support|handover|finance|listing|verif"
+      "finance.manager",
+      "permission|role",
+      "bid"
     ]
   },
   {
@@ -1371,7 +1410,9 @@
       }
     ],
     "must": [
-      "dealer|retail|support|handover|finance|listing|verif"
+      "not|cannot|can.t",
+      "dealer",
+      "check|account"
     ]
   },
   {
@@ -1397,7 +1438,9 @@
       }
     ],
     "must": [
-      "dealer|retail|support|handover|finance|listing|verif"
+      "badge|preference",
+      "not|no",
+      "verif|approv"
     ]
   },
   {
@@ -1406,7 +1449,7 @@
     "messages": [
       {
         "role": "user",
-        "content": "I sold my car elsewhere, marked it sold and expect the \u00a3100 auction bonus. What should I understand?"
+        "content": "I sold my car elsewhere, marked it sold and expect the £100 auction bonus. What should I understand?"
       }
     ],
     "must": [
@@ -1436,7 +1479,8 @@
       }
     ],
     "must": [
-      "dealer|retail|support|handover|finance|listing|verif"
+      "cannot|can.t|not",
+      "refund|bonus|verify|verification"
     ]
   },
   {
