@@ -7,7 +7,7 @@
  */
 export const VERIFIED_SITE_NAVIGATION = `
 CarMazium website navigation — these are verified, role-aware destinations:
-- To EDIT or UPDATE an EXISTING car listing: do not go to /sell; that starts a new listing.
+- To EDIT or UPDATE an EXISTING car listing: DO NOT go to /sell; that starts a new listing.
   Private sellers: open My Cars at /dashboard/user?tab=cars, locate the existing car and select Edit.
   Dealers: open Stock / Inventory at /dashboard/dealer/inventory, locate the car and select Edit.
   The Edit action opens the existing record in the appropriate listing editor.
