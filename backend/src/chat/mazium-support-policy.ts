@@ -12,7 +12,7 @@ export type SupportDecision =
 // mentioning a fee, verification, a complaint or an account is not a decision.
 const PRIVATE_CONTENT = [
     /\b(?:my (?:api key|one.time code|otp|cvv)|(?:api key|one.time code|otp|cvv|password)\s*(?:is\b|:|=))/i,
-    /\b(?:(?:my bank (?:account|details)|my sort code) (?:is|are|:)|iban|card number|account number|sortcode)\b/i,
+    /\b(?:(?:my bank (?:account|details)|my sort code)\s*(?:is\b|are\b|:|=)|iban\b|card number\b|account number\b|sortcode\b)/i,
     /\b(?:send|give|share|here (?:is|are))\b.{0,30}\b(?:bank (?:account|details|transfer details)|payment details)\b/i,
     // Never send obviously sensitive free-text support enquiries to an
     // external model on a default-on support channel; a staff member reviews.

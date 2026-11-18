@@ -53,6 +53,7 @@ describe('customer support journey routing', () => {
         'Change my bank account', 'Delete my account', 'My account was hacked',
         'My OTP is 123456', 'My password is synthetic-test-value',
         'My email is synthetic@example.com', 'My bank details are 00-00-00',
+        'My bank details: 00-00-00', 'My sort code=00-00-00',
     ])('routes private details and decisions to staff: %s', question => {
         expect(classifySupportMessage(question).action).toBe('ESCALATE');
     });
