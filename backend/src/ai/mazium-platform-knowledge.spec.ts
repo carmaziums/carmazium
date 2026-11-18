@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { PLATFORM_KNOWLEDGE, platformKnowledgeFor } from './mazium-platform-knowledge';
 import {
     VERIFIED_SITE_NAVIGATION,
@@ -14,7 +16,12 @@ describe('MaziuM source-verified public platform knowledge', () => {
             'verification-and-kyc', 'warranty', 'vehicle-finance',
             'tradexchange-jobs', 'dealer-services-and-partners',
             'search-buying', 'account-security-privacy',
-            'cancellations-disputes', 'customer-support',
+            'cancellations-disputes',
+            'vehicle-valuation-and-dvla', 'listing-validation-review',
+            'listing-status-and-relisting', 'bidding-reserve-and-provisional',
+            'checkout-and-platform-payments', 'dealer-purchase-destinations',
+            'messaging-notifications', 'mobile-app-and-installation',
+            'customer-support',
         ];
         expect(PLATFORM_KNOWLEDGE.map(t => t.id)).toEqual(required);
         for (const topic of PLATFORM_KNOWLEDGE) {
@@ -39,6 +46,37 @@ describe('MaziuM source-verified public platform knowledge', () => {
         expect(platformKnowledgeFor(question)).toContain('[' + topic + ']');
     });
 
+    it('has an existing first-party source file for every knowledge claim', () => {
+        const repositoryRoot = resolve(__dirname, '../../..');
+        for (const topic of PLATFORM_KNOWLEDGE) {
+            for (const source of topic.sources) {
+                expect(existsSync(resolve(repositoryRoot, source))).toBe(true);
+            }
+        }
+    });
+
+    it.each([
+        ['how do I edit my existing car listing and change the photos?', 'edit-existing-listing'],
+        ['how can I change my listing price?', 'edit-existing-listing'],
+        ['my listing is pending approval, why not live?', 'listing-validation-review'],
+        ['I want to relist after reserve was not met', 'listing-status-and-relisting'],
+        ['what happens after an auction bid below reserve?', 'bidding-reserve-and-provisional'],
+        ['where do I see my dealer auction wins and receipts?', 'dealer-purchase-destinations'],
+        ['I need to make a card payment for the platform fee', 'checkout-and-platform-payments'],
+        ['where are my messages and notifications?', 'messaging-notifications'],
+        ['how do I download the Android app?', 'mobile-app-and-installation'],
+        ['why is the DVLA lookup giving no car valuation?', 'vehicle-valuation-and-dvla'],
+    ])('retrieves priority evidence for the actual workflow: %s', (question, expectedTopic) => {
+        const output = platformKnowledgeFor(question, 1);
+        expect(output).toContain('[' + expectedTopic + ']');
+    });
+
+    it('never fills every answer with generic account context when a specific task exists', () => {
+        const output = platformKnowledgeFor('I am a seller and I want to edit my listing', 2);
+        expect(output).toContain('[edit-existing-listing]');
+        expect(output).not.toContain('[accounts-and-roles]');
+    });
+
     it('never treats a new listing path as the editor', () => {
         const reply = verifiedNavigationReply('how can i update existing listing?');
         expect(reply).toContain('/dashboard/user?tab=cars');
@@ -57,6 +95,8 @@ describe('MaziuM source-verified public platform knowledge', () => {
         expect(hasUnverifiedNavigationPath('Go to /dashboard/user?tab=cars then Edit')).toBe(false);
         expect(hasUnverifiedNavigationPath('Go to /dashboard/dealer/inventory and select Edit')).toBe(false);
         expect(hasUnverifiedNavigationPath('Use https://www.carmazium.com/pricing')).toBe(false);
+        expect(hasUnverifiedNavigationPath('Look in /dashboard/dealer/purchases/history')).toBe(false);
+        expect(hasUnverifiedNavigationPath('Open /notifications to see alerts')).toBe(false);
         expect(hasUnverifiedNavigationPath('Go to /dashboard/dealer/listings to edit')).toBe(true);
         expect(hasUnverifiedNavigationPath('Go to /dashboard/user/cars/edit/123')).toBe(true);
         expect(hasUnverifiedNavigationPath('Open /dashboard/dealer/add-listing?editId=madeup')).toBe(true);
