@@ -52,7 +52,7 @@ describe('Messages customer-support intelligence', () => {
         const { service, create } = setup();
         create.mockResolvedValue({output:[],output_text:JSON.stringify({text:'Private buyers may bid at CarMazium auctions.'})});
         const reply = await service.draftSupportReply([{role:'user',content:'Can a private buyer bid at auctions?'}], {automatic:true});
-        expect(reply).toContain('cannot place bids');
+        expect(reply).toBeNull();
         expect(create).toHaveBeenCalledTimes(2);
     });
 });

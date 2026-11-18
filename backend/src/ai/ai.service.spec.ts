@@ -115,7 +115,7 @@ describe('AiService safety and reporting', () => {
 
     it('never sends customers to an invented edit route even if the model generates it', async () => {
         const { service, completionCreate } = build();
-        completionCreate.mockResolvedValueOnce({
+        completionCreate.mockResolvedValue({
             choices: [{ message: { content: JSON.stringify({
                 text: 'Go to /dashboard/dealer/listings to edit your vehicle.',
                 filterCard: null,
@@ -144,14 +144,15 @@ describe('AiService safety and reporting', () => {
 
     it('withholds an invented private-auction entitlement even if the model generates it on an unrelated query', async () => {
         const { service, completionCreate } = build();
-        completionCreate.mockResolvedValueOnce({
+        completionCreate.mockResolvedValue({
             choices: [{ message: { content: JSON.stringify({
                 text: "As a private seller, you can participate in public auctions and place a bid directly on the listing.",
                 filterCard: null,
             }) } }],
         });
         const result = await service.chatCompletion([{ role: 'user', content: 'Tell me about CarMazium.' }]);
-        expect(result.text).toBe('A normal car-buying answer.');
+        expect(result.text).toContain('Only verified motor-trade dealers');
+        expect(result.requiresHumanReview).toBe(true);
         expect(completionCreate).toHaveBeenCalledTimes(2);
         expect(result.text).not.toContain('you can participate');
     });

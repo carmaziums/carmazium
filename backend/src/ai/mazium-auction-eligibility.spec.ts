@@ -79,12 +79,17 @@ describe('MaziuM verified dealer-only auction policy', () => {
         'Anyone can bid on our auctions.',
         'A non-dealer can place a bid directly in the auction.',
         'Private buyers may bid at CarMazium auctions.',
+        'Private buyers cannot bid. But individuals can bid at auctions.',
     ])('rejects model answers granting unauthorised auction permissions: %s', answer => {
         expect(contradictsDealerOnlyAuctionRule(answer)).toBe(true);
     });
 
     it.each([
         'Private buyers cannot bid on CarMazium auctions.',
+        'Private buyers can buy retail. Only dealers can bid at auction.',
+        'Private buyers can buy retail; verified dealers can bid at auction.',
+        'Private buyers can not bid on CarMazium auctions.',
+        'Private individuals may not participate in CarMazium auctions.',
         'Only approved dealers can bid at /auctions.',
         'The auction is visible to everyone, but private sellers cannot place bids.',
         'For a retail purchase, message the seller directly.',
