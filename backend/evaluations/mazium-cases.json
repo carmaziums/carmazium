@@ -65,8 +65,10 @@
       }
     ],
     "must": [
-      "dealer|motor.trade",
-      "retail|/search"
+      "no|cannot|can.t",
+      "private",
+      "dealer|dealership",
+      "permission|authoris|approved|verified"
     ]
   },
   {

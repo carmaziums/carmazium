@@ -2166,38 +2166,44 @@ export class ChatService {
      * the user granted UK GDPR consent.
      */
     async setSupportAiConsent(roomId: string, userId: string, consent: boolean) {
-        const room = await this.prisma.chatRoom.findUnique({
-            where: { id: roomId },
-            include: { initiator: { select: { role: true } }, participant: { select: { role: true } } },
+        return this.prisma.$transaction(async tx => {
+            // Serialize explicit resume with actual staff sends and in-flight replies.
+            await tx.$queryRaw`SELECT id FROM "chat_rooms" WHERE id = ${roomId} FOR UPDATE`;
+            const room = await tx.chatRoom.findUnique({
+                where: { id: roomId },
+                include: { initiator: { select: { role: true } }, participant: { select: { role: true } } },
+            });
+            if (!room || room.deletedAt || room.supportClosedAt || room.context !== ChatContext.SUPPORT) {
+                throw new NotFoundException('Open support conversation not found');
+            }
+            const customerId = room.initiator.role === UserRole.ADMIN && room.participant.role !== UserRole.ADMIN
+                ? room.participantId
+                : room.participant.role === UserRole.ADMIN && room.initiator.role !== UserRole.ADMIN
+                    ? room.initiatorId : null;
+            if (!customerId || customerId !== userId) {
+                throw new ForbiddenException('Only the support customer can change AI consent');
+            }
+            const now = new Date();
+            if (consent && room.supportHumanTakeoverAt) {
+                // A queued customer handoff is not an agent actively replying.
+                // Customers may change their mind immediately, while actual
+                // recent staff activity remains protected from bot interruption.
+                const recentStaffReply = await tx.message.findFirst({
+                    where: { chatRoomId: roomId, aiGenerated: false, deletedAt: null,
+                        sender: { role: UserRole.ADMIN },
+                        createdAt: { gte: new Date(now.getTime() - 15 * 60_000) } },
+                    select: { id: true },
+                });
+                if (recentStaffReply) throw new BadRequestException('A human agent is replying in this conversation. Please wait before resuming AI assistance.');
+            }
+            await tx.chatRoom.update({
+                where: { id: roomId },
+                data: consent
+                    ? { supportAiConsentAt: now, supportAiOptedOutAt: null, supportHumanTakeoverAt: null }
+                    : { supportAiConsentAt: null, supportAiOptedOutAt: now },
+            });
+            return { consentToAi: consent, humanTakeoverActive: !consent && Boolean(room.supportHumanTakeoverAt) };
         });
-        if (!room || room.deletedAt || room.supportClosedAt || room.context !== ChatContext.SUPPORT) {
-            throw new NotFoundException('Open support conversation not found');
-        }
-        const customerId = room.initiator.role === UserRole.ADMIN && room.participant.role !== UserRole.ADMIN
-            ? room.participantId
-            : room.participant.role === UserRole.ADMIN && room.initiator.role !== UserRole.ADMIN
-                ? room.initiatorId : null;
-        if (!customerId || customerId !== userId) {
-            throw new ForbiddenException('Only the support customer can change AI consent');
-        }
-        const now = new Date();
-        const result = await this.prisma.chatRoom.updateMany({
-            where: {
-                id: roomId,
-                context: ChatContext.SUPPORT,
-                deletedAt: null,
-                supportClosedAt: null,
-                ...(consent ? { OR: [{ supportHumanTakeoverAt: null }, { supportHumanTakeoverAt: { lt: new Date(Date.now() - 15 * 60_000) } }] } : {}),
-            },
-            data: consent
-                ? { supportAiConsentAt: now, supportAiOptedOutAt: null, supportHumanTakeoverAt: null }
-                : { supportAiConsentAt: null, supportAiOptedOutAt: now },
-        });
-        if (result.count !== 1) {
-            if (consent) throw new BadRequestException('A human agent has taken over this conversation. AI assistance cannot be re-enabled here.');
-            throw new NotFoundException('Open support conversation not found');
-        }
-        return { consentToAi: consent, humanTakeoverActive: Boolean(room.supportHumanTakeoverAt) };
     }
 
     /** Read only server-authored offers; customer text cannot forge handoff state. */

@@ -101,4 +101,21 @@ describe('MaziuM source-verified public platform knowledge', () => {
         expect(hasUnverifiedNavigationPath('Go to /dashboard/user/cars/edit/123')).toBe(true);
         expect(hasUnverifiedNavigationPath('Open /dashboard/dealer/add-listing?editId=madeup')).toBe(true);
     });
+    it.each([
+        'Choose collection/delivery or inspection at /services/jobs/new.',
+        'Accept/reject an offer from /dashboard/seller/auctions.',
+        'Open [Offers Received](/dashboard/user?tab=offers).',
+        'Outgoing offers are at /dashboard/user?tab=bids.',
+        'Saved Cars: /dashboard/user?tab=watchlist. Purchases: /dashboard/user?tab=purchases.',
+        'Use /auth/forgot-password if you cannot sign in at /auth/login.',
+    ])('does not mistake ordinary slash-separated prose for a website path: %s', answer => {
+        expect(hasUnverifiedNavigationPath(answer)).toBe(false);
+    });
+    it.each(['Open (/invented).', 'Use [help](/dashboard/fake).', 'Go to https://www.carmazium.com/fake'])('still blocks invented routes: %s', answer => {
+        expect(hasUnverifiedNavigationPath(answer)).toBe(true);
+    });
+    it('retrieves actual photo limits and payout setup instructions', () => {
+        expect(platformKnowledgeFor('My photos will not upload')).toContain('50MB');
+        expect(platformKnowledgeFor('How do I set up payouts?')).toContain('Stripe Connect');
+    });
 });

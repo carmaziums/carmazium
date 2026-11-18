@@ -30,6 +30,7 @@ export class MaziumSupportAutoReplyService {
             }
             let saved = await this.chat.persistSupportAutoReply(roomId, sourceMessageId, botUserId, reply, kind);
             if (!saved.created && ['DAILY_LIMIT_REACHED', 'ROOM_COOLDOWN'].includes(saved.reason)) {
+                this.logger.warn(`MaziuM support delivery deferred: ${saved.reason}`);
                 saved = await this.chat.persistSupportAutoReply(roomId, sourceMessageId, botUserId, SUPPORT_UNAVAILABLE_REPLY, 'FIXED');
             }
             if (!saved.created) return false;
