@@ -25,6 +25,14 @@ describe('Messages customer-support intelligence', () => {
         expect(request.messages[0].content).toContain('Authenticated account role: DEALER');
         expect(request.messages).toEqual(expect.arrayContaining(conversation));
     });
+    it('keeps the latest topic in retrieval even after a long earlier question', async () => {
+        const { service, create } = setup();
+        await service.draftSupportReply([
+            { role: 'user', content: 'Tell me about photos. '.repeat(50) },
+            { role: 'user', content: 'How do I post a TradeXchange job?' },
+        ], { automatic: true });
+        expect(create.mock.calls[0][0].messages[0].content).toContain('[tradexchange-jobs]');
+    });
     it('rejects a made-up support route instead of delivering it', async () => {
         const { service, create } = setup();
         create.mockResolvedValue({ choices: [{ message: { content: 'Go to /dashboard/fake-editor.' } }] });
