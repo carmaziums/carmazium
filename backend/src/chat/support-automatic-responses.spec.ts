@@ -1,5 +1,5 @@
 import { classifySupportMessage, safeAutomaticSupportReply } from './mazium-support-policy';
-import { fixedSupportReply, supportReplyPlan, HUMAN_HANDOFF_REPLY, HUMAN_REVIEW_REPLY } from './support-automatic-responses';
+import { fixedSupportReply, supportReplyPlan, HUMAN_HANDOFF_REPLY, HUMAN_REVIEW_REPLY, SUPPORT_UNAVAILABLE_REPLY } from './support-automatic-responses';
 
 describe('automatic support answers', () => {
     const now = new Date();
