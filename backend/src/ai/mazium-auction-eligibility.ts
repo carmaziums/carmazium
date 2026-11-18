@@ -12,7 +12,7 @@ const AUCTION_TOPIC = /\b(?:auctions?|bids?|bidding|bidder|trade[- ]only auction
 const BUYING_INTENT = /\b(?:bids?|bidding|buy|buying|purchase|purchasing|participate|join|take part|eligible|allowed|permission|place an? offer)\b/i;
 const SELLING_INTENT = /\b(?:list|listing|sell|selling|advertise|advertising|upload|post)\b/i;
 const FOLLOW_UP = /^(?:but|so|then|and|what if|what about|how about|can i|could i|why|still|even if|is there|i want|i'd like)\b/i;
-const CLEAR_NON_DEALER = /\b(?:not (?:a |an )?(?:dealer|trader)|don't (?:have|own|run) (?:a |an )?(?:dealership|motor[- ]trade business)|without (?:a |an )?(?:dealer|trade) account|non[- ]?dealer|private (?:buyer|seller|customer|person)|individual buyer|regular customer|not in (?:the )?motor trade)\b/i;
+const CLEAR_NON_DEALER = /\b(?:not (?:a |an )?(?:car |motor[- ]trade )?(?:dealer|trader)|don't (?:have|own|run) (?:a |an )?(?:dealership|motor[- ]trade business)|without (?:a |an )?(?:dealer|trade) account|non[- ]?dealers?|private (?:buyer|seller|customer|person)|individual(?: buyer)?|regular customer|anyone|everyone|not in (?:the )?motor trade)\b/i;
 const VERIFIED_DEALER = /\b(?:verified|approved|registered|authorised) (?:motor[- ]trade )?(?:dealer|trader|dealership)\b/i;
 
 /** We only carry the *user's* auction subject across short follow-ups.
@@ -74,9 +74,9 @@ export function contradictsDealerOnlyAuctionRule(answer: string): boolean {
     const text = answer.replace(/\s+/g, ' ');
     if (!AUCTION_TOPIC.test(text)) return false;
     if (/\b(?:anyone|everybody|all users)\s+(?:can|may|are allowed to)\s+(?:place |make )?(?:a )?bid\b/i.test(text)) return true;
-    if (/\b(?:private (?:buyer|seller|customer|person)|non[- ]?dealer|individual)\b.{0,95}\b(?:can|may|is allowed to|are allowed to|is eligible to|are eligible to)\b.{0,65}\b(?:bid|place a bid|participate)\b/i.test(text)
+    if (/\b(?:private (?:buyers?|sellers?|customers?|people|person)|non[- ]?dealers?|individuals?)\b.{0,95}\b(?:can|may|is allowed to|are allowed to|is eligible to|are eligible to)\b.{0,65}\b(?:bid|place a bid|participate)\b/i.test(text)
         && !/\b(?:cannot|can't|not allowed|not eligible|not permitted)\b.{0,100}\b(?:bid|participate)/i.test(text)) return true;
-    if (/\b(?:private (?:buyer|seller|customer|person)|non[- ]?dealer)\b.{0,150}\b(?:place a bid directly|bid directly|participate in public auctions)\b/i.test(text)
+    if (/\b(?:private (?:buyers?|sellers?|customers?|people|person)|non[- ]?dealers?)\b.{0,150}\b(?:place a bid directly|bid directly|participate in public auctions)\b/i.test(text)
         && !/\b(?:cannot|can't|not allowed|not permitted)\b.{0,100}\b(?:bid|participate)/i.test(text)) return true;
     return false;
 }
