@@ -10,29 +10,43 @@ export type SupportDecision =
 
 // Financial commitments and privileged actions require a person. Merely
 // mentioning a fee, verification, a complaint or an account is not a decision.
-const OWNER_APPROVAL = [
-    /\b(refund|reimburse|chargeback|compensation|payout|withdrawal|transfer money)\b/i,
-    /\b(bank (?:transfer details|details|account)|sort code|iban|card number|account number|payment details|sortcode)\b/i,
-    /\b(?:delete|close) (?:my |the )?account\b/i,
-    /\b(?:change|waive|reduce|cancel) (?:the |my )?(?:fee|payment|invoice|price|role)\b/i,
-    /\b(?:approve|reject|override|reinstate|ban|suspend) (?:my |the |this |a )?(?:account|payment|refund|listing|verification|kyc|user)\b/i,
-    /\b(?:api key|one.time code|otp|cvv|my password is|password[:=])\b/i,
-    /\b(?:refunds?|reimbursements?|chargebacks?|payouts?|withdrawals?|compensate|compensated)\b/i,
-    /\b(?:gdpr|data erasure|personal data request|subject access|remove my data)\b/i,
-    /\b(?:legal action|solicitor|court|sue|lawsuit|litigation|small claims|trading standards)\b/i,
-    /\b(?:hacked|unauthorised access|stolen account|security breach|phishing|privacy complaint|data breach|identity theft)\b/i,
-    /\b(?:dispute this sale|refund(?:ing|ed)?|repay(?:ment)?|reverse (?:a |the )?charge)\b/i,
-    /\b(?:where|when)\b.*\b(?:my|the) (?:£?100|reward|money|payment)\b/i,
+const PRIVATE_CONTENT = [
+    /\b(?:my (?:api key|one.time code|otp|cvv)|(?:api key|one.time code|otp|cvv|password)\s*(?:is\b|:|=))/i,
+    /\b(?:(?:my bank (?:account|details)|my sort code) (?:is|are|:)|iban|card number|account number|sortcode)\b/i,
+    /\b(?:send|give|share|here (?:is|are))\b.{0,30}\b(?:bank (?:account|details|transfer details)|payment details)\b/i,
     // Never send obviously sensitive free-text support enquiries to an
     // external model on a default-on support channel; a staff member reviews.
     /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
     /\b(?:\+44\s?7|07)\d(?:[\s-]?\d){8}\b/i,
-    /\b(?:passport number|national insurance number|ni number|date of birth|my full address|my home address|my bank details|my sort code|my driving licence number)\b/i,
+    /\b(?:passport number|national insurance number|ni number|date of birth|my full address|my home address|my driving licence number)\b/i,
     /\b(?:medical condition|disability|anxiety disorder|mental health|pregnancy|diagnosis|health records?|medical records?)\b/i,
 ];
 
 export function hasSensitiveSupportContent(message: string): boolean {
-    return OWNER_APPROVAL.some(pattern => pattern.test(message));
+    return PRIVATE_CONTENT.some(pattern => pattern.test(message));
+}
+
+/** Separate private data from requests requiring a staff decision. Public help
+ * about payouts, refunds or listing prices is not itself a financial action. */
+const STAFF_ACTION = [
+    /^(?:please )?(?:change|update) my bank (?:account|details)\b/i,
+    /\b(?:delete|close) (?:my |the )?account\b/i,
+    /\b(?:change|waive|reduce|cancel) (?:the |my )?(?:fee|payment|invoice|role)\b/i,
+    /\b(?:approve|reject|override|reinstate|ban|suspend) (?:my |the |this |a )?(?:dealer |business )?(?:account|payment|refund|listing|verification|kyc|user)\b/i,
+    /\b(?:gdpr|data erasure|personal data request|subject access|remove my data)\b/i,
+    /\b(?:legal action|solicitor|court|sue|lawsuit|litigation|small claims|trading standards)\b/i,
+    /\b(?:hacked|unauthorised access|stolen account|security breach|phishing|privacy complaint|data breach|identity theft)\b/i,
+    /\b(?:dispute this sale|chargeback|compensate me|compensation for|reverse (?:a |the )?charge)\b/i,
+    /\b(?:refund|reimburse|repay|release|withdraw|transfer)\b.{0,35}\b(?:my|me|our|money|funds|payment|fee|reward)\b/i,
+    /\b(?:my|our) (?:refund|payout|withdrawal|reimbursement)\b.{0,40}\b(?:missing|late|failed|wrong|not received|not arrived|hasn.t|has not)\b/i,
+    /\b(?:where|when)\b.*\b(?:my|the) (?:£?100|reward|money|payment|payout|refund)\b/i,
+    /\b(?:paid|charged|debited) (?:twice|two times)|\bduplicate (?:charge|payment)\b/i,
+];
+
+// Exact task intent, not a broad mention of money. Do not let a general-help
+// prefix exempt a compound request to issue money or alter privileges.
+export function requiresStaffDecision(message: string): boolean {
+    return STAFF_ACTION.some(pattern => pattern.test(message));
 }
 
 /** A firm refusal or repeated request must bypass the one-time offer. */
@@ -45,7 +59,7 @@ export function classifySupportMessage(message: string): SupportDecision {
     if (!content || content.length > 4000) {
         return { action: 'ESCALATE', reason: 'EMPTY_OR_OVERSIZED' };
     }
-    if (requestsHumanSupport(content) || hasSensitiveSupportContent(content)) {
+    if (requestsHumanSupport(content) || hasSensitiveSupportContent(content) || requiresStaffDecision(content)) {
         return { action: 'ESCALATE', reason: 'SENSITIVE_OR_APPROVAL_REQUIRED' };
     }
     return { action: 'DRAFT', reason: 'ROUTINE_SUPPORT' };

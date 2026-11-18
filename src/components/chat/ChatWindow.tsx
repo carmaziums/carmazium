@@ -865,7 +865,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                 className="absolute right-0 top-full z-40 mt-1 w-44 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-1.5 text-sm shadow-xl">
                                 <button type="button" role="menuitem"
                                     onClick={() => void updateAiEnabled(!aiEnabled)}
-                                    disabled={consentBusy || Boolean(!aiEnabled && room.supportHumanTakeoverAt && Date.now() - new Date(room.supportHumanTakeoverAt).getTime() < 15 * 60_000)}
+                                    disabled={consentBusy}
                                     className="block w-full rounded-lg px-3 py-2 text-left text-[var(--text-primary)] hover:bg-[var(--bg-input)] disabled:opacity-50">
                                     {consentBusy ? 'Saving…' : aiEnabled ? 'Pause AI replies' : 'Resume AI replies'}
                                 </button>

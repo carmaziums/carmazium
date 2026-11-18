@@ -27,4 +27,22 @@ describe('support conversation memory', () => {
         expect(turns).toHaveLength(10);
         expect(turns.at(-1)?.content).toBe('Latest question');
     });
+    it('retains a reward explanation and its offered next step for yes please', () => {
+        const turns = safeSupportConversation([
+            user('How does the £100 seller reward work?'),
+            bot('Payout checks apply. Would you like steps on uploading the handover photo?'),
+            user('Yes please'),
+        ], 'customer', 'Yes please');
+        expect(turns).toHaveLength(3);
+        expect(turns[1].content).toContain('handover photo');
+    });
+    it('keeps generic security advice without forwarding a disclosed credential', () => {
+        expect(safeSupportConversation([
+            user('How do I reset a password?'), bot('Use Forgot password. Never share a one-time code.'),
+            user('The link expired'),
+        ], 'customer', 'The link expired')).toHaveLength(3);
+        expect(safeSupportConversation([
+            user('My OTP is 123456'), bot('Do not share that code.'), user('How do I reset a password?'),
+        ], 'customer', 'How do I reset a password?')).toHaveLength(1);
+    });
 });

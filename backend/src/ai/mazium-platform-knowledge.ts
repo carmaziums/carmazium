@@ -105,7 +105,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         triggers: /\b(?:offer|negotiate|counteroffer|accept offer|retail buyer|buy a car|purchase a car|watchlist|save cars|contact seller|message seller)\b/i,
         facts: [
             'Retail buyers can browse cars at /search, inspect listing information, contact the seller through the listing chat and make offers where enabled.',
-            'Sellers can accept, reject or counter offers within the available workflow. A visible offer is not proof of payment or collection.',
+            'Private sellers view Offers Received at /dashboard/user?tab=offers and choose the vehicle/offer to accept, reject, counter or message. Outgoing buyer offers are at /dashboard/user?tab=bids. Sellers can accept, reject or counter offers within the available workflow. A visible offer is not proof of payment or collection.',
             'Retail buyers do not owe a CarMazium platform buyer fee. The vehicle price is paid directly to the seller.',
             'The assistant must not send a message, change an offer, reserve a car or declare a purchase completed on behalf of the user.'
         ].join(' '),
@@ -195,7 +195,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
     },
     {
         id: 'account-security-privacy',
-        triggers: /\b(?:privacy|gdpr|delete my account|close account|data|notification|settings|password|reset|2fa|security|payout bank|bank payout|payout details|stripe connect|bank details)\b/i,
+        triggers: /\b(?:privacy|gdpr|delete my account|close account|data|notification|settings|password|reset|2fa|security|payouts?|payout bank|bank payout|payout details|stripe connect|bank details)\b/i,
         facts: [
             'Personal account settings are at /profile. Sections include personal details, notifications, payouts, appearance, security and account controls.',
             'For reward/service payouts, the owner may need to complete the authorised bank or Stripe Connect setup in the Payouts section; never request bank information inside the AI chat.',
@@ -236,9 +236,10 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'Normal car listings require at least 10 photos to publish; touring caravans have a one-photo minimum. Up to 100 uploaded images are supported; the 10-photo rule is not reimposed merely when editing a previously saved listing.',
             'Listing status progresses through Draft, Pending Review, and approved Active publication; rejection may have a reason. Saving a draft or paying for retail advertising is not proof that a listing is publicly live.',
             'Check the status and any review feedback in the seller My Cars or dealer Inventory dashboard; only authorised staff can confirm why a particular listing was rejected or why an approval failed.',
+            'Listing photos accept JPG/JPEG, PNG, WebP, HEIC/HEIF source files up to 50MB each. The browser converts and compresses them before upload; do not invent a 10MB source-file limit. For HEIC conversion errors, export as JPEG and retry. Keep the saved draft before reloading or clearing browser data.',
             'If photos fail to upload, ask for the device and exact error, then give the relevant upload troubleshooting steps without pretending to inspect their files.'
         ].join(' '),
-        sources: ['src/components/listing/ListingWizard.tsx','backend/src/listings/listings.service.ts','src/app/dashboard/dealer/inventory/page.tsx']
+        sources: ['src/components/listing/ListingWizard.tsx','src/lib/vehiclePhotoCompression.ts','backend/src/listings/listings.service.ts','src/app/dashboard/dealer/inventory/page.tsx']
     },
     {
         id: 'listing-status-and-relisting',
@@ -257,11 +258,11 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         triggers: /\b(?:bid|place a bid|reserve price|below reserve|reserve offer|provisional|accept bid|reject bid|counter offer|auction extension|anti.snipe|close auction|cancel auction|auction countdown)\b/i,
         facts: [
             'Only verified, authorised motor-trade dealers can place auction bids. Private buyers/sellers cannot bid even if they can browse auction listings; private customers should buy from Retail listings at /search. Check the actual auction status, dealer approval, and permission before attempting to bid.',
-            'A seller may receive a provisional offer below reserve after the auction ends. Acceptance is a separate workflow, not an automatic sale; a pending offer can expire if not accepted.',
+            'A seller may receive a provisional offer below reserve after the auction ends. From /dashboard/seller/auctions, open the ended auction results and choose Review & Accept on the provisional offer when available. Acceptance is a separate workflow, not an automatic sale; provisional offers expire after 72 hours and an expired offer cannot be accepted.',
             'Some late bids extend an active auction, so the visible end time can change. A seller can close or cancel an auction only when the corresponding status and permissions allow it.',
             'Sellers manage auction results and offers from their auction dashboard. Do not claim that a reserve offer is accepted, a winner is final or a vehicle is collected without checking recorded transactions.'
         ].join(' '),
-        sources: ['src/app/dashboard/seller/auctions/page.tsx','src/app/auctions/live/[id]/page.tsx','backend/src/auctions/auctions.service.ts']
+        sources: ['src/app/dashboard/seller/auctions/page.tsx','src/components/auctions/AuctionResultsModal.tsx','src/app/auctions/live/[id]/page.tsx','backend/src/auctions/auctions.service.ts']
     },
     {
         id: 'checkout-and-platform-payments',

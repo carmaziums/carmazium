@@ -24,6 +24,7 @@ CarMazium website navigation — these are verified, role-aware destinations:
   These are separate buyer-side dealer views, not one interchangeable tab.
 - For profile, verification and payout details: /profile; the Payouts section can be selected at /profile?section=payouts.
   Never ask for bank credentials in chat.
+- Offers Received for private sellers: /dashboard/user?tab=offers. My Offers sent as a buyer: /dashboard/user?tab=bids.
 - For service jobs: /services/jobs/new to post, /services/jobs to see jobs and
   /dashboard/service/jobs for an approved service provider to find and quote matching jobs.
 - For TradeXchange capability setup: /dashboard/service/capabilities, subject to account approval.
@@ -100,15 +101,15 @@ const VERIFIED_ROUTES = new Set([
  * Static route listing is intentional: generated customer/vehicle IDs are not trusted.
  */
 export function hasUnverifiedNavigationPath(answer: string): boolean {
-    const matches = answer.matchAll(/(?:https?:\/\/(?:www\.)?carmazium\.com)?\/(?:[a-z][a-z0-9-]*)(?:\/[a-z][a-z0-9-]*)*(?:\?[a-z0-9_=&%.-]+)?/gi);
+    const matches = answer.matchAll(/(?<![a-z0-9/])(?:https?:\/\/(?:www\.)?carmazium\.com)?\/(?:[a-z][a-z0-9-]*)(?:\/[a-z][a-z0-9-]*)*(?:\?[a-z0-9_=&%.-]+)?/gi);
     for (const match of matches) {
-        const url = new URL(match[0], 'https://www.carmazium.com');
+        const url = new URL(match[0].replace(/[.,;:!?]+$/, ''), 'https://www.carmazium.com');
         const path = url.pathname.replace(/\/$/, '') || '/';
         if (!VERIFIED_ROUTES.has(path)) return true;
         if (url.searchParams.has('editId') || url.searchParams.has('listingId') || url.searchParams.has('editSlug')) return true;
         if (path === '/dashboard/user' && [...url.searchParams.keys()].some(key => key !== 'tab')) return true;
         if (path === '/dashboard/user' && url.searchParams.has('tab') &&
-            !['cars','inventory'].includes(url.searchParams.get('tab') || '')) return true;
+            !['cars','inventory','offers','bids'].includes(url.searchParams.get('tab') || '')) return true;
     }
     return false;
 }
