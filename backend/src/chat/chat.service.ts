@@ -1,5 +1,5 @@
 import { SupportMessageEvents } from './support-message-events';
-import { supportReplyPlan, SUPPORT_UNAVAILABLE_REPLY, HUMAN_HANDOFF_REPLY } from './support-automatic-responses';
+import { supportReplyPlan, supportNeedsHumanReply, SUPPORT_UNAVAILABLE_REPLY, HUMAN_HANDOFF_REPLY } from './support-automatic-responses';
 import { BadRequestException, Optional, Injectable, NotFoundException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BlockChatRoomDto, CreateRoomDto, OpenDisputeDto, ReportChatMessageDto, SendChatAttachmentDto, SendMessageDto, UpdateChatReportDto } from './dto';
@@ -1975,6 +1975,7 @@ export class ChatService {
                         content: true,
                         attachmentPath: true,
                         senderId: true,
+                        aiGenerated: true,
                         isRead: true,
                         createdAt: true,
                         sender: { select: { role: true } },
@@ -2063,9 +2064,8 @@ export class ChatService {
                 const { otherUser } = roomView;
                 const lastMessage = room.messages[0] || null;
                 const needsReply = room.context === ChatContext.SUPPORT
-                    && !!lastMessage
-                    && lastMessage.sender?.role !== UserRole.ADMIN
-                    && !room.supportClosedAt;
+                    && !room.supportClosedAt
+                    && supportNeedsHumanReply(lastMessage);
 
                 return {
                     id: room.id,
