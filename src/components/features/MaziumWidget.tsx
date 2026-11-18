@@ -55,7 +55,7 @@ export function MaziumWidget() {
     const [messages, setMessages] = React.useState<ChatMessage[]>([
         {
             role: "bot",
-            text: "Hi! I'm Mazium, your AI car-buying assistant. Tell me what you're looking for and I'll find it!",
+            text: "Hi, I'm MaziuM. Ask me about buying, selling, auctions or using CarMazium.",
         },
     ])
     const [input, setInput] = React.useState("")
@@ -226,6 +226,13 @@ export function MaziumWidget() {
         const qs = new URLSearchParams(cleanParams).toString()
         router.push(`/search?${qs}`)
     }
+    // Search shortcuts belong to car-search conversations, not auction
+    // eligibility, seller operations or customer support questions.
+    const lastCustomerMessage = [...messages].reverse().find(message => message.role === "user")?.text ?? ""
+    const showSearchShortcuts = !lastCustomerMessage ||
+        (/\b(?:show|search|find|looking for|recommend|suv|hatchback|electric car|diesel car|under £|under \d|budget)\b/i.test(lastCustomerMessage)
+            && !/\b(?:auctions?|bids?|bidding|listings?|upload|payout|refund|dealer account|service|fees?|verification|support)\b/i.test(lastCustomerMessage))
+
     return (
         <>
             {/* Mobile backdrop — tap outside to close (desktop widget is small enough not to need one) */}
@@ -257,9 +264,9 @@ export function MaziumWidget() {
                             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-slate-900" />
                         </div>
                         <div>
-                            <h3 className="font-bold text-sm">Mazium AI</h3>
+                            <h3 className="font-bold text-sm">MaziuM AI</h3>
                             <p className="text-xs text-gray-300">
-                                Car-buying assistant
+                                CarMazium assistant
                             </p>
                         </div>
                     </div>
@@ -461,8 +468,8 @@ export function MaziumWidget() {
                     <div ref={messagesEndRef} />
                 </div>
 
-                {/* Quick-Reply Chips */}
-                <div className="shrink-0 px-3 py-2 flex gap-2 overflow-x-auto border-t custom-scrollbar"
+                {/* Suggestions only make sense during vehicle-search questions. */}
+                {showSearchShortcuts && <div className="shrink-0 px-3 py-2 flex gap-2 overflow-x-auto border-t custom-scrollbar"
                     style={{ borderColor: "var(--border-default)" }}
                 >
                     {quickReplies.map((chip) => (
@@ -479,7 +486,7 @@ export function MaziumWidget() {
                             {chip.label}
                         </button>
                     ))}
-                </div>
+                </div>}
 
                 {/* Input */}
                 <div
@@ -489,7 +496,7 @@ export function MaziumWidget() {
                     <Input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="e.g. Show me BMWs under £20k..."
+                        placeholder="Ask MaziuM about CarMazium..."
                         className="h-10 text-sm"
                         style={{
                             background: "var(--bg-input)",
