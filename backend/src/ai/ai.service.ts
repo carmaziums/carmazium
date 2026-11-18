@@ -3,7 +3,7 @@ import { boundedConversation, redactMaziumText, KNOWLEDGE_INDEX, MAZIUM_TOOLS, r
 import { normalizeAiSearchFilters, SEARCH_FILTER_GUIDANCE } from './search-filter-contract';
 import { platformKnowledgeFor } from './mazium-platform-knowledge';
 import { VERIFIED_SITE_NAVIGATION, verifiedNavigationReply, hasUnverifiedNavigationPath, UNVERIFIED_NAVIGATION_REPLY } from './mazium-site-navigation';
-import { verifiedAuctionEligibilityReply, contradictsDealerOnlyAuctionRule } from './mazium-auction-eligibility';
+import { contradictsDealerOnlyAuctionRule } from './mazium-auction-eligibility';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
@@ -342,10 +342,12 @@ export class AiService {
             }
             const model = this.configService.get<string>('OPENAI_MAZIUM_CHAT_MODEL') || 'gpt-6.2-sol';
             let content: string | undefined;
+            let repairContext: any[] = openAiMessages;
             if (/^gpt-[56]/.test(model)) {
                 // Keep all reasoning/function items between tool rounds. store:false
                 // avoids creating a provider-stored conversation or cross-user memory.
                 const input: any[] = [...openAiMessages];
+                repairContext = input;
                 for (let round = 0; round < 5; round++) {
                     const response = await this.openai.responses.create({
                         model, input, store: false,
@@ -391,22 +393,44 @@ export class AiService {
             }
 
             const cleanContent = content.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
-            const parsed = JSON.parse(cleanContent) as AiChatResult;
+            let parsed = JSON.parse(cleanContent) as AiChatResult;
             if (!parsed || typeof parsed.text !== 'string' || !parsed.text.trim()) {
                 return { requiresHumanReview: true, text: "I couldn't verify the right answer. What would you like help with?" };
             }
-            // Factual permissions are validated AFTER generation too; otherwise
-            // a plausible hallucination could authorise private-auction bids.
-            if (contradictsDealerOnlyAuctionRule(parsed.text)) {
-                this.logger.warn('Withheld MaziuM answer contradicting dealer-only auction rules');
-                const correction = verifiedAuctionEligibilityReply(messages);
-                return { text: correction || 'CarMazium auctions are only open to verified motor-trade dealers for bidding. Private buyers can browse cars for sale in Retail at /search.' };
+            // A suspected policy or route error gets one bounded contextual repair.
+            // Keep the tool evidence and all question parts; a fixed eligibility
+            // paragraph would silently discard finance/warranty follow-up needs.
+            if (contradictsDealerOnlyAuctionRule(parsed.text) || hasUnverifiedNavigationPath(parsed.text)) {
+                const repair = [
+                    ...repairContext,
+                    { role: 'assistant', content: JSON.stringify(parsed) },
+                    { role: 'system', content: 'Your draft may contain an unsupported auction permission or navigation path. Rewrite the complete answer, answering EVERY part of the original question. Only approved verified motor-trade dealers with bidding permission can bid; private customers can buy Retail at /search. Use only catalogue routes, preserve successful tool facts, and do not infer unperformed checks. Return the same JSON format.' },
+                ];
+                let revised: string | undefined;
+                if (/^gpt-[56]/.test(model)) {
+                    const response = await this.openai.responses.create({
+                        model, input: repair, store: false, reasoning: { effort: 'low' },
+                        text: { format: { type: 'json_object' } }, max_output_tokens: 5000,
+                    }, { timeout: 30000, maxRetries: 0 });
+                    revised = response.output_text;
+                } else {
+                    const response = await this.openai.chat.completions.create({
+                        model, messages: repair, temperature: 0.2, max_tokens: 1400,
+                        response_format: { type: 'json_object' },
+                    }, { timeout: 25000, maxRetries: 0 });
+                    revised = response.choices[0]?.message?.content || undefined;
+                }
+                if (revised) parsed = JSON.parse(revised.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim());
             }
-            // If an unverified website path escapes the model, avoid sending
-            // customers to a broken/invented route. Search cards are still
-            // independently normalized by the search contract.
+            if (!parsed || typeof parsed.text !== 'string' || !parsed.text.trim()) {
+                return { requiresHumanReview: true, text: "I couldn't verify the complete answer. Please try again or ask for a human in your support conversation." };
+            }
+            if (contradictsDealerOnlyAuctionRule(parsed.text)) {
+                this.logger.warn('Withheld MaziuM answer contradicting dealer-only auction rules after repair');
+                return { requiresHumanReview: true, text: 'Only verified motor-trade dealers with bidding permission can bid. Private buyers can use Retail at /search. I could not verify the rest of this answer; please try again or ask for a human in your support conversation.' };
+            }
             if (hasUnverifiedNavigationPath(parsed.text)) {
-                this.logger.warn('Withheld MaziuM answer containing an unverified navigation route');
+                this.logger.warn('Withheld MaziuM answer containing an unverified navigation route after repair');
                 return { requiresHumanReview: true, text: UNVERIFIED_NAVIGATION_REPLY };
             }
             if (parsed.filterCard) {

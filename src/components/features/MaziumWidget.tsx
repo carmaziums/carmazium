@@ -106,6 +106,7 @@ export function MaziumWidget() {
         setMessages([{ role: "bot", text: "Hi, I'm MaziuM. How can I help?" }])
         setIsThinking(false)
         setInput("")
+        setReportTarget(null)
     }, [user?.id])
 
     React.useEffect(() => {
@@ -269,6 +270,8 @@ export function MaziumWidget() {
             <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-24 right-4 sm:right-6 z-[60] flex flex-col items-end opacity-100" style={isOpen && viewport ? { top: viewport.top + 8, bottom: "auto" } : undefined}>
             {/* Chat Window */}
             <div
+                inert={!isOpen}
+                aria-hidden={!isOpen}
                 className={cn(
                     "rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ease-in-out border flex flex-col",
                     isOpen

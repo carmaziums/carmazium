@@ -121,8 +121,8 @@
       }
     ],
     "must": [
-      "dealer|motor.trade",
-      "retail|/search"
+      "no|cannot|can.t",
+      "verif"
     ]
   },
   {
@@ -323,8 +323,10 @@
       }
     ],
     "must": [
-      "one.off|once|single",
-      "sold"
+      "£1",
+      "one.off",
+      "until.*(?:sold|sell)",
+      "no.*monthly"
     ]
   },
   {
@@ -728,7 +730,9 @@
       }
     ],
     "must": [
-      "profile|Stripe|bank|support|payment"
+      "no",
+      "charge|payment|checkout",
+      "collect|handover"
     ]
   },
   {
@@ -1128,8 +1132,8 @@
       }
     ],
     "must": [
-      "sign.in|log.in|not signed",
-      "cannot|can.t|not"
+      "no|cannot|can.t|not",
+      "sign.in|log.in"
     ]
   },
   {
