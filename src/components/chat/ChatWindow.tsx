@@ -24,6 +24,19 @@ function profileHref(userId: string) {
     return `/profile/${encodeURIComponent(userId)}`
 }
 
+/** The official support channel uses MaziuM by default; an explicit opt-out
+ * or a recent human takeover pauses automated answers. */
+function supportAiEnabled(room: ChatRoom): boolean {
+    if (room.supportAiOptedOutAt) return false
+    if (room.supportHumanTakeoverAt &&
+        Date.now() - new Date(room.supportHumanTakeoverAt).getTime() < 15 * 60_000) return false
+    return true
+}
+
+function typedHumanRequest(message: string): boolean {
+    return /\b(?:human|real person|live agent|support agent|customer service|customer support|customer department|speak to (?:a |an |the )?person|talk to (?:a |an |the )?person|turn off (?:the )?(?:bot|ai))\b/i.test(message)
+}
+
 // Common replies for the admin fielding support conversations — inserted
 // into the input for a quick edit before sending, never sent unreviewed.
 const ADMIN_QUICK_REPLIES = [
@@ -47,7 +60,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const [newMessage, setNewMessage] = React.useState("")
     const [generatingSupportDraft, setGeneratingSupportDraft] = React.useState(false)
     const [supportDraftNotice, setSupportDraftNotice] = React.useState<string | null>(null)
-    const [aiConsent, setAiConsent] = React.useState(Boolean(room.supportAiConsentAt && !room.supportAiOptedOutAt))
+    const [aiEnabled, setAiEnabled] = React.useState(supportAiEnabled(room))
     const [consentBusy, setConsentBusy] = React.useState(false)
     const [showAiOptions, setShowAiOptions] = React.useState(false)
     const [humanRequestSent, setHumanRequestSent] = React.useState(false)
@@ -86,7 +99,6 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const attachmentInputRef = React.useRef<HTMLInputElement>(null)
     const typingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
     const typingActiveRef = React.useRef(false)
-    const humanRequestPendingRef = React.useRef(false)
     const isInitialLoad = React.useRef(true)
 
     const isDispute = room.context === 'DISPUTE'
@@ -105,26 +117,25 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     }, [canDraftSupport, room.id])
 
     React.useEffect(() => {
-        setAiConsent(Boolean(room.supportAiConsentAt && !room.supportAiOptedOutAt))
+        setAiEnabled(supportAiEnabled(room))
         setConsentError(null)
-    }, [room.id, room.supportAiConsentAt, room.supportAiOptedOutAt])
+    }, [room.id, room.supportAiOptedOutAt, room.supportHumanTakeoverAt])
 
     React.useEffect(() => {
         setHumanRequestSent(false)
         setShowAiOptions(false)
-        humanRequestPendingRef.current = false
     }, [room.id])
 
-    const updateAiConsent = async (consent: boolean) => {
+    const updateAiEnabled = async (enabled: boolean) => {
         if (consentBusy) return
         setConsentBusy(true)
         setConsentError(null)
         try {
             await apiClient(`/chat/rooms/${encodeURIComponent(room.id)}/support-ai-consent`, {
                 method: 'PATCH',
-                body: JSON.stringify({ consent }),
+                body: JSON.stringify({ consent: enabled }),
             })
-            setAiConsent(consent)
+            setAiEnabled(enabled)
             setShowAiOptions(false)
             await refreshRooms()
         } catch (error: any) {
@@ -572,33 +583,16 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
 
         const content = newMessage.trim()
         setNewMessage("")
-        await sendText(content)
-    }
-
-    const requestHumanSupport = async () => {
-        if (sending || humanRequestPendingRef.current || humanRequestSent || room.supportHumanTakeoverAt) return
-        humanRequestPendingRef.current = true
-        try {
-            const sent = await sendText("I'd like to speak to a human support agent, please.")
-            if (sent) {
+        const sent = await sendText(content)
+        if (sent && room.context === 'SUPPORT') {
+            // Human requests are handled atomically by the backend; the UI
+            // reflects the handoff without showing a separate support button.
+            if (typedHumanRequest(content)) {
                 setHumanRequestSent(true)
-                setAiConsent(false)
+                setAiEnabled(false)
                 setShowAiOptions(false)
-                await refreshRooms()
-                // Socket messages arrive live; this read also displays the
-                // persisted acknowledgement on HTTP fallback or reconnect.
-                try {
-                    const latest = await getChatMessages(room.id)
-                    setMessages(prev => {
-                        const existing = new Set(prev.map(item => item.id))
-                        return [...prev, ...latest.data.filter(item => !existing.has(item.id))]
-                    })
-                } catch {
-                    // The request was sent; a later refresh can still load the receipt.
-                }
             }
-        } finally {
-            humanRequestPendingRef.current = false
+            await refreshRooms()
         }
     }
 
