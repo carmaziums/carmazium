@@ -4,6 +4,20 @@ export const HUMAN_HANDOFF_REPLY = "Thank you for contacting CarMazium. We have 
 export const HUMAN_REVIEW_REPLY = "Thanks for your message. I've passed this to our support team for review. A team member will reply here; I can't authorise a financial or account decision.";
 export const SUPPORT_UNAVAILABLE_REPLY = "Thanks for your question. I can't reliably answer it right now, so I've left it with our support team to reply here.";
 
+/** Only human-handled or unresolved support messages should enter the staff queue.
+ * Routine successfully answered MaziuM questions are not outstanding tickets.
+ */
+export function supportNeedsHumanReply(lastMessage: {
+    aiGenerated?: boolean;
+    content?: string | null;
+    sender?: { role?: string | null } | null;
+} | null): boolean {
+    if (!lastMessage) return false;
+    if (!lastMessage.aiGenerated) return lastMessage.sender?.role !== 'ADMIN';
+    return [HUMAN_HANDOFF_REPLY, HUMAN_REVIEW_REPLY, SUPPORT_UNAVAILABLE_REPLY]
+        .includes(lastMessage.content || '');
+}
+
 /** Public help only: these replies run locally and do not share chat text with an AI provider. */
 export function routineSupportAnswer(message: string): string | null {
     if (classifySupportMessage(message).action !== 'DRAFT') return null;
