@@ -26,6 +26,12 @@ describe('automatic support answers', () => {
     it.each(['Refund my fee', 'Can you waive the payment?', 'Where is my £100 reward?', 'Delete my account'])('routes decisions to staff with a receipt: %s', text => {
         expect(supportReplyPlan({}, text, now)).toEqual({ kind: 'FIXED', reply: HUMAN_REVIEW_REPLY });
     });
+    it('uses different photo minimums for towable caravans and motorised campervans', () => {
+        expect(fixedSupportReply('How many photos do I need for a caravan?')).toContain('at least one clear photo');
+        expect(fixedSupportReply('How many photos do I need for a campervan?')).toContain('at least 10 clear photos');
+        expect(fixedSupportReply('How many photos do I need for my car?')).toContain('at least 10 vehicle photos');
+    });
+
     it('respects explicit opt-out and current staff conversation', () => {
         expect(supportReplyPlan({ supportAiOptedOutAt: now }, 'How much to list?', now)).toBeNull();
         expect(supportReplyPlan({ supportHumanTakeoverAt: now }, 'How much to list?', now)).toBeNull();
