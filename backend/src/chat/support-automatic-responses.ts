@@ -1,4 +1,4 @@
-import { classifySupportMessage, requestsHumanSupport, requiresImmediateHumanSupport, hasSensitiveSupportContent } from './mazium-support-policy';
+import { classifySupportMessage, requestsHumanSupport, requiresImmediateHumanSupport, hasSensitiveSupportContent, requiresStaffDecision } from './mazium-support-policy';
 import { verifiedNavigationReply } from '../ai/mazium-site-navigation';
 
 const LEGACY_HUMAN_HANDOFF_REPLY = "Thank you for contacting CarMazium. We have received your request to speak with a member of our support team.\n\nWe are currently experiencing a higher volume of enquiries than usual, so our response may take a little longer. A member of our team will respond here as soon as they can. Please bear with us.\n\nIn the meantime, you are welcome to leave details of your enquiry in this chat so we can assist you more efficiently.\n\nThank you for your patience.\nCarMazium Customer Support";
@@ -52,7 +52,7 @@ export function supportReplyPlan(room: {
     if (requestsHumanSupport(content) || confirmingPerson) {
         const handoff = confirmingPerson || room.supportHelpOffered || room.supportAiOptedOutAt
             || room.supportHumanTakeoverAt || requiresImmediateHumanSupport(content)
-            || hasSensitiveSupportContent(content);
+            || hasSensitiveSupportContent(content) || requiresStaffDecision(content);
         return { kind: 'FIXED', reply: handoff ? HUMAN_HANDOFF_REPLY : SUPPORT_HELP_OFFER };
     }
     // A staff reply should not disable help for the lifetime of the chat.

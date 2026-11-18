@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { MessageSquare, Send, Loader2, ArrowLeft, User, Check, Zap, Paperclip, ShieldAlert, CheckCircle2, Ban, Flag, X, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
@@ -865,7 +867,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                 className="absolute right-0 top-full z-40 mt-1 w-44 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-1.5 text-sm shadow-xl">
                                 <button type="button" role="menuitem"
                                     onClick={() => void updateAiEnabled(!aiEnabled)}
-                                    disabled={consentBusy || Boolean(!aiEnabled && room.supportHumanTakeoverAt && Date.now() - new Date(room.supportHumanTakeoverAt).getTime() < 15 * 60_000)}
+                                    disabled={consentBusy}
                                     className="block w-full rounded-lg px-3 py-2 text-left text-[var(--text-primary)] hover:bg-[var(--bg-input)] disabled:opacity-50">
                                     {consentBusy ? 'Saving…' : aiEnabled ? 'Pause AI replies' : 'Resume AI replies'}
                                 </button>
@@ -1195,7 +1197,16 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                                     )}
                                                 </div>
                                             )}
-                                            {parsed.text && (
+                                            {parsed.text && msg.aiGenerated && room.context === 'SUPPORT' ? (
+                                                <div className="text-sm break-words [overflow-wrap:anywhere] px-1 [&_p]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-1">
+                                                    <ReactMarkdown skipHtml remarkPlugins={[remarkGfm]}
+                                                        allowedElements={['p', 'strong', 'em', 'ol', 'ul', 'li', 'br', 'a', 'code']}
+                                                        unwrapDisallowed
+                                                        components={{ a: ({ href, children }) => <a href={href} className="font-medium underline underline-offset-2">{children}</a> }}>
+                                                        {parsed.text}
+                                                    </ReactMarkdown>
+                                                </div>
+                                            ) : parsed.text && (
                                                 <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere] px-1">{parsed.text}</p>
                                             )}
                                             <div className={`flex items-center gap-1.5 text-[10px] mt-1 px-1 ${isOwn ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>

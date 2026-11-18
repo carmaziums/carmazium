@@ -20,6 +20,7 @@ export function safeSupportConversation(
         }
         if (message.senderId === customerId && !message.aiGenerated) {
             if (classifySupportMessage(content).action === 'DRAFT') turns.push({ role: 'user', content });
+            else turns = []; // Do not answer follow-ups using context from before a staff request.
         } else if (message.aiGenerated && turns.length) {
             turns.push({ role: 'assistant', content });
         }
