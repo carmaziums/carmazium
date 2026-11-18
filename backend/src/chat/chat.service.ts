@@ -2072,6 +2072,13 @@ export class ChatService {
                     context: room.context,
                     conversationKey: room.conversationKey,
                     otherUser,
+                    // Give every client the actual support preference and
+                    // takeover status after reload, not a fabricated default.
+                    ...(room.context === ChatContext.SUPPORT ? {
+                        supportAiConsentAt: room.supportAiConsentAt,
+                        supportAiOptedOutAt: room.supportAiOptedOutAt,
+                        supportHumanTakeoverAt: room.supportHumanTakeoverAt,
+                    } : {}),
                     listing: room.listing,
                     serviceJob: room.serviceJob,
                     listingUnavailable: !!room.listing && (
