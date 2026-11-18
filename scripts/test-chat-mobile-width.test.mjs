@@ -49,7 +49,9 @@ test("support conversation uses a minimal header menu and never a composer expla
     assert.match(src, /Pause AI replies/)
     assert.match(src, /Resume AI replies/)
     assert.match(src, /MaziuM AI paused/)
-    assert.match(src, /typedHumanRequest\(content\)/)
+    // Asking once offers help; only the persisted backend decision pauses AI.
+    assert.match(src, /!aiEnabled && room\.supportHumanTakeoverAt/)
+    assert.doesNotMatch(src, /typedHumanRequest\(content\)|setHumanRequestSent\(true\)/)
     assert.doesNotMatch(src, /MaziuM customer support/)
     assert.doesNotMatch(src, /Routine questions may be processed by OpenAI\./)
     assert.doesNotMatch(src, /Ask MaziuM or request a person.*<\/div>/)
