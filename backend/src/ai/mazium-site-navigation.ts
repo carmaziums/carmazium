@@ -18,6 +18,19 @@ CarMazium website navigation — these are verified, role-aware destinations:
   dealer /dashboard/dealer/auctions. New auctions and active auctions have different controls.
 - To BROWSE vehicles: /search. To browse live auctions: /auctions.
 - To download the mobile app: /download-app.
+- For seller valuation and choosing between Auction and Retail, use /sell; no separate /valuation route is verified.
+- Auction Wins: /dashboard/dealer/auctions/won. Retail Purchases: /dashboard/dealer/purchases/retail.
+  All Purchases: /dashboard/dealer/purchases. Purchase History: /dashboard/dealer/purchases/history.
+  These are separate buyer-side dealer views, not one interchangeable tab.
+- For profile, verification and payout details: /profile; the Payouts section can be selected at /profile?section=payouts.
+  Never ask for bank credentials in chat.
+- For service jobs: /services/jobs/new to post, /services/jobs to see jobs and
+  /dashboard/service/jobs for an approved service provider to find and quote matching jobs.
+- For TradeXchange capability setup: /dashboard/service/capabilities, subject to account approval.
+- Notifications and email preferences: /notifications.
+- Pricing: /pricing for consumer listing tiers, /pricing/traders for auction buyer fees.
+- For payment, transaction status, KYC, cancellation or refunds, link only to the relevant
+  verified dashboard page and refer account-specific decisions to staff; never fabricate an ID or checkout URL.
 - Only tell people to use dashboard options that exist; never invent menus, IDs, account status or admin actions.
 - Do not claim to have opened a customer's dashboard, modified their listing or checked a private account.
 - If you cannot verify an exact navigation route for another topic, say so briefly and ask one question
@@ -69,6 +82,12 @@ const VERIFIED_ROUTES = new Set([
     '/dashboard/dealer',
     '/dashboard/dealer/inventory',
     '/dashboard/dealer/auctions',
+    '/notifications',
+    '/checkout',
+    '/dashboard/dealer/auctions/won',
+    '/dashboard/dealer/purchases',
+    '/dashboard/dealer/purchases/retail',
+    '/dashboard/dealer/purchases/history',
     '/dashboard/dealer/add-listing',
     '/dashboard/partner',
     '/dashboard/service/jobs',
