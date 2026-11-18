@@ -1,4 +1,5 @@
 import { classifySupportMessage, requestsHumanSupport } from './mazium-support-policy';
+import { verifiedNavigationReply } from '../ai/mazium-site-navigation';
 
 export const HUMAN_HANDOFF_REPLY = "Thank you for contacting CarMazium. We have received your request to speak with a member of our support team.\n\nWe are currently experiencing a higher volume of enquiries than usual, so our response may take a little longer. A member of our team will respond here as soon as they can. Please bear with us.\n\nIn the meantime, you are welcome to leave details of your enquiry in this chat so we can assist you more efficiently.\n\nThank you for your patience.\nCarMazium Customer Support";
 export const HUMAN_REVIEW_REPLY = "Thanks for your message. I've passed this to our support team for review. A team member will reply here; I can't authorise a financial or account decision.";
@@ -22,6 +23,11 @@ export function supportNeedsHumanReply(lastMessage: {
 export function routineSupportAnswer(message: string): string | null {
     if (classifySupportMessage(message).action !== 'DRAFT') return null;
     const text = message.trim();
+    // Authoritative navigation answers are shared by public MaziuM and
+    // official support. Never send someone creating a duplicate advert at
+    // /sell when their request is to edit an existing listing.
+    const verifiedRoute = verifiedNavigationReply(text);
+    if (verifiedRoute) return verifiedRoute;
     // Lightweight local conversational help should work even when the
     // external model or background worker is unavailable.
     if (text.length <= 55 && /^(?:hi|hello|hey|good (?:morning|afternoon|evening))(?:[,! .]+(?:can you help me|i need help|anyone there))?[!? .]*$/i.test(text)) {
@@ -38,9 +44,7 @@ export function routineSupportAnswer(message: string): string | null {
     if (/\b(how|where)\b/i.test(text) && /\b(list|advertise|sell)\b.*\b(car|vehicle)\b/i.test(text)) {
         return 'Open https://www.carmazium.com/sell, enter your registration, then choose Auction or Retail. Complete the vehicle details and seller declarations, add at least 10 photos, and follow the review and submission steps. Auctions are free to list; a Basic retail listing is £1 until sold.';
     }
-    if (/\b(how|where)\b/i.test(text) && /\b(edit|change|update|lower|reduce)\b.*\b(listing|advert|asking price|reserve)\b/i.test(text)) {
-        return 'Open your dashboard, go to Listings (or your dealer Inventory), choose the vehicle and select Edit. Save your changes there. Live auctions may restrict changes to bidding terms. If you see an error, tell me the exact wording so I can help.';
-    }
+
     if (/\b(how|where)\b/i.test(text) && /\b(mark|car|vehicle)\b.*\bsold\b/i.test(text)) {
         return 'Open your dashboard and find the vehicle under Listings or Inventory. Use Mark as sold and follow the confirmation steps. If it sold elsewhere, choose that option so it is not recorded as a CarMazium buyer purchase.';
     }
