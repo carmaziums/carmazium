@@ -64,7 +64,7 @@ test('Search navigation and AI modal share a fresh filter application path', () 
 });
 
 test('screen reader navigation and privacy actions retain sensible target size', () => {
-  assert.match(native, /<Text style=\{styles\.chatTitle\} accessibilityRole="header">Mazium AI/);
+  assert.match(native, /<Text style=\{styles\.chatTitle\} accessibilityRole="header">MaziuM AI/);
   assert.match(native, /accessibilityState=\{\{ disabled: isThinking \|\| hasAiConsent !== true \}\}/);
   assert.match(native, /keyboardShouldPersistTaps="handled"/);
   assert.match(native, /aiPrivacyFooterAction: \{ minHeight: 44/);
