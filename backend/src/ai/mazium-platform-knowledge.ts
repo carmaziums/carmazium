@@ -195,7 +195,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
     },
     {
         id: 'account-security-privacy',
-        triggers: /\b(?:privacy|gdpr|delete my account|close account|data|notification|settings|password|reset|2fa|security|payout bank|stripe connect|bank details)\b/i,
+        triggers: /\b(?:privacy|gdpr|delete my account|close account|data|notification|settings|password|reset|2fa|security|payout bank|bank payout|payout details|stripe connect|bank details)\b/i,
         facts: [
             'Personal account settings are at /profile. Sections include personal details, notifications, payouts, appearance, security and account controls.',
             'For reward/service payouts, the owner may need to complete the authorised bank or Stripe Connect setup in the Payouts section; never request bank information inside the AI chat.',
@@ -207,7 +207,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
     },
     {
         id: 'cancellations-disputes',
-        triggers: /\b(?:cancel sale|cancellation|refund|chargeback|dispute|complaint|scam|fraud|after.sales|not as described|damage|faulty|return)\b/i,
+        triggers: /\b(?:cancel(?: my| an| the)? (?:auction )?(?:sale|purchase)|cancellation|refund|chargeback|dispute|complaint|scam|fraud|after.sales|not as described|damage|faulty|return)\b/i,
         facts: [
             'Sale cancellation, fee refunds and disputes depend on recorded transaction status, evidence and applicable terms. Do not approve, promise or calculate a particular refund or legal outcome.',
             'The relevant purchase/transaction detail may offer a cancellation request; CarMazium staff review and handle the decision.',
@@ -350,7 +350,7 @@ export function platformKnowledgeFor(query: string, maxTopics = 5): string {
         'dealer-auctions': 78,
         'sell-caravan-campervan': 78,
         'create-new-listing': 75,
-        'messages-and-notifications': 75,
+        'messaging-notifications': 75,
         'mobile-app-and-installation': 75,
         'search-buying': 68,
         'account-security-privacy': 67,
