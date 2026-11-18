@@ -229,7 +229,7 @@ export class ChatGateway
 
         try {
             await this.chatRateLimit.consumeMessage(userId);
-            const { message, created } = await this.chatService.sendMessage(
+            const { message, created, automaticReply } = await this.chatService.sendMessage(
                 data.roomId,
                 userId,
                 {
@@ -240,6 +240,9 @@ export class ChatGateway
 
             if (created) {
                 this.broadcastMessage(data.roomId, message);
+            }
+            if (automaticReply) {
+                this.broadcastMessage(data.roomId, automaticReply);
             }
 
             // Returning a value from a Socket.IO gateway handler is delivered
