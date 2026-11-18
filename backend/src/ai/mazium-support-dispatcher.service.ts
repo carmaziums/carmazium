@@ -5,6 +5,7 @@ import { ChatContext, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MaziumSupportAutoReplyService } from './mazium-support-auto-reply.service';
 import { SupportMessageEvents } from '../chat/support-message-events';
+import { requestsHumanSupport } from '../chat/mazium-support-policy';
 
 /** Inbound events reply immediately; polling recovers missed events, never old conversations. */
 @Injectable()
@@ -26,6 +27,7 @@ export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
         const bot = botId ? await this.prisma.user.findUnique({ where: { id: botId }, select: { role: true, deletedAt: true, lockoutUntil: true } }) : null;
         return { enabled: this.enabled(), audience: this.config.get<string>('MAZIUM_SUPPORT_AUDIENCE') || 'test',
             botReady: !!bot && bot.role !== UserRole.ADMIN && !bot.deletedAt && !!bot.lockoutUntil && bot.lockoutUntil > new Date(),
+            dispatcherReady: Boolean(this.unsubscribe) && this.botReady,
             modelAvailable: !!this.config.get<string>('OPENAI_API_KEY') };
     }
     private allowedCustomer(id: string) {
@@ -64,13 +66,17 @@ export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
         if (!this.enabled() || !(await this.ensureBot())) return;
         const eligible = await this.autoReply.inspect(roomId, messageId);
         if (!eligible.eligible || !this.allowedCustomer(eligible.customerId)) return;
+        // The normal live window starts at boot. Explicit human handoffs must
+        // survive a backend restart, but do not backfill old conversations.
+        const handoff = typeof eligible.content === 'string' && requestsHumanSupport(eligible.content);
+        const minCreatedAt = handoff ? new Date(Date.now() - 24 * 60 * 60 * 1000) : this.startedAt;
         const claimed = await this.prisma.$transaction(async tx => {
             await tx.$queryRaw`SELECT pg_advisory_xact_lock(186729, 2)`;
             const maxDaily = Math.min(1000, Math.max(1, Number(this.config.get<string>('MAZIUM_SUPPORT_MAX_DAILY_REPLIES') || 200) || 200));
             const today = new Date(); today.setUTCHours(0, 0, 0, 0);
             const attempts = eligible.plan.kind === 'AI' ? await tx.message.count({ where: { aiSupportAttemptedAt: { gte: today } } }) : 0;
             const claim = await tx.message.updateMany({
-                where: { id: messageId, chatRoomId: roomId, aiGenerated: false, deletedAt: null, aiSupportAttemptedAt: null, createdAt: { gte: this.startedAt } },
+                where: { id: messageId, chatRoomId: roomId, aiGenerated: false, deletedAt: null, aiSupportAttemptedAt: null, createdAt: { gte: minCreatedAt } },
                 data: { aiSupportAttemptedAt: new Date() },
             });
             return { claimed: claim.count === 1, allowGeneration: attempts < maxDaily };
@@ -98,6 +104,27 @@ export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
                 orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 20, select: { id: true, chatRoomId: true },
             });
             for (const message of messages) await this.processOne(message.chatRoomId, message.id);
+
+            // A restart can occur between saving a request and dispatching its
+            // receipt. Recover recent explicit human requests even if the
+            // message predates this process; leave unrelated old chat alone.
+            const missedHandoffs = await this.prisma.message.findMany({
+                where: {
+                    createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000), lt: since },
+                    deletedAt: null, aiGenerated: false, aiSupportAttemptedAt: null, aiSourceMessageId: null,
+                    senderId: { not: this.config.get<string>('MAZIUM_SUPPORT_BOT_USER_ID'),
+                        ...(this.config.get<string>('MAZIUM_SUPPORT_AUDIENCE') !== 'all' ? { in: testUsers } : {}) },
+                    sender: { role: { not: 'ADMIN' } },
+                    chatRoom: { context: ChatContext.SUPPORT, deletedAt: null, supportClosedAt: null,
+                        supportAiOptedOutAt: { not: null } },
+                },
+                orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+                take: 50,
+                select: { id: true, chatRoomId: true, content: true },
+            });
+            for (const message of missedHandoffs) {
+                if (requestsHumanSupport(message.content)) await this.processOne(message.chatRoomId, message.id);
+            }
         } catch { this.logger.warn('Support dispatcher deferred to human support'); }
         finally { this.running = false; }
     }

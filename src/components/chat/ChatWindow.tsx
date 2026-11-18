@@ -49,6 +49,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const [supportDraftNotice, setSupportDraftNotice] = React.useState<string | null>(null)
     const [aiConsent, setAiConsent] = React.useState(Boolean(room.supportAiConsentAt && !room.supportAiOptedOutAt))
     const [consentBusy, setConsentBusy] = React.useState(false)
+    const [humanRequestSent, setHumanRequestSent] = React.useState(false)
     const [consentError, setConsentError] = React.useState<string | null>(null)
     const [loading, setLoading] = React.useState(true)
     const [loadingOlder, setLoadingOlder] = React.useState(false)
@@ -84,6 +85,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const attachmentInputRef = React.useRef<HTMLInputElement>(null)
     const typingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
     const typingActiveRef = React.useRef(false)
+    const humanRequestPendingRef = React.useRef(false)
     const isInitialLoad = React.useRef(true)
 
     const isDispute = room.context === 'DISPUTE'
@@ -94,9 +96,9 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         let cancelled = false
         apiClient<any>('/ai/admin/support-automation-status').then(result => {
             const status = result?.data ?? result
-            if (!cancelled) setAutomationStatus(status.enabled && status.botReady && status.audience === 'all'
-                ? 'Automatic support replies are on. Human requests receive an acknowledgement.'
-                : 'Automatic support replies are unavailable; please reply manually.')
+            if (!cancelled) setAutomationStatus(status.enabled && status.botReady && status.dispatcherReady && status.audience === 'all'
+                ? 'Automatic support dispatcher is running. Check the conversation for delivery of acknowledgements.'
+                : 'Automatic support dispatcher is not ready; please reply manually.')
         }).catch(() => { if (!cancelled) setAutomationStatus('Automatic reply status could not be checked.') })
         return () => { cancelled = true }
     }, [canDraftSupport, room.id])
@@ -105,6 +107,11 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         setAiConsent(Boolean(room.supportAiConsentAt && !room.supportAiOptedOutAt))
         setConsentError(null)
     }, [room.id, room.supportAiConsentAt, room.supportAiOptedOutAt])
+
+    React.useEffect(() => {
+        setHumanRequestSent(false)
+        humanRequestPendingRef.current = false
+    }, [room.id])
 
     const updateAiConsent = async (consent: boolean) => {
         if (consentBusy) return
@@ -566,12 +573,20 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     }
 
     const requestHumanSupport = async () => {
-        if (sending) return
-        await sendText("I'd like to speak to a human support agent, please.")
-        await refreshRooms()
+        if (sending || humanRequestPendingRef.current || humanRequestSent || room.supportHumanTakeoverAt) return
+        humanRequestPendingRef.current = true
+        try {
+            const sent = await sendText("I'd like to speak to a human support agent, please.")
+            if (sent) {
+                setHumanRequestSent(true)
+                await refreshRooms()
+            }
+        } finally {
+            humanRequestPendingRef.current = false
+        }
     }
 
-    const sendText = async (content: string) => {
+    const sendText = async (content: string): Promise<boolean> => {
         stopLocalTyping()
         const clientMessageId = crypto.randomUUID()
         const tempId = `temp-${clientMessageId}`
@@ -602,6 +617,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         try {
             const confirmed = await deliverMessage(content, clientMessageId)
             confirmLocalMessage(clientMessageId, confirmed)
+            return true
         } catch (error) {
             console.error("Failed to send message:", error)
             setMessages(prev => prev.map(message =>
@@ -609,6 +625,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                     ? { ...message, deliveryStatus: 'failed' }
                     : message
             ))
+            return false
         } finally {
             setSending(false)
         }
@@ -1246,13 +1263,14 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                             <input type="checkbox" checked={aiConsent} disabled={consentBusy || Boolean(room.supportHumanTakeoverAt && Date.now() - new Date(room.supportHumanTakeoverAt).getTime() < 15 * 60_000)} onChange={(event) => void updateAiConsent(event.target.checked)} />
                             <span>{aiConsent ? 'AI assistance permitted' : 'Allow AI assistance'}</span>
                         </label>
-                        {!room.supportHumanTakeoverAt && (
+                        {!room.supportHumanTakeoverAt && !humanRequestSent && (
                             <button type="button" onClick={() => void requestHumanSupport()}
-                                disabled={sending}
+                                disabled={sending || humanRequestPendingRef.current}
                                 className="mt-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] disabled:opacity-50">
                                 Talk to a person instead
                             </button>
                         )}
+                        {humanRequestSent && <p role="status" className="mt-2 text-[var(--text-secondary)]">Your human-support request was sent. A staff member can reply in this chat.</p>}
                         {room.supportHumanTakeoverAt && <p className="mt-1 text-[var(--text-secondary)]">A human-support request or staff reply is recorded here. Your explicit request for a person pauses further AI answers; you can opt back in when the checkbox is available.</p>}
                         {consentError && <p role="alert" className="mt-1 text-red-500">{consentError}</p>}
                     </div>
