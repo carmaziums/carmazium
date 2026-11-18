@@ -7,6 +7,7 @@
     "backend/src/ai/search-filter-contract.ts": "c5a2069778baacf2acaf9de36087009b9f3782a803b226b97a678cb4cc69a8d8",
     "backend/src/chat/chat.service.ts": "4d1cc2f02cecbd6dc25c3acadc30987730678c449815a5ead2b2658ad949926b",
     "backend/src/chat/support-automatic-responses.ts": "71527ca9a4e5144d149c6b211ab6dd40133f3a27cde168e6bdcd0ecf42baa9ba",
+    "backend/src/dealers/dealer-access.ts": "450e71e07124c41ff9fbe30cf041e264110e4a0142584eff3c9a2e8e3f8cabdf",
     "backend/src/dealers/dealers.service.ts": "1995c4cfa3ac32edc7412f234036624824f604c2f16f780f489958366ec04eca",
     "backend/src/listings/caravan-listings.spec.ts": "a6e463ff47452a2845d4dd91379f74ce07ef36db696180d2e371d90facec7ded",
     "backend/src/listings/listings.service.ts": "ddeefc2c1d7d0983129abfa6edadef9916e63e570e20aea1d66bd9a0a0cfc2e4",

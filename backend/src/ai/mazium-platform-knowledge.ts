@@ -24,10 +24,11 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'CarMazium supports individual buyer/seller accounts and verified motor-trade Partner/Dealer accounts.',
             'The same login can access its role-appropriate dashboard; never promise a customer has a particular permission or approval.',
             'Dealers need business verification before bidding at dealer-only auctions. Partner accounts manage eligible service capabilities.',
+            'Within an approved dealership, the owner, dealer Admin and Sales Agent roles have bidding permission. A Finance Manager can view trade stock and pay auction/listing fees but cannot place bids. Sales Agents cannot pay auction/listing fees; the owner, Admin or Finance Manager handles those. Active staff use the dealership owner verification, not a separate staff dealership profile. These permissions do not override auction status.',
             'Account/profile settings: /profile. It contains personal/business details, verification, notification choices, payouts, appearance and account/security controls.',
             'Only a successful authenticated account tool can establish recorded dealer approval and permissions. It cannot inspect passwords or private KYC documents.'
         ].join(' '),
-        sources: ['src/app/profile/page.tsx','src/app/dashboard/partner/page.tsx','src/app/pricing/traders/page.tsx']
+        sources: ['src/app/profile/page.tsx','src/app/dashboard/partner/page.tsx','src/app/pricing/traders/page.tsx','backend/src/dealers/dealer-access.ts']
     },
     {
         id: 'create-new-listing',
@@ -188,7 +189,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         id: 'search-buying',
         triggers: /\b(?:search|find a car|find cars|filter|body type|automatic|diesel|petrol|ev|electric|ulez|postcode|near me|budget|price range|saved cars|favourites|hpi|mot)\b/i,
         facts: [
-            'Search and filter retail cars at /search; auctions can be browsed at /auctions. Filters include eligible body, fuel, transmission, price, age, mileage and other supported attributes.',
+            'Search and filter public retail cars at /search; approved dealers with trade access use /auctions. Filters include eligible body, fuel, transmission, price, age, mileage and other supported attributes.',
             'MaziuM may return a structured filter card only for filters explicitly requested in the CURRENT message; never carry unrequested filters forward.',
             'Information such as DVLA/MOT history, vehicle provenance/HPI and ULEZ suitability can depend on the listing or a provider check; do not state a specific car is safe, HPI clear, compliant or finance-approved without verified records.',
             'A seller’s description and photos are declarations, not independent guarantees. If data is missing, say it is not shown.'
