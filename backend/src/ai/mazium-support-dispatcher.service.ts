@@ -44,9 +44,17 @@ export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
         const reason = !details.enabled ? 'DISABLED' :
             !details.botReady ? 'BOT_NOT_READY' :
             !details.dispatcherReady ? 'DISPATCHER_NOT_READY' :
-            !details.recentSuccessfulPoll ? 'POLL_UNAVAILABLE' :
+            !details.lastPollAt ? 'POLL_NOT_STARTED' :
+            details.lastPollError ? 'POLL_FAILED' :
+            !details.recentSuccessfulPoll ? 'POLL_STALLED' :
             !details.modelAvailable ? 'MODEL_UNAVAILABLE' : 'READY';
-        return { ready: reason === 'READY', status: reason, fixedRepliesAvailable: details.botReady };
+        return {
+            ready: reason === 'READY',
+            status: reason,
+            fixedRepliesAvailable: details.botReady,
+            // Safe class/code only, never raw database SQL or message content.
+            pollFailureCode: reason === 'POLL_FAILED' ? details.lastPollError : null,
+        };
     }
     private allowedCustomer(id: string) {
         return this.config.get<string>('MAZIUM_SUPPORT_AUDIENCE') === 'all'
