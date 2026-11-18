@@ -4,7 +4,7 @@ import { HUMAN_HANDOFF_REPLY, SUPPORT_UNAVAILABLE_REPLY } from '../chat/support-
 describe('automatic support delivery', () => {
     const setup = (plan: any) => {
         const config = { get: jest.fn(key => ({ MAZIUM_SUPPORT_AUTO_REPLY_ENABLED: 'true', MAZIUM_SUPPORT_BOT_USER_ID: 'bot' })[key]) };
-        const chat = { getRoomMessages: jest.fn().mockResolvedValue({ data: [{ senderId: 'customer', content: 'Question' }] }), inspectSupportAutoReply: jest.fn().mockResolvedValue({ eligible: true, customerId: 'customer', content: 'Question', plan }), persistSupportAutoReply: jest.fn().mockResolvedValue({ created: true, message: { id: 'reply' } }) };
+        const chat = { getRoomMessages: jest.fn().mockResolvedValue({ data: [{ senderId: 'customer', content: 'Question' }] }), inspectSupportAutoReply: jest.fn().mockResolvedValue({ eligible: true, customerId: 'customer', content: 'Question', conversation: [{ role: 'user', content: 'Question' }], plan }), persistSupportAutoReply: jest.fn().mockResolvedValue({ created: true, message: { id: 'reply' } }) };
         const gateway = { broadcastMessage: jest.fn() };
         const ai = { draftSupportReply: jest.fn().mockResolvedValue('Try choosing a smaller photo and uploading again.') };
         return { service: new MaziumSupportAutoReplyService(config as any, chat as any, gateway as any, ai as any), chat, ai, gateway };
@@ -21,28 +21,22 @@ describe('automatic support delivery', () => {
         await service.processCustomerMessage('room', 'source');
         expect(ai.draftSupportReply).toHaveBeenCalledWith([{ role: 'user', content: 'Question' }], { automatic: true, userId: 'customer' });
     });
+    it('passes conversation context and the authenticated role to the support model', async () => {
+        const { service, chat, ai } = setup({ kind: 'AI' });
+        const conversation = [
+            { role: 'user', content: 'My photo upload closes on Samsung' },
+            { role: 'assistant', content: 'Try uploading one photo.' },
+            { role: 'user', content: 'I tried that already' },
+        ];
+        chat.inspectSupportAutoReply.mockResolvedValue({ eligible: true, plan: { kind: 'AI' }, content: 'I tried that already', conversation, customerId: 'customer' } as any);
+        await service.processCustomerMessage('room', 'source');
+        expect(ai.draftSupportReply).toHaveBeenCalledWith(conversation, { automatic: true, userId: 'customer' });
+    });
     it('provides a receipt if generation is unavailable or budget is reached', async () => {
         const { service, chat, ai } = setup({ kind: 'AI' });
         await service.processCustomerMessage('room', 'source', false);
         expect(ai.draftSupportReply).not.toHaveBeenCalled();
         expect(chat.persistSupportAutoReply).toHaveBeenCalledWith('room', 'source', 'bot', SUPPORT_UNAVAILABLE_REPLY, 'FIXED');
-    });
-    it('preserves follow-up context while withholding earlier sensitive messages and attachments', async () => {
-        const { service, chat, ai } = setup({ kind: 'AI' });
-        chat.getRoomMessages.mockResolvedValue({ data: [
-            { senderId: 'customer', content: 'I am a private buyer.' },
-            { senderId: 'bot', content: 'You can use Retail.' },
-            { senderId: 'customer', content: 'my password is private' },
-            { senderId: 'customer', content: 'Attachment', attachmentPath: 'private-document' },
-            { senderId: 'customer', content: 'And what does that cost?' },
-        ] } as any);
-        await service.processCustomerMessage('room', 'source');
-        expect(chat.getRoomMessages).toHaveBeenCalledWith('room', 'customer', 1, 40);
-        const context = ai.draftSupportReply.mock.calls[0][0];
-        expect(context[0]).toEqual({ role: 'user', content: 'I am a private buyer.' });
-        expect(context[1].role).toBe('assistant');
-        expect(context.at(-1).content).toBe('And what does that cost?');
-        expect(JSON.stringify(context)).not.toMatch(/password is private|private-document|Attachment/);
     });
     it('never broadcasts a reply rejected by the final race/duplicate check', async () => {
         const { service, chat, gateway } = setup({ kind: 'AI' });

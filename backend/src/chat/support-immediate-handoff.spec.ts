@@ -24,6 +24,7 @@ describe('atomic human support requests', () => {
         };
         const prisma = {
             user: { findUnique: jest.fn().mockResolvedValue({ role }) },
+            message: { findFirst: jest.fn().mockResolvedValue(null) },
             chatRoom: { update: jest.fn().mockResolvedValue(room) },
         };
         const safety = { assertAllowedText: jest.fn().mockResolvedValue(undefined) };

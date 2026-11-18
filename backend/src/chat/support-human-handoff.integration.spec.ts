@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { ChatContext, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChatService } from './chat.service';
-import { HUMAN_HANDOFF_REPLY } from './support-automatic-responses';
+import { HUMAN_HANDOFF_REPLY, SUPPORT_HELP_OFFER } from './support-automatic-responses';
 
 const integration = process.env.TRADE_POSTGRES_TEST === '1' ? describe : describe.skip;
 
@@ -89,7 +89,7 @@ integration('human-support request and receipt with disposable PostgreSQL', () =
             const customerId = customers.get(role)!;
             const key = randomUUID();
             const result = await service.sendMessage(room.id, customerId, {
-                content: "I'd like to speak to a human support agent, please.",
+                content: "I still want to speak to a human support agent, please.",
                 clientMessageId: key,
             });
             expect(result.created).toBe(true);
@@ -110,13 +110,29 @@ integration('human-support request and receipt with disposable PostgreSQL', () =
             expect(preferences.supportAiOptedOutAt).not.toBeNull();
             expect(preferences.supportHumanTakeoverAt).not.toBeNull();
             const retry = await service.sendMessage(room.id, customerId, {
-                content: "I'd like to speak to a human support agent, please.",
+                content: "I still want to speak to a human support agent, please.",
                 clientMessageId: key,
             });
             expect(retry.created).toBe(false);
             expect(await prisma.message.count({ where: { chatRoomId: room.id } })).toBe(2);
         },
     );
+
+    it.each([UserRole.BUYER, UserRole.SELLER, UserRole.DEALER])('offers help once then persists a confirmed handoff for %s', async role => {
+        const room = await roomFor(role);
+        const customerId = customers.get(role)!;
+        const first = await service.sendMessage(room.id, customerId, {
+            content: 'I want to talk to a human', clientMessageId: randomUUID(),
+        });
+        expect(first.automaticReply.content).toBe(SUPPORT_HELP_OFFER);
+        expect((await prisma.chatRoom.findUniqueOrThrow({ where: { id: room.id } })).supportAiOptedOutAt).toBeNull();
+        const key = randomUUID();
+        const second = await service.sendMessage(room.id, customerId, { content: 'yes please', clientMessageId: key });
+        expect(second.automaticReply.content).toBe(HUMAN_HANDOFF_REPLY);
+        expect((await prisma.chatRoom.findUniqueOrThrow({ where: { id: room.id } })).supportAiOptedOutAt).not.toBeNull();
+        expect((await service.sendMessage(room.id, customerId, { content: 'yes please', clientMessageId: key })).created).toBe(false);
+        expect(await prisma.message.count({ where: { chatRoomId: room.id } })).toBe(4);
+    });
 
     it.each([
         [UserRole.BUYER, 'hi can you help me'],
@@ -165,6 +181,35 @@ integration('human-support request and receipt with disposable PostgreSQL', () =
         expect(saved.aiGenerated).toBe(true);
         expect(saved.senderId).toBe(botId);
         expect(await prisma.message.count({ where: { chatRoomId: room.id } })).toBe(2);
+    });
+
+    it('loads only this customer conversation and excludes protected historical details', async () => {
+        const room = await roomFor(UserRole.DEALER);
+        const other = await roomFor(UserRole.BUYER);
+        const customerId = customers.get(UserRole.DEALER)!;
+        await prisma.message.create({ data: { chatRoomId: other.id, senderId: customers.get(UserRole.BUYER)!, content: 'Another customer problem' } });
+        await prisma.message.create({ data: { chatRoomId: room.id, senderId: customerId, content: 'My email is private@example.com', createdAt: new Date(Date.now() - 4000) } });
+        await prisma.message.create({ data: { chatRoomId: room.id, senderId: customerId, content: 'Photo upload closes on Samsung', createdAt: new Date(Date.now() - 3000) } });
+        await prisma.message.create({ data: { chatRoomId: room.id, senderId: botId, aiGenerated: true, content: 'Try one smaller image.', createdAt: new Date(Date.now() - 2000) } });
+        const latest = await prisma.message.create({ data: { chatRoomId: room.id, senderId: customerId, content: 'I tried that and it still closes' } });
+        const result = await service.inspectSupportAutoReply(room.id, latest.id);
+        expect(result.eligible).toBe(true);
+        if (!result.eligible) throw new Error(result.reason);
+        expect(result.customerRole).toBe('DEALER');
+        expect(result.conversation.map(m => m.content)).toEqual([
+            'Photo upload closes on Samsung', 'Try one smaller image.', 'I tried that and it still closes',
+        ]);
+    });
+
+    it('keeps answering when the customer chooses help instead of a person', async () => {
+        const room = await roomFor(UserRole.BUYER);
+        const customerId = customers.get(UserRole.BUYER)!;
+        await service.sendMessage(room.id, customerId, { content: 'I want a human', clientMessageId: randomUUID() });
+        const help = await service.sendMessage(room.id, customerId, { content: 'i want to upload a car', clientMessageId: randomUUID() });
+        expect(help.automaticReply.content).toContain('/sell');
+        expect((await prisma.chatRoom.findUniqueOrThrow({ where: { id: room.id } })).supportAiOptedOutAt).toBeNull();
+        const human = await service.sendMessage(room.id, customerId, { content: 'I want a human', clientMessageId: randomUUID() });
+        expect(human.automaticReply.content).toBe(HUMAN_HANDOFF_REPLY);
     });
 
     it('rolls back both messages and opt-out if the trusted bot identity is missing', async () => {

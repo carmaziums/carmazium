@@ -1,5 +1,5 @@
 import { SupportMessageEvents } from './support-message-events';
-import { supportReplyPlan, supportNeedsHumanReply, SUPPORT_UNAVAILABLE_REPLY, HUMAN_HANDOFF_REPLY } from './support-automatic-responses';
+import { supportReplyPlan, supportNeedsHumanReply, SUPPORT_UNAVAILABLE_REPLY, HUMAN_HANDOFF_REPLY, SUPPORT_HELP_OFFER } from './support-automatic-responses';
 import { BadRequestException, Optional, Injectable, NotFoundException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BlockChatRoomDto, CreateRoomDto, OpenDisputeDto, ReportChatMessageDto, SendChatAttachmentDto, SendMessageDto, UpdateChatReportDto } from './dto';
@@ -2200,6 +2200,30 @@ export class ChatService {
         return { consentToAi: consent, humanTakeoverActive: Boolean(room.supportHumanTakeoverAt) };
     }
 
+    /** Read only server-authored offers; customer text cannot forge handoff state. */
+    private async planSupportReply(db: PrismaService | Prisma.TransactionClient, room: any, content: string, createdAt: Date) {
+        const couldConfirm = /^(?:yes(?: please)?|please do|go ahead|pass it on|connect me|no(?: thanks?)?|you can help(?: me)?|help me instead|let'?s try|no thanks?[, ]*human please)[.!? ]*$/i.test(content.trim());
+        if (!requestsHumanSupport(content) && !couldConfirm) return supportReplyPlan(room, content, createdAt);
+        const botId = process.env.MAZIUM_SUPPORT_BOT_USER_ID;
+        if (!botId) return supportReplyPlan(room, content, createdAt);
+        const offer = await db.message.findFirst({
+            where: { chatRoomId: room.id, senderId: botId, aiGenerated: true, deletedAt: null, content: SUPPORT_HELP_OFFER },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            select: { content: true, createdAt: true },
+        });
+        let pending = false;
+        if (couldConfirm && offer?.content === SUPPORT_HELP_OFFER && createdAt.getTime() - offer.createdAt.getTime() < 30 * 60_000) {
+            const lastBot = await db.message.findFirst({
+                where: { chatRoomId: room.id, senderId: botId, aiGenerated: true, deletedAt: null },
+                orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+                select: { content: true },
+            });
+            pending = lastBot?.content === SUPPORT_HELP_OFFER;
+        }
+        return supportReplyPlan({ ...room, supportHelpOffered: offer?.content === SUPPORT_HELP_OFFER,
+            supportHelpOfferPending: pending }, content, createdAt);
+    }
+
     /**
      * Backend-only final gate for a pending MaziuM response. This performs no
      * writes and grants no permission to send: the delivery transaction must
@@ -2237,9 +2261,22 @@ export class ChatService {
             select: { id: true },
         });
         if (existing) return { eligible: false, reason: 'ALREADY_REPLIED' } as const;
-        const plan = supportReplyPlan(room, latest.content, latest.createdAt);
+        const plan = await this.planSupportReply(this.prisma, room, latest.content, latest.createdAt);
         if (!plan) return { eligible: false, reason: 'HUMAN_HANDLING' } as const;
-        return { eligible: true, reason: 'READY', customerId, supportId, content: latest.content, plan } as const;
+        const history = plan.kind === 'AI' ? await this.prisma.message.findMany({
+            where: { chatRoomId: roomId, deletedAt: null, attachmentPath: null,
+                OR: [{ senderId: customerId, aiGenerated: false },
+                    { senderId: process.env.MAZIUM_SUPPORT_BOT_USER_ID || '', aiGenerated: true }],
+                AND: [{ OR: [{ createdAt: { lt: latest.createdAt } },
+                    { createdAt: latest.createdAt, id: { lte: latest.id } }] }],
+            },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 40,
+            select: { content: true, senderId: true, aiGenerated: true },
+        }) : [];
+        const { safeSupportConversation } = await import('./support-conversation-context');
+        const conversation = safeSupportConversation(history.reverse(), customerId, latest.content);
+        const customerRole = customerId === room.initiatorId ? room.initiator.role : room.participant.role;
+        return { eligible: true, reason: 'READY', customerId, supportId, customerRole, content: latest.content, conversation, plan } as const;
     }
 
     /**
@@ -2309,7 +2346,7 @@ export class ChatService {
                 || latest.aiGenerated || (latest.attachmentPath && !requestsHumanSupport(latest.content))) {
                 return { created: false, reason: 'SOURCE_CHANGED_OR_SENSITIVE' } as const;
             }
-            const plan = supportReplyPlan(room, latest.content, latest.createdAt);
+            const plan = await this.planSupportReply(tx, room, latest.content, latest.createdAt);
             if (!plan || (kind === 'AI' && plan.kind !== 'AI')
                 || (kind === 'FIXED' && reply !== (plan.kind === 'FIXED' ? plan.reply : SUPPORT_UNAVAILABLE_REPLY))) {
                 return { created: false, reason: 'CONSENT_OR_REPLY_CHANGED' } as const;
@@ -2354,7 +2391,9 @@ export class ChatService {
                 },
                 include: this.messageInclude,
             });
-            await tx.chatRoom.update({ where: { id: roomId }, data: { updatedAt: new Date() } });
+            await tx.chatRoom.update({ where: { id: roomId }, data: { updatedAt: new Date(),
+                ...(reply === HUMAN_HANDOFF_REPLY ? { supportAiOptedOutAt: new Date(), supportHumanTakeoverAt: new Date() } : {}),
+            } });
             return { created: true, message, customerId } as const;
         });
         if (outcome.created) {
@@ -2624,8 +2663,8 @@ export class ChatService {
         data: Prisma.MessageUncheckedCreateInput,
         options: { reply?: string; humanHandoff?: boolean } = {},
     ): Promise<{ message: any; automaticReply: any }> {
-        const isHumanHandoff = options.humanHandoff !== false;
-        const fixedReply = isHumanHandoff ? HUMAN_HANDOFF_REPLY : options.reply;
+        const handoffRequest = options.humanHandoff !== false;
+        let fixedReply = handoffRequest ? HUMAN_HANDOFF_REPLY : options.reply;
         if (!fixedReply) {
             throw new BadRequestException('Missing trusted support response');
         }
@@ -2669,14 +2708,15 @@ export class ChatService {
             // Check the plan while holding the room lock so a concurrent
             // opt-out or staff takeover cannot race a fixed automatic reply.
             const incoming = typeof data.content === 'string' ? data.content : '';
-            const plan = supportReplyPlan(currentRoom, incoming, new Date());
-            if (isHumanHandoff
-                ? !requestsHumanSupport(incoming)
-                : plan?.kind !== 'FIXED' || plan.reply !== fixedReply || requestsHumanSupport(incoming)) {
+            const plan = await this.planSupportReply(tx, currentRoom, incoming, new Date());
+            if (handoffRequest && plan?.kind === 'FIXED' && [HUMAN_HANDOFF_REPLY, SUPPORT_HELP_OFFER].includes(plan.reply)) {
+                fixedReply = plan.reply;
+            }
+            if (plan?.kind !== 'FIXED' || plan.reply !== fixedReply) {
                 throw new ForbiddenException('Automatic response no longer eligible');
             }
             const now = new Date();
-            if (isHumanHandoff) {
+            if (fixedReply === HUMAN_HANDOFF_REPLY) {
                 await tx.chatRoom.update({
                     where: { id: room.id },
                     data: { supportAiOptedOutAt: now, supportHumanTakeoverAt: now },
@@ -2748,8 +2788,8 @@ export class ChatService {
                 content: dto.content,
             };
             if (room.context === ChatContext.SUPPORT && !supportSenderIsAdmin) {
-                const plan = supportReplyPlan(room, dto.content, new Date());
-                if (requestsHumanSupport(dto.content)) {
+                const plan = await this.planSupportReply(this.prisma, room, dto.content, new Date());
+                if (plan?.kind === 'FIXED' && [HUMAN_HANDOFF_REPLY, SUPPORT_HELP_OFFER].includes(plan.reply)) {
                     ({ message, automaticReply } = await this.createHumanSupportRequestWithReceipt(
                         room, senderId, data,
                     ));
