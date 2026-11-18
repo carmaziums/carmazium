@@ -151,7 +151,8 @@ describe('AiService safety and reporting', () => {
             }) } }],
         });
         const result = await service.chatCompletion([{ role: 'user', content: 'Tell me about CarMazium.' }]);
-        expect(result.text).toContain('only open to verified motor-trade dealers');
+        expect(result.text).toBe('A normal car-buying answer.');
+        expect(completionCreate).toHaveBeenCalledTimes(2);
         expect(result.text).not.toContain('you can participate');
     });
 
