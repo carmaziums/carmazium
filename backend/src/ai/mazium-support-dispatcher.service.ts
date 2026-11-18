@@ -48,7 +48,6 @@ export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
             !details.modelAvailable ? 'MODEL_UNAVAILABLE' : 'READY';
         return { ready: reason === 'READY', status: reason, fixedRepliesAvailable: details.botReady };
     }
-    }
     private allowedCustomer(id: string) {
         return this.config.get<string>('MAZIUM_SUPPORT_AUDIENCE') === 'all'
             || (this.config.get<string>('MAZIUM_SUPPORT_TEST_USER_IDS') || '').split(',').map(x => x.trim()).filter(Boolean).includes(id);
