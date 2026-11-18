@@ -115,3 +115,19 @@ jobs:
         run: flyctl deploy --remote-only --config fly.toml
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Confirm deployed MaziuM support worker is operational
+        run: |
+          set -eu
+          for attempt in $(seq 1 15); do
+            body="$(curl --connect-timeout 4 --max-time 10 --fail --silent --show-error https://carmazium-hjoh9w.fly.dev/ai/support/health || true)"
+            if printf '%s' "$body" | grep -q '"ready":true'; then
+              echo "MaziuM worker is active on the deployed API."
+              exit 0
+            fi
+            echo "MaziuM worker not ready on check $attempt/15"
+            sleep 4
+          done
+          # Only coarse operational state is published; no secrets or user data.
+          printf 'Deployed MaziuM worker status: %s\n' "$body"
+          exit 1
