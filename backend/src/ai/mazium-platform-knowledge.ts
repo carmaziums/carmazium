@@ -57,8 +57,8 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         id: 'sell-caravan-campervan',
         triggers: /\b(?:caravan|campervan|motorhome|towable)\b/i,
         facts: [
-            'CarMazium supports separate Caravan and Campervan body types in supported listing and search flows.',
-            'A towable caravan can be listed manually without a registration number, VIN or standard car-only specifications. Provide a truthful description and photos.',
+            'The listing wizard has a combined Caravan / Campervan selection, with separate Caravan (towable) and Campervan (motorised) body types; supported listings can be filtered by the appropriate type.',
+            'A towable touring caravan can be listed manually without a registration number, VIN/CRiS or motor-vehicle specifications. It needs at least one photo and honest seller declarations. A motorised campervan is treated as a motor vehicle for required registration, mileage, fuel, transmission and normal 10-photo rules.',
             'The seller chooses price or auction reserve as applicable; do not promise an automatic valuation for a caravan.',
             'Begin from /sell; choose the caravan/campervan option when entering the listing.'
         ].join(' '),
