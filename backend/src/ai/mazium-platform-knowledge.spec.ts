@@ -72,7 +72,7 @@ describe('MaziuM source-verified public platform knowledge', () => {
     });
 
     it('never fills every answer with generic account context when a specific task exists', () => {
-        const output = platformKnowledgeFor('I am a seller and I want to edit my listing', 2);
+        const output = platformKnowledgeFor('I am a seller and I want to edit my listing', 1);
         expect(output).toContain('[edit-existing-listing]');
         expect(output).not.toContain('[accounts-and-roles]');
     });
