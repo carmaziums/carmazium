@@ -27,6 +27,40 @@ describe('support dispatcher', () => {
         expect(prisma.message.updateMany.mock.calls[0][0].where.createdAt.gte).toBeInstanceOf(Date);
         dispatcher.onModuleDestroy();
     });
+    it('can recover a recent explicit human request that predates process startup', async () => {
+        const { dispatcher, prisma, auto } = setup();
+        await dispatcher.onModuleInit();
+        auto.inspect.mockResolvedValue({
+            eligible: true, customerId: 'customer',
+            content: "I'd like to speak to a human support agent, please.",
+            plan: { kind: 'FIXED' },
+        });
+        await dispatcher.processOne('room', 'handoff');
+        const earliest = prisma.message.updateMany.mock.calls[0][0].where.createdAt.gte as Date;
+        expect(Date.now() - earliest.getTime()).toBeGreaterThan(23 * 60 * 60 * 1000);
+        expect(auto.processCustomerMessage).toHaveBeenCalledTimes(1);
+        dispatcher.onModuleDestroy();
+    });
+    it('recovers recent handoffs from the database without replaying unrelated old messages', async () => {
+        const { dispatcher, prisma, auto } = setup();
+        await dispatcher.onModuleInit();
+        prisma.message.findMany
+            .mockResolvedValueOnce([])
+            .mockResolvedValueOnce([
+                { id: 'handoff', chatRoomId: 'room', content: "I'd like to speak to a human support agent, please." },
+                { id: 'unrelated', chatRoomId: 'room', content: 'How much to list?' },
+            ]);
+        auto.inspect.mockResolvedValue({
+            eligible: true, customerId: 'customer',
+            content: "I'd like to speak to a human support agent, please.",
+            plan: { kind: 'FIXED' },
+        });
+        await dispatcher.dispatch();
+        expect(prisma.message.findMany).toHaveBeenCalledTimes(2);
+        expect(prisma.message.findMany.mock.calls[1][0].where.chatRoom.supportAiOptedOutAt).toEqual({ not: null });
+        expect(auto.processCustomerMessage).toHaveBeenCalledTimes(1);
+        dispatcher.onModuleDestroy();
+    });
     it('does not expand pilot delivery without explicit all-customer rollout', async () => {
         const { dispatcher, auto, prisma } = setup({ MAZIUM_SUPPORT_AUDIENCE: 'test' });
         await dispatcher.onModuleInit(); await dispatcher.processOne('room', 'message'); await dispatcher.dispatch();
