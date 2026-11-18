@@ -13,6 +13,7 @@ import { useChat } from "@/context/ChatContext"
 import { useAuth } from "@/context/AuthContext"
 import { blockChatRoom, createChatAttachmentUpload, getChatMessages, sendChatAttachment, sendChatMessage, markMessagesAsRead, getChatDisplayName, getChatRoomDisplayName, isSupportUser, openVehicleDispute, reportChatMessage, unblockChatRoom, type ChatHistoryCursor, type ChatMessage, type ChatReportReason, type ChatRoom } from "@/lib/chatApi"
 import { disputeEventLabel, parseChatMessageContent, parseDisputeEventContent } from "@/lib/chatMessageContent"
+import { reconcileChatMessages } from "@/lib/chatMessageRecovery"
 import { resolveAdminDispute } from "@/lib/adminApi"
 import { supabase } from "@/lib/supabase"
 import { apiClient } from "@/lib/apiClient"
@@ -342,6 +343,44 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         }
         fetchMessages()
     }, [room.id, markAsRead])
+
+    // A persisted support answer can outlive a missed socket event or reconnect.
+    // Recover the newest page while this conversation is visible; never replace
+    // loaded history or optimistic sends, overlap requests, or update another room.
+    React.useEffect(() => {
+        if (room.context !== 'SUPPORT' || loading) return
+        let cancelled = false
+        let inFlight = false
+        const recover = async () => {
+            if (cancelled || inFlight || document.visibilityState === 'hidden') return
+            inFlight = true
+            try {
+                const response = await getChatMessages(room.id)
+                if (cancelled) return
+                setMessages(previous => reconcileChatMessages(previous, response.data, room.id))
+                if (response.data.some(message => message.senderId !== user?.id && !message.isRead)) {
+                    await markMessagesAsRead(room.id)
+                    if (!cancelled) markAsRead(room.id, false)
+                }
+            } catch {
+                // Leave the visible conversation intact and retry on the next tick.
+            } finally {
+                inFlight = false
+            }
+        }
+        const timer = window.setInterval(recover, 5000)
+        window.addEventListener('focus', recover)
+        window.addEventListener('online', recover)
+        document.addEventListener('visibilitychange', recover)
+        void recover()
+        return () => {
+            cancelled = true
+            window.clearInterval(timer)
+            window.removeEventListener('focus', recover)
+            window.removeEventListener('online', recover)
+            document.removeEventListener('visibilitychange', recover)
+        }
+    }, [room.id, room.context, loading, user?.id, isConnected, markAsRead])
 
     // Scroll to bottom on new messages — instant on first load, smooth only if near bottom
     // Guard against loading=true: the container shows a spinner then, so scrollHeight is tiny
