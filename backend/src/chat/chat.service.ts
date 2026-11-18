@@ -2619,7 +2619,13 @@ export class ChatService {
         room: any,
         senderId: string,
         data: Prisma.MessageUncheckedCreateInput,
+        options: { reply?: string; humanHandoff?: boolean } = {},
     ): Promise<{ message: any; automaticReply: any }> {
+        const isHumanHandoff = options.humanHandoff !== false;
+        const fixedReply = isHumanHandoff ? HUMAN_HANDOFF_REPLY : options.reply;
+        if (!fixedReply) {
+            throw new BadRequestException('Missing trusted support response');
+        }
         const botUserId = process.env.MAZIUM_SUPPORT_BOT_USER_ID;
         if (!botUserId) {
             throw new ServiceUnavailableException('Human support receipt is temporarily unavailable. Please try again.');
@@ -2657,11 +2663,22 @@ export class ChatService {
                 !bot.lockoutUntil || bot.lockoutUntil.getTime() <= Date.now()) {
                 throw new ServiceUnavailableException('Human support receipt is temporarily unavailable. Please try again.');
             }
+            // Check the plan while holding the room lock so a concurrent
+            // opt-out or staff takeover cannot race a fixed automatic reply.
+            const incoming = typeof data.content === 'string' ? data.content : '';
+            const plan = supportReplyPlan(currentRoom, incoming, new Date());
+            if (isHumanHandoff
+                ? !requestsHumanSupport(incoming)
+                : plan?.kind !== 'FIXED' || plan.reply !== fixedReply || requestsHumanSupport(incoming)) {
+                throw new ForbiddenException('Automatic response no longer eligible');
+            }
             const now = new Date();
-            await tx.chatRoom.update({
-                where: { id: room.id },
-                data: { supportAiOptedOutAt: now, supportHumanTakeoverAt: now },
-            });
+            if (isHumanHandoff) {
+                await tx.chatRoom.update({
+                    where: { id: room.id },
+                    data: { supportAiOptedOutAt: now, supportHumanTakeoverAt: now },
+                });
+            }
             const message = await tx.message.create({
                 data,
                 include: this.messageInclude,
@@ -2673,7 +2690,7 @@ export class ChatService {
                     clientMessageId: supportAutoReplyClientMessageId(message.id),
                     aiGenerated: true,
                     aiSourceMessageId: message.id,
-                    content: HUMAN_HANDOFF_REPLY,
+                    content: fixedReply,
                 },
                 include: this.messageInclude,
             });
@@ -2727,11 +2744,22 @@ export class ChatService {
                 clientMessageId: dto.clientMessageId,
                 content: dto.content,
             };
-            if (room.context === ChatContext.SUPPORT && !supportSenderIsAdmin &&
-                requestsHumanSupport(dto.content)) {
-                ({ message, automaticReply } = await this.createHumanSupportRequestWithReceipt(
-                    room, senderId, data,
-                ));
+            if (room.context === ChatContext.SUPPORT && !supportSenderIsAdmin) {
+                const plan = supportReplyPlan(room, dto.content, new Date());
+                if (requestsHumanSupport(dto.content)) {
+                    ({ message, automaticReply } = await this.createHumanSupportRequestWithReceipt(
+                        room, senderId, data,
+                    ));
+                } else if (plan?.kind === 'FIXED') {
+                    // Known FAQs, greetings and protected staff escalations are
+                    // persisted atomically with the customer's message. This
+                    // works even when a scheduled AI dispatcher misses events.
+                    ({ message, automaticReply } = await this.createHumanSupportRequestWithReceipt(
+                        room, senderId, data, { humanHandoff: false, reply: plan.reply },
+                    ));
+                } else {
+                    message = await this.createInboundMessage(room, senderId, data);
+                }
             } else {
                 message = await this.createInboundMessage(room, senderId, data);
             }
@@ -2791,8 +2819,8 @@ export class ChatService {
         if (automaticReply) {
             await this.notifyMessageRecipients(
                 [{ id: senderId, role: supportSender!.role }],
-                roomId, automaticReply.id, 'CarMazium support acknowledgement',
-                HUMAN_HANDOFF_REPLY.substring(0, 50) + '...',
+                roomId, automaticReply.id, 'MaziuM support reply',
+                (automaticReply.content as string).substring(0, 50) + '...',
                 { aiGenerated: true },
             );
         }
