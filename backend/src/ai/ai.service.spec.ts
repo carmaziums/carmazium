@@ -130,6 +130,58 @@ describe('AiService safety and reporting', () => {
         expect(result.text).toContain('wrong page');
     });
 
+    it('rejects non-dealer auction bidding with clear retail alternative before model generation', async () => {
+        const { service, completionCreate } = build();
+        const result = await service.chatCompletion([
+            { role: 'user', content: 'tell me how to bid on auction cars if you are not dealer' },
+        ]);
+        expect(result.text).toContain('verified motor-trade dealers only');
+        expect(result.text).toContain('/search');
+        expect(completionCreate).not.toHaveBeenCalled();
+    });
+
+    it('keeps non-dealer status through the exact screenshot follow-up rather than following a wrong previous assistant', async () => {
+        const { service, completionCreate } = build();
+        const result = await service.chatCompletion([
+            { role: 'user', content: 'tell me how to bid on auction cars if you are not dealer' },
+            { role: 'assistant', content: "I'm sorry, but I can't assist with auction bidding processes for non-dealers." },
+            { role: 'user', content: 'but i want to buy from auctions' },
+        ]);
+        expect(result.text).toContain('A private buyer or seller cannot place bids');
+        expect(result.text).toContain('/search');
+        expect(completionCreate).not.toHaveBeenCalled();
+    });
+
+    it('withholds an invented private-auction entitlement even if the model generates it on an unrelated query', async () => {
+        const { service, completionCreate } = build();
+        completionCreate.mockResolvedValueOnce({
+            choices: [{ message: { content: JSON.stringify({
+                text: "As a private seller, you can participate in public auctions and place a bid directly on the listing.",
+                filterCard: null,
+            }) } }],
+        });
+        const result = await service.chatCompletion([{ role: 'user', content: 'Tell me about CarMazium.' }]);
+        expect(result.text).toContain('only open to verified motor-trade dealers');
+        expect(result.text).not.toContain('you can participate');
+    });
+
+    it('uses a stronger, configurable model with context-grounded knowledge for complex follow-ups', async () => {
+        const { service, completionCreate } = build();
+        await service.chatCompletion([
+            { role: 'user', content: 'Why was my car auction below reserve?' },
+            { role: 'assistant', content: 'A previous assistant made an error.' },
+            { role: 'user', content: 'But what about the reserve?' },
+        ]);
+        expect(completionCreate).toHaveBeenCalledTimes(1);
+        const req = completionCreate.mock.calls[0][0];
+        expect(req.model).toBe('gpt-4.1');
+        expect(req.max_tokens).toBeGreaterThanOrEqual(800);
+        const system = req.messages.filter((m: any) => m.role === 'system').map((m: any) => m.content).join(' ');
+        expect(system).toContain('bidding-reserve-and-provisional');
+        expect(system).toContain('verified');
+        expect(system).toContain('Private buyers');
+    });
+
     it('allows an ordinary automotive question through moderation and generation', async () => {
         const { service, completionCreate } = build();
 

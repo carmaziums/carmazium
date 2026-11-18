@@ -281,7 +281,7 @@ export const GlobalAIChatBot: React.FC = () => {
   const [message, setMessage] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [chatHistory, setChatHistory] = useState<HistoryItem[]>([
-    { id: '1', text: "Hi! I'm Mazium, your AI car-buying assistant. Tell me what you're looking for and I'll find it!", isUser: false },
+    { id: '1', text: "Hi, I'm MaziuM. Ask me about buying, selling, auctions or using CarMazium.", isUser: false },
   ]);
   const [quickReplies] = useState(() => getDailyQuickReplies());
   const [hasAiConsent, setHasAiConsent] = useState<boolean | null>(null);
@@ -303,7 +303,7 @@ export const GlobalAIChatBot: React.FC = () => {
     setMessage('');
     setIsThinking(false);
     setChatHistory([
-      { id: '1', text: "Hi! I'm Mazium, your AI car-buying assistant. Tell me what you're looking for and I'll find it!", isUser: false },
+      { id: '1', text: "Hi, I'm MaziuM. Ask me about buying, selling, auctions or using CarMazium.", isUser: false },
     ]);
     setReportedResponseIds(new Set());
     setAiReportTarget(null);
@@ -526,6 +526,10 @@ export const GlobalAIChatBot: React.FC = () => {
   // small-screen safe areas and the Android/iOS keyboard.
   const dynamicHeight = Math.max(0, Math.min(540, maxBoxHeight));
   const chatWidth = Math.max(0, Math.min(340, windowWidth - 24));
+  const lastCustomerMessage = [...chatHistory].reverse().find(item => item.isUser)?.text ?? '';
+  const showSearchShortcuts = !lastCustomerMessage ||
+    (/\b(?:show|search|find|looking for|recommend|suv|hatchback|electric car|diesel car|under £|under \d|budget)\b/i.test(lastCustomerMessage)
+      && !/\b(?:auctions?|bids?|bidding|listings?|upload|payout|refund|dealer account|service|fees?|verification|support)\b/i.test(lastCustomerMessage));
 
   return (
     <>
@@ -551,8 +555,8 @@ export const GlobalAIChatBot: React.FC = () => {
                     <View style={styles.botAccentDot} />
                   </View>
                   <View>
-                    <Text style={styles.chatTitle} accessibilityRole="header">Mazium AI</Text>
-                    <Text style={styles.chatStatus}>Car-buying assistant</Text>
+                    <Text style={styles.chatTitle} accessibilityRole="header">MaziuM AI</Text>
+                    <Text style={styles.chatStatus}>CarMazium assistant</Text>
                   </View>
                 </View>
                 <View style={styles.chatHeaderActions}>
@@ -669,8 +673,8 @@ export const GlobalAIChatBot: React.FC = () => {
                 )}
               </ScrollView>
 
-              {/* Website-equivalent persistent daily quick replies, horizontally scrollable. */}
-              <View style={styles.quickRepliesRail}>
+              {/* Website-equivalent search suggestions only for car search. */}
+              {showSearchShortcuts && <View style={styles.quickRepliesRail}>
                 <ScrollView horizontal
         style={Layout.hScroll} showsHorizontalScrollIndicator={false}
                   keyboardShouldPersistTaps="always" contentContainerStyle={styles.quickPromptsWrap}>
@@ -689,13 +693,13 @@ export const GlobalAIChatBot: React.FC = () => {
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
-              </View>
+              </View>}
 
               {/* Input row */}
               <View style={styles.chatInputRow}>
                 <TextInput
                   style={styles.chatInput}
-                  placeholder="e.g. Show me BMWs under £20k..."
+                  placeholder="Ask MaziuM about CarMazium..."
                   placeholderTextColor={Colors.iconMuted}
                   value={message}
                   onChangeText={setMessage}

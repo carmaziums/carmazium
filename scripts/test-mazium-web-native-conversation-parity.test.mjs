@@ -27,18 +27,18 @@ test('native and website offer identical rotating car-shopping prompts in the sa
 });
 
 test('same welcome, assistant title, subtitle and message placeholder', () => {
-  const welcome = "Hi! I'm Mazium, your AI car-buying assistant. Tell me what you're looking for and I'll find it!";
+  const welcome = "Hi, I'm MaziuM. Ask me about buying, selling, auctions or using CarMazium.";
   assert.ok(web.includes(welcome));
   assert.ok(native.includes(welcome));
-  assert.match(web, />Mazium AI<\/h3>/);
-  assert.match(native, />Mazium AI<\/Text>/);
-  assert.match(web, /Car-buying assistant/);
-  assert.match(native, /Car-buying assistant/);
-  assert.match(web, /placeholder="e\.g\. Show me BMWs under £20k\.\.\."/);
-  assert.match(native, /placeholder="e\.g\. Show me BMWs under £20k\.\.\."/);
+  assert.match(web, />MaziuM AI<\/h3>/);
+  assert.match(native, />MaziuM AI<\/Text>/);
+  assert.match(web, /CarMazium assistant/);
+  assert.match(native, /CarMazium assistant/);
+  assert.match(web, /placeholder="Ask MaziuM about CarMazium\.\.\."/);
+  assert.match(native, /placeholder="Ask MaziuM about CarMazium\.\.\."/);
 });
 
-test('native follows website chat layout, status indicator and persistent quick-reply rail', () => {
+test('native follows website chat layout, status indicator and context-aware quick-reply rail', () => {
   assert.match(native, /<LinearGradient colors=\{\[Colors\.bgBody, Colors\.bgElevated\]\}/);
   assert.match(native, /botAccentDot:[\s\S]*?backgroundColor: Colors\.success/);
   assert.match(native, /Math\.min\(540, maxBoxHeight\)/);
@@ -46,8 +46,12 @@ test('native follows website chat layout, status indicator and persistent quick-
   assert.match(native, /<ScrollView horizontal\s+(?:style=\{Layout\.hScroll\}\s+)?showsHorizontalScrollIndicator=\{false\}/);
   assert.match(native, /quickReplies\.map\(\(q\) =>/);
   assert.match(native, /disabled=\{isThinking \|\| hasAiConsent !== true\}/);
-  assert.ok(native.indexOf('Website-equivalent persistent daily quick replies') >
+  assert.ok(native.indexOf('Website-equivalent search suggestions only for car search') >
     native.indexOf('{chatHistory.map((msg) => ('));
+  assert.match(web, /showSearchShortcuts && <div/);
+  assert.match(native, /showSearchShortcuts && <View/);
+  assert.match(web, /auctions\?\|bids\?\|bidding/);
+  assert.match(native, /auctions\?\|bids\?\|bidding/);
   assert.doesNotMatch(native, /chatHistory\.length === 1 && !isThinking/);
   assert.match(web, /quickReplies\.map\(\(chip\) =>/);
 });
