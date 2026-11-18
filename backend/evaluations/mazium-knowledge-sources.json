@@ -41,7 +41,7 @@
     "src/app/services/warranty/page.tsx": "4a660bc1a27f498df350c80ea9488fcaf73a15db6d1eec69daca865c464975d1",
     "src/app/terms/page.tsx": "a0b246f6f895906c652d8c11cf576911f2256fa12efd30fceab6bde5c204c1e6",
     "src/components/auctions/AuctionResultsModal.tsx": "0643900661c07ecb8614bea0b610aab20c36cd1c91ea8ab1b37b606bb08866a7",
-    "src/components/chat/ChatWindow.tsx": "717ba2731a676b6570d7d748870025985a21e6e168609125edd12bf54e829ec8",
+    "src/components/chat/ChatWindow.tsx": "5b14aa6bf2c6e508f20a7551c7e578e91bd6a584cfc5e47e853ec0def6cde77e",
     "src/components/dealer/DealerPurchasesView.tsx": "f410865f9dd25f9200c15d6f83def2278f3ee75ac17a2768c77c0c1ed821c917",
     "src/components/dealer/DealerServicePreferences.tsx": "181533e825f50df4023d440211889be8a4514565a18c9a3a1da4f1549a4df9f6",
     "src/components/features/MaziumWidget.tsx": "4b1610c3218d2b0e4f0190bbfbf29d90fad38cac9ea39d7b4a13db5dba902ddc",
