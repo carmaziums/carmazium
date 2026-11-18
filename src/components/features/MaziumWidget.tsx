@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -366,7 +368,26 @@ export function MaziumWidget() {
                                             : undefined
                                     }
                                 >
-                                    {msg.text}
+                                    {msg.role === "bot" ? (
+                                        <div className="[&_p+p]:mt-2 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mt-1">
+                                            <ReactMarkdown skipHtml remarkPlugins={[remarkGfm]}
+                                                allowedElements={['p', 'strong', 'em', 'ol', 'ul', 'li', 'br', 'a', 'code']}
+                                                unwrapDisallowed
+                                                components={{ a: ({ href, children }) => {
+                                                    // Model text cannot introduce executable URLs, tracking
+                                                    // images or links to an unrelated sign-in/payment site.
+                                                    try {
+                                                        const url = new URL(href || '', 'https://www.carmazium.com')
+                                                        if (href && ['https://www.carmazium.com', 'https://carmazium.com'].includes(url.origin)) {
+                                                            return <a href={url.pathname + url.search + url.hash} className="font-medium underline underline-offset-2">{children}</a>
+                                                        }
+                                                    } catch { /* Render unsupported destinations as plain text. */ }
+                                                    return <span>{children}</span>
+                                                } }}>
+                                                {msg.text}
+                                            </ReactMarkdown>
+                                        </div>
+                                    ) : msg.text}
                                 </div>
 
                                 {/* Filter Confirmation Card */}

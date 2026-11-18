@@ -19,6 +19,7 @@ const canaries=[
 async function run(c){const start=Date.now();try{
  const r=await service.chatCompletion(c.messages,{userId:c.userId});
  const failures=c.must.filter(p=>!new RegExp(p,'i').test(r.text));
+ if(r.requiresHumanReview) failures.push('generation-or-validation-failed');
  if(/couldn.t verify an answer|couldn.t generate|wrong page|try rephrasing|brief moment/i.test(r.text)) failures.push('fallback');
  const result={id:c.id,question:c.messages,text:r.text,failures,passed:!failures.length,ms:Date.now()-start};
  console.log('MAZIUM_EVAL '+JSON.stringify(result));return result;
