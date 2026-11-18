@@ -31,6 +31,17 @@ export async function aiSearch(query: string): Promise<AiSearchResult> {
     return json.data;
 }
 
+let assistantCapability: { supported: boolean; expires: number } | undefined;
+async function contextualAssistantAvailable(): Promise<boolean> {
+    if (assistantCapability && assistantCapability.expires > Date.now()) return assistantCapability.supported;
+    try {
+        const health = await apiClient<{ data: { assistantVersion?: string } }>('/ai/support/health');
+        const supported = health.data.assistantVersion === 'context-tools-v1';
+        assistantCapability = { supported, expires: Date.now() + 60000 };
+        return supported;
+    } catch { return false; }
+}
+
 /**
  * AI chat — send conversation history and get a contextual response.
  */
@@ -38,9 +49,11 @@ export async function aiChat(
     messages: { role: 'user' | 'assistant'; content: string }[],
     page?: string
 ): Promise<AiChatResult> {
+    // Web and backend deploy independently; retain compatibility during rollout.
+    const contextual = await contextualAssistantAvailable();
     const json = await apiClient<{ data: AiChatResult }>('/ai/chat', {
         method: 'POST',
-        body: JSON.stringify({ messages, page, aiConsentAcknowledged: true }),
+        body: JSON.stringify({ messages: messages.slice(contextual ? -40 : -10), ...(contextual ? { page } : {}), aiConsentAcknowledged: true }),
     });
     return json.data;
 }
