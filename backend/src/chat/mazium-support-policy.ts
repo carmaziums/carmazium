@@ -23,6 +23,12 @@ const OWNER_APPROVAL = [
     /\b(?:hacked|unauthorised access|stolen account|security breach|phishing|privacy complaint|data breach|identity theft)\b/i,
     /\b(?:dispute this sale|refund(?:ing|ed)?|repay(?:ment)?|reverse (?:a |the )?charge)\b/i,
     /\b(?:where|when)\b.*\b(?:my|the) (?:£?100|reward|money|payment)\b/i,
+    // Never send obviously sensitive free-text support enquiries to an
+    // external model on a default-on support channel; a staff member reviews.
+    /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i,
+    /\b(?:\+44\s?7|07)\d(?:[\s-]?\d){8}\b/i,
+    /\b(?:passport number|national insurance number|ni number|date of birth|my full address|my home address|my bank details|my sort code|my driving licence number)\b/i,
+    /\b(?:medical condition|disability|anxiety disorder|mental health|pregnancy|diagnosis|health records?|medical records?)\b/i,
 ];
 
 export function classifySupportMessage(message: string): SupportDecision {
@@ -120,6 +126,8 @@ export function requestsHumanSupport(message: string): boolean {
         /\b(?:speak|talk|chat|connect|transfer|put me through)\s+(?:me\s+)?(?:to|with)\s+(?:a|an|the|someone|somebody)?\s*(?:person|representative|someone|somebody|agent)\b/i,
         /\b(stop|disable|turn off|opt out of|no more) (?:the |your )?(?:ai|bot|automated|automatic)\b/i,
         /\b(don't|do not|no longer) (?:want to )?(?:talk to|chat with|speak to) (?:an? )?(?:ai|bot|robot)\b/i,
+        /\b(?:transfer|connect|put me through|pass me|send me|escalate|speak|talk|chat)\b.{0,35}\b(?:customer (?:service|support|care|team|department)|support (?:team|department)|your team|someone from (?:support|your team))\b/i,
+        /\b(?:need|want|prefer|request|speak to)\b.{0,25}\b(?:human support|person instead|real person|human being|human representative|actual human)\b/i,
     ].some((pattern) => pattern.test(message));
 }
 
