@@ -2,20 +2,20 @@ import { ChatContext } from '@prisma/client';
 import { ChatService } from './chat.service';
 import { HUMAN_HANDOFF_REPLY } from './support-automatic-responses';
 
-describe('immediate human-support acknowledgement', () => {
-    const botId = 'e641510d-0b2c-4eb1-96c6-8874bb9e6b53';
+describe('atomic human support requests', () => {
     const customerId = '11111111-1111-4111-8111-111111111111';
     const adminId = '22222222-2222-4222-8222-222222222222';
-    const sourceId = '33333333-3333-4333-8333-333333333333';
     const previousBotId = process.env.MAZIUM_SUPPORT_BOT_USER_ID;
 
-    beforeEach(() => { process.env.MAZIUM_SUPPORT_BOT_USER_ID = botId; });
+    beforeEach(() => {
+        process.env.MAZIUM_SUPPORT_BOT_USER_ID = 'e641510d-0b2c-4eb1-96c6-8874bb9e6b53';
+    });
     afterAll(() => {
         if (previousBotId === undefined) delete process.env.MAZIUM_SUPPORT_BOT_USER_ID;
         else process.env.MAZIUM_SUPPORT_BOT_USER_ID = previousBotId;
     });
 
-    const setup = (senderRole = 'BUYER') => {
+    const setup = (role = 'BUYER') => {
         const room = {
             id: 'room', context: ChatContext.SUPPORT,
             initiatorId: customerId, participantId: adminId,
@@ -23,7 +23,7 @@ describe('immediate human-support acknowledgement', () => {
             supportAssignedAdminId: adminId,
         };
         const prisma = {
-            user: { findUnique: jest.fn().mockResolvedValue({ role: senderRole }) },
+            user: { findUnique: jest.fn().mockResolvedValue({ role }) },
             chatRoom: { update: jest.fn().mockResolvedValue(room) },
         };
         const safety = { assertAllowedText: jest.fn().mockResolvedValue(undefined) };
@@ -31,51 +31,52 @@ describe('immediate human-support acknowledgement', () => {
         const service = new ChatService(prisma as any, {} as any, {} as any,
             {} as any, {} as any, {} as any, safety as any, events as any);
         jest.spyOn(service, 'assertCanMessageRoom').mockResolvedValue(room as any);
-        jest.spyOn(service as any, 'createInboundMessage').mockImplementation(async (_room, senderId, data) =>
-            ({ id: sourceId, senderId, ...(data as Record<string, unknown>) }));
         jest.spyOn(service as any, 'resolveMessageRouting').mockResolvedValue({
             recipients: [{ id: adminId, role: 'ADMIN' }], roomUpdate: {},
         });
         jest.spyOn(service as any, 'notifyMessageRecipients').mockResolvedValue(undefined);
-        const persist = jest.spyOn(service, 'persistSupportAutoReply');
-        const reply = { id: 'receipt', chatRoomId: 'room', senderId: botId,
-            aiGenerated: true, aiSourceMessageId: sourceId, content: HUMAN_HANDOFF_REPLY };
-        persist.mockResolvedValue({ created: true, message: reply, customerId } as any);
-        return { service, events, persist, reply };
+        const createNormal = jest.spyOn(service as any, 'createInboundMessage').mockResolvedValue({
+            id: 'source', senderId: customerId, content: 'How much to list?',
+        });
+        const receipt = { id: 'receipt', aiGenerated: true, content: HUMAN_HANDOFF_REPLY };
+        const createPaired = jest.spyOn(service as any, 'createHumanSupportRequestWithReceipt')
+            .mockResolvedValue({ message: { id: 'source', senderId: customerId }, automaticReply: receipt });
+        return { service, prisma, events, createNormal, createPaired, receipt };
     };
 
-    it('returns a persisted, canonical automated reply in the same send operation', async () => {
-        const { service, events, persist, reply } = setup();
+    it('returns an already-persisted receipt without a second dispatcher attempt', async () => {
+        const { service, createPaired, createNormal, events, receipt } = setup();
         const result = await service.sendMessage('room', customerId,
             { content: "I'd like to speak to a human support agent, please." });
-        expect(result.created).toBe(true);
-        expect(result.automaticReply).toEqual(reply);
-        expect(persist).toHaveBeenCalledWith('room', sourceId, botId, HUMAN_HANDOFF_REPLY, 'FIXED');
+        expect(result).toMatchObject({ created: true, automaticReply: receipt });
+        expect(createPaired).toHaveBeenCalledTimes(1);
+        expect(createNormal).not.toHaveBeenCalled();
         expect(events.publish).not.toHaveBeenCalled();
     });
 
-    it('preserves background recovery if immediate persistence fails', async () => {
-        const { service, events, persist } = setup();
-        persist.mockRejectedValueOnce(new Error('temporary failure'));
-        const result = await service.sendMessage('room', customerId, { content: 'I want a human agent' });
-        expect(result.created).toBe(true);
-        expect(result.automaticReply).toBeUndefined();
-        expect(events.publish).toHaveBeenCalledWith('room', sourceId);
+    it('does not report delivery or fall back to saving the request alone if the pair fails', async () => {
+        const { service, createPaired, createNormal, events } = setup();
+        createPaired.mockRejectedValueOnce(new Error('database transaction failed'));
+        await expect(service.sendMessage('room', customerId,
+            { content: 'I want a human support agent' })).rejects.toThrow('database transaction failed');
+        expect(createNormal).not.toHaveBeenCalled();
+        expect(events.publish).not.toHaveBeenCalled();
     });
 
-    it('leaves normal customer support messages to the existing dispatcher', async () => {
-        const { service, events, persist } = setup();
+    it('routes normal support messages to the existing dispatcher unchanged', async () => {
+        const { service, createPaired, createNormal, events } = setup();
         const result = await service.sendMessage('room', customerId,
             { content: 'How much does a retail listing cost?' });
         expect(result.automaticReply).toBeUndefined();
-        expect(persist).not.toHaveBeenCalled();
-        expect(events.publish).toHaveBeenCalledWith('room', sourceId);
+        expect(createPaired).not.toHaveBeenCalled();
+        expect(createNormal).toHaveBeenCalledTimes(1);
+        expect(events.publish).toHaveBeenCalledWith('room', 'source');
     });
 
-    it('does not send an automated handoff after a staff message', async () => {
-        const { service, events, persist } = setup('ADMIN');
-        await service.sendMessage('room', adminId, { content: 'A human agent is here.' });
-        expect(persist).not.toHaveBeenCalled();
+    it('never sends an automatic human receipt to a staff sender', async () => {
+        const { service, createPaired, events } = setup('ADMIN');
+        await service.sendMessage('room', adminId, { content: 'I am the human support agent.' });
+        expect(createPaired).not.toHaveBeenCalled();
         expect(events.publish).not.toHaveBeenCalled();
     });
 });
