@@ -1,5 +1,5 @@
 import { classifySupportMessage, safeAutomaticSupportReply } from './mazium-support-policy';
-import { fixedSupportReply, supportReplyPlan, HUMAN_HANDOFF_REPLY, HUMAN_REVIEW_REPLY, SUPPORT_UNAVAILABLE_REPLY } from './support-automatic-responses';
+import { fixedSupportReply, supportReplyPlan, supportNeedsHumanReply, HUMAN_HANDOFF_REPLY, HUMAN_REVIEW_REPLY, SUPPORT_UNAVAILABLE_REPLY } from './support-automatic-responses';
 
 describe('automatic support answers', () => {
     const now = new Date();
@@ -48,4 +48,14 @@ describe('automatic support answers', () => {
     });
     it.each(['I will refund you £100.', 'Your payout has been approved.', "I'm a human agent.", 'Send us your password.'])('blocks unsupported commitments: %s', reply => expect(safeAutomaticSupportReply(reply)).toBe(false));
     it('allows factual fee information', () => expect(safeAutomaticSupportReply('A Basic retail listing costs £1 until sold.')).toBe(true));
+    it('keeps only pending handoffs and unresolved questions in the staff queue', () => {
+        expect(supportNeedsHumanReply(null)).toBe(false);
+        expect(supportNeedsHumanReply({ aiGenerated: false, content: 'Question', sender: { role: 'BUYER' } })).toBe(true);
+        expect(supportNeedsHumanReply({ aiGenerated: false, content: 'Staff reply', sender: { role: 'ADMIN' } })).toBe(false);
+        expect(supportNeedsHumanReply({ aiGenerated: true, content: 'A basic listing costs £1', sender: { role: 'BUYER' } })).toBe(false);
+        expect(supportNeedsHumanReply({ aiGenerated: true, content: HUMAN_HANDOFF_REPLY })).toBe(true);
+        expect(supportNeedsHumanReply({ aiGenerated: true, content: HUMAN_REVIEW_REPLY })).toBe(true);
+        expect(supportNeedsHumanReply({ aiGenerated: true, content: SUPPORT_UNAVAILABLE_REPLY })).toBe(true);
+    });
+
 });
