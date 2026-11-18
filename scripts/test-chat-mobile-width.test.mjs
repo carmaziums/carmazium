@@ -38,3 +38,22 @@ test("long words and links in a message wrap instead of widening the bubble", ()
 test("the message box can shrink so the send button stays on screen", () => {
     assert.match(readFileSync("src/components/chat/ChatWindow.tsx", "utf8"), /className="min-w-0 flex-1 bg-\[var\(--bg-input\)\] border border-\[var\(--border-default\)\] rounded-xl px-4 py-3/)
 })
+
+test("optional AI introduction is collapsed by default instead of covering the mobile chat", () => {
+    const src = readFileSync("src/components/chat/ChatWindow.tsx", "utf8")
+    assert.match(src, /\[showAiOptions, setShowAiOptions\] = React\.useState\(false\)/)
+    assert.match(src, /setShowAiOptions\(false\)[\s\S]*?humanRequestPendingRef\.current = false/)
+    assert.match(src, /\{showAiOptions && \(\s*<div className="mt-1\.5 max-h-\[35dvh\] overflow-y-auto/)
+    assert.match(src, /aria-expanded=\{showAiOptions\}/)
+    assert.match(src, /Show AI support options/)
+    assert.match(src, /MaziuM AI on/)
+    assert.match(src, /MaziuM AI off/)
+    assert.match(src, /Human support requested · AI off/)
+    assert.match(src, /Talk to a person/)
+    assert.match(src, /Allow AI assistance/)
+    // The disclosure must remain inside the opt-in expander, never pinned
+    // above the composer whenever the chat is opened.
+    const disclosure = src.indexOf('Your messages for AI assistance are shared')
+    const expander = src.indexOf('{showAiOptions && (')
+    assert.ok(expander !== -1 && disclosure > expander)
+})
