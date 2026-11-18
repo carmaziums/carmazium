@@ -32,7 +32,7 @@ describe('immediate human-support acknowledgement', () => {
             {} as any, {} as any, {} as any, safety as any, events as any);
         jest.spyOn(service, 'assertCanMessageRoom').mockResolvedValue(room as any);
         jest.spyOn(service as any, 'createInboundMessage').mockImplementation(async (_room, senderId, data) =>
-            ({ id: sourceId, senderId, ...data }));
+            ({ id: sourceId, senderId, ...(data as Record<string, unknown>) }));
         jest.spyOn(service as any, 'resolveMessageRouting').mockResolvedValue({
             recipients: [{ id: adminId, role: 'ADMIN' }], roomUpdate: {},
         });
