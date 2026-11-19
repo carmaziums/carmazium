@@ -37,7 +37,7 @@ async function run(c){const start=Date.now();try{
  if(support && !safeAutomaticSupportReply(r.text)) failures.push('support-delivery-withheld');
  if(r.requiresHumanReview) failures.push('generation-or-validation-failed');
  if(/couldn.t verify an answer|couldn.t generate|wrong page|try rephrasing|brief moment/i.test(r.text)) failures.push('fallback');
- const result={id:c.id,channel:support?'official-support':'floating-chat',question:c.messages,text:r.text,failures,passed:!failures.length,ms:Date.now()-start};
+ const result={id:c.id,channel:support?'official-support':'floating-chat',question:c.messages,text:r.text,failureCode:r.failureCode,failures,passed:!failures.length,ms:Date.now()-start};
  console.log('MAZIUM_EVAL '+JSON.stringify(result));return result;
 }catch{const result={id:c.id,passed:false,error:'EVALUATION_FAILED'};console.log('MAZIUM_EVAL '+JSON.stringify(result));return result;}}
 (async()=>{

@@ -4,6 +4,7 @@ import { normalizeAiSearchFilters, SEARCH_FILTER_GUIDANCE } from './search-filte
 import { platformKnowledgeFor } from './mazium-platform-knowledge';
 import { VERIFIED_SITE_NAVIGATION, verifiedNavigationReply, hasUnverifiedNavigationPath, UNVERIFIED_NAVIGATION_REPLY } from './mazium-site-navigation';
 import { contradictsDealerOnlyAuctionRule } from './mazium-auction-eligibility';
+import { maziumFailureCode, MaziumFailureCode } from './mazium-response-failure';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
@@ -24,6 +25,7 @@ export interface AiSearchResult {
 
 export interface AiChatResult {
     requiresHumanReview?: boolean;
+    failureCode?: MaziumFailureCode;
     text: string;
     filterCard?: FilterCard;
 }
@@ -311,6 +313,14 @@ export class AiService {
         messages: { role: 'user' | 'assistant'; content: string }[],
         context: { userId?: string; page?: string; supportConversation?: boolean } = {},
     ): Promise<AiChatResult> {
+        return this.generateChatCompletion(messages, context, 0);
+    }
+
+    private async generateChatCompletion(
+        messages: { role: 'user' | 'assistant'; content: string }[],
+        context: { userId?: string; page?: string; supportConversation?: boolean },
+        attempt: number,
+    ): Promise<AiChatResult> {
         const latestUser = [...messages].reverse().find((message) => message.role === 'user');
         if (latestUser && await this.isUnsafe(redactMaziumText(latestUser.content))) {
             return { text: AI_SAFETY_FALLBACK };
@@ -444,9 +454,19 @@ export class AiService {
             }
             return await this.safeResult(parsed) as AiChatResult;
         } catch (error) {
-            this.logger.warn('MaziuM response unavailable; no account action performed');
+            const failureCode = maziumFailureCode(error);
+            this.logger.warn(`MaziuM response unavailable (${failureCode}); no account action performed`);
+            // Generation and its tools are read-only. Recover once from a
+            // transient provider failure or malformed model JSON, preserving
+            // the same conversation and authenticated actor. Never retry a
+            // permission/policy rejection, or publish an unvalidated draft.
+            if (attempt === 0 && (failureCode === 'PROVIDER_TRANSIENT' || failureCode === 'INVALID_MODEL_OUTPUT')) {
+                await new Promise(resolve => setTimeout(resolve, 250));
+                return this.generateChatCompletion(messages, context, 1);
+            }
             return {
                 requiresHumanReview: true,
+                failureCode,
                 text: 'I couldn\'t verify an answer right now. Please try again, or use your CarMazium support conversation for help.',
             };
         }
