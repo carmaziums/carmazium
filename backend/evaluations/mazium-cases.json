@@ -1788,7 +1788,7 @@
       }
     ],
     "must": [
-      "not|cannot|doesn.t",
+      "\\bno\\b|not|cannot|doesn.t|wouldn.t",
       "release|confirm",
       "bank"
     ]
