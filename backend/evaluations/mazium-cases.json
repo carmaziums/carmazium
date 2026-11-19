@@ -933,7 +933,9 @@
       }
     ],
     "must": [
-      "warranty|finance|Jigsaw|provider"
+      "warranty|finance|both badges|either or both",
+      "yes|can|disable|turn off|switch off|opt out",
+      "/profile|service preferences|dealer profile|settings"
     ]
   },
   {
