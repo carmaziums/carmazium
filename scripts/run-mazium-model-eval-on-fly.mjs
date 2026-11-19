@@ -18,5 +18,10 @@ const output=(result.stdout||'')+'\n'+(result.stderr||'');
 const lines=output.split('\n').filter(x=>x.startsWith('MAZIUM_EVAL ')||x.startsWith('MAZIUM_SUMMARY '));
 fs.writeFileSync('/tmp/mazium-model-evaluation.jsonl',lines.join('\n')+'\n');
 for(const line of lines)console.log(line);
-if(!lines.some(x=>x.startsWith('MAZIUM_SUMMARY '))){console.error('No evaluation summary returned. '+(result.error?.code||'REMOTE_EXECUTION_UNAVAILABLE'));process.exit(1);}
-process.exit(result.status===0?0:1);
+if(!lines.some(x=>x.startsWith('MAZIUM_SUMMARY '))){
+ console.error('No evaluation summary returned. '+(result.error?.code||'REMOTE_EXECUTION_UNAVAILABLE'));
+ process.exitCode=1;
+} else {
+ // Let stdout flush the final fixture answers and summary before exiting.
+ process.exitCode=result.status===0?0:1;
+}
