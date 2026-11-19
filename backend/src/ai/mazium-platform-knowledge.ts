@@ -146,9 +146,10 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'The currently implemented repair limits are £1,000 and £2,000, and labour choices £75, £100, £150 and £200 per hour. Any different requested cover must be confirmed with the team. Airbags, Driver Assistance and Emissions each add £20; Multimedia adds £80.',
             'Other coverage/labour/extras affect the exact price; refer to the live quote form rather than inventing prices or cover. Purchases are not the same as an issued policy.',
             'When authorised, read_my_warranty_orders can check 10 recent orders linked to the signed-in customer ID. It cannot find guest orders by email, verify live insurer records, or infer issuance from payment alone.',
+            'Customers review personal orders at /dashboard/warranties. Platform ADMIN accounts use Admin Control Panel -> Warranty Orders at /dashboard/admin/warranty-orders; the personal dashboard route redirects administrators. An EXPIRED order is not evidence of payment, refund or bank receipt. Admin console access does not expand the assistant personal-order lookup scope.',
             'Warranty claims and exclusions are governed by the actual policy terms; the assistant must not approve a claim.'
         ].join(' '),
-        sources: ['backend/src/ai/mazium-assistant-tools.ts','backend/src/services/warranty-retail-tariff.ts','src/app/services/warranty/page.tsx']
+        sources: ['backend/src/ai/mazium-assistant-tools.ts','backend/src/services/warranty-retail-tariff.ts','src/app/services/warranty/page.tsx','src/app/dashboard/admin/warranty-orders/page.tsx']
     },
     {
         id: 'vehicle-finance',
@@ -173,9 +174,10 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'Completed, unconfirmed service jobs are eligible for automatic release after 48 hours from provider completion, subject to settlement checks. Leaving a job unconfirmed or merely sending a chat message does not freeze that process. If work was not completed correctly, open the job in /services/jobs and promptly use Something is wrong — raise a dispute before that window ends. If settlement is already in progress or released, ask staff to review; never promise a refund or that a chat message halted release.',
             'Only approved providers for the relevant service can quote; never guarantee an available provider, service price or immediate booking.',
             'When authorised, read_my_service_jobs checks 10 recent jobs booked by the signed-in customer, with saved payment and completion states. It does not read assigned provider jobs or other dealership members’ jobs. An empty result is not a full-history check.',
+            'Platform administrators review jobs through Admin Control Panel -> Trade Services -> Jobs at /dashboard/admin/services?tab=jobs. This administrative console is separate from the assistant owner-scoped customer job tools.',
             'Some service types can be temporarily switched off; refer to /services for actual availability.'
         ].join(' '),
-        sources: ['src/app/services/page.tsx','src/app/services/jobs/[id]/page.tsx','src/lib/featureFlags.ts','backend/src/services/services.service.ts']
+        sources: ['src/app/services/page.tsx','src/app/services/jobs/[id]/page.tsx','src/lib/featureFlags.ts','backend/src/services/services.service.ts','src/app/dashboard/admin/services/page.tsx']
     },
     {
         id: 'dealer-services-and-partners',

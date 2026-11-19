@@ -30,6 +30,7 @@ export async function runMaziumTool(prisma: PrismaService, userId: string | unde
  // Personal purchases must never inherit a dealership owner's identity.
  if (name === 'read_my_warranty_orders') return {
   checkedAt: new Date().toISOString(),
+  reviewPath: user.role === 'ADMIN' ? '/dashboard/admin/warranty-orders' : '/dashboard/warranties',
   scope: '10 most recently updated warranty orders linked to this customer ID only. Guest orders and older records are not covered; absence does not prove no purchase.',
   limitation: 'Saved platform records, not a live insurer check. QUOTED is not payment; PAID is not policy issuance; cover dates and issued status must be checked separately.',
   orders: await prisma.warrantyOrder.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' }, take: 10,
@@ -37,6 +38,7 @@ export async function runMaziumTool(prisma: PrismaService, userId: string | unde
  };
  if (name === 'read_my_service_jobs') return {
   checkedAt: new Date().toISOString(),
+  reviewPath: user.role === 'ADMIN' ? '/dashboard/admin/services?tab=jobs' : '/services/jobs',
   scope: '10 most recently updated TradeXchange jobs booked by this customer ID only. Not assigned provider jobs or other dealership members’ jobs; absence does not prove no job exists.',
   limitation: 'Saved platform status only. Payment, provider completion, customer confirmation and release are separate; release does not verify bank settlement. Completed, undisputed jobs may auto-release after 48 hours from provider completion. Leaving unconfirmed or sending chat alone does not freeze release; for incorrect work promptly use the job’s raise-a-dispute control, subject to settlement state.',
   jobs: await prisma.serviceJob.findMany({ where: { customerId: userId }, orderBy: { updatedAt: 'desc' }, take: 10,

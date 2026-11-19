@@ -65,6 +65,10 @@ describe('MaziuM authenticated tools', () => {
   await runMaziumTool(db,'admin','read_my_listings',{});
   expect(db.listing.findMany.mock.calls[0][0].where).toEqual({sellerId:'admin',deletedAt:null});
   expect(db.dealerProfile.findUnique).not.toHaveBeenCalled();
+  expect(await runMaziumTool(db,'admin','read_my_warranty_orders',{})).toMatchObject({reviewPath:'/dashboard/admin/warranty-orders'});
+  expect(db.warrantyOrder.findMany.mock.calls[0][0].where).toEqual({userId:'admin'});
+  expect(await runMaziumTool(db,'admin','read_my_service_jobs',{})).toMatchObject({reviewPath:'/dashboard/admin/services?tab=jobs'});
+  expect(db.serviceJob.findMany.mock.calls[0][0].where).toEqual({customerId:'admin'});
  });
  it('does not confuse a dealer staff Admin with a platform administrator', async () => {
   const db=setup('DEALER');db.dealerStaff.findFirst.mockResolvedValue({role:'ADMIN',dealerProfile:{id:'d',userId:'owner',isVerified:true}});
