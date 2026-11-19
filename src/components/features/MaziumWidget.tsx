@@ -258,7 +258,8 @@ export function MaziumWidget() {
     }
     // Search shortcuts belong to car-search conversations, not auction
     // eligibility, seller operations or customer support questions.
-    const showSearchShortcuts = messages.length === 1
+    // Leave room for the greeting/composer when a phone keyboard reduces the viewport.
+    const showSearchShortcuts = messages.length === 1 && !input.trim() && (!viewport || viewport.height >= 400)
 
     return (
         <>
