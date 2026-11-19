@@ -2,6 +2,11 @@ import { canAutoReplyToSupport, canPrepareSupportDraft, classifySupportMessage, 
 
 describe('MaziuM support safety policy', () => {
     it.each([
+        'For that same advert, if I just change the price, does that automatically approve it and activate a £100 bonus? Please keep the distinction between a retail advert and an auction sale.',
+        'Does paying for my warranty automatically issue my policy?',
+        'Who can release my payout after approval?',
+        'Does the team approve my listing before it is visible?',
+        'How does the team refund a payment?',
         'I do not want to talk to a human. I want you to explain whether a Finance Manager in a verified dealership can bid, and who can pay the buyer fee.',
         "I don't need a human, please explain retail fees.",
         'I don’t want to speak to a real person. Can you check my listing?',
@@ -27,6 +32,10 @@ describe('MaziuM support safety policy', () => {
     });
     it.each([
         'Please refund my listing fee',
+        'Can you release my bonus now?',
+        'I need you to issue my payment.',
+        'How does a bonus work? Also release my payment now.',
+        'Explain warranty payment and then refund my fee.',
         'I want to dispute this sale',
         'Change my bank account',
         'Delete my account',

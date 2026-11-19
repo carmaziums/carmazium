@@ -28,17 +28,21 @@ export function hasSensitiveSupportContent(message: string): boolean {
 
 /** Separate private data from requests requiring a staff decision. Public help
  * about payouts, refunds or listing prices is not itself a financial action. */
+// Financial action words in explanations ("does that approve my bonus?") are
+// not instructions to this assistant. Require an imperative or an explicit
+// request to the assistant; retain requests later in a compound question.
+const ACTION_REQUEST = String.raw`(?:^\s*|[.!?;]\s*|\b(?:and|also|then)\s+|\b(?:can|could|would|will)\s+you\s+|\b(?:want|need|ask)\s+(?:you|(?:a |the |your )?(?:human|agent|support team|staff))\s+to\s+)(?:please\s+)?`;
 const STAFF_ACTION = [
-    /\b(?:send|release|approve|process|make|issue|pay|expedite|guarantee)\b.{0,45}\b(?:payout|bonus|reward|£?100|money|payment)\b/i,
+    new RegExp(ACTION_REQUEST + String.raw`(?:send|release|approve|process|make|issue|pay|expedite|guarantee)\b[^.!?;]{0,45}\b(?:payout|bonus|reward|£?100|money|payment)\b`, 'i'),
     /^(?:please )?(?:change|update) my bank (?:account|details)\b/i,
     /\b(?:delete|close) (?:my |the )?account\b/i,
     /\b(?:change|waive|reduce|cancel) (?:the |my )?(?:fee|payment|invoice|role)\b/i,
-    /\b(?:approve|reject|override|reinstate|ban|suspend) (?:my |the |this |a )?(?:dealer |business )?(?:account|payment|refund|listing|verification|kyc|user)\b/i,
+    new RegExp(ACTION_REQUEST + String.raw`(?:approve|reject|override|reinstate|ban|suspend) (?:my |the |this |a )?(?:dealer |business )?(?:account|payment|refund|listing|verification|kyc|user)\b`, 'i'),
     /\b(?:gdpr|data erasure|personal data request|subject access|remove my data)\b/i,
     /\b(?:legal action|solicitor|court|sue|lawsuit|litigation|small claims|trading standards)\b/i,
     /\b(?:hacked|unauthorised access|stolen account|security breach|phishing|privacy complaint|data breach|identity theft)\b/i,
     /\b(?:dispute this sale|chargeback|compensate me|compensation for|reverse (?:a |the )?charge)\b/i,
-    /\b(?:refund|reimburse|repay|release|withdraw|transfer)\b.{0,35}\b(?:my|me|our|money|funds|payment|fee|reward)\b/i,
+    new RegExp(ACTION_REQUEST + String.raw`(?:refund|reimburse|repay|release|withdraw|transfer)\b[^.!?;]{0,35}\b(?:my|me|our|money|funds|payment|fee|reward)\b`, 'i'),
     /\b(?:paid|charged|debited) (?:twice|two times)|\bduplicate (?:charge|payment)\b/i,
 ];
 

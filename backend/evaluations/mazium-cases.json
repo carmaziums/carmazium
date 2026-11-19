@@ -2002,5 +2002,29 @@
       "bid",
       "pay|fee"
     ]
+  },
+  {
+    "id": "MZ-141",
+    "topic": "financial-explanation-not-action",
+    "messages": [
+      {
+        "role": "user",
+        "content": "I have a £1 retail advert pending review."
+      },
+      {
+        "role": "assistant",
+        "content": "You can edit your existing advert from My Cars when editing is available."
+      },
+      {
+        "role": "user",
+        "content": "For that same advert, if I just change the price, does that automatically approve it and activate a £100 bonus? Please keep the distinction between a retail advert and an auction sale."
+      }
+    ],
+    "must": [
+      "retail",
+      "auction",
+      "not|no|doesn.t",
+      "bonus|reward"
+    ]
   }
 ]
