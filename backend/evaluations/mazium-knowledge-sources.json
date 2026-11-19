@@ -5,7 +5,7 @@
     "backend/src/admin/admin-user-filters.ts": "0f7afcf5f18e79666b69f346dda04add2024e42fbf71cca4aefb4bd5221118c4",
     "backend/src/admin/admin.controller.ts": "b45767e52f91b61362a4156efe382dc69eb48f483d97a96d58d08351ef175705",
     "backend/src/ai/ai.controller.ts": "9ff65932480e9a99085249bed84354ac513965877b380b25f54f1c6293ad4011",
-    "backend/src/ai/ai.service.ts": "1e5392a6ee7c02b942f993f70b08a8af81eb2cfff6f6548e3aba0a2346976e24",
+    "backend/src/ai/ai.service.ts": "1472f539c462494404838d3c23ada8a71020aae668b14df0d72534a492f92184",
     "backend/src/ai/mazium-assistant-tools.ts": "117233dadd8e6cb157bde72d3976fe667841f65da363fb28fba04b7730070f33",
     "backend/src/ai/search-filter-contract.ts": "c5a2069778baacf2acaf9de36087009b9f3782a803b226b97a678cb4cc69a8d8",
     "backend/src/chat/chat.service.ts": "e167a48000c60845b0932053953cb8fbcc247f936771fc8b995e9bb10689661d",
