@@ -1,20 +1,52 @@
-.hero { background: #fff; color: #152537; }
+.hero {
+  --hero-surface: #fff;
+  --hero-ink: #152537;
+  --hero-accent: #c81024;
+  --hero-outline: #172534;
+  --hero-control-border: #ccd0d5;
+  background: var(--hero-surface);
+  color: var(--hero-ink);
+}
+:global(.dark) .hero {
+  --hero-surface: var(--bg-body);
+  --hero-ink: var(--text-primary);
+  --hero-accent: #ff6374;
+  --hero-outline: #d7e0ee;
+  --hero-control-border: #8594a9;
+}
 .stage { position: relative; isolation: isolate; width: min(100%, 1500px); margin: auto; padding: 3.6% 3.5% 7%; display: grid; align-content: center; aspect-ratio: 1103 / 507; }
 .copy, .actions { position: relative; z-index: 1; width: 46%; }
 .copy h1 { margin: 0; font-family: var(--font-poppins), sans-serif; font-size: clamp(48px, 6.5vw, 96px); font-weight: 800; line-height: .98; letter-spacing: -.055em; }
-.copy h1 span { color: #c81024; }
+.copy h1 span { color: var(--hero-accent); }
 .offer { margin-top: .5em; font-weight: 800; letter-spacing: -.04em; font-size: clamp(20px, 2.7vw, 39px); line-height: 1.2; }
 .detail { max-width: 32ch; margin: .45em 0 1em; font-size: clamp(16px, 1.9vw, 27px); line-height: 1.28; }
-.scene { position: absolute; inset: 0; pointer-events: none; background: url("/assets/images/home-hero/scene-desktop.webp") center / 100% 100% no-repeat; }
+.scene {
+  --hero-art: url("/assets/images/home-hero/scene-desktop.webp");
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--hero-art) center / 100% 100% no-repeat;
+}
+/* The same artwork masks the navy surface. Its white studio becomes navy
+   and the darker price and road reveal red beneath it. Vehicles sit above. */
+:global(.dark) .scene { background: #ff3b52; }
+:global(.dark) .scene::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--hero-surface);
+  mask: var(--hero-art) center / 100% 100% no-repeat;
+  mask-mode: luminance;
+}
 .lane { position: absolute; left: 44.5%; top: 33.48%; width: 50%; height: 61.07%; }
 .lane img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
 .lane img + img { opacity: 0; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.primary, .secondary { display: inline-flex; justify-content: center; align-items: center; text-align: center; min-height: 44px; padding: .62em .9em; border: 2px solid #172534; border-radius: 7px; font-size: clamp(13px, 1.65vw, 22px); line-height: 1.25; font-weight: 700; }
+.primary, .secondary { display: inline-flex; justify-content: center; align-items: center; text-align: center; min-height: 44px; padding: .62em .9em; border: 2px solid var(--hero-outline); border-radius: 7px; font-size: clamp(13px, 1.65vw, 22px); line-height: 1.25; font-weight: 700; }
 .primary { background: #c81024; color: white; border-color: #c81024; }
-.secondary { background: white; }
+.secondary { background: var(--hero-surface); color: var(--hero-ink); }
 .valuation { flex-basis: 100%; display: inline-flex; align-items: center; gap: .35em; min-height: 40px; font-weight: 700; font-size: clamp(14px, 1.55vw, 21px); text-decoration: underline; text-underline-offset: 4px; }
-.motion { position: absolute; z-index: 3; bottom: 6px; right: 10px; background: #fff; border: 1px solid #ccd0d5; border-radius: 50%; width: 32px; height: 32px; display: grid; place-items: center; cursor: pointer; }
+.motion { position: absolute; z-index: 3; bottom: 6px; right: 10px; background: var(--hero-surface); color: var(--hero-ink); border: 1px solid var(--hero-control-border); border-radius: 50%; width: 32px; height: 32px; display: grid; place-items: center; cursor: pointer; }
 @media (max-width: 767px) {
   .stage { display: flex; flex-direction: column; align-items: stretch; width: min(100%, 620px); aspect-ratio: auto; padding: 0 0 16px; }
   .copy, .actions { width: auto; margin-inline: 5.5%; }
@@ -22,7 +54,7 @@
   .copy h1 { font-size: clamp(40px, 11.8vw, 72px); line-height: .99; }
   .offer { margin: .4em 0 .2em; font-size: clamp(19px, 5.6vw, 32px); }
   .detail { display: none; }
-  .scene { position: relative; aspect-ratio: 382 / 327; background-image: url("/assets/images/home-hero/scene-mobile.webp"); }
+  .scene { position: relative; aspect-ratio: 382 / 327; --hero-art: url("/assets/images/home-hero/scene-mobile.webp"); }
   .lane { left: 6.1%; top: 31.9%; width: 87%; height: 59.44%; }
   .actions { display: grid; gap: 9px; margin-inline: 5%; }
   .primary, .secondary { font-size: clamp(16px, 4.5vw, 23px); }
