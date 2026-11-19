@@ -28,17 +28,21 @@ export function hasSensitiveSupportContent(message: string): boolean {
 
 /** Separate private data from requests requiring a staff decision. Public help
  * about payouts, refunds or listing prices is not itself a financial action. */
+// Financial action words in explanations ("does that approve my bonus?") are
+// not instructions to this assistant. Require an imperative or an explicit
+// request to the assistant; retain requests later in a compound question.
+const ACTION_REQUEST = String.raw`(?:^\s*|[.!?;]\s*|\b(?:and|also|then)\s+|\b(?:can|could|would|will)\s+you\s+|\b(?:want|need|ask)\s+(?:you|(?:a |the |your )?(?:human|agent|support team|staff))\s+to\s+)(?:please\s+)?`;
 const STAFF_ACTION = [
-    /\b(?:send|release|approve|process|make|issue|pay|expedite|guarantee)\b.{0,45}\b(?:payout|bonus|reward|£?100|money|payment)\b/i,
+    new RegExp(ACTION_REQUEST + String.raw`(?:send|release|approve|process|make|issue|pay|expedite|guarantee)\b[^.!?;]{0,45}\b(?:payout|bonus|reward|£?100|money|payment)\b`, 'i'),
     /^(?:please )?(?:change|update) my bank (?:account|details)\b/i,
     /\b(?:delete|close) (?:my |the )?account\b/i,
     /\b(?:change|waive|reduce|cancel) (?:the |my )?(?:fee|payment|invoice|role)\b/i,
-    /\b(?:approve|reject|override|reinstate|ban|suspend) (?:my |the |this |a )?(?:dealer |business )?(?:account|payment|refund|listing|verification|kyc|user)\b/i,
+    new RegExp(ACTION_REQUEST + String.raw`(?:approve|reject|override|reinstate|ban|suspend) (?:my |the |this |a )?(?:dealer |business )?(?:account|payment|refund|listing|verification|kyc|user)\b`, 'i'),
     /\b(?:gdpr|data erasure|personal data request|subject access|remove my data)\b/i,
     /\b(?:legal action|solicitor|court|sue|lawsuit|litigation|small claims|trading standards)\b/i,
     /\b(?:hacked|unauthorised access|stolen account|security breach|phishing|privacy complaint|data breach|identity theft)\b/i,
     /\b(?:dispute this sale|chargeback|compensate me|compensation for|reverse (?:a |the )?charge)\b/i,
-    /\b(?:refund|reimburse|repay|release|withdraw|transfer)\b.{0,35}\b(?:my|me|our|money|funds|payment|fee|reward)\b/i,
+    new RegExp(ACTION_REQUEST + String.raw`(?:refund|reimburse|repay|release|withdraw|transfer)\b[^.!?;]{0,35}\b(?:my|me|our|money|funds|payment|fee|reward)\b`, 'i'),
     /\b(?:paid|charged|debited) (?:twice|two times)|\bduplicate (?:charge|payment)\b/i,
 ];
 
@@ -143,15 +147,23 @@ export function supportAutoReplyClientMessageId(incomingMessageId: string): stri
  * this classifier does not itself mutate the room or send a message.
  */
 export function requestsHumanSupport(message: string): boolean {
+    // Negation applies to the explicit contact request, not the entire message:
+    // a later 'but connect me to a person' must still be honoured. Normalise
+    // apostrophes used by mobile keyboards. Never strip a refusal of AI.
+    const content = message.replace(/[‘’]/g, "'").replace(
+        /\b(?:do not|don't|dont|never|no longer)\s+(?:(?:want|need|wish)\s+(?:to\s+)?)?(?:(?:talk|speak|chat)\s+(?:to|with)\s+|(?:connect|transfer|send|pass)\s+me\s+to\s+)?(?:a |an |the |your )?(?:human(?: support| agent| being| representative)?|real person|actual person|live agent|support agent|staff member|manager|supervisor|person|customer support|support team)\b/gi,
+        ' [declined human contact] ',
+    );
     return [
         /^(?:a |an |the )?(?:human|real person|actual person|live agent|support agent|staff member|manager|supervisor)(?: please)?[.!? ]*$/i,
-        /\b(?:want|need|prefer|request|speak|talk|chat|connect|transfer|put me through|pass me|escalate)\b.{0,40}\b(?:human|real person|actual person|live agent|support agent|staff member|manager|supervisor)\b/i,
+        /\b(?:want|need|prefer|request)\s+(?:(?:to\s+)?(?:speak|talk|chat)\s+(?:to|with)\s+)?(?:a |an |the |your )?(?:human|real person|actual person|live agent|support agent|staff member|manager|supervisor)\b/i,
+        /\b(?:speak|talk|chat|connect|transfer|put me through|pass me|escalate)\b[^.!?;]{0,40}\b(?:human|real person|actual person|live agent|support agent|staff member|manager|supervisor)\b/i,
         /\b(?:speak|talk|chat|connect|transfer|put me through)\s+(?:me\s+)?(?:to|with)\s+(?:a|an|the|someone|somebody)?\s*(?:person|representative|someone|somebody|agent)\b/i,
         /\b(stop|disable|turn off|opt out of|no more) (?:the |your )?(?:ai|bot|automated|automatic)\b/i,
         /\b(don't|do not|no longer) (?:want to )?(?:talk to|chat with|speak to) (?:an? )?(?:ai|bot|robot)\b/i,
         /\b(?:transfer|connect|put me through|pass me|send me|escalate|speak|talk|chat)\b.{0,35}\b(?:customer (?:service|support|care|team|department)|support (?:team|department)|your team|someone from (?:support|your team))\b/i,
         /\b(?:need|want|prefer|request|speak to)\b.{0,25}\b(?:human support|person instead|real person|human being|human representative|actual human)\b/i,
-    ].some((pattern) => pattern.test(message));
+    ].some((pattern) => pattern.test(content));
 }
 
 /**

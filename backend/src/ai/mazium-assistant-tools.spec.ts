@@ -3,9 +3,38 @@ import { AiService } from './ai.service';
 
 describe('MaziuM authenticated tools', () => {
  const setup = (role = 'BUYER') => {
-  const prisma: any = { user: { findUnique: jest.fn().mockResolvedValue({ role, deletedAt: null, stripeConnectOnboardingComplete: false }) }, dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) }, dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) }, listing: { findMany: jest.fn().mockResolvedValue([]) }, auction: { findMany: jest.fn().mockResolvedValue([]) } };
+  const prisma: any = { user: { findUnique: jest.fn().mockResolvedValue({ role, deletedAt: null, stripeConnectOnboardingComplete: false }) }, dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) }, dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) }, listing: { findMany: jest.fn().mockResolvedValue([]) }, auction: { findMany: jest.fn().mockResolvedValue([]) }, warrantyOrder: { findMany: jest.fn().mockResolvedValue([]) }, serviceJob: { findMany: jest.fn().mockResolvedValue([]) } };
   return prisma;
  };
+ it.each(['read_my_warranty_orders', 'read_my_service_jobs'])('enforces authentication and rejects injected selectors for %s', async name => {
+  const db=setup();
+  expect(await runMaziumTool(db,undefined,name,{})).toMatchObject({error:'SIGN_IN_REQUIRED'});
+  expect(await runMaziumTool(db,'alice',name,{userId:'bob'})).toMatchObject({error:'INVALID_ARGUMENTS'});
+  expect(await runMaziumTool(db,'alice',name,{email:'bob@example.com'})).toMatchObject({error:'INVALID_ARGUMENTS'});
+  expect(db.user.findUnique).not.toHaveBeenCalled();
+  db.user.findUnique.mockResolvedValue({role:'BUYER',deletedAt:new Date()});
+  expect(await runMaziumTool(db,'alice',name,{})).toMatchObject({error:'ACCOUNT_UNAVAILABLE'});
+  expect(db.warrantyOrder.findMany).not.toHaveBeenCalled();expect(db.serviceJob.findMany).not.toHaveBeenCalled();
+ });
+ it('limits warranty evidence to personal order status and excludes identity, policy and payment secrets', async () => {
+  const db=setup('DEALER');db.dealerStaff.findFirst.mockResolvedValue({role:'ADMIN',dealerProfile:{id:'d',userId:'owner',isVerified:true}});
+  db.warrantyOrder.findMany.mockResolvedValue([{id:'w',status:'PAID',paidAt:new Date(),issuedAt:null}]);
+  const r:any=await runMaziumTool(db,'staff','read_my_warranty_orders',{});
+  expect(db.warrantyOrder.findMany.mock.calls[0][0]).toEqual({where:{userId:'staff'},orderBy:{updatedAt:'desc'},take:10,select:{id:true,status:true,totalPence:true,currency:true,paidAt:true,issuedAt:true,coverStart:true,coverEnd:true,expiresAt:true,updatedAt:true}});
+  expect(r.orders[0]).toMatchObject({status:'PAID',issuedAt:null});
+  expect(r.limitation).toContain('PAID is not policy issuance');expect(r.scope).toContain('Guest orders');
+ });
+ it('only reads jobs booked by the actor, with no addresses, other customers or free text', async () => {
+  const db=setup('DEALER');db.dealerStaff.findFirst.mockResolvedValue({role:'ADMIN',dealerProfile:{id:'d',userId:'owner',isVerified:true}});
+  db.serviceJob.findMany.mockResolvedValue([{id:'j',status:'COMPLETED',confirmedAt:null,payment:{status:'PAID',releasedAt:null}}]);
+  const r:any=await runMaziumTool(db,'staff','read_my_service_jobs',{});
+  const query=db.serviceJob.findMany.mock.calls[0][0];
+  expect(query).toMatchObject({where:{customerId:'staff'},orderBy:{updatedAt:'desc'},take:10});
+  expect(Object.keys(query.select).sort()).toEqual(['id','serviceType','isRecovery','status','requestedFor','acceptedAt','startedAt','completedAt','confirmedAt','cancelledAt','updatedAt','payment'].sort());
+  expect(query.select.payment.select).toEqual({status:true,grossPence:true,paidAt:true,releasedAt:true,refundedAt:true});
+  expect(r.jobs[0]).toMatchObject({status:'COMPLETED',confirmedAt:null,payment:{status:'PAID',releasedAt:null}});
+  expect(r.scope).toContain('Not assigned provider');expect(r.limitation).toContain('does not verify bank settlement');
+ });
  it('never runs anonymous private lookups', async () => {
   const db = setup();
   expect(await runMaziumTool(db, undefined, 'read_my_listings', {})).toMatchObject({ error: 'SIGN_IN_REQUIRED', checked: false });
