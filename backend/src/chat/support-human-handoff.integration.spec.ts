@@ -176,6 +176,7 @@ integration('human-support request and receipt with disposable PostgreSQL', () =
             orderBy: { createdAt: 'asc' },
         });
         expect(saved).toHaveLength(2);
+        expect(result.automaticReply.createdAt.getTime()).toBeGreaterThan(result.message.createdAt.getTime());
         expect(saved[1]).toMatchObject({
             senderId: botId,
             aiGenerated: true,

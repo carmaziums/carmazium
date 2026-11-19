@@ -2768,6 +2768,9 @@ export class ChatService {
                     aiGenerated: true,
                     aiSourceMessageId: message.id,
                     content: fixedReply,
+                    // PostgreSQL now() is fixed for this transaction. Keep the
+                    // receipt after its customer message when history is reloaded.
+                    createdAt: new Date(Math.max(Date.now(), message.createdAt.getTime() + 1)),
                 },
                 include: this.messageInclude,
             });
