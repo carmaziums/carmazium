@@ -13,6 +13,7 @@ import { useChat } from "@/context/ChatContext"
 import { useAuth } from "@/context/AuthContext"
 import { blockChatRoom, createChatAttachmentUpload, getChatMessages, sendChatAttachment, sendChatMessage, markMessagesAsRead, getChatDisplayName, getChatRoomDisplayName, isSupportUser, openVehicleDispute, reportChatMessage, unblockChatRoom, type ChatHistoryCursor, type ChatMessage, type ChatReportReason, type ChatRoom } from "@/lib/chatApi"
 import { disputeEventLabel, parseChatMessageContent, parseDisputeEventContent } from "@/lib/chatMessageContent"
+import { reconcileChatMessages } from "@/lib/chatMessageRecovery"
 import { resolveAdminDispute } from "@/lib/adminApi"
 import { supabase } from "@/lib/supabase"
 import { apiClient } from "@/lib/apiClient"
@@ -33,10 +34,6 @@ function supportAiEnabled(room: ChatRoom): boolean {
     if (room.supportHumanTakeoverAt &&
         Date.now() - new Date(room.supportHumanTakeoverAt).getTime() < 15 * 60_000) return false
     return true
-}
-
-function typedHumanRequest(message: string): boolean {
-    return /\b(?:human|real person|live agent|support agent|customer service|customer support|customer department|speak to (?:a |an |the )?person|talk to (?:a |an |the )?person|turn off (?:the )?(?:bot|ai))\b/i.test(message)
 }
 
 // Common replies for the admin fielding support conversations — inserted
@@ -65,7 +62,6 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const [aiEnabled, setAiEnabled] = React.useState(supportAiEnabled(room))
     const [consentBusy, setConsentBusy] = React.useState(false)
     const [showAiOptions, setShowAiOptions] = React.useState(false)
-    const [humanRequestSent, setHumanRequestSent] = React.useState(false)
     const [consentError, setConsentError] = React.useState<string | null>(null)
     const [loading, setLoading] = React.useState(true)
     const [loadingOlder, setLoadingOlder] = React.useState(false)
@@ -124,7 +120,6 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     }, [room.id, room.supportAiOptedOutAt, room.supportHumanTakeoverAt])
 
     React.useEffect(() => {
-        setHumanRequestSent(false)
         setShowAiOptions(false)
     }, [room.id])
 
@@ -342,6 +337,44 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         }
         fetchMessages()
     }, [room.id, markAsRead])
+
+    // A persisted support answer can outlive a missed socket event or reconnect.
+    // Recover the newest page while this conversation is visible; never replace
+    // loaded history or optimistic sends, overlap requests, or update another room.
+    React.useEffect(() => {
+        if (room.context !== 'SUPPORT' || loading) return
+        let cancelled = false
+        let inFlight = false
+        const recover = async () => {
+            if (cancelled || inFlight || document.visibilityState === 'hidden') return
+            inFlight = true
+            try {
+                const response = await getChatMessages(room.id)
+                if (cancelled) return
+                setMessages(previous => reconcileChatMessages(previous, response.data, room.id))
+                if (response.data.some(message => message.senderId !== user?.id && !message.isRead)) {
+                    await markMessagesAsRead(room.id)
+                    if (!cancelled) markAsRead(room.id, false)
+                }
+            } catch {
+                // Leave the visible conversation intact and retry on the next tick.
+            } finally {
+                inFlight = false
+            }
+        }
+        const timer = window.setInterval(recover, 5000)
+        window.addEventListener('focus', recover)
+        window.addEventListener('online', recover)
+        document.addEventListener('visibilitychange', recover)
+        void recover()
+        return () => {
+            cancelled = true
+            window.clearInterval(timer)
+            window.removeEventListener('focus', recover)
+            window.removeEventListener('online', recover)
+            document.removeEventListener('visibilitychange', recover)
+        }
+    }, [room.id, room.context, loading, user?.id, isConnected, markAsRead])
 
     // Scroll to bottom on new messages — instant on first load, smooth only if near bottom
     // Guard against loading=true: the container shows a spinner then, so scrollHeight is tiny
@@ -587,13 +620,8 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         setNewMessage("")
         const sent = await sendText(content)
         if (sent && room.context === 'SUPPORT') {
-            // Human requests are handled atomically by the backend; the UI
-            // reflects the handoff without showing a separate support button.
-            if (typedHumanRequest(content)) {
-                setHumanRequestSent(true)
-                setAiEnabled(false)
-                setShowAiOptions(false)
-            }
+            // The backend distinguishes the first offer of help from a confirmed
+            // handoff. Refresh its decision instead of guessing from user wording.
             await refreshRooms()
         }
     }
@@ -837,7 +865,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         </p>
                     ) : room.context === 'SUPPORT' && !isAdminViewer ? (
                         <p className="text-xs text-[var(--text-muted)] truncate">
-                            {humanRequestSent || room.supportHumanTakeoverAt
+                            {!aiEnabled && room.supportHumanTakeoverAt
                                 ? 'Human support requested'
                                 : aiEnabled ? 'MaziuM AI' : 'MaziuM AI paused'}
                         </p>
