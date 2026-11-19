@@ -1,5 +1,6 @@
 "use client"
 
+import HomeHero from "./HomeHero"
 import Image from "next/image"
 import Link from "next/link"
 import { buttonVariants } from "@/components/ui/buttonVariants"
@@ -95,37 +96,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
 
   return (
     <div className={cn(styles.home, "w-full max-w-[100vw] overflow-x-hidden flex flex-col")}>
-      {/* Marketplace hero: real HTML remains visible before hydration. */}
-      <section className={styles.hero} aria-labelledby="home-marketplace-heading">
-        <div className={styles.heroGrid}>
-          <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>The UK car marketplace</p>
-            <h1 id="home-marketplace-heading" className={styles.headline}>Your car.<br /><span>Your choice.</span></h1>
-            <p className={styles.proposition}>
-              Auction <span>FREE</span>. Retail for <span>£1</span>.
-            </p>
-            <p className={styles.heroDescription}>
-              Sell your car through a free dealer auction or advertise to UK buyers for £1 until sold. Choose how you sell.
-            </p>
-            <div className={styles.heroActions}>
-              <Link href="/sell?sellMode=retail&package=basic#sell-options" className={styles.primaryAction}>
-                List my car for £1 <ArrowRight size={18} aria-hidden="true" />
-              </Link>
-              <Link href="/sell?sellMode=auction#sell-options" className={styles.secondaryAction}>
-                Sell by auction FREE
-              </Link>
-            </div>
-            <Link href="/sell" className={styles.quietLink}>Get a valuation or explore your options <ArrowRight size={16} aria-hidden="true" /></Link>
-          </div>
-          <div className={styles.heroVisual}>
-            <Image src="/assets/images/marketplace/hero-mini.webp" alt="Vibrant orange MINI Cooper photographed on a street in Oxford" width={1200} height={800} sizes="(max-width: 767px) 66vw, (max-width: 1280px) 52vw, 680px" priority className={styles.heroCars} />
-            <div className={styles.priceArtwork}>
-              <span>£1</span><p>List it.<br />Until sold.</p><small>Basic retail listing</small>
-            </div>
-            <p className={styles.photoCaption}>Your next chapter starts here.</p>
-          </div>
-        </div>
-      </section>
+      <HomeHero />
 
       {/* Natural-language search stays connected to the existing MaziuM API. */}
       <section className={styles.aiSection} aria-labelledby="home-ai-search-heading">

@@ -19,6 +19,7 @@ function load(path) {
   const exports = {}
   const compiled = ts.transpileModule(read(path), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText
   runInNewContext(compiled, { exports, console, URLSearchParams, require(id) {
+    if (id === './HomeHero') return load('src/app/HomeHero.tsx')
     if (id === 'next/image') return Image
     if (id === 'next/link') return Link
     if (id === 'next/navigation') return { useRouter: () => ({ push() {} }) }
@@ -41,7 +42,7 @@ const html = renderToStaticMarkup(React.createElement(load('src/app/HomeClient.t
 test('server render exposes one readable hero and the AI form before hydration', () => {
   assert.equal((html.match(/<h1\b/g) || []).length, 1)
   assert.match(html, /Your car\.<br\/><span>Your choice\.<\/span>/)
-  assert.match(html, /Sell your car through a free dealer auction/)
+  assert.match(html, /Advertise for £1 until sold, or choose a free dealer auction/)
   assert.match(html, /<form[^>]*aria-busy="false"/)
   assert.match(html, /<label[^>]*for="home-ai-query"[^>]*>Describe the car you want/)
   assert.match(html, /Find matching cars/)
@@ -49,12 +50,12 @@ test('server render exposes one readable hero and the AI form before hydration',
   assert.doesNotMatch(hero, /opacity:0|visibility:hidden|display:none/)
 })
 
-test('hero is a bounded static image with no autoplay or hydration-dependent theme selection', () => {
-  assert.doesNotMatch(html, /<video/)
-  assert.doesNotMatch(home, /showHeroVideo|heroPosterSrc|useScroll|useTransform/)
-  assert.match(html, /marketplace\/hero-mini.webp/)
-  assert.match(html, /width="1200" height="800"/)
-  assert.ok(statSync(new URL('../public/assets/images/marketplace/hero-mini.webp', import.meta.url)).size < 180000)
+test('only the initial vehicle is fetched by the server-rendered hero', () => {
+  const hero = html.slice(html.indexOf('<section'), html.indexOf('</section>'))
+  assert.doesNotMatch(html, /hero-mini|hero-cinematic|<video/)
+  assert.equal((hero.match(/<img[^>]+src=/g) || []).length, 1)
+  assert.match(hero, /src="\/assets\/images\/home-hero\/hatchback.webp"/)
+  assert.ok(statSync(new URL('../public/assets/images/home-hero/hatchback.webp', import.meta.url)).size < 50000)
 })
 
 test('seller entry links carry the real channel and basic package while normal browse stays available', () => {

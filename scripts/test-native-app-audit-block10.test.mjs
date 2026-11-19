@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const text = (p) => readFileSync(resolve(root, p), 'utf8');
 const native = text('carmazium app/carmazium app/src/screens/onboarding/OnboardingScreen.tsx');
-const home = text('src/app/HomeClient.tsx');
+const home = text('src/app/HomeClient.tsx') + text('src/app/HomeHero.tsx');
 
 test('Welcome screen communicates the same pricing as the website', () => {
   assert.match(home, /Auction <span[^>]*>FREE<\/span>/);
