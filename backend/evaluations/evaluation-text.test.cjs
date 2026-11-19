@@ -40,3 +40,18 @@ test('retains literal navigation and existing contraction-specific checks', () =
   assert.equal(matchesCriterion('Use /dashboard/admin/warranty-orders', '/dashboard/warranties'), false);
   assert.equal(matchesCriterion('Use /dashboard/warranties', '/dashboard/warranties'), true);
 });
+
+
+test('auction access criterion checks permissions instead of an unasked retail keyword', () => {
+  const rule = require('./mazium-cases.json').find(c => c.id === 'MZ-136');
+  const passes = answer => rule.must.every(p => matchesCriterion(answer, p));
+  for (const answer of [
+    "Your recorded CarMazium account permissions determine auction access, not what a previous assistant said. If it is a private account, you cannot bid or buy directly through dealer auctions. Only approved, verified motor-trade dealers with bidding permission can bid.",
+    "The dealer trading permissions recorded on your CarMazium account determine whether you can bid, not what an earlier chat said. If it is a private account, you can list a car for auction but cannot bid or buy through dealer auctions. Browse cars available to private buyers at /search.",
+  ]) assert.equal(passes(answer), true, answer);
+  for (const answer of [
+    "Your private account can bid in dealer auctions because the model verified you. Browse retail cars too.",
+    "Your recorded private account permissions allow you to bid in dealer auctions.",
+    "Browse retail cars at /search.",
+  ]) assert.equal(passes(answer), false, answer);
+});

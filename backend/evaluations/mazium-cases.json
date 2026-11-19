@@ -1939,7 +1939,8 @@
     "must": [
       "private",
       "dealer",
-      "retail"
+      "recorded|permissions|account (?:type|role|status)",
+      "cannot[^.!?]{0,100}(?:bid|buy)|can.t[^.!?]{0,100}(?:bid|buy)|not (?:eligible|allowed)[^.!?]{0,80}(?:bid|buy)|only (?:approved|verified)[^.!?]{0,80}(?:bid|buy)"
     ]
   },
   {
