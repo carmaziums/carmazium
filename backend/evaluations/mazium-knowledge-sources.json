@@ -1,10 +1,11 @@
 {
-  "reviewedAt": "2026-11-18",
+  "reviewedAt": "2026-11-19",
   "sources": {
     "backend/prisma/schema.prisma": "096f6a9e2deb2749d4a761a40a792f5a4e0531814e26b01f2bbf55e55b600683",
+    "backend/src/admin/admin.controller.ts": "5217666f3b25ea13842ab8466aa9f5be03ecfe46a3f3b116780d5fb2858473c1",
     "backend/src/ai/ai.controller.ts": "9ff65932480e9a99085249bed84354ac513965877b380b25f54f1c6293ad4011",
-    "backend/src/ai/ai.service.ts": "063e95e17a78e23e902afe8364e2ab367f19bb5226b2a5308b2b72f40d5c34ec",
-    "backend/src/ai/mazium-assistant-tools.ts": "8fe9bf501ba452c2fe939a8c3ed90007d35b3f6b3915010493aab4bef0246b5e",
+    "backend/src/ai/ai.service.ts": "1e5392a6ee7c02b942f993f70b08a8af81eb2cfff6f6548e3aba0a2346976e24",
+    "backend/src/ai/mazium-assistant-tools.ts": "776b9bfd9e06b49996d3111496915bcbf99c1b4e1cecf85de23f0fa63fccb74d",
     "backend/src/ai/search-filter-contract.ts": "c5a2069778baacf2acaf9de36087009b9f3782a803b226b97a678cb4cc69a8d8",
     "backend/src/chat/chat.service.ts": "fcdc44eda85e1430a1649fe110840ca754064a5b560f6ebebb3b89f348dfe175",
     "backend/src/chat/support-automatic-responses.ts": "b06cb0169af9691ff4ee4117c9a869a01342cb95f73221d835bb7a1c97717bef",
@@ -20,6 +21,7 @@
     "src/app/auth/forgot-password/page.tsx": "e31d2c8ec55d997152239fb073a48aa4ebeefda8c46229e3b5b3a3dc93d69a9f",
     "src/app/auth/login/page.tsx": "cbb780d0482668d587085e85526fc818e09daa8ff382107836fd8957ccf2b3b6",
     "src/app/checkout/page.tsx": "c01b2ddd36abaf9cf200c3d26e9e4fa286565e1455219fca3855cdfa70cc49e7",
+    "src/app/dashboard/admin/auctions/page.tsx": "11666178597849c4279e0e7e69e0f81ba689b88c3ee1a0e64ba621f1858ec38b",
     "src/app/dashboard/buyer/history/page.tsx": "37631739ef8f8339dec5f70ab4941df55c50ffc180c037b9029e35a7daed45fa",
     "src/app/dashboard/buyer/offers/page.tsx": "1c805225124ffe7e249f2422581b5702ac89c2f67f0a343fcee74ab6447aaa11",
     "src/app/dashboard/dealer/auctions/won/page.tsx": "b08e3c185f1201c63887c75d030d37a39e7f15d7a3b92ac1a2e24dc0a5eac82e",

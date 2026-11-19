@@ -16,6 +16,8 @@ CarMazium website navigation — these are verified, role-aware destinations:
 - To CREATE a new vehicle listing: /sell for a private seller, or /dashboard/dealer/add-listing for dealers.
 - To MANAGE auctions already submitted: private seller /dashboard/seller/auctions;
   dealer /dashboard/dealer/auctions. New auctions and active auctions have different controls.
+- Platform administrators: Admin Control Panel -> Auctions at /dashboard/admin/auctions.
+  This administrative oversight is distinct from verified-dealer bidding permissions.
 - To BROWSE vehicles: /search. To browse live auctions: /auctions.
 - To download the mobile app: /download-app.
 - For seller valuation and choosing between Auction and Retail, use /sell; no separate /valuation route is verified.
@@ -83,6 +85,7 @@ const VERIFIED_ROUTES = new Set([
     '/profile',
     '/dashboard/user',
     '/dashboard/seller/auctions',
+    '/dashboard/admin/auctions',
     '/dashboard/seller/add-listing',
     '/dashboard/seller/offers',
     '/dashboard/buyer/history',

@@ -4,7 +4,7 @@ const cases = require('./mazium-cases.json');
 const {classifySupportMessage,safeAutomaticSupportReply}=require('./dist/chat/mazium-support-policy.js');
 const supportCases=new Set(['MZ-121','MZ-140','MZ-141','MZ-142','AUTH-7','AUTH-8','AUTH-9']);
 const db = {
- user: { findUnique: async ({where}) => ({role:where.id==='dealer'?'DEALER':'BUYER',deletedAt:null,stripeConnectOnboardingComplete:false}) },
+ user: { findUnique: async ({where}) => ({role:where.id==='admin'?'ADMIN':where.id==='dealer'?'DEALER':'BUYER',deletedAt:null,stripeConnectOnboardingComplete:false}) },
  dealerProfile: { findUnique: async () => null },
  dealerStaff: { findFirst: async () => ({role:'FINANCE_MANAGER',dealerProfile:{id:'fixture',userId:'owner',isVerified:true}}) },
  listing: { findMany: async () => [{id:'synthetic-listing',make:'Toyota',model:'Yaris',status:'PENDING_REVIEW',type:'CLASSIFIED'}] },
@@ -14,6 +14,7 @@ db.warrantyOrder = { findMany: async () => [{id:'synthetic-warranty',status:'PAI
 db.serviceJob = { findMany: async () => [{id:'synthetic-job',serviceType:'DELIVERY',isRecovery:false,status:'COMPLETED',completedAt:'2026-11-18T12:00:00Z',confirmedAt:null,payment:{status:'PAID',grossPence:10000,paidAt:'2026-11-17T12:00:00Z',releasedAt:null,refundedAt:null}}] };
 const service = new AiService({get:key=>key==='OPENAI_API_KEY'?process.env.OPENAI_API_KEY:key==='OPENAI_MAZIUM_CHAT_MODEL'?'gpt-6.2-sol':undefined},db);
 const canaries=[
+ {id:'AUTH-10',userId:'admin',messages:[{role:'user',content:'Check my actual signed-in account role and auction permissions. Am I a private buyer, approved dealer or administrator? Can I view auctions in the admin dashboard, and does that mean I can place dealer bids?'}],must:['administrator|platform admin','/dashboard/admin/auctions','cannot[^.]{0,70}bid|can.t[^.]{0,70}bid|does not[^.]{0,70}bid|doesn.t[^.]{0,70}bid','admin[^.]{0,80}(view|access)|view[^.]{0,80}admin']},
  {id:'AUTH-7',userId:'buyer',messages:[{role:'user',content:'Check my warranty orders. Did payment mean my policy was issued?'}],must:['paid|payment','issu','not|hasn.t|pending|await|no']},
  {id:'AUTH-8',userId:'buyer',messages:[{role:'user',content:'Check my delivery jobs. Has completion meant the driver definitely received money?'}],must:['complet','\\bno\\b|not|pending|await|doesn.t|neither','release|confirm']},
  {id:'AUTH-9',userId:'buyer',messages:[{role:'user',content:'Please check my advert, warranty and booked delivery job together. Explain each actual status and the next step without changing anything.'}],must:['pending review|PENDING_REVIEW','paid|payment','issu','complet','release|confirm','48|forty.eight|before[^.]{0,80}(20 November|November 20)','dispute']},

@@ -53,11 +53,22 @@ describe('MaziuM authenticated tools', () => {
   expect(await runMaziumTool(db,'alice','read_my_account',{})).toMatchObject({error:'ACCOUNT_UNAVAILABLE'});
  });
  it('private accounts cannot acquire bidding permission through text', async () => {
-  expect(await runMaziumTool(setup(),'alice','read_my_account',{})).toMatchObject({role:'BUYER',canPlaceBid:false});
+  expect(await runMaziumTool(setup(),'alice','read_my_account',{})).toMatchObject({role:'BUYER',canPlaceBid:false,canViewAdminAuctions:false,adminAuctionsPath:null});
  });
  it('verified finance managers can view trade but cannot place bids', async () => {
   const db=setup('DEALER');db.dealerStaff.findFirst.mockResolvedValue({role:'FINANCE_MANAGER',dealerProfile:{id:'d',userId:'owner',isVerified:true}});
-  expect(await runMaziumTool(db,'staff','read_my_account',{})).toMatchObject({dealerStaffRole:'FINANCE_MANAGER',canViewTrade:true,canPlaceBid:false});
+  expect(await runMaziumTool(db,'staff','read_my_account',{})).toMatchObject({dealerStaffRole:'FINANCE_MANAGER',canViewTradeAsDealer:true,canPlaceBid:false,canViewAdminAuctions:false});
+ });
+ it('separates platform administrative auction viewing from dealer trading and personal record scope', async () => {
+  const db=setup('ADMIN');
+  expect(await runMaziumTool(db,'admin','read_my_account',{})).toMatchObject({role:'ADMIN',dealerStaffRole:null,dealerVerified:false,canViewTradeAsDealer:false,canPlaceBid:false,canViewAdminAuctions:true,adminAuctionsPath:'/dashboard/admin/auctions'});
+  await runMaziumTool(db,'admin','read_my_listings',{});
+  expect(db.listing.findMany.mock.calls[0][0].where).toEqual({sellerId:'admin',deletedAt:null});
+  expect(db.dealerProfile.findUnique).not.toHaveBeenCalled();
+ });
+ it('does not confuse a dealer staff Admin with a platform administrator', async () => {
+  const db=setup('DEALER');db.dealerStaff.findFirst.mockResolvedValue({role:'ADMIN',dealerProfile:{id:'d',userId:'owner',isVerified:true}});
+  expect(await runMaziumTool(db,'staff','read_my_account',{})).toMatchObject({role:'DEALER',dealerStaffRole:'ADMIN',canViewTradeAsDealer:true,canPlaceBid:true,canViewAdminAuctions:false,adminAuctionsPath:null});
  });
  it('unverified dealership owners cannot place bids', async () => {
   const db=setup('DEALER');db.dealerProfile.findUnique.mockResolvedValue({id:'d',userId:'owner',isVerified:false});

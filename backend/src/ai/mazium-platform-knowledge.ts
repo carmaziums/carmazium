@@ -25,10 +25,11 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'The same login can access its role-appropriate dashboard; never promise a customer has a particular permission or approval.',
             'Dealers need business verification before bidding at dealer-only auctions. Partner accounts manage eligible service capabilities.',
             'Within an approved dealership, the owner, dealer Admin and Sales Agent roles have bidding permission. A Finance Manager can view trade stock and pay auction/listing fees but cannot place bids. Sales Agents cannot pay auction/listing fees; the owner, Admin or Finance Manager handles those. Active staff use the dealership owner verification, not a separate staff dealership profile. These permissions do not override auction status.',
+            'A platform administrator (account role ADMIN) is distinct from a dealership staff Admin. Platform administrators can view and manage auction records through Admin Control Panel -> Auctions at /dashboard/admin/auctions without dealer verification; this administrative access does not grant dealer bidding permission. A false dealer-trading permission must not be described as no administrative auction access. MaziuM personal-record tools remain owner-scoped even for platform administrators and cannot perform admin mutations or search all customers.',
             'Account/profile settings: /profile. It contains personal/business details, verification, notification choices, payouts, appearance and account/security controls.',
             'Only a successful authenticated account tool can establish recorded dealer approval and permissions. It cannot inspect passwords or private KYC documents.'
         ].join(' '),
-        sources: ['src/app/profile/page.tsx','src/app/dashboard/partner/page.tsx','src/app/pricing/traders/page.tsx','backend/src/dealers/dealer-access.ts']
+        sources: ['src/app/profile/page.tsx','src/app/dashboard/partner/page.tsx','src/app/pricing/traders/page.tsx','backend/src/dealers/dealer-access.ts','backend/src/admin/admin.controller.ts','src/app/dashboard/admin/auctions/page.tsx']
     },
     {
         id: 'create-new-listing',
@@ -81,7 +82,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         triggers: /\b(?:auction|bid|bidding|reserve|winning|winner|anti-snipe|provisional|dealer fee|buyer fee)\b/i,
         facts: [
             'CarMazium seller auctions are free to list and normally run for 24 hours, with verified motor traders eligible to bid.',
-            'Trade auction access and ALL live auction bidding is restricted to approved verified motor-trade dealers. Private buyers and private sellers cannot bid or buy directly through these auctions; retail cars for the general public are at /search. Selling a car via a free auction is not the same as being eligible to bid.',
+            'Dealer trading access and ALL live auction bidding is restricted to approved verified motor-trade dealers. Platform ADMIN auction oversight is separate and available through /dashboard/admin/auctions; it does not confer dealer bidding permission. Private buyers and private sellers cannot bid or buy directly through these auctions; retail cars for the general public are at /search. Selling a car via a free auction is not the same as being eligible to bid.',
             'Winning dealer auction fee is £125 one-off (subject to authorised grants), payable within the prescribed 72-hour period; a losing bidder does not pay that fee.',
             'After the fee is paid, seller contact and deal details can unlock; the winning dealer pays the actual vehicle purchase price directly to the seller.',
             'Do not claim that a bid, a reserve offer, a sale or a fee refund is automatically final without checking its status in the relevant dashboard.',
