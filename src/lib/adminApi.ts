@@ -45,9 +45,21 @@ export async function getAccountVerificationStats(): Promise<AccountVerification
   return apiClient<AccountVerificationStats>('/analytics/account-verification');
 }
 
-export async function getAdminUsers(page = 1, limit = 20, search?: string) {
+export interface AdminUserFilters {
+  accountType?: string;
+  dealerVerification?: string;
+  serviceType?: string;
+  providerStatus?: string;
+  accountStatus?: string;
+  emailVerification?: string;
+}
+
+export async function getAdminUsers(page = 1, limit = 20, search?: string, filters: AdminUserFilters = {}) {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (search) params.set('search', search);
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, value);
+  }
   const result = await apiClient<any>(`/admin/users?${params.toString()}`);
   return result;
 }

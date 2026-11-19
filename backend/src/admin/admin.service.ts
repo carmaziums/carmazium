@@ -1,3 +1,4 @@
+import { AdminUserFilters, adminUserWhere } from './admin-user-filters';
 import { publishDraftRetailFree, ADMIN_FREE_RETAIL_EVENT } from './admin-free-retail';
 import { faultDeclarationError } from '../listings/seller-fault-declaration';
 import { markListingSold } from './admin-mark-listing-sold';
@@ -55,24 +56,19 @@ export class AdminService {
         return markListingSold(this.prisma, id, adminId, dto);
     }
 
-    async getAllUsers(page = 1, limit = 20, search?: string) {
+    async getAllUsers(page = 1, limit = 20, search?: string, filters: AdminUserFilters = {}) {
+        if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+            throw new BadRequestException('Page must be positive and limit must be between 1 and 100.');
+        }
         const skip = (page - 1) * limit;
-        const where = search
-            ? {
-                  OR: [
-                      { email: { contains: search, mode: 'insensitive' as const } },
-                      { firstName: { contains: search, mode: 'insensitive' as const } },
-                      { lastName: { contains: search, mode: 'insensitive' as const } },
-                  ],
-              }
-            : undefined;
+        const where = adminUserWhere(search, filters);
 
         const [data, total] = await Promise.all([
             this.prisma.user.findMany({
                 where,
                 skip,
                 take: limit,
-                orderBy: { createdAt: 'desc' },
+                orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
                 select: {
                     id: true,
                     email: true,
@@ -84,6 +80,10 @@ export class AdminService {
                     deletedAt: true,
                     lockoutUntil: true,
                     dealerProfile: { select: { isVerified: true, companyName: true } },
+                    contractorProfile: { select: {
+                        businessName: true, deletedAt: true,
+                        capabilities: { select: { serviceType: true, status: true, verificationStatus: true, verificationExpiresAt: true } },
+                    } },
                     _count: { select: { listings: true } },
                     phone: true,
                     stripeConnectOnboardingComplete: true,
