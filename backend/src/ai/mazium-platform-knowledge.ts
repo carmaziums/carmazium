@@ -25,10 +25,11 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'The same login can access its role-appropriate dashboard; never promise a customer has a particular permission or approval.',
             'Dealers need business verification before bidding at dealer-only auctions. Partner accounts manage eligible service capabilities.',
             'Within an approved dealership, the owner, dealer Admin and Sales Agent roles have bidding permission. A Finance Manager can view trade stock and pay auction/listing fees but cannot place bids. Sales Agents cannot pay auction/listing fees; the owner, Admin or Finance Manager handles those. Active staff use the dealership owner verification, not a separate staff dealership profile. These permissions do not override auction status.',
+            'A platform administrator (account role ADMIN) is distinct from a dealership staff Admin. Platform administrators can view and manage auction records through Admin Control Panel -> Auctions at /dashboard/admin/auctions without dealer verification; this administrative access does not grant dealer bidding permission. A false dealer-trading permission must not be described as no administrative auction access. MaziuM personal-record tools remain owner-scoped even for platform administrators and cannot perform admin mutations or search all customers.',
             'Account/profile settings: /profile. It contains personal/business details, verification, notification choices, payouts, appearance and account/security controls.',
             'Only a successful authenticated account tool can establish recorded dealer approval and permissions. It cannot inspect passwords or private KYC documents.'
         ].join(' '),
-        sources: ['src/app/profile/page.tsx','src/app/dashboard/partner/page.tsx','src/app/pricing/traders/page.tsx','backend/src/dealers/dealer-access.ts']
+        sources: ['src/app/profile/page.tsx','src/app/dashboard/partner/page.tsx','src/app/pricing/traders/page.tsx','backend/src/dealers/dealer-access.ts','backend/src/admin/admin.controller.ts','src/app/dashboard/admin/auctions/page.tsx']
     },
     {
         id: 'create-new-listing',
@@ -81,7 +82,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         triggers: /\b(?:auction|bid|bidding|reserve|winning|winner|anti-snipe|provisional|dealer fee|buyer fee)\b/i,
         facts: [
             'CarMazium seller auctions are free to list and normally run for 24 hours, with verified motor traders eligible to bid.',
-            'Trade auction access and ALL live auction bidding is restricted to approved verified motor-trade dealers. Private buyers and private sellers cannot bid or buy directly through these auctions; retail cars for the general public are at /search. Selling a car via a free auction is not the same as being eligible to bid.',
+            'Dealer trading access and ALL live auction bidding is restricted to approved verified motor-trade dealers. Platform ADMIN auction oversight is separate and available through /dashboard/admin/auctions; it does not confer dealer bidding permission. Private buyers and private sellers cannot bid or buy directly through these auctions; retail cars for the general public are at /search. Selling a car via a free auction is not the same as being eligible to bid.',
             'Winning dealer auction fee is £125 one-off (subject to authorised grants), payable within the prescribed 72-hour period; a losing bidder does not pay that fee.',
             'After the fee is paid, seller contact and deal details can unlock; the winning dealer pays the actual vehicle purchase price directly to the seller.',
             'Do not claim that a bid, a reserve offer, a sale or a fee refund is automatically final without checking its status in the relevant dashboard.',
@@ -145,9 +146,10 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'The currently implemented repair limits are £1,000 and £2,000, and labour choices £75, £100, £150 and £200 per hour. Any different requested cover must be confirmed with the team. Airbags, Driver Assistance and Emissions each add £20; Multimedia adds £80.',
             'Other coverage/labour/extras affect the exact price; refer to the live quote form rather than inventing prices or cover. Purchases are not the same as an issued policy.',
             'When authorised, read_my_warranty_orders can check 10 recent orders linked to the signed-in customer ID. It cannot find guest orders by email, verify live insurer records, or infer issuance from payment alone.',
+            'Customers review personal orders at /dashboard/warranties. Platform ADMIN accounts use Admin Control Panel -> Warranty Orders at /dashboard/admin/warranty-orders; the personal dashboard route redirects administrators. An EXPIRED order is not evidence of payment, refund or bank receipt. Admin console access does not expand the assistant personal-order lookup scope.',
             'Warranty claims and exclusions are governed by the actual policy terms; the assistant must not approve a claim.'
         ].join(' '),
-        sources: ['backend/src/ai/mazium-assistant-tools.ts','backend/src/services/warranty-retail-tariff.ts','src/app/services/warranty/page.tsx']
+        sources: ['backend/src/ai/mazium-assistant-tools.ts','backend/src/services/warranty-retail-tariff.ts','src/app/services/warranty/page.tsx','src/app/dashboard/admin/warranty-orders/page.tsx']
     },
     {
         id: 'vehicle-finance',
@@ -172,9 +174,10 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'Completed, unconfirmed service jobs are eligible for automatic release after 48 hours from provider completion, subject to settlement checks. Leaving a job unconfirmed or merely sending a chat message does not freeze that process. If work was not completed correctly, open the job in /services/jobs and promptly use Something is wrong — raise a dispute before that window ends. If settlement is already in progress or released, ask staff to review; never promise a refund or that a chat message halted release.',
             'Only approved providers for the relevant service can quote; never guarantee an available provider, service price or immediate booking.',
             'When authorised, read_my_service_jobs checks 10 recent jobs booked by the signed-in customer, with saved payment and completion states. It does not read assigned provider jobs or other dealership members’ jobs. An empty result is not a full-history check.',
+            'Platform administrators review jobs through Admin Control Panel -> Trade Services -> Jobs at /dashboard/admin/services?tab=jobs. This administrative console is separate from the assistant owner-scoped customer job tools.',
             'Some service types can be temporarily switched off; refer to /services for actual availability.'
         ].join(' '),
-        sources: ['src/app/services/page.tsx','src/app/services/jobs/[id]/page.tsx','src/lib/featureFlags.ts','backend/src/services/services.service.ts']
+        sources: ['src/app/services/page.tsx','src/app/services/jobs/[id]/page.tsx','src/lib/featureFlags.ts','backend/src/services/services.service.ts','src/app/dashboard/admin/services/page.tsx']
     },
     {
         id: 'dealer-services-and-partners',

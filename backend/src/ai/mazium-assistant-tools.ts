@@ -5,7 +5,7 @@ import { PLATFORM_KNOWLEDGE } from './mazium-platform-knowledge';
 
 const PRIVATE_TOOLS: Record<string, string> = {
  read_my_auctions: 'Read recent seller auction history, including ended/cancelled auctions whose listing was archived. Not buyer purchases or bids.',
- read_my_account: 'Read authenticated role, dealer bidding permissions and saved Stripe onboarding flag. No bank details.',
+ read_my_account: 'Read authenticated role, dealer trading permissions separately from platform administrator auction viewing, and saved Stripe onboarding flag. No bank details.',
  read_my_listings: 'Read 10 recent listings owned by this user or their permitted dealership only.',
  read_my_seller_bonuses: 'Read 10 recent personally owned auction handover and bonus records. A recorded transfer is not bank settlement.',
  read_my_warranty_orders: 'Read 10 recent warranty orders linked to this signed-in customer. Distinguish quotation, payment and policy issuance. Cannot find guest orders by email.',
@@ -30,6 +30,7 @@ export async function runMaziumTool(prisma: PrismaService, userId: string | unde
  // Personal purchases must never inherit a dealership owner's identity.
  if (name === 'read_my_warranty_orders') return {
   checkedAt: new Date().toISOString(),
+  reviewPath: user.role === 'ADMIN' ? '/dashboard/admin/warranty-orders' : '/dashboard/warranties',
   scope: '10 most recently updated warranty orders linked to this customer ID only. Guest orders and older records are not covered; absence does not prove no purchase.',
   limitation: 'Saved platform records, not a live insurer check. QUOTED is not payment; PAID is not policy issuance; cover dates and issued status must be checked separately.',
   orders: await prisma.warrantyOrder.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' }, take: 10,
@@ -37,6 +38,7 @@ export async function runMaziumTool(prisma: PrismaService, userId: string | unde
  };
  if (name === 'read_my_service_jobs') return {
   checkedAt: new Date().toISOString(),
+  reviewPath: user.role === 'ADMIN' ? '/dashboard/admin/services?tab=jobs' : '/services/jobs',
   scope: '10 most recently updated TradeXchange jobs booked by this customer ID only. Not assigned provider jobs or other dealership members’ jobs; absence does not prove no job exists.',
   limitation: 'Saved platform status only. Payment, provider completion, customer confirmation and release are separate; release does not verify bank settlement. Completed, undisputed jobs may auto-release after 48 hours from provider completion. Leaving unconfirmed or sending chat alone does not freeze release; for incorrect work promptly use the job’s raise-a-dispute control, subject to settlement state.',
   jobs: await prisma.serviceJob.findMany({ where: { customerId: userId }, orderBy: { updatedAt: 'desc' }, take: 10,
@@ -44,7 +46,18 @@ export async function runMaziumTool(prisma: PrismaService, userId: string | unde
     payment: { select: { status: true, grossPence: true, paidAt: true, releasedAt: true, refundedAt: true } } } }),
  };
  const actor = user.role === 'DEALER' ? await resolveDealerActor(prisma, userId) : null;
- if (name === 'read_my_account') return { checkedAt: new Date().toISOString(), role: user.role, dealerStaffRole: actor?.role ?? null, dealerVerified: actor?.isVerified ?? false, canViewTrade: !!actor?.isVerified && hasDealerPermission(actor, 'VIEW_TRADE'), canPlaceBid: !!actor?.isVerified && hasDealerPermission(actor, 'PLACE_BID'), stripeOnboardingRecordedComplete: user.stripeConnectOnboardingComplete, limitation: 'Bidding also depends on auction state. Stripe flag is not a live balance or bank settlement check.' };
+ if (name === 'read_my_account') return {
+  checkedAt: new Date().toISOString(), role: user.role,
+  dealerStaffRole: actor?.role ?? null, dealerVerified: actor?.isVerified ?? false,
+  canViewTradeAsDealer: !!actor?.isVerified && hasDealerPermission(actor, 'VIEW_TRADE'),
+  canPlaceBid: !!actor?.isVerified && hasDealerPermission(actor, 'PLACE_BID'),
+  // AdminController and the admin auction page authorise platform ADMIN separately.
+  // This is guidance about existing access, not an administrative data/mutation tool.
+  canViewAdminAuctions: user.role === 'ADMIN',
+  adminAuctionsPath: user.role === 'ADMIN' ? '/dashboard/admin/auctions' : null,
+  stripeOnboardingRecordedComplete: user.stripeConnectOnboardingComplete,
+  limitation: 'Dealer trading permissions are separate from platform administration. A platform ADMIN can view auctions in the admin dashboard without being a verified dealer, but this does not grant dealer bidding permission. Dealer staff ADMIN is a different role from platform ADMIN. Personal record tools remain owner-scoped even for administrators and do not inspect all customers. Bidding also depends on auction state. Stripe flag is not a live balance or bank settlement check.',
+ };
  if (actor && !hasDealerPermission(actor, 'VIEW_INVENTORY')) return { error: 'PERMISSION_REQUIRED', checked: false };
  const ownerId = actor?.ownerUserId ?? userId;
  if (name === 'read_my_listings') return { checkedAt: new Date().toISOString(), scope: '10 most recently updated owned listings; absence is not proof a listing never existed', listings: await prisma.listing.findMany({ where: { sellerId: ownerId, deletedAt: null }, orderBy: { updatedAt: 'desc' }, take: 10, select: { id: true, make: true, model: true, year: true, type: true, status: true, updatedAt: true } }) };
