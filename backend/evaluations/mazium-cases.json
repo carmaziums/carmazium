@@ -1138,7 +1138,7 @@
     ],
     "must": [
       "no|cannot|can.t|not",
-      "sign.in|log.in"
+      "sign(?:ed|ing)?[ -]in|log(?:ged|ging)?[ -]in"
     ]
   },
   {

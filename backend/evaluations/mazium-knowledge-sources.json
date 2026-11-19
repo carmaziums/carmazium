@@ -8,7 +8,7 @@
     "backend/src/ai/ai.service.ts": "1e5392a6ee7c02b942f993f70b08a8af81eb2cfff6f6548e3aba0a2346976e24",
     "backend/src/ai/mazium-assistant-tools.ts": "117233dadd8e6cb157bde72d3976fe667841f65da363fb28fba04b7730070f33",
     "backend/src/ai/search-filter-contract.ts": "c5a2069778baacf2acaf9de36087009b9f3782a803b226b97a678cb4cc69a8d8",
-    "backend/src/chat/chat.service.ts": "fcdc44eda85e1430a1649fe110840ca754064a5b560f6ebebb3b89f348dfe175",
+    "backend/src/chat/chat.service.ts": "e167a48000c60845b0932053953cb8fbcc247f936771fc8b995e9bb10689661d",
     "backend/src/chat/support-automatic-responses.ts": "b06cb0169af9691ff4ee4117c9a869a01342cb95f73221d835bb7a1c97717bef",
     "backend/src/dealers/dealer-access.ts": "450e71e07124c41ff9fbe30cf041e264110e4a0142584eff3c9a2e8e3f8cabdf",
     "backend/src/dealers/dealers.service.ts": "1995c4cfa3ac32edc7412f234036624824f604c2f16f780f489958366ec04eca",
