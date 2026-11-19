@@ -3,10 +3,10 @@
   "sources": {
     "backend/prisma/schema.prisma": "096f6a9e2deb2749d4a761a40a792f5a4e0531814e26b01f2bbf55e55b600683",
     "backend/src/ai/ai.controller.ts": "9ff65932480e9a99085249bed84354ac513965877b380b25f54f1c6293ad4011",
-    "backend/src/ai/ai.service.ts": "068d096241ce6f71a5ae1fad575dbc1138f9b1ab6d3a3c7820ba1e8ca3e793ae",
+    "backend/src/ai/ai.service.ts": "063e95e17a78e23e902afe8364e2ab367f19bb5226b2a5308b2b72f40d5c34ec",
     "backend/src/ai/search-filter-contract.ts": "c5a2069778baacf2acaf9de36087009b9f3782a803b226b97a678cb4cc69a8d8",
-    "backend/src/chat/chat.service.ts": "d7b4609ceb0ba420aa155115e4560a2586fbce57569c741df2aa88d4fb9e694e",
-    "backend/src/chat/support-automatic-responses.ts": "53ab99775f2f166091f07363ce00210ebb6550912dc3973bd70d19c013df60b6",
+    "backend/src/chat/chat.service.ts": "fcdc44eda85e1430a1649fe110840ca754064a5b560f6ebebb3b89f348dfe175",
+    "backend/src/chat/support-automatic-responses.ts": "b06cb0169af9691ff4ee4117c9a869a01342cb95f73221d835bb7a1c97717bef",
     "backend/src/dealers/dealer-access.ts": "450e71e07124c41ff9fbe30cf041e264110e4a0142584eff3c9a2e8e3f8cabdf",
     "backend/src/dealers/dealers.service.ts": "1995c4cfa3ac32edc7412f234036624824f604c2f16f780f489958366ec04eca",
     "backend/src/listings/caravan-listings.spec.ts": "a6e463ff47452a2845d4dd91379f74ce07ef36db696180d2e371d90facec7ded",

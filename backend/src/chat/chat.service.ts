@@ -1,5 +1,5 @@
 import { SupportMessageEvents } from './support-message-events';
-import { supportReplyPlan, supportNeedsHumanReply, SUPPORT_UNAVAILABLE_REPLY, HUMAN_HANDOFF_REPLY, SUPPORT_HELP_OFFER } from './support-automatic-responses';
+import { supportReplyPlan, supportNeedsHumanReply, SUPPORT_ESCALATION_REPLIES, SUPPORT_UNAVAILABLE_REPLY, HUMAN_HANDOFF_REPLY, SUPPORT_HELP_OFFER } from './support-automatic-responses';
 import { BadRequestException, Optional, Injectable, NotFoundException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BlockChatRoomDto, CreateRoomDto, OpenDisputeDto, ReportChatMessageDto, SendChatAttachmentDto, SendMessageDto, UpdateChatReportDto } from './dto';
@@ -2018,6 +2018,34 @@ export class ChatService {
             unreadByRoom.set(group.chatRoomId, bySender);
         }
 
+        // A later AI answer must not hide an unresolved escalation. Batch the
+        // latest server escalation receipts and real staff replies for this page.
+        const supportRoomIds = role === UserRole.ADMIN
+            ? rooms.filter(room => room.context === ChatContext.SUPPORT && !room.supportClosedAt).map(room => room.id)
+            : [];
+        const pendingReview = new Set<string>();
+        if (supportRoomIds.length) {
+            const [escalations, staffReplies] = await Promise.all([
+                this.prisma.message.groupBy({
+                    by: ['chatRoomId'],
+                    where: { chatRoomId: { in: supportRoomIds }, deletedAt: null,
+                        aiGenerated: true, content: { in: SUPPORT_ESCALATION_REPLIES } },
+                    _max: { createdAt: true },
+                }),
+                this.prisma.message.groupBy({
+                    by: ['chatRoomId'],
+                    where: { chatRoomId: { in: supportRoomIds }, deletedAt: null,
+                        aiGenerated: false, sender: { role: UserRole.ADMIN } },
+                    _max: { createdAt: true },
+                }),
+            ]);
+            const staffByRoom = new Map(staffReplies.map(group => [group.chatRoomId, group._max.createdAt]));
+            for (const group of escalations) {
+                const staffAt = staffByRoom.get(group.chatRoomId);
+                if (group._max.createdAt && (!staffAt || group._max.createdAt > staffAt)) pendingReview.add(group.chatRoomId);
+            }
+        }
+
         // Add unread count and format response
         return Promise.all(
             rooms.map(async (room) => {
@@ -2068,7 +2096,7 @@ export class ChatService {
                 const lastMessage = room.messages[0] || null;
                 const needsReply = room.context === ChatContext.SUPPORT
                     && !room.supportClosedAt
-                    && supportNeedsHumanReply(lastMessage);
+                    && (pendingReview.has(room.id) || supportNeedsHumanReply(lastMessage));
 
                 return {
                     id: room.id,

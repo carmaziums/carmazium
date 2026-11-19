@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { ChatContext, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChatService } from './chat.service';
-import { HUMAN_HANDOFF_REPLY, SUPPORT_HELP_OFFER } from './support-automatic-responses';
+import { HUMAN_HANDOFF_REPLY, HUMAN_REVIEW_REPLY, SUPPORT_HELP_OFFER } from './support-automatic-responses';
 
 const integration = process.env.TRADE_POSTGRES_TEST === '1' ? describe : describe.skip;
 
@@ -81,6 +81,30 @@ integration('human-support request and receipt with disposable PostgreSQL', () =
         roomIds.push(room.id);
         return room;
     };
+
+    it('keeps staff review queued across AI follow-ups, then clears on staff reply or closure', async () => {
+        const room = await roomFor(UserRole.BUYER);
+        const add = (senderId: string, aiGenerated: boolean, content: string, second: number) => prisma.message.create({data:{
+            chatRoomId:room.id,senderId,aiGenerated,content,createdAt:new Date(`2026-11-19T01:00:${String(second).padStart(2,'0')}Z`),
+        }});
+        const pending = async () => (await service.getUserRooms(adminId)).find(r=>r.id===room.id)?.needsReply;
+        await add(botId,true,HUMAN_REVIEW_REPLY,1);
+        await add(customers.get(UserRole.BUYER)!,false,'How do I edit my advert?',2);
+        await add(botId,true,'Open My cars and choose Edit.',3);
+        expect(await pending()).toBe(true);
+        await add(adminId,false,'I have reviewed your account request.',4);
+        expect(await pending()).toBe(false);
+        // A customer's copied escalation receipt cannot create a pending staff
+        // review after their next ordinary question has been answered by AI.
+        await add(customers.get(UserRole.BUYER)!,false,HUMAN_REVIEW_REPLY,5);
+        await add(botId,true,'Here are the listing steps.',6);
+        expect(await pending()).toBe(false);
+        await add(botId,true,HUMAN_HANDOFF_REPLY,7);
+        await add(botId,true,'Here are some more listing steps.',8);
+        expect(await pending()).toBe(true);
+        await prisma.chatRoom.update({where:{id:room.id},data:{supportClosedAt:new Date()}});
+        expect(await pending()).toBe(false);
+    });
 
     it.each([UserRole.BUYER, UserRole.SELLER, UserRole.DEALER])(
         'saves one customer request and one matching support receipt for a %s',

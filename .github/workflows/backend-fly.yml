@@ -96,7 +96,7 @@ jobs:
         run: npm test -- --runInBand src/damage/damage.integration.spec.ts src/services/services.audit.integration.spec.ts src/analytics/valuation-reliability.integration.spec.ts src/warranties/warranties.integration.spec.ts src/listings/caravan.integration.spec.ts src/users/website-introduction.integration.spec.ts src/dealers/dealers.crm.integration.spec.ts src/chat/support-human-handoff.integration.spec.ts src/ai/mazium-support-dispatcher.integration.spec.ts
 
   intelligence-evaluation:
-    name: Evaluate MaziuM on 120 conversations and 5 account fixtures
+    name: Evaluate MaziuM on 120 conversations and 6 account fixtures
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [test-build, integration-security]
     runs-on: ubuntu-latest
