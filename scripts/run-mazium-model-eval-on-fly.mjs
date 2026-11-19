@@ -9,6 +9,7 @@ function add(relative){if(files[relative])return;const source=fs.readFileSync(pa
 add('dist/ai/ai.service.js');
 add('dist/chat/mazium-support-policy.js');
 files['run.cjs']=fs.readFileSync(path.join(root,'backend/evaluations/run-model-eval.cjs'),'utf8');
+files['evaluation-text.cjs']=fs.readFileSync(path.join(root,'backend/evaluations/evaluation-text.cjs'),'utf8');
 files['mazium-cases.json']=fs.readFileSync(path.join(root,'backend/evaluations/mazium-cases.json'),'utf8');
 const payload=gzipSync(Buffer.from(JSON.stringify(files))).toString('base64');
 const remote=`const fs=require('fs'),p=require('path');const d=fs.mkdtempSync('/tmp/mazium-eval-');const f=JSON.parse(require('zlib').gunzipSync(Buffer.from('${payload}','base64')));for(const [n,c] of Object.entries(f)){fs.mkdirSync(p.dirname(p.join(d,n)),{recursive:true});fs.writeFileSync(p.join(d,n),c)}fs.symlinkSync('/app/node_modules',p.join(d,'node_modules'));require(p.join(d,'run.cjs'));`;
