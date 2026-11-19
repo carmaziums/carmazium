@@ -90,6 +90,36 @@ describe('MaziuM authenticated tools', () => {
   expect(r.auctions[0]).toMatchObject({payoutState:expected,bankSettlementVerified:false});
   expect(r.auctions[0].stripePayoutTransferId).toBeUndefined();
  });
+ it('reads archived seller auction history without exposing private handover or buyer details', async () => {
+  const db=setup();db.auction.findMany.mockResolvedValue([{id:'auction',status:'ENDED',listing:{id:'listing',make:'Toyota',model:'Yaris',year:2015,deletedAt:new Date()}}]);
+  const result:any=await runMaziumTool(db,'alice','read_my_auctions',{});
+  const query=db.auction.findMany.mock.calls[0][0];
+  expect(query.where).toEqual({deletedAt:null,listing:{sellerId:'alice'}});
+  expect(query.take).toBe(11);
+  expect(JSON.stringify(query.select)).not.toMatch(/buyer|handover|address|phone|email|bank|reserve|image/i);
+  expect(result).toMatchObject({hasMore:false,auctions:[{status:'ENDED',listingArchived:true}]});
+  expect(result.auctions[0].listing.deletedAt).toBeUndefined();
+ });
+ it('reports the bounded history window without implying no older records exist', async () => {
+  const db=setup();db.auction.findMany.mockResolvedValue(Array.from({length:11},(_,i)=>({id:String(i),listing:{deletedAt:null}})));
+  const result:any=await runMaziumTool(db,'alice','read_my_auctions',{});
+  expect(result.hasMore).toBe(true);expect(result.auctions).toHaveLength(10);
+ });
+ it.each(['read_my_auctions','read_my_seller_bonuses'])('requires authentication and rejects foreign identifiers for %s', async name => {
+  const db=setup();
+  expect(await runMaziumTool(db,undefined,name,{})).toMatchObject({error:'SIGN_IN_REQUIRED'});
+  expect(await runMaziumTool(db,'alice',name,{sellerId:'bob'})).toMatchObject({error:'INVALID_ARGUMENTS'});
+  expect(db.auction.findMany).not.toHaveBeenCalled();
+ });
+ it('resolves staff auction history to permitted dealership inventory', async () => {
+  const db=setup('DEALER');db.dealerStaff.findFirst.mockResolvedValue({role:'SALES_AGENT',dealerProfile:{id:'d',userId:'owner',isVerified:true}});
+  await runMaziumTool(db,'staff','read_my_auctions',{});
+  expect(db.auction.findMany.mock.calls[0][0].where.listing.sellerId).toBe('owner');
+ });
+ it('keeps personal bonus history after a listing is archived', async () => {
+  const db=setup();await runMaziumTool(db,'alice','read_my_seller_bonuses',{});
+  expect(db.auction.findMany.mock.calls[0][0].where).toEqual({deletedAt:null,listing:{sellerId:'alice'}});
+ });
  it('retrieves selected facts without regex vocabulary matching', async () => {
   const r:any=await runMaziumTool(setup(),undefined,'read_platform_knowledge',{topics:['sale-handover-reward','vehicle-finance']});
   expect(r.map(x=>x.topic)).toEqual(['sale-handover-reward','vehicle-finance']);

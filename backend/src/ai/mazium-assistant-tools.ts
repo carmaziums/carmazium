@@ -4,6 +4,7 @@ import { sellerBonusEmailState } from '../admin/seller-bonus-email-state';
 import { PLATFORM_KNOWLEDGE } from './mazium-platform-knowledge';
 
 const PRIVATE_TOOLS: Record<string, string> = {
+ read_my_auctions: 'Read recent seller auction history, including ended/cancelled auctions whose listing was archived. Not buyer purchases or bids.',
  read_my_account: 'Read authenticated role, dealer bidding permissions and saved Stripe onboarding flag. No bank details.',
  read_my_listings: 'Read 10 recent listings owned by this user or their permitted dealership only.',
  read_my_seller_bonuses: 'Read 10 recent personally owned auction handover and bonus records. A recorded transfer is not bank settlement.',
@@ -47,9 +48,23 @@ export async function runMaziumTool(prisma: PrismaService, userId: string | unde
  if (actor && !hasDealerPermission(actor, 'VIEW_INVENTORY')) return { error: 'PERMISSION_REQUIRED', checked: false };
  const ownerId = actor?.ownerUserId ?? userId;
  if (name === 'read_my_listings') return { checkedAt: new Date().toISOString(), scope: '10 most recently updated owned listings; absence is not proof a listing never existed', listings: await prisma.listing.findMany({ where: { sellerId: ownerId, deletedAt: null }, orderBy: { updatedAt: 'desc' }, take: 10, select: { id: true, make: true, model: true, year: true, type: true, status: true, updatedAt: true } }) };
+ if (name === 'read_my_auctions') {
+  // Match findMyAuctions: an archived listing does not erase the seller's history.
+  const rows = await prisma.auction.findMany({
+   where: { deletedAt: null, listing: { sellerId: ownerId } },
+   orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 11,
+   select: { id: true, status: true, startTime: true, endTime: true,
+    listing: { select: { id: true, make: true, model: true, year: true, deletedAt: true } } },
+  });
+  return { checkedAt: new Date().toISOString(), scope: 'Up to 10 most recently created seller auctions, including archived listings. Not buyer bids or purchases.', hasMore: rows.length > 10,
+   auctions: rows.slice(0, 10).map(({ listing, ...auction }) => {
+    const { deletedAt, ...vehicle } = listing;
+    return { ...auction, listing: vehicle, listingArchived: !!deletedAt };
+   }), limitation: 'Ended or archived does not prove a sale, collection, bonus eligibility or payment. For older records use My Auctions.' };
+ }
  // Bonus records belong to this seller personally, not dealership staff.
- const rows = await prisma.auction.findMany({ where: { deletedAt: null, listing: { sellerId: userId, deletedAt: null } }, orderBy: { updatedAt: 'desc' }, take: 10, select: { id: true, status: true, buyerFeePaid: true, sellerFundsConfirmedAt: true, handoverSubmittedAt: true, handoverRejectedAt: true, sellerBonusReleased: true, manualPayoutConfirmedAt: true, stripePayoutTransferId: true, listing: { select: { make: true, model: true, year: true } } } });
- return { checkedAt: new Date().toISOString(), scope: '10 most recently updated owned auctions', auctions: rows.map(({ stripePayoutTransferId, manualPayoutConfirmedAt, ...r }) => ({ ...r, payoutState: r.sellerBonusReleased ? sellerBonusEmailState({ ...r, stripePayoutTransferId, manualPayoutConfirmedAt }) : 'NOT_APPROVED', bankSettlementVerified: false })) };
+ const rows = await prisma.auction.findMany({ where: { deletedAt: null, listing: { sellerId: userId } }, orderBy: { updatedAt: 'desc' }, take: 10, select: { id: true, status: true, buyerFeePaid: true, sellerFundsConfirmedAt: true, handoverSubmittedAt: true, handoverRejectedAt: true, sellerBonusReleased: true, manualPayoutConfirmedAt: true, stripePayoutTransferId: true, listing: { select: { make: true, model: true, year: true } } } });
+ return { checkedAt: new Date().toISOString(), scope: 'Up to 10 most recently updated personal seller auctions, including archived listings; not complete history or proof of bonus eligibility', auctions: rows.map(({ stripePayoutTransferId, manualPayoutConfirmedAt, ...r }) => ({ ...r, payoutState: r.sellerBonusReleased ? sellerBonusEmailState({ ...r, stripePayoutTransferId, manualPayoutConfirmedAt }) : 'NOT_APPROVED', bankSettlementVerified: false })) };
 }
 export function boundedConversation(messages: { role: 'user' | 'assistant'; content: string }[]) {
  let remaining = 24000;

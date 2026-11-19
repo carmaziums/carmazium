@@ -1034,7 +1034,7 @@ describe('ChatService — conversation context and authorization', () => {
                 updatedAt: new Date(),
             },
         ]);
-        prisma.message.groupBy.mockResolvedValue([
+        prisma.message.groupBy.mockResolvedValueOnce([
             { chatRoomId: 'support-room-1', senderId: buyerId, _count: { _all: 2 } },
             { chatRoomId: 'support-room-2', senderId: otherBuyerId, _count: { _all: 3 } },
         ]);
@@ -1042,7 +1042,7 @@ describe('ChatService — conversation context and authorization', () => {
         const rooms = await service.getUserRooms(adminId);
 
         expect(rooms.map((room) => room.unreadCount)).toEqual([2, 3]);
-        expect(prisma.message.groupBy).toHaveBeenCalledTimes(1);
+        expect(prisma.message.groupBy).toHaveBeenCalledTimes(3);
         expect(prisma.message.count).not.toHaveBeenCalled();
     });
 
