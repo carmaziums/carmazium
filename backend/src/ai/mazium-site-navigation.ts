@@ -18,6 +18,7 @@ CarMazium website navigation — these are verified, role-aware destinations:
   dealer /dashboard/dealer/auctions. New auctions and active auctions have different controls.
 - Platform administrators: Admin Control Panel -> Auctions at /dashboard/admin/auctions.
   This administrative oversight is distinct from verified-dealer bidding permissions.
+  Account Management: /dashboard/admin/users. Combine account type, dealer KYC, service category, service verification, account status and email filters with search. These are administrator-only controls.
   Warranty Orders: /dashboard/admin/warranty-orders. Trade Services -> Jobs: /dashboard/admin/services?tab=jobs.
   Admin accounts use these admin review pages rather than the personal My Warranties dashboard.
 - To BROWSE vehicles: /search. To browse live auctions: /auctions.
@@ -88,6 +89,7 @@ const VERIFIED_ROUTES = new Set([
     '/dashboard/user',
     '/dashboard/seller/auctions',
     '/dashboard/admin/auctions',
+    '/dashboard/admin/users',
     '/dashboard/admin/warranty-orders',
     '/dashboard/admin/services',
     '/dashboard/seller/add-listing',

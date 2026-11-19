@@ -19,17 +19,18 @@ export type PlatformKnowledgeTopic = {
 export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
     {
         id: 'accounts-and-roles',
-        triggers: /\b(?:sign ?up|register|account|login|log in|password|seller|buyer|trader|dealer|role|partner account|business account)\b/i,
+        triggers: /\b(?:sign ?up|register|accounts?|login|log in|password|seller|buyer|trader|dealer|role|partner account|business account)\b/i,
         facts: [
             'CarMazium supports individual buyer/seller accounts and verified motor-trade Partner/Dealer accounts.',
             'The same login can access its role-appropriate dashboard; never promise a customer has a particular permission or approval.',
             'Dealers need business verification before bidding at dealer-only auctions. Partner accounts manage eligible service capabilities.',
             'Within an approved dealership, the owner, dealer Admin and Sales Agent roles have bidding permission. A Finance Manager can view trade stock and pay auction/listing fees but cannot place bids. Sales Agents cannot pay auction/listing fees; the owner, Admin or Finance Manager handles those. Active staff use the dealership owner verification, not a separate staff dealership profile. These permissions do not override auction status.',
             'A platform administrator (account role ADMIN) is distinct from a dealership staff Admin. Platform administrators can view and manage auction records through Admin Control Panel -> Auctions at /dashboard/admin/auctions without dealer verification; this administrative access does not grant dealer bidding permission. A false dealer-trading permission must not be described as no administrative auction access. MaziuM personal-record tools remain owner-scoped even for platform administrators and cannot perform admin mutations or search all customers.',
+            'Platform administrators can filter Account Management at /dashboard/admin/users by account type (including all service providers), dealer KYC, service category (collection/delivery/recovery, inspection, finance or warranty), service verification, account status and email verification. Filters combine with name, email or business search across all accounts. Dealer KYC, current service approval and email verification are separate; an active account is not necessarily verified. This admin page does not give MaziuM permission to search other users or change their accounts.',
             'Account/profile settings: /profile. It contains personal/business details, verification, notification choices, payouts, appearance and account/security controls.',
             'Only a successful authenticated account tool can establish recorded dealer approval and permissions. It cannot inspect passwords or private KYC documents.'
         ].join(' '),
-        sources: ['src/app/profile/page.tsx','src/app/dashboard/partner/page.tsx','src/app/pricing/traders/page.tsx','backend/src/dealers/dealer-access.ts','backend/src/admin/admin.controller.ts','src/app/dashboard/admin/auctions/page.tsx']
+        sources: ['src/app/profile/page.tsx','src/app/dashboard/partner/page.tsx','src/app/pricing/traders/page.tsx','backend/src/dealers/dealer-access.ts','backend/src/admin/admin.controller.ts','src/app/dashboard/admin/auctions/page.tsx','src/app/dashboard/admin/users/page.tsx','src/components/dashboard/AccountFilters.tsx','backend/src/admin/admin-user-filters.ts']
     },
     {
         id: 'create-new-listing',
