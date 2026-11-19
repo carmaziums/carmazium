@@ -33,7 +33,7 @@ export function hasSensitiveSupportContent(message: string): boolean {
 // request to the assistant; retain requests later in a compound question.
 const ACTION_REQUEST = String.raw`(?:^\s*|[.!?;]\s*|\b(?:and|also|then)\s+|\b(?:can|could|would|will)\s+you\s+|\b(?:want|need|ask)\s+(?:you|(?:a |the |your )?(?:human|agent|support team|staff))\s+to\s+)(?:please\s+)?`;
 const STAFF_ACTION = [
-    new RegExp(ACTION_REQUEST + String.raw`(?:send|release|approve|process|make|issue|pay|expedite|guarantee)\b[^.!?;]{0,45}\b(?:payout|bonus|reward|£?100|money|payment)\b`, 'i'),
+    new RegExp(ACTION_REQUEST + String.raw`(?:send|release|approve|process|make|issue|pay|expedite|guarantee)\s+(?:(?:me|my|our|the|this|that|a|an|your|seller|pending|outstanding|full|entire|approved|him|her|them|his|their)\s+){0,5}(?:payout|bonus|reward|£?100|money|payment)\b`, 'i'),
     /^(?:please )?(?:change|update) my bank (?:account|details)\b/i,
     /\b(?:delete|close) (?:my |the )?account\b/i,
     /\b(?:change|waive|reduce|cancel) (?:the |my )?(?:fee|payment|invoice|role)\b/i,

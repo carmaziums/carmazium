@@ -1744,7 +1744,7 @@
       }
     ],
     "must": [
-      "cannot|can.t|not.*bid",
+      "\\bno\\b|cannot|can.t|not.*bid",
       "retail",
       "finance",
       "warranty"

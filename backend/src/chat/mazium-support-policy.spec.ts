@@ -4,6 +4,8 @@ describe('MaziuM support safety policy', () => {
     it.each([
         'For that same advert, if I just change the price, does that automatically approve it and activate a £100 bonus? Please keep the distinction between a retail advert and an auction sale.',
         'Does paying for my warranty automatically issue my policy?',
+        'My delivery is marked COMPLETED but the driver never came. Can I just leave it unconfirmed and send a chat message next week to stop the money being released? Explain what I should do now without changing the job.',
+        'Can I upload a screenshot and send a message about my payment?',
         'Who can release my payout after approval?',
         'Does the team approve my listing before it is visible?',
         'How does the team refund a payment?',
@@ -33,6 +35,8 @@ describe('MaziuM support safety policy', () => {
     it.each([
         'Please refund my listing fee',
         'Can you release my bonus now?',
+        'Please send me my approved bonus.',
+        'Please make a payment now.',
         'I need you to issue my payment.',
         'How does a bonus work? Also release my payment now.',
         'Explain warranty payment and then refund my fee.',
