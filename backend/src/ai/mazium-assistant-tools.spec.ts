@@ -33,7 +33,7 @@ describe('MaziuM authenticated tools', () => {
   expect(Object.keys(query.select).sort()).toEqual(['id','serviceType','isRecovery','status','requestedFor','acceptedAt','startedAt','completedAt','confirmedAt','cancelledAt','updatedAt','payment'].sort());
   expect(query.select.payment.select).toEqual({status:true,grossPence:true,paidAt:true,releasedAt:true,refundedAt:true});
   expect(r.jobs[0]).toMatchObject({status:'COMPLETED',confirmedAt:null,payment:{status:'PAID',releasedAt:null}});
-  expect(r.scope).toContain('Not assigned provider');expect(r.limitation).toContain('does not verify bank settlement');
+  expect(r.scope).toContain('Not assigned provider');expect(r.limitation).toContain('does not verify bank settlement');expect(r.limitation).toContain('48 hours');expect(r.limitation).toContain('does not freeze release');
  });
  it('never runs anonymous private lookups', async () => {
   const db = setup();
