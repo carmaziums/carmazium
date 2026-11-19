@@ -77,6 +77,14 @@ describe('MaziuM source-verified public platform knowledge', () => {
         expect(output).not.toContain('[accounts-and-roles]');
     });
 
+    it('explains account filters without expanding assistant account access', () => {
+        const output = platformKnowledgeFor('How can I filter accounts?');
+        expect(output).toContain('/dashboard/admin/users');
+        expect(output).toContain('Dealer KYC, current service approval and email verification are separate');
+        expect(output).toContain('does not give MaziuM permission to search other users');
+        expect(hasUnverifiedNavigationPath('Open /dashboard/admin/users')).toBe(false);
+    });
+
     it('never treats a new listing path as the editor', () => {
         const reply = verifiedNavigationReply('how can i update existing listing?');
         expect(reply).toContain('/dashboard/user?tab=cars');

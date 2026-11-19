@@ -1,10 +1,12 @@
-﻿"use client"
+"use client"
 
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Users, Loader2, ArrowLeft, MoreHorizontal, ShieldAlert, BadgeCheck, Ban, LockKeyhole, LockKeyholeOpen, ShieldCheck, X, Landmark, CreditCard, AlertCircle, Search, MessageCircle } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { AccountFilters, AccountServices } from "@/components/dashboard/AccountFilters"
+import type { AdminUserFilters } from "@/lib/adminApi"
 import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminUsers, updateUserRole, banUser, unbanUser, lockUser, unlockUser } from "@/lib/adminApi"
@@ -25,6 +27,12 @@ export default function AdminUsersPage() {
     const [searchInput, setSearchInput] = React.useState("")
     const [selectedUserId, setSelectedUserId] = React.useState<string | null>(null)
     const menuRef = React.useRef<HTMLDivElement>(null)
+    const [filters, setFilters] = React.useState<AdminUserFilters>({})
+    const requestId = React.useRef(0)
+    const hasFilters = !!search || Object.values(filters).some(Boolean)
+    const clearFilters = () => {
+        setFilters({}); setSearch(""); setSearchInput(""); setPage(1)
+    }
     const limit = 20
 
     React.useEffect(() => {
@@ -34,24 +42,32 @@ export default function AdminUsersPage() {
         }
     }, [user, profile, authLoading, router])
 
-    const fetchUsers = async () => {
+    const fetchUsers = React.useCallback(async () => {
+        const id = ++requestId.current
         try {
             setLoading(true)
             setError(null)
-            const result = await getAdminUsers(page, limit, search || undefined)
+            const result = await getAdminUsers(page, limit, search || undefined, filters)
+            if (id !== requestId.current) return
+            const lastPage = Math.max(1, Math.ceil((result.pagination?.total ?? 0) / limit))
+            if (page > lastPage) { setPage(lastPage); return }
             setUsers(result.data || [])
             // Backend returns PaginatedResponse: { data, pagination: { total, ... } }
             setTotal(result.pagination?.total ?? 0)
         } catch (err: any) {
+            if (id !== requestId.current) return
+            setUsers([])
+            setTotal(0)
             setError(err.message || "Failed to load system users.")
         } finally {
-            setLoading(false)
+            if (id === requestId.current) setLoading(false)
         }
-    }
+    }, [page, search, filters])
 
     React.useEffect(() => {
-        if (profile?.role === 'ADMIN') fetchUsers()
-    }, [profile, page, search])
+        if (profile?.role === 'ADMIN') void fetchUsers()
+        return () => { requestId.current += 1 }
+    }, [profile?.role, fetchUsers])
 
     // Close dropdown on outside click
     React.useEffect(() => {
@@ -68,7 +84,7 @@ export default function AdminUsersPage() {
         try {
             setUpdating(userId)
             await updateUserRole(userId, newRole)
-            setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u))
+            await fetchUsers()
         } catch (err: any) {
             alert(err.message || 'Failed to update user role')
         } finally {
@@ -93,6 +109,7 @@ export default function AdminUsersPage() {
                 await unlockUser(userId)
                 setUsers(prev => prev.map(u => u.id === userId ? { ...u, lockoutUntil: null } : u))
             }
+            await fetchUsers()
         } catch (err: any) {
             alert(err.message || `Failed to ${action} user`)
         } finally {
@@ -113,7 +130,7 @@ export default function AdminUsersPage() {
         }
     }
 
-    if (authLoading || (user && !profile) || (loading && users.length === 0)) {
+    if (authLoading || (user && !profile)) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -131,7 +148,7 @@ export default function AdminUsersPage() {
                 <DashboardSidebar role="admin" userName={userName} userType="Super Admin" />
 
                 <div className="flex-1 space-y-8 min-w-0">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[var(--bg-input)] p-6 rounded-2xl border border-[var(--border-default)] backdrop-blur-md">
+                    <div className="flex flex-col 2xl:flex-row justify-between items-start 2xl:items-center gap-4 bg-[var(--bg-input)] p-6 rounded-2xl border border-[var(--border-default)] backdrop-blur-md">
                         <div>
                             <Link href="/dashboard/admin" className="inline-flex items-center text-[var(--text-muted)] hover:text-primary dark:hover:text-white mb-2 text-sm transition-colors">
                                 <ArrowLeft size={16} className="mr-1" /> Back to Overview
@@ -140,19 +157,20 @@ export default function AdminUsersPage() {
                                 <Users className="text-blue-400 hidden sm:block" size={28} />
                                 Account Management
                             </h1>
-                            <p className="text-[var(--text-muted)] text-sm mt-1">{total.toLocaleString()} total users</p>
+                            <p className="text-[var(--text-muted)] text-sm mt-1">{loading ? "Loading accounts…" : `${total.toLocaleString()} ${hasFilters ? "matching accounts" : "total accounts"}`}</p>
                         </div>
 
                         {/* Search */}
                         <form
                             onSubmit={(e) => { e.preventDefault(); setPage(1); setSearch(searchInput.trim()) }}
-                            className="flex items-center gap-2 w-full sm:w-auto"
+                            className="flex items-center gap-2 w-full 2xl:w-auto"
                         >
-                            <div className="relative flex-1 sm:w-64">
+                            <div className="relative flex-1 min-w-0 2xl:w-64">
                                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
                                 <input
                                     type="text"
-                                    placeholder="Search name or email…"
+                                    placeholder="Name, email or business…"
+                                    aria-label="Search accounts"
                                     value={searchInput}
                                     onChange={e => setSearchInput(e.target.value)}
                                     className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] text-sm rounded-xl pl-9 pr-3 py-2 placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-blue-500 transition-colors"
@@ -177,13 +195,23 @@ export default function AdminUsersPage() {
                         </form>
                     </div>
 
+                    <AccountFilters filters={filters} hasFilters={hasFilters} onClear={clearFilters}
+                        onChange={(key, value) => { setFilters(current => ({ ...current, [key]: value })); setPage(1) }} />
+
                     {error && (
-                        <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200">
-                            <strong>System Error:</strong> {error}
+                        <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-700 dark:text-red-200">
+                            <p>{error}</p>
+                            <button type="button" onClick={() => void fetchUsers()} className="min-h-11 mt-2 px-3 underline font-semibold">Try again</button>
                         </div>
                     )}
 
-                    <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
+                    {loading && <p role="status" className="flex items-center gap-2 text-sm text-[var(--text-muted)]"><Loader2 size={18} className="animate-spin" /> Loading accounts…</p>}
+                    {!loading && !error && users.length === 0 && <div role="status" className="rounded-xl border border-[var(--border-default)] p-6 text-center">
+                        <p className="font-semibold">No accounts match these filters.</p>
+                        <button onClick={clearFilters} className="min-h-11 mt-2 px-3 text-primary underline">Clear all filters</button>
+                    </div>}
+
+                    <div aria-busy={loading} className={`glass-card ${loading ? 'hidden' : ''} overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl`}>
 
                         {/* ── Mobile cards (< sm) ── */}
                         <div className="sm:hidden divide-y divide-[var(--border-default)]">
@@ -208,6 +236,7 @@ export default function AdminUsersPage() {
                                                     </span>
                                                 </div>
                                                 <p className="text-xs text-[var(--text-muted)] truncate">{u.email}</p>
+                                                <AccountServices profile={u.contractorProfile} />
                                                 {/* KYC state for dealers — the "OK" pill above is only
                                                     account health (not banned/locked) and shows for
                                                     everyone, so on its own it read as "verified". */}
@@ -316,6 +345,7 @@ export default function AdminUsersPage() {
                                                                     )
                                                                 )}
                                                             </div>
+                                                            <AccountServices profile={u.contractorProfile} />
                                                         </div>
                                                     </div>
                                                 </td>
@@ -451,7 +481,7 @@ export default function AdminUsersPage() {
                             </table>
                         </div>{/* end hidden sm:block */}
 
-                        <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-input)] flex items-center justify-between text-xs font-medium text-[var(--text-muted)]">
+                        <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-input)] flex flex-col sm:flex-row gap-3 items-center justify-between text-xs font-medium text-[var(--text-muted)]">
                             <span>
                                 {total === 0 ? "No users found" : `Showing ${(page - 1) * limit + 1}–${Math.min(page * limit, total)} of ${total.toLocaleString()}`}
                                 {search && <span className="ml-2 text-blue-400">· filtered by "{search}"</span>}
@@ -460,13 +490,13 @@ export default function AdminUsersPage() {
                                 <button
                                     className="px-3 py-1 bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] rounded disabled:opacity-40 transition-colors"
                                     onClick={() => setPage(p => Math.max(1, p - 1))}
-                                    disabled={page === 1}
+                                    disabled={loading || page === 1}
                                 >Prev</button>
                                 <span className="text-[var(--text-secondary)]">pg {page} / {Math.max(1, Math.ceil(total / limit))}</span>
                                 <button
                                     className="px-3 py-1 bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] rounded disabled:opacity-40 transition-colors"
                                     onClick={() => setPage(p => p + 1)}
-                                    disabled={page * limit >= total}
+                                    disabled={loading || page * limit >= total}
                                 >Next</button>
                             </div>
                         </div>

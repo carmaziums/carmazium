@@ -49,14 +49,26 @@ export class AdminController {
     @ApiOperation({ summary: 'List all users' })
     @ApiQuery({ name: 'page', required: false })
     @ApiQuery({ name: 'limit', required: false })
-    @ApiQuery({ name: 'search', required: false, description: 'Filter by name or email' })
+    @ApiQuery({ name: 'search', required: false, description: 'Filter by name, email or business' })
+    @ApiQuery({ name: 'accountType', required: false })
+    @ApiQuery({ name: 'dealerVerification', required: false })
+    @ApiQuery({ name: 'serviceType', required: false })
+    @ApiQuery({ name: 'providerStatus', required: false })
+    @ApiQuery({ name: 'accountStatus', required: false })
+    @ApiQuery({ name: 'emailVerification', required: false })
     async getAllUsers(
         @Query('page') page = 1,
         @Query('limit') limit = 20,
         @Query('search') search?: string,
+        @Query('accountType') accountType?: string,
+        @Query('dealerVerification') dealerVerification?: string,
+        @Query('serviceType') serviceType?: string,
+        @Query('providerStatus') providerStatus?: string,
+        @Query('accountStatus') accountStatus?: string,
+        @Query('emailVerification') emailVerification?: string,
     ): Promise<PaginatedResponse<any>> {
-        const { data, total } = await this.adminService.getAllUsers(Number(page), Number(limit), search);
-        return new PaginatedResponse(data, total, Number(page), Number(limit));
+        const { data, total } = await this.adminService.getAllUsers(Number(page), Number(limit), search, { accountType, dealerVerification, serviceType, providerStatus, accountStatus, emailVerification });
+        return Object.assign(new PaginatedResponse(data, total, Number(page), Number(limit)), { filterVersion: 1 });
     }
 
     @Get('users/:id')
