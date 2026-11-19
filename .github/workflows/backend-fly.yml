@@ -86,6 +86,7 @@ jobs:
       TRADE_POSTGRES_TEST: '1'
       WARRANTY_POSTGRES_TEST: '1'
       CARAVAN_POSTGRES_TEST: '1'
+      GUEST_ENQUIRY_POSTGRES_TEST: '1'
       SUPABASE_URL: https://synthetic-damage-qa.supabase.co
     steps:
       - uses: actions/checkout@v4
@@ -98,7 +99,7 @@ jobs:
       - name: Prepare disposable PostgreSQL schema only
         run: npx prisma db push --skip-generate
       - name: Test owner, outsider, photo and dealer role with real transactions
-        run: npm test -- --runInBand src/damage/damage.integration.spec.ts src/services/services.audit.integration.spec.ts src/analytics/valuation-reliability.integration.spec.ts src/warranties/warranties.integration.spec.ts src/listings/caravan.integration.spec.ts src/users/website-introduction.integration.spec.ts src/dealers/dealers.crm.integration.spec.ts src/chat/support-human-handoff.integration.spec.ts src/ai/mazium-support-dispatcher.integration.spec.ts
+        run: npm test -- --runInBand src/damage/damage.integration.spec.ts src/services/services.audit.integration.spec.ts src/analytics/valuation-reliability.integration.spec.ts src/warranties/warranties.integration.spec.ts src/listings/caravan.integration.spec.ts src/listings/guest-enquiry.integration.spec.ts src/users/website-introduction.integration.spec.ts src/dealers/dealers.crm.integration.spec.ts src/chat/support-human-handoff.integration.spec.ts src/ai/mazium-support-dispatcher.integration.spec.ts
 
   intelligence-evaluation:
     name: Evaluate MaziuM on 142 conversations and 11 account fixtures

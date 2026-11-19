@@ -15,8 +15,11 @@ export function parseRetailPage(value: string | string[] | undefined): number | 
 
 // A real HTML catalogue complements the interactive search. Every API page is
 // reachable by links; an upstream outage must never masquerade as empty stock.
-export const getRetailCatalogue = cache(async (page: number) => {
+export const getRetailCatalogue = cache(async (page: number, make = "", location = "") => {
     const query = new URLSearchParams({ page: String(page), limit: String(RETAIL_CATALOGUE_PAGE_SIZE), sortBy: "newest" })
+    if (make) query.set("make", make)
+    if (location) query.set("location", location)
+    if (make || location) query.set("vehicleType", "CAR")
     const response = await serverBackendFetch(`/listings?${query}`, { next: { revalidate: 300 } }, { timeoutMs: 8_000, retries: 1 })
     if (!response.ok) throw new Error(`[retail catalogue] Upstream unavailable (${response.status})`)
     const payload = await response.json()

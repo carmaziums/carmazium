@@ -226,6 +226,7 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
         { href: "/dashboard/warranties", label: "My Warranties", icon: ShieldCheck, section: "Buying" },
         { href: "/services/jobs", label: "Delivery & Inspections", icon: Briefcase, section: "Services" },
         { href: "/dashboard/cancellations", label: "Sale Cancellations", icon: ShieldCheck, section: "Account" },
+        { href: "/dashboard/enquiries", label: "Guest enquiries", icon: MessageSquare, section: "Selling" },
         { href: "/dashboard/user?tab=messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account", activePrefixes: ["/dashboard/buyer/messages", "/dashboard/seller/messages"] },
         { href: "/profile", label: "Account Settings", icon: Settings, section: "Account" },
     ]

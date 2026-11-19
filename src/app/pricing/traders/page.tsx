@@ -68,6 +68,7 @@ export default function TraderPricingPage() {
             />
 
             <section className="container mx-auto px-5 py-16 md:py-20">
+                <p className="mx-auto mb-6 max-w-5xl"><Link href="/become-a-partner" className="font-semibold text-primary underline">See how to join and what to prepare</Link></p>
                 <div className="mx-auto grid max-w-5xl gap-5 md:grid-cols-2">
                     <article className="flex h-full flex-col rounded-2xl border border-primary/35 bg-gradient-to-b from-primary/[0.08] to-[var(--bg-card)] p-7 shadow-[var(--shadow-card)]">
                         <div className="min-h-[150px] border-b border-[var(--border-default)] pb-6">

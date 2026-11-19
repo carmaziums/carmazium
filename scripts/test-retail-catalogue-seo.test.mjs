@@ -29,6 +29,7 @@ function app(fetch) {
     '@/components/seo/RetailVehicleJsonLd': seo,
   });
   const page = load('src/app/used-cars/page.tsx', {
+    '@/lib/retailCollections': { getRetailCollections: async () => ({ makes: [], locations: [] }), collectionPath: () => '' },
     '@/lib/retailCatalogue': catalogue, '@/components/seo/RetailVehicleJsonLd': seo,
     'next/navigation': { notFound() { throw new Error('404'); } },
     'next/link': { default: ({ href, children, ...props }) => React.createElement('a', { href, ...props }, children) },

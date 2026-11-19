@@ -1,3 +1,4 @@
+import { getRetailCollections, collectionPath } from "@/lib/retailCollections"
 import type { MetadataRoute } from "next"
 import { serverBackendFetch } from "@/lib/serverBackendFetch"
 import { businessSpotlights } from "@/lib/businessSpotlights"
@@ -29,6 +30,7 @@ const STATIC_ROUTES = [
     "/sell",
     "/pricing",
     "/pricing/traders",
+    "/become-a-partner",
     "/about",
     "/download-app",
     "/contact",
@@ -170,9 +172,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: route === "" ? 1.0 : route === "/search" || route === "/sell" ? 0.9 : 0.7,
     }))
 
-    const [listings, blogPosts] = await Promise.all([
+    const [listings, blogPosts, collections] = await Promise.all([
         fetchSitemapRecords("listings", MAX_LISTING_URLS),
         fetchSitemapRecords("blog", MAX_BLOG_URLS),
+        getRetailCollections(true),
     ])
 
     const listingEntries = listings.map((listing) => ({
@@ -192,6 +195,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return [
         ...staticEntries,
         { url: BASE_URL + "/blog", changeFrequency: "weekly" as const, priority: 0.7 },
+        ...(["makes", "locations"] as const).flatMap(kind => collections[kind].filter(c => c.count > 0).map(c => ({ url: BASE_URL + collectionPath(kind, c.slug), changeFrequency: "daily" as const, priority: 0.7 }))),
         ...listingEntries,
         ...blogEntries,
     ]
