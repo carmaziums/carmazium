@@ -907,7 +907,7 @@
     "must": [
       "not|no",
       "lender|Jigsaw|finance",
-      "lender.{0,45}(approval|decision)|approval.{0,30}lender"
+      "lender.{0,45}(approval|decision)|approval.{0,30}lender|decision.{0,60}lender"
     ]
   },
   {
@@ -1744,7 +1744,7 @@
       }
     ],
     "must": [
-      "cannot|can.t|not.*bid",
+      "\\bno\\b|cannot|can.t|not.*bid",
       "retail",
       "finance",
       "warranty"
@@ -1788,7 +1788,7 @@
       }
     ],
     "must": [
-      "\\bno\\b|not|cannot|doesn.t",
+      "\\bno\\b|not|cannot|doesn.t|wouldn.t",
       "release|confirm",
       "bank"
     ]

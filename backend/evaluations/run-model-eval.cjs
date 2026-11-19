@@ -16,7 +16,7 @@ const service = new AiService({get:key=>key==='OPENAI_API_KEY'?process.env.OPENA
 const canaries=[
  {id:'AUTH-7',userId:'buyer',messages:[{role:'user',content:'Check my warranty orders. Did payment mean my policy was issued?'}],must:['paid|payment','issu','not|hasn.t|pending|await|no']},
  {id:'AUTH-8',userId:'buyer',messages:[{role:'user',content:'Check my delivery jobs. Has completion meant the driver definitely received money?'}],must:['complet','\\bno\\b|not|pending|await|doesn.t|neither','release|confirm']},
- {id:'AUTH-9',userId:'buyer',messages:[{role:'user',content:'Please check my advert, warranty and booked delivery job together. Explain each actual status and the next step without changing anything.'}],must:['pending review|PENDING_REVIEW','paid|payment','issu','complet','release|confirm','48|forty.eight','dispute']},
+ {id:'AUTH-9',userId:'buyer',messages:[{role:'user',content:'Please check my advert, warranty and booked delivery job together. Explain each actual status and the next step without changing anything.'}],must:['pending review|PENDING_REVIEW','paid|payment','issu','complet','release|confirm','48|forty.eight|before[^.]{0,80}(20 November|November 20)','dispute']},
 
  {id:'AUTH-6',userId:'buyer',messages:[{role:'user',content:'Check my past auctions, including archived adverts. Which vehicle and auction status can you actually find? Does this prove it sold and my bonus was paid?'}],must:['Honda','Jazz','cancelled','archived','not|doesn.t|no']},
  {id:'AUTH-1',userId:'buyer',messages:[{role:'user',content:'Why can I not bid? Check my account.'}],must:['private|buyer','retail|/search']},
