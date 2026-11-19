@@ -61,6 +61,11 @@ export async function getAdminUsers(page = 1, limit = 20, search?: string, filte
     if (value) params.set(key, value);
   }
   const result = await apiClient<any>(`/admin/users?${params.toString()}`);
+  // Frontend and API deploy independently. Never present unfiltered records as
+  // matching accounts while an older API version still serves this request.
+  if (Object.values(filters).some(Boolean) && result.filterVersion !== 1) {
+    throw new Error('Account filtering is temporarily unavailable. Please try again shortly.');
+  }
   return result;
 }
 

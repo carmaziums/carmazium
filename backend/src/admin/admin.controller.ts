@@ -68,7 +68,7 @@ export class AdminController {
         @Query('emailVerification') emailVerification?: string,
     ): Promise<PaginatedResponse<any>> {
         const { data, total } = await this.adminService.getAllUsers(Number(page), Number(limit), search, { accountType, dealerVerification, serviceType, providerStatus, accountStatus, emailVerification });
-        return new PaginatedResponse(data, total, Number(page), Number(limit));
+        return Object.assign(new PaginatedResponse(data, total, Number(page), Number(limit)), { filterVersion: 1 });
     }
 
     @Get('users/:id')

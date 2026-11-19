@@ -200,7 +200,8 @@ export default function AdminUsersPage() {
 
                     {error && (
                         <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-700 dark:text-red-200">
-                            <strong>System Error:</strong> {error}
+                            <p>{error}</p>
+                            <button type="button" onClick={() => void fetchUsers()} className="min-h-11 mt-2 px-3 underline font-semibold">Try again</button>
                         </div>
                     )}
 

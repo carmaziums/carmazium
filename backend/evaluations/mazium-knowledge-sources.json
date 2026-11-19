@@ -3,7 +3,7 @@
   "sources": {
     "backend/prisma/schema.prisma": "096f6a9e2deb2749d4a761a40a792f5a4e0531814e26b01f2bbf55e55b600683",
     "backend/src/admin/admin-user-filters.ts": "0f7afcf5f18e79666b69f346dda04add2024e42fbf71cca4aefb4bd5221118c4",
-    "backend/src/admin/admin.controller.ts": "8d85927c327f278612416e0163589c473507c207312c7778a0cbaeb304999c40",
+    "backend/src/admin/admin.controller.ts": "b45767e52f91b61362a4156efe382dc69eb48f483d97a96d58d08351ef175705",
     "backend/src/ai/ai.controller.ts": "9ff65932480e9a99085249bed84354ac513965877b380b25f54f1c6293ad4011",
     "backend/src/ai/ai.service.ts": "1e5392a6ee7c02b942f993f70b08a8af81eb2cfff6f6548e3aba0a2346976e24",
     "backend/src/ai/mazium-assistant-tools.ts": "117233dadd8e6cb157bde72d3976fe667841f65da363fb28fba04b7730070f33",
@@ -23,7 +23,7 @@
     "src/app/auth/login/page.tsx": "cbb780d0482668d587085e85526fc818e09daa8ff382107836fd8957ccf2b3b6",
     "src/app/checkout/page.tsx": "c01b2ddd36abaf9cf200c3d26e9e4fa286565e1455219fca3855cdfa70cc49e7",
     "src/app/dashboard/admin/auctions/page.tsx": "11666178597849c4279e0e7e69e0f81ba689b88c3ee1a0e64ba621f1858ec38b",
-    "src/app/dashboard/admin/users/page.tsx": "b980dfa5fb8135c727930e234a0e315ce99987b07fe3f62d25c8e941b31f8151",
+    "src/app/dashboard/admin/users/page.tsx": "9b1d03e6cd72759cae9cd27cf602a836b2fabcdb40619cd9df7a4c8804a155c5",
     "src/app/dashboard/admin/warranty-orders/page.tsx": "4b8978c7d0761228cad9175fe0b2567c780345edfdbc5adab1cdff42db11057a",
     "src/app/dashboard/buyer/history/page.tsx": "37631739ef8f8339dec5f70ab4941df55c50ffc180c037b9029e35a7daed45fa",
     "src/app/dashboard/buyer/offers/page.tsx": "1c805225124ffe7e249f2422581b5702ac89c2f67f0a343fcee74ab6447aaa11",
