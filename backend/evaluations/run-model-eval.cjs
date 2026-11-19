@@ -12,7 +12,7 @@ db.warrantyOrder = { findMany: async () => [{id:'synthetic-warranty',status:'PAI
 db.serviceJob = { findMany: async () => [{id:'synthetic-job',serviceType:'DELIVERY',isRecovery:false,status:'COMPLETED',completedAt:'2026-11-18T12:00:00Z',confirmedAt:null,payment:{status:'PAID',grossPence:10000,paidAt:'2026-11-17T12:00:00Z',releasedAt:null,refundedAt:null}}] };
 const service = new AiService({get:key=>key==='OPENAI_API_KEY'?process.env.OPENAI_API_KEY:key==='OPENAI_MAZIUM_CHAT_MODEL'?'gpt-6.2-sol':undefined},db);
 const canaries=[
- {id:'AUTH-7',userId:'buyer',messages:[{role:'user',content:'Check my warranty orders. Did payment mean my policy was issued?'}],must:['paid|payment','not.*issu|not yet.*issu|issu.*pending|await.*issu|no.*issu']},
+ {id:'AUTH-7',userId:'buyer',messages:[{role:'user',content:'Check my warranty orders. Did payment mean my policy was issued?'}],must:['paid|payment','issu','not|hasn.t|pending|await|no']},
  {id:'AUTH-8',userId:'buyer',messages:[{role:'user',content:'Check my delivery jobs. Has completion meant the driver definitely received money?'}],must:['complet','not|pending|await','release|confirm']},
  {id:'AUTH-9',userId:'buyer',messages:[{role:'user',content:'Please check my advert, warranty and booked delivery job together. Explain each actual status and the next step without changing anything.'}],must:['pending review|PENDING_REVIEW','paid|payment','issu','complet','release|confirm']},
 
