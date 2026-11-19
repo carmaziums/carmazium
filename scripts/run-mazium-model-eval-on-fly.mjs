@@ -7,6 +7,7 @@ import {spawnSync} from 'node:child_process';
 const root=path.resolve(import.meta.dirname,'..'), files={};
 function add(relative){if(files[relative])return;const source=fs.readFileSync(path.join(root,'backend',relative),'utf8');files[relative]=source;for(const m of source.matchAll(/require\(["'](\.[^"']+)["']\)/g)){let p=path.posix.normalize(path.posix.join(path.posix.dirname(relative),m[1]));if(!p.endsWith('.js'))p+='.js';add(p);}}
 add('dist/ai/ai.service.js');
+add('dist/chat/mazium-support-policy.js');
 files['run.cjs']=fs.readFileSync(path.join(root,'backend/evaluations/run-model-eval.cjs'),'utf8');
 files['mazium-cases.json']=fs.readFileSync(path.join(root,'backend/evaluations/mazium-cases.json'),'utf8');
 const payload=gzipSync(Buffer.from(JSON.stringify(files))).toString('base64');
