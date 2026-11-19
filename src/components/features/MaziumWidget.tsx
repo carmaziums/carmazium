@@ -78,7 +78,6 @@ export function MaziumWidget() {
     const [reportedResponses, setReportedResponses] = React.useState<Set<string>>(new Set())
     const transcriptRef = React.useRef<HTMLDivElement>(null)
     const [viewport, setViewport] = React.useState<{height: number; top: number} | null>(null)
-    const messagesEndRef = React.useRef<HTMLDivElement>(null)
     const greetingIntervalRef = React.useRef<NodeJS.Timeout | null>(null)
 
     React.useEffect(() => {
@@ -288,15 +287,15 @@ export function MaziumWidget() {
                 }}
             >
                 {/* Header */}
-                <div className="shrink-0 bg-gradient-to-r from-slate-900 to-slate-800 p-4 text-white flex justify-between items-center">
+                <div className="shrink-0 bg-gradient-to-r from-slate-900 to-slate-800 px-3 py-2 lg:p-4 text-white flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 relative">
+                        <div className="w-8 h-8 lg:w-10 lg:h-10 relative">
                             <Image src="/assets/images/mazium-bot-3d.png" alt="Mazium" width={40} height={40} className="w-full h-full object-contain" unoptimized />
                             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-slate-900" />
                         </div>
                         <div>
                             <h3 className="font-bold text-sm">MaziuM AI</h3>
-                            <p className="text-xs text-gray-300">
+                            <p className="hidden lg:block text-xs text-gray-300">
                                 CarMazium assistant
                             </p>
                         </div>
@@ -304,14 +303,14 @@ export function MaziumWidget() {
                     <button
                         onClick={() => setIsOpen(false)}
                         aria-label="Close MaziuM chat"
-                        className="text-gray-300 hover:text-white transition-colors"
+                        className="h-11 w-11 lg:h-auto lg:w-auto shrink-0 flex items-center justify-center text-gray-300 hover:text-white transition-colors"
                     >
                         <X size={20} />
                     </button>
                 </div>
 
                 {/* Messages */}
-                <div ref={transcriptRef} role="log" aria-live="polite" className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain p-4 space-y-4 custom-scrollbar"
+                <div ref={transcriptRef} role="log" aria-live="polite" className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain p-3 lg:p-4 space-y-3 lg:space-y-4 custom-scrollbar"
                     style={{ background: "var(--bg-card)" }}
                 >
                     {hasAiConsent === false && (
@@ -516,7 +515,6 @@ export function MaziumWidget() {
                         </div>
                     )}
 
-                    <div ref={messagesEndRef} />
                 </div>
 
                 {/* Suggestions only make sense during vehicle-search questions. */}
@@ -541,14 +539,14 @@ export function MaziumWidget() {
 
                 {/* Input */}
                 <div
-                    className="shrink-0 p-3 flex gap-2 border-t"
+                    className="shrink-0 p-2 lg:p-3 flex gap-2 border-t"
                     style={{ borderColor: "var(--border-default)" }}
                 >
                     <Input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Ask MaziuM about CarMazium..."
-                        className="h-10 min-w-0 text-base"
+                        className="h-11 lg:h-10 min-w-0 text-base"
                         maxLength={4000}
                         aria-label="Message MaziuM"
                         style={{
@@ -564,7 +562,7 @@ export function MaziumWidget() {
                     <Button
                         size="icon"
                         aria-label="Send message"
-                        className="h-10 w-10 shrink-0 rounded-full shadow-neon"
+                        className="h-11 w-11 lg:h-10 lg:w-10 shrink-0 rounded-full shadow-neon"
                         onClick={() => handleSend()}
                         disabled={isThinking || hasAiConsent !== true || !input.trim()}
                     >
@@ -574,7 +572,7 @@ export function MaziumWidget() {
 
                 {hasAiConsent === true && (
                     <div
-                        className="shrink-0 flex items-center justify-center gap-3 border-t px-3 py-1.5 text-[10px]"
+                        className="shrink-0 flex items-center justify-center gap-3 border-t px-3 py-1 lg:py-1.5 text-[10px]"
                         style={{ borderColor: "var(--border-default)", color: "var(--text-muted)" }}
                     >
                         <button type="button" onClick={() => router.push("/privacy-policy")} className="hover:underline">
