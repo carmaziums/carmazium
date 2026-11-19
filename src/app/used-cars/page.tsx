@@ -1,3 +1,4 @@
+import { getRetailCollections, collectionPath } from "@/lib/retailCollections"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -30,6 +31,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
 export default async function RetailCataloguePage(props: Props) {
     const { page, listings, totalPages } = await catalogueFor(props)
+    const collections = await getRetailCollections()
     const pages = Array.from(new Set([1, totalPages, ...Array.from({ length: 5 }, (_, i) => page + i - 2)]))
         .filter(p => p >= 1 && p <= totalPages).sort((a, b) => a - b)
     const schema = {
@@ -45,6 +47,8 @@ export default async function RetailCataloguePage(props: Props) {
         <h1 className="text-3xl font-bold text-[var(--text-primary)]">Used cars for sale{page > 1 ? ` — page ${page}` : ""}</h1>
         <p className="mt-4 max-w-3xl leading-7 text-[var(--text-secondary)]">Explore active retail adverts from dealers and private sellers. Open a listing for its photos, specifications and seller details.</p>
         <Link href="/search" className="mt-4 inline-block font-semibold text-primary underline">Filter cars by make, model, price and location</Link>
+        <section className="mt-8"><h2 className="text-xl font-bold">Browse by make</h2><div className="mt-3 flex flex-wrap gap-3">{collections.makes.filter(c => c.count > 0).map(c => <Link key={c.slug} href={collectionPath('makes', c.slug)} className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-primary">{c.label} ({c.count})</Link>)}</div></section>
+        <section className="mt-8"><h2 className="text-xl font-bold">Browse by location</h2><div className="mt-3 flex flex-wrap gap-3">{collections.locations.filter(c => c.count > 0).map(c => <Link key={c.slug} href={collectionPath('locations', c.slug)} className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-primary">{c.label} ({c.count})</Link>)}</div></section>
         {listings.length ? <ul className="my-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {listings.map(listing => <li key={listing.slug} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                 <h2 className="text-lg font-bold"><Link href={`/buy-cars/${listing.slug}`} className="text-primary underline-offset-4 hover:underline">{retailVehicleName(listing)}</Link></h2>

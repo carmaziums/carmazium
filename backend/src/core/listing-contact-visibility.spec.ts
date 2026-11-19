@@ -10,23 +10,21 @@ describe('listing contact visibility', () => {
         })).toBe(true);
     });
 
-    it('reveals contact publicly for an active Premium retail listing', () => {
+    it.each(['BASIC', 'STANDARD', 'PREMIUM', null])('reveals active retail contact without an account (%s)', badgeTier => {
         expect(canRevealListingContact({
             viewerAuthenticated: false,
             listingType: 'CLASSIFIED',
             listingStatus: 'ACTIVE',
-            badgeTier: 'PREMIUM',
+            badgeTier,
         })).toBe(true);
     });
 
     it.each([
-        ['CLASSIFIED', 'ACTIVE', 'BASIC'],
-        ['CLASSIFIED', 'ACTIVE', 'STANDARD'],
         ['CLASSIFIED', 'DRAFT', 'PREMIUM'],
         ['CLASSIFIED', 'SOLD', 'PREMIUM'],
         ['AUCTION', 'ACTIVE', 'PREMIUM'],
         [undefined, undefined, undefined],
-    ])('withholds anonymous contact outside Premium active retail (%s / %s / %s)', (listingType, listingStatus, badgeTier) => {
+    ])('withholds anonymous contact outside active retail (%s / %s / %s)', (listingType, listingStatus, badgeTier) => {
         expect(canRevealListingContact({
             viewerAuthenticated: false,
             listingType,

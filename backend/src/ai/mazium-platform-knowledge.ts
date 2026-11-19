@@ -107,12 +107,16 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         id: 'retail-buyer-offers',
         triggers: /\b(?:offer|negotiate|counteroffer|accept offer|retail buyer|buy a car|purchase a car|watchlist|save cars|contact seller|message seller)\b/i,
         facts: [
-            'Retail buyers can browse cars at /search, inspect listing information, contact the seller through the listing chat and make offers where enabled.',
+            'Retail buyers can browse cars at /search and /used-cars, including make and advertised-location collections, inspect listings and make offers where enabled.',
+            'On active retail listings, visitors can call the seller without an account when a phone number is available. Guest Enquire opens a form; the buyer confirms a six-digit email code before the message and consented contact details reach the seller. No buyer account is created. Signed-in enquiries continue through listing chat. Auction contact restrictions are unchanged.',
+            'Sellers read email-confirmed guest enquiries at /dashboard/enquiries and can reply directly by email or phone. Dealer CRM also records guest leads. Guest enquiries do not create a signed-in chat conversation.',
+            'A Services for this vehicle panel links warranty, available finance, delivery and inspection with the selected vehicle. Service requests and vehicle purchase payments remain separate.',
+            'Before registering, dealers and sole traders can read /become-a-partner for business verification and service setup requirements. Finance, warranty and insurance partnerships are arranged directly with the team.',
             'Private sellers view Offers Received at /dashboard/user?tab=offers and choose the vehicle/offer to accept, reject, counter or message. Outgoing buyer offers are at /dashboard/user?tab=bids. Sellers can accept, reject or counter offers within the available workflow. A visible offer is not proof of payment or collection.',
             'Retail buyers do not owe a CarMazium platform buyer fee. The vehicle price is paid directly to the seller.',
             'The assistant must not send a message, change an offer, reserve a car or declare a purchase completed on behalf of the user.'
         ].join(' '),
-        sources: ['src/app/pricing/traders/page.tsx','src/app/dashboard/seller/offers/page.tsx','src/app/dashboard/buyer/offers/page.tsx']
+        sources: ['src/app/pricing/traders/page.tsx','src/app/dashboard/seller/offers/page.tsx','src/app/dashboard/buyer/offers/page.tsx','src/app/become-a-partner/page.tsx','src/components/services/VehicleServicesPanel.tsx','backend/src/listings/guest-enquiry.service.ts','backend/src/core/listing-contact-visibility.ts','backend/src/listings/retail-collections.controller.ts']
     },
     {
         id: 'buyer-and-dealer-purchases',

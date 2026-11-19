@@ -2635,7 +2635,7 @@ export class ListingsService {
             : listing.seller
 
         // One contact-visibility rule is shared by web and mobile:
-        // authenticated viewers may see the number, and ACTIVE PREMIUM retail
+        // authenticated viewers may see the number, and all ACTIVE retail
         // listings deliberately expose contact publicly without login.
         // Auction contact is never unlocked by the Premium retail rule.
         if (sellerWithCount) {

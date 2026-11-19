@@ -1,3 +1,7 @@
+import { RetailCollectionsController } from './retail-collections.controller';
+import { EmailModule } from '../email/email.module';
+import { GuestEnquiryController } from './guest-enquiry.controller';
+import { GuestEnquiryService } from './guest-enquiry.service';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ListingsService } from './listings.service';
@@ -13,9 +17,9 @@ import { DealersModule } from '../dealers/dealers.module';
 import { DvlaModule } from '../dvla/dvla.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, SellersModule, ConfigModule, ScraperModule, NotificationsModule, FreeListingsModule, DealersModule, DvlaModule],
-  controllers: [ListingsController],
-  providers: [ListingsService, TradeListingAccessGuard],
+  imports: [EmailModule, PrismaModule, AuthModule, SellersModule, ConfigModule, ScraperModule, NotificationsModule, FreeListingsModule, DealersModule, DvlaModule],
+  controllers: [RetailCollectionsController, ListingsController, GuestEnquiryController],
+  providers: [GuestEnquiryService, ListingsService, TradeListingAccessGuard],
   exports: [ListingsService],
 })
 export class ListingsModule { }

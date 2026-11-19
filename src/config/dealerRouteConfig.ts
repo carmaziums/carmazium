@@ -44,6 +44,7 @@ export interface DealerRoute {
  * every dealer tool stays reachable from the menu without crowding it.
  */
 export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
+    { href: "/dashboard/enquiries", label: "Guest enquiries", title: "Guest enquiries", subHeader: "Reply to email-confirmed buyer enquiries", icon: MessageSquare, section: "Sell", requiredPermission: "MANAGE_CRM", hidden: true },
     {
         href: "/dashboard/dealer",
         label: "Home",

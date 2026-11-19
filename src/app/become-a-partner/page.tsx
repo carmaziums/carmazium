@@ -1,0 +1,34 @@
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { Building2, ClipboardCheck, Truck, SearchCheck } from 'lucide-react'
+
+export const metadata: Metadata = {
+    title: 'Join CarMazium as a Dealer, Sole Trader or Service Partner',
+    description: 'See how CarMazium Partner Accounts work, what to prepare for business verification, and the separate requirements for dealers, delivery and inspection providers.',
+    alternates: { canonical: 'https://www.carmazium.com/become-a-partner' },
+}
+const panel = 'rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6'
+export default function BecomePartnerPage() {
+    return <main className="mx-auto max-w-6xl px-5 py-12">
+        <div className="max-w-3xl"><p className="font-bold text-primary">CarMazium for business</p><h1 className="mt-3 text-3xl font-black sm:text-5xl">Know the steps before you join.</h1><p className="mt-5 text-lg leading-8 text-[var(--text-secondary)]">One Partner Account for motor dealers, sole traders and automotive businesses. Start with the tools you need, then add approved services as your business grows.</p>
+            <div className="mt-6 flex flex-wrap gap-3"><Link href="/auth/signup?role=DEALER" className="rounded-xl bg-primary px-6 py-3 font-bold text-white">Create Partner Account</Link><Link href="/pricing/traders" className="rounded-xl border border-[var(--border-default)] px-6 py-3 font-bold">See trader pricing</Link><Link href="/auth/login?redirect=%2Fdashboard%2Fpartner" className="px-3 py-3 text-primary underline">Already registered? Sign in</Link></div>
+        </div>
+        <section className="mt-12"><h2 className="text-2xl font-bold">How registration works</h2><ol className="mt-5 grid gap-5 md:grid-cols-2">
+            {[
+                ['Create and confirm your account', 'Choose Partner Account, enter your contact details and confirm your email. Complete your profile so we can contact you about your account.'],
+                ['Add your business details', 'Choose your business type: registered company or sole trader. Complete the relevant verification fields and upload the requested evidence through your dashboard.'],
+                ['Complete verification', 'Business/KYC approval is needed before dealer auction bidding is enabled. The one-time £1 account verification is reused when you add services; it is not a new charge for each service. Your dashboard shows anything still required.'],
+                ['Choose your business tools', 'Create retail listings and manage your stock. Add delivery or inspection capabilities if you want to provide those services. Paid service work requires the relevant approval and payout setup.'],
+            ].map(([title, text], i) => <li key={title} className={panel}><p className="text-sm font-bold text-primary">Step {i + 1}</p><h3 className="mt-2 text-lg font-bold">{title}</h3><p className="mt-3 leading-7 text-[var(--text-secondary)]">{text}</p></li>)}
+        </ol></section>
+        <section className="mt-12"><h2 className="text-2xl font-bold">What to prepare</h2><div className="mt-5 grid gap-5 md:grid-cols-2">
+            <article className={panel}><Building2 className="text-primary" /><h3 className="mt-3 text-xl font-bold">Registered motor dealer</h3><p className="mt-3 leading-7">Have your registered business name, company details, representative details and the requested identity and business evidence ready. The verification form explains the documents that apply to your business.</p></article>
+            <article className={panel}><ClipboardCheck className="text-primary" /><h3 className="mt-3 text-xl font-bold">Sole trader</h3><p className="mt-3 leading-7">Use your trading name and owner details. Sole traders do not need a Companies House registration. Prepare photo ID, recent proof of address and the sole-trader evidence requested by the verification form.</p></article>
+            <article className={panel}><Truck className="text-primary" /><h3 className="mt-3 text-xl font-bold">Delivery, collection and recovery</h3><p className="mt-3 leading-7">Complete your business declaration, provide trade insurance covering the work and set up secure business payouts. Existing approved dealer verification is reused. Upload only the evidence requested for this service.</p></article>
+            <article className={panel}><SearchCheck className="text-primary" /><h3 className="mt-3 text-xl font-bold">Vehicle inspections</h3><p className="mt-3 leading-7">Complete your business details, declaration and verified payout setup. The inspection service setup does not require document uploads or formal certificates. Providers remain responsible for competent work and appropriate insurance.</p></article>
+        </div><p className="mt-4 text-sm text-[var(--text-muted)]">Submit documents and bank details only through the secure account setup. Do not email them. Approval depends on the information supplied; we do not promise a fixed review time.</p></section>
+        <section className={`${panel} mt-10`}><h2 className="text-2xl font-bold">Finance, warranty and insurance providers</h2><p className="mt-3 max-w-3xl leading-7">These partnerships and integrations are arranged directly with the CarMazium team. Tell us which service your business provides so we can explain the appropriate next steps.</p><div className="mt-5 flex flex-wrap gap-4">{['finance', 'warranty', 'insurance'].map(service => <Link key={service} href={`/contact?topic=${service}-partnership`} className="rounded-lg border border-primary px-4 py-3 font-semibold capitalize text-primary">Discuss {service} partnership</Link>)}</div></section>
+        <section className="mt-10"><h2 className="text-2xl font-bold">What you can do—and when</h2><div className="mt-5 overflow-x-auto rounded-xl border border-[var(--border-default)]"><table className="w-full text-left"><thead className="bg-[var(--bg-input)]"><tr><th className="p-4">Activity</th><th className="p-4">What is needed</th></tr></thead><tbody>{[['Create retail listings', 'Partner Account and the usual listing details and publication/payment steps.'], ['Bid in dealer auctions', 'Approved motor-trader business/KYC verification.'], ['Provide delivery or inspection services', 'Relevant service approval, business declaration and payout setup.'], ['Provide finance, warranty or insurance', 'A partnership arranged directly with our team.']].map(([activity, requirement]) => <tr key={activity} className="border-t border-[var(--border-default)]"><td className="p-4 font-semibold">{activity}</td><td className="p-4">{requirement}</td></tr>)}</tbody></table></div></section>
+        <div className="mt-10 flex flex-wrap gap-4"><Link href="/auth/signup?role=DEALER" className="rounded-xl bg-primary px-6 py-3 font-bold text-white">Create Partner Account</Link><Link href="/contact" className="px-4 py-3 text-primary underline">Get help choosing your account</Link></div>
+    </main>
+}

@@ -196,6 +196,12 @@ function SignupForm() {
                     <p className="text-gray-300">Choose Personal Account, or Dealer / Sole Trader / Partner Account for motor trade and business use</p>
                 </div>
 
+                <div className="mb-6 rounded-xl border border-white/20 bg-slate-900/60 p-4 text-sm leading-6">
+                    <Link href="/become-a-partner" target="_blank" className="font-semibold text-white underline">Joining as a dealer, sole trader or service provider?</Link>
+                    <p className="mt-1 text-slate-200">See the registration steps and what to prepare before creating your Partner Account. Opens in a new tab so your form stays here.</p>
+                    {formData.role === 'DEALER' && <p className="mt-3 text-slate-200">Create your account, confirm your email, then complete the business verification appropriate to your business type. Auction bidding needs KYC approval; delivery and inspection work need separate service approval. Sole traders do not need Companies House registration.</p>}
+                </div>
+
                 {error && <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-sm">{error}</div>}
 
                 <form className="space-y-6" onSubmit={handleSignup} onFocusCapture={trackRegistrationStarted} onChangeCapture={trackRegistrationStarted}>

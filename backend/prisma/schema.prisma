@@ -374,6 +374,7 @@ enum ServicePaymentStatus {
 // ============================================================================
 
 model User {
+  guestListingEnquiries GuestListingEnquiry[]
   id                              String    @id @default(uuid())
   email                           String    @unique
   passwordHash                    String
@@ -770,6 +771,7 @@ model Vehicle {
 }
 
 model Listing {
+  guestListingEnquiries GuestListingEnquiry[]
   financeRouting FinanceListingRoute?
   recoveredStockPurchases DealerPurchaseReconciliation[] @relation("RecoveredStockListing")
   recoveredSourcePurchases DealerPurchaseReconciliation[] @relation("RecoveredSourceListing")
@@ -2502,4 +2504,29 @@ model WarrantyOrderMessage {
   @@unique([orderId, kind, email])
   @@index([sentAt, nextAttemptAt])
   @@map("warranty_order_messages")
+}
+
+/// Email-confirmed retail enquiries. No buyer account is created.
+model GuestListingEnquiry {
+  id String @id @default(uuid())
+  listingId String
+  sellerId String
+  fullName String
+  email String
+  phone String?
+  message String
+  codeHash String
+  attempts Int @default(0)
+  expiresAt DateTime
+  consentVersion String
+  verifiedAt DateTime?
+  notifiedAt DateTime?
+  notificationClaimedAt DateTime?
+  createdAt DateTime @default(now())
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  seller User @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  @@index([email, createdAt])
+  @@index([sellerId, verifiedAt])
+  @@index([notifiedAt, verifiedAt])
+  @@map("guest_listing_enquiries")
 }

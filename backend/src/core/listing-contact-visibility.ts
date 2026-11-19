@@ -10,16 +10,15 @@ export interface ListingContactVisibilityInput {
  *
  * - Authenticated viewers may see the seller's contact number on an eligible
  *   public seller/listing surface.
- * - Anonymous viewers may see it only on an ACTIVE PREMIUM retail
+ * - Anonymous viewers may see it on any ACTIVE retail
  *   (CLASSIFIED) listing.
- * - Auction contact never becomes public through the Premium retail rule.
+ * - Auction contact never becomes public through the public retail rule.
  */
 export function canRevealListingContact(input: ListingContactVisibilityInput): boolean {
     if (input.viewerAuthenticated) return true;
 
     return (
         input.listingType === 'CLASSIFIED' &&
-        input.listingStatus === 'ACTIVE' &&
-        input.badgeTier === 'PREMIUM'
+        input.listingStatus === 'ACTIVE'
     );
 }

@@ -342,7 +342,7 @@ jobs:
           echo "No TypeScript errors were reported in web listing/auction files covered by this workflow."
 
       - name: Verify retail warranty entry points
-        run: node --test scripts/test-retail-warranty-cta.test.mjs
+        run: node --test scripts/test-retail-warranty-cta.test.mjs scripts/test-connected-vehicle-services.test.mjs scripts/test-retail-catalogue-seo.test.mjs scripts/test-retail-collections.test.mjs
 
       - name: Build web app
         run: npm run build

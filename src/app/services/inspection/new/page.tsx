@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { jobVehicleIdentified, jobDateIssue, focusJobFormIssue } from "@/lib/serviceJobFormValidation"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
@@ -20,14 +20,27 @@ const EMPTY_FORM = {
 }
 
 export default function NewInspectionPage() {
+    return <React.Suspense fallback={<p role="status" className="p-8">Loading inspection request…</p>}><InspectionForm /></React.Suspense>
+}
+
+function InspectionForm() {
+    const params = useSearchParams()
+    const listingId = params.get("listingId") || ""
+    const initialForm = React.useMemo(() => ({ ...EMPTY_FORM,
+        listingId, registration: (params.get("registration") || "").slice(0, 10),
+        make: (params.get("make") || "").slice(0, 100), model: (params.get("model") || "").slice(0, 100),
+        year: /^\d{4}$/.test(params.get("year") || "") ? params.get("year")! : "",
+        address: (params.get("pickup") || "").slice(0, 300),
+        title: params.get("vehicleTitle") ? `${params.get("vehicleTitle")!.slice(0, 150)} inspection` : EMPTY_FORM.title,
+    }), [params, listingId])
     const router = useRouter()
     const { user, loading } = useAuth()
     const [busy, setBusy] = React.useState(false)
     const [invalidField, setInvalidField] = React.useState<string | null>(null)
     const [error, setError] = React.useState<string | null>(null)
     const { value: form, setValue: setForm, clearDraft, hydrated, prepareSignIn } = useSessionDraft(
-        "tradexchange:inspection:new",
-        EMPTY_FORM,
+        listingId ? `tradexchange:inspection:new:${listingId}` : "tradexchange:inspection:new",
+        initialForm,
         user?.id ?? null,
         loading,
     )
@@ -41,7 +54,7 @@ export default function NewInspectionPage() {
         if (!hydrated || loading || busy) return
         if (!user) {
             prepareSignIn()
-            router.push(`/auth/login?redirect=${encodeURIComponent('/services/inspection/new')}`)
+            router.push(`/auth/login?redirect=${encodeURIComponent('/services/inspection/new' + (params.size ? '?' + params.toString() : ''))}`)
             return
         }
         setError(null); setInvalidField(null)
@@ -60,6 +73,7 @@ export default function NewInspectionPage() {
                 serviceAddress: form.address.trim() || undefined,
                 requestedFor: form.requestedFor ? new Date(form.requestedFor).toISOString() : undefined,
                 vehicles: [{
+                    ...(form.listingId ? { listingId: form.listingId } : {}),
                     registration: form.registration.trim().toUpperCase().replace(/\s+/g, '') || undefined,
                     make: form.make.trim() || undefined,
                     model: form.model.trim() || undefined,
@@ -90,6 +104,7 @@ export default function NewInspectionPage() {
                 <form onSubmit={submit} className="space-y-6">
                     <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
                         <h2 className="font-heading font-bold text-lg mb-5">Vehicle</h2>
+                        {listingId && <p className="mb-4 text-sm text-[var(--text-secondary)]">{initialForm.title}. Please confirm the vehicle and inspection location below.</p>}
                         <div className="grid sm:grid-cols-2 gap-4">
                             <div><label htmlFor="inspection-registration" className={labelCls}>Registration</label><input id="inspection-registration" aria-invalid={invalidField === "inspection-registration"} aria-describedby={invalidField === "inspection-registration" ? "job-error" : undefined} className={inputCls} value={form.registration} onChange={e => set('registration', e.target.value)} placeholder="AB12 CDE" maxLength={10} /></div>
                             <div><label htmlFor="inspection-year" className={labelCls}>Year</label><input id="inspection-year" aria-invalid={invalidField === "inspection-year"} aria-describedby={invalidField === "inspection-year" ? "job-error" : undefined} className={inputCls} type="number" min="1900" max="2100" value={form.year} onChange={e => set('year', e.target.value)} placeholder="2021" /></div>
