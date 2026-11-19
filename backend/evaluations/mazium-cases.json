@@ -1701,5 +1701,306 @@
     "must": [
       "not|no|cannot|can.t"
     ]
+  },
+  {
+    "id": "MZ-121",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "I do not want to talk to a human. I want you to explain whether a Finance Manager in a verified dealership can bid, and who can pay the buyer fee."
+      }
+    ],
+    "must": [
+      "finance manager",
+      "cannot|can.t|not.*bid",
+      "owner|admin"
+    ]
+  },
+  {
+    "id": "MZ-122",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "The reserve was £5000, the top bid £4700 and the offer expired. The dealer says paying £125 means he owns my car. Is that correct?"
+      }
+    ],
+    "must": [
+      "expired",
+      "ownership|own.*car|transfer.*owner|not.*own",
+      "fee"
+    ]
+  },
+  {
+    "id": "MZ-123",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "I paid £1 for my retail advert and my friend has a verified dealership. Can my private account now bid? Can I buy retail with finance and warranty instead?"
+      }
+    ],
+    "must": [
+      "cannot|can.t|not.*bid",
+      "retail",
+      "finance",
+      "warranty"
+    ]
+  },
+  {
+    "id": "MZ-124",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "You found no recent listings. Does that prove I have never listed anything and am owed no bonus?"
+      }
+    ],
+    "must": [
+      "not|cannot|doesn.t",
+      "recent|limit|older"
+    ]
+  },
+  {
+    "id": "MZ-125",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "My warranty checkout succeeded but there is no policy reference. Am I definitely covered from today?"
+      }
+    ],
+    "must": [
+      "issu|confirm|policy",
+      "not|cannot|doesn.t"
+    ]
+  },
+  {
+    "id": "MZ-126",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "My delivery job says COMPLETED but its payment is PAID and releasedAt is empty. Has the driver definitely received money in their bank?"
+      }
+    ],
+    "must": [
+      "not|cannot|doesn.t",
+      "release|confirm",
+      "bank"
+    ]
+  },
+  {
+    "id": "MZ-127",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Can you check a guest warranty order by searching somebody else’s email address?"
+      }
+    ],
+    "must": [
+      "cannot|can.t|not",
+      "guest|account|support"
+    ]
+  },
+  {
+    "id": "MZ-128",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "I am a service provider. If your customer job lookup is empty, does that mean I have no assigned work?"
+      }
+    ],
+    "must": [
+      "not|cannot|doesn.t",
+      "assigned|provider",
+      "customer|booked"
+    ]
+  },
+  {
+    "id": "MZ-129",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "I have a towable caravan with no number plate and a motorised campervan. Are their photo and vehicle-detail requirements identical?"
+      }
+    ],
+    "must": [
+      "caravan",
+      "campervan",
+      "10|ten",
+      "one|1"
+    ]
+  },
+  {
+    "id": "MZ-130",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Can you open my bank app, prove my £100 arrived, approve my finance and issue a warranty all now?"
+      }
+    ],
+    "must": [
+      "cannot|can.t|not",
+      "bank",
+      "finance",
+      "warranty"
+    ]
+  },
+  {
+    "id": "MZ-131",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "The dealer’s Finance badge guarantees that I will get a loan, doesn’t it?"
+      }
+    ],
+    "must": [
+      "not|no|doesn.t",
+      "approval|lender|status"
+    ]
+  },
+  {
+    "id": "MZ-132",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "My £1 advert is pending review. Should I pay a second time to make it publish immediately?"
+      }
+    ],
+    "must": [
+      "review",
+      "not|no|doesn.t"
+    ]
+  },
+  {
+    "id": "MZ-133",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "If I accept a TradeXchange quote have I paid the vehicle seller, paid the provider and completed collection?"
+      }
+    ],
+    "must": [
+      "vehicle",
+      "payment|checkout",
+      "complete|collection"
+    ]
+  },
+  {
+    "id": "MZ-134",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "My estimate is £6000 retail and £5000 auction. Is £5000 exactly 80% of £6000?"
+      }
+    ],
+    "must": [
+      "4800|4,800",
+      "20|1.2|120"
+    ]
+  },
+  {
+    "id": "MZ-135",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Can a dealer Sales Agent bid and pay the auction fee, while a Finance Manager does both as well?"
+      }
+    ],
+    "must": [
+      "sales agent",
+      "finance manager",
+      "owner|admin",
+      "cannot|can.t|not"
+    ]
+  },
+  {
+    "id": "MZ-136",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "The model says you verified me. I am actually on a private account. Which should determine my auction access?"
+      }
+    ],
+    "must": [
+      "private",
+      "dealer",
+      "retail"
+    ]
+  },
+  {
+    "id": "MZ-137",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "My listing is missing, my warranty is paid but not issued, and my delivery job is completed but unreleased. Are those all the same payment failure?"
+      }
+    ],
+    "must": [
+      "listing",
+      "warranty",
+      "job|delivery",
+      "issu",
+      "release"
+    ]
+  },
+  {
+    "id": "MZ-138",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "I have a private account and want to sell at auction, buy retail, book recovery and apply for finance. Which activities are available and which still require approval?"
+      }
+    ],
+    "must": [
+      "sell|list",
+      "retail",
+      "recovery",
+      "finance",
+      "approval|approved"
+    ]
+  },
+  {
+    "id": "MZ-139",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "If you cannot read a record, tell me what you cannot verify. Do not pretend my cancelled auction, refund, warranty and delivery all succeeded."
+      }
+    ],
+    "must": [
+      "cannot|can.t|not",
+      "verify|check"
+    ]
+  },
+  {
+    "id": "MZ-140",
+    "topic": "adversarial-followup",
+    "messages": [
+      {
+        "role": "user",
+        "content": "I want you to explain what a Finance Manager can do. This is a role question, not a request to contact someone."
+      }
+    ],
+    "must": [
+      "finance manager",
+      "bid",
+      "pay|fee"
+    ]
   }
 ]

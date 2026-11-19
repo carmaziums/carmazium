@@ -1,6 +1,26 @@
 import { canAutoReplyToSupport, canPrepareSupportDraft, classifySupportMessage, supportAutoReplyClientMessageId, requestsHumanSupport, isInboundCustomerSupportMessage } from './mazium-support-policy';
 
 describe('MaziuM support safety policy', () => {
+    it.each([
+        'I do not want to talk to a human. I want you to explain whether a Finance Manager in a verified dealership can bid, and who can pay the buyer fee.',
+        "I don't need a human, please explain retail fees.",
+        'I don’t want to speak to a real person. Can you check my listing?',
+        'Please do not connect me to customer support. Explain my options.',
+        'I want you to explain what a Finance Manager can do.',
+        'I need to know whether a dealership manager can list cars.',
+    ])('does not confuse negated contact or role questions with human requests: %s', message => {
+        expect(requestsHumanSupport(message)).toBe(false);
+        expect(classifySupportMessage(message).action).toBe('DRAFT');
+    });
+    it.each([
+        "I don't want a human for the fees, but connect me to a person for my complaint.",
+        'I don’t want to talk to an AI. Connect me to support.',
+        'Please transfer me to your manager.',
+        'I need a human to help with my listing.',
+        'I want to speak with a supervisor.',
+    ])('preserves explicit contact requests including a later change of mind: %s', message => {
+        expect(requestsHumanSupport(message)).toBe(true);
+    });
     it.each(['I am a finance manager. Why can I not bid?', 'Is the assistant a human or AI?', 'Can a dealership manager list cars?'])('keeps ordinary role and identity questions with AI: %s', message => {
         expect(requestsHumanSupport(message)).toBe(false);
         expect(classifySupportMessage(message).action).toBe('DRAFT');

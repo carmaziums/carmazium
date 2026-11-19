@@ -144,9 +144,10 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'The backend current VAT-inclusive standard 12-month tariff is £360 for a car or £445 for an SUV at £2,000 per-repair limit and £75/hr labour, before extras.',
             'The currently implemented repair limits are £1,000 and £2,000, and labour choices £75, £100, £150 and £200 per hour. Any different requested cover must be confirmed with the team. Airbags, Driver Assistance and Emissions each add £20; Multimedia adds £80.',
             'Other coverage/labour/extras affect the exact price; refer to the live quote form rather than inventing prices or cover. Purchases are not the same as an issued policy.',
+            'When authorised, read_my_warranty_orders can check 10 recent orders linked to the signed-in customer ID. It cannot find guest orders by email, verify live insurer records, or infer issuance from payment alone.',
             'Warranty claims and exclusions are governed by the actual policy terms; the assistant must not approve a claim.'
         ].join(' '),
-        sources: ['backend/src/services/warranty-retail-tariff.ts','src/app/services/warranty/page.tsx']
+        sources: ['backend/src/ai/mazium-assistant-tools.ts','backend/src/services/warranty-retail-tariff.ts','src/app/services/warranty/page.tsx']
     },
     {
         id: 'vehicle-finance',
@@ -169,6 +170,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'Customers compare quotes, accept one, complete the required checkout and can track or confirm service completion in the job detail.',
             'Paid TradeXchange service jobs use a 9% platform and 91% provider split, rounded in pence. Service-job payment is separate from the vehicle sale price paid directly to the vehicle seller. Service funds follow job completion, confirmation, dispute and release rules; never promise immediate payout.',
             'Only approved providers for the relevant service can quote; never guarantee an available provider, service price or immediate booking.',
+            'When authorised, read_my_service_jobs checks 10 recent jobs booked by the signed-in customer, with saved payment and completion states. It does not read assigned provider jobs or other dealership members’ jobs. An empty result is not a full-history check.',
             'Some service types can be temporarily switched off; refer to /services for actual availability.'
         ].join(' '),
         sources: ['src/app/services/page.tsx','src/app/services/jobs/[id]/page.tsx','src/lib/featureFlags.ts','backend/src/services/services.service.ts']

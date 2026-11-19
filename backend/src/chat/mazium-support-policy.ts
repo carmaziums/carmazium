@@ -143,15 +143,23 @@ export function supportAutoReplyClientMessageId(incomingMessageId: string): stri
  * this classifier does not itself mutate the room or send a message.
  */
 export function requestsHumanSupport(message: string): boolean {
+    // Negation applies to the explicit contact request, not the entire message:
+    // a later 'but connect me to a person' must still be honoured. Normalise
+    // apostrophes used by mobile keyboards. Never strip a refusal of AI.
+    const content = message.replace(/[‘’]/g, "'").replace(
+        /\b(?:do not|don't|dont|never|no longer)\s+(?:(?:want|need|wish)\s+(?:to\s+)?)?(?:(?:talk|speak|chat)\s+(?:to|with)\s+|(?:connect|transfer|send|pass)\s+me\s+to\s+)?(?:a |an |the |your )?(?:human(?: support| agent| being| representative)?|real person|actual person|live agent|support agent|staff member|manager|supervisor|person|customer support|support team)\b/gi,
+        ' [declined human contact] ',
+    );
     return [
         /^(?:a |an |the )?(?:human|real person|actual person|live agent|support agent|staff member|manager|supervisor)(?: please)?[.!? ]*$/i,
-        /\b(?:want|need|prefer|request|speak|talk|chat|connect|transfer|put me through|pass me|escalate)\b.{0,40}\b(?:human|real person|actual person|live agent|support agent|staff member|manager|supervisor)\b/i,
+        /\b(?:want|need|prefer|request)\s+(?:(?:to\s+)?(?:speak|talk|chat)\s+(?:to|with)\s+)?(?:a |an |the |your )?(?:human|real person|actual person|live agent|support agent|staff member|manager|supervisor)\b/i,
+        /\b(?:speak|talk|chat|connect|transfer|put me through|pass me|escalate)\b[^.!?;]{0,40}\b(?:human|real person|actual person|live agent|support agent|staff member|manager|supervisor)\b/i,
         /\b(?:speak|talk|chat|connect|transfer|put me through)\s+(?:me\s+)?(?:to|with)\s+(?:a|an|the|someone|somebody)?\s*(?:person|representative|someone|somebody|agent)\b/i,
         /\b(stop|disable|turn off|opt out of|no more) (?:the |your )?(?:ai|bot|automated|automatic)\b/i,
         /\b(don't|do not|no longer) (?:want to )?(?:talk to|chat with|speak to) (?:an? )?(?:ai|bot|robot)\b/i,
         /\b(?:transfer|connect|put me through|pass me|send me|escalate|speak|talk|chat)\b.{0,35}\b(?:customer (?:service|support|care|team|department)|support (?:team|department)|your team|someone from (?:support|your team))\b/i,
         /\b(?:need|want|prefer|request|speak to)\b.{0,25}\b(?:human support|person instead|real person|human being|human representative|actual human)\b/i,
-    ].some((pattern) => pattern.test(message));
+    ].some((pattern) => pattern.test(content));
 }
 
 /**
