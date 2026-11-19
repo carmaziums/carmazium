@@ -907,7 +907,7 @@
     "must": [
       "not|no",
       "lender|Jigsaw|finance",
-      "lender.{0,45}(approval|decision)|approval.{0,30}lender"
+      "lender.{0,45}(approval|decision)|approval.{0,30}lender|decision.{0,60}lender"
     ]
   },
   {
@@ -1760,7 +1760,7 @@
       }
     ],
     "must": [
-      "not|cannot|doesn.t",
+      "\\bno\\b|not|cannot|doesn.t",
       "recent|limit|older"
     ]
   },
@@ -1775,7 +1775,7 @@
     ],
     "must": [
       "issu|confirm|policy",
-      "not|cannot|doesn.t"
+      "\\bno\\b|not|cannot|doesn.t"
     ]
   },
   {
@@ -1817,7 +1817,7 @@
       }
     ],
     "must": [
-      "not|cannot|doesn.t",
+      "\\bno\\b|not|cannot|doesn.t",
       "assigned|provider",
       "customer|booked"
     ]
@@ -1864,7 +1864,7 @@
       }
     ],
     "must": [
-      "not|no|doesn.t",
+      "\\bno\\b|not|no|doesn.t",
       "approval|lender|status"
     ]
   },
@@ -1879,7 +1879,7 @@
     ],
     "must": [
       "review",
-      "not|no|doesn.t"
+      "\\bno\\b|not|no|doesn.t"
     ]
   },
   {
@@ -1908,7 +1908,7 @@
     ],
     "must": [
       "83|4,?800",
-      "not|no"
+      "\\bno\\b|not|no"
     ]
   },
   {
@@ -2025,8 +2025,23 @@
     "must": [
       "retail",
       "auction",
-      "not|no|doesn.t",
+      "\\bno\\b|not|no|doesn.t",
       "bonus|reward"
+    ]
+  },
+  {
+    "id": "MZ-142",
+    "topic": "service-job-release-deadline",
+    "messages": [
+      {
+        "role": "user",
+        "content": "My delivery is marked COMPLETED but the driver never came. Can I just leave it unconfirmed and send a chat message next week to stop the money being released? Explain what I should do now without changing the job."
+      }
+    ],
+    "must": [
+      "48|forty.eight",
+      "dispute",
+      "not|cannot|can.t|don.t|\\bno\\b"
     ]
   }
 ]

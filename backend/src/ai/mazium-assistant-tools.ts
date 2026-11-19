@@ -38,7 +38,7 @@ export async function runMaziumTool(prisma: PrismaService, userId: string | unde
  if (name === 'read_my_service_jobs') return {
   checkedAt: new Date().toISOString(),
   scope: '10 most recently updated TradeXchange jobs booked by this customer ID only. Not assigned provider jobs or other dealership members’ jobs; absence does not prove no job exists.',
-  limitation: 'Saved platform status only. Payment, provider completion, customer confirmation and release are separate; release does not verify bank settlement.',
+  limitation: 'Saved platform status only. Payment, provider completion, customer confirmation and release are separate; release does not verify bank settlement. Completed, undisputed jobs may auto-release after 48 hours from provider completion. Leaving unconfirmed or sending chat alone does not freeze release; for incorrect work promptly use the job’s raise-a-dispute control, subject to settlement state.',
   jobs: await prisma.serviceJob.findMany({ where: { customerId: userId }, orderBy: { updatedAt: 'desc' }, take: 10,
    select: { id: true, serviceType: true, isRecovery: true, status: true, requestedFor: true, acceptedAt: true, startedAt: true, completedAt: true, confirmedAt: true, cancelledAt: true, updatedAt: true,
     payment: { select: { status: true, grossPence: true, paidAt: true, releasedAt: true, refundedAt: true } } } }),
