@@ -23,7 +23,9 @@ integration('Guest enquiries with disposable PostgreSQL', () => {
     afterAll(async () => {
         if (!prisma) return;
         if (listingId) await prisma.listing.deleteMany({ where: { id: listingId } });
-        await prisma.user.deleteMany({ where: { id: { in: [sellerId, outsiderId].filter(Boolean) } } });
+        const userIds = [sellerId, outsiderId].filter(Boolean);
+        await prisma.notification.deleteMany({ where: { userId: { in: userIds } } });
+        await prisma.user.deleteMany({ where: { id: { in: userIds } } });
         await prisma.$disconnect();
     });
     it('concurrent confirmations produce one enquiry and one notification; outsider cannot see it', async () => {
@@ -40,7 +42,9 @@ integration('Guest enquiries with disposable PostgreSQL', () => {
     });
     it('concurrent wrong codes cannot bypass the attempt limit', async () => {
         const { id } = await service.start({ listingId, email: `attempt-${randomUUID()}@invalid.example`, fullName: 'Synthetic buyer', message: 'Synthetic invalid code test.', consent: true });
-        const results = await Promise.allSettled(Array.from({ length: 8 }, () => service.verify({ id, code: '000000' })));
+        const actualCode = sendEmail.mock.calls.at(-1)[0].html.match(/bold">(\d{6})</)[1];
+        const wrongCode = actualCode === '000000' ? '111111' : '000000';
+        const results = await Promise.allSettled(Array.from({ length: 8 }, () => service.verify({ id, code: wrongCode })));
         expect(results.every(x => x.status === 'rejected')).toBe(true);
         const row = await prisma.guestListingEnquiry.findUniqueOrThrow({ where: { id } });
         expect(row.attempts).toBe(5); expect(row.verifiedAt).toBeNull();

@@ -31,7 +31,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
 export default async function RetailCataloguePage(props: Props) {
     const { page, listings, totalPages } = await catalogueFor(props)
-    const collections = await getRetailCollections()
+    const collections = await getRetailCollections(true)
     const pages = Array.from(new Set([1, totalPages, ...Array.from({ length: 5 }, (_, i) => page + i - 2)]))
         .filter(p => p >= 1 && p <= totalPages).sort((a, b) => a - b)
     const schema = {
