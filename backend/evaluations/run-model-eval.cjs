@@ -1,6 +1,7 @@
 // Executed in a temporary directory with fixture-only DB access. Never instantiate Prisma.
 const { AiService } = require('./dist/ai/ai.service.js');
 const cases = require('./mazium-cases.json');
+const {matchesCriterion}=require('./evaluation-text.cjs');
 const {classifySupportMessage,safeAutomaticSupportReply}=require('./dist/chat/mazium-support-policy.js');
 const supportCases=new Set(['MZ-121','MZ-140','MZ-141','MZ-142','AUTH-7','AUTH-8','AUTH-9']);
 const db = {
@@ -30,8 +31,8 @@ const canaries=[
 async function run(c){const start=Date.now();try{
  const support=supportCases.has(c.id);
  const r=support ? {text:await service.draftSupportReply(c.messages,{automatic:true,userId:c.userId})||'',requiresHumanReview:false} : await service.chatCompletion(c.messages,{userId:c.userId});
- const failures=c.must.filter(p=>!new RegExp(p,'i').test(r.text));
- for(const p of c.mustNot||[]) if(new RegExp(p,'i').test(r.text)) failures.push('forbidden:'+p);
+ const failures=c.must.filter(p=>!matchesCriterion(r.text,p));
+ for(const p of c.mustNot||[]) if(matchesCriterion(r.text,p)) failures.push('forbidden:'+p);
  if(support && classifySupportMessage(c.messages.at(-1).content).action!=='DRAFT') failures.push('false-support-escalation');
  if(support && !safeAutomaticSupportReply(r.text)) failures.push('support-delivery-withheld');
  if(r.requiresHumanReview) failures.push('generation-or-validation-failed');

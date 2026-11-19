@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'scripts/run-mazium-model-eval-on-fly.mjs'
       - '.github/workflows/backend-fly.yml'
   push:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'scripts/run-mazium-model-eval-on-fly.mjs'
       - '.github/workflows/backend-fly.yml'
 
 permissions:
@@ -50,6 +52,9 @@ jobs:
 
       - name: Run backend tests
         run: npm test -- --runInBand
+
+      - name: Test evaluation language assertions
+        run: node --test evaluations/evaluation-text.test.cjs
 
       - name: Build backend
         run: npm run build
