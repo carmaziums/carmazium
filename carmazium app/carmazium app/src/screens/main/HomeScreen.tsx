@@ -17,10 +17,12 @@ import { naturalLanguageSearch, AiSearchResult } from '../../lib/aiApi';
 import { useAuthStore } from '../../store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useWatchlistStore } from '../../store/watchlistStore';
+import { WebsiteHomeDiscovery, WebsiteHomeInformation } from '../../components/WebsiteHomeSections';
+import { WebsiteHomeHero } from '../../components/WebsiteHomeHero';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Button } from '../../components/Button';
-import { Colors, themeStatusBarStyle } from '../../constants/colors';
+import { Colors, themeStatusBarStyle, themeMode } from '../../constants/colors';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
@@ -329,7 +331,7 @@ const Section: React.FC<{ title: string; onSeeAll?: () => void; children: React.
 }) => (
   <View style={s.section}>
     <View style={s.sectionHeader}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
         <Text style={s.sectionTitle}>{title}</Text>
         {badge ? <View style={s.sectionBadge}><Text style={s.sectionBadgeText}>{badge}</Text></View> : null}
       </View>
@@ -370,6 +372,9 @@ const BODY_TYPES = [
 export const HomeScreen: React.FC = () => {
   // Clear the floating tab bar, which grows with the system font size.
   const tabBarClearance = useTabBarClearance();
+  const [heroVisible, setHeroVisible] = useState(true);
+  const heroHeight = useRef(900);
+  const searchRef = useRef<TextInput>(null);
   const navigation = useNavigation<NavProp>();
   const role = useAuthStore((s) => s.role);
   // Signed-out visitors never see how many auctions are running (website rule too).
@@ -401,7 +406,7 @@ export const HomeScreen: React.FC = () => {
         getActiveAuctions(),
         getScheduledAuctions(1, 6),
         getFeaturedListings(),
-        searchListings({ page: 1, limit: 10, sortBy: 'newest' }),
+        searchListings({ page: 1, limit: 16, sortBy: 'newest', listingType: 'CLASSIFIED' }),
       ]);
       if (live.status === 'fulfilled') setLiveAuctions(live.value);
       if (scheduled.status === 'fulfilled') setUpcomingAuctions(scheduled.value.data ?? []);
@@ -528,18 +533,20 @@ export const HomeScreen: React.FC = () => {
 
   // Sliced once here rather than inside the JSX — a fresh array literal in the
   // render body would give FlatList a new `data` reference every render.
-  const latestEight = useMemo(() => latestListings.slice(0, 8), [latestListings]);
+  const latestEight = useMemo(() => { const featuredIds = new Set(featuredListings.map(item => item.id)); return latestListings.filter(item => !featuredIds.has(item.id)).slice(0, 8); }, [latestListings, featuredListings]);
 
   const recentGrid = latestListings.slice(4, 8);
 
   return (
-    <View style={s.container}>
+    <View style={[s.container, { backgroundColor: themeMode === 'dark' ? '#1b2538' : '#fff' }]}>
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
-      <View style={s.topGlow} />
       <WebsiteTopBar />
 
       <ScrollView
-        contentContainerStyle={[s.scroll, { paddingTop: 12 }]}
+        contentContainerStyle={s.scroll}
+        scrollEventThrottle={100}
+        onScroll={event => { const visible = event.nativeEvent.contentOffset.y < heroHeight.current; setHeroVisible(current => current === visible ? current : visible); }}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -550,93 +557,33 @@ export const HomeScreen: React.FC = () => {
           />
         }
       >
-        {/* Website's current hero: lead with how to sell, not a separate
-            native-only 'Find your next car' experience. Both journeys remain
-            visible immediately below. */}
-        <View style={s.greeting}>
-          <Text style={s.greetingLine}>Sell your car</Text>
-          <Text style={s.greetingAccent}>your way.</Text>
-          <Text style={s.greetingOffer}>Auction FREE · Retail £1</Text>
-          <Text style={s.greetingDetail}>
-            Let verified dealers bid for free, or advertise your car for £1.
-            A successful auction sale with approved handover earns a £100 reward.
-          </Text>
-        </View>
-
-        {/* Two familiar website journeys, visible without scrolling past the feeds. */}
-        <View style={s.primaryJourneyRow}>
-          <TouchableOpacity
-            style={s.buyJourneyBtn}
-            onPress={() => navigation.navigate('Tabs', { screen: 'Search' })}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityLabel="Browse cars for sale"
-          >
-            <Ionicons name="car-outline" size={20} color={Colors.textPrimary} />
-            <Text style={s.buyJourneyText}>Buy Cars</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={s.sellJourneyBtn}
-            onPress={() => navigation.navigate('SellLanding')}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityLabel="Start selling your car"
-          >
-            <Ionicons name="pricetag-outline" size={20} color={Colors.onAccent} />
-            <Text style={s.sellJourneyText}>Sell a Car</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.onAccent} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Stats bar */}
-        {!isLoading && (liveAuctions.length > 0 || latestListings.length > 0) && (
-          <View style={s.statsBar}>
-            {liveAuctions.length > 0 && (
-              <View style={s.statChip}>
-                <View style={s.liveDot} />
-                <Text style={s.statChipText}>{isSignedIn ? `${liveAuctions.length} Live now` : 'Live now'}</Text>
-              </View>
-            )}
-            {upcomingAuctions.length > 0 && (
-              <View style={[s.statChip, { borderColor: Colors.infoBlueAlpha30, backgroundColor: Colors.infoBlueAlpha06 }]}>
-                <Ionicons name="calendar-outline" size={10} color={Colors.infoBlueLight} />
-                <Text style={[s.statChipText, { color: Colors.infoBlueLight }]}>{upcomingAuctions.length} Upcoming</Text>
-              </View>
-            )}
-            {latestListings.length > 0 && (
-              <View style={[s.statChip, { borderColor: Colors.accentGreenAlpha30, backgroundColor: Colors.accentGreenAlpha06 }]}>
-                <Ionicons name="pricetag-outline" size={10} color={Colors.accentGreen} />
-                <Text style={[s.statChipText, { color: Colors.accentGreen }]}>{latestListings.length}+ Listings</Text>
-              </View>
-            )}
-          </View>
-        )}
-
+        <View onLayout={event => { heroHeight.current = event.nativeEvent.layout.height; }}><WebsiteHomeHero visible={heroVisible} /></View>
+        <View style={s.websiteSearchPanel}>
+          <Text style={s.websiteEyebrow}>MAZIUM AI SEARCH</Text>
+          <Text style={s.websiteHeading}>Describe your next car.</Text>
         {/* Search bar — was a TouchableOpacity with no query state at all
             (tapping anywhere just navigated to Search); now a real input
             that runs AI search inline, matching web's HomeClient.tsx. */}
-        <View style={s.searchBar}>
+        <View style={s.websiteSearchRow}>
           <Ionicons name="search-outline" size={18} color={Colors.iconMuted} />
           <TextInput
+            ref={searchRef}
             style={s.searchInput}
             value={aiQuery}
             onChangeText={(t) => { setAiQuery(t); if (aiResult) setAiResult(null); if (aiError) setAiError(null); }}
-            placeholder="Search make, model, budget..."
+            placeholder="Try: automatic under £8,000"
             placeholderTextColor={Colors.iconMuted}
             returnKeyType="search"
             onSubmitEditing={handleAiSearch}
             accessibilityLabel="Search cars using MaziuM AI"
           />
-          <TouchableOpacity style={s.aiChip} onPress={handleAiSearch} disabled={aiLoading}
-            accessibilityRole="button" accessibilityLabel="AI Search" activeOpacity={0.8}>
-            {aiLoading
-              ? <ActivityIndicator size="small" color={Colors.onAccent} />
-              : <>
-                  <Ionicons name="sparkles" size={10} color={Colors.onAccent} />
-                  <Text style={s.aiChipText}>AI</Text>
-                </>}
-          </TouchableOpacity>
+        </View>
+        <TouchableOpacity style={s.websiteFindButton} onPress={handleAiSearch} disabled={aiLoading || !aiQuery.trim()} accessibilityRole="button" accessibilityLabel="Find matching cars">
+          {aiLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.websiteFindText}>Find matching cars</Text>}
+        </TouchableOpacity>
+        <Text style={s.websiteSearchHelp}>✦ Powered by MaziuM AI</Text>
+        <View style={s.websiteExamples}>{['Automatic under £5,000', '7-seat family car', 'Small first car'].map(example => <TouchableOpacity key={example} accessibilityRole="button" onPress={() => { setAiQuery(example); searchRef.current?.focus(); }} style={s.websiteExample}><Text style={s.websiteExampleText}>{example}</Text></TouchableOpacity>)}</View>
+        <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('Search' as any, { _t: Date.now() })} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={s.websiteBrowseLink}>Prefer filters? Browse all cars →</Text></TouchableOpacity>
         </View>
 
         {aiError && (
@@ -661,38 +608,50 @@ export const HomeScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Quick category chips */}
-        <ScrollView
-          horizontal
-        style={Layout.hScroll}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.quickChipsRow}
+        <View style={s.websiteValues}>
+          <View style={{ flexDirection: 'row' }}>
+            <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('Pricing')} style={s.websiteValueHalf}><Text style={s.websiteValueAmount}>£1</Text><Text style={s.websiteValueLabel}>Basic retail listing until sold</Text><Text style={s.websiteValueDetail}>Compare all retail packages →</Text></TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('SellCarFlow', { listingType: 'AUCTION' })} style={[s.websiteValueHalf, { borderLeftWidth: 1, borderColor: '#ffffff66', paddingLeft: 18 }]}><Text style={s.websiteValueAmount}>FREE</Text><Text style={s.websiteValueLabel}>Auction listing</Text><Text style={s.websiteValueDetail}>Let verified dealers compete →</Text></TouchableOpacity>
+          </View>
+          <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('HowItWorks')} style={{ marginTop: 20, paddingTop: 20, borderTopWidth: 1, borderColor: '#ffffff66' }}><Text style={s.websiteValueAmount}>£100</Text><Text style={s.websiteValueLabel}>Qualifying auction seller reward</Text><Text style={s.websiteValueDetail}>Successful auction sales after approved handover. Terms apply.</Text></TouchableOpacity>
+        </View>
+        <View style={s.websiteTrust}>{['Protected accounts', 'Verified sellers', 'Vehicle history checks', 'Independent checks advised'].map(label => <Text key={label} style={s.websiteTrustText}>✓ {label}</Text>)}</View>
+        <WebsiteHomeDiscovery />
+
+        {/* ── Featured Listings ── */}
+        {(isLoading || featuredListings.length > 0) && (
+          <Section
+            title="Featured Listings"
+            onSeeAll={() => navigation.navigate('Search' as any, { _t: Date.now() })}
+          >
+            <Rail
+              data={featuredListings}
+              loading={isLoading}
+              keyExtractor={keyById}
+              renderItem={renderListing}
+              skeleton={<><Skeleton w={260} h={220} /><Skeleton w={260} h={220} /></>}
+            />
+          </Section>
+        )}
+
+        {/* ── LATEST RETAIL LISTINGS ── */}
+        <Section
+          title="More Cars to Explore"
+          onSeeAll={() => navigation.navigate('Search' as any, { _t: Date.now() })}
         >
-          {[
-            { label: 'Live Auctions', icon: 'hammer-outline', color: Colors.accent, screen: 'Live', params: undefined },
-            { label: 'Under £15k', icon: 'pricetag-outline', color: Colors.accentGreen, screen: 'Search', params: { maxPrice: 15000, _t: 0 } },
-            { label: 'Electric', icon: 'flash-outline', color: Colors.warning, screen: 'Search', params: { fuelType: 'Electric', _t: 0 } },
-            { label: 'SUV', icon: 'car-sharp', color: Colors.infoBlue, screen: 'Search', params: { bodyType: 'SUV', _t: 0 } },
-            { label: 'New Today', icon: 'time-outline', color: Colors.lightPurple, screen: 'Search', params: { sortBy: 'newest', _t: 0 } },
-          ].map((chip) => (
-            <TouchableOpacity
-              key={chip.label}
-              style={[s.quickChip, { borderColor: `${chip.color}55` }]}
-              onPress={() => {
-                const params = chip.params ? { ...chip.params, _t: Date.now() } : undefined;
-                navigation.navigate(chip.screen as any, params as any);
-              }}
-              activeOpacity={0.7}
-            >
-              <Ionicons name={chip.icon as any} size={13} color={chip.color} />
-              <Text style={[s.quickChipText, { color: chip.color }]}>{chip.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+          <Rail
+            data={latestEight}
+            loading={isLoading}
+            keyExtractor={keyById}
+            renderItem={renderListing}
+            skeleton={<><Skeleton w={240} h={220} /><Skeleton w={240} h={220} /><Skeleton w={240} h={220} /></>}
+            empty={<EmptyState icon="car-sharp" text="No listings found" />}
+          />
+        </Section>
 
         {/* ── LIVE AUCTIONS ── */}
         <Section
-          title="LIVE AUCTIONS"
+          title="Live Auctions"
           badge={liveAuctions.length > 0 ? (isSignedIn ? `${liveAuctions.length} LIVE` : 'LIVE') : undefined}
           onSeeAll={() => navigation.navigate('Tabs', { screen: 'Live' })}
         >
@@ -709,7 +668,7 @@ export const HomeScreen: React.FC = () => {
         {/* ── UPCOMING AUCTIONS ── */}
         {(isLoading || upcomingAuctions.length > 0) && (
           <Section
-            title="UPCOMING AUCTIONS"
+            title="Upcoming Auctions"
             onSeeAll={() => navigation.navigate('Tabs', { screen: 'Live' })}
           >
             <Rail
@@ -722,163 +681,7 @@ export const HomeScreen: React.FC = () => {
           </Section>
         )}
 
-        {/* ── LATEST RETAIL LISTINGS ── */}
-        <Section
-          title="LATEST LISTINGS"
-          onSeeAll={() => navigation.navigate('Search' as any)}
-        >
-          <Rail
-            data={latestEight}
-            loading={isLoading}
-            keyExtractor={keyById}
-            renderItem={renderListing}
-            skeleton={<><Skeleton w={240} h={220} /><Skeleton w={240} h={220} /><Skeleton w={240} h={220} /></>}
-            empty={<EmptyState icon="car-sharp" text="No listings found" />}
-          />
-        </Section>
-
-        {/* ── FEATURED THIS WEEK ── */}
-        {(isLoading || featuredListings.length > 0) && (
-          <Section
-            title="FEATURED THIS WEEK"
-            onSeeAll={() => navigation.navigate('Search' as any)}
-          >
-            <Rail
-              data={featuredListings}
-              loading={isLoading}
-              keyExtractor={keyById}
-              renderItem={renderListing}
-              skeleton={<><Skeleton w={260} h={220} /><Skeleton w={260} h={220} /></>}
-            />
-          </Section>
-        )}
-
-        {/* ── BROWSE BY BODY TYPE ── */}
-        <Section title="BROWSE BY TYPE">
-          <ScrollView horizontal
-        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
-            {BODY_TYPES.map(bt => (
-              <TouchableOpacity
-                key={bt.bodyType}
-                style={s.bodyTypeCard}
-                onPress={() => navigation.navigate('Search' as any, { bodyType: bt.bodyType, _t: Date.now() })}
-                activeOpacity={0.8}
-              >
-                <View style={[s.bodyTypeIconWrap, { backgroundColor: `${bt.color}18` }]}>
-                  <Ionicons name={bt.icon as any} size={22} color={bt.color} />
-                </View>
-                <Text style={s.bodyTypeLabel}>{bt.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </Section>
-
-        {/* ── RECENTLY ADDED — readable full-width rows on phones ── */}
-        {(isLoading || recentGrid.length > 0) && (
-          <Section
-            title="RECENTLY ADDED"
-            badge={!isLoading && recentGrid.length > 0 ? `${recentGrid.length} new` : undefined}
-            onSeeAll={() => navigation.navigate('Search' as any)}
-          >
-            <View style={s.recentGrid}>
-              {isLoading ? (
-                <>
-                  <Skeleton w={SW - 48} h={126} />
-                  <Skeleton w={SW - 48} h={126} />
-                  <Skeleton w={SW - 48} h={126} />
-                </>
-              ) : recentGrid.map(l => (
-                <TouchableOpacity
-                  key={l.id}
-                  style={s.recentCard}
-                  onPress={() => goToListing(l)}
-                  activeOpacity={0.85}
-                >
-                  <View style={s.recentImgWrap}>
-                    {l.images?.[0]
-                      ? <Image source={{ uri: l.images[0] }} style={s.recentImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-                      : <View style={[s.recentImg, { backgroundColor: Colors.bgTertiary }]} />
-                    }
-                  </View>
-                  <View style={s.recentBody}>
-                    <Text style={s.recentSpecs}>{l.year} · {Number(l.mileage || 0).toLocaleString('en-GB')} mi</Text>
-                    <Text style={s.recentTitle} numberOfLines={1}>{l.make} {l.model}</Text>
-                    <Text style={s.recentPrice}>{formatPrice(l.price)}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </Section>
-        )}
-
-        {/* Sell your car — the one bold, accent-filled moment on this screen.
-            Previously three near-identical bgSecondary+border cards (auction/
-            sell/dealer) competed for the same visual weight, just recolored —
-            restyled so only the highest-value action (free listing) gets the
-            hero treatment; auction/dealer below are now quiet utility rows. */}
-        <TouchableOpacity
-          style={s.sellCta}
-          onPress={() => navigation.navigate('SellLanding')}
-          activeOpacity={0.9}
-        >
-          <Ionicons name="car-sport" size={72} color={Colors.accentAlpha15} style={s.sellCtaWatermark} />
-          <Text style={s.sellCtaTitle}>Sell your car</Text>
-          <Text style={s.sellCtaHint}>List in minutes · Get offers from buyers</Text>
-          <View style={s.sellCtaBtn}>
-            <Text style={s.sellCtaBtnText}>Start listing</Text>
-            <Ionicons name="arrow-forward" size={14} color={Colors.onAccent} />
-          </View>
-        </TouchableOpacity>
-
-        {(() => {
-          const showAuctionRow = liveAuctions.length > 0;
-          const showDealerRow = role !== 'dealer';
-          if (!showAuctionRow && !showDealerRow) return null;
-          // Divider only between two rows — a style-level border-bottom on
-          // every row would leave a stray trailing line when just one shows.
-          const dividerStyle = showAuctionRow && showDealerRow
-            ? { borderBottomWidth: 1, borderBottomColor: Colors.borderSubtle }
-            : undefined;
-          return (
-            <View style={s.secondaryRows}>
-              {showAuctionRow && (
-                <TouchableOpacity
-                  style={[s.utilityRow, dividerStyle]}
-                  onPress={() => navigation.navigate('Tabs', { screen: 'Live' })}
-                  activeOpacity={0.7}
-                >
-                  <View style={s.utilityRowIconWrap}>
-                    <Ionicons name="hammer-outline" size={16} color={Colors.accent} />
-                    <View style={s.auctionLiveDot} />
-                  </View>
-                  <Text style={s.utilityRowText} numberOfLines={1}>
-                    {isSignedIn
-                      ? `${liveAuctions.length} live auction${liveAuctions.length !== 1 ? 's' : ''} right now`
-                      : 'Live auctions happening now'}
-                  </Text>
-                  <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
-                </TouchableOpacity>
-              )}
-
-              {/* Apply as a Dealer CTA — web's home page (HomeClient.tsx) has a
-                  full "Are You a Car Dealer?" section linking to dealer signup;
-                  mobile had no equivalent entry point anywhere on the home screen. */}
-              {showDealerRow && (
-                <TouchableOpacity
-                  style={s.utilityRow}
-                  onPress={() => navigation.navigate('DealerOnboarding' as any)}
-                  activeOpacity={0.7}
-                >
-                  <View style={s.utilityRowIconWrap}>
-                    <Ionicons name="business-outline" size={16} color={Colors.infoBlueLight} />
-                  </View>
-                  <Text style={s.utilityRowText} numberOfLines={1}>Are you a car dealer? Apply here</Text>
-                  <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
-                </TouchableOpacity>
-              )}
-            </View>
-          );
-        })()}
+        <WebsiteHomeInformation />
 
         <View style={{ height: Math.max(110, tabBarClearance) }} />
       </ScrollView>
@@ -889,6 +692,25 @@ export const HomeScreen: React.FC = () => {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
+  websiteSearchPanel: { marginHorizontal: 18, marginBottom: 22, padding: 14, borderWidth: 2, borderTopWidth: 6, borderColor: Colors.accent, borderRadius: 14 },
+  websiteEyebrow: { fontFamily: FontFamily.extraBold, fontSize: 10, letterSpacing: 1.2, color: Colors.accent, marginBottom: 8 },
+  websiteHeading: { fontFamily: FontFamily.bold, fontSize: 27, lineHeight: 33, letterSpacing: -1.2, color: Colors.textPrimary, marginBottom: 14 },
+  websiteSearchRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, minHeight: 52, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: 10, backgroundColor: Colors.bgCard },
+  websiteFindButton: { minHeight: 48, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', borderRadius: 7, marginTop: 7 },
+  websiteFindText: { color: '#fff', fontFamily: FontFamily.bold, fontSize: 15 },
+  websiteSearchHelp: { color: Colors.textSecondary, fontFamily: FontFamily.regular, fontSize: 12, marginVertical: 14 },
+  websiteExamples: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  websiteExample: { minHeight: 44, paddingHorizontal: 8, paddingVertical: 9, justifyContent: 'center', borderWidth: 1, borderColor: Colors.accentAlpha30, borderRadius: 6, backgroundColor: Colors.accentAlpha06 },
+  websiteExampleText: { color: Colors.textPrimary, fontFamily: FontFamily.medium, fontSize: 11 },
+  websiteBrowseLink: { color: Colors.textPrimary, fontFamily: FontFamily.semiBold, fontSize: 12, textDecorationLine: 'underline' },
+  websiteValues: { backgroundColor: '#ed1c24', paddingHorizontal: 24, paddingVertical: 24 },
+  websiteValueHalf: { flex: 1, paddingRight: 12 },
+  websiteValueAmount: { color: '#fff', fontFamily: FontFamily.bold, fontSize: 36, lineHeight: 42, letterSpacing: -1.4 },
+  websiteValueLabel: { color: '#fff', fontFamily: FontFamily.semiBold, fontSize: 13, marginTop: 4 },
+  websiteValueDetail: { color: '#fff', fontFamily: FontFamily.regular, fontSize: 11, lineHeight: 17, marginTop: 9 },
+  websiteTrust: { paddingHorizontal: 24, paddingVertical: 18, marginBottom: 24, flexDirection: 'row', flexWrap: 'wrap', gap: 18, borderBottomWidth: 1, borderColor: Colors.border },
+  websiteTrustText: { color: Colors.textSecondary, fontFamily: FontFamily.regular, fontSize: 11 },
+
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   topGlow: {
     position: 'absolute', top: -80, left: '5%', right: '5%', height: 260,
