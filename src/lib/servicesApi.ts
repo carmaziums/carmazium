@@ -1,6 +1,7 @@
 import { apiClient } from './apiClient';
 
 export type ServiceType = 'DELIVERY' | 'INSPECTION' | 'FINANCE' | 'WARRANTY';
+export type InspectionScope = 'VEHICLE' | 'COSMETIC' | 'BOTH';
 export type CapabilityStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
 export type ServiceJobStatus =
   | 'OPEN' | 'ACCEPTED' | 'PAID' | 'IN_PROGRESS' | 'COMPLETED' | 'RELEASED'
@@ -95,6 +96,7 @@ export interface ServiceJob {
   id: string;
   customerId?: string | null;
   serviceType: ServiceType;
+  inspectionScope?: InspectionScope | null;
   isRecovery: boolean;
   status: ServiceJobStatus;
   title: string;
@@ -153,6 +155,7 @@ export interface ContractorCapability {
   verificationReminder7SentAt: string | null;
   jobNationwide: boolean;
   jobPostcodeAreas: string[];
+  inspectionScopes?: Exclude<InspectionScope, 'BOTH'>[];
   leadNationwide: boolean;
   leadPostcodeAreas: string[];
   leadMinVehicleValuePence: number | null;
@@ -254,6 +257,7 @@ export async function getServiceSettings(): Promise<ServiceMarketplaceSettings> 
 // Paid jobs: Delivery + Inspection
 export interface CreateJobInput {
   serviceType: ServiceType;
+  inspectionScope?: InspectionScope;
   isRecovery?: boolean;
   title: string;
   description?: string;
@@ -352,6 +356,7 @@ export interface LeadMatchingInput {
   leadWarrantyMaxMonths?: number;
 }
 export interface JobMatchingInput {
+  inspectionScopes?: Exclude<InspectionScope, 'BOTH'>[];
   jobNationwide: boolean;
   jobPostcodeAreas?: string[];
 }
