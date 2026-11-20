@@ -114,6 +114,30 @@ export class ServicesService {
         return { rate, platformFeePence, contractorPence: grossPence - platformFeePence };
     }
 
+    /** New cosmetic jobs pass through actual Stripe processing costs to the provider.
+     * Legacy mechanical and delivery jobs retain their original 9% / 91% settlement terms. */
+    private passesProcessingCosts(job: { serviceType: ServiceType; inspectionScope?: string | null }): boolean {
+        return job.serviceType === ServiceType.INSPECTION
+            && (job.inspectionScope === 'COSMETIC' || job.inspectionScope === 'BOTH');
+    }
+
+    private async actualStripeProcessingFee(stripe: any, chargeId: string, grossPence: number): Promise<number> {
+        if (typeof stripe?.charges?.retrieve !== 'function') {
+            throw new ConflictException('Stripe charge fees cannot be verified. Settlement needs reconciliation.');
+        }
+        const charge = await stripe.charges.retrieve(chargeId, { expand: ['balance_transaction'] });
+        if (!charge || charge.currency !== 'gbp' || charge.amount !== grossPence || charge.paid !== true) {
+            throw new ConflictException('Stripe charge amount, currency or paid status does not match this job.');
+        }
+        const balance = typeof charge.balance_transaction === 'string'
+            ? await stripe.balanceTransactions.retrieve(charge.balance_transaction)
+            : charge.balance_transaction;
+        if (!balance || !Number.isSafeInteger(balance.fee) || balance.fee < 0) {
+            throw new ConflictException('Actual payment-processing fee is not yet available. Try settlement after Stripe has recorded its fee.');
+        }
+        return balance.fee;
+    }
+
     private frontendUrl(): string {
         return resolveFrontendUrl(this.config.get<string>('FRONTEND_URL'));
     }
@@ -2320,6 +2344,8 @@ export class ServicesService {
 
         const stripe = await this.payments.getStripeClient();
         let transfer: { id: string };
+        let processingFeePence = job.payment.processingFeePence ?? 0;
+        let payoutPence = job.payment.contractorPence;
         try {
             // Tie the payout to the customer's own charge. Without
             // source_transaction Stripe pays from the platform's *available*
@@ -2334,11 +2360,16 @@ export class ServicesService {
             if (!sourceTransaction) {
                 throw new BadRequestException('This service payment has no verifiable Stripe charge. Contact CarMazium support before releasing funds.');
             }
+            if (this.passesProcessingCosts(job)) {
+                processingFeePence = await this.actualStripeProcessingFee(stripe, sourceTransaction, job.payment.grossPence);
+                payoutPence = job.payment.grossPence - job.payment.platformFeePence - processingFeePence;
+                if (payoutPence < 0) throw new ConflictException('Processing fees exceed the provider share. Contact support before settlement.');
+            }
             transfer = job.payment.settlementTransferId
                 ? await stripe.transfers.retrieve(job.payment.settlementTransferId)
                 : await stripe.transfers.create(
                 {
-                    amount: job.payment.contractorPence,
+                    amount: payoutPence,
                     currency: 'gbp',
                     destination: account,
                     source_transaction: sourceTransaction,
@@ -2354,9 +2385,12 @@ export class ServicesService {
             throw e;
         }
 
+        if ('amount' in transfer && typeof (transfer as any).amount === 'number' && (transfer as any).amount !== payoutPence) {
+            throw new ConflictException('Existing transfer amount differs from the calculated provider payout. Reconcile before settling.');
+        }
         const transferId = transfer.id;
         await this.prisma.servicePayment.update({ where: { id: job.payment.id }, data: { settlementTransferId: transferId } });
-        this.logger.log(`Service job ${jobId}: transferred ${job.payment.contractorPence}p to ${account} (${transferId}) — ${why}`);
+        this.logger.log(`Service job ${jobId}: transferred ${payoutPence}p to ${account} (${transferId}) — ${why}`);
 
         // If this DB finalization fails after Stripe accepted the transfer, the
         // claim token is intentionally retained. A retry calls Stripe with the
@@ -2365,7 +2399,8 @@ export class ServicesService {
         await this.prisma.$transaction(async (tx) => {
             const paymentFinalized = await tx.servicePayment.updateMany({
                 where: { id: job.payment!.id, status: ServicePaymentStatus.PAID, stripeTransferId: claimToken },
-                data: { status: ServicePaymentStatus.RELEASED, stripeTransferId: transferId, releasedAt: new Date() },
+                data: { status: ServicePaymentStatus.RELEASED, stripeTransferId: transferId, releasedAt: new Date(),
+                    contractorPence: payoutPence, processingFeePence }, 
             });
             if (paymentFinalized.count !== 1) {
                 throw new ConflictException('Payout finalization lost its payment claim.');
@@ -2373,7 +2408,7 @@ export class ServicesService {
 
             const jobFinalized = await tx.serviceJob.updateMany({
                 where: { id: jobId, status: job.status },
-                data: { status: ServiceJobStatus.RELEASED, confirmedAt: job.confirmedAt ?? new Date() },
+                data: { status: ServiceJobStatus.RELEASED, confirmedAt: job.confirmedAt ?? new Date(), contractorAmountPence: payoutPence }, 
             });
             if (jobFinalized.count !== 1) {
                 throw new ConflictException('Payout finalization lost its job state.');
@@ -2382,9 +2417,9 @@ export class ServicesService {
 
         const c = job.contractor.user;
         await this.notify(c.id, 'SERVICE_PAYOUT_RELEASED', 'Payment released',
-            `${gbp(job.payment.contractorPence)} for "${job.title}" is on its way to your account.`, `/dashboard/service/jobs/${jobId}`);
-        this.sendEmail(c.email, c.firstName, `${gbp(job.payment.contractorPence)} released for ${job.title}`,
-            `<p>The job is confirmed complete and <strong>${gbp(job.payment.contractorPence)}</strong> has been transferred to your Stripe account.</p>`,
+            `${gbp(payoutPence)} for "${job.title}" is on its way to your account.`, `/dashboard/service/jobs/${jobId}`);
+        this.sendEmail(c.email, c.firstName, `${gbp(payoutPence)} released for ${job.title}`,
+            `<p>The job is confirmed complete and <strong>${gbp(payoutPence)}</strong> has been transferred to your Stripe account.${processingFeePence ? ` Actual payment processing fees deducted: ${gbp(processingFeePence)}.` : ''}</p>`,
             'View the job', `/dashboard/service/jobs/${jobId}`);
         await this.notify(job.customerId, 'SERVICE_JOB_RELEASED', 'Job complete',
             `"${job.title}" is done and your provider has been paid. Thanks for using TradeXchange.`, `/services/jobs/${jobId}`);
