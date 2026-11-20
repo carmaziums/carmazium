@@ -159,6 +159,21 @@
   }
 }
 
+/* Navigation must stay still on hover and scroll independently of page cards. */
+.dashboard-sidebar-panel {
+  max-height: calc(100dvh - 7rem);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  border: 1px solid var(--border-default);
+  border-radius: 1rem;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(var(--glass-blur));
+}
+
 /* ─── Utilities ────────────────────────────────────────────────────────────── */
 
 @layer utilities {

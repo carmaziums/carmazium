@@ -184,7 +184,7 @@ function UnifiedUserDashboardContent() {
     const userRole = profile?.role || "User"
 
     return (
-        <div className={`min-h-screen pb-12 ${activeTab === "messages" ? "pt-3 lg:pt-20" : "pt-20"}`}>
+        <div className={`min-h-screen pb-12 ${activeTab === "messages" ? "pt-3 lg:pt-4" : "pt-20 lg:pt-4"}`}>
             <div className="container mx-auto px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8">
                 {/* Unified Sidebar */}
                 <DashboardSidebar
