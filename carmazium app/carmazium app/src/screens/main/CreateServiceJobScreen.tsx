@@ -16,7 +16,7 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
   const serviceType: ServiceType = route.params.serviceType;
   const delivery = serviceType === 'DELIVERY';
   const purchase = route.params.purchase;
-  const [title, setTitle] = useState(purchase ? `${purchase.title} delivery` : '');
+  const [title, setTitle] = useState(purchase ? `${purchase.title} ${delivery ? 'delivery' : 'inspection'}` : '');
   const [description, setDescription] = useState('');
   const [registration, setRegistration] = useState(purchase?.registration || '');
   const [make, setMake] = useState(purchase?.make || '');
@@ -26,6 +26,7 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
   const [address, setAddress] = useState('');
   const [recovery, setRecovery] = useState(false);
   const [inspectionScope, setInspectionScope] = useState<InspectionScope>('VEHICLE');
+  const [additionalRegistrations, setAdditionalRegistrations] = useState('');
   const [saving, setSaving] = useState(false);
   const field = (label: string, value: string, setValue: (value: string) => void, hint?: string, multiline = false) => (
     <View style={styles.field}>
@@ -42,6 +43,16 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
     }
     if (!postcodeValid(delivery ? pickup : destination) || (delivery && !postcodeValid(destination))) {
       Alert.alert('Check postcode', 'Enter valid UK postcodes for the job location.');
+      return;
+    }
+    const extraRegs = delivery ? [] : additionalRegistrations.split(/[\n,]+/).map(v => v.trim().replace(/\s+/g, '').toUpperCase()).filter(Boolean);
+    if (extraRegs.length > 4 || extraRegs.some(v => !/^[A-Z0-9]{2,10}$/.test(v))) {
+      Alert.alert('Check batch registrations', 'Enter at most four additional registrations, one per line.');
+      return;
+    }
+    const allRegs = [registration.replace(/\s+/g, '').toUpperCase(), ...extraRegs].filter(Boolean);
+    if (new Set(allRegs).size !== allRegs.length) {
+      Alert.alert('Duplicate vehicles', 'Each vehicle registration must be different.');
       return;
     }
     setSaving(true);
@@ -61,7 +72,7 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
             registration: registration.replace(/\s+/g, '').toUpperCase() || undefined,
             make: make.trim() || undefined,
             model: model.trim() || undefined,
-          }],
+          }, ...extraRegs.map(registration => ({ registration }))],
         }),
         timeoutMs: 30000,
       });
@@ -110,6 +121,8 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
         <>
           {field('Inspection postcode *', destination, setDestination, 'B19 1ES')}
           {field('Inspection address', address, setAddress, 'Optional location details')}
+          {field('Additional registrations (optional)', additionalRegistrations, setAdditionalRegistrations, 'Up to four more vehicles, separated by commas or new lines', true)}
+          <Text style={styles.subtitle}>You can request one quote for up to five vehicles at the same location.</Text>
         </>
       )}
       {field('Additional details', description, setDescription, 'Condition, availability and special instructions', true)}
