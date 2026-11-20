@@ -76,3 +76,13 @@ Build/install updated APK and verify every fix on-device, including reply scroll
 - Raw **Edit** was visible in AI replies. Follow-up renders bounded bold spans while preserving safe platform links, ordinary/unmatched asterisks and plain customer messages.
 - Source inspection found queued human handoff prevented any resume action for 15 minutes in the native client. Backend already differentiates queued requests from recent actual staff replies. Follow-up exposes Resume and delegates the decision to that authoritative endpoint.
 - Follow-up source validation: full native TypeScript check; 6 behaviour/contrast/link/emphasis tests. Follow-up changes are NOT in installed build 107 and require another APK/retest.
+
+
+## End-of-pass checks on installed build 107
+
+- Thirteenth live support message requested a human. The existing conversation had earlier handoff history, so it acknowledged the handoff directly and asked for missing enquiry details. This does not establish the first-request offer on a fresh thread. New acknowledgement scrolled into view. Confirmed the queued handoff menu omitted Resume AI; PR #931 fixes that source path.
+- Customer grey and AI blue were readable in dark mode too. Restored light mode and original show_ime_with_hard_keyboard=0. Physical density remained 240; BlueStacks reset the attempted 400 override, so narrower phone-width verification is still outstanding.
+- Purchases loaded historical platform records and correctly excluded FAILED payments from paid totals. No receipt/payment transaction was initiated.
+- My Offers empty state loaded, but tapping Browse cars did nothing. Its root-stack screen targeted the nested Search tab directly. Fix to explicit Tabs -> Search; needs next APK retest.
+- PR #931 merged after all five workflows passed. Includes emphasis, keyboard link taps, resume controls and non-dealer auction messaging. Build 107 does not contain these follow-up fixes.
+- Temporary QA-saved Hyundai removed and Watching=0 confirmed. No bids, offers, listings, purchases or payments submitted. The explicit support handoff QA leaves this buyer conversation paused until resumed. Dealer-account and admin testing, populated listing/offer journeys, narrower phone widths and iOS remain outstanding.
