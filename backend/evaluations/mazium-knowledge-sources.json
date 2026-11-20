@@ -36,7 +36,7 @@
     "src/app/dashboard/partner/page.tsx": "d94e832773976a3cb45543e776b1b99ce899d4f05a864bb8d21c4b98189f27cc",
     "src/app/dashboard/seller/auctions/page.tsx": "1588e03506cecabd028700d1ebb89e3a7860da94af05c05c289de83b0f204166",
     "src/app/dashboard/seller/offers/page.tsx": "70a8275e1c62b4edda2580a8bca325ed034d074aa0ad481f93149ac4c6b18ac2",
-    "src/app/dashboard/user/page.tsx": "115e1fcd33503fb6df6e8baa65961c07baf85b4f700a87a8772d0d0bb588fa6c",
+    "src/app/dashboard/user/page.tsx": "f464766c056b7a775df11019dd05475f22343fb158407cf22f33e3f5ffcd768e",
     "src/app/download-app/page.tsx": "8f4d4c627ca73aab89f7fdd6e63befe55b36c5bd439e215be2c9a0dc6a02fa3f",
     "src/app/how-it-works/page.tsx": "19c09f9a25a8461870b64afc2c365c09400898c8c2ed9c457750a286cc1e69b7",
     "src/app/notifications/page.tsx": "081d0c0f966b27b9ad0a44ec07c40cfe57c7fe6a7e03cbd80c16035791ffca54",
