@@ -93,7 +93,7 @@ export default function InspectionLandingPage() {
                 <div className="container mx-auto px-6 py-12 grid md:grid-cols-3 gap-6">
                     <div className="flex gap-3"><ShieldCheck className="text-primary shrink-0" /><p className="text-sm text-[var(--text-muted)]"><b className="text-[var(--text-primary)]">Approved providers.</b> Only verified businesses approved for the relevant inspection scope and postcode area can quote.</p></div>
                     <div className="flex gap-3"><CreditCard className="text-primary shrink-0" /><p className="text-sm text-[var(--text-muted)]"><b className="text-[var(--text-primary)]">Protected payment.</b> The accepted quote uses the same secure service-payment flow as vehicle delivery.</p></div>
-                    <div className="flex gap-3"><Users className="text-primary shrink-0" /><p className="text-sm text-[var(--text-muted)]"><b className="text-[var(--text-primary)]">9% platform fee.</b> Providers receive the remaining 91%, less actual payment-processing fees.</p></div>
+                    <div className="flex gap-3"><Users className="text-primary shrink-0" /><p className="text-sm text-[var(--text-muted)]"><b className="text-[var(--text-primary)]">9% platform fee.</b> Providers keep 91%; actual payment-processing costs are additionally deducted on new cosmetic inspection work.</p></div>
                 </div>
             </section>
 
@@ -107,8 +107,8 @@ export default function InspectionLandingPage() {
                                 Apply for the existing Inspection capability, then choose vehicle inspections, cosmetic inspections or both in your matching settings. Only quote for services you can competently provide.
                             </p>
                             <div className="rounded-2xl border border-emerald-500/25 bg-[var(--bg-card)] p-5 mb-6">
-                                <p className="font-black mb-1">9% CarMazium platform fee, plus actual payment-processing fees.</p>
-                                <p className="text-sm text-[var(--text-muted)] leading-relaxed">The fee is deducted from the accepted job price. Your 91% share, less the payment processor's actual charges, is paid after the inspection is completed and the customer confirms completion.</p>
+                                <p className="font-black mb-1">9% CarMazium platform fee. Cosmetic inspections also pass through actual processing costs.</p>
+                                <p className="text-sm text-[var(--text-muted)] leading-relaxed">The fee is deducted from the accepted job price. Your provider share is paid after confirmed completion. For new cosmetic-inspection jobs, actual payment-processing costs are deducted separately.</p>
                             </div>
                             <Button asChild>
                                 <Link href={providerHref}>
