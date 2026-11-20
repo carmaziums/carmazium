@@ -78,7 +78,7 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | Website route | Manifest features | Android evidence or outstanding check |
 | --- | --- | --- |
 | `/dashboard/buyer/bids` | buyer.bids | Auction Bids empty state and View Live Auctions action displayed. |
-| `/dashboard/buyer/history` | buyer.history | Pending Android acceptance. |
+| `/dashboard/buyer/history` | buyer.history | Pending populated Android acceptance; platform receipts and accepted purchases require synthetic records. |
 | `/dashboard/buyer/messages` | — | Messages opened with a populated conversation list. |
 | `/dashboard/buyer/offers` | buyer.offers | My Sent Offers empty state opened. Browse cars opened retail inventory. |
 | `/dashboard/buyer/settings` | — | Account Settings opened with personal details and notification/privacy controls. |
@@ -89,13 +89,13 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | Website route | Manifest features | Android evidence or outstanding check |
 | --- | --- | --- |
 | `/dashboard/dealer/add-listing` | — | Pending Android acceptance. |
-| `/dashboard/dealer/analytics` | dealer.analytics | Pending Android acceptance. |
+| `/dashboard/dealer/analytics` | dealer.analytics | QA #144 opened 30D and All; 48 live listings, sales-specific empty chart, and website report/CSV action displayed. Populated chart and export remain separate checks. |
 | `/dashboard/dealer/auctions` | — | Pending Android acceptance. |
 | `/dashboard/dealer/auctions/shortlisted` | — | Pending Android acceptance. |
 | `/dashboard/dealer/auctions/won` | dealer.auction_staff_permissions | Pending Android acceptance. |
 | `/dashboard/dealer/bids` | — | Dealer bid history opened. |
-| `/dashboard/dealer/crm` | — | Pending Android acceptance. |
-| `/dashboard/dealer/earnings` | dealer.earnings | Pending Android acceptance. |
+| `/dashboard/dealer/crm` | — | Dealer CRM list/board and manual lead validation opened; no real lead or invitation created. |
+| `/dashboard/dealer/earnings` | dealer.earnings | Dealership earnings opened. Financial reconciliation against real records is not certified. |
 | `/dashboard/dealer/finance` | dealer.finance | Pending Android acceptance. |
 | `/dashboard/dealer/inventory` | dealer.inventory | Stock search, clear, grid and list checked. |
 | `/dashboard/dealer/messages` | — | Pending Android acceptance. |
@@ -108,7 +108,7 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | `/dashboard/dealer/purchases/reconciled/[id]` | — | Pending Android acceptance. |
 | `/dashboard/dealer/purchases/retail` | — | Retail filter showed completed retail purchases and opened a matching purchase. |
 | `/dashboard/dealer/put-on-auction` | — | Pending Android acceptance. |
-| `/dashboard/dealer/settings` | — | Pending Android acceptance. |
+| `/dashboard/dealer/settings` | — | Account/settings/security headings and finance-calculator setting opened without changing customer settings. |
 | `/dashboard/dealer/team` | dealer.team | Roster, service permissions and invitation email/role controls opened in the QA app. |
 | `/dashboard/dealer/wishlist` | — | Pending Android acceptance. |
 
@@ -137,7 +137,7 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | `/dashboard/seller/earnings` | seller.earnings | Earnings opened with fees and payouts sections. |
 | `/dashboard/seller/listings` | seller.listings | My Listings, status filters and empty state opened. |
 | `/dashboard/seller/messages` | — | Pending Android acceptance. |
-| `/dashboard/seller/offers` | seller.offers | Pending Android acceptance. |
+| `/dashboard/seller/offers` | seller.offers | QA #146 local buyer/seller opened Incoming Offers and the correct empty state at 360dp. Populated counter/accept/reject/sold actions remain outstanding. |
 | `/dashboard/seller/performance` | seller.performance | Pending Android acceptance. |
 | `/dashboard/seller/settings` | — | Pending Android acceptance. |
 
@@ -148,7 +148,7 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | `/dashboard/service/capabilities/[id]/matching` | service_provider.capabilities | Delivery and inspection matching opened. Empty coverage and missing inspection specialty triggered validation. Reopening showed the original settings. |
 | `/dashboard/service/capabilities/[id]/verification` | service_provider.capabilities | Verification requirements and dealer KYC reuse opened. |
 | `/dashboard/service/capabilities` | service_provider.capabilities | Dealer-as-provider saw both approved capabilities. |
-| `/dashboard/service/jobs/[id]` | buyer.auction_inspection_refusal, service_provider.jobs | Pending Android acceptance. |
+| `/dashboard/service/jobs/[id]` | buyer.auction_inspection_refusal, service_provider.jobs | Local native combined inspection detail: quote, Accept & Pay, paid return, customer release, dispute and refunded status passed. Provider start/complete and refund resolution used API/service layer, not provider/admin native UI. |
 | `/dashboard/service/jobs` | service_provider.jobs | Dealer-as-provider opened available jobs, inspection filter and My Work. |
 | `/dashboard/service/leads/[id]` | service_provider.leads | Pending Android acceptance. |
 | `/dashboard/service/leads` | service_provider.leads, ui.shared_terminology | Pending Android acceptance. |
@@ -319,3 +319,32 @@ Run 44778035601, source a76be288aec7e6603e49220b438aa7165f806803, artifact 14650
 Corrective workflow #147 (44782763101, source 1fe2ce7e1a3e3c7e601b2208127cea348d7963b6) was cancelled after the second navigation defect was reproduced. Replacement #148 (44783680229) is compiling source 4fcce13893d3bc7764996f8fa3e27065f6753d28 with both corrections and the aligned backend. Verify the final artifact and retest before considering these two failures closed. Full native TypeScript passed after both changes.
 
 Homepage draft PR #937 remains six native files over the aligned QA baseline; no website code was modified for the homepage request. Current homepage source 596d07f52ffeb06f7ffc371128cde5d3dd1d64da. No customer release, Play publication, production OTA, or live Stripe payment.
+
+## Website-led homepage final filter retest and additional seller finding — 20 November, 17:31–18:00 GMT
+
+- Homepage footer checks on #146: Partner Account opened the correct become-a-partner website page; Guides opened the live blog directory; Resolve Automotive opened its correct business profile. How It Works, Pricing and TradeXchange opened native screens. Privacy opened the native policy container with the current website policy. These external views were read-only.
+- Seeded one explicitly synthetic local blog article to test the populated homepage feed. Its title, excerpt and Read More control rendered at 360dp without a cover image. Removed that single fixture afterwards (delete count 1). No public article was published.
+- About page still contained obsolete 50,000+ users / £200M+ traded figures and blanket verification claims absent from the website. Native-only draft PR #938 replaces these with the current website story, platform roles, buyer/seller/business information, contacts and five FAQs. TypeScript passed; updated device acceptance is pending the combined build.
+- Remote Desktop briefly stopped responding around 17:35 and recovered at 17:37; later calls also occasionally returned deferred results. Pending calls were polled instead of replaying mutations.
+
+### Homepage fixes verified in #148
+
+Workflow 44783680229 / #148, source 4fcce13893d3bc7764996f8fa3e27065f6753d28, completed build/signature/package verification and Android 15 cold launch. Artifact 14655321235 ZIP SHA256 4613db6534c2dd4f212870c15078478836e9a987c96a12eab574ba20243df574; APK SHA256 f1add93ef7c7ae90035b025cce1050ad71596105c6e4bfa8e53536bd1fb8a592, 97,144,960 bytes. Both laptop hashes matched CI. Installed with adb install -r: firstInstallTime 14:39:37 retained, lastUpdateTime 17:54:40. Login retained. Original customer package 108 remains separate.
+
+- Automatic category now returns the two automatic fixtures rather than zero.
+- More cars / See all clears Automatic and returns all three active fixtures.
+- Estates returns zero with one filter; Explore the Full Car Marketplace clears it and returns three with no filter.
+- Under £15k returns two; homepage Prefer filters? Browse all cars clears that quick filter and returns all three.
+- These are actual native button interactions at 360dp, separate from the source-only checks.
+
+### Newly reproduced seller offer history defect
+
+In the local sandbox, created listing e295b8e7-e893-4f7c-a600-c2d0c4fda3a6 (Synthetic QA offer actions) owned by the native buyer/seller and two synthetic buyers. On #146, Incoming Offers showed both pending cards. Zero counter amount correctly displayed validation. A £7,200 counter persisted for the £6,500 offer. Accepting the other £7,000 offer correctly changed it to ACCEPTED, rejected its sibling and set the listing OFFER_ACCEPTED. However, both cards disappeared and the app falsely displayed No offers received; Mark as Sold was unreachable.
+
+Cause: SellerOffersScreen fetched /dashboard/seller, whose summary intentionally includes only PENDING/COUNTERED. Native-only draft PR #939 uses the website's existing /offers/received endpoint, retaining accepted and rejected history, full counter details and listing status. Normalizes decimal-string amounts before arithmetic; loading failure now offers retry instead of an empty inbox. No website/backend change.
+
+Three rendered-screen regressions passed: accept-to-sale completion and duplicate-sale prevention, decimal counter arithmetic, and failure/retry. All 42 native script tests and full native TypeScript passed on the combined local source. Device acceptance of this new offer fix remains pending; do not mark the sale-completion flow passed yet. The synthetic accepted listing remains local-only for the upcoming retest and is excluded from active public search fixtures.
+
+About-only queued workflow #149 (44785459523, source 5332e4cf5c7e9f1f6add220ad88bd11b8f08a88e) was cancelled before compilation so the newly found offer fix could be included. Combined workflow #150 (44788018987), source 304056369956249b40d1fbd6fa1a02f5265edd25, is compiling the homepage, About and offer fixes. Verify its artifact and perform native acceptance before closing those items.
+
+No customer APK, Play release, production OTA, website edit or live payment was published. Emulator size remains temporarily 960x540 at density 240 for narrow-width testing; restore it after final acceptance.
