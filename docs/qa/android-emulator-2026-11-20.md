@@ -288,3 +288,34 @@ Temporary blog fixture was removed. Restored physical emulator size 1600x900 / d
 Homepage #148 screenshot saved as CarMazium-Android-Homepage-Verified.png; homepage code is unchanged in #150. Draft PR #937 has its device/filter evidence. No customer release, Play publication, public APK replacement, production OTA, website change or live payment.
 
 Full app/website parity is NOT certified. Still open: physical camera/private uploads, notification/email delivery, real provider onboarding, staff permissions, secure-login admin transaction UI, other unpopulated transactional routes, iOS/physical-device coverage, buyer completion, and the route-matrix pending rows. Keep service-layer, automated, HTTP, and actual native interaction evidence separate.
+
+## Handoff and owner requirements — 20 November 2026, 23:00 GMT onward
+
+### Correct app identity and cleanup
+The owner queried why the website app was not updating. Recent device fixes had been in uk.carmazium.qa, NOT the customer package. This distinction was explicitly explained. Website /api/app-version advertises 105; customer uk.carmazium.app is 108, so no newer advertised APK exists. The APK updater needs end-to-end acceptance and Android installation confirmation; do not describe it as silent auto-install.
+
+At the owner's explicit request, uninstalled uk.carmazium.qa from emulator-5554 on DESKTOP-LPIB4R3. Removed obsolete CarMazium APKs and build ZIPs in the laptop Downloads/Temp and emulator Download folders. Retained only the current 108 APK backup in Downloads/CarMazium-108-review. The original uk.carmazium.app was not uninstalled or data-cleared; version 108 and lastUpdateTime 13:35:32 remain. Remote GitHub artifact/release history and public website download were not deleted. Do not reinstall another separately named test application without discussing the renewed distinction with the owner.
+
+### Homepage overlap and original customer source
+User video 376893.mp4 exposed concurrent outgoing/incoming vehicle images. Native WebsiteHomeHero now renders one vehicle; preload next, fade current to zero, swap while invisible, fade in. Pause/resume and generation guards avoid late transition restart. Website unchanged.
+- Sandbox PR942/source 99eddbcfc4eac38b6d9638b9bd5449bbed795e31, run44831706209 (#151). At last check building; not installed or accepted on device.
+- Original customer source PR943: https://github.com/carmaziums/carmazium/pull/943
+- Branch fix/android-customer-homepage-20261120, head 7ed3fc667debd84a32075d71e7b13b90f72558ce, based main7e76727a73dab1c6e18b7a2c1a3e922dab0666c0.
+- Includes homepage, About, seller offer history and seller-bonus wording; package, signing/API configuration and updater unchanged. TypeScript PASS, native33/33 PASS, repository777/777 PASS. Three stale UI assertions updated; consent guards preserved.
+- PR943 is DRAFT, not merged; no signed original-app candidate built/installed. Must inspect current head/checks before progressing. Release-candidate workflow requires exact main SHA and INTERNAL_REVIEW_ONLY; do not weaken guard. Verify certificate ea9b8d6733ee68d6e36ce092e81c0e360330a56dde9ed0b4edb2c421c8600f24 and package before adb install -r. No downgrade/data clearing.
+- Native-only changes should follow website; no public release, public APK replacement, production OTA or Play publication authorized.
+
+### NEW requested scope for next chat: dealer and buyer/seller dashboards
+The owner says continue in a new chat. These requirements are recorded, NOT yet implemented.
+Use supplied admin dashboard screenshot as visual reference: pastel coloured cards in two columns, bright coloured rounded icon tiles, large readable labels/status/counts, rounded corners, balanced spacing, and prominent Customize cards. Do not hardcode the admin screenshot's live counts or financial data. Implement equivalent native app layouts for dealer and buyer/seller dashboards, respecting their actual role permissions.
+- All role-relevant options must be easy-to-find dashboard blocks, not only hidden in a long menu.
+- Let users show/hide and reorder cards, persist preferences per user/role, and provide reset defaults. Hidden cards remain discoverable from the full tools menu.
+- Dealer screenshot inventory: Home; Stock; Customers; My Auctions; Guest enquiries; Offers received; Live Auctions; Saved; Bids & Offers; Purchases; Messages; Team; Account Settings; Finance Calculator; Analytics; Earnings; Partner Account; Service Add-ons; Service Jobs; Contact CarMazium Support; Add Vehicle; Sign Out. Keep sign-out a clear separate account action and map each role's eligible tools correctly.
+- Buyer/seller equivalent must expose all buying/selling/account/service tools available on the current website, without dealer/admin privilege leakage.
+- Improve button quality: consistent sizing/spacing, legible contrast in light/dark modes, clear icons and wording, large tap areas, loading/disabled/error feedback.
+- Complete missing native pages. Audit every dashboard destination and all CarMazium website fallbacks; implement first-party functionality as native app screens instead of opening website pages or simply embedding them. Identify third-party payment/auth/provider dependencies separately and preserve required secure flows.
+- Website stays the reference and must not be changed to match app.
+- Acceptance includes 360dp/600dp, light/dark, font scaling, all card navigation, saved card order/visibility after restart and account switch, permissions, populated/empty/error states, no overlaps.
+References: 376895.jpg (dealer menu), 1795215797699.jpeg (admin colourful cards). User attachments available in conversation; Library IDs libfile_f0bdd6c90e088191b98de0c6268bd1df and libfile_1b1e26272db081919f759a0f450bd9bc.
+
+Previous approximate75% referred to earlier scope only and is not a measured completion rate for this expanded scope. Full parity is not certified. Preserve pending route matrix, TradeXchange sandbox coverage distinction, buyer completion, camera/private upload, notifications/email, KYC/staff/admin transaction UI and physical-device/iOS gaps. No real customer transactions/messages during testing.
