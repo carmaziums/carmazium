@@ -10,7 +10,7 @@ Build 108 was installed as an update in BlueStacks. The buyer/seller and dealer 
 | Guest retail | Build 108 asks for sign-in. Website allows an email-confirmed enquiry. #936 adds the Android form and covers consent, invalid and valid codes in a rendered screen test. | Guest viewing → confirmation email → seller inbox on a disposable listing and controlled accounts. |
 | TradeXchange | Delivery and inspection forms loaded and rejected empty posts. Existing cancelled inspection details, dealer provider coverage, matching and verification screens opened. Finance information and the web warranty quote form opened. | Scheduled and multi-vehicle jobs, inspection scope, quote acceptance, payment, completion, email, notifications and payout on an isolated deployment with an opted-in provider. |
 | Dealer | Stock filtering, count, grid/list, command centre, live lots and bid/offer history checked. | Permitted staff roles, CRM, team, listings, purchases, reconciliation and handover with representative records. |
-| Admin and specialist accounts | Website and native navigation compared in source. Missing admin warranty/finance entries recorded below. | Admin overview, pending listings, handovers, KYC, directory and insights opened on build 108. Remaining admin operations, standalone provider, legacy finance/insurance accounts, and populated workflows. |
+| Admin and specialist accounts | Website and native navigation compared in source. Missing admin warranty/finance entries recorded below. | Admin overview, pending listings, handovers, KYC, directory and insights opened on build 108. Authenticated mobile browser checked across the admin website. Admin changes requiring disposable records, standalone provider, legacy finance/insurance accounts, and populated workflows. |
 | Device behaviour | Keyboard interactions and links checked in BlueStacks. | Physical phone width, rotation, accessibility, camera/file upload, push in foreground/background/terminated states, and hosted checkout return/cancellation. |
 
 ## Automated checks
@@ -45,8 +45,8 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 
 | Website route | Manifest features | Android evidence or outstanding check |
 | --- | --- | --- |
-| `/dashboard/admin/ai-reports` | ai.safety_reporting | Admin website handoff in build 108. Admin sign-in and destination pending. |
-| `/dashboard/admin/analytics` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
+| `/dashboard/admin/ai-reports` | ai.safety_reporting | AI response reports loaded in authenticated Android Chrome with queue, open status and refresh controls. |
+| `/dashboard/admin/analytics` | — | Platform Analytics content verified in authenticated Android Chrome. |
 | `/dashboard/admin/app` | — | Native App & problem reports showed activity, downloads and Open/Resolved filters. |
 | `/dashboard/admin/auctions/historical-reconciliation` | — | Pending Android acceptance. |
 | `/dashboard/admin/auctions` | — | Signed-in Android Chrome opened Auction Management. |
@@ -55,13 +55,13 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | `/dashboard/admin/blog` | — | Signed-in Android Chrome opened the admin Blog list with published records. |
 | `/dashboard/admin/cancellations` | — | Signed-in Android Chrome opened Sale Cancellation Review. |
 | `/dashboard/admin/dealer-verification` | admin.operations | Native Dealer KYC showed field verification and its caught-up state. |
-| `/dashboard/admin/dealers` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
+| `/dashboard/admin/dealers` | — | All Dealers heading verified in authenticated Android Chrome. |
 | `/dashboard/admin/finance-providers` | — | Website finance provider manager opened in signed-in Android Chrome. Dedicated app shortcut added in #936. |
 | `/dashboard/admin/free-listings` | — | Signed-in Android Chrome opened Free Listing & Purchase Grants. |
 | `/dashboard/admin/handovers` | admin.operations | Native Handover Verification opened, with an empty queue and website payout shortcut. |
 | `/dashboard/admin/hpi` | — | Signed-in Android Chrome opened Vehicle History Reports and its fulfilment queue. |
 | `/dashboard/admin/listings` | admin.operations | Native pending review opened and correctly showed an empty queue. Full inventory manager link added in #936. |
-| `/dashboard/admin/marketing-popup` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
+| `/dashboard/admin/marketing-popup` | — | Marketing Popup settings loaded in authenticated Android Chrome with its current disabled status. No settings were changed. |
 | `/dashboard/admin/messages` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
 | `/dashboard/admin/services/jobs/[id]` | — | Pending Android acceptance. |
 | `/dashboard/admin/services/leads/[id]` | — | Pending Android acceptance. |
