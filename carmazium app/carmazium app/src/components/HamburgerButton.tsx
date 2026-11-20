@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, View, StyleSheet } from 'react-native';
-import { useDrawer } from '../context/DrawerContext';
+import { useDrawer, type DrawerMode } from '../context/DrawerContext';
 import { Colors } from '../constants/colors';
 import { Ionicons } from '@/components/BrandIcon';
 
@@ -8,11 +8,13 @@ interface HamburgerButtonProps {
   color?: string;
   /** Match the website's 28px menu/close icon without the pill background. */
   websiteStyle?: boolean;
+  mode?: DrawerMode;
 }
 
 export const HamburgerButton: React.FC<HamburgerButtonProps> = ({
   color = Colors.white,
   websiteStyle = false,
+  mode = 'site',
 }) => {
   const { isOpen, openDrawer, closeDrawer, setSiteMenuTop } = useDrawer();
 
@@ -24,11 +26,11 @@ export const HamburgerButton: React.FC<HamburgerButtonProps> = ({
         // A ☰ outside the website header has no header to sit under, so the
         // site menu opens full screen with its own close button.
         if (!websiteStyle) setSiteMenuTop(0);
-        openDrawer('site');
+        openDrawer(mode);
       }}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       accessibilityRole="button"
-      accessibilityLabel={websiteStyle && isOpen ? "Close navigation menu" : "Open navigation menu"}
+      accessibilityLabel={mode === 'dashboard' ? "Open account menu" : websiteStyle && isOpen ? "Close navigation menu" : "Open navigation menu"}
       accessibilityHint={websiteStyle ? "Opens or closes the CarMazium menu" : "Opens the CarMazium navigation drawer"}
       accessibilityState={websiteStyle ? { expanded: isOpen } : undefined}
       accessible

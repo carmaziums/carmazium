@@ -257,7 +257,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
             <Ionicons name="notifications-outline" size={18} color={Colors.white} />
             {unreadCount > 0 && <View style={styles.bellDot} />}
           </TouchableOpacity>
-          <HamburgerButton />
+          <HamburgerButton mode="dashboard" />
         </View>
       </View>
 

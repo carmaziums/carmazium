@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   StatusBar,
   Dimensions,
   Alert,
+  ActivityIndicator,
   useWindowDimensions,
   Platform,
 } from 'react-native';
@@ -28,6 +29,7 @@ import { IconButton } from '../../components/IconButton';
 import { CarListing, formatPrice } from '../../data/listings';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { useAuthStore } from '../../store/authStore';
+import { getListingById } from '../../lib/listingsApi';
 import { getSavedAuctionIdForListing } from '../../lib/watchlistApi';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -57,6 +59,8 @@ export const SavedScreen: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [sortMode, setSortMode] = useState<'saved' | 'price-low' | 'price-high'>('saved');
   const [refreshing, setRefreshing] = useState(false);
+  const openingRef = useRef(false);
+  const [openingListing, setOpeningListing] = useState(false);
 
   const { savedListings, isLoading, toggle, isSaved, hydrateFromApi } = useWatchlistStore();
 
@@ -97,7 +101,23 @@ export const SavedScreen: React.FC = () => {
         }
         return;
       }
-      navigation.navigate('VehicleDetail', { listing });
+      if (openingRef.current) return;
+      openingRef.current = true;
+      setOpeningListing(true);
+      try {
+        // Saved rows are summaries, not complete adverts. Fetch seller,
+        // description and vehicle specifications before opening the detail.
+        const fullListing = await getListingById(listing.id);
+        if (!navigation.isFocused()) return;
+        if (!fullListing) {
+          Alert.alert('Vehicle unavailable', 'Could not load this vehicle. Check your connection and try again.');
+          return;
+        }
+        navigation.navigate('VehicleDetail', { listing: fullListing });
+      } finally {
+        openingRef.current = false;
+        setOpeningListing(false);
+      }
     },
     [navigation, accountRole]
   );
@@ -121,7 +141,7 @@ export const SavedScreen: React.FC = () => {
       title="No saved cars yet"
       subtitle="Browse cars and save those you want to revisit."
       ctaLabel="Browse listings"
-      onCtaPress={() => navigation.navigate('Search' as any)}
+      onCtaPress={() => navigation.navigate('Tabs', { screen: 'Search' })}
     />
   );
 
@@ -276,6 +296,9 @@ export const SavedScreen: React.FC = () => {
   // header) rather than sitting fixed above a flex:1 list.
   const pageHeader = (
     <View style={styles.headerBleed}>
+      {openingListing && <View accessible accessibilityRole="progressbar" accessibilityLabel="Opening saved vehicle" style={{ padding: 8 }}>
+        <ActivityIndicator color={Colors.accent} />
+      </View>}
       {/* Website watchlist header below global navigation. */}
       <View style={[styles.header, { paddingTop: 12 }]}>
         <View>

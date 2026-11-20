@@ -19,6 +19,15 @@ describe('Dealer auction shortlist', () => {
         service = new WatchlistService(prisma as any);
     });
 
+    it('includes public vehicle specs in saved cards without leaking seller or auction internals', async () => {
+        await service.findAll('buyer', 1, 20, true);
+        const query = prisma.watchlistItem.findMany.mock.calls[0][0];
+        expect(query.include.listing.select).toMatchObject({ fuelType: true, transmission: true, location: true });
+        expect(query.include.listing.select).not.toHaveProperty('seller');
+        expect(query.include.listing.select).not.toHaveProperty('auction');
+        expect(query.where).toEqual({ userId: 'buyer', listing: { type: 'CLASSIFIED' } });
+    });
+
     it('requires verified trade access rather than a basic logged-in account', () => {
         const guards = Reflect.getMetadata(
             GUARDS_METADATA, WatchlistController.prototype.findAuctionShortlist,

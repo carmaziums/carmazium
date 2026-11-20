@@ -343,6 +343,8 @@ export const GlobalAIChatBot: React.FC = () => {
   }, [isOpen]);
 
   if (!isAuthenticated || activeRoute === 'LiveAuctionDetailed') return null;
+  // The support conversation owns this screen; the shopping widget must not cover replies.
+  if (['ChatScreen', 'Messages', 'ProviderMessages'].includes(activeRoute)) return null;
 
   // The website forwards every non-empty AI filter. Use the app's real nested
   // Search tab instead of dispatching a possibly unhandled root action.

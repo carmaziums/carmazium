@@ -45,7 +45,8 @@ import {
   type ChatUser,
 } from '../../lib/chatApi';
 import { getListingById } from '../../lib/listingsApi';
-import { Colors, themeStatusBarStyle } from '../../constants/colors';
+import { ChatFollowTracker, chatAppearance, supportTextParts } from '../../lib/chatPresentation';
+import { Colors, themeMode, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -165,6 +166,8 @@ interface MessageBubbleProps {
   isLastOwnMessage: boolean;
   initials: string;
   onRetry: (message: ChatMessage) => void;
+  fallbackRole?: string;
+  onOpenLink: (url: string) => void;
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
@@ -173,7 +176,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   isLastOwnMessage,
   initials,
   onRetry,
+  fallbackRole,
+  onOpenLink,
 }) => {
+  const appearance = chatAppearance(msg, themeMode === 'dark', fallbackRole);
   const parsedSpecial = parseSpecialMessage(msg.content);
   const showSeenIndicator = isOwn && !msg.deliveryStatus && msg.isRead && isLastOwnMessage;
 
@@ -206,6 +212,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             style={[
               styles.photoMessageBubble,
               isOwn ? styles.bubbleUser : styles.bubbleDealer,
+            { backgroundColor: appearance.background, borderColor: appearance.background },
               msg.deliveryStatus === 'failed' && styles.bubbleFailed,
             ]}
           >
@@ -224,16 +231,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                 </Text>
               </View>
             )}
-            {!!msg.content && <Text style={[styles.bubbleText, styles.photoCaption]}>{msg.content}</Text>}
+            {!!msg.content && <Text style={[styles.bubbleText, styles.photoCaption, { color: appearance.foreground }]}>{msg.content}</Text>}
             <View style={[styles.msgFooter, isOwn ? styles.msgFooterRight : styles.msgFooterLeft]}>
-              <Text style={isOwn ? styles.timeTextRightInline : styles.timeTextLeftInline}>
+              <Text style={[isOwn ? styles.timeTextRightInline : styles.timeTextLeftInline, { color: appearance.secondary }]}>
                 {formatMessageTime(msg.createdAt)}
               </Text>
               {isOwn && !msg.deliveryStatus && (
                 <Ionicons
                   name={msg.isRead ? 'checkmark-done' : 'checkmark'}
                   size={14}
-                  color={msg.isRead ? Colors.lightBlue_4fa8ff : 'rgba(255,255,255,0.45)'}
+                  color={appearance.secondary}
                   style={styles.readTick}
                   accessibilityElementsHidden
                   importantForAccessibility="no-hide-descendants"
@@ -266,24 +273,31 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
           style={[
             styles.bubble,
             isOwn ? styles.bubbleUser : styles.bubbleDealer,
+            { backgroundColor: appearance.background, borderColor: appearance.background },
             msg.deliveryStatus === 'failed' && styles.bubbleFailed,
           ]}
         >
           {msg.aiGenerated && (
-            <Text style={styles.aiLabel} accessibilityLabel="Automated support message">
+            <Text style={[styles.aiLabel, { color: appearance.foreground }]} accessibilityLabel="Automated support message">
               MaziuM · Automated response
             </Text>
           )}
-          <Text style={styles.bubbleText}>{msg.content}</Text>
+          {appearance.kind === 'admin' && <Text style={[styles.aiLabel, { color: appearance.foreground }]}>CarMazium team</Text>}
+          <Text style={[styles.bubbleText, { color: appearance.foreground }]}>
+            {msg.aiGenerated ? supportTextParts(msg.content).map((part, index) => part.url ? (
+              <Text key={index} accessibilityRole="link" style={{ textDecorationLine: 'underline', fontWeight: '600' }}
+                onPress={() => onOpenLink(part.url!)}>{part.text}</Text>
+            ) : <Text key={index}>{part.text}</Text>) : msg.content}
+          </Text>
           <View style={[styles.msgFooter, isOwn ? styles.msgFooterRight : styles.msgFooterLeft]}>
-            <Text style={isOwn ? styles.timeTextRightInline : styles.timeTextLeftInline}>
+            <Text style={[isOwn ? styles.timeTextRightInline : styles.timeTextLeftInline, { color: appearance.secondary }]}>
               {formatMessageTime(msg.createdAt)}
             </Text>
             {isOwn && !msg.deliveryStatus && (
               <Ionicons
                 name={msg.isRead ? 'checkmark-done' : 'checkmark'}
                 size={14}
-                color={msg.isRead ? Colors.lightBlue_4fa8ff : 'rgba(255,255,255,0.45)'}
+                color={appearance.secondary}
                 style={styles.readTick}
                 accessibilityElementsHidden
                 importantForAccessibility="no-hide-descendants"
@@ -331,7 +345,7 @@ export const ChatScreen: React.FC = () => {
     refreshRooms,
   } = useChat();
 
-  const { user } = useAuthStore();
+  const { user, accountRole } = useAuthStore();
   const room = rooms.find((r) => r.id === threadId);
   const roomRefreshAttemptRef = useRef<string | null>(null);
 
@@ -351,6 +365,13 @@ export const ChatScreen: React.FC = () => {
   }, [room, threadId, refreshRooms]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const listRef = useRef<FlatList<ChatMessage>>(null);
+  const followTracker = useRef(new ChatFollowTracker());
+  const followLatest = useRef(true);
+  const nearLatest = useRef(true);
+  const revealLatest = useCallback(() => {
+    if (followLatest.current) listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, []);
   const [loading, setLoading] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -618,6 +639,7 @@ export const ChatScreen: React.FC = () => {
     if (!historyCursor || !hasMore || loadingOlder) return;
 
     try {
+      followLatest.current = false;
       setLoadingOlder(true);
       const res = await getChatMessages(threadId, 1, 50, historyCursor);
       setMessages((prev) => {
@@ -661,9 +683,33 @@ export const ChatScreen: React.FC = () => {
     return null;
   }, [messages, user?.id]);
 
-  // FlatList `inverted` expects newest-first data so it can stay pinned to the
-  // bottom as new messages are appended, without any manual scrollToEnd() hack.
+  // Inverted lists use offset zero for the newest message. Preserve history
+  // position, but explicitly reveal sent messages and support/AI replies after layout.
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
+  const newestMessage = messages[messages.length - 1];
+  useEffect(() => {
+    if (!newestMessage) return;
+    if (followTracker.current.update(threadId, newestMessage, user?.id,
+      room?.context === 'SUPPORT', nearLatest.current)) {
+      followLatest.current = true;
+      const frame = requestAnimationFrame(revealLatest);
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [threadId, newestMessage, user?.id, room?.context, revealLatest]);
+
+  const openSupportLink = useCallback((url: string) => {
+    const parsed = new URL(url);
+    if (parsed.pathname === '/dashboard/user' && parsed.searchParams.get('tab') === 'cars') {
+      navigation.navigate('MyCars');
+    } else if (parsed.pathname === '/search' && !parsed.search) {
+      navigation.navigate('Tabs', { screen: 'Search' });
+    } else if (parsed.pathname === '/sell' && !parsed.search) {
+      navigation.navigate('SellCarFlow');
+    } else {
+      Linking.openURL(url).catch(() => showToast('Could not open this link. Please try again.', 'info'));
+    }
+  }, [navigation, showToast]);
+
 
   const openReport = useCallback((message: ChatMessage) => {
     if (message.senderId === user?.id || message.deliveryStatus) return;
@@ -716,6 +762,8 @@ export const ChatScreen: React.FC = () => {
         isLastOwnMessage={item.id === lastOwnMessageId}
         initials={initialsForBubbles}
         onRetry={handleRetry}
+        fallbackRole={item.senderId === user?.id ? accountRole : room?.otherUser.role}
+        onOpenLink={openSupportLink}
       />
       {item.senderId !== user?.id &&
         !item.deliveryStatus &&
@@ -742,6 +790,9 @@ export const ChatScreen: React.FC = () => {
     lastOwnMessageId,
     initialsForBubbles,
     handleRetry,
+    accountRole,
+    openSupportLink,
+    room?.otherUser.role,
     room?.context,
     reportedMessageIds,
     openReport,
@@ -1097,16 +1148,20 @@ export const ChatScreen: React.FC = () => {
 
       {/* Main chat body with conditional overlay blocking */}
       <View style={{ flex: 1, position: 'relative' }}>
-        {/* Conversations list — FlatList inverted so it virtualizes long threads and
-            stays pinned to the bottom as new messages are appended, with no manual
-            scrollToEnd() timing hack (mobile-audit.md P2). Inverted flips header/footer:
-            ListHeaderComponent renders at the visual bottom, ListFooterComponent at the top. */}
+        {/* Newest-first virtualized history. Layout callbacks keep new support
+            replies visible when text wraps or the keyboard changes the viewport. */}
         <FlatList
+          ref={listRef}
+          onContentSizeChange={revealLatest}
+          onLayout={revealLatest}
+          onScrollBeginDrag={() => { followLatest.current = false; }}
+          onScroll={(event) => { nearLatest.current = event.nativeEvent.contentOffset.y < 80; }}
+          scrollEventThrottle={100}
           style={styles.chatArea}
           contentContainerStyle={styles.chatScroll}
           showsVerticalScrollIndicator={false}
           inverted
-          maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+          maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: 80 }}
           data={reversedMessages}
           keyExtractor={(item) => item.id}
           renderItem={renderMessageItem}
