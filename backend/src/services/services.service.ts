@@ -31,6 +31,7 @@ import {
     ApplyCapabilityDto, UpdateLeadMatchingDto, UpdateJobMatchingDto, ReviewCapabilityDto, ResolveDisputeDto, CreateServiceReviewDto, JOB_SERVICE_TYPES,
 } from './dto';
 import { assertServiceAcceptingNewRequests } from './service-availability';
+import { providerSupportsInspection, eligibleInspectionJobScopes } from './inspection-scope';
 import {
     assertCapabilityVerificationReady,
     capabilityVerificationIsCurrent,
@@ -169,6 +170,7 @@ export class ServicesService {
                 verificationExpiresAt: true,
                 jobNationwide: true,
                 jobPostcodeAreas: true,
+                inspectionScopes: true,
             },
         });
         return capabilityVerificationIsCurrent(capability) ? capability : null;
@@ -213,12 +215,20 @@ export class ServicesService {
     private async eligibleProviderCountForJob(
         serviceType: ServiceType,
         workPostcodeArea: string | null,
+        inspectionScope?: string | null,
     ): Promise<number> {
         return this.prisma.contractorCapability.count({
             where: {
                 serviceType,
                 ...verifiedCapabilityWhere(new Date()),
-                AND: [dealerServiceEligibilityWhere()],
+                AND: [
+                    dealerServiceEligibilityWhere(),
+                    ...(serviceType === ServiceType.INSPECTION ? [{
+                        inspectionScopes: inspectionScope === 'BOTH'
+                            ? { hasEvery: ['VEHICLE', 'COSMETIC'] }
+                            : { has: inspectionScope || 'VEHICLE' },
+                    }] : []),
+                ],
                 contractor: {
                     deletedAt: null,
                     user: {
@@ -238,9 +248,11 @@ export class ServicesService {
         contractorProfileId: string,
         serviceType: ServiceType,
         workPostcodeArea: string | null,
+        inspectionScope?: string | null,
     ): Promise<boolean> {
         const capability = await this.currentNewWorkCapability(contractorProfileId, serviceType);
         if (!capability) return false;
+        if (serviceType === ServiceType.INSPECTION && !providerSupportsInspection((capability as any).inspectionScopes, inspectionScope)) return false;
 
         // Compatibility for the older in-memory test harness only. Production
         // rows have these columns after Block 8, but missing coverage fields must
@@ -464,12 +476,17 @@ export class ServicesService {
         if (!dto.jobNationwide && postcodeAreas.length === 0) {
             throw new BadRequestException('Choose nationwide coverage or at least one UK postcode area.');
         }
+        if (capability.serviceType !== ServiceType.INSPECTION && dto.inspectionScopes !== undefined) {
+            throw new BadRequestException('Inspection specialisms can only be set on an Inspection capability.');
+        }
 
         return this.prisma.contractorCapability.update({
             where: { id: capability.id },
             data: {
                 jobNationwide: dto.jobNationwide,
                 jobPostcodeAreas: dto.jobNationwide ? [] : postcodeAreas,
+                ...(capability.serviceType === ServiceType.INSPECTION && dto.inspectionScopes
+                    ? { inspectionScopes: [...new Set(dto.inspectionScopes)] } : {}),
             },
         });
     }
@@ -640,12 +657,13 @@ export class ServicesService {
         pickupPostcode?: string | null;
         deliveryPostcode?: string | null;
         servicePostcode?: string | null;
+        inspectionScope?: string | null;
     }): Promise<void> {
         try {
             let eligibleCount: number | null = null;
             try {
                 eligibleCount = await this.eligibleProviderCountForJob(
-                    job.serviceType, job.workPostcodeArea ?? null,
+                    job.serviceType, job.workPostcodeArea ?? null, job.inspectionScope,
                 );
             } catch (error: any) {
                 this.logger.warn(`Cannot check eligible providers for TradeXchange job ${job.id}: ${error?.message}`);
@@ -684,6 +702,9 @@ export class ServicesService {
             throw new BadRequestException(`${this.label(dto.serviceType)} is enquiry-based and does not take jobs yet.`);
         }
         assertServiceAcceptingNewRequests(dto.serviceType);
+        if (dto.serviceType !== ServiceType.INSPECTION && dto.inspectionScope !== undefined) {
+            throw new BadRequestException('Inspection scope is only valid for inspection jobs.');
+        }
 
         const requestedFor = parseFutureRequestedFor(dto.requestedFor);
         let pickupPostcode: string | null = null;
@@ -710,6 +731,7 @@ export class ServicesService {
             data: {
                 customerId,
                 serviceType: dto.serviceType,
+                inspectionScope: dto.serviceType === ServiceType.INSPECTION ? (dto.inspectionScope || 'VEHICLE') : null,
                 isRecovery: dto.serviceType === ServiceType.DELIVERY && !!dto.isRecovery,
                 title: dto.title.trim(),
                 description: dto.description?.trim() || null,
@@ -1545,23 +1567,32 @@ export class ServicesService {
                 serviceType: true,
                 jobNationwide: true,
                 jobPostcodeAreas: true,
+                inspectionScopes: true,
             },
         });
 
         const coverage = capabilities
             .map((capability: any) => {
+                const scopes = capability.serviceType === ServiceType.INSPECTION
+                    ? eligibleInspectionJobScopes(capability.inspectionScopes) : [];
+                if (capability.serviceType === ServiceType.INSPECTION && scopes.length === 0) return null;
+                const typeAndScope = capability.serviceType === ServiceType.INSPECTION
+                    ? { serviceType: capability.serviceType, OR: [
+                        { inspectionScope: { in: scopes } },
+                        ...(scopes.includes('VEHICLE') ? [{ inspectionScope: null }] : []),
+                    ] } : { serviceType: capability.serviceType };
                 const legacyFixture =
                     capability.jobNationwide === undefined
                     && capability.jobPostcodeAreas === undefined;
                 if (legacyFixture || capability.jobNationwide) {
-                    return { serviceType: capability.serviceType };
+                    return typeAndScope;
                 }
                 const areas = (capability.jobPostcodeAreas ?? [])
                     .map((area: string) => area.toUpperCase())
                     .filter(Boolean);
                 return areas.length
                     ? {
-                        serviceType: capability.serviceType,
+                        ...typeAndScope,
                         workPostcodeArea: { in: areas },
                     }
                     : null;
@@ -1678,8 +1709,9 @@ export class ServicesService {
             contractorProfileId,
             job.serviceType,
             this.jobArea(job),
+            job.inspectionScope,
         ))) {
-            throw new ForbiddenException('This job is outside your approved TradeXchange service area.');
+            throw new ForbiddenException('This job does not match your approved inspection scope or postcode coverage.');
         }
         await this.assertProviderPayoutReadyForNewWork(contractorProfileId);
         if (job.customerId === userId) throw new BadRequestException('You cannot quote on your own job.');
@@ -1877,6 +1909,7 @@ export class ServicesService {
                 viewer.contractorProfileId,
                 job.serviceType,
                 this.jobArea(job),
+                job.inspectionScope,
             );
         }
 
@@ -1910,7 +1943,7 @@ export class ServicesService {
         }
 
         const eligibleProviderCount = job.status === ServiceJobStatus.OPEN
-            ? await this.eligibleProviderCountForJob(job.serviceType, this.jobArea(job))
+            ? await this.eligibleProviderCountForJob(job.serviceType, this.jobArea(job), job.inspectionScope)
             : null;
 
         return {
