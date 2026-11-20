@@ -17,7 +17,7 @@ const docs = get('docs/native/website-native-visual-parity-block3-20261010.md');
 
 test('one website command centre and one native matching first fold', () => {
   assert.ok(web.includes("getDealerRoute('/dashboard/dealer')?.title"));
-  assert.ok(web.includes('title: "Add vehicle"'));
+  assert.ok(web.includes('<DashboardCards mode="dealer"'));
   assert.ok(web.includes('label="Active Stock"'));
   assert.ok(web.includes('label="Vehicle Views"'));
   assert.ok(web.includes('label="Active Leads"'));
@@ -78,7 +78,7 @@ test('one set of permission-gated jobs; no altered auction/KYC/buyer routes', ()
   }
   assert.ok(native.includes("navigation.navigate('Tabs', { screen: 'DealerBuyBid' })"));
   assert.ok(routes.includes('<Tab.Screen name="DealerBuyBid" component={GatedDealerBuyBidTab} />'));
-  assert.ok(routes.includes('<Tab.Screen name="DealerMore" component={ProfileTabScreen} />'));
+  assert.ok(!routes.includes('<Tab.Screen name="DealerMore"'));
   assert.ok(native.includes('setRole(\'buyer\')')); // legacy buyer preview retained
   assert.ok(native.includes('showPhoneBanner')); // existing KYC/phone affordance retained
 });

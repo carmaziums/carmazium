@@ -64,7 +64,7 @@ test('large-type tabs wrap rather than reducing to illegible 60 percent and deal
   assert.ok(layout.includes('getBottomTabItemHeight(fontScale) + 16 + Math.max(0, bottomInset)'));
   assert.ok(layout.includes('fontScale >= 1.6 ? 76 : fontScale >= 1.3 ? 64 : 48'));
   assert.ok(drawer.includes('dealerMode'));
-  for(const route of ['Home','Search','Live','Saved','Profile','DealerHome','DealerMore']){
+  for(const route of ['Home','Search','Live','Saved','Profile','DealerHome']){
     assert.ok(tabs.includes(`<Tab.Screen name="${route}"`),route);
   }
 });

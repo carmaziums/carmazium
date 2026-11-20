@@ -36,7 +36,7 @@ test('every hardcoded drawer and bottom-tab destination resolves to a registered
   // Consumer deep links must remain intact while dealer mode adds a second,
   // separately permission-gated five-item navigation scheme.
   const consumerTabs = ['Home', 'Live', 'Profile', 'Saved', 'Search'];
-  const dealerTabs = ['DealerHome', 'DealerStock', 'DealerCustomers', 'DealerBuyBid', 'DealerMore'];
+  const dealerTabs = ['DealerHome', 'DealerStock', 'DealerCustomers', 'DealerBuyBid'];
   assert.deepEqual(
     [...mountedTabs].sort(),
     [...consumerTabs, ...dealerTabs].sort(),

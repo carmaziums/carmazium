@@ -61,11 +61,12 @@ test("no dealer menu destination was removed", () => {
     }
 })
 
-test("hidden routes are listed under More tools on desktop and mobile, not dropped", () => {
-    assert.match(sidebar, /DEALER_ROUTE_CONFIG\.filter\(route =>\s*route\.hidden && dealerRouteVisible\(route\)/)
-    assert.match(sidebar, /More tools/)
-    assert.match(sidebar, /\.\.\.currentLinks, \.\.\.dealerMoreLinks/)
-    assert.ok(DEALER_ROUTE_CONFIG.filter(r => r.hidden).length >= 10)
+test("secondary tools are dashboard cards instead of a More menu", () => {
+    assert.doesNotMatch(sidebar, /More tools|dealerMoreLinks/)
+    const cards = JSON.parse(read('src/data/dashboardCards.json')).dealer
+    for (const href of ['/dashboard/enquiries', '/dashboard/dealer/offers', '/dashboard/partner', '/dashboard/service/jobs', '/dashboard/dealer/analytics']) {
+        assert.ok(cards.some(card => card.href === href), href)
+    }
 })
 
 test("simplified Buy destinations highlight the correct related pages", () => {
@@ -185,7 +186,6 @@ test("dealer menu groups are Sell, Buy, Business, Services, each heading shown o
     const runs = sections.filter((s, i) => s !== sections[i - 1])
     assert.deepEqual(runs, [...DEALER_SECTION_ORDER], runs.join(","))
     assert.ok(DEALER_ROUTE_CONFIG.every(r => DEALER_SECTION_ORDER.includes(r.section)))
-    assert.match(sidebar, /sortBySection\(\[\.\.\.currentLinks, \.\.\.dealerMoreLinks\]\)/)
     assert.ok(!/dealerMoreLinks\.map\(link => \(\{ \.\.\.link, section: `More tools/.test(sidebar))
 })
 

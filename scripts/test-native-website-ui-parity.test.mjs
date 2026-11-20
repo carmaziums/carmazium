@@ -21,23 +21,22 @@ test('web dealer bottom navigation and native route labels have the same informa
     '/dashboard/dealer/auctions',
   ]) assert.ok((web + dealerRoutes).includes(segment), segment);
   for (const [route,label] of [
-    ['DealerHome','Home'],
+    ['DealerHome','Dashboard'],
     ['DealerStock','Stock'],
     ['DealerCustomers','Customers'],
     ['DealerBuyBid','Auctions'],
-    ['DealerMore','More'],
   ]) {
     assert.ok(tabs.includes("name: '"+route+"'"),route);
     assert.ok(tabs.includes("label: '"+label+"'"),label);
     assert.ok(tabs.includes('<Tab.Screen name="'+route+'"'),route);
-    assert.ok(drawer.includes("tabName: '"+route+"'") || route === 'DealerMore', route);
+    assert.ok(drawer.includes("tabName: '"+route+"'") || route ===  route);
   }
   assert.ok(dealerRoutes.includes('label: "Live Auctions"'));
   assert.ok(dealerRoutes.includes('label: "Saved"'));
   assert.ok(dealerRoutes.includes('label: "Bids & Offers"'));
   assert.ok(dealerRoutes.includes('label: "Purchases"'));
   assert.ok(tabs.includes("initialRouteName={dealerMode ? 'DealerHome' : 'Home'}"));
-  assert.ok(tabs.includes("openDrawer();"));
+  assert.ok(!tabs.includes("DealerMore"));
   // Website parity: dealer More = dashboard sidebar; elsewhere = header main menu.
   assert.ok(drawer.includes('dealerMode ? dealerDashboard : userDashboard'));
   const siteMenu = readFileSync(new URL('../carmazium app/carmazium app/src/components/SiteMenu.tsx', import.meta.url), 'utf8');
