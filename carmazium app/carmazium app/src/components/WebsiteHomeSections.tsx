@@ -14,7 +14,7 @@ const website = (path: string) => void WebBrowser.openBrowserAsync(`https://www.
 const categories = [
   ['Small and sporty', { bodyType: 'HATCHBACK', search: 'sporty' }],
   ['Eco-friendly', { fuelTypes: 'Electric,Hybrid' }],
-  ['Automatic', { transmissions: 'Automatic' }],
+  ['Automatic', { transmissions: 'AUTOMATIC' }],
   ['Seven-seater', { minSeats: 7 }],
   ['Affordable 4x4', { bodyType: 'SUV', maxPrice: 20000 }],
   ['Great first cars', { maxPrice: 8000, maxEngine: 1400 }],
