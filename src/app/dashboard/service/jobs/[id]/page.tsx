@@ -99,6 +99,7 @@ export default function ContractorJobPage() {
                                     <h1 className="text-2xl md:text-3xl font-black font-heading tracking-tight">{job.title}</h1>
                                     <div className="flex items-center gap-2 shrink-0">{job.isRecovery && <RecoveryBadge />}<JobStatusBadge status={job.status} /></div>
                                 </div>
+                                {job.serviceType === 'INSPECTION' && <p className="mb-2 text-sm font-semibold text-[var(--text-secondary)]">Requested scope: {job.inspectionScope === 'COSMETIC' ? 'Cosmetic only' : job.inspectionScope === 'BOTH' ? 'Vehicle and cosmetic' : 'Vehicle inspection'}</p>}
                                 <JobRoute job={job} className="mb-1" />
                                 <div className="mb-6"><JobTiming job={job} /></div>
 
