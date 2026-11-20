@@ -15,7 +15,7 @@ import { Radius } from '../../constants/spacing';
 import { useTabBarClearance } from '../../hooks/useTabBarClearance';
 import { approveListing, getPendingListingReviews, rejectListing } from '../../lib/adminApi';
 import type { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { AdminHeader, AdminListSkeleton, adminStyles } from './adminShared';
+import { AdminHeader, AdminListSkeleton, adminStyles, openAdminWeb } from './adminShared';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'AdminListingsReview'>;
 
@@ -229,6 +229,8 @@ export const AdminListingsReviewScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={[adminStyles.listContent, { paddingBottom: bottomPad }]}
         ListHeaderComponent={
           <View style={styles.header}>
+            <Button label="Manage all listings on website" variant="outline" size="sm"
+              onPress={() => void openAdminWeb('/dashboard/admin/listings')} />
             {error ? <ErrorBanner message={error} onRetry={() => void load(false)} /> : null}
             {!loading && listings.length > 0 ? (
               <Text style={adminStyles.sectionLabel}>{listings.length} awaiting action</Text>

@@ -79,6 +79,12 @@ export const buildSiteGroups = (dealerMode: boolean): Group[] => [
 // The website keeps these in its footer; the app has no footer, so one quiet
 // line keeps them reachable without becoming a second menu.
 const FOOTER: { label: string; target: SiteTarget }[] = [
+  { label: 'Business Spotlight', target: { web: '/business-spotlight' } },
+  { label: 'Join as a dealer or service partner', target: { web: '/become-a-partner' } },
+  { label: 'Browse by make & location', target: { web: '/used-cars' } },
+  { label: 'Used Car Body Types', target: { web: '/used-car-types' } },
+  { label: 'Automotive Insights & Guides', target: { web: '/blog' } },
+  { label: 'Cookie Policy', target: { web: '/cookie-policy' } },
   { label: 'How It Works', target: { screen: 'HowItWorks' } },
   { label: 'Reviews', target: { screen: 'Reviews' } },
   { label: 'Contact', target: { screen: 'Contact' } },
@@ -188,7 +194,7 @@ export const SiteMenu: React.FC<{
 
         <View style={styles.footer}>
           {FOOTER.map(link => (
-            <TouchableOpacity key={link.label} onPress={() => onNavigate(link.target)} accessibilityRole="link" hitSlop={6}>
+            <TouchableOpacity key={link.label} onPress={() => onNavigate(link.target)} accessibilityRole="link" accessibilityHint={link.target.web ? 'Opens the CarMazium website' : undefined} hitSlop={6}>
               <Text style={styles.footerText}>{link.label}</Text>
             </TouchableOpacity>
           ))}
