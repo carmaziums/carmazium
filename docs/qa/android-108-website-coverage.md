@@ -8,8 +8,8 @@ Build 108 was installed as an update in BlueStacks. The buyer/seller and dealer 
 | --- | --- | --- |
 | Buyer support | All five priority buyer retests passed. A reconnect left an existing AI answer invisible until the conversation reopened. | Retest the reconnect fix in #935 with the chat still open. |
 | Guest retail | Build 108 asks for sign-in. Website allows an email-confirmed enquiry. #936 adds the Android form and covers consent, invalid and valid codes in a rendered screen test. | On the separate QA APK a guest opened the prefilled form and empty submission showed validation. Delivery of a confirmation email and arrival in the seller inbox still need controlled test accounts. |
-| TradeXchange | Delivery and inspection forms loaded and rejected empty posts. Existing cancelled inspection details, dealer provider coverage, matching and verification screens opened. Finance information and the web warranty quote form opened. | Scheduled and multi-vehicle jobs, inspection scope, quote acceptance, payment, completion, email, notifications and payout on an isolated deployment with an opted-in provider. |
-| Dealer | Stock filtering, count, grid/list, command centre, live lots and bid/offer history checked. | Permitted staff roles, CRM, team, listings, purchases, reconciliation and handover with representative records. |
+| TradeXchange | Delivery and inspection forms loaded and rejected empty posts. Existing cancelled inspection details, dealer provider coverage, matching and verification screens opened. Finance information and the web warranty quote form opened. | Signed-in QA verified date/time selection and reset, adding/removing delivery vehicles, inspection scope and provider filters. End-to-end posting, quote acceptance, payment, completion, email, notifications and payout need an isolated deployment with an opted-in provider. |
+| Dealer | Stock filtering, count, grid/list, command centre, live lots and bid/offer history checked. | Dealer owner tested CRM list/board, manual lead validation, Team and invite form, populated completed retail purchases and purchase-to-delivery prefill. Staff-only permissions, reconciliation, handover changes and invitations require disposable test records. |
 | Admin and specialist accounts | Website and native navigation compared in source. Missing admin warranty/finance entries recorded below. | Admin overview, pending listings, handovers, KYC, directory and insights opened on build 108. Authenticated mobile browser checked across the admin website. Admin changes requiring disposable records, standalone provider, legacy finance/insurance accounts, and populated workflows. |
 | Device behaviour | Keyboard interactions and links checked in BlueStacks. | Physical phone width, rotation, accessibility, camera/file upload, push in foreground/background/terminated states, and hosted checkout return/cancellation. |
 
@@ -104,12 +104,12 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | `/dashboard/dealer/purchases/[id]` | — | Pending Android acceptance. |
 | `/dashboard/dealer/purchases/[id]/seller` | — | Pending Android acceptance. |
 | `/dashboard/dealer/purchases/history` | — | Pending Android acceptance. |
-| `/dashboard/dealer/purchases` | dealer.purchases | Pending Android acceptance. |
+| `/dashboard/dealer/purchases` | dealer.purchases | Completed records and the Retail filter worked. A retail purchase opened its details and the Book delivery action prefilled that vehicle. |
 | `/dashboard/dealer/purchases/reconciled/[id]` | — | Pending Android acceptance. |
 | `/dashboard/dealer/purchases/retail` | — | Pending Android acceptance. |
 | `/dashboard/dealer/put-on-auction` | — | Pending Android acceptance. |
 | `/dashboard/dealer/settings` | — | Pending Android acceptance. |
-| `/dashboard/dealer/team` | dealer.team | Pending Android acceptance. |
+| `/dashboard/dealer/team` | dealer.team | Roster, service permissions and invitation email/role controls opened in the QA app. |
 | `/dashboard/dealer/wishlist` | — | Pending Android acceptance. |
 
 ### Dashboard / finance
@@ -205,21 +205,21 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | `/blog/[slug]` | — | Pending Android acceptance. |
 | `/blog` | blog.seo | Public articles are web-hosted. App menu link added in #936. |
 | `/blog/tag/[tag]` | — | Pending Android acceptance. |
-| `/contact` | — | Pending Android acceptance. |
+| `/contact` | — | The QA app menu opened Contact with Get in touch. |
 | `/cookie-policy` | — | Site menu footer missing Cookie Policy. Website handoff added in #936. |
 | `/delete-account` | account.deletion | Pending Android acceptance. |
 | `/download-app` | — | Pending Android acceptance. |
-| `/how-it-works` | — | Pending Android acceptance. |
+| `/how-it-works` | — | How It Works opened from the QA app menu. |
 | `/notifications` | notifications.history | Notifications screen opened. |
 | `/` | — | Pending Android acceptance. |
 | `/pricing` | pricing.customer | Pending Android acceptance. |
 | `/pricing/traders` | — | Pending Android acceptance. |
-| `/privacy-policy` | legal.privacy_policy | Pending Android acceptance. |
+| `/privacy-policy` | legal.privacy_policy | The QA app menu opened the hosted Privacy Policy. |
 | `/profile/[id]` | — | Pending Android acceptance. |
 | `/profile` | — | Pending Android acceptance. |
-| `/report-problem` | — | Pending Android acceptance. |
-| `/reviews` | — | Pending Android acceptance. |
-| `/terms` | — | Pending Android acceptance. |
+| `/report-problem` | — | The app menu opened the problem report form. No report submitted. |
+| `/reviews` | — | Trust & Reviews opened from the QA app menu, including the seller profile review action. |
+| `/terms` | — | The QA app menu opened Terms & Conditions. |
 
 ### TradeXchange, finance and partnerships
 
