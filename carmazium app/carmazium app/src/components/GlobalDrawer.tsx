@@ -42,7 +42,7 @@ type NavProp = NativeStackNavigationProp<RootStackParamList>;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 320);
 
-const IS_QA_REVIEW_BUILD = process.env.EXPO_PUBLIC_QA_READ_ONLY === '1';
+const IS_QA_REVIEW_BUILD = process.env.EXPO_PUBLIC_QA_READ_ONLY === '1' || process.env.EXPO_PUBLIC_QA_SANDBOX === '1';
 
 function openWebsite(path: string) {
   return WebBrowser.openBrowserAsync(`https://www.carmazium.com${path}`).catch(() => {

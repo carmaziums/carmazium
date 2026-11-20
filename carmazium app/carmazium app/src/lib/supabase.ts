@@ -76,6 +76,14 @@ export const supabase = createClient(
   }
 );
 
+// Internal sandbox only: retain sign-in while preventing changes to the live identity service.
+if (process.env.EXPO_PUBLIC_QA_SANDBOX === '1') {
+  const blocked = async (): Promise<never> => { throw new Error('QA_SANDBOX: identity changes are disabled'); };
+  supabase.auth.signUp = blocked;
+  supabase.auth.updateUser = blocked;
+  supabase.auth.resetPasswordForEmail = blocked;
+}
+
 /**
  * Retrieves the current access token from the active Supabase session.
  * @returns The JWT access token string or null if unauthenticated.

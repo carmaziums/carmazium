@@ -1,4 +1,4 @@
-name: CarMazium Android standalone QA APK (no Expo credentials)
+name: CarMazium Android localhost sandbox QA APK
 
 # Builds a separate, read-only app for screenshot and navigation review.
 # This does NOT distribute to Google Play, update installed production apps,
@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   build-qa:
-    name: Build read-only QA APK (debug signed, no Expo account)
+    name: Build localhost sandbox QA APK (debug signed)
     runs-on: ubuntu-latest
     timeout-minutes: 100
     defaults:
@@ -37,7 +37,8 @@ jobs:
     env:
       CI: '1'
       EXPO_NO_TELEMETRY: '1'
-      EXPO_PUBLIC_QA_READ_ONLY: '1'
+      EXPO_PUBLIC_QA_READ_ONLY: '0'
+      EXPO_PUBLIC_QA_SANDBOX: '1'
       EXPO_PUBLIC_QA_COMMIT_SHA: ${{ github.sha }}
       APP_ENV: 'preview'
       SENTRY_DISABLE_AUTO_UPLOAD: 'true'
@@ -74,7 +75,8 @@ jobs:
           const fs = require('fs');
           const app = JSON.parse(fs.readFileSync('app.json','utf8'));
           const eas = JSON.parse(fs.readFileSync('eas.json','utf8'));
-          const cfg = eas.build?.preview?.env || {};
+          const cfg = { ...eas.build?.preview?.env, EXPO_PUBLIC_API_URL: 'http://127.0.0.1:8080', EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: 'pk_test_51SCdIM8OCSU5yHod2jouJQpCGTXgoosdz8sxpvM9udmFzjAjGz1BrpvGoJNxLkJ4tCEFa7WEtnOt1aztTvU3m8qe00yUKs7myr' };
+          if (cfg.EXPO_PUBLIC_API_URL !== 'http://127.0.0.1:8080' || !cfg.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY.startsWith('pk_test_')) throw Error('Sandbox configuration required');
           const allowlisted = [
             'EXPO_PUBLIC_API_URL',
             'EXPO_PUBLIC_SUPABASE_URL',
@@ -88,7 +90,8 @@ jobs:
           // Independent Android review version; never changes the production package.
           app.expo.version = '1.0.1';
           app.expo.android.versionCode = 2;
-          app.expo.name = 'CarMazium QA';
+          app.expo.name = 'CarMazium Sandbox';
+          app.expo.android.usesCleartextTraffic = true;
           app.expo.slug = 'carmazium-qa';
           app.expo.scheme = 'carmazium-qa';
           app.expo.android.package = 'uk.carmazium.qa';
@@ -101,6 +104,7 @@ jobs:
           // Leave the production app.json and EAS release profiles untouched.
           const buildProps = app.expo.plugins.find(p => Array.isArray(p) && p[0] === 'expo-build-properties');
           if (!buildProps || !buildProps[1]?.android) throw new Error('Missing Android build properties');
+          buildProps[1].android.usesCleartextTraffic = true;
           buildProps[1].android.enableProguardInReleaseBuilds = false;
           buildProps[1].android.enableShrinkResourcesInReleaseBuilds = false;
           fs.writeFileSync('app.json', JSON.stringify(app, null, 2) + '\n');
@@ -147,7 +151,7 @@ jobs:
             echo ''
             echo 'Download the `CarMazium-Android-QA` Actions artifact ZIP from this run. Extract `CarMazium-QA-Android.apk`, then install on your own Android device.'
             echo ''
-            echo '**Do not use this build for real transactions, customer data, production bidding, Stripe payments, Play Store upload or daily use.** This QA build still reads from the current live backend and authorisation service.'
+            echo '**Do not use this build for real transactions, customer data, production bidding, Stripe payments, Play Store upload or daily use.** This sandbox build uses the laptop localhost API and Stripe test key. Supabase sign-in is retained; identity and direct storage writes are blocked.'
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Publish APK as private workflow artifact for reviewer
         uses: actions/upload-artifact@v4

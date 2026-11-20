@@ -77,6 +77,10 @@ export async function apiClient<T>(
   endpoint: string,
   options: ApiClientOptions = {}
 ): Promise<T> {
+  if (process.env.EXPO_PUBLIC_QA_SANDBOX === '1' && (API_URL !== 'http://127.0.0.1:8080' || !process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_'))) {
+    throw new Error('QA_SANDBOX_CONFIGURATION_INVALID');
+  }
+
   // Build 7's separately installed CarMazium QA package is a read-only
   // visual review build, not a safe payment/bid testing environment. The
   // bundled flag is false for every normal production/preview build.

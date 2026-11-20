@@ -63,7 +63,7 @@ export async function uploadToStorage(
   path: string,
   contentType: string = 'image/jpeg',
 ): Promise<string> {
-  if (process.env.EXPO_PUBLIC_QA_READ_ONLY === '1') {
+  if ((process.env.EXPO_PUBLIC_QA_READ_ONLY === '1' || process.env.EXPO_PUBLIC_QA_SANDBOX === '1')) {
     throw new Error('QA_READ_ONLY: Photo uploads/deletions are disabled in this visual review build.');
   }
   // 1. Read file as Base64
@@ -103,7 +103,7 @@ export async function uploadToSignedStorage(
   token: string,
   contentType: string = 'image/jpeg',
 ): Promise<void> {
-  if (process.env.EXPO_PUBLIC_QA_READ_ONLY === '1') {
+  if ((process.env.EXPO_PUBLIC_QA_READ_ONLY === '1' || process.env.EXPO_PUBLIC_QA_SANDBOX === '1')) {
     throw new Error('QA_READ_ONLY: Photo uploads/deletions are disabled in this visual review build.');
   }
   const base64 = await FileSystem.readAsStringAsync(localUri, {
@@ -130,7 +130,7 @@ export async function deletePublicStorageObject(
   publicUrl: string,
   bucket: string = 'listings',
 ): Promise<void> {
-  if (process.env.EXPO_PUBLIC_QA_READ_ONLY === '1') {
+  if ((process.env.EXPO_PUBLIC_QA_READ_ONLY === '1' || process.env.EXPO_PUBLIC_QA_SANDBOX === '1')) {
     throw new Error('QA_READ_ONLY: Photo uploads/deletions are disabled in this visual review build.');
   }
   const cleanUrl = publicUrl.split('#')[0];
