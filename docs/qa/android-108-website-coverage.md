@@ -21,7 +21,7 @@ The internal Android snapshot `fd29efa37ad024798f3ac3fae5cc21350fbdba4e` combine
 
 ## Website page inventory
 
-A separate availability check returned HTTP 200 for 36 public URLs and captured their page titles. This checks public site availability only.
+A separate availability check returned HTTP 200 for 36 public URLs and captured their page titles. All 58 make and location pages linked by the live directory also returned HTTP 200 and an H1. These checks cover public site availability.
 
 All 158 Next.js page templates at the build 108 source are listed below. A dynamic URL represents a template, so a row cannot establish that every vehicle or account state works. The middle column lists feature IDs that explicitly name the page file in the repository parity manifest. A dash means the manifest has no direct page-file entry. Android screen observations cover only the action named. Role redirects, checkout outcomes and SEO pages are included so that they can be accounted for explicitly.
 
@@ -49,27 +49,27 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | `/dashboard/admin/analytics` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
 | `/dashboard/admin/app` | — | Native App & problem reports showed activity, downloads and Open/Resolved filters. |
 | `/dashboard/admin/auctions/historical-reconciliation` | — | Pending Android acceptance. |
-| `/dashboard/admin/auctions` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
+| `/dashboard/admin/auctions` | — | Signed-in Android Chrome opened Auction Management. |
 | `/dashboard/admin/blog/[id]/edit` | — | Pending Android acceptance. |
 | `/dashboard/admin/blog/new` | — | Pending Android acceptance. |
-| `/dashboard/admin/blog` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
-| `/dashboard/admin/cancellations` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
+| `/dashboard/admin/blog` | — | Signed-in Android Chrome opened the admin Blog list with published records. |
+| `/dashboard/admin/cancellations` | — | Signed-in Android Chrome opened Sale Cancellation Review. |
 | `/dashboard/admin/dealer-verification` | admin.operations | Native Dealer KYC showed field verification and its caught-up state. |
 | `/dashboard/admin/dealers` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
-| `/dashboard/admin/finance-providers` | — | Admin dashboard missing Finance Providers. Website handoff added in #936. |
-| `/dashboard/admin/free-listings` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
+| `/dashboard/admin/finance-providers` | — | Website finance provider manager opened in signed-in Android Chrome. Dedicated app shortcut added in #936. |
+| `/dashboard/admin/free-listings` | — | Signed-in Android Chrome opened Free Listing & Purchase Grants. |
 | `/dashboard/admin/handovers` | admin.operations | Native Handover Verification opened, with an empty queue and website payout shortcut. |
-| `/dashboard/admin/hpi` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
+| `/dashboard/admin/hpi` | — | Signed-in Android Chrome opened Vehicle History Reports and its fulfilment queue. |
 | `/dashboard/admin/listings` | admin.operations | Native pending review opened and correctly showed an empty queue. Full inventory manager link added in #936. |
 | `/dashboard/admin/marketing-popup` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
 | `/dashboard/admin/messages` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
 | `/dashboard/admin/services/jobs/[id]` | — | Pending Android acceptance. |
 | `/dashboard/admin/services/leads/[id]` | — | Pending Android acceptance. |
-| `/dashboard/admin/services` | — | Trade Services opened a Chrome custom tab at the separate website sign-in. Authenticated web console pending. Dedicated Warranty Partners filter shortcut added in #936. |
+| `/dashboard/admin/services` | — | Trade Services opened a Chrome custom tab at the separate website sign-in. After separate admin sign-in, Applications, Providers, Jobs, Finance / Warranty and Disputes opened. All four service types and the All services reset were exercised. Dedicated Warranty Partners filter shortcut added in #936. |
 | `/dashboard/admin/services/providers/[id]` | — | Pending Android acceptance. |
-| `/dashboard/admin/transactions` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
+| `/dashboard/admin/transactions` | — | Signed-in Android Chrome opened Transactions. |
 | `/dashboard/admin/users` | admin.operations | Native Accounts directory loaded with total user count, search and website management action. |
-| `/dashboard/admin/warranty-orders` | — | Admin dashboard missing Warranty Orders. Website handoff added in #936. |
+| `/dashboard/admin/warranty-orders` | — | Website opened in signed-in Android Chrome and showed warranty orders with an empty-state filter result. Dedicated app shortcut added in #936. |
 
 ### Dashboard / buyer
 
