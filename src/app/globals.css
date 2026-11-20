@@ -81,7 +81,7 @@
 
 .dark {
   --color-primary: #ed1c24;
-  /* Keep CarMazium dark by default, but lift the navy surfaces by roughly 10%
+  /* When dark mode is selected, lift the navy surfaces by roughly 10%
      so pages feel less black/heavy without becoming a light theme. */
   --bg-body: #1b2538;
   --bg-card: rgba(51, 65, 85, 0.58);

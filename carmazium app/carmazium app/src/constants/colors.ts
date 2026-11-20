@@ -589,14 +589,14 @@ export type ThemeMode = 'light' | 'dark';
  * theme persists the preference and reloads the JS bundle — styles are never
  * swapped under a mounted tree.
  */
-export const Colors: Palette = { ...darkPalette };
+export const Colors: Palette = { ...lightPalette };
 
 /** The resolved theme the palette was populated from. Light by default (web parity). */
-export let themeMode: ThemeMode = 'dark';
+export let themeMode: ThemeMode = 'light';
 /** StatusBar `barStyle` that reads on the current ground. */
-export let themeStatusBarStyle: 'light-content' | 'dark-content' = 'light-content';
+export let themeStatusBarStyle: 'light-content' | 'dark-content' = 'dark-content';
 /** expo-status-bar `style` for the current ground. */
-export let themeStatusBarExpoStyle: 'light' | 'dark' = 'light';
+export let themeStatusBarExpoStyle: 'light' | 'dark' = 'dark';
 
 export function applyThemePalette(mode: ThemeMode): void {
   Object.assign(Colors, mode === 'dark' ? darkPalette : lightPalette);
