@@ -80,12 +80,15 @@ test('registration and manual model validation preserve privacy and stale-respon
   assert.ok(landing.includes('Number.isSafeInteger(cleanMileage)'));
 });
 
-test('all public sell entry points use landing but keep existing validated wizard',()=>{
+test('generic selling opens valuation and homepage channel actions keep the validated wizard',()=>{
   assert.ok(stack.includes('SellLanding: undefined;'));
   assert.ok(stack.includes('name="SellLanding" component={SellLandingScreen}'));
   assert.ok(stack.includes('SellCarFlow: { listingId?: string; listingType?:'));
-  assert.ok(home.includes("navigation.navigate('SellLanding')"));
-  assert.ok(!home.includes("navigation.navigate('SellCarFlow')"));
+  const hero = readFileSync(new URL('../carmazium app/carmazium app/src/components/WebsiteHomeHero.tsx', import.meta.url), 'utf8');
+  assert.ok(home.includes('<WebsiteHomeHero'));
+  assert.ok(hero.includes("navigation.navigate('SellLanding')"));
+  assert.ok(hero.includes("navigation.navigate('SellCarFlow', { listingType: 'CLASSIFIED' })"));
+  assert.ok(hero.includes("navigation.navigate('SellCarFlow', { listingType: 'AUCTION' })"));
   assert.ok(readFileSync(new URL('../carmazium app/carmazium app/src/components/SiteMenu.tsx', import.meta.url), 'utf8').includes("screen: 'SellLanding'"));
   assert.ok(landing.includes("navigation.navigate('SellCarFlow',"));
   assert.ok(landing.includes("startListing('AUCTION')"));

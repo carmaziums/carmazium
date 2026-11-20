@@ -68,14 +68,9 @@ interface Offer {
   updatedAt?: string;
 }
 
-interface SellerDashboardResponse {
+interface ReceivedOffersResponse {
   success: boolean;
-  data: {
-    activeListings?: number;
-    offerCount?: number;
-    offers?: Offer[];
-    earnings?: unknown[];
-  };
+  data: Offer[];
 }
 
 interface PendingCountResponse {
@@ -163,6 +158,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [counterModalOffer, setCounterModalOffer] = useState<Offer | null>(null);
   const [counterAmount, setCounterAmount] = useState('');
@@ -179,21 +175,37 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
+    setLoadError(null);
     try {
-      const [dashRes, countRes] = await Promise.allSettled([
-        apiClient<SellerDashboardResponse>('/dashboard/seller'),
+      // The dashboard only includes pending/countered offers. Use the same
+      // complete history as the website so accepted offers retain sale actions.
+      const [offersRes, countRes] = await Promise.allSettled([
+        apiClient<ReceivedOffersResponse>('/offers/received'),
         apiClient<PendingCountResponse>('/offers/pending-count'),
       ]);
 
-      if (dashRes.status === 'fulfilled' && dashRes.value?.success) {
-        const raw = dashRes.value.data?.offers;
-        setOffers(Array.isArray(raw) ? raw : []);
+      if (offersRes.status === 'fulfilled' && offersRes.value?.success && Array.isArray(offersRes.value.data)) {
+        // Prisma decimals arrive as strings on this endpoint.
+        setOffers(offersRes.value.data.map(offer => ({
+          ...offer,
+          amount: Number(offer.amount),
+          finalAmount: offer.finalAmount == null ? null : Number(offer.finalAmount),
+          sellerCounterAmount: offer.sellerCounterAmount == null ? null : Number(offer.sellerCounterAmount),
+          buyerCounterAmount: offer.buyerCounterAmount == null ? null : Number(offer.buyerCounterAmount),
+          counterAmount: offer.counterAmount == null ? null : Number(offer.counterAmount),
+          listing: offer.listing ? {
+            ...offer.listing,
+            price: offer.listing.price == null ? undefined : Number(offer.listing.price),
+          } : undefined,
+        })));
+      } else {
+        setLoadError('Could not load received offers. Please try again.');
       }
       if (countRes.status === 'fulfilled' && countRes.value?.success) {
         setPendingCount(countRes.value.data?.count ?? 0);
       }
     } catch {
-      // silently fail — show empty
+      setLoadError('Could not load received offers. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -655,6 +667,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
       )}
 
       {/* ── Content ── */}
+      {loadError && <ErrorBanner message={loadError} onRetry={() => fetchData(true)} />}
       {loading || offers.length === 0 ? (
         <ScrollView
           style={styles.scroll}
@@ -672,7 +685,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
           {/* Pending delivery requests — surfaced above offers so acceptance
               lives near the offers that spawned them. */}
           <ReceivedDeliveryRequestsPanel contextLabel="your listing" />
-          {loading ? renderSkeleton() : renderEmptyState()}
+          {loading ? renderSkeleton() : !loadError ? renderEmptyState() : null}
         </ScrollView>
       ) : (
         // FlatList so a long offer history virtualizes instead of mounting every
