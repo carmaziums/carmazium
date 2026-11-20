@@ -38,7 +38,7 @@ function screen(file, bindings) {
 }
 
 const vehicle = { id: 'listing-1', title: 'QA vehicle', vrm: 'AB12CDE', make: 'Ford', model: 'Focus', year: 2017, location: 'Leeds' };
-const labels = node => node.findAllByType('Text').flatMap(t => t.children.filter(c => typeof c === 'string')).join(' ');
+const labels = node => node.findAllByType('Text').map(t => t.children.filter(c => typeof c === 'string').join('')).join(' ');
 const press = async (tree, label) => act(async () => {
   const button = tree.root.findAllByType('Button').find(b => labels(b).includes(label));
   assert.ok(button, 'Button missing: ' + label);
@@ -105,6 +105,27 @@ for (const serviceType of ['DELIVERY', 'INSPECTION']) {
       assert.equal(requests.length, 0);
       await set('Make', 'Ford', 1);
       await set('Model', 'Fiesta', 1);
+      const years = tree.root.findAllByType('Input').filter(input => input.props.accessibilityLabel === 'Year');
+      assert.deepEqual(years.map(input => input.props.value), [String(vehicle.year), '']);
+      for (const [index, invalidYear] of [[0, '1899'], [1, '2101'], [1, '20ab']]) {
+        await set('Year', invalidYear, index);
+        await press(tree, 'Post a Job');
+        assert.equal(requests.length, 0);
+        await set('Year', '', index);
+      }
+      await press(tree, 'Post a Job');
+      assert.equal(requests.length, 1);
+      for (const submitted of requests.pop().vehicles) {
+        assert.equal(submitted.year, undefined);
+        assert.equal(submitted.notes, undefined);
+      }
+      await set('Year', '1900');
+      await set('Year', '2100', 1);
+      await set('Transport notes', ' No keys ');
+      await set('Transport notes', 'Low clearance', 1);
+      await press(tree, 'Add another vehicle');
+      await set('Transport notes', 'Removed vehicle', 2);
+      await press(tree, 'Remove vehicle 3');
     } else {
       await set('Inspection postcode *', 'B1 1AA');
       await press(tree, 'Cosmetic inspection');
@@ -119,11 +140,12 @@ for (const serviceType of ['DELIVERY', 'INSPECTION']) {
     assert.equal(body.serviceType, serviceType);
     assert.equal(body.vehicles.length, 2);
     assert.equal(body.vehicles[0].listingId, vehicle.id);
-    assert.equal(body.vehicles[0].year, vehicle.year);
     if (serviceType === 'INSPECTION') {
+      assert.equal(body.vehicles[0].year, vehicle.year);
       assert.equal(body.inspectionScope, 'COSMETIC');
       assert.equal(body.serviceAddress, vehicle.location);
     } else {
+      assert.deepEqual(body.vehicles.map(v => [v.year, v.notes]), [[1900, 'No keys'], [2100, 'Low clearance']]);
       assert.equal(body.pickupAddress, vehicle.location);
       assert.equal(body.vehicles[1].model, 'Fiesta');
     }

@@ -10,6 +10,7 @@ import { apiClient } from '../../lib/apiClient';
 import type { InspectionScope } from '../../lib/servicesApi';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CreateServiceJob'>;
+type DeliveryVehicle = { registration: string; make: string; model: string; year: string; notes: string };
 type ServiceType = 'DELIVERY' | 'INSPECTION';
 const postcodeValid = (value: string) => /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i.test(value.trim());
 
@@ -22,6 +23,8 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
   const [registration, setRegistration] = useState(purchase?.registration || '');
   const [make, setMake] = useState(purchase?.make || '');
   const [model, setModel] = useState(purchase?.model || '');
+  const [year, setYear] = useState(String(purchase?.year ?? ''));
+  const [notes, setNotes] = useState('');
   const [pickup, setPickup] = useState('');
   const [destination, setDestination] = useState('');
   const [address, setAddress] = useState(purchase?.location || '');
@@ -30,20 +33,24 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
   const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
   const [draftDate, setDraftDate] = useState(new Date());
   const nextVehicleKey = useRef(0);
-  const [additionalVehicles, setAdditionalVehicles] = useState<{
-    key: number; registration: string; make: string; model: string;
-  }[]>([]);
+  const [additionalVehicles, setAdditionalVehicles] = useState<(DeliveryVehicle & { key: number })[]>([]);
   const [recovery, setRecovery] = useState(false);
   const [inspectionScope, setInspectionScope] = useState<InspectionScope>('VEHICLE');
   const [additionalRegistrations, setAdditionalRegistrations] = useState('');
   const [saving, setSaving] = useState(false);
-  const field = (label: string, value: string, setValue: (value: string) => void, hint?: string, multiline = false) => (
+  const field = (label: string, value: string, setValue: (value: string) => void, hint?: string, multiline = false, inputProps?: Pick<React.ComponentProps<typeof TextInput>, 'keyboardType' | 'maxLength'>) => (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput accessibilityLabel={label} style={[styles.input, multiline && { height: 96, textAlignVertical: 'top' }]} value={value} onChangeText={setValue}
+      <TextInput {...inputProps} accessibilityLabel={label} style={[styles.input, multiline && { height: 96, textAlignVertical: 'top' }]} value={value} onChangeText={setValue}
         placeholder={hint} placeholderTextColor={Colors.textMuted} multiline={multiline} autoCapitalize="sentences" />
     </View>
   );
+  const yearField = (value: string, change: (value: string) => void) =>
+    field('Year', value, change, 'Vehicle year', false, { keyboardType: 'number-pad', maxLength: 4 });
+  const notesField = (value: string, change: (value: string) => void) =>
+    field('Transport notes', value, change, 'For example, no keys, low clearance or a flat tyre', false, { maxLength: 300 });
+  const updateVehicle = (key: number, property: keyof DeliveryVehicle, value: string) =>
+    setAdditionalVehicles(items => items.map(item => item.key === key ? { ...item, [property]: value } : item));
   const submit = async () => {
     if (saving) return;
     if (!title.trim() || (!registration.trim() && !(make.trim() && model.trim()))) {
@@ -63,6 +70,11 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
       Alert.alert('Check vehicles', 'Each vehicle needs a registration or both its make and model.');
       return;
     }
+    if (delivery && [year, ...additionalVehicles.map(v => v.year)].some(value =>
+      value !== '' && (!/^\d{4}$/.test(value) || Number(value) < 1900 || Number(value) > 2100))) {
+      Alert.alert('Check vehicle year', 'Enter a year between 1900 and 2100 or leave it blank.');
+      return;
+    }
     if (requestedFor && requestedFor.getTime() <= Date.now()) {
       Alert.alert('Check date', 'Choose a date and time in the future.');
       return;
@@ -71,6 +83,8 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
       registration: v.registration.replace(/\s+/g, '').toUpperCase() || undefined,
       make: v.make.trim() || undefined,
       model: v.model.trim() || undefined,
+      year: v.year ? Number(v.year) : undefined,
+      notes: v.notes.trim() || undefined,
     }));
     const allRegs = [registration.replace(/\s+/g, '').toUpperCase(), ...extraRegs, ...deliveryVehicles.map(v => v.registration)].filter(Boolean);
     if (new Set(allRegs).size !== allRegs.length) {
@@ -92,7 +106,9 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
             : { servicePostcode: destination.trim().toUpperCase(), serviceAddress: address.trim() || undefined }),
           vehicles: [{
             listingId: purchase?.listingId,
-            year: purchase?.year ?? undefined,
+            ...(delivery
+              ? { year: year ? Number(year) : undefined, notes: notes.trim() || undefined }
+              : { year: purchase?.year ?? undefined }),
             registration: registration.replace(/\s+/g, '').toUpperCase() || undefined,
             make: make.trim() || undefined,
             model: model.trim() || undefined,
@@ -137,6 +153,8 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
       {field('Model', model, setModel, 'Vehicle model')}
       {delivery ? (
         <>
+          {yearField(year, setYear)}
+          {notesField(notes, setNotes)}
           {field('Collection address', address, setAddress, 'Optional location details')}
           {field('Collection postcode *', pickup, setPickup, 'B19 1ES')}
           {field('Delivery address', dropoffAddress, setDropoffAddress, 'Optional destination details')}
@@ -146,9 +164,10 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
               <Text style={styles.label}>Vehicle {index + 2}</Text>
               {(['registration', 'make', 'model'] as const).map(key => (
                 <View key={key}>{field(key === 'registration' ? 'Registration (or enter make and model)' : key === 'make' ? 'Make' : 'Model',
-                  vehicle[key], value => setAdditionalVehicles(items => items.map(item =>
-                    item.key === vehicle.key ? { ...item, [key]: value } : item)))}</View>
+                  vehicle[key], value => updateVehicle(vehicle.key, key, value))}</View>
               ))}
+              {yearField(vehicle.year, value => updateVehicle(vehicle.key, 'year', value))}
+              {notesField(vehicle.notes, value => updateVehicle(vehicle.key, 'notes', value))}
               <TouchableOpacity accessibilityRole="button" onPress={() => setAdditionalVehicles(items => items.filter(item => item.key !== vehicle.key))}>
                 <Text style={styles.label}>Remove vehicle {index + 2}</Text>
               </TouchableOpacity>
@@ -156,7 +175,7 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
           ))}
           {additionalVehicles.length < 11 && (
             <TouchableOpacity accessibilityRole="button" onPress={() => {
-              const vehicle = { key: nextVehicleKey.current++, registration: '', make: '', model: '' };
+              const vehicle = { key: nextVehicleKey.current++, registration: '', make: '', model: '', year: '', notes: '' };
               setAdditionalVehicles(items => [...items, vehicle]);
             }}><Text style={styles.label}>Add another vehicle</Text></TouchableOpacity>
           )}
