@@ -17,6 +17,7 @@ const labelCls = "block text-[11px] font-black uppercase tracking-widest text-[v
 const EMPTY_FORM = {
     registration: "", make: "", model: "", year: "", postcode: "", address: "",
     requestedFor: "", notes: "", title: "Pre-purchase vehicle inspection", inspectionScope: "VEHICLE" as InspectionScope,
+    additionalRegistrations: "",
 }
 
 export default function NewInspectionPage() {
@@ -62,6 +63,9 @@ function InspectionForm() {
         const fail = (field: string, message: string) => { setInvalidField(field); setError(message); focusJobFormIssue(field) }
         if (!form.postcode.trim()) return fail("inspection-postcode", "Enter the postcode where the vehicle can be inspected.")
         if (!jobVehicleIdentified(form)) return fail("inspection-registration", "Enter the registration or both the vehicle make and model.")
+        const extraRegistrations = form.additionalRegistrations.split(/[\n,]+/).map(v => v.trim().replace(/\s+/g, '').toUpperCase()).filter(Boolean)
+        if (extraRegistrations.length > 4 || extraRegistrations.some(v => !/^[A-Z0-9]{2,10}$/.test(v))) return fail('inspection-batch', 'Add up to four additional vehicle registrations, one per line (letters and numbers only).')
+        if (new Set([form.registration.trim().replace(/\s+/g, '').toUpperCase(), ...extraRegistrations].filter(Boolean)).size !== [form.registration, ...extraRegistrations].filter(Boolean).length) return fail('inspection-batch', 'Each vehicle registration must be different.')
         const dateIssue = jobDateIssue(form.requestedFor, false)
         if (dateIssue) return fail(dateIssue.field, dateIssue.message)
         setBusy(true); setError(null)
@@ -81,7 +85,7 @@ function InspectionForm() {
                     model: form.model.trim() || undefined,
                     year: form.year ? Number(form.year) : undefined,
                     notes: form.notes.trim() || undefined,
-                }],
+                }, ...extraRegistrations.map(registration => ({ registration }))],
             })
             clearDraft()
             router.push(`/services/jobs/${job.id}`)
@@ -129,6 +133,11 @@ function InspectionForm() {
                             <div><label htmlFor="inspection-year" className={labelCls}>Year</label><input id="inspection-year" aria-invalid={invalidField === "inspection-year"} aria-describedby={invalidField === "inspection-year" ? "job-error" : undefined} className={inputCls} type="number" min="1900" max="2100" value={form.year} onChange={e => set('year', e.target.value)} placeholder="2021" /></div>
                             <div><label htmlFor="inspection-make" className={labelCls}>Make</label><input id="inspection-make" aria-invalid={invalidField === "inspection-make"} aria-describedby={invalidField === "inspection-make" ? "job-error" : undefined} className={inputCls} value={form.make} onChange={e => set('make', e.target.value)} placeholder="Toyota" /></div>
                             <div><label htmlFor="inspection-model" className={labelCls}>Model</label><input id="inspection-model" aria-invalid={invalidField === "inspection-model"} aria-describedby={invalidField === "inspection-model" ? "job-error" : undefined} className={inputCls} value={form.model} onChange={e => set('model', e.target.value)} placeholder="Yaris" /></div>
+                        </div>
+                        <div className="mt-5">
+                            <label htmlFor="inspection-batch" className={labelCls}>Additional vehicle registrations (optional)</label>
+                            <textarea id="inspection-batch" className={`${inputCls} min-h-24`} rows={3} maxLength={80} aria-invalid={invalidField === 'inspection-batch'} aria-describedby={invalidField === 'inspection-batch' ? 'job-error' : undefined} value={form.additionalRegistrations} onChange={e => set('additionalRegistrations', e.target.value)} placeholder={'AB12CDE\\nCD34EFG'} />
+                            <p className="mt-2 text-xs text-[var(--text-muted)]">For a batch inspection at the same location, add up to four more registrations, one per line. The provider can quote for the entire group in one existing TradeXchange job.</p>
                         </div>
                     </section>
 
