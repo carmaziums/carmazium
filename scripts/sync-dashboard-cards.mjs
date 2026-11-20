@@ -39,11 +39,13 @@ const catalog = Object.fromEntries(Object.entries({ personal: menu.USER_ITEMS, d
 ]));
 const output = JSON.stringify(catalog, null, 2) + '\n';
 const target = new URL('src/data/dashboardCards.json', root);
+const nativeTarget = new URL('data/dashboardCards.json', native);
 const prefs = readFileSync(new URL('lib/dashboardPreferences.ts', native), 'utf8');
 if (process.argv.includes('--check')) {
-  if (readFileSync(target, 'utf8') !== output || readFileSync(new URL('src/lib/dashboardPreferences.ts', root), 'utf8') !== prefs) throw Error('Dashboard parity snapshots differ. Run node scripts/sync-dashboard-cards.mjs');
+  if (readFileSync(target, 'utf8') !== output || readFileSync(nativeTarget, 'utf8') !== output || readFileSync(new URL('src/lib/dashboardPreferences.ts', root), 'utf8') !== prefs) throw Error('Dashboard parity snapshots differ. Run node scripts/sync-dashboard-cards.mjs');
 } else {
   writeFileSync(target, output);
+  writeFileSync(nativeTarget, output);
   writeFileSync(new URL('src/lib/dashboardPreferences.ts', root), prefs);
 }
 console.log('Website and native dashboard card catalog match.');

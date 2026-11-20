@@ -1,3 +1,4 @@
+import { nativeContentTarget } from '../../lib/nativeContentLinks';
 import React, { useState, useRef, useEffect, useContext, useMemo, useCallback } from 'react';
 import {
   View,
@@ -693,16 +694,17 @@ export const ChatScreen: React.FC = () => {
   }, [threadId, newestMessage, user?.id, room?.context, revealLatest]);
 
   const openSupportLink = useCallback((url: string) => {
-    const parsed = new URL(url);
-    if (parsed.pathname === '/dashboard/user' && parsed.searchParams.get('tab') === 'cars') {
-      navigation.navigate('MyCars');
-    } else if (parsed.pathname === '/search' && !parsed.search) {
-      navigation.navigate('Tabs', { screen: 'Search' });
-    } else if (parsed.pathname === '/sell' && !parsed.search) {
-      navigation.navigate('SellCarFlow');
-    } else {
-      Linking.openURL(url).catch(() => showToast('Could not open this link. Please try again.', 'info'));
-    }
+    try {
+      const target = nativeContentTarget(url);
+      if (target) { navigation.navigate(target.name, target.params); return; }
+      const parsed = new URL(url);
+      if (['carmazium.com', 'www.carmazium.com'].includes(parsed.hostname)) {
+        showToast('Open your Dashboard to find this tool, or ask support for help.', 'info'); return;
+      }
+      if (['https:', 'mailto:', 'tel:'].includes(parsed.protocol)) {
+        Linking.openURL(url).catch(() => showToast('Could not open this link. Please try again.', 'info'));
+      }
+    } catch { showToast('Could not open this link. Please try again.', 'info'); }
   }, [navigation, showToast]);
 
 

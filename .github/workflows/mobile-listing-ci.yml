@@ -59,6 +59,9 @@ jobs:
       - name: Native seller gearbox and body-type regression suite
         run: npm run test:seller-specs
 
+      - name: Dashboard customisation and native service flows
+        run: node --test scripts/test-dashboard-cards.test.mjs scripts/test-web-dashboard-cards.test.mjs scripts/test-native-service-completion.test.mjs
+
       - name: Native DVLA, 3D and dual-price parity regressions
         run: node ../../scripts/test-native-web-vehicle-parity-20261015.test.mjs
 
