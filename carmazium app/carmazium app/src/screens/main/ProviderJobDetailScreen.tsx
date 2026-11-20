@@ -343,6 +343,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
             {job.serviceType === 'DELIVERY' && job.isRecovery ? 'RECOVERY' : SERVICE_LABELS[job.serviceType].toUpperCase()}
           </Text>
           <Text style={styles.title}>{job.title}</Text>
+          {job.serviceType === 'INSPECTION' ? <Text style={styles.description}>Requested scope: {job.inspectionScope === 'COSMETIC' ? 'Cosmetic' : job.inspectionScope === 'BOTH' ? 'Vehicle and cosmetic' : 'Vehicle'}</Text> : null}
 
           <View style={styles.infoRow}>
             <Ionicons name="location-outline" size={16} color={Colors.accent} />
@@ -411,7 +412,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
 
             {providerPence != null ? (
               <Text style={styles.payoutHint}>
-                Customer pays {formatPence(amountPence)}. Your business receives approximately {formatPence(providerPence)} after the current CarMazium platform fee.
+                Customer pays {formatPence(amountPence)}. Your share after 9% CarMazium commission is {formatPence(providerPence)}{job.serviceType === 'INSPECTION' && ['COSMETIC', 'BOTH'].includes(job.inspectionScope || '') ? ', before actual payment-processing fees.' : '.'}
               </Text>
             ) : null}
 
