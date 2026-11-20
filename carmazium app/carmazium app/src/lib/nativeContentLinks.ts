@@ -11,7 +11,7 @@ export function nativeContentTarget(href: string): { name: string; params?: obje
     const destination = new URL(card.href, 'https://www.carmazium.com');
     if (destination.pathname !== path || [...destination.searchParams].some(([key, value]) => url.searchParams.get(key) !== value)) continue;
     if ('tabName' in card) return { name: 'Tabs', params: { screen: card.tabName, params: 'tabParams' in card ? card.tabParams : undefined } };
-    if ('stackScreen' in card) return { name: card.stackScreen, params: 'stackParams' in card ? card.stackParams : undefined };
+    if ('stackScreen' in card) return { name: card.stackScreen, params: 'stackParams' in card && typeof card.stackParams === 'object' && card.stackParams !== null ? card.stackParams : undefined };
   }
   if (path === '/dashboard/user' || path === '/dashboard') return { name: 'Tabs', params: { screen: 'Profile' } };
   if (path === '/dashboard/dealer') return { name: 'Tabs', params: { screen: 'DealerHome' } };

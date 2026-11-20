@@ -22,7 +22,7 @@
     "backend/src/services/warranty-retail-tariff.ts": "f61a609b1a5fdaea532e92b4b9f0da0b17fd91f0d5ae1f4153ed39765aedbf10",
     "carmazium app/carmazium app/src/components/DashboardCards.tsx": "b8f375f3ef57fb0c3481d74cbeb295c2e74cf664554fc8fd653ddf10b83e8154",
     "carmazium app/carmazium app/src/navigation/TabNavigator.tsx": "8511c1dddd737b9929b3495e2feb785dbf8dc315412451860260e265e03c950b",
-    "carmazium app/carmazium app/src/screens/main/ChatScreen.tsx": "0c4b1f3eadd537cba3d376cf1c98df1a6f62c17ca4c540acd6205a285c31267c",
+    "carmazium app/carmazium app/src/screens/main/ChatScreen.tsx": "abe1555221d1bb26b770e76b441750888f3cae2f4480d2c1ae0530ad22bc1a17",
     "docs/privacy/ACCOUNT_DELETION_RETENTION.md": "fc5e72b46344a699116df3575b657d888d8b2dfd5751ec3defd4a2b2bf752077",
     "src/app/auth/forgot-password/page.tsx": "e31d2c8ec55d997152239fb073a48aa4ebeefda8c46229e3b5b3a3dc93d69a9f",
     "src/app/auth/login/page.tsx": "cbb780d0482668d587085e85526fc818e09daa8ff382107836fd8957ccf2b3b6",

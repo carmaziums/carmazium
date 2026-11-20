@@ -22,7 +22,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { CommonActions, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
@@ -696,7 +696,7 @@ export const ChatScreen: React.FC = () => {
   const openSupportLink = useCallback((url: string) => {
     try {
       const target = nativeContentTarget(url);
-      if (target) { navigation.navigate(target.name, target.params); return; }
+      if (target) { navigation.dispatch(CommonActions.navigate(target.name, target.params)); return; }
       const parsed = new URL(url);
       if (['carmazium.com', 'www.carmazium.com'].includes(parsed.hostname)) {
         showToast('Open your Dashboard to find this tool, or ask support for help.', 'info'); return;
