@@ -101,12 +101,12 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | `/dashboard/dealer/messages` | — | Pending Android acceptance. |
 | `/dashboard/dealer/my-offers` | — | Dealer sent offer history opened. |
 | `/dashboard/dealer/offers` | dealer.offers | Pending Android acceptance. |
-| `/dashboard/dealer/purchases/[id]` | — | Pending Android acceptance. |
+| `/dashboard/dealer/purchases/[id]` | — | Existing retail purchase showed the summary, seller, payment, handover and delivery sections. Book delivery carried the vehicle into the native form. |
 | `/dashboard/dealer/purchases/[id]/seller` | — | Pending Android acceptance. |
-| `/dashboard/dealer/purchases/history` | — | Pending Android acceptance. |
+| `/dashboard/dealer/purchases/history` | — | Completed stage opened with populated purchases. |
 | `/dashboard/dealer/purchases` | dealer.purchases | Completed records and the Retail filter worked. A retail purchase opened its details and the Book delivery action prefilled that vehicle. |
 | `/dashboard/dealer/purchases/reconciled/[id]` | — | Pending Android acceptance. |
-| `/dashboard/dealer/purchases/retail` | — | Pending Android acceptance. |
+| `/dashboard/dealer/purchases/retail` | — | Retail filter showed completed retail purchases and opened a matching purchase. |
 | `/dashboard/dealer/put-on-auction` | — | Pending Android acceptance. |
 | `/dashboard/dealer/settings` | — | Pending Android acceptance. |
 | `/dashboard/dealer/team` | dealer.team | Roster, service permissions and invitation email/role controls opened in the QA app. |
@@ -145,7 +145,7 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 
 | Website route | Manifest features | Android evidence or outstanding check |
 | --- | --- | --- |
-| `/dashboard/service/capabilities/[id]/matching` | service_provider.capabilities | Inspection nationwide matching settings opened. |
+| `/dashboard/service/capabilities/[id]/matching` | service_provider.capabilities | Delivery and inspection matching opened. Empty coverage and missing inspection specialty triggered validation. Reopening showed the original settings. |
 | `/dashboard/service/capabilities/[id]/verification` | service_provider.capabilities | Verification requirements and dealer KYC reuse opened. |
 | `/dashboard/service/capabilities` | service_provider.capabilities | Dealer-as-provider saw both approved capabilities. |
 | `/dashboard/service/jobs/[id]` | buyer.auction_inspection_refusal, service_provider.jobs | Pending Android acceptance. |
@@ -212,7 +212,7 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | `/how-it-works` | — | How It Works opened from the QA app menu. |
 | `/notifications` | notifications.history | Notifications screen opened. |
 | `/` | — | Pending Android acceptance. |
-| `/pricing` | pricing.customer | Pending Android acceptance. |
+| `/pricing` | pricing.customer | Native pricing opened with Basic £1, Standard £10 and Premium £25, the history report and 28-day Featured Boost. |
 | `/pricing/traders` | — | Pending Android acceptance. |
 | `/privacy-policy` | legal.privacy_policy | The QA app menu opened the hosted Privacy Policy. |
 | `/profile/[id]` | — | Pending Android acceptance. |
@@ -236,11 +236,11 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | `/services/inspection/new` | — | Site menu → Vehicle Inspection → Post a Job loaded. Empty submit showed missing-information alert. |
 | `/services/inspection` | — | Pending Android acceptance. |
 | `/services/jobs/[id]` | buyer.auction_inspection_refusal | Existing cancelled inspection job opened with vehicle, status and location. |
-| `/services/jobs/new` | — | Pending Android acceptance. |
+| `/services/jobs/new` | — | The hub job chooser offered Delivery or Recovery and Inspection. Choosing Inspection opened the native form. A duplicate registration was rejected and a valid draft reached the QA read-only guard. |
 | `/services/jobs` | — | My Service Jobs screen opened. |
 | `/services/leads/[id]` | — | Pending Android acceptance. |
 | `/services/leads` | — | Pending Android acceptance. |
-| `/services` | — | Pending Android acceptance. |
+| `/services` | — | The native hub opened jobs, the service chooser and Partner Account. The partner inbox showed the service-job empty state. |
 | `/services/warranty/order` | — | Pending Android acceptance. |
 | `/services/warranty` | — | Warranty opened the hosted CarMazium quote form, with registration, lookup, make, model and vehicle category visible. |
 | `/services/warranty/terms` | — | Pending Android acceptance. |
