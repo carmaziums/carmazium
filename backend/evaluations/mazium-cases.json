@@ -2044,5 +2044,20 @@
       "dispute",
       "not|cannot|can.t|don.t|\\bno\\b"
     ]
+  },
+  {
+    "id": "MZ-143",
+    "topic": "dealer-bids-navigation",
+    "messages": [
+      {
+        "role": "user",
+        "content": "I am a dealer. Where can I track my current auction bids and switch to retail offers? Is that the same page as my auction wins?"
+      }
+    ],
+    "must": [
+      "/dashboard/dealer/bids",
+      "retail",
+      "/dashboard/dealer/auctions/won"
+    ]
   }
 ]
