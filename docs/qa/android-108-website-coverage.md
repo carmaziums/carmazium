@@ -244,3 +244,24 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | `/services/warranty/order` | — | Pending Android acceptance. |
 | `/services/warranty` | — | Warranty opened the hosted CarMazium quote form, with registration, lookup, make, model and vehicle category visible. |
 | `/services/warranty/terms` | — | Pending Android acceptance. |
+
+
+## 20 November, continued dashboard and Stripe checks (15:00–16:07 GMT)
+
+- Website remains the reference. No customer APK, Play Store, OTA, website deployment or production payment configuration was published during this pass.
+- Reproduced dealer Analytics hiding all data when sales/revenue-trend arrays were empty despite 48 active listings. Native fix shows inventory/funnel sections whenever a valid response exists, scopes the empty state to the sales chart, handles the existing website response envelope, guards against stale period responses and exposes the existing full website report/CSV route.
+- Android admin Overview previously used six fixed, untappable cards. Source now follows the website's 18-card catalogue, shared saved card preferences, customization, cancel/default/save failure states and destination links. These admin changes require a signed-in admin acceptance pass in the new QA package.
+- Menu comparison found missing dealer Guest enquiries and provider My Work/My services options. Source fixes and a role-menu regression test are in draft PR #936; website routes/components were not changed. The later menu changes at combined SHA 13ec38cf3ae62f702e3c5ceaa672d21f1f645342 are NOT included in run #144.
+- Latest source validation: 39 native tests and TypeScript passed; 777 root tests passed. These source checks do not replace account-specific device acceptance.
+- Internal run 44764702088 (#144), source 0399aaf7d5bc4c9c9a5a226566195d7d8a0bb7f3, passed compilation, APK signature/package checks and Android 15 cold launch. Archive SHA256 2ee566aac7643777276a6b0f3f12c488917f75094b97221b68c36095a213b877; APK SHA256 2bd405435ac3f5e8e4d45f579b3a55f1cc09e13a091a080f296196d16789b43c. Both matched the laptop download. Installed uk.carmazium.qa with adb install -r, preserving the dealer session and firstInstallTime 14:39:37; lastUpdateTime 16:02:45.
+- Device retest of Analytics on #144 passed: 30D shows 48 live listings, the sales-specific empty chart message and full website report/CSV action; All period loads and still shows 48 live listings. Admin customization remains untested on-device. Prior dealership earnings, payment-history filters, account/settings/security headings and finance-calculator setting were opened without modifying customer records.
+
+### Stripe sandbox — separate from Android acceptance
+
+- User explicitly authorized sandbox setup/testing. Signed into Stripe and selected the existing Carmazium sandbox (acct_1SCdIM8OCSU5yHod), belonging to the Carmazium account identified by the Android public payment configuration. The connector's separate Mazium live account was not used for payments.
+- Confirmed sandbox banner and API account identity. Used only sk_test credentials, kept outside the repository; every created PaymentIntent/Checkout asserted livemode=false.
+- Ten direct Stripe API checks passed: GBP 1/10/25/125/360 success and full refund (five cases), repeated-request idempotency, GBP 100 partial GBP 20 then remaining GBP 80 refund, declined card rejection, 3D Secure requires_action and cancellation, and unpaid hosted Checkout creation/expiry. The initial GBP 1 setup check was also refunded. No successful QA charge remains unrefunded.
+- These are real Stripe sandbox API requests, NOT a completed Android checkout or application webhook test. No live money moved. No production API key was replaced.
+- The sandbox has no configured event destination. Existing sandbox Connect accounts report inactive transfer capabilities/payouts disabled. Provider onboarding, payout transfer/reversal, and signed application webhook delivery remain outstanding.
+- Current QA APK still reads the live backend/Supabase and has write guards. It has NOT been connected to this Stripe sandbox. An isolated application backend/database/auth configuration, sandbox keys/webhook destination and a specifically configured internal build are required before end-to-end Android payments. No separate CarMazium staging project was found in connected Supabase (only Pulse Cars/mazium) or Railway (only simpledms-stage); these other projects were not changed.
+- This pass does not certify all admin/dealer/buyer-seller actions or complete website parity. Continue controlled transactional, uploads, email/push, service-provider onboarding/settlement and role-specific failure-path acceptance.
