@@ -1,6 +1,7 @@
 import { apiClient } from './apiClient';
 
 export type ServiceType = 'DELIVERY' | 'INSPECTION' | 'FINANCE' | 'WARRANTY';
+export type InspectionScope = 'VEHICLE' | 'COSMETIC' | 'BOTH';
 export type CapabilityStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
 
 export const SERVICE_LABELS: Record<ServiceType, string> = {
@@ -23,6 +24,7 @@ export interface ContractorCapability {
   verificationExpiresAt: string | null;
   jobNationwide: boolean;
   jobPostcodeAreas: string[];
+  inspectionScopes?: Exclude<InspectionScope, 'BOTH'>[];
   leadNationwide: boolean;
   leadPostcodeAreas: string[];
   leadMinVehicleValuePence: number | null;
@@ -118,6 +120,7 @@ export interface LeadMatchingInput {
 }
 
 export interface JobMatchingInput {
+  inspectionScopes?: Exclude<InspectionScope, 'BOTH'>[];
   jobNationwide: boolean;
   jobPostcodeAreas?: string[];
 }
@@ -257,6 +260,7 @@ export interface ServicePayment {
   grossPence: number;
   platformFeePence: number;
   contractorPence: number;
+  processingFeePence?: number;
   platformFeeRate: string;
   status: 'PENDING' | 'PAID' | 'RELEASED' | 'REFUNDED' | 'FAILED';
   paidAt: string | null;
@@ -277,6 +281,7 @@ export interface ServiceJob {
   id: string;
   customerId?: string | null;
   serviceType: ServiceType;
+  inspectionScope?: InspectionScope | null;
   isRecovery: boolean;
   status: ServiceJobStatus;
   title: string;
