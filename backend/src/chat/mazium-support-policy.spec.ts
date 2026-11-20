@@ -2,6 +2,9 @@ import { canAutoReplyToSupport, canPrepareSupportDraft, classifySupportMessage, 
 
 describe('MaziuM support safety policy', () => {
     it.each([
+        'Android QA - For that same retail advert if I change the price will it automatically approve the listing and release my 100 pound seller reward',
+        'Does editing my advert approve my listing and release my reward?',
+        'Will that approve my listing and then release my bonus?',
         'For that same advert, if I just change the price, does that automatically approve it and activate a £100 bonus? Please keep the distinction between a retail advert and an auction sale.',
         'Does paying for my warranty automatically issue my policy?',
         'My delivery is marked COMPLETED but the driver never came. Can I just leave it unconfirmed and send a chat message next week to stop the money being released? Explain what I should do now without changing the job.',
@@ -34,6 +37,10 @@ describe('MaziuM support safety policy', () => {
     });
     it.each([
         'Please refund my listing fee',
+        'Will that approve my listing? Also release my reward now.',
+        'Does editing my advert help, and please release my reward now.',
+        'Does editing my advert help and can you release my reward?',
+        'Will that approve my listing and release my bonus? Please refund my fee.',
         'Can you release my bonus now?',
         'Please send me my approved bonus.',
         'Please make a payment now.',

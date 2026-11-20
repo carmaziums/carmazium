@@ -2059,5 +2059,20 @@
       "retail",
       "/dashboard/dealer/auctions/won"
     ]
+  },
+  {
+    "id": "MZ-155",
+    "topic": "retail-reward-coordinated-question",
+    "messages": [
+      {
+        "role": "user",
+        "content": "For that same retail advert if I change the price will it automatically approve the listing and release my 100 pound seller reward"
+      }
+    ],
+    "must": [
+      "retail",
+      "auction",
+      "not|no|doesn|won.t"
+    ]
   }
 ]
