@@ -287,7 +287,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             {msg.aiGenerated ? supportTextParts(msg.content).map((part, index) => part.url ? (
               <Text key={index} accessibilityRole="link" style={{ textDecorationLine: 'underline', fontWeight: '600' }}
                 onPress={() => onOpenLink(part.url!)}>{part.text}</Text>
-            ) : <Text key={index}>{part.text}</Text>) : msg.content}
+            ) : <Text key={index} style={part.bold ? { fontWeight: '700' } : undefined}>{part.text}</Text>) : msg.content}
           </Text>
           <View style={[styles.msgFooter, isOwn ? styles.msgFooterRight : styles.msgFooterLeft]}>
             <Text style={[isOwn ? styles.timeTextRightInline : styles.timeTextLeftInline, { color: appearance.secondary }]}>
@@ -402,7 +402,7 @@ export const ChatScreen: React.FC = () => {
   }, [threadId]);
 
   const toggleSupportAi = async () => {
-    if (!room || aiPreferenceBusy || (aiPaused && humanTakeoverRecent)) return;
+    if (!room || aiPreferenceBusy) return;
     setAiPreferenceBusy(true);
     try {
       const enabled = aiPaused;
@@ -417,13 +417,8 @@ export const ChatScreen: React.FC = () => {
   };
 
   const openSupportAiMenu = () => {
-    if (aiPaused && humanTakeoverRecent) {
-      Alert.alert('MaziuM AI', 'Human support is handling this conversation.', [
-        { text: 'Privacy', onPress: () => { void Linking.openURL('https://www.carmazium.com/privacy-policy'); } },
-        { text: 'Close', style: 'cancel' },
-      ]);
-      return;
-    }
+    // The server distinguishes a queued handoff from a staff member actively
+    // replying. Let customers request resume; retain its authoritative refusal.
     Alert.alert('MaziuM AI', undefined, [
       { text: aiPaused ? 'Resume AI replies' : 'Pause AI replies', onPress: () => { void toggleSupportAi(); } },
       { text: 'Privacy', onPress: () => { void Linking.openURL('https://www.carmazium.com/privacy-policy'); } },
@@ -1161,6 +1156,7 @@ export const ChatScreen: React.FC = () => {
           contentContainerStyle={styles.chatScroll}
           showsVerticalScrollIndicator={false}
           inverted
+          keyboardShouldPersistTaps="handled"
           maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: 80 }}
           data={reversedMessages}
           keyExtractor={(item) => item.id}

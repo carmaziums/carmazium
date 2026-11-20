@@ -56,3 +56,12 @@ test('support links preserve paths and queries but reject external hosts and exe
   assert.equal(parts[1].url,'https://www.carmazium.com/dashboard/user?tab=cars');
   assert.equal(supportTextParts('[bad](javascript:doBad)')[0].url, undefined);
 });
+
+// Regression from the real Android reply: raw **Edit** was visible to customers.
+test('AI emphasis renders without losing links, unmatched stars or ordinary text', () => {
+  const parts = supportTextParts('Open [My Cars](/dashboard/user?tab=cars), select **Edit**, then save.');
+  assert.equal(parts.map(p => p.text).join(''), 'Open My Cars, select Edit, then save.');
+  assert.equal(parts.find(p => p.text === 'Edit').bold, true);
+  assert.equal(parts.find(p => p.text === 'My Cars').url, 'https://www.carmazium.com/dashboard/user?tab=cars');
+  assert.equal(supportTextParts('2 * 3, **unfinished').map(p => p.text).join(''), '2 * 3, **unfinished');
+});

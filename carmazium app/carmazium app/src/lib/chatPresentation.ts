@@ -23,7 +23,7 @@ export function supportLinkUrl(target: string): string | null {
 }
 
 export function supportTextParts(content: string) {
-  const parts: Array<{ text: string; url?: string }> = [];
+  const parts: Array<{ text: string; url?: string; bold?: boolean }> = [];
   const pattern = /\[([^\]\n]+)\]\(([^\s)]+)\)/g;
   let end = 0;
   for (const match of content.matchAll(pattern)) {
@@ -33,7 +33,13 @@ export function supportTextParts(content: string) {
     end = match.index! + match[0].length;
   }
   if (end < content.length) parts.push({ text: content.slice(end) });
-  return parts;
+  return parts.flatMap<{ text: string; url?: string; bold?: boolean }>(part => {
+    if (part.url) return [part];
+    return part.text.split(/(\*\*[^*\n]+\*\*)/g).filter(Boolean).map(text =>
+      text.startsWith('**') && text.endsWith('**')
+        ? { text: text.slice(2, -2), bold: true }
+        : { text });
+  });
 }
 
 /** Acknowledgements and loading older pages must not be mistaken for new replies. */

@@ -52,3 +52,27 @@ Real CarMazium Android package `uk.carmazium.app`, version 1.0.0 / versionCode 1
 ## Remaining device verification
 
 Build/install updated APK and verify every fix on-device, including reply scrolling with keyboard shown, long replies, history browsing and both themes. Continue personal-account listing/editing, offers, purchases, notifications, settings, service journeys and failure cases. Then dealer and admin roles. This first pass is not comprehensive app certification. No Play Store or production OTA release is implied by a merged source change.
+
+## Extended session checks
+
+- Ten live support questions were sent on build 105. Nine answered correctly. The tenth-question count includes a failure on the ninth question: a coordinated question asking whether a Retail price edit automatically approves the listing and releases a reward received the financial-action handoff instead of an explanation.
+- Reproduced three failing informational variants locally, fixed the intent classifier, and retained explicit payment/refund/action escalation. All 160 related routing/context/automatic-response tests and backend TypeScript passed. PR #929 merged as `ca39566c7d419178eb5113854c9aa796ec241ea1`; deployment and live retest pending. The generated-answer evaluation matrix now includes 155 scenarios.
+- Additional passing live topics: private-buyer finance application without dealer conversion; one personal account for buying/selling and correct My Cars/Offers Received routes; failed registration lookup with truthful manual data entry and draft guidance.
+- Buyer dashboard 30D -> 7D changed the displayed reporting period. Saved count matched the one temporary QA vehicle.
+- Notification preferences and delivery/quiet-hours sections loaded current values. A local hour-selector change was not saved; no notification or privacy preferences were submitted.
+- Emulator physical display is 1600x900 at 240 dpi, presented as 900x1600 portrait (600 logical pixels wide). An attempted density override to 400 was reset by BlueStacks; this does not verify a 360dp phone layout.
+- Candidate run 44731847893 / versionCode 106 was cancelled when the grid-switch crash was found. Candidate run 44734501024 / versionCode 107 builds commit `36e7345718ebc6463461d494a903238c3c2be000`, including PRs #927 and #928. It has not yet been installed.
+
+
+## Build 107 installed and checked (20 November, 12:43–12:53 GMT)
+
+- Private signed candidate built successfully in run 44734501024 from 36e7345718ebc6463461d494a903238c3c2be000. VersionCode 107, package uk.carmazium.app. SHA256 c2450e1137cbfe1bec37bfeefee69d6e9ad67f3f37239fd07b74f75d28273ea9, 99,115,102 bytes. CI verified retained production signer; local and laptop checksums matched. Installed with adb install -r; login retained. Not published to customers/Play Store.
+- Exact failed combined retail price/approval/reward question passed the live official support retest after PR #929 deployed. Synthetic model eval: 155/155; backend routing/service tests: 160 passed. These are distinct from real Android questions.
+- Twelfth live message asked how to edit existing advert photos. Correct My Cars/Edit/status guidance. New AI reply scrolled completely into view with the software keyboard open, without manually scrolling. Customer grey/AI blue verified visually. No floating shopping assistant obstructed chat.
+- My Cars inline link opened the actual native My Cars screen. First tap with keyboard open dismissed the keyboard; follow-up source uses keyboardShouldPersistTaps=handled so actionable links work on the first tap.
+- Saved list-to-grid no longer blanked the app. Tapping the saved Hyundai loaded full photos, description, location, fuel and transmission. Removed temporary QA save; dashboard Watching returned to 0.
+- Buyer dashboard hamburger now opens account tools. Drawer scroll reached Contact Support, Report a Problem and Sign Out while background dashboard stayed fixed.
+- Auction view still displayed backend dealer restriction plus misleading Bidding is live banner. A non-dealer account with dealer-staff metadata bypassed the client gate. Follow-up requires dealer accountRole as well as staff/verification eligibility; banner requires loaded live lots and no load error. Server permissions remain authoritative.
+- Raw **Edit** was visible in AI replies. Follow-up renders bounded bold spans while preserving safe platform links, ordinary/unmatched asterisks and plain customer messages.
+- Source inspection found queued human handoff prevented any resume action for 15 minutes in the native client. Backend already differentiates queued requests from recent actual staff replies. Follow-up exposes Resume and delegates the decision to that authoritative endpoint.
+- Follow-up source validation: full native TypeScript check; 6 behaviour/contrast/link/emphasis tests. Follow-up changes are NOT in installed build 107 and require another APK/retest.

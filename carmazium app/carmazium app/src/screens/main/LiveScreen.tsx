@@ -121,8 +121,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
   // not a 403 error banner with a Retry button that can never succeed.
   const hasTradeAccess =
     accountRole === 'admin'
-    || currentUser?.isDealerStaff === true
-    || (accountRole === 'dealer' && currentUser?.isVerified === true);
+    || (accountRole === 'dealer' && (currentUser?.isDealerStaff === true || currentUser?.isVerified === true));
   const { loading: accessLoading, hasPermission } = useDealerAccess(dealerMode);
   const canCreateAuction = !dealerMode || (!accessLoading && hasPermission('MANAGE_INVENTORY'));
   const canPlaceDealerBid = !dealerMode || (!accessLoading && hasPermission('PLACE_BID'));
@@ -577,14 +576,14 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
         )}
 
         {/* ─── Live Alert Banner ──────────────────────────────────── */}
-        <View style={styles.alertBanner}>
+        {!auctionLoadError && liveAuctions.length > 0 && <View style={styles.alertBanner}>
           <View style={styles.alertDot} />
           <Text style={styles.alertText}>
             {canPlaceDealerBid
               ? 'Bidding is live — place your bid before the gavel drops.'
               : 'Browse live auctions. Bidding requires dealer bidding permission.'}
           </Text>
-        </View>
+        </View>}
 
         {/* ─── LIVE NOW Section ──────────────────────────────────── */}
         <Text style={styles.sectionTitle}>LIVE NOW</Text>
