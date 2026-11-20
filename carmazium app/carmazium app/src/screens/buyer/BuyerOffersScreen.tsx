@@ -466,7 +466,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
       <TouchableOpacity
         style={styles.emptyCtaBtn}
         activeOpacity={0.85}
-        onPress={() => navigation?.navigate('Search')}
+        onPress={() => navigation?.navigate('Tabs', { screen: 'Search' })}
       >
         <Text style={styles.emptyCtaBtnText}>Browse cars</Text>
       </TouchableOpacity>
