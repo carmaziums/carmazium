@@ -542,10 +542,15 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
             </AccessibleModal>}
 
             {/* Desktop Sidebar */}
-            <aside className="hidden lg:block w-72 shrink-0 self-start">
-                <div className={role === "admin"
+            <aside className={`hidden lg:block w-72 shrink-0 self-start ${role === "admin" ? "" : "sticky top-24"}`}>
+                <div
+                    data-testid="desktop-dashboard-menu"
+                    tabIndex={role === "admin" ? undefined : 0}
+                    role={role === "admin" ? undefined : "region"}
+                    aria-label={role === "admin" ? undefined : "Dashboard menu options"}
+                    className={role === "admin"
                     ? "glass-card p-5"
-                    : "glass-card p-5 !sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto"
+                    : "dashboard-sidebar-panel p-5"
                 }>
                     <div className="flex items-center gap-3 mb-5 p-3 rounded-xl" style={{ background: 'var(--bg-input)' }}>
                         <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-lg border border-primary/30 shrink-0">
