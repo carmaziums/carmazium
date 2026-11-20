@@ -134,7 +134,7 @@ export default function ContractorJobPage() {
                                         <textarea className={`${inputCls} resize-none mb-3`} rows={3} value={message} onChange={e => setMessage(e.target.value)} maxLength={1000} placeholder="Collection window, vehicle type, anything that helps the customer pick you" />
                                         {amountPence >= 100 && platformFeePence != null && providerPence != null && (
                                             <p className="text-[11px] text-[var(--text-muted)] mb-3">
-                                                Customer pays {formatPence(amountPence)}. CarMazium fee {formatPence(platformFeePence)}. <strong className="text-[var(--text-primary)]">You receive {formatPence(providerPence)}.</strong>
+                                                Customer pays {formatPence(amountPence)}. CarMazium fee {formatPence(platformFeePence)}. <strong className="text-[var(--text-primary)]">{job.serviceType === "INSPECTION" && ["COSMETIC", "BOTH"].includes(job.inspectionScope || "") ? `Your share before actual payment-processing fees: ${formatPence(providerPence)}.` : `You receive ${formatPence(providerPence)}.`}</strong>
                                             </p>
                                         )}
                                         {amountPence >= 100 && platformFeePence == null && (
