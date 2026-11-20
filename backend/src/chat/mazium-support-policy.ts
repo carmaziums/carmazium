@@ -49,7 +49,22 @@ const STAFF_ACTION = [
 // Exact task intent, not a broad mention of money. Do not let a general-help
 // prefix exempt a compound request to issue money or alter privileges.
 export function requiresStaffDecision(message: string): boolean {
-    return STAFF_ACTION.some(pattern => pattern.test(message));
+    return STAFF_ACTION.some(pattern => {
+        for (const match of message.matchAll(new RegExp(pattern.source, `${pattern.flags}g`))) {
+            // A coordinated predicate keeps the subject of its question:
+            // "will it approve the advert and release my reward?" asks about
+            // behaviour; it does not instruct the assistant to release funds.
+            // Do not exempt a fresh sentence, "also", "please", or a direct
+            // request to "you". Continue scanning for later real requests.
+            const clause = message.slice(0, match.index).split(/[.!?;]/).pop() || '';
+            const explanatoryContinuation = /^(?:and\s+|then\s+)/i.test(match[0])
+                && !/\bplease\b/i.test(match[0])
+                && /\b(?:does|do|did|will|would|can|could|should|may|might)\s+(?:it|that|this|editing|changing|paying|uploading)\b/i.test(clause)
+                && !/\b(?:but|please|also|you)\b/i.test(clause);
+            if (!explanatoryContinuation) return true;
+        }
+        return false;
+    });
 }
 
 /** A firm refusal or repeated request must bypass the one-time offer. */
