@@ -5,14 +5,14 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@/components/BrandIcon';
 import { Card } from '../../components/ui/Card';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
-import { Skeleton } from '../../components/ui/Skeleton';
+import { AdminOverviewCards } from './AdminOverviewCards';
 import { Colors } from '../../constants/colors';
-import { FontFamily, TextPresets, Type } from '../../constants/typography';
+import { FontFamily, Type } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { useTabBarClearance } from '../../hooks/useTabBarClearance';
 import { getAdminStats, type AdminStats } from '../../lib/adminApi';
 import type { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { AdminHeader, adminStyles, formatPrice, openAdminWeb } from './adminShared';
+import { AdminHeader, adminStyles, openAdminWeb } from './adminShared';
 
 type Nav = NativeStackNavigationProp<MainStackParamList>;
 
@@ -77,22 +77,10 @@ const MENU: { section: string; items: MenuItem[] }[] = [
   },
 ];
 
-// The website overview's default KPI cards (DEFAULT_ADMIN_CARD_IDS in
-// src/app/dashboard/admin/page.tsx), with the same labels and values.
-const STAT_CARDS: { label: string; description: string; value: (s: AdminStats | null) => string }[] = [
-  { label: 'Users', description: 'All platform accounts', value: (s) => (s?.totalUsers ?? 0).toLocaleString() },
-  { label: 'Listings', description: 'All marketplace listings', value: (s) => (s?.totalListings ?? 0).toLocaleString() },
-  { label: 'Sold', description: 'Completed vehicle sales', value: (s) => (s?.soldListings ?? 0).toLocaleString() },
-  { label: 'Auctions', description: 'All auction records', value: (s) => (s?.totalAuctions ?? 0).toLocaleString() },
-  { label: 'Bids', description: 'All auction bid activity', value: (s) => (s?.totalBids ?? 0).toLocaleString() },
-  { label: 'Revenue', description: 'Retained platform revenue', value: (s) => formatPrice(s?.totalRevenue ?? 0) },
-];
-
 export const AdminDashboardScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const bottomPad = useTabBarClearance();
   const [stats, setStats] = useState<AdminStats | null>(null);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -104,7 +92,6 @@ export const AdminDashboardScreen: React.FC = () => {
     } catch (err: any) {
       setError(err?.message || 'Failed to load system statistics.');
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
   }, []);
@@ -144,22 +131,7 @@ export const AdminDashboardScreen: React.FC = () => {
       >
         {error ? <ErrorBanner message={error} onRetry={() => void load(false)} /> : null}
 
-        <Text style={adminStyles.sectionLabel}>Overview</Text>
-        <View style={styles.statGrid}>
-          {STAT_CARDS.map((card) => (
-            <Card key={card.label} style={styles.statCard} padded>
-              <Text style={adminStyles.fieldLabel}>{card.label}</Text>
-              {loading && !stats ? (
-                <View style={styles.statSkeleton}><Skeleton w={80} h={22} r={Radius.chip} /></View>
-              ) : (
-                <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
-                  {card.value(stats)}
-                </Text>
-              )}
-              <Text style={adminStyles.meta} numberOfLines={1}>{card.description}</Text>
-            </Card>
-          ))}
-        </View>
+        <AdminOverviewCards stats={stats} />
 
         <Card style={styles.note} padded>
           <View style={adminStyles.row}>
@@ -207,10 +179,6 @@ export const AdminDashboardScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, gap: 12 },
-  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  statCard: { flexBasis: '47%', flexGrow: 1 },
-  statSkeleton: { marginVertical: 6 },
-  statValue: { ...TextPresets.monoFigure, fontSize: Type.h4, color: Colors.textPrimary, marginVertical: 6 },
   note: {},
   noteText: { flex: 1 },
   group: { gap: 8 },

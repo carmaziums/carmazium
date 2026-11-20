@@ -8,6 +8,7 @@ import {
   StatusBar,
   Dimensions,
   Animated,
+  Alert,
   RefreshControl,
   StyleProp,
   ViewStyle,
@@ -24,7 +25,8 @@ import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { EmptyState } from '../../components/ui/EmptyState';
+import { Button } from '../../components/Button';
+import * as WebBrowser from 'expo-web-browser';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -233,7 +235,9 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const requestNumber = useRef(0);
   const doFetch = (isRefresh = false) => {
+    const request = ++requestNumber.current;
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     const { range, from, to } = periodToQuery(period);
@@ -242,18 +246,29 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
     if (to) params.set('to', to);
 
     setError(null);
-    apiClient<{ success: boolean; data: AnalyticsData }>(`/dealers/analytics?${params.toString()}`)
-      .then(res => { if (res.success) { setAnalytics(res.data); setError(null); } })
+    apiClient<{ success?: boolean; data: AnalyticsData }>(`/dealers/analytics?${params.toString()}`)
+      .then(res => {
+        if (res.success === false || !res.data) throw new Error('Missing analytics');
+        if (request === requestNumber.current) setAnalytics(res.data);
+      })
       // Was a bare `.catch(() => {})`. A dealer whose analytics call failed saw
       // a dashboard reporting zero sales, zero leads and zero revenue with no
       // indication anything had gone wrong — the single worst instance of
       // CROSS-023 in the app.
-      .catch(() => { setAnalytics(null); setError('Could not load your analytics.'); })
-      .finally(() => { setLoading(false); setRefreshing(false); });
+      .catch(() => {
+        if (request === requestNumber.current) {
+          setAnalytics(null);
+          setError('Could not load your analytics.');
+        }
+      })
+      .finally(() => {
+        if (request === requestNumber.current) { setLoading(false); setRefreshing(false); }
+      });
   };
 
   useEffect(() => {
     doFetch();
+    return () => { ++requestNumber.current; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period]);
 
@@ -411,7 +426,6 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
     const lineData = revenueTrend.length > 0 ? toLineData(revenueTrend.slice(-6)) : [];
     const leadFunnelData = analytics?.leadFunnel ? toLeadBarData(analytics.leadFunnel) : [];
     const agingData = analytics?.inventoryHealth?.agingBuckets ? toAgingBarData(analytics.inventoryHealth.agingBuckets) : [];
-    const hasData = !!analytics && (revenueTrend.length > 0 || (kpis?.totalUnitsSold ?? 0) > 0);
 
     return (
     <ScrollView
@@ -455,18 +469,13 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
         ))}
       </View>
 
-      {/* Skeleton while loading */}
+      <Button label="Full website report and CSV export" variant="outline" size="sm"
+        onPress={() => void WebBrowser.openBrowserAsync('https://www.carmazium.com/dashboard/dealer/analytics')
+          .catch(() => Alert.alert('Could not open the report', 'Please try again.'))} />
+
       {loading ? (
         <AnalyticsSkeleton />
-      ) : !hasData ? (
-        <View style={{ marginHorizontal: 24, marginTop: 40 }}>
-          <EmptyState
-            icon="bar-chart-outline"
-            title="No analytics data yet"
-            subtitle="Start listing and selling cars to see your performance charts here."
-          />
-        </View>
-      ) : (
+      ) : !analytics ? null : (
         <>
           {/* Revenue BarChart card */}
           <Animated.View style={[styles.revenueCard, { opacity: fadeAnim }]}>
