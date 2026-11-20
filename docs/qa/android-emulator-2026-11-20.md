@@ -20,7 +20,7 @@ Real CarMazium Android package `uk.carmazium.app`, version 1.0.0 / versionCode 1
 - Saving the Hyundai succeeded and it appeared in Saved. Saved card showed missing fuel and gearbox although retail search had Diesel / Manual.
 - Opening that saved car passed a summary to the detail screen: missing fuel/gearbox/description and UNKNOWN seller information. It did not hydrate the full advert.
 - Removed the QA-saved car; Saved returned to zero. No listings, offers, bids, purchases or payments were submitted.
-- The empty Saved "Browse listings" action targets an unregistered root Search route in source; corrected to Tabs -> Search. Interactive retest on the updated APK remains pending.
+- The empty Saved "Browse listings" action reached retail search during testing. Its source relied on navigation bubbling; changed to the explicit Tabs -> Search route. Interactive retest on the updated APK remains pending.
 
 ## Implemented fixes
 

@@ -26,11 +26,12 @@ export const HamburgerButton: React.FC<HamburgerButtonProps> = ({
         // A ☰ outside the website header has no header to sit under, so the
         // site menu opens full screen with its own close button.
         if (!websiteStyle) setSiteMenuTop(0);
-        openDrawer(mode);
+        if (mode === 'dashboard') openDrawer('dashboard');
+        else openDrawer('site');
       }}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       accessibilityRole="button"
-      accessibilityLabel={mode === 'dashboard' ? "Open account menu" : websiteStyle && isOpen ? "Close navigation menu" : "Open navigation menu"}
+      accessibilityLabel={websiteStyle && isOpen ? "Close navigation menu" : "Open navigation menu"}
       accessibilityHint={websiteStyle ? "Opens or closes the CarMazium menu" : "Opens the CarMazium navigation drawer"}
       accessibilityState={websiteStyle ? { expanded: isOpen } : undefined}
       accessible
