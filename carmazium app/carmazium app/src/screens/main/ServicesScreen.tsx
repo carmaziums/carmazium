@@ -38,8 +38,7 @@ interface ServiceItem {
 }
 
 // These are the four active customer service journeys on the website.
-// Native service-request forms do not yet exist, so use the real web form
-// instead of displaying decorative cards with no way to continue.
+// Delivery and inspection use native job forms. Finance and warranty use the website.
 const SERVICES: ServiceItem[] = [
   {
     title: 'Delivery & Recovery',
@@ -54,7 +53,7 @@ const SERVICES: ServiceItem[] = [
   },
   {
     title: 'Vehicle Inspection',
-    desc: 'Arrange an independent pre-purchase inspection and choose from approved inspectors’ quotes.',
+    desc: 'Request a vehicle inspection, a cosmetic inspection or both. Compare quotes from approved inspectors.',
     icon: 'search-outline',
     color: Colors.lightGreen_34d399,
     bg: Colors.successAlpha10,
@@ -76,13 +75,13 @@ const SERVICES: ServiceItem[] = [
   },
   {
     title: 'Vehicle Warranty',
-    desc: 'Contact the CarMazium team about warranty availability for your vehicle. Warranty partners are appointed by admin.',
+    desc: 'Check cover options and get a Warrantywise quote through Pulse Cars Limited.',
     icon: 'shield-checkmark-outline',
     color: Colors.palePurple_c084fc,
     bg: Colors.infoBlueAlpha10,
     border: Colors.borderHi,
     path: '/services/warranty',
-    cta: 'Contact the warranty team',
+    cta: 'Get a warranty quote',
     kind: 'Admin-managed service',
   },
 ];
@@ -139,7 +138,11 @@ export const ServicesScreen: React.FC = () => {
         <TouchableOpacity
           style={styles.postJobButton}
           activeOpacity={0.8}
-          onPress={() => navigation.navigate('CreateServiceJob', { serviceType: 'DELIVERY' })}
+          onPress={() => Alert.alert('Choose a service', undefined, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delivery or recovery', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'DELIVERY' }) },
+            { text: 'Inspection', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'INSPECTION' }) },
+          ])}
           accessibilityRole="button"
           accessibilityLabel="Post a delivery or inspection job"
           accessibilityHint="Opens the job form to request quotes from approved providers"
@@ -232,7 +235,7 @@ export const ServicesScreen: React.FC = () => {
                   <View style={{ height: 1, backgroundColor: Colors.borderSubtle }} />
                   <TouchableOpacity
                     style={styles.expandedRow}
-                    onPress={() => navigation.navigate('ProviderJobs')}
+                    onPress={() => navigation.push('ProviderJobs', { serviceType: service.title === 'Delivery & Recovery' ? 'DELIVERY' : 'INSPECTION' })}
                     accessibilityRole="button"
                     accessibilityLabel={`Find Jobs and Bid for ${service.title}`}
                   >
@@ -252,7 +255,7 @@ export const ServicesScreen: React.FC = () => {
         <View style={styles.noteCard}>
           <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={styles.noteText}>
-            Delivery and inspection are paid service jobs with competing provider quotes and CarMazium checkout. Warranty enquiries are handled directly by admin. Finance applications continue externally with the provider selected by admin; prospective partners contact our team. CarMazium does not make lending decisions or guarantee approval.
+            Compare delivery and inspection quotes, then pay through CarMazium. For a warranty, choose your cover and pay through CarMazium. Our team arranges the policy through Pulse Cars Limited. Finance applications continue with the selected provider, who decides whether to approve them.
           </Text>
         </View>
 

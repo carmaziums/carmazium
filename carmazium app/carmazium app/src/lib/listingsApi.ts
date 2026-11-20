@@ -7,6 +7,7 @@ import { formatTransmission } from './transmission';
 // ─── Backend Types ────────────────────────────────────────────────────────────
 
 export interface ApiListing {
+  type?: string;
   id: string;
   /** UK registration from the canonical listing row; required for edit identity restoration. */
   vrm?: string | null;

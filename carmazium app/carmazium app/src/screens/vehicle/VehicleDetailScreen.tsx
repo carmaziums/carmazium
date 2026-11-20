@@ -1,3 +1,4 @@
+import { VehicleServiceActions } from '../../components/VehicleServiceActions';
 import { shareVehicle } from '../../lib/shareVehicle';
 import { SellerServiceBadges } from '../../components/SellerServiceBadges';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -1066,6 +1067,10 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           </View>
 
+          {fullVehicleFacts?.id === listing.id && fullVehicleFacts.status === 'ACTIVE'
+            && (fullVehicleFacts.type ?? fullVehicleFacts.listingType) === 'CLASSIFIED' && (
+              <VehicleServiceActions vehicle={fullVehicleFacts} finance={financeEnabled} />
+          )}
           <View style={styles.buyerJourneyNote}>
             <Ionicons name="information-circle-outline" size={18} color={Colors.infoBlueLight} />
             <Text style={styles.buyerJourneyText}>Contact the seller or make a private offer. Once agreed, arrange inspection or collection and pay the seller directly — CarMazium does not take vehicle sale payments.</Text>

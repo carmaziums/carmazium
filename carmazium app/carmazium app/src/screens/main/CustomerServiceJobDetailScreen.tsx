@@ -250,7 +250,6 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
     );
   }
 
-  const vehicle = job.vehicles?.[0];
   const isInspection = job.serviceType === 'INSPECTION';
   const paidState = ['PAID', 'IN_PROGRESS', 'COMPLETED', 'RELEASED', 'DISPUTED'].includes(job.status);
   const nextStep = job.status === 'OPEN'
@@ -347,13 +346,18 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
                 : `${job.pickupPostcode || 'Pickup'} → ${job.deliveryPostcode || 'Delivery'}`
             }
           />
-          {vehicle ? (
+          {isInspection && <Info icon="search-outline" label="Inspection requested" value={
+            job.inspectionScope === 'BOTH' ? 'Vehicle and cosmetic inspection' :
+              job.inspectionScope === 'COSMETIC' ? 'Cosmetic inspection' : 'Vehicle inspection'
+          } />}
+          {job.vehicles?.map((vehicle, index) => (
             <Info
               icon="car-sport-outline"
-              label="Vehicle"
+              key={vehicle.id ?? index}
+              label={job.vehicles.length === 1 ? 'Vehicle' : `Vehicle ${index + 1}`}
               value={[vehicle.registration, vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(' · ') || 'Vehicle'}
             />
-          ) : null}
+          ))}
           {job.description ? <Text style={styles.description}>{job.description}</Text> : null}
         </View>
 

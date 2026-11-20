@@ -40,7 +40,7 @@ interface Group { id: string; label: string; target?: SiteTarget; entries?: Entr
 
 const jobActions = (serviceType: 'DELIVERY' | 'INSPECTION') => [
   { id: `${serviceType}-post`, label: 'Post a Job', desc: 'Request quotes from approved providers.', icon: 'add-circle-outline', target: { screen: 'CreateServiceJob', params: { serviceType } } },
-  { id: `${serviceType}-bid`, label: 'Find Jobs & Bid', desc: 'For verified service providers.', icon: 'briefcase-outline', target: { screen: 'ProviderJobs' } },
+  { id: `${serviceType}-bid`, label: 'Find Jobs & Bid', desc: 'For verified service providers.', icon: 'briefcase-outline', target: { screen: 'ProviderJobs', params: { serviceType } } },
 ];
 
 export const buildSiteGroups = (dealerMode: boolean): Group[] => [
