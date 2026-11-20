@@ -78,7 +78,7 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | Website route | Manifest features | Android evidence or outstanding check |
 | --- | --- | --- |
 | `/dashboard/buyer/bids` | buyer.bids | Auction Bids empty state and View Live Auctions action displayed. |
-| `/dashboard/buyer/history` | buyer.history | Pending populated Android acceptance; platform receipts and accepted purchases require synthetic records. |
+| `/dashboard/buyer/history` | buyer.history | #148 native agreed-purchase and platform-receipt sections/explanation displayed; empty states expected. Populated buyer completion and receipts remain pending. |
 | `/dashboard/buyer/messages` | — | Messages opened with a populated conversation list. |
 | `/dashboard/buyer/offers` | buyer.offers | My Sent Offers empty state opened. Browse cars opened retail inventory. |
 | `/dashboard/buyer/settings` | — | Account Settings opened with personal details and notification/privacy controls. |
@@ -137,7 +137,7 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | `/dashboard/seller/earnings` | seller.earnings | Earnings opened with fees and payouts sections. |
 | `/dashboard/seller/listings` | seller.listings | My Listings, status filters and empty state opened. |
 | `/dashboard/seller/messages` | — | Pending Android acceptance. |
-| `/dashboard/seller/offers` | seller.offers | QA #146 local buyer/seller opened Incoming Offers and the correct empty state at 360dp. Populated counter/accept/reject/sold actions remain outstanding. |
+| `/dashboard/seller/offers` | seller.offers | #150 native acceptance passed: counter validation/history, accepted and rejected cards retained, £7,000 synthetic Mark as Sold success, duplicate sale action removed; DB SOLD. Buyer completion remains AWAITING_CONFIRMATION. |
 | `/dashboard/seller/performance` | seller.performance | Pending Android acceptance. |
 | `/dashboard/seller/settings` | — | Pending Android acceptance. |
 
@@ -200,7 +200,7 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 
 | Website route | Manifest features | Android evidence or outstanding check |
 | --- | --- | --- |
-| `/about` | — | Pending Android acceptance. |
+| `/about` | — | #150 actual 600dp light / 360dp dark acceptance: current website content, five FAQs, native Browse/Sell/TradeXchange/How It Works links passed. No phone call placed. |
 | `/app-support` | — | Pending Android acceptance. |
 | `/blog/[slug]` | — | Pending Android acceptance. |
 | `/blog` | blog.seo | Public articles are web-hosted. App menu link added in #936. |
@@ -348,3 +348,38 @@ Three rendered-screen regressions passed: accept-to-sale completion and duplicat
 About-only queued workflow #149 (44785459523, source 5332e4cf5c7e9f1f6add220ad88bd11b8f08a88e) was cancelled before compilation so the newly found offer fix could be included. Combined workflow #150 (44788018987), source 304056369956249b40d1fbd6fa1a02f5265edd25, is compiling the homepage, About and offer fixes. Verify its artifact and perform native acceptance before closing those items.
 
 No customer APK, Play release, production OTA, website edit or live payment was published. Emulator size remains temporarily 960x540 at density 240 for narrow-width testing; restore it after final acceptance.
+
+## Final private candidate #150 acceptance — 20 November, 18:15–18:47 GMT
+
+Workflow https://github.com/carmaziums/carmazium/actions/runs/44788018987 (#150), source 304056369956249b40d1fbd6fa1a02f5265edd25, completed both the signed-APK/package verification build and Android 15 installation/cold-launch job successfully. Workflow numbers are not customer Android version codes.
+
+Artifact 14654824375: ZIP 56,219,705 bytes, SHA256 f2d2808c3ea78b6ae681909c7e89aa6a4273da5f5fc78fbc137028afa64e1594. APK 97,149,360 bytes, SHA256 9e2d36c4b03f168b1c1f35c3584e6b695efa073dafb8425db562e83c40a1c167. Both laptop hashes matched the CI artifact evidence. Installed with adb install -r into uk.carmazium.qa (version 1.0.1 / code 2), retaining first-install time 14:39:37 and login; update time 18:15:07. APK retained at C:\Users\Dell\Downloads\CarMazium-Sandbox-3040563\CarMazium-QA-Android.apk.
+
+### Seller offers — actual native acceptance passed
+
+- Both the rejected £6,500 countered offer and accepted £7,000 offer remained visible. Rejected history retained the £7,200 seller counter.
+- Mark as Sold opened the locked buyer/agreed-price sheet. Confirm Sold displayed success, then Vehicle already sold replaced the duplicate sale button.
+- Local fixture e295b8e7-e893-4f7c-a600-c2d0c4fda3a6 is SOLD, Sale.soldPrice 7000, created 2026-11-20T18:16:42.197Z, purchaseStatus AWAITING_CONFIRMATION.
+- Rejected offer 87f1a8df-b135-4096-b752-372805606710 retains sellerCounterOffer 7200. Accepted offer c13e7b53-cb90-4acc-bced-8713ebd79619 retains final agreed 7000.
+- This is a synthetic local sale, with no movement of money. Buyer collection/completion is still pending and is not claimed as passed.
+- PR #939 updated with device evidence. All 42 native script checks and native TypeScript had passed before this build.
+
+### About — actual native acceptance passed
+
+At normal 600dp in light mode, the current website story, marketplace roles, contacts and five FAQ answers displayed correctly. Browse cars opened native retail search with all three active synthetic fixtures; Sell a car opened native SellLanding; Explore TradeXchange opened native Services; How it works opened native HowItWorks. Each FAQ answer displayed and opening the next collapsed the previous. No phone call was placed.
+
+At 360dp in dark mode, the heading, content cards and FAQ text fit the screen and the vehicle-information accordion toggled correctly. PR #938 updated with this evidence. About's phone display is checked; actual telephone dialing is not claimed.
+
+The separate How It Works screen still contains broad text such as “Every listing comes with seller verification, vehicle history checks” and “complete the deal through the platform.” Its wording needs comparison against the current website and product rules. Navigation success is not content approval. Do not alter the website to follow app copy.
+
+### Other read-only acceptance and cleanup
+
+Buyer Purchases showed separate agreed retail purchases and platform receipts, correctly explaining accepted offers are not completed payment/collection; no accepted purchase fixtures populated that view. Earnings before the synthetic sale showed £0/0; Payment History showed zero platform Transaction records, expected for this isolated database. TradeXchange service-payment records are separate; this does NOT prove service receipts appear in Payment History.
+
+A misleading Earnings Stripe prompt about receiving vehicle-sale proceeds was corrected in source-only draft PR #940, commit 972c586d2c463319ca5ffea62c901aeb9d627e48. New copy identifies the £100 qualifying seller bonus and direct buyer-to-seller vehicle payment. This one-line copy change is NOT in installed #150 and must be included in the next candidate. No payment behavior changed.
+
+Temporary blog fixture was removed. Restored physical emulator size 1600x900 / density 240 (600dp portrait); verified again at 18:46. Customer package uk.carmazium.app remains version 1.0.0 / code 108, first install 11:36:34, last update 13:35:32, unchanged by sandbox installs. Left private app in light mode on Home.
+
+Homepage #148 screenshot saved as CarMazium-Android-Homepage-Verified.png; homepage code is unchanged in #150. Draft PR #937 has its device/filter evidence. No customer release, Play publication, public APK replacement, production OTA, website change or live payment.
+
+Full app/website parity is NOT certified. Still open: physical camera/private uploads, notification/email delivery, real provider onboarding, staff permissions, secure-login admin transaction UI, other unpopulated transactional routes, iOS/physical-device coverage, buyer completion, and the route-matrix pending rows. Keep service-layer, automated, HTTP, and actual native interaction evidence separate.
