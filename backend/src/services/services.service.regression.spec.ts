@@ -192,6 +192,7 @@ describe('ServicesService TradeXchange hardening regressions', () => {
                     verificationExpiresAt: true,
                     jobNationwide: true,
                     jobPostcodeAreas: true,
+                    inspectionScopes: true,
                 },
             });
         });
