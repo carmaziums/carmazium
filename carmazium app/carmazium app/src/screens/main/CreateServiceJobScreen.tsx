@@ -6,6 +6,7 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
 import { Elevation } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
+import type { InspectionScope } from '../../lib/servicesApi';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CreateServiceJob'>;
 type ServiceType = 'DELIVERY' | 'INSPECTION';
@@ -24,6 +25,7 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
   const [destination, setDestination] = useState('');
   const [address, setAddress] = useState('');
   const [recovery, setRecovery] = useState(false);
+  const [inspectionScope, setInspectionScope] = useState<InspectionScope>('VEHICLE');
   const [saving, setSaving] = useState(false);
   const field = (label: string, value: string, setValue: (value: string) => void, hint?: string, multiline = false) => (
     <View style={styles.field}>
@@ -48,6 +50,7 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
         method: 'POST',
         body: JSON.stringify({
           serviceType,
+          ...(delivery ? {} : { inspectionScope }),
           title: title.trim(),
           description: description.trim() || undefined,
           ...(delivery
@@ -75,8 +78,24 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
     <View style={styles.container}>
     <ScreenBackBar title="TradeXchange" forceSafeArea />
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>{delivery ? 'Post Delivery & Recovery Job' : 'Post Vehicle Inspection Job'}</Text>
+      <Text style={styles.title}>{delivery ? 'Post Delivery & Recovery Job' : 'Request an Inspection'}</Text>
       <Text style={styles.subtitle}>Approved providers can quote for your request. No provider is booked until you accept a quote.</Text>
+      {!delivery ? (
+        <View style={styles.field}>
+          <Text style={styles.label}>INSPECTION TYPE *</Text>
+          {([
+            { value: 'VEHICLE', label: 'Vehicle inspection', hint: 'Mechanical and functional checks' },
+            { value: 'COSMETIC', label: 'Cosmetic inspection', hint: 'Paintwork, bodywork and visible damage' },
+            { value: 'BOTH', label: 'Both', hint: 'Vehicle and cosmetic inspection checks' },
+          ] as const).map((option) => (
+            <TouchableOpacity key={option.value} accessibilityRole="radio" accessibilityState={{ checked: inspectionScope === option.value }} onPress={() => setInspectionScope(option.value)} style={[styles.input, inspectionScope === option.value && { borderColor: Colors.accent, borderWidth: 2 }] }>
+              <Text style={[styles.label, { color: Colors.white }]}>{inspectionScope === option.value ? '● ' : '○ '}{option.label}</Text>
+              <Text style={styles.subtitle}>{option.hint}</Text>
+            </TouchableOpacity>
+          ))}
+          <Text style={styles.subtitle}>Cosmetic checks are not a mechanical or structural safety certificate. Only available in provider coverage areas.</Text>
+        </View>
+      ) : null}
       {field('Job title *', title, setTitle, delivery ? 'Transport my vehicle' : 'Pre-purchase vehicle inspection')}
       {field('Registration *', registration, setRegistration, 'AB12 CDE')}
       {field('Make', make, setMake, 'Vehicle make')}
