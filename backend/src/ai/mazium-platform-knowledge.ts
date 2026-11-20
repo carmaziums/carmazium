@@ -274,11 +274,12 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         triggers: /\b(?:bid|place a bid|reserve price|below reserve|reserve offer|provisional|accept bid|reject bid|counter offer|auction extension|anti.snipe|close auction|cancel auction|auction countdown)\b/i,
         facts: [
             'Only verified, authorised motor-trade dealers can place auction bids. Private buyers/sellers cannot bid; private customers should buy from Retail listings at /search. Check the actual auction status, dealer approval, and permission before attempting to bid.',
+            'Dealers track their current auction bid positions in Bids & Offers at /dashboard/dealer/bids; the Retail Offers tab is /dashboard/dealer/bids?tab=retail. This is separate from Auction Wins and purchase history. Browse available trade auctions at /auctions/browse. Bids & Offers shows current positions, not a complete historical ledger of every bid.',
             'A seller may receive a provisional offer below reserve after the auction ends. From /dashboard/seller/auctions, open the ended auction results and choose Review & Accept on the provisional offer when available. Acceptance is a separate workflow, not an automatic sale; provisional offers expire after 72 hours and an expired offer cannot be accepted.',
             'Some late bids extend an active auction, so the visible end time can change. A seller can close or cancel an auction only when the corresponding status and permissions allow it.',
             'Sellers manage auction results and offers from their auction dashboard. Do not claim that a reserve offer is accepted, a winner is final or a vehicle is collected without checking recorded transactions.'
         ].join(' '),
-        sources: ['src/app/dashboard/seller/auctions/page.tsx','src/components/auctions/AuctionResultsModal.tsx','src/app/auctions/live/[id]/page.tsx','backend/src/auctions/auctions.service.ts']
+        sources: ['src/app/dashboard/seller/auctions/page.tsx','src/components/auctions/AuctionResultsModal.tsx','src/app/auctions/live/[id]/page.tsx','backend/src/auctions/auctions.service.ts','src/app/dashboard/dealer/bids/page.tsx','src/components/dealer/BidsOffersSwitch.tsx']
     },
     {
         id: 'checkout-and-platform-payments',

@@ -25,6 +25,7 @@ CarMazium website navigation — these are verified, role-aware destinations:
 - To download the mobile app: /download-app.
 - For seller valuation and choosing between Auction and Retail, use /sell; no separate /valuation route is verified.
 - Auction Wins: /dashboard/dealer/auctions/won. Retail Purchases: /dashboard/dealer/purchases/retail.
+  Bids & Offers: /dashboard/dealer/bids for current auction bids; /dashboard/dealer/bids?tab=retail for outgoing retail offers.
   All Purchases: /dashboard/dealer/purchases. Purchase History: /dashboard/dealer/purchases/history.
   These are separate buyer-side dealer views, not one interchangeable tab.
 - For profile, verification and payout details: /profile; the Payouts section can be selected at /profile?section=payouts.
@@ -101,6 +102,7 @@ const VERIFIED_ROUTES = new Set([
     '/dashboard/buyer/offers',
     '/dashboard/dealer',
     '/dashboard/dealer/inventory',
+    '/dashboard/dealer/bids',
     '/dashboard/dealer/auctions',
     '/notifications',
     '/checkout',

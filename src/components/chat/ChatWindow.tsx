@@ -14,6 +14,8 @@ import { useAuth } from "@/context/AuthContext"
 import { blockChatRoom, createChatAttachmentUpload, getChatMessages, sendChatAttachment, sendChatMessage, markMessagesAsRead, getChatDisplayName, getChatRoomDisplayName, isSupportUser, openVehicleDispute, reportChatMessage, unblockChatRoom, type ChatHistoryCursor, type ChatMessage, type ChatReportReason, type ChatRoom } from "@/lib/chatApi"
 import { disputeEventLabel, parseChatMessageContent, parseDisputeEventContent } from "@/lib/chatMessageContent"
 import { reconcileChatMessages } from "@/lib/chatMessageRecovery"
+import { ChatScrollTracker } from "@/lib/chatScroll"
+import { chatMessageAppearance } from "@/lib/chatMessageAppearance"
 import { resolveAdminDispute } from "@/lib/adminApi"
 import { supabase } from "@/lib/supabase"
 import { apiClient } from "@/lib/apiClient"
@@ -91,13 +93,13 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const [reporting, setReporting] = React.useState(false)
     const [reportedMessageIds, setReportedMessageIds] = React.useState<Set<string>>(new Set())
     const [selectedAdminUserId, setSelectedAdminUserId] = React.useState<string | null>(null)
-    const messagesEndRef = React.useRef<HTMLDivElement>(null)
+    const messagesContentRef = React.useRef<HTMLDivElement>(null)
     const messagesContainerRef = React.useRef<HTMLDivElement>(null)
+    const scrollTracker = React.useRef(new ChatScrollTracker())
     const inputRef = React.useRef<HTMLInputElement>(null)
     const attachmentInputRef = React.useRef<HTMLInputElement>(null)
     const typingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
     const typingActiveRef = React.useRef(false)
-    const isInitialLoad = React.useRef(true)
 
     const isDispute = room.context === 'DISPUTE'
     const canDraftSupport = isAdminViewer && room.context === 'SUPPORT' && !room.supportClosedAt
@@ -298,17 +300,9 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         }
     }
 
-    /** Returns true if the user is within 150px of the bottom of the chat */
-    const isNearBottom = () => {
-        const container = messagesContainerRef.current
-        if (!container) return true
-        return container.scrollHeight - container.scrollTop - container.clientHeight < 150
-    }
-
     // Fetch the newest page first. Older history is loaded with a stable
     // message cursor so incoming realtime messages cannot shift page offsets.
     React.useEffect(() => {
-        isInitialLoad.current = true
         setHistoryCursor(null)
         setHasMore(false)
 
@@ -376,26 +370,30 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
         }
     }, [room.id, room.context, loading, user?.id, isConnected, markAsRead])
 
-    // Scroll to bottom on new messages — instant on first load, smooth only if near bottom
-    // Guard against loading=true: the container shows a spinner then, so scrollHeight is tiny
-    // and isInitialLoad would be consumed before any messages are in the DOM.
+    // Measure intent on scroll, before a long reply increases scrollHeight.
+    // Own sends and new AI answers always reveal the latest message. History
+    // prepends, polling duplicates and read receipts retain the reading position.
+    React.useLayoutEffect(() => {
+        const container = messagesContainerRef.current
+        if (loading || !container) return
+        if (scrollTracker.current.update(room.id, messages.at(-1), user?.id, room.context === 'SUPPORT')) {
+            container.scrollTop = container.scrollHeight
+        }
+    }, [messages, loading, room.id, room.context, user?.id])
+
+    // Images and viewport/composer resizing can change height after the commit.
+    // Only move the chat scroller, never the surrounding dashboard/page.
     React.useEffect(() => {
-        if (loading || !messagesContainerRef.current) return
-        if (isInitialLoad.current) {
-            // Snap to bottom instantly when the conversation first loads
-            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
-            isInitialLoad.current = false
-            return
-        }
-        if (isNearBottom()) {
-            // Only smooth-scroll container when near bottom
-            messagesContainerRef.current.scrollTo({
-                top: messagesContainerRef.current.scrollHeight,
-                behavior: "smooth"
-            })
-        }
-        // If the user has scrolled up to read older messages, don't interrupt them
-    }, [messages, loading])
+        const container = messagesContainerRef.current
+        const content = messagesContentRef.current
+        if (loading || !container || !content) return
+        const observer = new ResizeObserver(() => {
+            if (scrollTracker.current.following) container.scrollTop = container.scrollHeight
+        })
+        observer.observe(content)
+        observer.observe(container)
+        return () => observer.disconnect()
+    }, [loading, room.id])
 
     // Subscribe to new messages. Server IDs dedupe normal broadcasts while
     // clientMessageId replaces the exact optimistic/retrying bubble.
@@ -459,6 +457,8 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
 
     const loadOlderMessages = async () => {
         if (!historyCursor || !hasMore || loadingOlder) return
+
+        scrollTracker.current.following = false
 
         const container = messagesContainerRef.current
         const previousScrollHeight = container?.scrollHeight ?? 0
@@ -1082,7 +1082,11 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
             )}
 
             {/* Messages */}
-            <div ref={messagesContainerRef} className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain p-4 space-y-4">
+            <div ref={messagesContainerRef} data-testid="chat-message-scroll" onScroll={(event) => {
+                const container = event.currentTarget
+                scrollTracker.current.onScroll(container.scrollTop, container.scrollHeight, container.clientHeight)
+            }} className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain p-4">
+              <div ref={messagesContentRef} className="space-y-4">
                 {loading ? (
                     <div className="flex justify-center py-8">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -1138,6 +1142,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                 }
 
                                 const isOwn = !!msg.deliveryStatus || msg.senderId === user?.id
+                                const appearance = chatMessageAppearance(msg, isAdminViewer)
                                 // The media envelope is an internal admin format. A normal
                                 // member typing the same prefix must never make arbitrary
                                 // text render as trusted CarMazium media.
@@ -1153,15 +1158,16 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                         className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-2`}
                                     >
                                         <div
-                                            className={`max-w-[82%] sm:max-w-[75%] px-3 py-2 rounded-2xl shadow-sm ${isOwn
-                                                ? `bg-primary text-white rounded-br-sm ${msg.deliveryStatus === 'failed' ? 'ring-2 ring-red-400/70' : ''}`
-                                                : 'bg-[var(--bg-card)] text-[var(--text-primary)] rounded-bl-sm'
-                                                }`}
+                                            data-message-author={appearance.kind}
+                                            className={`max-w-[82%] sm:max-w-[75%] px-3 py-2 rounded-2xl shadow-sm ${appearance.bubble} ${isOwn ? 'rounded-br-sm' : 'rounded-bl-sm'} ${msg.deliveryStatus === 'failed' ? 'ring-2 ring-red-400/70' : ''}`}
                                         >
                                             {msg.aiGenerated && room.context === 'SUPPORT' && (
                                                 <p className="mb-1 text-[10px] font-bold" aria-label="Automated support message">
                                                     MaziuM · Automated response
                                                 </p>
+                                            )}
+                                            {appearance.kind === 'admin' && room.context === 'SUPPORT' && (
+                                                <p className="mb-1 text-[10px] font-bold">CarMazium · Support team</p>
                                             )}
                                             {!isOwn && isDispute && msg.sender && (
                                                 isSupportUser(msg.sender) ? (
@@ -1237,7 +1243,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                             ) : parsed.text && (
                                                 <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere] px-1">{parsed.text}</p>
                                             )}
-                                            <div className={`flex items-center gap-1.5 text-[10px] mt-1 px-1 ${isOwn ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>
+                                            <div className="flex items-center gap-1.5 text-[10px] mt-1 px-1 text-inherit">
                                                 <span>{formatTime(msg.createdAt)}</span>
                                                 {isOwn && msg.deliveryStatus === 'sending' && (
                                                     <span>Sending…</span>
@@ -1246,13 +1252,13 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                                     <button
                                                         type="button"
                                                         onClick={() => handleRetry(msg)}
-                                                        className="font-semibold text-white underline underline-offset-2"
+                                                        className="font-semibold text-inherit underline underline-offset-2"
                                                     >
                                                         Not sent · Retry
                                                     </button>
                                                 )}
                                                 {isOwn && !isDispute && !msg.deliveryStatus && (
-                                                    <svg width="13" height="9" viewBox="0 0 16 11" fill="none" className={msg.isRead ? 'text-white' : 'text-white/50'}>
+                                                    <svg width="13" height="9" viewBox="0 0 16 11" fill="none" className={msg.isRead ? 'text-current' : 'text-current opacity-75'}>
                                                         <path d="M1 5.5L4.5 9L11 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                                                         <path d="M5.5 5.5L9 9L15.5 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                                                     </svg>
@@ -1295,7 +1301,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                     </div>
                 )}
 
-                <div ref={messagesEndRef} />
+              </div>
             </div>
 
             {/* Input */}

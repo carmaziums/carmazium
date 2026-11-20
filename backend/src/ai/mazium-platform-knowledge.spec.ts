@@ -104,6 +104,8 @@ describe('MaziuM source-verified public platform knowledge', () => {
         expect(hasUnverifiedNavigationPath('Go to /dashboard/dealer/inventory and select Edit')).toBe(false);
         expect(hasUnverifiedNavigationPath('Use https://www.carmazium.com/pricing')).toBe(false);
         expect(hasUnverifiedNavigationPath('Look in /dashboard/dealer/purchases/history')).toBe(false);
+        expect(hasUnverifiedNavigationPath('Current auction bids: /dashboard/dealer/bids')).toBe(false);
+        expect(hasUnverifiedNavigationPath('Retail offers: /dashboard/dealer/bids?tab=retail')).toBe(false);
         expect(hasUnverifiedNavigationPath('Open /notifications to see alerts')).toBe(false);
         expect(hasUnverifiedNavigationPath('Administrators can view [Auctions](/dashboard/admin/auctions)')).toBe(false);
         expect(hasUnverifiedNavigationPath('Go to /dashboard/admin/impersonate')).toBe(true);
