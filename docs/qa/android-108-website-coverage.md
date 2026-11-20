@@ -7,7 +7,7 @@ Build 108 was installed as an update in BlueStacks. The buyer/seller and dealer 
 | Area | Result | Further acceptance needed |
 | --- | --- | --- |
 | Buyer support | All five priority buyer retests passed. A reconnect left an existing AI answer invisible until the conversation reopened. | Retest the reconnect fix in #935 with the chat still open. |
-| Guest retail | Build 108 asks for sign-in. Website allows an email-confirmed enquiry. #936 adds the Android form and covers consent, invalid and valid codes in a rendered screen test. | Guest viewing → confirmation email → seller inbox on a disposable listing and controlled accounts. |
+| Guest retail | Build 108 asks for sign-in. Website allows an email-confirmed enquiry. #936 adds the Android form and covers consent, invalid and valid codes in a rendered screen test. | On the separate QA APK a guest opened the prefilled form and empty submission showed validation. Delivery of a confirmation email and arrival in the seller inbox still need controlled test accounts. |
 | TradeXchange | Delivery and inspection forms loaded and rejected empty posts. Existing cancelled inspection details, dealer provider coverage, matching and verification screens opened. Finance information and the web warranty quote form opened. | Scheduled and multi-vehicle jobs, inspection scope, quote acceptance, payment, completion, email, notifications and payout on an isolated deployment with an opted-in provider. |
 | Dealer | Stock filtering, count, grid/list, command centre, live lots and bid/offer history checked. | Permitted staff roles, CRM, team, listings, purchases, reconciliation and handover with representative records. |
 | Admin and specialist accounts | Website and native navigation compared in source. Missing admin warranty/finance entries recorded below. | Admin overview, pending listings, handovers, KYC, directory and insights opened on build 108. Authenticated mobile browser checked across the admin website. Admin changes requiring disposable records, standalone provider, legacy finance/insurance accounts, and populated workflows. |
@@ -22,6 +22,8 @@ The internal Android snapshot `fd29efa37ad024798f3ac3fae5cc21350fbdba4e` combine
 ## Website page inventory
 
 A separate availability check returned HTTP 200 for 36 public URLs and captured their page titles. All 58 make and location pages linked by the live directory also returned HTTP 200 and an H1. These checks cover public site availability.
+
+The separate QA APK was installed alongside build 108 on BlueStacks. Its guest listing buttons opened inspection, delivery and warranty with matching vehicle details. The live hosted inspection form still had the older single-vehicle specification. The Business Spotlight shortcut opened both partner profiles in the directory. The most recent full listings manager link in #936 postdates that APK.
 
 All 158 Next.js page templates at the build 108 source are listed below. A dynamic URL represents a template, so a row cannot establish that every vehicle or account state works. The middle column lists feature IDs that explicitly name the page file in the repository parity manifest. A dash means the manifest has no direct page-file entry. Android screen observations cover only the action named. Role redirects, checkout outcomes and SEO pages are included so that they can be accounted for explicitly.
 
@@ -62,7 +64,7 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | `/dashboard/admin/hpi` | — | Signed-in Android Chrome opened Vehicle History Reports and its fulfilment queue. |
 | `/dashboard/admin/listings` | admin.operations | Native pending review opened and correctly showed an empty queue. Full inventory manager link added in #936. |
 | `/dashboard/admin/marketing-popup` | — | Marketing Popup settings loaded in authenticated Android Chrome with its current disabled status. No settings were changed. |
-| `/dashboard/admin/messages` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
+| `/dashboard/admin/messages` | — | Native shortcut opened the signed-in admin web inbox with conversation search. |
 | `/dashboard/admin/services/jobs/[id]` | — | Pending Android acceptance. |
 | `/dashboard/admin/services/leads/[id]` | — | Pending Android acceptance. |
 | `/dashboard/admin/services` | — | Trade Services opened a Chrome custom tab at the separate website sign-in. After separate admin sign-in, Applications, Providers, Jobs, Finance / Warranty and Disputes opened. All four service types and the All services reset were exercised. Dedicated Warranty Partners filter shortcut added in #936. |
@@ -180,7 +182,7 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | `/auctions/live/[id]` | marketplace.auctions, dealer.auction_staff_permissions, navigation.public_detail_deeplinks | Dealer live lots and non-dealer role gate checked. Individual bidding transaction pending. |
 | `/auctions` | marketplace.auctions | Pending Android acceptance. |
 | `/auctions/won/[id]` | buyer.auction_inspection_refusal | Pending Android acceptance. |
-| `/buy-cars/[slug]` | marketplace.vehicle_detail, navigation.public_detail_deeplinks | Build 108 prompts guests to sign in to enquire. Native verified-email enquiry in #936. |
+| `/buy-cars/[slug]` | marketplace.vehicle_detail, navigation.public_detail_deeplinks | Build 108 prompts guests to sign in to enquire. Separate QA APK opened the native guest enquiry form and correctly blocked an empty submission. Confirmation delivery pending. |
 | `/buy-cars` | — | Pending Android acceptance. |
 | `/compare` | — | Pending Android acceptance. |
 | `/search` | marketplace.search | Browse cars opened retail inventory showing 714 results at time of check. |
@@ -224,7 +226,7 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | Website route | Manifest features | Android evidence or outstanding check |
 | --- | --- | --- |
 | `/become-a-partner` | — | Site menu footer missing partner onboarding link. Website handoff added in #936. |
-| `/business-spotlight` | — | Site menu footer missing Business Spotlight. Website handoff added in #936. |
+| `/business-spotlight` | — | Build 108 had no footer shortcut. On the separate QA APK the new shortcut opened the partner directory showing Resolve Automotive and SimpleDMS. |
 | `/business-spotlight/resolve-automotive` | — | Pending Android acceptance. |
 | `/business-spotlight/simpledms` | — | Pending Android acceptance. |
 | `/finance` | — | Pending Android acceptance. |
