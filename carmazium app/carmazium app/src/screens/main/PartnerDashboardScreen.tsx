@@ -369,7 +369,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 <View style={styles.card}>
                   <Text style={styles.cardTitle}>Business payouts</Text>
                   <Text style={styles.cardText}>
-                    Delivery and Inspection customers pay through CarMazium. CarMazium deducts 9% and 91% is paid to the Partner business Stripe Connect account.
+                    CarMazium deducts 9% from delivery and inspection payments. Cosmetic and combined inspections also incur the actual payment-processing fee.
                   </Text>
                   {team?.stripeConnect.complete ? (
                     <View style={styles.successRow}>

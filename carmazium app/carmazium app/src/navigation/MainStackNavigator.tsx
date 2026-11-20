@@ -154,7 +154,7 @@ export type MainStackParamList = {
   Services: undefined;
   CreateServiceJob: { serviceType: 'DELIVERY' | 'INSPECTION'; purchase?: {
     listingId: string; title: string; registration?: string | null;
-    make?: string | null; model?: string | null;
+    make?: string | null; model?: string | null; year?: number | null; location?: string | null;
   } };
   CustomerServiceJobs: undefined;
   CustomerServiceJobDetail: { jobId: string };
@@ -162,7 +162,7 @@ export type MainStackParamList = {
   ProviderCapabilities: undefined;
   ProviderVerification: { capabilityId: string };
   ProviderMatching: { capabilityId: string };
-  ProviderJobs: undefined;
+  ProviderJobs: { serviceType?: 'DELIVERY' | 'INSPECTION' } | undefined;
   ProviderJobDetail: { jobId: string };
   ProviderLeads: undefined;
   ProviderLeadDetail: { leadId: string };

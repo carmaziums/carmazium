@@ -55,10 +55,10 @@ const timingText = (job: ServiceJob) => {
   return 'ASAP / flexible';
 };
 
-export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
+export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>('open');
-  const [filter, setFilter] = useState<Filter>('ALL');
+  const [filter, setFilter] = useState<Filter>(route.params?.serviceType ?? 'ALL');
   const [jobs, setJobs] = useState<ServiceJob[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

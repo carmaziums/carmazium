@@ -123,7 +123,7 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.payoutCard}>
             <View style={{ flex: 1 }}>
               <Text style={styles.cardTitle}>Paid-job payouts</Text>
-              <Text style={styles.cardText}>Delivery and Inspection use a 9% CarMazium / 91% Partner payout split.</Text>
+              <Text style={styles.cardText}>CarMazium deducts 9% from delivery and inspection payments. Cosmetic and combined inspections also incur the actual payment-processing fee.</Text>
             </View>
             {stripe.complete ? (
               <Ionicons name="checkmark-circle" size={24} color={Colors.accentGreen} />

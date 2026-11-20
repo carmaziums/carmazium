@@ -1,3 +1,4 @@
+import { VehicleServiceActions } from '../../components/VehicleServiceActions';
 import { shareVehicle } from '../../lib/shareVehicle';
 import { SellerServiceBadges } from '../../components/SellerServiceBadges';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -1349,6 +1350,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </Text>
           <IconButton icon={<Ionicons name="close" size={16} color={Colors.warning} />} onPress={() => setBinBannerDismissed(true)} accessibilityLabel="Close" />
         </View>
+      )}
+      {auction?.status === 'ACTIVE' && auction.listing.status === 'ACTIVE' && (
+        <VehicleServiceActions vehicle={auction.listing} auction />
       )}
       {auction?.listing?.linkedListingId && auction.listing.linkedListing?.type === 'CLASSIFIED' && (
         <View style={[s.banner, s.bannerDark]}>
