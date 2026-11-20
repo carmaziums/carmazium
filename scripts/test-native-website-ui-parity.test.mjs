@@ -94,15 +94,16 @@ test('website and native match dark navy body + red brand, with a full width bot
 
 test('buyer home uses the current website sale-first proposition and brand header', () => {
   const home = app('screens/main/HomeScreen.tsx');
+  const hero = app('components/WebsiteHomeHero.tsx');
   const webHero = read('src/app/HomeHero.tsx');
   assert.match(webHero, /Sell by auction FREE/i);
   assert.match(webHero, /Auction <span[^>]*>FREE<\/span>/);
   assert.ok(home.includes('<WebsiteTopBar />'));
-  assert.ok(home.includes('<Text style={s.greetingLine}>Sell your car</Text>'));
-  assert.ok(home.includes('<Text style={s.greetingAccent}>your way.</Text>'));
-  assert.ok(home.includes('Auction FREE · Retail £1'));
-  assert.ok(home.includes('approved handover earns a £100 reward.'));
-  assert.ok(home.includes("navigation.navigate('Tabs', { screen: 'Search' })"));
-  assert.ok(home.includes("navigation.navigate('SellLanding')"));
+  assert.ok(home.includes('<WebsiteHomeHero'));
+  assert.ok(hero.includes('Your car.') && hero.includes('Your choice.'));
+  assert.ok(hero.includes('Auction FREE. Retail for £1.'));
+  assert.ok(hero.includes('List my car for £1') && hero.includes('Sell by auction FREE'));
+  assert.ok(home.includes("navigation.navigate('Search' as any, { _t: Date.now() })"));
+  assert.ok(hero.includes("navigation.navigate('SellLanding')"));
   assert.ok(!home.includes('<Text style={s.greetingLine}>Find your next</Text>'));
 });
