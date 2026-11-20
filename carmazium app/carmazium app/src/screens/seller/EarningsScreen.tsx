@@ -425,7 +425,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.payoutsCardTitle}>Set up bank payouts</Text>
-                <Text style={styles.payoutsCardSub}>Connect your bank account via Stripe to receive proceeds from your sales.</Text>
+                <Text style={styles.payoutsCardSub}>Connect your bank account via Stripe to receive your £100 seller bonus after an approved auction handover. Buyers pay vehicle money directly to you.</Text>
               </View>
             </View>
             {connectError ? (
