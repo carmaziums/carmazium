@@ -16,16 +16,19 @@ const routes = get('carmazium app/carmazium app/src/navigation/TabNavigator.tsx'
 const docs = get('docs/native/website-native-visual-parity-block3-20261010.md');
 
 test('one website command centre and one native matching first fold', () => {
-  assert.ok(web.includes('DEALER_ROUTE_CONFIG[0].title'));
+  assert.ok(web.includes("getDealerRoute('/dashboard/dealer')?.title"));
   assert.ok(web.includes('title: "Add vehicle"'));
   assert.ok(web.includes('label="Active Stock"'));
   assert.ok(web.includes('label="Vehicle Views"'));
   assert.ok(web.includes('label="Active Leads"'));
   assert.ok(web.includes('label="Vehicles Sold"'));
   for (const label of ['DEALER COMMAND CENTRE','RUN YOUR DEALERSHIP FROM ONE PLACE','Overview',
-    'Active Stock','Vehicle Views','Active Leads','Vehicles Sold','Main actions']) {
+    'Active Stock','Vehicle Views','Active Leads','Vehicles Sold']) {
     assert.ok(overview.includes(label), label);
   }
+  assert.ok(overview.includes('<DashboardCards mode="dealer"'));
+  const cards = get('carmazium app/carmazium app/src/components/DashboardCards.tsx');
+  assert.ok(cards.includes('Your dashboard'));
   assert.ok(native.includes('<DealerWebParityOverview'));
   assert.ok(native.indexOf('<DealerWebParityOverview') < native.indexOf('Additional insights'));
   assert.ok(!overview.includes('PRO</Text>'), 'no fake verification status');

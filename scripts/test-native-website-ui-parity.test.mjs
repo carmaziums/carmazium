@@ -10,7 +10,7 @@ const app = p => read('carmazium app/carmazium app/src/'+p);
 const web = read('src/components/dashboard/DashboardSidebar.tsx');
 const dealerRoutes = read('src/config/dealerRouteConfig.ts');
 const tabs = app('navigation/TabNavigator.tsx');
-const drawer = app('components/GlobalDrawer.tsx');
+const drawer = (app('components/GlobalDrawer.tsx') + '\n' + app('lib/dashboardNavigation.ts'));
 const bar = app('components/WebsiteTopBar.tsx');
 
 test('web dealer bottom navigation and native route labels have the same information architecture', () => {

@@ -45,6 +45,8 @@ const PUBLIC_ENDPOINTS = ['/auth/supabase-session', '/users/sync', '/auth/logout
 // OptionalSessionAuthGuard). Signed-out visitors can browse these exactly as on
 // carmazium.com; everything else still requires an account.
 const GUEST_READABLE_GET: RegExp[] = [
+  /^\/warranties\/orders\/[0-9a-f-]{36}$/,
+  /^\/finance\/referrals\/listing\/[^/?]+$/,
   /^\/listings(\?|$)/,
   /^\/listings\/featured(\?|$)/,
   /^\/listings\/facets\/makes(\?|$)/,
@@ -62,7 +64,7 @@ const GUEST_READABLE_GET: RegExp[] = [
 
 // Unguarded, rate-limited POSTs the website also lets visitors use: MaziuM
 // AI search/chat and reporting an unsafe AI answer.
-const GUEST_POST = [/^\/ai\/search$/, /^\/ai\/chat$/, /^\/ai\/report$/, /^\/analytics\/event$/, /^\/analytics\/problem-report$/, /^\/analytics\/heartbeat$/];
+const GUEST_POST = [/^\/warranties\/quotes$/, /^\/warranties\/orders\/[0-9a-f-]{36}\/checkout$/, /^\/finance\/referrals$/, /^\/ai\/search$/, /^\/ai\/chat$/, /^\/ai\/report$/, /^\/analytics\/event$/, /^\/analytics\/problem-report$/, /^\/analytics\/heartbeat$/];
 
 export function isGuestReadable(endpoint: string, method = 'GET'): boolean {
   const m = method.toUpperCase();

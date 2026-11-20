@@ -1,3 +1,6 @@
+import { GuestEnquiriesScreen } from '../screens/main/GuestEnquiriesScreen';
+import { WarrantyScreen, WarrantyOrderScreen, WarrantyOrdersScreen } from '../screens/main/WarrantyScreens';
+import { BlogScreen, BlogArticleScreen, BusinessSpotlightScreen, CarBodyGuideScreen, PartnerGuideScreen, WarrantyTermsScreen, CookiePolicyScreen } from '../screens/main/NativeInformationScreens';
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigatorScreenParams } from '@react-navigation/native';
@@ -174,7 +177,18 @@ export type MainStackParamList = {
   Contact: undefined;
   Pricing: undefined;
   Reviews: undefined;
-  Finance: undefined;
+  Warranty: undefined;
+  WarrantyOrder: { id: string };
+  GuestEnquiries: undefined;
+  WarrantyOrders: undefined;
+  Blog: undefined;
+  BlogArticle: { slug: string };
+  BusinessSpotlight: { slug?: string } | undefined;
+  CarBodyGuide: undefined;
+  PartnerGuide: undefined;
+  WarrantyTerms: undefined;
+  CookiePolicy: undefined;
+  Finance: { listingId?: string } | undefined;
   AuctionComplete: {
     listingId: string;
     auctionId: string;
@@ -396,6 +410,17 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="Contact" component={ContactScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Pricing" component={PricingScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Reviews" component={ReviewsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="Blog" component={BlogScreen} />
+      <Stack.Screen name="BlogArticle" component={BlogArticleScreen} />
+      <Stack.Screen name="BusinessSpotlight" component={BusinessSpotlightScreen} />
+      <Stack.Screen name="CarBodyGuide" component={CarBodyGuideScreen} />
+      <Stack.Screen name="PartnerGuide" component={PartnerGuideScreen} />
+      <Stack.Screen name="WarrantyTerms" component={WarrantyTermsScreen} />
+      <Stack.Screen name="CookiePolicy" component={CookiePolicyScreen} />
+      <Stack.Screen name="Warranty" component={WarrantyScreen} />
+      <Stack.Screen name="WarrantyOrder" component={WarrantyOrderScreen} />
+      <Stack.Screen name="GuestEnquiries" component={GuestEnquiriesScreen} />
+      <Stack.Screen name="WarrantyOrders" component={WarrantyOrdersScreen} />
       <Stack.Screen name="Finance" component={FinanceScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen
         name="AuctionComplete"

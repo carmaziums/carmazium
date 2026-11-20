@@ -1,3 +1,4 @@
+import { DashboardCards } from '../../components/DashboardCards';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { ScreenBackBar } from '../../components/ScreenBackBar';
 import {
@@ -65,50 +66,6 @@ const Skeleton: React.FC<{ w?: number | string; h: number; r?: number }> = ({ w 
   }, [opacity]);
   return <Animated.View style={{ width: w as any, height: h, borderRadius: r, backgroundColor: Colors.whiteAlpha05, opacity }} />;
 };
-
-// ─────────────────────── tile component ──────────────────────────
-
-interface TileProps {
-  label: string;
-  icon: string;
-  iconLib?: 'ion' | 'mci';
-  accentColor: string;
-  badge?: number;
-  sublabel?: string;
-  onPress: () => void;
-  wide?: boolean;
-}
-
-const Tile: React.FC<TileProps> = ({ label, icon, iconLib = 'ion', accentColor, badge, sublabel, onPress, wide }) => (
-  <TouchableOpacity
-    style={[styles.tile, wide && styles.tileWide]}
-    activeOpacity={0.75}
-    onPress={onPress}
-  >
-    <View style={[styles.tileIconWrap, { backgroundColor: `${accentColor}18` }]}>
-      {iconLib === 'mci'
-        ? <MaterialCommunityIcons name={icon} size={20} color={accentColor} />
-        : <Ionicons name={icon as any} size={20} color={accentColor} />}
-      {badge != null && badge > 0 && (
-        <View style={[styles.tileBadge, { backgroundColor: accentColor }]}>
-          <Text style={styles.tileBadgeText}>{badge > 99 ? '99+' : String(badge)}</Text>
-        </View>
-      )}
-    </View>
-    {wide ? (
-      <View style={styles.tileTextWrap}>
-        <Text style={styles.tileLabel}>{label}</Text>
-        {sublabel ? <Text style={styles.tileSublabel}>{sublabel}</Text> : null}
-      </View>
-    ) : (
-      <>
-        <Text style={styles.tileLabel}>{label}</Text>
-        {sublabel ? <Text style={styles.tileSublabel} numberOfLines={1}>{sublabel}</Text> : null}
-      </>
-    )}
-    {wide && <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />}
-  </TouchableOpacity>
-);
 
 // ══════════════════════════ COMPONENT ════════════════════════════
 
@@ -314,102 +271,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
           </View>
         </View>
 
-        {/* ── 10-section tile grid ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionLabel}>MY DASHBOARD</Text>
-        </View>
-        <View style={styles.tileGrid}>
-
-          {/* Row 1: Inventory + Auctions */}
-          <Tile
-            label="Inventory"
-            icon="car-outline"
-            accentColor={Colors.success}
-            sublabel={isSellerAccount ? `${seller.activeListings} active` : 'Sell a car'}
-            onPress={() =>
-              isDealerAccount ? nav('DealerInventory')
-              : isSellerAccount ? nav('SellerListings')
-              : nav('SellCarFlow')
-            }
-          />
-          <Tile
-            label="Auctions"
-            icon="gavel"
-            iconLib="mci"
-            accentColor={Colors.infoBlue}
-            sublabel={`${buyer.activeBids} bid${buyer.activeBids !== 1 ? 's' : ''}`}
-            onPress={() => navTab('Live')}
-          />
-
-          {/* Row 2: Offers + My Offers */}
-          <Tile
-            label="Offers"
-            icon="pricetag-outline"
-            accentColor={Colors.warning}
-            badge={isSeller ? seller.incomingOffers : undefined}
-            sublabel={isSeller ? `${seller.incomingOffers} incoming` : 'No offers yet'}
-            onPress={() => isSeller ? nav('SellerOffers') : nav('BuyerOffers')}
-          />
-          <Tile
-            label="My Offers"
-            icon="document-text-outline"
-            accentColor={Colors.accent}
-            badge={buyer.counteredOffersPending || undefined}
-            sublabel={buyer.counteredOffersPending > 0 ? `${buyer.counteredOffersPending} pending` : `${buyer.activeBids} active`}
-            onPress={() => nav('BuyerOffers')}
-          />
-
-          {/* Row 3: Watchlist + Stats */}
-          <Tile
-            label="Watchlist"
-            icon="heart-outline"
-            accentColor={Colors.lightPink}
-            badge={buyer.watchlistCount || undefined}
-            sublabel={`${buyer.watchlistCount} saved`}
-            onPress={() => navTab('Saved')}
-          />
-          <Tile
-            label="Stats"
-            icon="bar-chart-outline"
-            accentColor={Colors.lightPurple}
-            sublabel={`${seller.totalViews > 0 ? seller.totalViews.toLocaleString('en-GB') + ' views' : 'Performance'}`}
-            onPress={() => nav('SellerPerformance')}
-          />
-
-          {/* Row 4: Messages + Earnings */}
-          <Tile
-            label="Messages"
-            icon="chatbubble-ellipses-outline"
-            accentColor={Colors.midTeal_06b6d4}
-            badge={unreadMessages || undefined}
-            sublabel={unreadMessages > 0 ? `${unreadMessages} unread` : 'All caught up'}
-            onPress={() => nav('Messages')}
-          />
-          <Tile
-            label="Earnings"
-            icon="wallet-outline"
-            accentColor={Colors.accentGreen}
-            sublabel={isSeller ? `£${seller.totalRevenue.toLocaleString('en-GB')}` : 'N/A'}
-            onPress={() => isSeller ? nav('Earnings') : nav('BuyerPurchaseHistory')}
-          />
-
-          {/* Row 5: Sale protection + Settings */}
-          <Tile
-            label="Cancellations"
-            icon="shield-checkmark-outline"
-            accentColor={Colors.warning}
-            sublabel="Buyer & seller protection"
-            onPress={() => nav('SaleCancellations')}
-          />
-          <Tile
-            label="Settings"
-            icon="settings-outline"
-            accentColor={Colors.midBlue_6b7280}
-            sublabel="Profile & payouts"
-            onPress={() => nav('Settings')}
-          />
-
-        </View>
+        <DashboardCards mode="personal" />
 
         {/* ── Sign out ── */}
         <TouchableOpacity style={styles.signOutRow} activeOpacity={0.75} onPress={handleSignOut}>

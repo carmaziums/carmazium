@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
-import * as WebBrowser from 'expo-web-browser';
+import { nativeContentTarget } from '../lib/nativeContentLinks';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../navigation/MainStackNavigator';
@@ -10,7 +10,7 @@ import { FontFamily } from '../constants/typography';
 import { homeMarketplaceImages as photos } from '../assets/homeMarketplaceImages';
 import { apiClient } from '../lib/apiClient';
 
-const website = (path: string) => void WebBrowser.openBrowserAsync(`https://www.carmazium.com${path}`).catch(() => Alert.alert('Could not open CarMazium', 'Please try again.'));
+
 const categories = [
   ['Small and sporty', { bodyType: 'HATCHBACK', search: 'sporty' }],
   ['Eco-friendly', { fuelTypes: 'Electric,Hybrid' }],
@@ -34,6 +34,7 @@ function LinkButton({ label, onPress }: { label: string; onPress: () => void }) 
 
 export function WebsiteHomeDiscovery() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const website = (path: string) => { const target = nativeContentTarget(path); if (target) navigation.navigate(target.name as any, target.params); };
   const search = (params = {}) => navigation.navigate('Search' as any, { ...params, _t: Date.now() });
   return <View style={s.section}>
     <Text style={s.eyebrow}>DISCOVER YOUR PERFECT CAR</Text>
@@ -61,6 +62,7 @@ export function WebsiteHomeDiscovery() {
 type BlogSummary = { id: string; slug: string; title: string; excerpt: string; coverImage?: string };
 export function WebsiteHomeInformation() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const website = (path: string) => { const target = nativeContentTarget(path); if (target) navigation.navigate(target.name as any, target.params); };
   const [blogs, setBlogs] = useState<BlogSummary[]>([]);
   useEffect(() => {
     let mounted = true;

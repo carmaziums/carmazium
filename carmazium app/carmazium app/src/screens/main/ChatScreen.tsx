@@ -421,7 +421,7 @@ export const ChatScreen: React.FC = () => {
     // replying. Let customers request resume; retain its authoritative refusal.
     Alert.alert('MaziuM AI', undefined, [
       { text: aiPaused ? 'Resume AI replies' : 'Pause AI replies', onPress: () => { void toggleSupportAi(); } },
-      { text: 'Privacy', onPress: () => { void Linking.openURL('https://www.carmazium.com/privacy-policy'); } },
+      { text: 'Privacy', onPress: () => { navigation.navigate('PrivacyPolicy'); } },
       { text: 'Cancel', style: 'cancel' },
     ]);
   };

@@ -68,7 +68,7 @@ export const buildSiteGroups = (dealerMode: boolean): Group[] => [
       { id: 'tx-delivery', label: 'Delivery & Recovery', icon: 'car-sport-outline', actions: jobActions('DELIVERY') },
       { id: 'tx-inspection', label: 'Vehicle Inspection', icon: 'construct-outline', actions: jobActions('INSPECTION') },
       { id: 'tx-finance', label: 'Vehicle Finance', icon: 'cash-outline', target: { screen: 'Finance' } },
-      { id: 'tx-warranty', label: 'Warranty', icon: 'shield-checkmark-outline', target: { web: '/services/warranty' } },
+      { id: 'tx-warranty', label: 'Warranty', icon: 'shield-checkmark-outline', target: { screen: 'Warranty' } },
     ],
   },
   { id: 'compare', label: 'Compare', target: { screen: 'Compare' } },
@@ -79,6 +79,9 @@ export const buildSiteGroups = (dealerMode: boolean): Group[] => [
 // The website keeps these in its footer; the app has no footer, so one quiet
 // line keeps them reachable without becoming a second menu.
 const FOOTER: { label: string; target: SiteTarget }[] = [
+  { label: 'Guides', target: { screen: 'Blog' } },
+  { label: 'Business Spotlight', target: { screen: 'BusinessSpotlight' } },
+  { label: 'Partner Accounts', target: { screen: 'PartnerGuide' } },
   { label: 'How It Works', target: { screen: 'HowItWorks' } },
   { label: 'Reviews', target: { screen: 'Reviews' } },
   { label: 'Contact', target: { screen: 'Contact' } },

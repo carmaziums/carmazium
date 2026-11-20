@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@/components/BrandIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -38,8 +37,7 @@ interface ServiceItem {
 }
 
 // These are the four active customer service journeys on the website.
-// Native service-request forms do not yet exist, so use the real web form
-// instead of displaying decorative cards with no way to continue.
+// All CarMazium forms use native screens.
 const SERVICES: ServiceItem[] = [
   {
     title: 'Delivery & Recovery',
@@ -76,13 +74,13 @@ const SERVICES: ServiceItem[] = [
   },
   {
     title: 'Vehicle Warranty',
-    desc: 'Contact the CarMazium team about warranty availability for your vehicle. Warranty partners are appointed by admin.',
+    desc: 'Choose warranty options, review a quote and track your order. Cover starts only after issuance.',
     icon: 'shield-checkmark-outline',
     color: Colors.palePurple_c084fc,
     bg: Colors.infoBlueAlpha10,
     border: Colors.borderHi,
     path: '/services/warranty',
-    cta: 'Contact the warranty team',
+    cta: 'Get a warranty quote',
     kind: 'Admin-managed service',
   },
 ];
@@ -94,17 +92,7 @@ export const ServicesScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
-  const continueOnWeb = async (path: string) => {
-    // HTTPS app links can route back into the installed app on Android.
-    // /services/jobs/new would then be parsed as a detail ID of "new".
-    // Open the actual web form in a browser tab so buyers never enter a
-    // broken native screen and website auth/consent gates remain authoritative.
-    try {
-      await WebBrowser.openBrowserAsync(`https://www.carmazium.com${path}`);
-    } catch {
-      Alert.alert('Could not open CarMazium', 'Please visit www.carmazium.com/services and choose your service.');
-    }
-  };
+  const openService = (path: string) => navigation.navigate(path === '/services/finance' ? 'Finance' : 'Warranty');
 
   return (
     <View style={styles.container}>
@@ -199,11 +187,11 @@ export const ServicesScreen: React.FC = () => {
                 activeOpacity={0.8}
                 onPress={() => isJobService
                   ? setExpandedService(current => current === service.title ? null : service.title)
-                  : void continueOnWeb(service.path)}
+                  : openService(service.path)}
                 accessibilityRole="button"
                 accessibilityLabel={service.title}
                 accessibilityState={isJobService ? { expanded } : undefined}
-                accessibilityHint={isJobService ? 'Show or hide Post a Job and Find Jobs and Bid' : 'Opens the service form on CarMazium website'}
+                accessibilityHint={isJobService ? 'Show or hide Post a Job and Find Jobs and Bid' : 'Opens the service form in the app'}
               >
                 <View style={styles.iconWrap}>
                   <Ionicons name={service.icon} size={22} color={Colors.accent} />

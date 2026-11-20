@@ -1,7 +1,7 @@
 import { cva } from "class-variance-authority"
 
 export const buttonVariants = cva(
-    "inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-bold transition-[background-color,border-color,color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-body)] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-45 active:translate-y-px",
+    "inline-flex cursor-pointer items-center justify-center gap-2 whitespace-normal text-center break-words rounded-xl text-sm font-bold transition-[background-color,border-color,color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-body)] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-45 active:translate-y-px",
     {
         variants: {
             variant: {
@@ -12,10 +12,10 @@ export const buttonVariants = cva(
                 link: "h-auto border-0 bg-transparent p-0 text-primary underline-offset-4 shadow-none hover:underline",
             },
             size: {
-                default: "h-11 px-5",
-                sm: "h-9 rounded-lg px-4 text-xs",
-                lg: "h-12 px-7 text-base",
-                icon: "h-11 w-11 p-0",
+                default: "min-h-[52px] px-5 py-3",
+                sm: "min-h-12 rounded-lg px-4 py-3 text-sm",
+                lg: "min-h-14 px-7 py-3 text-base",
+                icon: "min-h-12 min-w-12 p-0",
             },
             shape: {
                 default: "rounded-xl",

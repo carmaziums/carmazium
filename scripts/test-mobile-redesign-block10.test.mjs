@@ -19,7 +19,7 @@ const native = (name) => read(NATIVE + name);
 test('every hardcoded drawer and bottom-tab destination resolves to a registered screen', () => {
   const main = native('src/navigation/MainStackNavigator.tsx');
   const tabs = native('src/navigation/TabNavigator.tsx');
-  const drawer = native('src/components/GlobalDrawer.tsx');
+  const drawer = (native('src/components/GlobalDrawer.tsx') + '\n' + native('src/lib/dashboardNavigation.ts'));
   const definedRoutes = new Set(
     [...main.matchAll(/^  ([A-Za-z][A-Za-z0-9_]+):/gm)].map((match) => match[1]),
   );
@@ -55,19 +55,18 @@ test('every hardcoded drawer and bottom-tab destination resolves to a registered
   }
 });
 
-test('website service forms open in the browser, not via interceptable Android App Links', () => {
+test('service forms use native routes and preserve existing job-detail links', () => {
   const services = native('src/screens/main/ServicesScreen.tsx');
   const app = JSON.parse(native('app.json')).expo;
   const linking = native('src/navigation/linking.ts');
-  assert.match(services, /WebBrowser\.openBrowserAsync\(/);
+  assert.doesNotMatch(services, /WebBrowser\.openBrowserAsync\(/);
+  assert.match(services, /navigation\.navigate\(path === '\/services\/finance' \? 'Finance' : 'Warranty'\)/);
   assert.doesNotMatch(services, /Linking\.openURL\(/);
   for (const path of [
-    '/services/jobs/new',
-    '/services/delivery/new',
-    '/services/inspection/new',
     '/services/finance',
     '/services/warranty',
   ]) assert.ok(services.includes(path), `Missing website service route: ${path}`);
+  assert.match(services, /navigate\('CreateServiceJob'/);
   assert.match(linking, /services\/jobs\/:jobId/);
   assert.ok(
     app.android.intentFilters.some((filter) =>

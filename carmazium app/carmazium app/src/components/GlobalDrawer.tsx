@@ -35,7 +35,7 @@ import type { DealerPermission } from '../lib/dealerAccessApi';
 import { IconButton } from './IconButton';
 import { openSignIn } from './SignInRequired';
 import { SiteMenu, SiteTarget } from './SiteMenu';
-import * as WebBrowser from 'expo-web-browser';
+import { nativeContentTarget } from '../lib/nativeContentLinks';
 import { Radius } from '../constants/spacing';
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -44,85 +44,7 @@ const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 320);
 
 const IS_QA_REVIEW_BUILD = process.env.EXPO_PUBLIC_QA_READ_ONLY === '1';
 
-interface MenuItem {
-  id: string;
-  label: string;
-  icon: string;
-  iconLib: 'ion' | 'mci';
-  tabName?: keyof TabParamList;
-  tabParams?: { initialSection: 'live' | 'bids' };
-  /** Params for a tab screen, e.g. DealerStock's status filter. */
-  tabStackParams?: Record<string, unknown>;
-  stackScreen?: keyof MainStackParamList;
-  /** Params for `stackScreen` (e.g. CreateServiceJob's serviceType). */
-  stackParams?: Record<string, unknown>;
-  action?: 'alert';
-  alertTitle?: string;
-  alertMsg?: string;
-  requiredPermission?: DealerPermission;
-  /**
-   * Menu group heading. Public items use the website header's dropdown
-   * groups (Buy Cars / Sell Cars / TradeXchange); account items use the
-   * website DashboardSidebar sections, in the same order.
-   */
-  section?: string;
-}
-
-// Website provider sidebar (DashboardSidebar.tsx `provider` links).
-const PROVIDER_ITEMS: MenuItem[] = [
-  { id: 'provider-home', section: 'Business', label: 'Partner Home', icon: 'business-outline', iconLib: 'ion', stackScreen: 'PartnerDashboard' },
-  { id: 'provider-overview', section: 'Services', label: 'Service Overview', icon: 'grid-outline', iconLib: 'ion', stackScreen: 'ProviderCapabilities' },
-  { id: 'provider-jobs', section: 'Services', label: 'Available Jobs', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'ProviderJobs' },
-  { id: 'provider-messages', section: 'Account', label: 'Messages', icon: 'chatbubbles-outline', iconLib: 'ion', stackScreen: 'ProviderMessages' },
-  { id: 'provider-settings', section: 'Account', label: 'Account Settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings' },
-];
-
-// Website DashboardSidebar `unifiedLinks` — buyer and seller share one
-// dashboard. Same sections, labels and order.
-const USER_ITEMS: MenuItem[] = [
-  { id: 'user-dashboard', section: 'Dashboard', label: 'Home', icon: 'grid-outline', iconLib: 'ion', tabName: 'Profile' },
-  { id: 'user-cars', section: 'Selling', label: 'My Cars', icon: 'car-outline', iconLib: 'ion', stackScreen: 'MyCars' },
-  { id: 'user-incoming-offers', section: 'Selling', label: 'Offers Received', icon: 'pricetag-outline', iconLib: 'ion', stackScreen: 'SellerOffers' },
-  { id: 'user-earnings', section: 'Selling', label: 'Sales & Earnings', icon: 'wallet-outline', iconLib: 'ion', stackScreen: 'Earnings' },
-  { id: 'user-performance', section: 'Selling', label: 'Listing Performance', icon: 'bar-chart-outline', iconLib: 'ion', stackScreen: 'SellerPerformance' },
-  { id: 'user-sent-offers', section: 'Buying', label: 'My Offers', icon: 'hammer-outline', iconLib: 'ion', stackScreen: 'BuyerOffers' },
-  { id: 'user-watchlist', section: 'Buying', label: 'Saved Cars', icon: 'heart-outline', iconLib: 'ion', tabName: 'Saved' },
-  { id: 'user-purchases', section: 'Buying', label: 'Purchases', icon: 'receipt-outline', iconLib: 'ion', stackScreen: 'BuyerPurchaseHistory' },
-  { id: 'user-service-jobs', section: 'Services', label: 'Delivery & Inspections', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'CustomerServiceJobs' },
-  { id: 'user-cancellations', section: 'Account', label: 'Sale Cancellations', icon: 'shield-checkmark-outline', iconLib: 'ion', stackScreen: 'SaleCancellations' },
-  { id: 'user-messages', section: 'Account', label: 'Messages', icon: 'chatbubbles-outline', iconLib: 'ion', stackScreen: 'Messages' },
-  { id: 'user-settings', section: 'Account', label: 'Account Settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings' },
-];
-
-// ADMIN accounts: "Admin Control Panel" is the website user-dropdown label.
-const ADMIN_ITEMS: MenuItem[] = [
-  { id: 'admin-dashboard', label: 'Admin Control Panel', icon: 'shield-checkmark', iconLib: 'ion', stackScreen: 'AdminDashboard' },
-];
-
-// Website dealer sidebar (src/config/dealerRouteConfig.ts + DashboardSidebar
-// "More" sheet): Dashboard › Sell › Buy › Business › Services, same labels and
-// order. Permissions are filtered before rendering, so staff never gain access.
-const DEALER_ITEMS: MenuItem[] = [
-  { id: 'dealer-home', section: 'Dashboard', label: 'Home', icon: 'grid-outline', iconLib: 'ion', tabName: 'DealerHome' },
-  { id: 'dealer-stock', section: 'Sell', label: 'Stock', icon: 'car-outline', iconLib: 'ion', requiredPermission: 'VIEW_INVENTORY', tabName: 'DealerStock' },
-  { id: 'dealer-customers', section: 'Sell', label: 'Customers', icon: 'people-outline', iconLib: 'ion', requiredPermission: 'MANAGE_CRM', tabName: 'DealerCustomers' },
-  { id: 'dealer-auctions', section: 'Sell', label: 'My Auctions', icon: 'gavel', iconLib: 'mci', requiredPermission: 'VIEW_TRADE', stackScreen: 'SellerAuctions' },
-  { id: 'dealer-offers', section: 'Sell', label: 'Offers received', icon: 'pricetag-outline', iconLib: 'ion', requiredPermission: 'MANAGE_OFFERS', stackScreen: 'DealerOffers' },
-  { id: 'dealer-live', section: 'Buy', label: 'Live Auctions', icon: 'gavel', iconLib: 'mci', requiredPermission: 'VIEW_TRADE', tabName: 'DealerBuyBid', tabParams: { initialSection: 'live' } },
-  { id: 'dealer-wishlist', section: 'Buy', label: 'Saved', icon: 'heart-outline', iconLib: 'ion', tabName: 'Saved' },
-  { id: 'dealer-bids', section: 'Buy', label: 'Bids & Offers', icon: 'pricetag-outline', iconLib: 'ion', requiredPermission: 'VIEW_TRADE', tabName: 'DealerBuyBid', tabParams: { initialSection: 'bids' } },
-  { id: 'dealer-offers-only', section: 'Buy', label: 'Bids & Offers', icon: 'pricetag-outline', iconLib: 'ion', requiredPermission: 'MANAGE_OFFERS', stackScreen: 'DealerMyOffers' },
-  { id: 'dealer-purchases', section: 'Buy', label: 'Purchases', icon: 'bag-outline', iconLib: 'ion', requiredPermission: 'VIEW_PURCHASES', stackScreen: 'DealerPurchases' },
-  { id: 'dealer-messages', section: 'Business', label: 'Messages', icon: 'chatbubble-outline', iconLib: 'ion', stackScreen: 'Messages' },
-  { id: 'dealer-team', section: 'Business', label: 'Team', icon: 'people-outline', iconLib: 'ion', requiredPermission: 'MANAGE_TEAM', stackScreen: 'DealerTeam' },
-  { id: 'dealer-settings', section: 'Business', label: 'Account Settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings', stackParams: { section: 'business' } },
-  { id: 'dealer-finance', section: 'Business', label: 'Finance Calculator', icon: 'cash-outline', iconLib: 'ion', stackScreen: 'DealerFinance' },
-  { id: 'dealer-analytics', section: 'Business', label: 'Analytics', icon: 'bar-chart-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerAnalytics' },
-  { id: 'dealer-earnings', section: 'Business', label: 'Earnings', icon: 'receipt-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerEarnings' },
-  { id: 'dealer-partner', section: 'Services', label: 'Partner Account', icon: 'grid-outline', iconLib: 'ion', stackScreen: 'PartnerDashboard' },
-  { id: 'dealer-service-addons', section: 'Services', label: 'Service Add-ons', icon: 'construct-outline', iconLib: 'ion', stackScreen: 'ProviderCapabilities' },
-  { id: 'dealer-service-jobs', section: 'Services', label: 'Service Jobs', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'ProviderJobs' },
-];
+import { USER_ITEMS, DEALER_ITEMS, PROVIDER_ITEMS, ADMIN_ITEMS, type MenuItem } from '../lib/dashboardNavigation';
 
 // Website Stock submenu (DashboardSidebar dealer-stock-submenu).
 const STOCK_SUBMENU: { label: string; status: DealerStockStatus }[] = [
@@ -343,7 +265,8 @@ export const GlobalDrawer: React.FC = () => {
     closeDrawer();
     setTimeout(() => {
       if (target.web) {
-        void WebBrowser.openBrowserAsync(`https://www.carmazium.com${target.web}`);
+        const native = nativeContentTarget(target.web);
+        if (native) navigation.navigate('Main', { screen: native.name as any, params: native.params as any });
       } else if (target.tab) {
         navigation.navigate('Main', { screen: 'Tabs', params: { screen: target.tab, params: target.tabParams } } as never);
       } else if (target.screen) {

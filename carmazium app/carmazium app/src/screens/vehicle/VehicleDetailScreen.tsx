@@ -1739,8 +1739,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <TouchableOpacity
                   style={styles.financeEnquiryBtn}
                   onPress={() => {
-                    WebBrowser.openBrowserAsync(`https://www.carmazium.com/services/finance?listingId=${encodeURIComponent(listing.id)}`).catch(() =>
-                      Alert.alert('Could not open CarMazium', 'Please visit www.carmazium.com/services/finance.'));
+                    navigation.navigate('Finance', { listingId: listing.id });
                   }}
                   accessibilityRole="button"
                 >

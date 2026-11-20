@@ -11,7 +11,7 @@ const app=p=>read('carmazium app/carmazium app/src/'+p);
 const tabs=app('navigation/TabNavigator.tsx');
 const stack=app('navigation/MainStackNavigator.tsx');
 const gate=app('components/DealerGate.tsx');
-const drawer=app('components/GlobalDrawer.tsx');
+const drawer=(app('components/GlobalDrawer.tsx') + '\n' + app('lib/dashboardNavigation.ts'));
 const profile=app('screens/main/SettingsScreen.tsx');
 const message=app('screens/main/MessagesScreen.tsx');
 const crm=app('screens/main/DealerLeadsScreen.tsx');

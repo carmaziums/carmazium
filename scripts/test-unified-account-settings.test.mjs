@@ -39,7 +39,7 @@ test('header, dashboard and dealer menus point to canonical Account Settings', (
   const sidebar = read('src/components/dashboard/DashboardSidebar.tsx');
   const dealer = read('src/config/dealerRouteConfig.ts');
   const dashboard = read('src/app/dashboard/user/page.tsx');
-  const drawer = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
+  const drawer = (read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx') + '\n' + read('carmazium app/carmazium app/src/lib/dashboardNavigation.ts'));
   assert.match(header, /Account Settings/);
   assert.match(sidebar, /href: "\/profile", label: "Account Settings"/);
   assert.match(dealer, /href: "\/profile\?section=business"/);

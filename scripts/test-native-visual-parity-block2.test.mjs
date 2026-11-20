@@ -10,7 +10,7 @@ const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const app = path => readFileSync(resolve(root, 'carmazium app/carmazium app/src/' + path), 'utf8');
 const web = path => readFileSync(resolve(root, path), 'utf8');
 const tabs = app('navigation/TabNavigator.tsx');
-const drawer = app('components/GlobalDrawer.tsx');
+const drawer = (app('components/GlobalDrawer.tsx') + '\n' + app('lib/dashboardNavigation.ts'));
 const dealerHome = app('screens/main/DealerProfileScreen.tsx');
 const top = app('components/WebsiteTopBar.tsx');
 const hamburger = app('components/HamburgerButton.tsx');

@@ -76,7 +76,7 @@ function same(label, values) {
 // My cars status-filtered workspace and a Purchases destination. Old advanced
 // workflow screens remain registered to prevent lost seller actions.
 const privateWeb = read('src/components/dashboard/DashboardSidebar.tsx');
-const privateNative = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
+const privateNative = (read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx') + '\n' + read('carmazium app/carmazium app/src/lib/dashboardNavigation.ts'));
 const myCarsNative = read('carmazium app/carmazium app/src/screens/account/MyCarsScreen.tsx');
 const privateDashboard = read('src/app/dashboard/user/page.tsx');
 if (
@@ -307,7 +307,7 @@ const mobileProviderMessages = read('carmazium app/carmazium app/src/screens/mai
 const mobileServicesApi = read('carmazium app/carmazium app/src/lib/servicesApi.ts');
 const mobileChatApi = read('carmazium app/carmazium app/src/lib/chatApi.ts');
 const mobileMainNavigator = read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx');
-const mobileGlobalDrawer = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
+const mobileGlobalDrawer = (read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx') + '\n' + read('carmazium app/carmazium app/src/lib/dashboardNavigation.ts'));
 const mobileBuyerDashboard = read('carmazium app/carmazium app/src/screens/buyer/BuyerDashboardScreen.tsx');
 const mobileBuyerBids = read('carmazium app/carmazium app/src/screens/buyer/BuyerBidsScreen.tsx');
 const backendBidsService = read('backend/src/bids/bids.service.ts');
@@ -746,7 +746,7 @@ const mobileDealerAccess = read('carmazium app/carmazium app/src/lib/dealerAcces
 const mobileDealerHook = read('carmazium app/carmazium app/src/hooks/useDealerAccess.ts');
 const mobileDealerGate = read('carmazium app/carmazium app/src/components/DealerGate.tsx');
 const mobileDealerNavigator = read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx');
-const mobileDealerDrawer = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
+const mobileDealerDrawer = (read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx') + '\n' + read('carmazium app/carmazium app/src/lib/dashboardNavigation.ts'));
 const mobileDealerInventory = read('carmazium app/carmazium app/src/screens/main/DealerInventoryScreen.tsx');
 const mobileDealerCustomers = read('carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx');
 const mobileDealerOffers = read('carmazium app/carmazium app/src/screens/main/DealerOffersScreen.tsx');
