@@ -10,7 +10,7 @@ Build 108 was installed as an update in BlueStacks. The buyer/seller and dealer 
 | Guest retail | Build 108 asks for sign-in. Website allows an email-confirmed enquiry. #936 adds the Android form and covers consent, invalid and valid codes in a rendered screen test. | Guest viewing → confirmation email → seller inbox on a disposable listing and controlled accounts. |
 | TradeXchange | Delivery and inspection forms loaded and rejected empty posts. Existing cancelled inspection details, dealer provider coverage, matching and verification screens opened. Finance information and the web warranty quote form opened. | Scheduled and multi-vehicle jobs, inspection scope, quote acceptance, payment, completion, email, notifications and payout on an isolated deployment with an opted-in provider. |
 | Dealer | Stock filtering, count, grid/list, command centre, live lots and bid/offer history checked. | Permitted staff roles, CRM, team, listings, purchases, reconciliation and handover with representative records. |
-| Admin and specialist accounts | Website and native navigation compared in source. Missing admin warranty/finance entries recorded below. | Signed-in admin acceptance, standalone provider, legacy finance/insurance accounts, and populated workflows. |
+| Admin and specialist accounts | Website and native navigation compared in source. Missing admin warranty/finance entries recorded below. | Admin overview, pending listings, handovers, KYC, directory and insights opened on build 108. Remaining admin operations, standalone provider, legacy finance/insurance accounts, and populated workflows. |
 | Device behaviour | Keyboard interactions and links checked in BlueStacks. | Physical phone width, rotation, accessibility, camera/file upload, push in foreground/background/terminated states, and hosted checkout return/cancellation. |
 
 ## Automated checks
@@ -20,6 +20,8 @@ On exact build 108 source, all 777 repository regression checks and all 27 nativ
 The internal Android snapshot `fd29efa37ad024798f3ac3fae5cc21350fbdba4e` combines client changes from #933, #935 and #936 for review. Native TypeScript and all 35 native tests passed on the combined client. It includes the inspection changes from #930 via #933. No production database migration, deployment, transaction or customer distribution was performed for this pass.
 
 ## Website page inventory
+
+A separate availability check returned HTTP 200 for 36 public URLs and captured their page titles. This checks public site availability only.
 
 All 158 Next.js page templates at the build 108 source are listed below. A dynamic URL represents a template, so a row cannot establish that every vehicle or account state works. The middle column lists feature IDs that explicitly name the page file in the repository parity manifest. A dash means the manifest has no direct page-file entry. Android screen observations cover only the action named. Role redirects, checkout outcomes and SEO pages are included so that they can be accounted for explicitly.
 
@@ -45,28 +47,28 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 | --- | --- | --- |
 | `/dashboard/admin/ai-reports` | ai.safety_reporting | Admin website handoff in build 108. Admin sign-in and destination pending. |
 | `/dashboard/admin/analytics` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
-| `/dashboard/admin/app` | — | Pending Android acceptance. |
+| `/dashboard/admin/app` | — | Native App & problem reports showed activity, downloads and Open/Resolved filters. |
 | `/dashboard/admin/auctions/historical-reconciliation` | — | Pending Android acceptance. |
 | `/dashboard/admin/auctions` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
 | `/dashboard/admin/blog/[id]/edit` | — | Pending Android acceptance. |
 | `/dashboard/admin/blog/new` | — | Pending Android acceptance. |
 | `/dashboard/admin/blog` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
 | `/dashboard/admin/cancellations` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
-| `/dashboard/admin/dealer-verification` | admin.operations | Pending Android acceptance. |
+| `/dashboard/admin/dealer-verification` | admin.operations | Native Dealer KYC showed field verification and its caught-up state. |
 | `/dashboard/admin/dealers` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
 | `/dashboard/admin/finance-providers` | — | Admin dashboard missing Finance Providers. Website handoff added in #936. |
 | `/dashboard/admin/free-listings` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
-| `/dashboard/admin/handovers` | admin.operations | Pending Android acceptance. |
+| `/dashboard/admin/handovers` | admin.operations | Native Handover Verification opened, with an empty queue and website payout shortcut. |
 | `/dashboard/admin/hpi` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
-| `/dashboard/admin/listings` | admin.operations | Pending Android acceptance. |
+| `/dashboard/admin/listings` | admin.operations | Native pending review opened and correctly showed an empty queue. Full inventory manager link added in #936. |
 | `/dashboard/admin/marketing-popup` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
 | `/dashboard/admin/messages` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
 | `/dashboard/admin/services/jobs/[id]` | — | Pending Android acceptance. |
 | `/dashboard/admin/services/leads/[id]` | — | Pending Android acceptance. |
-| `/dashboard/admin/services` | — | Admin website handoff in build 108. Admin sign-in and destination pending. Dedicated Warranty Partners filter shortcut added in #936. |
+| `/dashboard/admin/services` | — | Trade Services opened a Chrome custom tab at the separate website sign-in. Authenticated web console pending. Dedicated Warranty Partners filter shortcut added in #936. |
 | `/dashboard/admin/services/providers/[id]` | — | Pending Android acceptance. |
 | `/dashboard/admin/transactions` | — | Admin website handoff in build 108. Admin sign-in and destination pending. |
-| `/dashboard/admin/users` | admin.operations | Pending Android acceptance. |
+| `/dashboard/admin/users` | admin.operations | Native Accounts directory loaded with total user count, search and website management action. |
 | `/dashboard/admin/warranty-orders` | — | Admin dashboard missing Warranty Orders. Website handoff added in #936. |
 
 ### Dashboard / buyer
@@ -155,7 +157,7 @@ All 158 Next.js page templates at the build 108 source are listed below. A dynam
 
 | Website route | Manifest features | Android evidence or outstanding check |
 | --- | --- | --- |
-| `/dashboard/admin` | admin.operations | Pending Android acceptance. |
+| `/dashboard/admin` | admin.operations | Native Admin Control Panel opened from the Dashboard tab. Six populated overview cards rendered. |
 | `/dashboard/buyer` | buyer.dashboard, navigation.cross_role_backstack | Pending Android acceptance. |
 | `/dashboard/cancellations` | — | Pending Android acceptance. |
 | `/dashboard/dealer` | dealer.dashboard | Dealer command centre opened. |
