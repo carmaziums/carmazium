@@ -76,6 +76,7 @@ export interface ServicePayment {
   grossPence: number;
   platformFeePence: number;
   contractorPence: number;
+  processingFeePence?: number;
   platformFeeRate: string;
   status: ServicePaymentStatus;
   paidAt: string | null;
