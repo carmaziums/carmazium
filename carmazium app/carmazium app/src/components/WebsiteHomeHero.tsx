@@ -22,18 +22,22 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:${dark ? '#
 .scene{position:absolute;inset:0;background:${dark ? '#ff3b52' : `url('${scene}') center/100% 100% no-repeat`}}
 ${dark ? `.scene:before{content:'';position:absolute;inset:0;background:#1b2538;-webkit-mask:url('${scene}') center/100% 100% no-repeat;mask:url('${scene}') center/100% 100% no-repeat;mask-mode:luminance;}` : ''}
 .lane{position:absolute;left:${desktop ? '44.5' : '6.1'}%;top:${desktop ? '33.48' : '31.9'}%;width:${desktop ? '50' : '87'}%;height:${desktop ? '61.07' : '59.44'}%}
-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center bottom}img+img{opacity:0}
-</style></head><body><div class="scene"><div class="lane"><img src="${sources[0]}"/><img/></div></div><script>
-const sources=${JSON.stringify(sources)},images=Array.from(document.images);let generation=0,active=0,index=0,enabled=false;
+img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center bottom}
+</style></head><body><div class="scene"><div class="lane"><img src="${sources[0]}"/></div></div><script>
+const sources=${JSON.stringify(sources)},vehicle=document.querySelector('.lane img');let generation=0,index=0;
 const pose=(x,opacity)=>({transform:'translateX('+x+'%)',opacity});
-function stop(){generation++;images.forEach((img,i)=>{img.getAnimations().forEach(a=>a.cancel());Object.assign(img.style,pose(0,i===active?1:0))})}
-window.setSceneActive=async function(value){enabled=value;stop();if(!enabled)return;const run=generation;
-while(run===generation){const front=images[active],incoming=images[1-active],next=(index+1)%sources.length;
-incoming.style.zIndex='2';front.style.zIndex='1';incoming.src=sources[next];
-const move=(img,from,to,duration)=>img.animate([from,to],{duration,easing:'linear',fill:'forwards'}).finished;
-try{await Promise.all([incoming.decode(),move(front,pose(0,1),pose(-2,1),1000)]);if(run!==generation)return;
-await Promise.all([move(front,pose(-2,1),pose(-4,0),1000),move(incoming,pose(4,0),pose(0,1),2000)]);if(run!==generation)return;
-active=1-active;index=next;images.forEach(img=>{Object.assign(img.style,pose(0,img===incoming?1:0));img.getAnimations().forEach(a=>a.cancel())});
+function stop(){generation++;vehicle.getAnimations().forEach(a=>a.cancel());Object.assign(vehicle.style,pose(0,1))}
+window.setSceneActive=async function(value){stop();if(!value)return;const run=generation;
+const move=(from,to,duration)=>vehicle.animate([from,to],{duration,easing:'linear',fill:'forwards'}).finished;
+while(run===generation){const next=(index+1)%sources.length,preload=new Image();preload.src=sources[next];
+try{await Promise.all([preload.decode(),move(pose(0,1),pose(-2,1),1000)]);if(run!==generation)return;
+// Finish fading out before swapping the single vehicle image. Predecoding
+// avoids a loading gap while preventing two vehicles from overlapping.
+await move(pose(-2,1),pose(-4,0),1000);if(run!==generation)return;
+Object.assign(vehicle.style,pose(4,0));vehicle.getAnimations().forEach(a=>a.cancel());
+vehicle.src=sources[next];index=next;
+await move(pose(4,0),pose(0,1),2000);if(run!==generation)return;
+Object.assign(vehicle.style,pose(0,1));vehicle.getAnimations().forEach(a=>a.cancel());
 }catch(e){if(run===generation)stop();return}}};
 </script></body></html>`;
 }
