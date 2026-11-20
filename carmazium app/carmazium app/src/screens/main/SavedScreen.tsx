@@ -354,6 +354,7 @@ export const SavedScreen: React.FC = () => {
         </ScrollView>
       ) : viewMode === 'list' ? (
         <FlatList
+          key="saved-list"
           style={{ flex: 1 }}
           contentContainerStyle={[styles.scrollContent, bottomPad]}
           showsVerticalScrollIndicator={false}
@@ -373,6 +374,7 @@ export const SavedScreen: React.FC = () => {
         />
       ) : (
         <FlatList
+          key="saved-grid"
           style={{ flex: 1 }}
           contentContainerStyle={[styles.scrollContent, bottomPad, styles.gridGap]}
           showsVerticalScrollIndicator={false}

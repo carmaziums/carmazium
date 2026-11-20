@@ -40,6 +40,15 @@ Real CarMazium Android package `uk.carmazium.app`, version 1.0.0 / versionCode 1
 - Five backend watchlist tests passed, including verified-dealer access and no private seller/auction fields in the public summary projection.
 - Knowledge source ledger refreshed only for the reviewed native ChatScreen; platform policy facts unchanged. All 62 source fingerprints verified.
 
-## Still required
+## Continued live testing
+
+- PR #927 merged as `b77b2698c97edfe0501db0bf61a0d6bcf7cd7127`; all five PR workflows passed. Backend deployment succeeded after all 154 model evaluations passed against synthetic fixtures.
+- Four further real Android support questions passed: unsold auction to retail and fees; vehicle payment and seller reward; towable caravan without registration; misspelled photo-upload troubleshooting. Six new QA questions have now been sent in this session. No customer data was used for the automated evaluation.
+- Automatic-transmission filtering returned 383 results and Clear restored 713. The filter sheet scrolls and its result action remains available.
+- Empty valuation and listing forms blocked progress with required-field guidance. No listing was submitted.
+- After backend deployment, Saved refresh correctly displayed Diesel, Manual and Scunthorpe for the QA Hyundai. The temporary saved car must be removed after verification to restore the original empty watchlist.
+- Switching Saved from list to grid reproduced a persistent blank screen on build 105. The source reused the same FlatList while changing `numColumns`, which React Native explicitly rejects. Give list and grid separate component keys so switching remounts the correct layout. On-device verification remains required.
+
+## Remaining device verification
 
 Build/install updated APK and verify every fix on-device, including reply scrolling with keyboard shown, long replies, history browsing and both themes. Continue personal-account listing/editing, offers, purchases, notifications, settings, service journeys and failure cases. Then dealer and admin roles. This first pass is not comprehensive app certification. No Play Store or production OTA release is implied by a merged source change.
