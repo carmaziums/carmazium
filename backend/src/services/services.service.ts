@@ -31,6 +31,7 @@ import {
     ApplyCapabilityDto, UpdateLeadMatchingDto, UpdateJobMatchingDto, ReviewCapabilityDto, ResolveDisputeDto, CreateServiceReviewDto, JOB_SERVICE_TYPES,
 } from './dto';
 import { assertServiceAcceptingNewRequests } from './service-availability';
+import { providerSupportsInspection, eligibleInspectionJobScopes } from './inspection-scope';
 import {
     assertCapabilityVerificationReady,
     capabilityVerificationIsCurrent,
@@ -113,6 +114,30 @@ export class ServicesService {
         return { rate, platformFeePence, contractorPence: grossPence - platformFeePence };
     }
 
+    /** New cosmetic jobs pass through actual Stripe processing costs to the provider.
+     * Legacy mechanical and delivery jobs retain their original 9% / 91% settlement terms. */
+    private passesProcessingCosts(job: { serviceType: ServiceType; inspectionScope?: string | null }): boolean {
+        return job.serviceType === ServiceType.INSPECTION
+            && (job.inspectionScope === 'COSMETIC' || job.inspectionScope === 'BOTH');
+    }
+
+    private async actualStripeProcessingFee(stripe: any, chargeId: string, grossPence: number): Promise<number> {
+        if (typeof stripe?.charges?.retrieve !== 'function') {
+            throw new ConflictException('Stripe charge fees cannot be verified. Settlement needs reconciliation.');
+        }
+        const charge = await stripe.charges.retrieve(chargeId, { expand: ['balance_transaction'] });
+        if (!charge || charge.currency !== 'gbp' || charge.amount !== grossPence || charge.paid !== true) {
+            throw new ConflictException('Stripe charge amount, currency or paid status does not match this job.');
+        }
+        const balance = typeof charge.balance_transaction === 'string'
+            ? await stripe.balanceTransactions.retrieve(charge.balance_transaction)
+            : charge.balance_transaction;
+        if (!balance || !Number.isSafeInteger(balance.fee) || balance.fee < 0) {
+            throw new ConflictException('Actual payment-processing fee is not yet available. Try settlement after Stripe has recorded its fee.');
+        }
+        return balance.fee;
+    }
+
     private frontendUrl(): string {
         return resolveFrontendUrl(this.config.get<string>('FRONTEND_URL'));
     }
@@ -169,6 +194,7 @@ export class ServicesService {
                 verificationExpiresAt: true,
                 jobNationwide: true,
                 jobPostcodeAreas: true,
+                inspectionScopes: true,
             },
         });
         return capabilityVerificationIsCurrent(capability) ? capability : null;
@@ -213,12 +239,20 @@ export class ServicesService {
     private async eligibleProviderCountForJob(
         serviceType: ServiceType,
         workPostcodeArea: string | null,
+        inspectionScope?: string | null,
     ): Promise<number> {
         return this.prisma.contractorCapability.count({
             where: {
                 serviceType,
                 ...verifiedCapabilityWhere(new Date()),
-                AND: [dealerServiceEligibilityWhere()],
+                AND: [
+                    dealerServiceEligibilityWhere(),
+                    ...(serviceType === ServiceType.INSPECTION ? [{
+                        inspectionScopes: inspectionScope === 'BOTH'
+                            ? { hasEvery: ['VEHICLE', 'COSMETIC'] }
+                            : { has: inspectionScope || 'VEHICLE' },
+                    }] : []),
+                ],
                 contractor: {
                     deletedAt: null,
                     user: {
@@ -238,9 +272,11 @@ export class ServicesService {
         contractorProfileId: string,
         serviceType: ServiceType,
         workPostcodeArea: string | null,
+        inspectionScope?: string | null,
     ): Promise<boolean> {
         const capability = await this.currentNewWorkCapability(contractorProfileId, serviceType);
         if (!capability) return false;
+        if (serviceType === ServiceType.INSPECTION && !providerSupportsInspection((capability as any).inspectionScopes, inspectionScope)) return false;
 
         // Compatibility for the older in-memory test harness only. Production
         // rows have these columns after Block 8, but missing coverage fields must
@@ -464,12 +500,17 @@ export class ServicesService {
         if (!dto.jobNationwide && postcodeAreas.length === 0) {
             throw new BadRequestException('Choose nationwide coverage or at least one UK postcode area.');
         }
+        if (capability.serviceType !== ServiceType.INSPECTION && dto.inspectionScopes !== undefined) {
+            throw new BadRequestException('Inspection specialisms can only be set on an Inspection capability.');
+        }
 
         return this.prisma.contractorCapability.update({
             where: { id: capability.id },
             data: {
                 jobNationwide: dto.jobNationwide,
                 jobPostcodeAreas: dto.jobNationwide ? [] : postcodeAreas,
+                ...(capability.serviceType === ServiceType.INSPECTION && dto.inspectionScopes
+                    ? { inspectionScopes: [...new Set(dto.inspectionScopes)] } : {}),
             },
         });
     }
@@ -640,12 +681,13 @@ export class ServicesService {
         pickupPostcode?: string | null;
         deliveryPostcode?: string | null;
         servicePostcode?: string | null;
+        inspectionScope?: string | null;
     }): Promise<void> {
         try {
             let eligibleCount: number | null = null;
             try {
                 eligibleCount = await this.eligibleProviderCountForJob(
-                    job.serviceType, job.workPostcodeArea ?? null,
+                    job.serviceType, job.workPostcodeArea ?? null, job.inspectionScope,
                 );
             } catch (error: any) {
                 this.logger.warn(`Cannot check eligible providers for TradeXchange job ${job.id}: ${error?.message}`);
@@ -684,6 +726,9 @@ export class ServicesService {
             throw new BadRequestException(`${this.label(dto.serviceType)} is enquiry-based and does not take jobs yet.`);
         }
         assertServiceAcceptingNewRequests(dto.serviceType);
+        if (dto.serviceType !== ServiceType.INSPECTION && dto.inspectionScope !== undefined) {
+            throw new BadRequestException('Inspection scope is only valid for inspection jobs.');
+        }
 
         const requestedFor = parseFutureRequestedFor(dto.requestedFor);
         let pickupPostcode: string | null = null;
@@ -710,6 +755,7 @@ export class ServicesService {
             data: {
                 customerId,
                 serviceType: dto.serviceType,
+                inspectionScope: dto.serviceType === ServiceType.INSPECTION ? (dto.inspectionScope || 'VEHICLE') : null,
                 isRecovery: dto.serviceType === ServiceType.DELIVERY && !!dto.isRecovery,
                 title: dto.title.trim(),
                 description: dto.description?.trim() || null,
@@ -1545,23 +1591,32 @@ export class ServicesService {
                 serviceType: true,
                 jobNationwide: true,
                 jobPostcodeAreas: true,
+                inspectionScopes: true,
             },
         });
 
         const coverage = capabilities
             .map((capability: any) => {
+                const scopes = capability.serviceType === ServiceType.INSPECTION
+                    ? eligibleInspectionJobScopes(capability.inspectionScopes) : [];
+                if (capability.serviceType === ServiceType.INSPECTION && scopes.length === 0) return null;
+                const typeAndScope = capability.serviceType === ServiceType.INSPECTION
+                    ? { serviceType: capability.serviceType, OR: [
+                        { inspectionScope: { in: scopes } },
+                        ...(scopes.includes('VEHICLE') ? [{ inspectionScope: null }] : []),
+                    ] } : { serviceType: capability.serviceType };
                 const legacyFixture =
                     capability.jobNationwide === undefined
                     && capability.jobPostcodeAreas === undefined;
                 if (legacyFixture || capability.jobNationwide) {
-                    return { serviceType: capability.serviceType };
+                    return typeAndScope;
                 }
                 const areas = (capability.jobPostcodeAreas ?? [])
                     .map((area: string) => area.toUpperCase())
                     .filter(Boolean);
                 return areas.length
                     ? {
-                        serviceType: capability.serviceType,
+                        ...typeAndScope,
                         workPostcodeArea: { in: areas },
                     }
                     : null;
@@ -1678,8 +1733,9 @@ export class ServicesService {
             contractorProfileId,
             job.serviceType,
             this.jobArea(job),
+            job.inspectionScope,
         ))) {
-            throw new ForbiddenException('This job is outside your approved TradeXchange service area.');
+            throw new ForbiddenException('This job does not match your approved inspection scope or postcode coverage.');
         }
         await this.assertProviderPayoutReadyForNewWork(contractorProfileId);
         if (job.customerId === userId) throw new BadRequestException('You cannot quote on your own job.');
@@ -1877,6 +1933,7 @@ export class ServicesService {
                 viewer.contractorProfileId,
                 job.serviceType,
                 this.jobArea(job),
+                job.inspectionScope,
             );
         }
 
@@ -1910,7 +1967,7 @@ export class ServicesService {
         }
 
         const eligibleProviderCount = job.status === ServiceJobStatus.OPEN
-            ? await this.eligibleProviderCountForJob(job.serviceType, this.jobArea(job))
+            ? await this.eligibleProviderCountForJob(job.serviceType, this.jobArea(job), job.inspectionScope)
             : null;
 
         return {
@@ -2110,12 +2167,20 @@ export class ServicesService {
         const stripe = await this.payments.getStripeClient();
         const remaining = payment.grossPence - amount!;
         const split = this.split(remaining);
+        let processingFeePence = payment.processingFeePence ?? 0;
+        if (remaining > 0 && this.passesProcessingCosts(job) && !processingFeePence) {
+            const charge = await this.chargeForPaymentIntent(stripe, payment.stripePaymentIntentId);
+            if (!charge) throw new ConflictException('The charge for this cosmetic inspection cannot be verified for settlement.');
+            processingFeePence = await this.actualStripeProcessingFee(stripe, charge, payment.grossPence);
+        }
+        const providerPayoutPence = remaining > 0
+            ? Math.max(0, split.contractorPence - (this.passesProcessingCosts(job) ? processingFeePence : 0)) : 0;
         // A post-payout refund first recovers the provider share. A failed/unknown
         // reversal keeps the case locked rather than spending another customer's funds.
         if (originalTransfer && !payment.stripeReversalId) {
             this.assertSettlementRetryWindow(startedAt);
             const reversal = await stripe.transfers.createReversal(originalTransfer, {
-                amount: payment.contractorPence - split.contractorPence,
+                amount: payment.contractorPence - providerPayoutPence,
                 metadata: { serviceJobId: jobId, servicePaymentId: payment.id },
             }, { idempotencyKey: `service-job-reversal-${payment.id}` });
             await this.prisma.servicePayment.update({ where: { id: payment.id }, data: { stripeReversalId: reversal.id } });
@@ -2147,7 +2212,7 @@ export class ServicesService {
             const transfer = payment.settlementTransferId
                 ? await stripe.transfers.retrieve(payment.settlementTransferId)
                 : await stripe.transfers.create({
-                amount: split.contractorPence, currency: 'gbp', destination,
+                amount: providerPayoutPence, currency: 'gbp', destination,
                 source_transaction: charge, transfer_group: `service-job-${jobId}`,
                 metadata: { serviceJobId: jobId, servicePaymentId: payment.id, settlement: 'partial-refund' },
             }, { idempotencyKey: `service-job-partial-release-${payment.id}` });
@@ -2161,7 +2226,7 @@ export class ServicesService {
                     status: remaining > 0 ? ServicePaymentStatus.RELEASED : ServicePaymentStatus.REFUNDED,
                     stripeTransferId: transferId, refundedAt: new Date(),
                     releasedAt: remaining > 0 ? new Date() : payment.releasedAt,
-                    contractorPence: split.contractorPence, platformFeePence: split.platformFeePence,
+                    contractorPence: providerPayoutPence, platformFeePence: split.platformFeePence, processingFeePence,
                 },
             });
             if (finalized.count !== 1) throw new ConflictException('Refund finalization lost its claim.');
@@ -2169,6 +2234,7 @@ export class ServicesService {
                 where: { id: jobId, status: ServiceJobStatus.DISPUTED },
                 data: { status: remaining > 0 ? ServiceJobStatus.RELEASED : ServiceJobStatus.CANCELLED,
                     confirmedAt: remaining > 0 ? new Date() : job.confirmedAt,
+                    contractorAmountPence: providerPayoutPence,
                     cancelledAt: remaining > 0 ? null : new Date(), cancelReason: dto.note?.trim() || 'Resolved after review' },
             });
             if (closed.count !== 1) throw new ConflictException('Case state changed during settlement.');
@@ -2177,7 +2243,7 @@ export class ServicesService {
             `${gbp(amount!)} refunded for "${job.title}".`, `/services/jobs/${jobId}`);
         const provider = await this.prisma.contractorProfile.findUnique({ where: { id: payment.contractorId }, select: { userId: true } });
         if (provider) await this.notify(provider.userId, 'SERVICE_JOB_REFUNDED', 'Case resolved',
-            `"${job.title}": customer refund ${gbp(amount!)}, provider share ${gbp(split.contractorPence)}.`, `/dashboard/service/jobs/${jobId}`);
+            `"${job.title}": customer refund ${gbp(amount!)}, provider payment ${gbp(providerPayoutPence)} after applicable processing fees.`, `/dashboard/service/jobs/${jobId}`);
         return { success: true, refundId: refund.id, transferId: remaining > 0 ? transferId : undefined };
     }
 
@@ -2287,6 +2353,8 @@ export class ServicesService {
 
         const stripe = await this.payments.getStripeClient();
         let transfer: { id: string };
+        let processingFeePence = job.payment.processingFeePence ?? 0;
+        let payoutPence = job.payment.contractorPence;
         try {
             // Tie the payout to the customer's own charge. Without
             // source_transaction Stripe pays from the platform's *available*
@@ -2301,11 +2369,16 @@ export class ServicesService {
             if (!sourceTransaction) {
                 throw new BadRequestException('This service payment has no verifiable Stripe charge. Contact CarMazium support before releasing funds.');
             }
+            if (this.passesProcessingCosts(job)) {
+                processingFeePence = await this.actualStripeProcessingFee(stripe, sourceTransaction, job.payment.grossPence);
+                payoutPence = job.payment.grossPence - job.payment.platformFeePence - processingFeePence;
+                if (payoutPence <= 0) throw new ConflictException('Processing fees leave no transferable provider share. Contact support before settlement.');
+            }
             transfer = job.payment.settlementTransferId
                 ? await stripe.transfers.retrieve(job.payment.settlementTransferId)
                 : await stripe.transfers.create(
                 {
-                    amount: job.payment.contractorPence,
+                    amount: payoutPence,
                     currency: 'gbp',
                     destination: account,
                     source_transaction: sourceTransaction,
@@ -2321,9 +2394,12 @@ export class ServicesService {
             throw e;
         }
 
+        if ('amount' in transfer && typeof (transfer as any).amount === 'number' && (transfer as any).amount !== payoutPence) {
+            throw new ConflictException('Existing transfer amount differs from the calculated provider payout. Reconcile before settling.');
+        }
         const transferId = transfer.id;
         await this.prisma.servicePayment.update({ where: { id: job.payment.id }, data: { settlementTransferId: transferId } });
-        this.logger.log(`Service job ${jobId}: transferred ${job.payment.contractorPence}p to ${account} (${transferId}) — ${why}`);
+        this.logger.log(`Service job ${jobId}: transferred ${payoutPence}p to ${account} (${transferId}) — ${why}`);
 
         // If this DB finalization fails after Stripe accepted the transfer, the
         // claim token is intentionally retained. A retry calls Stripe with the
@@ -2332,7 +2408,8 @@ export class ServicesService {
         await this.prisma.$transaction(async (tx) => {
             const paymentFinalized = await tx.servicePayment.updateMany({
                 where: { id: job.payment!.id, status: ServicePaymentStatus.PAID, stripeTransferId: claimToken },
-                data: { status: ServicePaymentStatus.RELEASED, stripeTransferId: transferId, releasedAt: new Date() },
+                data: { status: ServicePaymentStatus.RELEASED, stripeTransferId: transferId, releasedAt: new Date(),
+                    contractorPence: payoutPence, processingFeePence }, 
             });
             if (paymentFinalized.count !== 1) {
                 throw new ConflictException('Payout finalization lost its payment claim.');
@@ -2340,7 +2417,7 @@ export class ServicesService {
 
             const jobFinalized = await tx.serviceJob.updateMany({
                 where: { id: jobId, status: job.status },
-                data: { status: ServiceJobStatus.RELEASED, confirmedAt: job.confirmedAt ?? new Date() },
+                data: { status: ServiceJobStatus.RELEASED, confirmedAt: job.confirmedAt ?? new Date(), contractorAmountPence: payoutPence }, 
             });
             if (jobFinalized.count !== 1) {
                 throw new ConflictException('Payout finalization lost its job state.');
@@ -2349,9 +2426,9 @@ export class ServicesService {
 
         const c = job.contractor.user;
         await this.notify(c.id, 'SERVICE_PAYOUT_RELEASED', 'Payment released',
-            `${gbp(job.payment.contractorPence)} for "${job.title}" is on its way to your account.`, `/dashboard/service/jobs/${jobId}`);
-        this.sendEmail(c.email, c.firstName, `${gbp(job.payment.contractorPence)} released for ${job.title}`,
-            `<p>The job is confirmed complete and <strong>${gbp(job.payment.contractorPence)}</strong> has been transferred to your Stripe account.</p>`,
+            `${gbp(payoutPence)} for "${job.title}" is on its way to your account.`, `/dashboard/service/jobs/${jobId}`);
+        this.sendEmail(c.email, c.firstName, `${gbp(payoutPence)} released for ${job.title}`,
+            `<p>The job is confirmed complete and <strong>${gbp(payoutPence)}</strong> has been transferred to your Stripe account.${processingFeePence ? ` Actual payment processing fees deducted: ${gbp(processingFeePence)}.` : ''}</p>`,
             'View the job', `/dashboard/service/jobs/${jobId}`);
         await this.notify(job.customerId, 'SERVICE_JOB_RELEASED', 'Job complete',
             `"${job.title}" is done and your provider has been paid. Thanks for using TradeXchange.`, `/services/jobs/${jobId}`);

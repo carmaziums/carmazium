@@ -7,7 +7,7 @@ import Link from "next/link"
 import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
-import { createJob } from "@/lib/servicesApi"
+import { createJob, type InspectionScope } from "@/lib/servicesApi"
 import { inspectionServiceEnabled } from "@/lib/featureFlags"
 import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
 import { useSessionDraft } from "@/hooks/useSessionDraft"
@@ -16,7 +16,8 @@ const inputCls = "aria-[invalid=true]:border-red-500 aria-[invalid=true]:ring-1 
 const labelCls = "block text-[11px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2"
 const EMPTY_FORM = {
     registration: "", make: "", model: "", year: "", postcode: "", address: "",
-    requestedFor: "", notes: "", title: "Pre-purchase vehicle inspection",
+    requestedFor: "", notes: "", title: "Pre-purchase vehicle inspection", inspectionScope: "VEHICLE" as InspectionScope,
+    additionalRegistrations: "",
 }
 
 export default function NewInspectionPage() {
@@ -31,7 +32,8 @@ function InspectionForm() {
         make: (params.get("make") || "").slice(0, 100), model: (params.get("model") || "").slice(0, 100),
         year: /^\d{4}$/.test(params.get("year") || "") ? params.get("year")! : "",
         address: (params.get("pickup") || "").slice(0, 300),
-        title: params.get("vehicleTitle") ? `${params.get("vehicleTitle")!.slice(0, 150)} inspection` : EMPTY_FORM.title,
+        title: params.get("vehicleTitle") ? `${params.get("vehicleTitle")!.slice(0, 90)} inspection` : EMPTY_FORM.title,
+        inspectionScope: (['VEHICLE', 'COSMETIC', 'BOTH'].includes(params.get('inspectionScope') || '') ? params.get('inspectionScope') : 'VEHICLE') as InspectionScope,
     }), [params, listingId])
     const router = useRouter()
     const { user, loading } = useAuth()
@@ -61,12 +63,16 @@ function InspectionForm() {
         const fail = (field: string, message: string) => { setInvalidField(field); setError(message); focusJobFormIssue(field) }
         if (!form.postcode.trim()) return fail("inspection-postcode", "Enter the postcode where the vehicle can be inspected.")
         if (!jobVehicleIdentified(form)) return fail("inspection-registration", "Enter the registration or both the vehicle make and model.")
+        const extraRegistrations = form.additionalRegistrations.split(/[\n,]+/).map(v => v.trim().replace(/\s+/g, '').toUpperCase()).filter(Boolean)
+        if (extraRegistrations.length > 4 || extraRegistrations.some(v => !/^[A-Z0-9]{2,10}$/.test(v))) return fail('inspection-batch', 'Add up to four additional vehicle registrations, one per line (letters and numbers only).')
+        if (new Set([form.registration.trim().replace(/\s+/g, '').toUpperCase(), ...extraRegistrations].filter(Boolean)).size !== [form.registration, ...extraRegistrations].filter(Boolean).length) return fail('inspection-batch', 'Each vehicle registration must be different.')
         const dateIssue = jobDateIssue(form.requestedFor, false)
         if (dateIssue) return fail(dateIssue.field, dateIssue.message)
         setBusy(true); setError(null)
         try {
             const job = await createJob({
                 serviceType: "INSPECTION",
+                inspectionScope: form.inspectionScope,
                 title: form.title.trim() || "Vehicle inspection",
                 description: form.notes.trim() || undefined,
                 servicePostcode: form.postcode.trim(),
@@ -79,7 +85,7 @@ function InspectionForm() {
                     model: form.model.trim() || undefined,
                     year: form.year ? Number(form.year) : undefined,
                     notes: form.notes.trim() || undefined,
-                }],
+                }, ...extraRegistrations.map(registration => ({ registration }))],
             })
             clearDraft()
             router.push(`/services/jobs/${job.id}`)
@@ -92,9 +98,9 @@ function InspectionForm() {
     return (
         <div className="min-h-screen pt-24 pb-20">
             <div className="container mx-auto px-5 max-w-3xl">
-                <Link href="/services/inspection" className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary mb-6"><ArrowLeft size={15} /> Vehicle Inspections</Link>
-                <h1 className="text-3xl md:text-4xl font-black font-heading mb-2">Request a vehicle inspection</h1>
-                <p className="text-[var(--text-muted)] mb-8">One request, one vehicle. Approved inspection providers can quote for the work.</p>
+                <Link href="/services/inspection" className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary mb-6"><ArrowLeft size={15} /> Inspections</Link>
+                <h1 className="text-3xl md:text-4xl font-black font-heading mb-2">Request an inspection</h1>
+                <p className="text-[var(--text-muted)] mb-8">Choose the checks you need. Approved providers can quote for work within their inspection expertise and service areas.</p>
 
                 {!loading && !user && (
                     <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">Sign in before submitting. Your form is saved in this tab and restored when you return.</div>
@@ -102,6 +108,23 @@ function InspectionForm() {
                 {error && <div role="alert" id="job-error" tabIndex={-1} className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500">{error}</div>}
 
                 <form onSubmit={submit} className="space-y-6">
+                    <fieldset className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
+                        <legend className="font-heading font-bold text-lg px-1">Inspection type *</legend>
+                        <div className="grid gap-3 sm:grid-cols-3 mt-2">
+                            {([
+                                { value: 'VEHICLE', name: 'Vehicle inspection', detail: 'Mechanical and functional checks as specified by the provider.' },
+                                { value: 'COSMETIC', name: 'Cosmetic inspection', detail: 'Paintwork, visible body damage and photographic condition reports.' },
+                                { value: 'BOTH', name: 'Both', detail: 'Request both vehicle and cosmetic checks from a suitably qualified provider.' },
+                            ] as const).map((option) => (
+                                <label key={option.value} className={`cursor-pointer rounded-xl border p-4 text-sm ${form.inspectionScope === option.value ? 'border-primary bg-primary/10' : 'border-[var(--border-default)]'}`}>
+                                    <input type="radio" name="inspectionScope" value={option.value} checked={form.inspectionScope === option.value} onChange={() => set('inspectionScope', option.value)} className="mr-2 accent-primary" />
+                                    <span className="font-bold">{option.name}</span>
+                                    <span className="mt-2 block text-xs text-[var(--text-muted)]">{option.detail}</span>
+                                </label>
+                            ))}
+                        </div>
+                        <p className="mt-3 text-xs text-[var(--text-muted)]">Inspection availability depends on provider coverage. Cosmetic checks are not a mechanical or structural safety certification.</p>
+                    </fieldset>
                     <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
                         <h2 className="font-heading font-bold text-lg mb-5">Vehicle</h2>
                         {listingId && <p className="mb-4 text-sm text-[var(--text-secondary)]">{initialForm.title}. Please confirm the vehicle and inspection location below.</p>}
@@ -110,6 +133,11 @@ function InspectionForm() {
                             <div><label htmlFor="inspection-year" className={labelCls}>Year</label><input id="inspection-year" aria-invalid={invalidField === "inspection-year"} aria-describedby={invalidField === "inspection-year" ? "job-error" : undefined} className={inputCls} type="number" min="1900" max="2100" value={form.year} onChange={e => set('year', e.target.value)} placeholder="2021" /></div>
                             <div><label htmlFor="inspection-make" className={labelCls}>Make</label><input id="inspection-make" aria-invalid={invalidField === "inspection-make"} aria-describedby={invalidField === "inspection-make" ? "job-error" : undefined} className={inputCls} value={form.make} onChange={e => set('make', e.target.value)} placeholder="Toyota" /></div>
                             <div><label htmlFor="inspection-model" className={labelCls}>Model</label><input id="inspection-model" aria-invalid={invalidField === "inspection-model"} aria-describedby={invalidField === "inspection-model" ? "job-error" : undefined} className={inputCls} value={form.model} onChange={e => set('model', e.target.value)} placeholder="Yaris" /></div>
+                        </div>
+                        <div className="mt-5">
+                            <label htmlFor="inspection-batch" className={labelCls}>Additional vehicle registrations (optional)</label>
+                            <textarea id="inspection-batch" className={`${inputCls} min-h-24`} rows={3} maxLength={80} aria-invalid={invalidField === 'inspection-batch'} aria-describedby={invalidField === 'inspection-batch' ? 'job-error' : undefined} value={form.additionalRegistrations} onChange={e => set('additionalRegistrations', e.target.value)} placeholder={'AB12CDE\\nCD34EFG'} />
+                            <p className="mt-2 text-xs text-[var(--text-muted)]">For a batch inspection at the same location, add up to four more registrations, one per line. The provider can quote for the entire group in one existing TradeXchange job.</p>
                         </div>
                     </section>
 
@@ -124,12 +152,12 @@ function InspectionForm() {
 
                     <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
                         <label htmlFor="inspection-notes" className={labelCls}>What do you want checked?</label>
-                        <textarea id="inspection-notes" className={`${inputCls} min-h-32`} value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Any known faults, areas of concern, diagnostic scan, underside check, road test requirements..." maxLength={2000} />
+                        <textarea id="inspection-notes" className={`${inputCls} min-h-32`} value={form.notes} onChange={e => set('notes', e.target.value)} placeholder={form.inspectionScope === 'COSMETIC' ? 'Paint, dents, scratches, panels or delivery damage you want photographed...' : 'Any known faults, areas of concern or additional checks you want quoted...'} maxLength={2000} />
                     </section>
 
                     <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-4 flex gap-3 text-sm">
                         <CheckCircle size={18} className="text-emerald-500 shrink-0 mt-0.5" />
-                        <p>The provider quotes a fixed price. If you accept it, payment is made through CarMazium and the provider share is released after completion.</p>
+                        <p>The provider quotes a fixed price. You only pay through CarMazium after accepting a quote. Provider payouts follow completion and the existing dispute and settlement rules.</p>
                     </div>
 
                     <Button type="submit" size="lg" className="w-full" disabled={busy || loading || !hydrated}>

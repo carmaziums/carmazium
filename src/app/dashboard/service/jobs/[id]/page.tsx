@@ -99,6 +99,7 @@ export default function ContractorJobPage() {
                                     <h1 className="text-2xl md:text-3xl font-black font-heading tracking-tight">{job.title}</h1>
                                     <div className="flex items-center gap-2 shrink-0">{job.isRecovery && <RecoveryBadge />}<JobStatusBadge status={job.status} /></div>
                                 </div>
+                                {job.serviceType === 'INSPECTION' && <p className="mb-2 text-sm font-semibold text-[var(--text-secondary)]">Requested scope: {job.inspectionScope === 'COSMETIC' ? 'Cosmetic only' : job.inspectionScope === 'BOTH' ? 'Vehicle and cosmetic' : 'Vehicle inspection'}</p>}
                                 <JobRoute job={job} className="mb-1" />
                                 <div className="mb-6"><JobTiming job={job} /></div>
 
@@ -133,7 +134,7 @@ export default function ContractorJobPage() {
                                         <textarea className={`${inputCls} resize-none mb-3`} rows={3} value={message} onChange={e => setMessage(e.target.value)} maxLength={1000} placeholder="Collection window, vehicle type, anything that helps the customer pick you" />
                                         {amountPence >= 100 && platformFeePence != null && providerPence != null && (
                                             <p className="text-[11px] text-[var(--text-muted)] mb-3">
-                                                Customer pays {formatPence(amountPence)}. CarMazium fee {formatPence(platformFeePence)}. <strong className="text-[var(--text-primary)]">You receive {formatPence(providerPence)}.</strong>
+                                                Customer pays {formatPence(amountPence)}. CarMazium fee {formatPence(platformFeePence)}. <strong className="text-[var(--text-primary)]">{job.serviceType === "INSPECTION" && ["COSMETIC", "BOTH"].includes(job.inspectionScope || "") ? `Your share before actual payment-processing fees: ${formatPence(providerPence)}.` : `You receive ${formatPence(providerPence)}.`}</strong>
                                             </p>
                                         )}
                                         {amountPence >= 100 && platformFeePence == null && (

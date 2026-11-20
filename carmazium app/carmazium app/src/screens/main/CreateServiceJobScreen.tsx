@@ -6,6 +6,7 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
 import { Elevation } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
+import type { InspectionScope } from '../../lib/servicesApi';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CreateServiceJob'>;
 type ServiceType = 'DELIVERY' | 'INSPECTION';
@@ -15,7 +16,7 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
   const serviceType: ServiceType = route.params.serviceType;
   const delivery = serviceType === 'DELIVERY';
   const purchase = route.params.purchase;
-  const [title, setTitle] = useState(purchase ? `${purchase.title} delivery` : '');
+  const [title, setTitle] = useState(purchase ? `${purchase.title} ${delivery ? 'delivery' : 'inspection'}` : '');
   const [description, setDescription] = useState('');
   const [registration, setRegistration] = useState(purchase?.registration || '');
   const [make, setMake] = useState(purchase?.make || '');
@@ -24,6 +25,8 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
   const [destination, setDestination] = useState('');
   const [address, setAddress] = useState('');
   const [recovery, setRecovery] = useState(false);
+  const [inspectionScope, setInspectionScope] = useState<InspectionScope>('VEHICLE');
+  const [additionalRegistrations, setAdditionalRegistrations] = useState('');
   const [saving, setSaving] = useState(false);
   const field = (label: string, value: string, setValue: (value: string) => void, hint?: string, multiline = false) => (
     <View style={styles.field}>
@@ -42,12 +45,23 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
       Alert.alert('Check postcode', 'Enter valid UK postcodes for the job location.');
       return;
     }
+    const extraRegs = delivery ? [] : additionalRegistrations.split(/[\n,]+/).map(v => v.trim().replace(/\s+/g, '').toUpperCase()).filter(Boolean);
+    if (extraRegs.length > 4 || extraRegs.some(v => !/^[A-Z0-9]{2,10}$/.test(v))) {
+      Alert.alert('Check batch registrations', 'Enter at most four additional registrations, one per line.');
+      return;
+    }
+    const allRegs = [registration.replace(/\s+/g, '').toUpperCase(), ...extraRegs].filter(Boolean);
+    if (new Set(allRegs).size !== allRegs.length) {
+      Alert.alert('Duplicate vehicles', 'Each vehicle registration must be different.');
+      return;
+    }
     setSaving(true);
     try {
       await apiClient('/services/jobs', {
         method: 'POST',
         body: JSON.stringify({
           serviceType,
+          ...(delivery ? {} : { inspectionScope }),
           title: title.trim(),
           description: description.trim() || undefined,
           ...(delivery
@@ -58,7 +72,7 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
             registration: registration.replace(/\s+/g, '').toUpperCase() || undefined,
             make: make.trim() || undefined,
             model: model.trim() || undefined,
-          }],
+          }, ...extraRegs.map(registration => ({ registration }))],
         }),
         timeoutMs: 30000,
       });
@@ -75,8 +89,24 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
     <View style={styles.container}>
     <ScreenBackBar title="TradeXchange" forceSafeArea />
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>{delivery ? 'Post Delivery & Recovery Job' : 'Post Vehicle Inspection Job'}</Text>
+      <Text style={styles.title}>{delivery ? 'Post Delivery & Recovery Job' : 'Request an Inspection'}</Text>
       <Text style={styles.subtitle}>Approved providers can quote for your request. No provider is booked until you accept a quote.</Text>
+      {!delivery ? (
+        <View style={styles.field}>
+          <Text style={styles.label}>INSPECTION TYPE *</Text>
+          {([
+            { value: 'VEHICLE', label: 'Vehicle inspection', hint: 'Mechanical and functional checks' },
+            { value: 'COSMETIC', label: 'Cosmetic inspection', hint: 'Paintwork, bodywork and visible damage' },
+            { value: 'BOTH', label: 'Both', hint: 'Vehicle and cosmetic inspection checks' },
+          ] as const).map((option) => (
+            <TouchableOpacity key={option.value} accessibilityRole="radio" accessibilityState={{ checked: inspectionScope === option.value }} onPress={() => setInspectionScope(option.value)} style={[styles.input, inspectionScope === option.value && { borderColor: Colors.accent, borderWidth: 2 }] }>
+              <Text style={[styles.label, { color: Colors.white }]}>{inspectionScope === option.value ? '● ' : '○ '}{option.label}</Text>
+              <Text style={styles.subtitle}>{option.hint}</Text>
+            </TouchableOpacity>
+          ))}
+          <Text style={styles.subtitle}>Cosmetic checks are not a mechanical or structural safety certificate. Only available in provider coverage areas.</Text>
+        </View>
+      ) : null}
       {field('Job title *', title, setTitle, delivery ? 'Transport my vehicle' : 'Pre-purchase vehicle inspection')}
       {field('Registration *', registration, setRegistration, 'AB12 CDE')}
       {field('Make', make, setMake, 'Vehicle make')}
@@ -91,6 +121,8 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
         <>
           {field('Inspection postcode *', destination, setDestination, 'B19 1ES')}
           {field('Inspection address', address, setAddress, 'Optional location details')}
+          {field('Additional registrations (optional)', additionalRegistrations, setAdditionalRegistrations, 'Up to four more vehicles, separated by commas or new lines', true)}
+          <Text style={styles.subtitle}>You can request one quote for up to five vehicles at the same location.</Text>
         </>
       )}
       {field('Additional details', description, setDescription, 'Condition, availability and special instructions', true)}

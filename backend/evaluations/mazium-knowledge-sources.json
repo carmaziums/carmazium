@@ -1,7 +1,7 @@
 {
-  "reviewedAt": "2026-11-18",
+  "reviewedAt": "2026-11-20",
   "sources": {
-    "backend/prisma/schema.prisma": "1ca5e270b760ce4645cbd0a45a313f3c73b43973a357345adadebfd298643c23",
+    "backend/prisma/schema.prisma": "183f0cac6d0263cd66489c19d892d09f2ec965190b758a709014820e2eedf99f",
     "backend/src/admin/admin-user-filters.ts": "0f7afcf5f18e79666b69f346dda04add2024e42fbf71cca4aefb4bd5221118c4",
     "backend/src/admin/admin.controller.ts": "b45767e52f91b61362a4156efe382dc69eb48f483d97a96d58d08351ef175705",
     "backend/src/ai/ai.controller.ts": "9ff65932480e9a99085249bed84354ac513965877b380b25f54f1c6293ad4011",
@@ -47,7 +47,7 @@
     "src/app/search/page.tsx": "ba0c602c445c9eed090518156573b4c5fc81b91cb0736a35c58b850a4c4d99ee",
     "src/app/sell/page.tsx": "da52b24a0f0e98d88e09449a3b991382416bf3fd378609e9c43c86caf6fad718",
     "src/app/services/finance/page.tsx": "514294706c306693f6be2e3b7f847e9852306fe2598e2f7c73c672a7b79d7ab3",
-    "src/app/services/page.tsx": "0a9d3a41b5c7c7114525e7a235a9b0dab685fb835e0d6e2645e889230b3dc6e1",
+    "src/app/services/page.tsx": "5d29eb5485af8dac0e12321c1da08de4459b2906a865eb67675fb7cad3dd4732",
     "src/app/services/warranty/page.tsx": "4a660bc1a27f498df350c80ea9488fcaf73a15db6d1eec69daca865c464975d1",
     "src/app/terms/page.tsx": "a0b246f6f895906c652d8c11cf576911f2256fa12efd30fceab6bde5c204c1e6",
     "src/components/auctions/AuctionResultsModal.tsx": "0643900661c07ecb8614bea0b610aab20c36cd1c91ea8ab1b37b606bb08866a7",
@@ -58,7 +58,7 @@
     "src/components/features/MaziumWidget.tsx": "e42339ddb7481a9c136d96abf9856789bc4bc6b78114cd10456ee85c306d123c",
     "src/components/finance/FinanceReferralForm.tsx": "ff4781f826b719164dd96463d497704277588efe0614f41ac278de4f4933ce13",
     "src/components/listing/ListingWizard.tsx": "98e511f1cb510119cbe2f9af06551f5fc6a3044a25bb8dc88e336a7d5dfbcd24",
-    "src/components/services/VehicleServicesPanel.tsx": "b3d258621caef39313d41fc1b74d7adc95061483869b096b38c290dcdc9ef454",
+    "src/components/services/VehicleServicesPanel.tsx": "ab6b9f7a61a9d0a75719c074d80a8ae64d69d2817e290b06185bfc323b87e6d9",
     "src/lib/pricingConfig.ts": "dc03b2287b1fe7ca9722e71bc3d83ca05052b34b385c44b955fc34cff06b3d5e",
     "src/lib/purchaseDestinations.ts": "53bccb1fcb42d2f49392bf86dddaf8a7d2802da8007319a28b473e6417925b78",
     "src/lib/valuationApi.ts": "3107cfec422f49a946ca00c40d8852dbc764434c2c782dcbf1d9684e294b4732",

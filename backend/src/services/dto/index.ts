@@ -73,6 +73,9 @@ export class CreateJobDto {
     deliveryAddress?: string;
 
     // Inspection
+    @ApiPropertyOptional({ enum: ['VEHICLE', 'COSMETIC', 'BOTH'], description: 'Requested checks within the existing inspection service.' })
+    @IsOptional() @IsIn(['VEHICLE', 'COSMETIC', 'BOTH'])
+    inspectionScope?: 'VEHICLE' | 'COSMETIC' | 'BOTH';
     @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(10)
     servicePostcode?: string;
     @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(300)
@@ -170,6 +173,10 @@ export class ApplyCapabilityDto {
 }
 
 export class UpdateJobMatchingDto {
+    @ApiPropertyOptional({ enum: ['VEHICLE', 'COSMETIC'], isArray: true, description: 'Inspection provider specialisms. Both means offering both; applies to inspection capabilities only.' })
+    @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(2) @IsIn(['VEHICLE', 'COSMETIC'], { each: true })
+    inspectionScopes?: ('VEHICLE' | 'COSMETIC')[];
+
     @ApiProperty()
     @IsBoolean()
     jobNationwide: boolean;

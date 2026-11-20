@@ -157,6 +157,7 @@ function JobDetail() {
                             <JobStatusBadge status={job.status} />
                         </div>
                     </div>
+                    {isInspection && <p className="mb-2 text-sm font-semibold text-[var(--text-secondary)]">Inspection requested: {job.inspectionScope === 'COSMETIC' ? 'Cosmetic inspection' : job.inspectionScope === 'BOTH' ? 'Vehicle and cosmetic inspection' : 'Vehicle inspection'}</p>}
                     <JobRoute job={job} className="mb-1" />
                     <div className="mb-6"><JobTiming job={job} /></div>
 

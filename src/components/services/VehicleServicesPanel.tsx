@@ -23,7 +23,7 @@ export function VehicleServicesPanel({ listing }: { listing: ServiceVehicle }) {
         ...(warrantyServiceEnabled ? [{ title: 'Warranty', description: 'See prices and cover options for this vehicle.', href: `/services/warranty?listingId=${encodeURIComponent(listing.id)}`, icon: ShieldCheck }] : []),
         ...(financeServiceEnabled && finance?.id === listing.id && finance.enabled ? [{ title: 'Finance', description: 'Continue with the selected finance provider. Subject to status.', href: `/services/finance?listingId=${encodeURIComponent(listing.id)}`, icon: Calculator }] : []),
         ...(deliveryServiceEnabled ? [{ title: 'Delivery', description: 'Request quotes to collect and deliver this vehicle.', href: vehicleServicePath('delivery', listing), icon: Truck }] : []),
-        ...(inspectionServiceEnabled ? [{ title: 'Inspection', description: 'Request an inspection before you decide to buy.', href: vehicleServicePath('inspection', listing), icon: SearchCheck }] : []),
+        ...(inspectionServiceEnabled ? [{ title: 'Request an inspection', description: 'Choose vehicle, cosmetic or both checks before buying.', href: vehicleServicePath('inspection', listing), icon: SearchCheck }] : []),
     ]
     return <section aria-label={`Services for ${listing.title}`} className="mt-5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4">
         <h3 className="font-bold text-lg text-[var(--text-primary)]">Services for this vehicle</h3>

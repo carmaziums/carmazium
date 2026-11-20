@@ -2128,6 +2128,8 @@ model ContractorCapability {
   // quote open work in one of these UK postcode areas unless nationwide.
   jobNationwide              Boolean  @default(false)
   jobPostcodeAreas           String[] @default([])
+  /// Inspection specialisms; defaults protect legacy mechanical inspectors from cosmetic-only work.
+  inspectionScopes           String[] @default(["VEHICLE"])
 
   // Finance/Warranty lead matching. These settings are ignored by paid
   // Delivery/Inspection jobs. A lead is only shared when its service area and
@@ -2244,6 +2246,8 @@ model ServiceJob {
   status      ServiceJobStatus @default(OPEN)
   title       String
   description String?
+  /// VEHICLE, COSMETIC or BOTH. Null applies to historical vehicle inspection jobs or non-inspection jobs.
+  inspectionScope String?
 
   // Location. Delivery uses pickup + delivery; inspection uses servicePostcode.
   // Full postcodes are visible to approved contractors (they cannot quote a
@@ -2365,6 +2369,8 @@ model ServicePayment {
   platformFeeRate  Decimal              @db.Decimal(5, 4)
   platformFeePence Int
   contractorPence  Int
+  /// Actual Stripe processing fee deducted from the provider share on settlement, not CarMazium commission.
+  processingFeePence Int @default(0)
   status           ServicePaymentStatus @default(PENDING)
 
   stripeCheckoutSessionId String? @unique

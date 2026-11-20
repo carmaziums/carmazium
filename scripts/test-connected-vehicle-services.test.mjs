@@ -32,7 +32,7 @@ function render(vehicle, enabled = true) {
 }
 test('panel presents connected retail services and checks finance before advertising it', () => {
     const html = render(listing)
-    for (const text of ['Warranty', 'Inspection', 'Delivery', 'Checking finance availability', 'pay the seller directly']) assert.ok(html.includes(text))
+    for (const text of ['Warranty', 'Request an inspection', 'Delivery', 'Checking finance availability', 'pay the seller directly']) assert.ok(html.includes(text))
     assert.ok(!html.includes('href="/services/finance'))
     assert.ok(html.includes('/services/inspection/new?listingId=vehicle-123'))
 })

@@ -43,13 +43,13 @@ export default function InspectionLandingPage() {
                     </Link>
                     <div className="max-w-3xl">
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-4 py-1.5 mb-6 text-xs font-bold uppercase tracking-widest text-emerald-500">
-                            <FileSearch size={13} /> TradeXchange · Vehicle Inspections
+                            <FileSearch size={13} /> TradeXchange · Vehicle & Cosmetic Inspections
                         </motion.div>
                         <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-6xl font-black font-heading tracking-tight leading-[0.95] mb-5">
                             Inspect the car <span className="text-primary">before you commit.</span>
                         </motion.h1>
                         <p className="text-[var(--text-muted)] text-lg max-w-xl leading-relaxed mb-8">
-                            Post one vehicle inspection request and approved inspection businesses can compete for the job. Choose the quote you want and keep the service payment protected through CarMazium until the work is completed.
+                            Choose vehicle, cosmetic, or combined inspections. Approved businesses can quote for work matching their expertise and service area. Choose the quote you want and keep the service payment protected through CarMazium until the work is completed.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-3">
                             <Button asChild size="lg">
@@ -91,9 +91,9 @@ export default function InspectionLandingPage() {
 
             <section className="border-y border-[var(--border-default)] bg-[var(--bg-card)]">
                 <div className="container mx-auto px-6 py-12 grid md:grid-cols-3 gap-6">
-                    <div className="flex gap-3"><ShieldCheck className="text-primary shrink-0" /><p className="text-sm text-[var(--text-muted)]"><b className="text-[var(--text-primary)]">Approved providers.</b> Only contractors approved for Vehicle Inspections can quote.</p></div>
+                    <div className="flex gap-3"><ShieldCheck className="text-primary shrink-0" /><p className="text-sm text-[var(--text-muted)]"><b className="text-[var(--text-primary)]">Approved providers.</b> Only verified businesses approved for the relevant inspection scope and postcode area can quote.</p></div>
                     <div className="flex gap-3"><CreditCard className="text-primary shrink-0" /><p className="text-sm text-[var(--text-muted)]"><b className="text-[var(--text-primary)]">Protected payment.</b> The accepted quote uses the same secure service-payment flow as vehicle delivery.</p></div>
-                    <div className="flex gap-3"><Users className="text-primary shrink-0" /><p className="text-sm text-[var(--text-muted)]"><b className="text-[var(--text-primary)]">9% platform fee.</b> Deducted from the provider payout; the provider keeps 91%.</p></div>
+                    <div className="flex gap-3"><Users className="text-primary shrink-0" /><p className="text-sm text-[var(--text-muted)]"><b className="text-[var(--text-primary)]">9% platform fee.</b> Providers keep 91%; actual payment-processing costs are additionally deducted on new cosmetic inspection work.</p></div>
                 </div>
             </section>
 
@@ -104,11 +104,11 @@ export default function InspectionLandingPage() {
                             <p className="text-emerald-500 text-[10px] font-black uppercase tracking-[0.2em] mb-3">For inspection providers</p>
                             <h2 className="text-3xl font-black font-heading mb-4">Turn your inspection expertise into more paid work</h2>
                             <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-5">
-                                Apply for Vehicle Inspection capability. Once approved, you can quote on suitable inspection requests and compete for work through TradeXchange.
+                                Apply for the existing Inspection capability, then choose vehicle inspections, cosmetic inspections or both in your matching settings. Only quote for services you can competently provide.
                             </p>
                             <div className="rounded-2xl border border-emerald-500/25 bg-[var(--bg-card)] p-5 mb-6">
-                                <p className="font-black mb-1">9% CarMazium platform fee. You keep 91%.</p>
-                                <p className="text-sm text-[var(--text-muted)] leading-relaxed">The fee is deducted from the accepted job price. Your 91% provider payout is released after the inspection is completed and the customer confirms completion.</p>
+                                <p className="font-black mb-1">9% CarMazium platform fee. Cosmetic inspections also pass through actual processing costs.</p>
+                                <p className="text-sm text-[var(--text-muted)] leading-relaxed">The fee is deducted from the accepted job price. Your provider share is paid after confirmed completion. For new cosmetic-inspection jobs, actual payment-processing costs are deducted separately.</p>
                             </div>
                             <Button asChild>
                                 <Link href={providerHref}>

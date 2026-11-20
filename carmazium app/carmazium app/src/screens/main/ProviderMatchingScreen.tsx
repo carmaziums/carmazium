@@ -48,6 +48,7 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
   const [cap, setCap] = useState<ContractorCapability | null>(null);
   const [nationwide, setNationwide] = useState(false);
   const [areas, setAreas] = useState('');
+  const [inspectionScopes, setInspectionScopes] = useState<('VEHICLE' | 'COSMETIC')[]>(['VEHICLE']);
   const [minValue, setMinValue] = useState('');
   const [maxValue, setMaxValue] = useState('');
   const [minYear, setMinYear] = useState('');
@@ -69,6 +70,7 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
     const lead = next.serviceType === 'FINANCE' || next.serviceType === 'WARRANTY';
     setNationwide(lead ? next.leadNationwide : next.jobNationwide);
     setAreas((lead ? next.leadPostcodeAreas : next.jobPostcodeAreas).join(', '));
+    setInspectionScopes(next.inspectionScopes?.length ? next.inspectionScopes : ['VEHICLE']);
     setMinValue(pounds(next.leadMinVehicleValuePence));
     setMaxValue(pounds(next.leadMaxVehicleValuePence));
     setMinYear(next.leadMinVehicleYear == null ? '' : String(next.leadMinVehicleYear));
@@ -111,6 +113,10 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
       return;
     }
 
+    if (cap.serviceType === 'INSPECTION' && inspectionScopes.length === 0) {
+      Alert.alert('Inspection specialty required', 'Choose vehicle inspection, cosmetic inspection or both.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -136,6 +142,7 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
         : await updateJobMatching(cap.id, {
             jobNationwide: nationwide,
             jobPostcodeAreas: postcodeAreas,
+            ...(cap.serviceType === 'INSPECTION' ? { inspectionScopes } : {}),
           });
       hydrate(updated);
       Alert.alert('Saved', 'Matching settings have been updated.');
@@ -149,7 +156,7 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
   const coverageDescription = useMemo(() => {
     if (!cap) return '';
     if (cap.serviceType === 'DELIVERY') return 'CarMazium will show vehicle transport and recovery jobs in the areas you cover.';
-    if (cap.serviceType === 'INSPECTION') return 'CarMazium will show vehicle inspection work in the areas you cover.';
+    if (cap.serviceType === 'INSPECTION') return 'CarMazium only shows inspection work matching the specialties and areas you select.';
     return 'CarMazium will match customer enquiries against these rules.';
   }, [cap]);
 
@@ -213,6 +220,23 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
                   </View>
                 ) : null}
               </View>
+
+              {cap.serviceType === 'INSPECTION' ? (
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>Inspection specialties</Text>
+                  <Text style={styles.cardText}>Only select services your business can safely provide.</Text>
+                  {([
+                    { value: 'VEHICLE', label: 'Vehicle inspection' },
+                    { value: 'COSMETIC', label: 'Cosmetic inspection' },
+                  ] as const).map(option => (
+                    <View key={option.value} style={styles.switchRow}>
+                      <Text style={[styles.cardText, { flex: 1 }]}>{option.label}</Text>
+                      <Switch value={inspectionScopes.includes(option.value)} onValueChange={selected => setInspectionScopes(current => selected ? [...current, option.value] : current.filter(x => x !== option.value))} trackColor={{ false: Colors.borderMuted, true: Colors.accent }} thumbColor={Colors.onAccent} />
+                    </View>
+                  ))}
+                  <Text style={styles.cardText}>Select both specialties to quote on combined inspection jobs.</Text>
+                </View>
+              ) : null}
 
               {isLead ? (
                 <View style={styles.card}>
