@@ -3,6 +3,8 @@
 import { VehicleShareDialog } from "@/components/listing/VehicleShareDialog"
 
 import { SellerServiceBadges } from "@/components/listing/SellerServiceBadges"
+import { inspectionServiceEnabled } from "@/lib/featureFlags"
+import { vehicleServicePath } from "@/lib/vehicleServiceContext"
 import * as React from "react"
 import Image from "next/image"
 import Link from "next/link"
@@ -1032,6 +1034,14 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     </div>
                 </div>
             </div>
+
+            {isLive && inspectionServiceEnabled && auction.listing.status === 'ACTIVE' && (
+                <div className="container mx-auto px-6 py-2">
+                    <Link href={vehicleServicePath('inspection', auction.listing)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-primary/50 bg-primary/10 px-4 py-2 text-sm font-bold text-[var(--text-primary)] hover:border-primary focus-visible:outline-2 focus-visible:outline-primary">
+                        <ShieldCheck size={16} className="text-primary" /> Request an inspection <span className="text-xs font-normal text-[var(--text-muted)]">Vehicle, cosmetic or both · optional</span>
+                    </Link>
+                </div>
+            )}
 
             {!isSeller && (profile?.role === "DEALER" || profile?.role === "ADMIN") && (
                 <div className="container mx-auto px-6 py-2 flex flex-wrap items-center gap-3">
