@@ -1,5 +1,7 @@
 "use client"
 
+import { DashboardCards } from "@/components/dashboard/DashboardCards"
+
 import { DealerServicesNotice } from "@/components/dealer/DealerServicesNotice"
 import * as React from "react"
 import Link from "next/link"
@@ -15,7 +17,7 @@ import { FlexiblePeriodControl, type DashboardRangeSelection, type DashboardRang
 import { useAuth } from "@/context/AuthContext"
 import { supabase } from "@/lib/supabase"
 import { apiClient } from "@/lib/apiClient"
-import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
+import { getDealerRoute } from "@/config/dealerRouteConfig"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { useDealerAccess } from "@/context/DealerAccessContext"
 import { getNotifications, markNotificationRead, type AppNotification } from "@/lib/notificationsApi"
@@ -219,44 +221,6 @@ export default function DealerDashboard() {
         ? `${profile.firstName} ${profile.lastName || ""}`
         : (user?.email?.split('@')[0] || "Dealer")
 
-    const dashboardActions = [
-        {
-            href: "/dashboard/dealer/add-listing",
-            title: "Add vehicle",
-            description: "Create one new retail or auction listing.",
-            icon: PlusCircle,
-            show: canManageInventory,
-        },
-        {
-            href: "/dashboard/dealer/crm",
-            title: "Customers",
-            description: "Enquiries, offers and follow-up in one sales workflow.",
-            icon: Kanban,
-            show: canManageCrm,
-        },
-        {
-            href: "/auctions/browse",
-            title: "Buy & bid",
-            description: "Browse live auctions and find your next vehicle.",
-            icon: Gavel,
-            show: canViewTrade,
-        },
-        {
-            href: "/dashboard/partner",
-            title: "Partner services",
-            description: "Manage delivery, recovery and vehicle inspection services.",
-            icon: Building2,
-            show: true,
-        },
-        {
-            href: "/dashboard/dealer/analytics",
-            title: "Performance",
-            description: "Real dealership analytics, sales and revenue.",
-            icon: BarChart3,
-            show: canViewAnalytics,
-        },
-    ].filter(action => action.show)
-
     const selectedRangeLabel = stats?.range?.label ?? fallbackRangeLabel
 
     const comparisonText = (metric: 'totalViews' | 'soldListings' | 'totalRevenue') => {
@@ -338,10 +302,10 @@ export default function DealerDashboard() {
                                         </div>
                                         <div>
                                             <h1 className="text-2xl md:text-3xl font-black font-heading uppercase tracking-tighter metallic-foil">
-                                                {DEALER_ROUTE_CONFIG[0].title}
+                                                {getDealerRoute('/dashboard/dealer')?.title}
                                             </h1>
                                             <p className="text-[var(--text-muted)] text-xs font-bold uppercase tracking-widest mt-1 opacity-70">
-                                                {DEALER_ROUTE_CONFIG[0].subHeader}, {userName}
+                                                {getDealerRoute('/dashboard/dealer')?.subHeader}, {userName}
                                             </p>
                                             {stats?.isVerified && (
                                                 <div className="mt-1 flex items-center gap-1.5">
@@ -360,6 +324,7 @@ export default function DealerDashboard() {
 
                     {/* ── What needs doing today, most urgent first ── */}
                     {isEmailVerified && <DealerAttentionPanel />}
+                    <DashboardCards mode="dealer" />
 
                     {/* ── Flexible reporting range ── */}
                     <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4">
@@ -440,36 +405,7 @@ export default function DealerDashboard() {
                         />
                     </div>
 
-                    {/* ── Main jobs only: no duplicate route grids ── */}
-                    <section className="space-y-3">
-                        <div>
-                            <h2 className="text-lg font-black font-heading uppercase tracking-tight">Main actions</h2>
-                            <p className="text-xs text-[var(--text-muted)] mt-1">
-                                Go straight to the main parts of your dashboard. Everything else is under More tools in the menu.
-                            </p>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                            {dashboardActions.map(action => {
-                                const Icon = action.icon
-                                return (
-                                    <Link
-                                        key={action.href}
-                                        href={action.href}
-                                        className="dealer-glass-card group flex items-center gap-4 p-5 hover:border-primary/30 transition-all"
-                                    >
-                                        <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                                            <Icon size={19} className="text-primary" />
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="font-black text-sm text-[var(--text-primary)]">{action.title}</p>
-                                            <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{action.description}</p>
-                                        </div>
-                                        <ChevronRight size={17} className="text-[var(--text-muted)] shrink-0 group-hover:translate-x-1 transition-transform" />
-                                    </Link>
-                                )
-                            })}
-                        </div>
-                    </section>
+
 
                 </div>
             </div>

@@ -1,3 +1,4 @@
+import { DashboardCards } from '../../components/DashboardCards';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity,
@@ -209,19 +210,6 @@ export const DealerWebParityOverview: React.FC<Props> = ({
       comparison: comparisonLabel(summary?.comparison?.available ? summary.comparison.soldListings : undefined, range.compare) },
   ];
 
-  const actions: { title: string; description: string; icon: string; destination: DealerHomeDestination; show: boolean }[] = [
-    { title: 'Add vehicle', description: 'Create one new retail or auction listing.',
-      icon: 'add-circle-outline', destination: 'add-vehicle', show: canManageInventory },
-    { title: 'Customers', description: 'Enquiries, offers and follow-up in one sales workflow.',
-      icon: 'people-outline', destination: 'customers', show: canManageCrm },
-    { title: 'Buy & bid', description: 'Live auctions, your bids and completed purchases.',
-      icon: 'hammer-outline', destination: 'buy-and-bid', show: canViewTrade },
-    { title: 'Partner services', description: 'Manage delivery, recovery and vehicle inspection services.',
-      icon: 'business-outline', destination: 'partner-services', show: true },
-    { title: 'Performance', description: 'Real dealership analytics, sales and revenue.',
-      icon: 'bar-chart-outline', destination: 'performance', show: canViewAnalytics },
-  ];
-
   return (
     <View style={styles.main}>
       <View style={styles.hero}>
@@ -305,6 +293,7 @@ export const DealerWebParityOverview: React.FC<Props> = ({
           <Text style={styles.sectionHint}>You're all caught up. Nothing needs your attention right now.</Text>
         )}
       </View>
+      <DashboardCards mode="dealer" />
       <View style={styles.sectionIntro}>
         <Text style={styles.sectionTitle}>Overview</Text>
         <Text style={styles.sectionHint}>
@@ -421,31 +410,7 @@ export const DealerWebParityOverview: React.FC<Props> = ({
         })}
       </View>
 
-      <View style={styles.actionSection}>
-        <Text style={styles.actionsTitle}>Main actions</Text>
-        <Text style={styles.sectionHint}>
-          One entry point for each job. Related tools live inside that area.
-        </Text>
-        {actions.filter(action => action.show).map(action => (
-          <TouchableOpacity
-            key={action.destination}
-            style={styles.actionCard}
-            onPress={() => onNavigate(action.destination)}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityLabel={action.title}
-          >
-            <View style={styles.actionIcon}>
-              <Ionicons name={action.icon as any} size={22} color={Colors.accent} />
-            </View>
-            <View style={styles.actionText}>
-              <Text style={styles.actionTitle}>{action.title}</Text>
-              <Text style={styles.actionDescription}>{action.description}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-          </TouchableOpacity>
-        ))}
-      </View>
+
     </View>
   );
 };

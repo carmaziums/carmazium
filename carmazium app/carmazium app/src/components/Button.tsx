@@ -39,7 +39,7 @@ interface ButtonProps {
   accessibilityHint?: string;
 }
 
-const SIZE_HEIGHT: Record<ButtonSize, number> = { sm: 40, default: 50, lg: 56, icon: 44 };
+const SIZE_HEIGHT: Record<ButtonSize, number> = { sm: 48, default: 52, lg: 56, icon: 48 };
 const SIZE_FONT: Record<ButtonSize, number> = { sm: FontSize.xs, default: FontSize.sm, lg: FontSize.base, icon: FontSize.sm };
 const SIZE_PADDING_H: Record<ButtonSize, number> = { sm: 16, default: 22, lg: 28, icon: 0 };
 
@@ -89,7 +89,7 @@ export const Button: React.FC<ButtonProps> = ({
         !!label && (
           <Text
             style={[styles.label, { fontSize: SIZE_FONT[size], color: labelColor }, textStyle]}
-            numberOfLines={1}
+
           >
             {label}
           </Text>
@@ -102,7 +102,7 @@ export const Button: React.FC<ButtonProps> = ({
   const containerStyle: StyleProp<ViewStyle> = [
     styles.base,
     shapeStyle,
-    { height, paddingHorizontal: SIZE_PADDING_H[size] },
+    { minHeight: height, paddingVertical: 12, paddingHorizontal: SIZE_PADDING_H[size] },
     fullWidth && styles.fullWidth,
     variant === 'outline' && styles.outline,
     variant === 'dark' && styles.dark,
@@ -208,6 +208,8 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   label: {
+    flexShrink: 1,
+    textAlign: 'center',
     fontFamily: FontFamily.bold,
     letterSpacing: 1.2,
     textTransform: 'uppercase',

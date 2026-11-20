@@ -29,8 +29,8 @@ test("description action retains consent and does not alter its API contract", (
     assert.match(cta, /aria-busy=\{isGeneratingDesc\}/)
 })
 
-test("button overrides the shared no-wrap style and fits small mobile widths", () => {
-    assert.match(buttonVariants, /whitespace-nowrap/)
+test("button permits wrapping and fits small mobile widths", () => {
+    assert.match(buttonVariants, /whitespace-normal/)
     assert.match(cta, /\bw-full min-w-0 max-w-full\b/)
     assert.match(cta, /\boverflow-hidden whitespace-normal break-words\b/)
     assert.match(cta, /\bmin-w-0 flex-1 whitespace-normal break-words/)

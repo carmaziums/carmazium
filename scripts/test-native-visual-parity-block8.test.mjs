@@ -15,7 +15,7 @@ const saved = app('screens/main/SavedScreen.tsx');
 const messages = app('screens/main/MessagesScreen.tsx');
 const notifications = app('screens/main/NotificationsScreen.tsx');
 const topBar = app('components/WebsiteTopBar.tsx');
-const drawer = app('components/GlobalDrawer.tsx');
+const drawer = (app('components/GlobalDrawer.tsx') + '\n' + app('lib/dashboardNavigation.ts'));
 const docs = read('docs/native/website-native-visual-parity-block8-20261010.md');
 
 test('Account Settings is website-canonical and has actual nine sections including gated business', () => {

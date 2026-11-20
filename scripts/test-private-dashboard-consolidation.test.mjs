@@ -57,7 +57,7 @@ test("web buyer and seller menus have one My cars and Purchases destination", ()
 })
 
 test("native private dashboard groups selling and buying consistently", () => {
-    const drawer = read("carmazium app/carmazium app/src/components/GlobalDrawer.tsx")
+    const drawer = (read("carmazium app/carmazium app/src/components/GlobalDrawer.tsx") + '\n' + read("carmazium app/carmazium app/src/lib/dashboardNavigation.ts"))
     const stack = read("carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx")
     const cars = read("carmazium app/carmazium app/src/screens/account/MyCarsScreen.tsx")
     // Labels and sections mirror the website DashboardSidebar (Selling/Buying).

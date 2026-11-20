@@ -95,7 +95,6 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
     const [pendingOffersCount, setPendingOffersCount] = React.useState(0)
     const [contactingSupport, setContactingSupport] = React.useState(false)
     const { loading: dealerAccessLoading, hasPermission: hasDealerPermission } = useDealerAccess()
-    const [moreToolsOpen, setMoreToolsOpen] = React.useState(false)
 
     React.useEffect(() => {
         if (!user) return
@@ -200,17 +199,6 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
         activePrefixes: route.activePrefixes,
         badge: dealerBadgeFor(route.href),
     })
-    // Secondary dealer tools: kept out of the main list to keep it short, but
-    // always listed under "More tools" so no dealer option is ever unreachable.
-    const dealerMoreLinks: LinkObj[] = role === 'dealer'
-        ? sortBySection(DEALER_ROUTE_CONFIG.filter(route =>
-            route.hidden && dealerRouteVisible(route)
-            // Old purchase destinations are linked by the three Purchases tabs
-            // and deep-link redirects; never duplicate them in the menu.
-            && route.section !== "Buy"
-        ).map(toDealerLink))
-        : []
-
     // activePrefixes: older standalone pages (opened from notifications and
     // emails) keep the matching menu item highlighted, so buyers and sellers
     // always see where they are.
@@ -234,8 +222,7 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
     // Buyer and seller share one canonical private dashboard. Specialist
     // standalone actions remain accessible from the corresponding tab.
     const sellerLinks: LinkObj[] = unifiedLinks
-    const userMoreLinks: LinkObj[] = []
-    const moreLinks: LinkObj[] = role === 'dealer' ? dealerMoreLinks : userMoreLinks
+    const usesDashboardCards = role === 'dealer' || role === 'buyer' || role === 'seller'
 
     const links: Record<string, LinkObj[]> = {
         buyer: unifiedLinks,
@@ -339,19 +326,9 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
     const mobileLinks = primaryMobileHrefs
         .map(href => currentLinks.find(link => link.href === href))
         .filter((link): link is LinkObj => Boolean(link))
-    // Dealer mobile navigation must expose the same permitted destinations as
-    // the desktop sidebar. Keep the four primary destinations as bottom tabs,
-    // but repeat them inside More so the panel is a complete dealer menu rather
-    // than a partial overflow list that can look like missing functionality.
-    const mobileOverflowLinks = role === 'dealer'
-        // One heading per group (Sell, Buy, Business, Services) in the same
-        // order as the CarMazium app drawer, instead of a second run of
-        // "More tools · …" headings repeating the same groups.
-        ? sortBySection([...currentLinks, ...dealerMoreLinks])
-        : [
-            ...currentLinks.filter(link => !primaryMobileHrefs.includes(link.href)),
-            ...userMoreLinks.map(link => ({ ...link, section: `More tools · ${link.section ?? 'Other'}` })),
-        ]
+    // Account tools live in the customisable dashboard cards. Only admin and
+    // provider workspaces retain their existing overflow navigation.
+    const mobileOverflowLinks = usesDashboardCards ? [] : currentLinks.filter(link => !primaryMobileHrefs.includes(link.href))
 
     const isAdmin = profile?.role === 'ADMIN'
 
@@ -371,14 +348,12 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
         // (e.g. Buy & Bid while on My Bids or Auction Wins).
         return dealerRouteIsActive({ href, activePrefixes }, pathname)
     }
-    const moreToolActive = moreLinks.some(link => pathname === link.href.split('?')[0])
-    const showMoreTools = moreToolsOpen || moreToolActive
 
     return (
         <>
             {/* Mobile Bottom Tab Navigation */}
             <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 backdrop-blur-lg border-t pb-[env(safe-area-inset-bottom)]" style={{ background: 'var(--bg-dropdown)', borderColor: 'var(--border-default)' }}>
-                <div className="grid grid-cols-5 items-center py-2 px-1">
+                <div className="grid items-center py-2 px-1" style={{ gridTemplateColumns: `repeat(${Math.max(1, mobileLinks.length + (usesDashboardCards ? 0 : 1))}, minmax(0, 1fr))` }}>
                     {mobileLinks.map((link) => {
                         const isActive = isLinkActive(link.href, link.activePrefixes)
                         const Icon = link.icon
@@ -416,7 +391,7 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
                             </Link>
                         )
                     })}
-                    <button
+                    {!usesDashboardCards && (<button
                         onClick={toggleMobileMenu}
                         aria-expanded={isMobileMenuOpen}
                         aria-controls="dashboard-mobile-menu"
@@ -426,11 +401,11 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
                     >
                         {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
                         <span className="text-[10px] sm:text-xs mt-1 font-medium">More</span>
-                    </button>
+                    </button>)}
                 </div>
             </div>
 
-            {isMobileMenuOpen && <AccessibleModal label="Dashboard menu" onClose={() => setIsMobileMenuOpen(false)} className="fixed inset-x-0 bottom-0 top-auto m-0 max-h-[90dvh] w-full max-w-none border-0 bg-transparent p-0 text-[var(--text-primary)] backdrop:bg-black/70 backdrop:backdrop-blur-sm">
+            {!usesDashboardCards && isMobileMenuOpen && <AccessibleModal label="Dashboard menu" onClose={() => setIsMobileMenuOpen(false)} className="fixed inset-x-0 bottom-0 top-auto m-0 max-h-[90dvh] w-full max-w-none border-0 bg-transparent p-0 text-[var(--text-primary)] backdrop:bg-black/70 backdrop:backdrop-blur-sm">
             <div id="dashboard-mobile-menu" className="border-t rounded-t-2xl" style={{ background: 'var(--bg-dropdown)', borderColor: 'var(--border-default)' }}>
                 <div className="flex justify-between items-center px-5 pt-4"><h2 className="font-bold">Dashboard menu</h2><button type="button" aria-label="Close dashboard menu" onClick={() => setIsMobileMenuOpen(false)} className="p-3 rounded-lg border border-[var(--border-default)]"><X size={20} /></button></div>
                 <div className="p-4 pb-12 max-h-[68vh] overflow-y-auto">
@@ -457,38 +432,6 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
                                             {link.section}
                                         </p>
                                     )}
-                                    {role === 'dealer' && link.href === '/dashboard/dealer/inventory' ? (
-                                        <div>
-                                            <button type="button"
-                                                onClick={() => setMobileStockExpanded(open => !open)}
-                                                aria-expanded={mobileStockExpanded}
-                                                aria-controls="dealer-stock-submenu"
-                                                className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all ${isActive ? "bg-primary text-white" : "hover:bg-primary/5 dark:hover:bg-[var(--bg-card)]"}`}
-                                                style={!isActive ? { color: 'var(--text-secondary)' } : undefined}
-                                            >
-                                                <span className="flex items-center gap-3"><Icon size={18} /><span className="text-sm font-medium">{link.label}</span></span>
-                                                {mobileStockExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                                            </button>
-                                            {mobileStockExpanded && (
-                                                <nav id="dealer-stock-submenu" aria-label="Stock pages" className="ml-5 mt-1 space-y-1 border-l border-[var(--border-default)] pl-3">
-                                                    {[
-                                                        { label: 'All Inventory', href: '/dashboard/dealer/inventory' },
-                                                        { label: 'Live', href: '/dashboard/dealer/inventory?status=ACTIVE' },
-                                                        { label: 'Under Review', href: '/dashboard/dealer/inventory?status=PENDING_REVIEW' },
-                                                        { label: 'Rejected', href: '/dashboard/dealer/inventory?status=REJECTED' },
-                                                        { label: 'Drafts', href: '/dashboard/dealer/inventory?status=DRAFT' },
-                                                        { label: 'Sold', href: '/dashboard/dealer/inventory?status=SOLD' },
-                                                        ...(hasDealerPermission('MANAGE_INVENTORY') ? [{ label: 'Add Vehicle', href: '/dashboard/dealer/add-listing' }] : []),
-                                                    ].map(item => (
-                                                        <Link key={item.href} href={item.href}
-                                                            onClick={() => setIsMobileMenuOpen(false)}
-                                                            className="flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-primary/5"
-                                                        >{item.label}</Link>
-                                                    ))}
-                                                </nav>
-                                            )}
-                                        </div>
-                                    ) : (
                                     <Link
                                         href={link.href}
                                         aria-current={isActive ? "page" : undefined}
@@ -510,7 +453,6 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
                                         </div>
                                         <ChevronRight size={16} className="opacity-40 shrink-0" />
                                     </Link>
-                                    )}
                                 </React.Fragment>
                             )
                         })}
@@ -607,59 +549,6 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
                             )
                         })}
                     </nav>
-
-                    {moreLinks.length > 0 && (
-                        <div className="mt-3">
-                            <button
-                                type="button"
-                                onClick={() => setMoreToolsOpen(open => !open)}
-                                aria-expanded={showMoreTools}
-                                aria-controls="dealer-more-tools"
-                                className="w-full flex items-center justify-between gap-3 px-3 pt-3 pb-1 text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)] hover:text-primary transition-colors"
-                            >
-                                More tools
-                                <ChevronRight size={14} className={`transition-transform ${showMoreTools ? 'rotate-90' : ''}`} />
-                            </button>
-                            {showMoreTools && (
-                                <nav id="dealer-more-tools" aria-label="More tools" className="space-y-1 mt-1">
-                                    {moreLinks.map((link, index) => {
-                                        const isActive = pathname === link.href.split('?')[0]
-                                        const Icon = link.icon
-                                        const previousSection = index > 0 ? moreLinks[index - 1]?.section : undefined
-                                        const showSection = link.section && link.section !== previousSection
-                                        return (
-                                            <React.Fragment key={link.href}>
-                                                {showSection && (
-                                                    <p className="px-3 pt-2 pb-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)] opacity-70">
-                                                        {link.section}
-                                                    </p>
-                                                )}
-                                                <Link
-                                                    href={link.href}
-                                                    aria-current={isActive ? "page" : undefined}
-                                                    className={`flex items-center justify-between gap-3 px-4 py-2 rounded-lg text-sm transition-all ${isActive
-                                                        ? "bg-primary text-white font-semibold"
-                                                        : "hover:bg-primary/5 dark:hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white"
-                                                        }`}
-                                                    style={!isActive ? { color: 'var(--text-muted)' } : undefined}
-                                                >
-                                                    <div className="flex items-center gap-3 min-w-0">
-                                                        <Icon size={16} className="shrink-0" />
-                                                        <span className="truncate">{link.label}</span>
-                                                    </div>
-                                                    {link.badge && link.badge > 0 ? (
-                                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-primary/20 text-primary'}`}>
-                                                            {link.badge}
-                                                        </span>
-                                                    ) : null}
-                                                </Link>
-                                            </React.Fragment>
-                                        )
-                                    })}
-                                </nav>
-                            )}
-                        </div>
-                    )}
 
                     {isAdmin && role !== 'admin' && (
                         <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-default)' }}>

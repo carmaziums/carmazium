@@ -10,7 +10,7 @@ import {
 describe('MaziuM source-verified public platform knowledge', () => {
     it('covers every main customer role and public workflow', () => {
         const required = [
-            'accounts-and-roles', 'create-new-listing', 'edit-existing-listing',
+            'dashboard-customisation', 'accounts-and-roles', 'create-new-listing', 'edit-existing-listing',
             'sell-caravan-campervan', 'retail-listing-packages', 'dealer-auctions',
             'sale-handover-reward', 'retail-buyer-offers', 'buyer-and-dealer-purchases',
             'verification-and-kyc', 'warranty', 'vehicle-finance',
@@ -32,6 +32,7 @@ describe('MaziuM source-verified public platform knowledge', () => {
     });
 
     it.each([
+        ['How do I reorder dashboard blocks and find the More button?', 'dashboard-customisation'],
         ['how can i update existing listing?', 'edit-existing-listing'],
         ['How do I list my campervan?', 'sell-caravan-campervan'],
         ['What is the premium retail package?', 'retail-listing-packages'],

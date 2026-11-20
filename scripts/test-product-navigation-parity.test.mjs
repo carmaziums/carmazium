@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { dealerMenuSectionOrders, dealerMenuSectionsMatch } from './lib/dealer-menu-parity.mjs';
 
 const web = readFileSync(new URL('../src/config/dealerRouteConfig.ts', import.meta.url), 'utf8');
-const native = readFileSync(new URL('../carmazium app/carmazium app/src/components/GlobalDrawer.tsx', import.meta.url), 'utf8');
+const native = readFileSync(new URL('../carmazium app/carmazium app/src/lib/dashboardNavigation.ts', import.meta.url), 'utf8');
 
 test('all five actual menu groups match without counting nested settings parameters', () => {
   assert.deepEqual(dealerMenuSectionOrders(web, native), {

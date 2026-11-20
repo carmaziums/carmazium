@@ -23,7 +23,6 @@ import { SavedScreen } from '../screens/main/SavedScreen';
 import { DealerProfileScreen } from '../screens/main/DealerProfileScreen';
 import { DealerInventoryScreen } from '../screens/main/DealerInventoryScreen';
 import { DealerLeadsScreen } from '../screens/main/DealerLeadsScreen';
-import { useDrawer } from '../context/DrawerContext';
 import { useDealerAccess } from '../hooks/useDealerAccess';
 import { withDealerGate } from '../components/DealerGate';
 import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScreen';
@@ -93,7 +92,6 @@ export type TabParamList = {
   DealerStock: { status?: import('../screens/main/DealerInventoryScreen').FilterTab } | undefined;
   DealerCustomers: undefined;
   DealerBuyBid: { initialSection?: 'live' | 'bids' } | undefined;
-  DealerMore: undefined;
 };
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -132,7 +130,6 @@ const TAB_CONFIG: {
   { name: 'DealerStock', icon: 'car-outline', iconActive: 'car', label: 'Stock', iconType: 'ionicons' },
   { name: 'DealerCustomers', icon: 'people-outline', iconActive: 'people', label: 'Customers', iconType: 'ionicons' },
   { name: 'DealerBuyBid', icon: 'gavel', iconActive: 'gavel', label: 'Auctions', iconType: 'material-community' },
-  { name: 'DealerMore', icon: 'menu-outline', iconActive: 'menu', label: 'More', iconType: 'ionicons' },
 ];
 
 // ─── Animated tab icon: spring-scales (1.0 → 1.2 → 1.0) on focus ─────────────
@@ -197,7 +194,6 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   const { fontScale } = useWindowDimensions();
   const role = useAuthStore((s) => s.role);
   const accountRole = useAuthStore((s) => s.accountRole);
-  const { isOpen: isDrawerOpen, openDrawer, closeDrawer } = useDrawer();
   const dealerMode = role === 'dealer' && accountRole === 'dealer';
   const { loading: dealerAccessLoading, hasPermission } = useDealerAccess(dealerMode);
   const visibleRoutes = state.routes.filter((route: { name: string }) => {
@@ -208,7 +204,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
     if (route.name === 'DealerStock') return !dealerAccessLoading && hasPermission('VIEW_INVENTORY');
     if (route.name === 'DealerCustomers') return !dealerAccessLoading && hasPermission('MANAGE_CRM');
     if (route.name === 'DealerBuyBid') return !dealerAccessLoading && hasPermission('VIEW_TRADE');
-    return true; // Home and More remain reachable.
+    return true; // Dashboard always remains reachable.
   });
 
   // Stable press handlers keyed by route key — prevents closure recreation on every render
@@ -216,12 +212,6 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
     const handlers: Record<string, () => void> = {};
     state.routes.forEach((route: any, index: number) => {
       handlers[route.key] = () => {
-        if (route.name === 'DealerMore') {
-          // Match the website's active More state and close-on-second-tap.
-          if (isDrawerOpen) closeDrawer();
-          else openDrawer();
-          return;
-        }
         const isFocused = state.index === index;
         const event = navigation.emit({
           type: 'tabPress',
@@ -234,7 +224,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
       };
     });
     return handlers;
-  }, [state.routes, state.index, navigation, isDrawerOpen, openDrawer, closeDrawer]);
+  }, [state.routes, state.index, navigation]);
 
   return (
     // Match website DashboardSidebar's edge-to-edge five-item bar, including
@@ -250,8 +240,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
       <View style={styles.tabBarInner}>
         {visibleRoutes.map((route: any) => {
           const config = TAB_CONFIG.find((c) => c.name === route.name)!;
-          const isMore = route.name === 'DealerMore';
-          const isFocused = isMore ? isDrawerOpen : state.routes[state.index]?.name === route.name;
+          const isFocused = state.routes[state.index]?.name === route.name;
           const onPress = pressHandlers[route.key];
 
           return (
@@ -262,8 +251,8 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
               activeOpacity={0.75}
               accessibilityRole="tab"
               accessibilityLabel={config.label === 'DASHBOARD' ? 'Dashboard' : config.label}
-              accessibilityState={isMore ? { selected: isDrawerOpen, expanded: isDrawerOpen } : { selected: isFocused }}
-              accessibilityHint={isMore ? (isDrawerOpen ? 'Closes the dealer menu' : 'Opens the dealer menu') : isFocused ? undefined : `Switches to the ${config.label.toLowerCase()} tab`}
+              accessibilityState={{ selected: isFocused }}
+              accessibilityHint={isFocused ? undefined : `Switches to the ${config.label.toLowerCase()} tab`}
             >
               {/* Active dot above focused tabs */}
               {isFocused && (
@@ -272,7 +261,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
               <View style={[styles.iconWrapper, isFocused && styles.iconWrapperActive]}>
                 <AnimatedTabIcon
                   focused={isFocused}
-                  iconName={isMore && isDrawerOpen ? 'close' : isFocused ? config.iconActive : config.icon}
+                  iconName={isFocused ? config.iconActive : config.icon}
                   iconType={config.iconType}
                   color={isFocused ? Colors.accent : Colors.tabInactive}
                   size={config.iconType === 'material-community' ? 22 : 20}
@@ -321,7 +310,6 @@ export const TabNavigator: React.FC = () => {
       <Tab.Screen name="DealerStock" component={GatedDealerStockTab} />
       <Tab.Screen name="DealerCustomers" component={GatedDealerCustomersTab} />
       <Tab.Screen name="DealerBuyBid" component={GatedDealerBuyBidTab} />
-      <Tab.Screen name="DealerMore" component={ProfileTabScreen} />
     </Tab.Navigator>
   );
 };

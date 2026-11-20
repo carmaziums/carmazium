@@ -94,7 +94,7 @@ test('My Bids matches web active-position endpoint, while full history remains r
 });
 
 test('prior dealer and consumer tabs plus provenance/limits remain intact',()=>{
-  for(const name of ['DealerHome','DealerStock','DealerCustomers','DealerMore','Home','Search','Live','Saved','Profile']){
+  for(const name of ['DealerHome','DealerStock','DealerCustomers','Home','Search','Live','Saved','Profile']){
     assert.ok(tab.includes('<Tab.Screen name="'+name+'"'));
   }
   for(const x of ['PR #476','PR #478','PR #479','PR #480','PR #481','PR #482',

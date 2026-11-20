@@ -18,7 +18,7 @@ test('unified Account Settings shortcut is visible without scrolling through dra
   assert.ok(card !== -1 && shortcut > card, 'Settings shortcut must sit right under the account identity');
   assert.ok(top.includes("navigation.navigate('Settings')"));
   assert.ok(top.includes('accessibilityLabel="Open all account settings"'));
-  const drawer = mobile('src/components/GlobalDrawer.tsx');
+  const drawer = (mobile('src/components/GlobalDrawer.tsx') + '\n' + mobile('src/lib/dashboardNavigation.ts'));
   assert.ok(drawer.includes("stackScreen: 'Settings'"));
   const settings = mobile('src/screens/main/SettingsScreen.tsx');
   for (const section of ['personal','verification','notifications','payouts','security']) {
@@ -28,7 +28,7 @@ test('unified Account Settings shortcut is visible without scrolling through dra
 });
 
 test('QR/QA feedback is explicit opt-in and stays out of the production drawer', () => {
-  const drawer = mobile('src/components/GlobalDrawer.tsx');
+  const drawer = (mobile('src/components/GlobalDrawer.tsx') + '\n' + mobile('src/lib/dashboardNavigation.ts'));
   assert.ok(drawer.includes("const IS_QA_REVIEW_BUILD = process.env.EXPO_PUBLIC_QA_READ_ONLY === '1';"));
   assert.ok(drawer.includes('{IS_QA_REVIEW_BUILD && ('));
   assert.ok(drawer.includes('onPress={handleShareQaFeedback}'));

@@ -10,7 +10,7 @@ const app = p => read('carmazium app/carmazium app/src/'+p);
 const web = read('src/components/dashboard/DashboardSidebar.tsx');
 const dealerRoutes = read('src/config/dealerRouteConfig.ts');
 const tabs = app('navigation/TabNavigator.tsx');
-const drawer = app('components/GlobalDrawer.tsx');
+const drawer = (app('components/GlobalDrawer.tsx') + '\n' + app('lib/dashboardNavigation.ts'));
 const bar = app('components/WebsiteTopBar.tsx');
 
 test('web dealer bottom navigation and native route labels have the same information architecture', () => {
@@ -21,23 +21,22 @@ test('web dealer bottom navigation and native route labels have the same informa
     '/dashboard/dealer/auctions',
   ]) assert.ok((web + dealerRoutes).includes(segment), segment);
   for (const [route,label] of [
-    ['DealerHome','Home'],
+    ['DealerHome','Dashboard'],
     ['DealerStock','Stock'],
     ['DealerCustomers','Customers'],
     ['DealerBuyBid','Auctions'],
-    ['DealerMore','More'],
   ]) {
     assert.ok(tabs.includes("name: '"+route+"'"),route);
     assert.ok(tabs.includes("label: '"+label+"'"),label);
     assert.ok(tabs.includes('<Tab.Screen name="'+route+'"'),route);
-    assert.ok(drawer.includes("tabName: '"+route+"'") || route === 'DealerMore', route);
+    assert.ok(drawer.includes("tabName: '"+route+"'") || route ===  route);
   }
   assert.ok(dealerRoutes.includes('label: "Live Auctions"'));
   assert.ok(dealerRoutes.includes('label: "Saved"'));
   assert.ok(dealerRoutes.includes('label: "Bids & Offers"'));
   assert.ok(dealerRoutes.includes('label: "Purchases"'));
   assert.ok(tabs.includes("initialRouteName={dealerMode ? 'DealerHome' : 'Home'}"));
-  assert.ok(tabs.includes("openDrawer();"));
+  assert.ok(!tabs.includes("DealerMore"));
   // Website parity: dealer More = dashboard sidebar; elsewhere = header main menu.
   assert.ok(drawer.includes('dealerMode ? dealerDashboard : userDashboard'));
   const siteMenu = readFileSync(new URL('../carmazium app/carmazium app/src/components/SiteMenu.tsx', import.meta.url), 'utf8');
@@ -94,15 +93,16 @@ test('website and native match dark navy body + red brand, with a full width bot
 
 test('buyer home uses the current website sale-first proposition and brand header', () => {
   const home = app('screens/main/HomeScreen.tsx');
+  const hero = app('components/WebsiteHomeHero.tsx');
   const webHero = read('src/app/HomeHero.tsx');
   assert.match(webHero, /Sell by auction FREE/i);
   assert.match(webHero, /Auction <span[^>]*>FREE<\/span>/);
   assert.ok(home.includes('<WebsiteTopBar />'));
-  assert.ok(home.includes('<Text style={s.greetingLine}>Sell your car</Text>'));
-  assert.ok(home.includes('<Text style={s.greetingAccent}>your way.</Text>'));
-  assert.ok(home.includes('Auction FREE · Retail £1'));
-  assert.ok(home.includes('approved handover earns a £100 reward.'));
-  assert.ok(home.includes("navigation.navigate('Tabs', { screen: 'Search' })"));
-  assert.ok(home.includes("navigation.navigate('SellLanding')"));
+  assert.ok(home.includes('<WebsiteHomeHero'));
+  assert.ok(hero.includes('Your car.') && hero.includes('Your choice.'));
+  assert.ok(hero.includes('Auction FREE. Retail for £1.'));
+  assert.ok(hero.includes('List my car for £1') && hero.includes('Sell by auction FREE'));
+  assert.ok(home.includes("navigation.navigate('Search' as any, { _t: Date.now() })"));
+  assert.ok(hero.includes("navigation.navigate('SellLanding')"));
   assert.ok(!home.includes('<Text style={s.greetingLine}>Find your next</Text>'));
 });

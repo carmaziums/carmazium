@@ -65,7 +65,7 @@ test("native chat moves AI settings to the header without showing a large panel"
     assert.match(src, /Alert\.alert\('MaziuM AI'/)
     assert.match(src, /Pause AI replies/)
     assert.match(src, /Resume AI replies/)
-    assert.match(src, /privacy-policy/)
+    assert.match(src, /navigation\.navigate\('PrivacyPolicy'\)/)
     assert.match(src, /Ask MaziuM or request a person/)
     assert.doesNotMatch(src, /supportAiWrap/)
     assert.doesNotMatch(src, /supportAiDisclosure/)

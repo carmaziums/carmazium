@@ -18,6 +18,18 @@ export type PlatformKnowledgeTopic = {
 
 export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
     {
+        id: 'dashboard-customisation',
+        triggers: /\b(?:dashboard|customis[ez]|customiz[ez]|hide card|show card|reorder|more tools|more button|dashboard blocks)\b/i,
+        facts: [
+            'Dealer and buyer/seller dashboards expose their permitted tools as colourful cards on both website and the updated native app. The customer More/More tools menu has been replaced by these cards.',
+            'Open Dashboard, then Customise to show or hide cards, move them Earlier or Later, or Reset layout. Choose Done to leave customisation. Cards are shown by default and hiding a card never deletes the feature or account data.',
+            'Layout preferences are remembered separately for each signed-in account and dashboard type in that browser or app device. They are not synchronised between the website and app or across devices.',
+            'Dealer staff see only tools their permissions allow. Restoring a hidden card cannot grant missing access. An older installed app may still show its previous navigation until the new app build is installed.',
+            'MaziuM can explain these controls but cannot change a customer layout or confirm it was saved. If a save error is shown, use Retry save.'
+        ].join(' '),
+        sources: ['src/components/dashboard/DashboardCards.tsx','src/components/dashboard/DashboardSidebar.tsx','src/data/dashboardCards.json','carmazium app/carmazium app/src/components/DashboardCards.tsx','carmazium app/carmazium app/src/navigation/TabNavigator.tsx']
+    },
+    {
         id: 'accounts-and-roles',
         triggers: /\b(?:sign ?up|register|accounts?|login|log in|password|seller|buyer|trader|dealer|role|partner account|business account)\b/i,
         facts: [
@@ -349,6 +361,7 @@ export function platformKnowledgeFor(query: string, maxTopics = 5): string {
     // "dealer", "account" and "support". Otherwise the first five generic
     // catalogue entries can displace the topic the customer actually asked.
     const priority: Readonly<Record<string, number>> = {
+        'dashboard-customisation': 115,
         'edit-existing-listing': 110,
         'listing-status-and-relisting': 105,
         'listing-validation-review': 100,

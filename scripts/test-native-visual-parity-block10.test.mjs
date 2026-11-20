@@ -126,7 +126,8 @@ test('Home AI Search cannot bypass the same explicit OpenAI consent used on nati
   assert.ok(handler.indexOf("await ensureHomeAiSearchConsent()") < handler.indexOf('naturalLanguageSearch(query)'));
   assert.ok(search.includes('ensureAiSearchConsent()'), 'match previously consent-gated Search entry');
   assert.ok(homeApi.includes('aiConsentAcknowledged: true'), 'transport acknowledges prior explicit consent');
-  assert.ok(home.includes('accessibilityLabel="AI Search"'));
+  assert.ok(home.includes('accessibilityLabel="Find matching cars"'));
+  assert.ok(home.includes('accessibilityLabel="Search cars using MaziuM AI"'));
 });
 
 test('source gate and docs cannot silently claim public website capture is a matched device pair',()=>{

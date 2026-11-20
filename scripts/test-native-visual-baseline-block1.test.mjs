@@ -41,7 +41,7 @@ test('website dealer tab URLs and merged native tab mappings remain inventoried'
     assert.ok(nativeTabs.includes('name="' + route + '" component={' + screen + '}'), 'native route ' + route);
     assert.ok(doc.includes(href) && doc.includes(route), 'documented paired route ' + route);
   }
-  assert.ok(nativeTabs.includes('DealerMore'), 'preserve More tab from merged PR #476');
+  assert.ok(!nativeTabs.includes('DealerMore'), 'dashboard cards replace the More tab');
   for (const link of ["hasPermission('VIEW_INVENTORY')", "hasPermission('MANAGE_CRM')", "hasPermission('VIEW_TRADE')"]) {
     assert.ok(nativeTabs.includes(link), 'preserve dealer permission gate ' + link);
   }

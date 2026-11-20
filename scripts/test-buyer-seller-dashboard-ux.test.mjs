@@ -85,9 +85,10 @@ test("page headings match the menu and offer links to delivery requests and rece
     assert.ok(dashboard.includes('href="/dashboard/buyer/offers?legacy=1"'))
     assert.ok(dashboard.includes('href="/dashboard/seller/earnings?legacy=1"'))
     assert.match(dashboard, /<UserAttentionPanel data=\{data\} loading=\{loading\} \/>/)
-    // Existing overview actions are all still there.
-    for (const kept of ['href="/sell"', 'href="/search"', "setTab('bids')", "setTab('messages')", "setTab('offers')", "setTab('earnings')", "setTab('watchlist')"]) {
-        assert.ok(dashboard.includes(kept), kept)
+    const cards = JSON.parse(read('src/data/dashboardCards.json')).personal
+    assert.match(dashboard, /<DashboardCards mode="personal"/)
+    for (const href of ['/sell', '/search', '/dashboard/user?tab=bids', '/dashboard/user?tab=messages', '/dashboard/user?tab=offers', '/dashboard/user?tab=earnings', '/dashboard/user?tab=watchlist']) {
+        assert.ok(cards.some(card => card.href === href), href)
     }
 })
 

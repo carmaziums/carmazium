@@ -1,3 +1,4 @@
+import { nativeContentTarget } from '../../lib/nativeContentLinks';
 import React, { useState, useRef, useEffect, useContext, useMemo, useCallback } from 'react';
 import {
   View,
@@ -21,7 +22,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { CommonActions, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
@@ -421,7 +422,7 @@ export const ChatScreen: React.FC = () => {
     // replying. Let customers request resume; retain its authoritative refusal.
     Alert.alert('MaziuM AI', undefined, [
       { text: aiPaused ? 'Resume AI replies' : 'Pause AI replies', onPress: () => { void toggleSupportAi(); } },
-      { text: 'Privacy', onPress: () => { void Linking.openURL('https://www.carmazium.com/privacy-policy'); } },
+      { text: 'Privacy', onPress: () => { navigation.navigate('PrivacyPolicy'); } },
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
@@ -693,16 +694,17 @@ export const ChatScreen: React.FC = () => {
   }, [threadId, newestMessage, user?.id, room?.context, revealLatest]);
 
   const openSupportLink = useCallback((url: string) => {
-    const parsed = new URL(url);
-    if (parsed.pathname === '/dashboard/user' && parsed.searchParams.get('tab') === 'cars') {
-      navigation.navigate('MyCars');
-    } else if (parsed.pathname === '/search' && !parsed.search) {
-      navigation.navigate('Tabs', { screen: 'Search' });
-    } else if (parsed.pathname === '/sell' && !parsed.search) {
-      navigation.navigate('SellCarFlow');
-    } else {
-      Linking.openURL(url).catch(() => showToast('Could not open this link. Please try again.', 'info'));
-    }
+    try {
+      const target = nativeContentTarget(url);
+      if (target) { navigation.dispatch(CommonActions.navigate(target.name, target.params)); return; }
+      const parsed = new URL(url);
+      if (['carmazium.com', 'www.carmazium.com'].includes(parsed.hostname)) {
+        showToast('Open your Dashboard to find this tool, or ask support for help.', 'info'); return;
+      }
+      if (['https:', 'mailto:', 'tel:'].includes(parsed.protocol)) {
+        Linking.openURL(url).catch(() => showToast('Could not open this link. Please try again.', 'info'));
+      }
+    } catch { showToast('Could not open this link. Please try again.', 'info'); }
   }, [navigation, showToast]);
 
 

@@ -25,7 +25,6 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 import { haptics } from '../../lib/haptics';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
-import { useDrawer } from '../../context/DrawerContext';
 
 import { IconButton } from '../../components/IconButton';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -112,7 +111,6 @@ const ListingRow: React.FC<{
 
 export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { openDrawer } = useDrawer();
   const [listings, setListings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -257,9 +255,9 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
             <Ionicons name="heart-outline" size={24} color={Colors.textSecondary} />
             <Text style={styles.tabLabel}>SAVED</Text>
          </TouchableOpacity>
-         <TouchableOpacity style={styles.tabItem} onPress={openDrawer} activeOpacity={0.8}>
+         <TouchableOpacity style={styles.tabItem} onPress={() => navTab('Profile')} activeOpacity={0.8}>
             <Ionicons name="person" size={24} color={Colors.accent} />
-            <Text style={[styles.tabLabel, { color: Colors.accent }]}>PROFILE</Text>
+            <Text style={[styles.tabLabel, { color: Colors.accent }]}>DASHBOARD</Text>
          </TouchableOpacity>
       </View>
   );

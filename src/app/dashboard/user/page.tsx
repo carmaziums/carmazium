@@ -1,4 +1,6 @@
 "use client"
+
+import { DashboardCards } from "@/components/dashboard/DashboardCards"
 import * as React from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { 
@@ -255,7 +257,7 @@ function OverviewTab({
     setTab: (t: string) => void
 }) {
     if (error && !data && !loading) {
-        return <ErrorState message={error} onRetry={onRetry} className="min-h-[50vh]" />
+        return <div className="space-y-8"><DashboardCards mode="personal" /><ErrorState message={error} onRetry={onRetry} className="min-h-[50vh]" /></div>
     }
 
     return (
@@ -270,25 +272,7 @@ function OverviewTab({
             {/* What needs doing today, most urgent first */}
             <UserAttentionPanel data={data} loading={loading} />
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <Link href="/sell" className="flex items-center gap-3 p-4 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors">
-                    <div className="w-9 h-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0"><PlusCircle size={18} /></div>
-                    <div className="min-w-0"><p className="font-bold text-sm">Sell a Car</p><p className="text-[11px] text-[var(--text-muted)] truncate">Create a listing</p></div>
-                </Link>
-                <Link href="/search" className="flex items-center gap-3 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition-colors">
-                    <div className="w-9 h-9 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center shrink-0"><Car size={18} /></div>
-                    <div className="min-w-0"><p className="font-bold text-sm">Buy a Car</p><p className="text-[11px] text-[var(--text-muted)] truncate">Browse vehicles</p></div>
-                </Link>
-                <button type="button" onClick={() => setTab('bids')} className="text-left flex items-center gap-3 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 transition-colors">
-                    <div className="w-9 h-9 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0"><Gavel size={18} /></div>
-                    <div className="min-w-0"><p className="font-bold text-sm">My Offers</p><p className="text-[11px] text-[var(--text-muted)] truncate">Track offers sent</p></div>
-                </button>
-                <button type="button" onClick={() => setTab('messages')} className="text-left flex items-center gap-3 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 transition-colors">
-                    <div className="w-9 h-9 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0"><MessageSquare size={18} /></div>
-                    <div className="min-w-0"><p className="font-bold text-sm">Messages</p><p className="text-[11px] text-[var(--text-muted)] truncate">Open your inbox</p></div>
-                </button>
-            </div>
+            <DashboardCards mode="personal" />
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

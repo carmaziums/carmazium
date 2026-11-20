@@ -10,7 +10,7 @@ const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const app = path => readFileSync(resolve(root, 'carmazium app/carmazium app/src/' + path), 'utf8');
 const web = path => readFileSync(resolve(root, path), 'utf8');
 const tabs = app('navigation/TabNavigator.tsx');
-const drawer = app('components/GlobalDrawer.tsx');
+const drawer = (app('components/GlobalDrawer.tsx') + '\n' + app('lib/dashboardNavigation.ts'));
 const dealerHome = app('screens/main/DealerProfileScreen.tsx');
 const top = app('components/WebsiteTopBar.tsx');
 const hamburger = app('components/HamburgerButton.tsx');
@@ -38,16 +38,11 @@ test('actual website dealer bottom More panel is matched by native dealer mode o
   assert.ok(drawer.includes("BackHandler.addEventListener('hardwareBackPress'"));
 });
 
-test('More is a real toggle with active/expanded state, but not an extra route', () => {
-  assert.ok(tabs.includes("if (isDrawerOpen) closeDrawer();"));
-  assert.ok(tabs.includes('else openDrawer();'));
-  assert.ok(tabs.includes("const isFocused = isMore ? isDrawerOpen : state.routes[state.index]?.name === route.name;"));
-  assert.ok(tabs.includes('expanded: isDrawerOpen'));
-  assert.ok(tabs.includes("isMore && isDrawerOpen ? 'close'"));
-  assert.ok(tabs.includes('<Tab.Screen name="DealerMore" component={ProfileTabScreen} />'));
-  // More opens the website dealer sidebar (Dashboard › Sell › Buy › Business › Services).
-  assert.ok(drawer.includes('const dealerDashboard = ('));
-  assert.ok(drawer.includes("tabName: 'DealerStock'") && drawer.includes("tabName: 'DealerCustomers'"));
+test('dashboard cards replace the More tab while keeping the main dashboard reachable', () => {
+  assert.ok(!tabs.includes('DealerMore'));
+  assert.ok(tabs.includes('<Tab.Screen name="DealerHome"'));
+  assert.ok(web('src/app/dashboard/dealer/page.tsx').includes('<DashboardCards mode="dealer"'));
+  assert.ok(web('src/components/dashboard/DashboardSidebar.tsx').includes('!usesDashboardCards && isMobileMenuOpen'));
 });
 
 test('website-styled header uses the real asset, adapts logo to viewport and toggles menu', () => {

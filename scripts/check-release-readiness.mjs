@@ -137,7 +137,9 @@ if (
   !mobileDrawer.includes('onNavigate={navigateSite}') ||
   !mobileDrawer.includes('screen: target.screen') ||
   !mobileSiteMenu.includes("label: 'Privacy', target: { screen: 'PrivacyPolicy' }") ||
-  !mobilePrivacy.includes('https://www.carmazium.com/privacy-policy')
+  !mobilePrivacy.includes("from './NativeInformationScreens'") ||
+  !read('carmazium app/carmazium app/src/screens/main/NativeInformationScreens.tsx').includes('html={nativeDocuments.privacy}') ||
+  !read('carmazium app/carmazium app/src/data/nativeDocuments.ts').includes('OpenAI')
 ) {
   fail('Native/web privacy or account-deletion access regressed');
 } else {
