@@ -51,9 +51,9 @@ export default function ServicesPage() {
             badge: "Paid job marketplace",
         },
         {
-            title: "Vehicle Inspection",
+            title: "Vehicle & Cosmetic Inspection",
             icon: GiMagnifyingGlass,
-            desc: "Request an independent vehicle inspection and receive quotes from approved inspection providers before you commit to a car.",
+            desc: "Request a vehicle inspection, a cosmetic condition report, or both. Approved providers quote for work matching their services and locations.",
             color: "text-emerald-600 dark:text-emerald-400",
             bg: "bg-emerald-500/10",
             link: inspectionServiceEnabled ? "/services/inspection" : undefined,
@@ -151,7 +151,7 @@ export default function ServicesPage() {
                             <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><PlusCircle size={20} /></div>
                             <p className="text-xs font-black uppercase tracking-[0.18em] text-primary">For customers</p>
                             <h2 className="mt-2 text-xl font-bold">Post one job and compare competing quotes</h2>
-                            <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">Choose Delivery, Collection, Recovery or Vehicle Inspection. Your job is shown only to businesses approved for that service type.</p>
+                            <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">Choose Delivery, Collection, Recovery, Vehicle Inspection or Cosmetic Inspection. Your job is shown only to businesses approved for that service type.</p>
                             <div className="mt-5 flex flex-wrap gap-2">
                                 <Button asChild><Link href="/services/jobs/new">Post a Job</Link></Button>
                                 <Button asChild variant="outline"><Link href="/services/jobs">My Posted Jobs</Link></Button>
