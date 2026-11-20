@@ -255,7 +255,7 @@ export const ServicesScreen: React.FC = () => {
         <View style={styles.noteCard}>
           <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={styles.noteText}>
-            Delivery and inspection are paid service jobs with competing provider quotes and CarMazium checkout. Warranty enquiries are handled directly by admin. Finance applications continue externally with the provider selected by admin; prospective partners contact our team. CarMazium does not make lending decisions or guarantee approval.
+            Compare delivery and inspection quotes, then pay through CarMazium. For a warranty, choose your cover and pay through CarMazium. Our team arranges the policy through Pulse Cars Limited. Finance applications continue with the selected provider, who decides whether to approve them.
           </Text>
         </View>
 
