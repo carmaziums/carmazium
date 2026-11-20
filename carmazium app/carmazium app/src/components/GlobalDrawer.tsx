@@ -78,8 +78,10 @@ interface MenuItem {
 // Website provider sidebar (DashboardSidebar.tsx `provider` links).
 const PROVIDER_ITEMS: MenuItem[] = [
   { id: 'provider-home', section: 'Business', label: 'Partner Home', icon: 'business-outline', iconLib: 'ion', stackScreen: 'PartnerDashboard' },
-  { id: 'provider-overview', section: 'Services', label: 'Service Overview', icon: 'grid-outline', iconLib: 'ion', stackScreen: 'ProviderCapabilities' },
+  { id: 'provider-overview', section: 'Services', label: 'Service Overview', icon: 'grid-outline', iconLib: 'ion', webPath: '/dashboard/service' },
   { id: 'provider-jobs', section: 'Services', label: 'Available Jobs', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'ProviderJobs' },
+  { id: 'provider-my-work', section: 'Services', label: 'My Work', icon: 'briefcase-outline', iconLib: 'ion', webPath: '/dashboard/service/jobs?tab=mine' },
+  { id: 'provider-my-services', section: 'Services', label: 'My services', icon: 'shield-checkmark-outline', iconLib: 'ion', stackScreen: 'ProviderCapabilities' },
   { id: 'provider-messages', section: 'Account', label: 'Messages', icon: 'chatbubbles-outline', iconLib: 'ion', stackScreen: 'ProviderMessages' },
   { id: 'provider-settings', section: 'Account', label: 'Account Settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings' },
 ];
@@ -115,6 +117,7 @@ const DEALER_ITEMS: MenuItem[] = [
   { id: 'dealer-home', section: 'Dashboard', label: 'Home', icon: 'grid-outline', iconLib: 'ion', tabName: 'DealerHome' },
   { id: 'dealer-stock', section: 'Sell', label: 'Stock', icon: 'car-outline', iconLib: 'ion', requiredPermission: 'VIEW_INVENTORY', tabName: 'DealerStock' },
   { id: 'dealer-customers', section: 'Sell', label: 'Customers', icon: 'people-outline', iconLib: 'ion', requiredPermission: 'MANAGE_CRM', tabName: 'DealerCustomers' },
+  { id: 'dealer-guest-enquiries', section: 'Sell', label: 'Guest enquiries', icon: 'chatbubbles-outline', iconLib: 'ion', requiredPermission: 'MANAGE_CRM', webPath: '/dashboard/enquiries' },
   { id: 'dealer-auctions', section: 'Sell', label: 'My Auctions', icon: 'gavel', iconLib: 'mci', requiredPermission: 'VIEW_TRADE', stackScreen: 'SellerAuctions' },
   { id: 'dealer-offers', section: 'Sell', label: 'Offers received', icon: 'pricetag-outline', iconLib: 'ion', requiredPermission: 'MANAGE_OFFERS', stackScreen: 'DealerOffers' },
   { id: 'dealer-live', section: 'Buy', label: 'Live Auctions', icon: 'gavel', iconLib: 'mci', requiredPermission: 'VIEW_TRADE', tabName: 'DealerBuyBid', tabParams: { initialSection: 'live' } },
