@@ -1,0 +1,16 @@
+import {readFileSync,writeFileSync} from 'node:fs';import {createRequire} from 'node:module';import {resolve} from 'node:path';const root=resolve(import.meta.dirname,'..'),require=createRequire(resolve(root,'source/backend/package.json')),qa=JSON.parse(readFileSync(resolve(root,'private/qa-env.json'),'utf8')),fixtures=JSON.parse(readFileSync(resolve(root,'private/fixtures.json'),'utf8')),f=JSON.parse(readFileSync(resolve(root,'private/checkout-fixtures.json'),'utf8'));
+process.env.DATABASE_URL='postgresql://postgres:'+qa.password+'@127.0.0.1:5544/carmazium_sandbox_utf8';process.env.NOTIFICATION_EMAILS_ENABLED='false';const key=readFileSync(resolve(root,'private/stripe.key'),'utf8').trim();if(!key.startsWith('sk_test_'))throw Error('Test key only');
+const {PrismaClient}=require('@prisma/client'),db=new PrismaClient();const config={get:k=>({STRIPE_SECRET_KEY:key,FRONTEND_URL:'http://127.0.0.1:8080'})[k]};const email={sendBrandedEmail:async()=>({sent:false,reason:'isolated QA'})};const gateway={sendNotification:()=>{},isUserConnected:()=>false};const {NotificationsService}=require('./dist/notifications/notifications.service.js');const notify=new NotificationsService(db,{get:()=>gateway},email);const {PaymentsService}=require('./dist/payments/payments.service.js');const payments=new PaymentsService(db,config,{},notify,email,{});const {ServicesService}=require('./dist/services/services.service.js');const services=new ServicesService(db,notify,email,payments,config);const {ServiceOperationsService}=require('./dist/services/service-operations.service.js');const ops=new ServiceOperationsService(db,services,notify);
+
+async function api(role,path,body,expected=201){const r=await fetch('http://127.0.0.1:8080'+path,{method:body?'POST':'GET',headers:{'content-type':'application/json',cookie:f.cookies[role]},...(body?{body:JSON.stringify(body)}:{})});const j=await r.json();if(r.status!==expected)throw Error(path+' '+r.status+' '+JSON.stringify(j));return j.data??j;}
+const stripe=await payments.getStripeClient(),result=[];
+for(const [index,role,kind,status] of [[2,'buyer','CANCEL','CANCELLED'],[3,'provider','CANNOT_ATTEND','OPEN']]){
+ const id=f.items[index].jobId,payment=await db.servicePayment.findUniqueOrThrow({where:{jobId:id}}),sessionId=payment.stripeCheckoutSessionId;
+ await api(role,'/services/jobs/'+id+'/change-request',{kind,reason:'Synthetic sandbox unpaid acceptance cancellation'});
+ const job=await db.serviceJob.findUniqueOrThrow({where:{id}}),remaining=await db.servicePayment.count({where:{jobId:id}}),session=await stripe.checkout.sessions.retrieve(sessionId);
+ if(job.status!==status||remaining!==0||session.status!=='expired'||session.livemode)throw Error('Unpaid cancellation state mismatch');
+ result.push({kind,jobId:id,status:job.status,paymentRows:remaining,checkoutStatus:session.status});
+ if(status==='OPEN') await api('buyer','/services/jobs/'+id+'/cancel',{reason:'Synthetic sandbox cleanup after provider cancellation'});
+}
+const paymentsLeft=await db.servicePayment.findMany({select:{jobId:true,status:true,grossPence:true,refundAmountPence:true,stripeRefundId:true,stripeReversalId:true}});
+console.log(JSON.stringify({result,paymentsLeft},null,2));writeFileSync(resolve(root,'unpaid-cancellation-result.json'),JSON.stringify({result,paymentsLeft},null,2));await db.$disconnect();
