@@ -2167,12 +2167,20 @@ export class ServicesService {
         const stripe = await this.payments.getStripeClient();
         const remaining = payment.grossPence - amount!;
         const split = this.split(remaining);
+        let processingFeePence = payment.processingFeePence ?? 0;
+        if (remaining > 0 && this.passesProcessingCosts(job) && !processingFeePence) {
+            const charge = await this.chargeForPaymentIntent(stripe, payment.stripePaymentIntentId);
+            if (!charge) throw new ConflictException('The charge for this cosmetic inspection cannot be verified for settlement.');
+            processingFeePence = await this.actualStripeProcessingFee(stripe, charge, payment.grossPence);
+        }
+        const providerPayoutPence = remaining > 0
+            ? Math.max(0, split.contractorPence - (this.passesProcessingCosts(job) ? processingFeePence : 0)) : 0;
         // A post-payout refund first recovers the provider share. A failed/unknown
         // reversal keeps the case locked rather than spending another customer's funds.
         if (originalTransfer && !payment.stripeReversalId) {
             this.assertSettlementRetryWindow(startedAt);
             const reversal = await stripe.transfers.createReversal(originalTransfer, {
-                amount: payment.contractorPence - split.contractorPence,
+                amount: payment.contractorPence - providerPayoutPence,
                 metadata: { serviceJobId: jobId, servicePaymentId: payment.id },
             }, { idempotencyKey: `service-job-reversal-${payment.id}` });
             await this.prisma.servicePayment.update({ where: { id: payment.id }, data: { stripeReversalId: reversal.id } });
@@ -2204,7 +2212,7 @@ export class ServicesService {
             const transfer = payment.settlementTransferId
                 ? await stripe.transfers.retrieve(payment.settlementTransferId)
                 : await stripe.transfers.create({
-                amount: split.contractorPence, currency: 'gbp', destination,
+                amount: providerPayoutPence, currency: 'gbp', destination,
                 source_transaction: charge, transfer_group: `service-job-${jobId}`,
                 metadata: { serviceJobId: jobId, servicePaymentId: payment.id, settlement: 'partial-refund' },
             }, { idempotencyKey: `service-job-partial-release-${payment.id}` });
@@ -2218,7 +2226,7 @@ export class ServicesService {
                     status: remaining > 0 ? ServicePaymentStatus.RELEASED : ServicePaymentStatus.REFUNDED,
                     stripeTransferId: transferId, refundedAt: new Date(),
                     releasedAt: remaining > 0 ? new Date() : payment.releasedAt,
-                    contractorPence: split.contractorPence, platformFeePence: split.platformFeePence,
+                    contractorPence: providerPayoutPence, platformFeePence: split.platformFeePence, processingFeePence,
                 },
             });
             if (finalized.count !== 1) throw new ConflictException('Refund finalization lost its claim.');
@@ -2226,6 +2234,7 @@ export class ServicesService {
                 where: { id: jobId, status: ServiceJobStatus.DISPUTED },
                 data: { status: remaining > 0 ? ServiceJobStatus.RELEASED : ServiceJobStatus.CANCELLED,
                     confirmedAt: remaining > 0 ? new Date() : job.confirmedAt,
+                    contractorAmountPence: providerPayoutPence,
                     cancelledAt: remaining > 0 ? null : new Date(), cancelReason: dto.note?.trim() || 'Resolved after review' },
             });
             if (closed.count !== 1) throw new ConflictException('Case state changed during settlement.');
@@ -2234,7 +2243,7 @@ export class ServicesService {
             `${gbp(amount!)} refunded for "${job.title}".`, `/services/jobs/${jobId}`);
         const provider = await this.prisma.contractorProfile.findUnique({ where: { id: payment.contractorId }, select: { userId: true } });
         if (provider) await this.notify(provider.userId, 'SERVICE_JOB_REFUNDED', 'Case resolved',
-            `"${job.title}": customer refund ${gbp(amount!)}, provider share ${gbp(split.contractorPence)}.`, `/dashboard/service/jobs/${jobId}`);
+            `"${job.title}": customer refund ${gbp(amount!)}, provider payment ${gbp(providerPayoutPence)} after applicable processing fees.`, `/dashboard/service/jobs/${jobId}`);
         return { success: true, refundId: refund.id, transferId: remaining > 0 ? transferId : undefined };
     }
 
@@ -2363,7 +2372,7 @@ export class ServicesService {
             if (this.passesProcessingCosts(job)) {
                 processingFeePence = await this.actualStripeProcessingFee(stripe, sourceTransaction, job.payment.grossPence);
                 payoutPence = job.payment.grossPence - job.payment.platformFeePence - processingFeePence;
-                if (payoutPence < 0) throw new ConflictException('Processing fees exceed the provider share. Contact support before settlement.');
+                if (payoutPence <= 0) throw new ConflictException('Processing fees leave no transferable provider share. Contact support before settlement.');
             }
             transfer = job.payment.settlementTransferId
                 ? await stripe.transfers.retrieve(job.payment.settlementTransferId)
