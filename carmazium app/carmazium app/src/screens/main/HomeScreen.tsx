@@ -583,7 +583,7 @@ export const HomeScreen: React.FC = () => {
         </TouchableOpacity>
         <Text style={s.websiteSearchHelp}>✦ Powered by MaziuM AI</Text>
         <View style={s.websiteExamples}>{['Automatic under £5,000', '7-seat family car', 'Small first car'].map(example => <TouchableOpacity key={example} accessibilityRole="button" onPress={() => { setAiQuery(example); searchRef.current?.focus(); }} style={s.websiteExample}><Text style={s.websiteExampleText}>{example}</Text></TouchableOpacity>)}</View>
-        <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('Tabs', { screen: 'Search' })} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={s.websiteBrowseLink}>Prefer filters? Browse all cars →</Text></TouchableOpacity>
+        <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('Search' as any, { _t: Date.now() })} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={s.websiteBrowseLink}>Prefer filters? Browse all cars →</Text></TouchableOpacity>
         </View>
 
         {aiError && (
@@ -622,7 +622,7 @@ export const HomeScreen: React.FC = () => {
         {(isLoading || featuredListings.length > 0) && (
           <Section
             title="Featured Listings"
-            onSeeAll={() => navigation.navigate('Search' as any)}
+            onSeeAll={() => navigation.navigate('Search' as any, { _t: Date.now() })}
           >
             <Rail
               data={featuredListings}
@@ -637,7 +637,7 @@ export const HomeScreen: React.FC = () => {
         {/* ── LATEST RETAIL LISTINGS ── */}
         <Section
           title="More Cars to Explore"
-          onSeeAll={() => navigation.navigate('Search' as any)}
+          onSeeAll={() => navigation.navigate('Search' as any, { _t: Date.now() })}
         >
           <Rail
             data={latestEight}

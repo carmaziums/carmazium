@@ -71,7 +71,7 @@ export function WebsiteHomeInformation() {
   }, []);
   return <>
     <View style={s.section}>
-      <LinkButton label="Explore the Full Car Marketplace" onPress={() => navigation.navigate('Tabs', { screen: 'Search' })} />
+      <LinkButton label="Explore the Full Car Marketplace" onPress={() => navigation.navigate('Search' as any, { _t: Date.now() })} />
       <Text style={s.eyebrow}>A DIFFERENT WAY TO BUY AND SELL CARS</Text>
       <Text accessibilityRole="header" style={s.heading}>More choice. <Text style={{ color: Colors.accent }}>Clearer fees.</Text></Text>
       <Text style={s.description}>Choose a free dealer auction or a £1 retail listing, with transparent terms and straightforward next steps.</Text>
