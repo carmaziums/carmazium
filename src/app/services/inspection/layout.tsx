@@ -2,18 +2,18 @@ import type { Metadata } from "next"
 import { PageJsonLd, SEO_SITE, SEO_TRADEXCHANGE } from "@/components/seo/PageJsonLd"
 
 export const metadata: Metadata = {
-    title: "Vehicle Inspection Services UK",
-    description: "Request an independent vehicle inspection and compare fixed-price quotes from approved inspection providers through CarMazium TradeXchange.",
+    title: "Vehicle & Cosmetic Inspection Services UK",
+    description: "Request vehicle, cosmetic or combined inspections and compare quotes from approved inspection providers through CarMazium TradeXchange.",
     alternates: { canonical: "/services/inspection" },
     openGraph: {
-        title: "Vehicle Inspection Services UK | CarMazium",
-        description: "Request an independent vehicle inspection and compare fixed-price quotes from approved inspection providers through CarMazium TradeXchange.",
+        title: "Vehicle & Cosmetic Inspection Services UK | CarMazium",
+        description: "Request vehicle, cosmetic or combined inspections and compare quotes from approved inspection providers through CarMazium TradeXchange.",
         url: "/services/inspection",
         type: "website",
     },
     twitter: {
-        title: "Vehicle Inspection Services UK | CarMazium",
-        description: "Request an independent vehicle inspection and compare fixed-price quotes from approved inspection providers through CarMazium TradeXchange.",
+        title: "Vehicle & Cosmetic Inspection Services UK | CarMazium",
+        description: "Request vehicle, cosmetic or combined inspections and compare quotes from approved inspection providers through CarMazium TradeXchange.",
     },
 }
 
@@ -22,7 +22,7 @@ export default function InspectionLayout({ children }: { children: React.ReactNo
         <>
             <PageJsonLd
                 path="/services/inspection"
-                title="Vehicle Inspection Services UK | CarMazium"
+                title="Vehicle & Cosmetic Inspection Services UK | CarMazium"
                 description={metadata.description as string}
                 crumbs={[
                     { label: "Home", path: "/" },
@@ -32,8 +32,8 @@ export default function InspectionLayout({ children }: { children: React.ReactNo
                 mainEntity={{
                     "@type": "Service",
                     "@id": SEO_SITE + "/services/inspection#service",
-                    name: "Vehicle inspection",
-                    serviceType: "Pre-purchase vehicle inspection",
+                    name: "Vehicle and cosmetic inspection",
+                    serviceType: "Pre-purchase vehicle or cosmetic inspection",
                     description: metadata.description,
                     url: SEO_SITE + "/services/inspection",
                     broker: { "@id": SEO_SITE + "/#organization" },
