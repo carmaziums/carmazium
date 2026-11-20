@@ -49,6 +49,7 @@ const MENU: { section: string; items: MenuItem[] }[] = [
     section: 'Payments & reports',
     items: [
       { label: 'Transactions', icon: 'receipt-outline', webPath: '/dashboard/admin/transactions' },
+      { label: 'Warranty Orders', icon: 'shield-checkmark', webPath: '/dashboard/admin/warranty-orders' },
       { label: 'Vehicle History Reports', icon: 'shield-checkmark', webPath: '/dashboard/admin/hpi' },
       { label: 'Free Listing Grants', icon: 'gift-outline', webPath: '/dashboard/admin/free-listings' },
     ],
@@ -60,6 +61,8 @@ const MENU: { section: string; items: MenuItem[] }[] = [
       { label: 'All Dealers', icon: 'business-outline', webPath: '/dashboard/admin/dealers' },
       { label: 'Dealer KYC', icon: 'shield-outline', screen: 'AdminDealerKyc' },
       { label: 'Trade Services', icon: 'briefcase-outline', webPath: '/dashboard/admin/services' },
+      { label: 'Warranty Partners', icon: 'shield-checkmark', webPath: '/dashboard/admin/services?tab=providers&serviceType=WARRANTY' },
+      { label: 'Finance Providers', icon: 'briefcase-outline', webPath: '/dashboard/admin/finance-providers' },
     ],
   },
   {

@@ -58,6 +58,7 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { createDeliveryRequest, getDeliveryQuote, DeliveryQuote } from '../../lib/deliveryApi';
 import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 import { BottomSheet } from '../../components/BottomSheet';
+import { GuestEnquirySheet } from '../../components/listing/GuestEnquirySheet';
 import { EnquireModal } from '../../components/listing/EnquireModal';
 import { useLocation } from '../../context/LocationContext';
 
@@ -548,12 +549,20 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // Fetch the current user's offer status for this listing (to gate "Request Delivery")
   const currentUser = useAuthStore((s) => s.user);
-  // Guests can view every public listing; acting on one (offer, enquiry,
-  // chat, delivery, history check) needs an account, as on the website.
+  const guestRetailEnquiry = !currentUser && listing.listingType === 'CLASSIFIED' && listing.status === 'ACTIVE';
   const requireAccount = (): boolean => {
     if (currentUser) return true;
     openSignIn(navigation, 'Login', { name: 'VehicleDetail', params: route.params });
     return false;
+  };
+  const contactSeller = () => {
+    if (guestRetailEnquiry) {
+      setEnquireVisible(true);
+    } else if (listing.seller?.id) {
+      if (requireAccount()) setEnquireVisible(true);
+    } else {
+      void handleOpenChat();
+    }
   };
   // Full offer object — kept alongside offerStatus so we can render the
   // OfferStatusChip on this screen with the amount, matching web
@@ -1504,11 +1513,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 style={styles.sellerChatBtn}
                 onPress={(e) => {
                   e.stopPropagation();
-                  if (listing.seller?.id) {
-                    if (requireAccount()) setEnquireVisible(true);
-                  } else {
-                    handleOpenChat();
-                  }
+                  contactSeller();
                 }}
               >
                 <Ionicons name="chatbubble-ellipses-outline" size={17} color={Colors.white} />
@@ -1995,11 +2000,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           pointerEvents="none"
         />
         <IconButton style={styles.chatButton} icon={<Ionicons name="chatbubble-ellipses-outline" size={20} color={Colors.white} />} onPress={() => {
-            if (listing.seller?.id) {
-              if (requireAccount()) setEnquireVisible(true);
-            } else {
-              handleOpenChat();
-            }
+            contactSeller();
           }} accessibilityLabel="Message seller" />
 
         {/* Disable the offer CTA when the listing isn't ACTIVE, matching web —
@@ -2170,8 +2171,11 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       </BottomSheet>
 
       {/* ENQUIRE MODAL — structured form the buyer fills before chatting */}
+      {guestRetailEnquiry && enquireVisible && (
+        <GuestEnquirySheet key={listing.id} listingId={listing.id} vehicleTitle={[listing.year, listing.make, listing.model].filter(Boolean).join(' ')} onClose={() => setEnquireVisible(false)} />
+      )}
       <EnquireModal
-        visible={enquireVisible}
+        visible={enquireVisible && !guestRetailEnquiry}
         onClose={() => setEnquireVisible(false)}
         listing={{
           id: listing.id,

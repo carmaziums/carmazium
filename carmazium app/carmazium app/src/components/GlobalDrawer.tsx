@@ -44,6 +44,12 @@ const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 320);
 
 const IS_QA_REVIEW_BUILD = process.env.EXPO_PUBLIC_QA_READ_ONLY === '1';
 
+function openWebsite(path: string) {
+  return WebBrowser.openBrowserAsync(`https://www.carmazium.com${path}`).catch(() => {
+    Alert.alert('Could not open CarMazium', `Please visit www.carmazium.com${path}.`);
+  });
+}
+
 interface MenuItem {
   id: string;
   label: string;
@@ -56,6 +62,7 @@ interface MenuItem {
   stackScreen?: keyof MainStackParamList;
   /** Params for `stackScreen` (e.g. CreateServiceJob's serviceType). */
   stackParams?: Record<string, unknown>;
+  webPath?: string;
   action?: 'alert';
   alertTitle?: string;
   alertMsg?: string;
@@ -82,12 +89,14 @@ const PROVIDER_ITEMS: MenuItem[] = [
 const USER_ITEMS: MenuItem[] = [
   { id: 'user-dashboard', section: 'Dashboard', label: 'Home', icon: 'grid-outline', iconLib: 'ion', tabName: 'Profile' },
   { id: 'user-cars', section: 'Selling', label: 'My Cars', icon: 'car-outline', iconLib: 'ion', stackScreen: 'MyCars' },
+  { id: 'user-guest-enquiries', section: 'Selling', label: 'Guest enquiries', icon: 'chatbubbles-outline', iconLib: 'ion', webPath: '/dashboard/enquiries' },
   { id: 'user-incoming-offers', section: 'Selling', label: 'Offers Received', icon: 'pricetag-outline', iconLib: 'ion', stackScreen: 'SellerOffers' },
   { id: 'user-earnings', section: 'Selling', label: 'Sales & Earnings', icon: 'wallet-outline', iconLib: 'ion', stackScreen: 'Earnings' },
   { id: 'user-performance', section: 'Selling', label: 'Listing Performance', icon: 'bar-chart-outline', iconLib: 'ion', stackScreen: 'SellerPerformance' },
   { id: 'user-sent-offers', section: 'Buying', label: 'My Offers', icon: 'hammer-outline', iconLib: 'ion', stackScreen: 'BuyerOffers' },
   { id: 'user-watchlist', section: 'Buying', label: 'Saved Cars', icon: 'heart-outline', iconLib: 'ion', tabName: 'Saved' },
   { id: 'user-purchases', section: 'Buying', label: 'Purchases', icon: 'receipt-outline', iconLib: 'ion', stackScreen: 'BuyerPurchaseHistory' },
+  { id: 'user-warranties', section: 'Buying', label: 'My Warranties', icon: 'shield-checkmark-outline', iconLib: 'ion', webPath: '/dashboard/warranties' },
   { id: 'user-service-jobs', section: 'Services', label: 'Delivery & Inspections', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'CustomerServiceJobs' },
   { id: 'user-cancellations', section: 'Account', label: 'Sale Cancellations', icon: 'shield-checkmark-outline', iconLib: 'ion', stackScreen: 'SaleCancellations' },
   { id: 'user-messages', section: 'Account', label: 'Messages', icon: 'chatbubbles-outline', iconLib: 'ion', stackScreen: 'Messages' },
@@ -299,6 +308,10 @@ export const GlobalDrawer: React.FC = () => {
         Alert.alert(item.alertTitle!, item.alertMsg!);
         return;
       }
+      if (item.webPath) {
+        void openWebsite(item.webPath);
+        return;
+      }
       if (item.stackScreen) {
         // `stackScreen` is a dynamic union of route names — React Navigation's
         // recommended pattern for variable screen names is `as never`.
@@ -343,7 +356,7 @@ export const GlobalDrawer: React.FC = () => {
     closeDrawer();
     setTimeout(() => {
       if (target.web) {
-        void WebBrowser.openBrowserAsync(`https://www.carmazium.com${target.web}`);
+        void openWebsite(target.web);
       } else if (target.tab) {
         navigation.navigate('Main', { screen: 'Tabs', params: { screen: target.tab, params: target.tabParams } } as never);
       } else if (target.screen) {
@@ -397,6 +410,7 @@ export const GlobalDrawer: React.FC = () => {
       activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityState={{ selected: !!opts.active }}
+      accessibilityHint={item.webPath ? 'Opens the CarMazium website' : undefined}
     >
       <View style={styles.iconWrap}>
         {item.iconLib === 'mci'
@@ -405,7 +419,7 @@ export const GlobalDrawer: React.FC = () => {
       </View>
       <Text style={[styles.rowLabel, opts.active && styles.rowLabelOnAccent]} numberOfLines={1}>{item.label}</Text>
       {opts.chevron !== false && (
-        <Ionicons name="chevron-forward" size={15} color={opts.active ? Colors.onAccent : Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+        <Ionicons name={item.webPath ? 'open-outline' : 'chevron-forward'} size={15} color={opts.active ? Colors.onAccent : Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
       )}
     </TouchableOpacity>
   );

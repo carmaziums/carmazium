@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
   StatusBar,
+  AppState,
   ActivityIndicator,
   Animated,
   Dimensions,
@@ -21,7 +22,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
@@ -44,6 +45,7 @@ import {
   type ChatRoom,
   type ChatUser,
 } from '../../lib/chatApi';
+import { readChatUpdates, mergeChatUpdates } from '../../lib/chatTimeline';
 import { getListingById } from '../../lib/listingsApi';
 import { ChatFollowTracker, chatAppearance, supportTextParts } from '../../lib/chatPresentation';
 import { Colors, themeMode, themeStatusBarStyle } from '../../constants/colors';
@@ -287,7 +289,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             {msg.aiGenerated ? supportTextParts(msg.content).map((part, index) => part.url ? (
               <Text key={index} accessibilityRole="link" style={{ textDecorationLine: 'underline', fontWeight: '600' }}
                 onPress={() => onOpenLink(part.url!)}>{part.text}</Text>
-            ) : <Text key={index}>{part.text}</Text>) : msg.content}
+            ) : <Text key={index} style={part.bold ? { fontWeight: '700' } : undefined}>{part.text}</Text>) : msg.content}
           </Text>
           <View style={[styles.msgFooter, isOwn ? styles.msgFooterRight : styles.msgFooterLeft]}>
             <Text style={[isOwn ? styles.timeTextRightInline : styles.timeTextLeftInline, { color: appearance.secondary }]}>
@@ -402,7 +404,7 @@ export const ChatScreen: React.FC = () => {
   }, [threadId]);
 
   const toggleSupportAi = async () => {
-    if (!room || aiPreferenceBusy || (aiPaused && humanTakeoverRecent)) return;
+    if (!room || aiPreferenceBusy) return;
     setAiPreferenceBusy(true);
     try {
       const enabled = aiPaused;
@@ -417,13 +419,8 @@ export const ChatScreen: React.FC = () => {
   };
 
   const openSupportAiMenu = () => {
-    if (aiPaused && humanTakeoverRecent) {
-      Alert.alert('MaziuM AI', 'Human support is handling this conversation.', [
-        { text: 'Privacy', onPress: () => { void Linking.openURL('https://www.carmazium.com/privacy-policy'); } },
-        { text: 'Close', style: 'cancel' },
-      ]);
-      return;
-    }
+    // The server distinguishes a queued handoff from a staff member actively
+    // replying. Let customers request resume; retain its authoritative refusal.
     Alert.alert('MaziuM AI', undefined, [
       { text: aiPaused ? 'Resume AI replies' : 'Pause AI replies', onPress: () => { void toggleSupportAi(); } },
       { text: 'Privacy', onPress: () => { void Linking.openURL('https://www.carmazium.com/privacy-policy'); } },
@@ -433,34 +430,66 @@ export const ChatScreen: React.FC = () => {
 
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch newest messages first. Older history uses a stable cursor so new
-  // realtime messages cannot shift page offsets while the user is scrolling.
+  const lastSnapshot = useRef<ChatMessage | null>(null);
+  const initialized = useRef(false);
+  const latest = messages[messages.length - 1];
+  const waitingForAi = isSupportCustomer && !aiPaused && latest?.senderId === user?.id
+    && !!latest && !latest.deliveryStatus;
+  const pollNeeded = useRef(false);
+  pollNeeded.current = !isConnected || waitingForAi;
+
   useEffect(() => {
+    lastSnapshot.current = null;
+    initialized.current = false;
+    setLoading(true);
+    setMessages([]);
     setHistoryCursor(null);
     setHasMore(false);
+  }, [threadId, user?.id]);
 
-    async function loadMessages() {
+  useFocusEffect(useCallback(() => {
+    if (!threadId || !user?.id) return;
+    let active = true;
+    let busy = false;
+    const refresh = async () => {
+      if (!active || busy || AppState.currentState === 'background') return;
+      busy = true;
       try {
-        setLoading(true);
-        const res = await getChatMessages(threadId);
-        setMessages(res.data);
-        setHasMore(Boolean(res.pagination.hasMore));
-        setHistoryCursor(
-          res.pagination.nextCursor ??
-          (res.data[0]
-            ? { createdAt: res.data[0].createdAt, id: res.data[0].id }
-            : null)
+        const { rows, pagination } = await readChatUpdates(
+          before => getChatMessages(threadId, 1, 50, before), lastSnapshot.current, () => active,
         );
-        await markMessagesAsRead(threadId);
-        markAsRead(threadId);
+        if (!active) return;
+        setMessages(previous => mergeChatUpdates(previous, rows, threadId));
+        if (!initialized.current || !lastSnapshot.current) {
+          setHasMore(Boolean(pagination.hasMore));
+          setHistoryCursor(pagination.nextCursor ?? null);
+        }
+        initialized.current = true;
+        if (rows.length) lastSnapshot.current = rows[rows.length - 1];
+        if (rows.some(row => row.senderId !== user.id && !row.isRead)) {
+          await markMessagesAsRead(threadId);
+          if (active) markAsRead(threadId);
+        }
       } catch (error) {
-        console.error('Failed to load chat messages:', error);
+        if (active) console.warn('Could not refresh chat messages:', error);
       } finally {
-        setLoading(false);
+        busy = false;
+        if (active) setLoading(false);
       }
-    }
-    loadMessages();
-  }, [threadId]);
+    };
+    void refresh();
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') void refresh();
+    });
+    const timer = setInterval(() => {
+      if (pollNeeded.current || !initialized.current) void refresh();
+    }, 15000);
+    return () => {
+      active = false;
+      subscription.remove();
+      clearInterval(timer);
+    };
+  }, [threadId, user?.id, isConnected, markAsRead]));
 
   // Subscribe to real-time events. clientMessageId identifies the exact
   // optimistic bubble and avoids content-based matching when two messages are equal.
@@ -1161,6 +1190,7 @@ export const ChatScreen: React.FC = () => {
           contentContainerStyle={styles.chatScroll}
           showsVerticalScrollIndicator={false}
           inverted
+          keyboardShouldPersistTaps="handled"
           maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: 80 }}
           data={reversedMessages}
           keyExtractor={(item) => item.id}
