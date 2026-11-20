@@ -196,3 +196,31 @@ This supersedes the earlier sandbox prerequisite blockers, but is not a full app
 - Native TypeScript passed. Internal sandbox APK #146 / run 44778035601 is compiling source `a76be288aec7e6603e49220b438aa7165f806803`; device visual/navigation acceptance remains pending at this checkpoint.
 
 Remaining: private uploads, real provider onboarding, email/push delivery, other transactional role journeys, smaller phones/iOS and all untested rows in the route matrix. Draft fixes have not been published to customers. Automated tests, API integration and device interactions remain distinct evidence layers.
+
+## Homepage and correct customer-app provenance — 20 November, 17:09–17:30 GMT
+
+The owner explicitly identified the website download as the authoritative customer app. Retrieved /api/app-version and /download-app: both advertise version 1.0.0 / versionCode 105 at https://www.carmazium.com/downloads/CarMazium-1.0.0-v105.apk. Downloaded the actual 99,114,490-byte APK; SHA-256 755574e857c6789ae187345e2780531fa5a30eafe2ba94161decbca98301b3e0 exactly matches the website and GitHub release asset digest. Release notes identify source 4ff05829990bed2095bf4660cade3b38d9fe930f. The current homepage work descends from this source (not an unrelated application). The release tag itself points to a later main commit; the release's recorded build source is the evidence used.
+
+Pulled the actually installed production-package APK (uk.carmazium.app): versionCode 108 / versionName 1.0.0, SHA-256 51e3029fef9728c1f8eda076feeddfedd75e0d7f7d53d39ce7752455d02db303, 99,115,270 bytes, identical to the verified build-108 candidate retained on the laptop. Its signing certificate SHA-256 and the website APK's are both ea9b8d6733ee68d6e36ce092e81c0e360330a56dde9ed0b4edb2c421c8600f24. Certificate extraction confirms identity; prior candidate CI supplied cryptographic APK-signature verification. No downgrade, uninstall, data clear or public-download change occurred.
+
+The homepage is currently tested in the deliberately separate uk.carmazium.qa localhost sandbox app. Workflow numbers (#146 etc.) are NOT customer Android versionCodes. Customer build 108 remains installed separately. Compared native source against build 108: chat presentation and tests, non-dealer LiveScreen, and My Offers navigation are byte-identical; ChatScreen retains all 108 fixes with the additional reconnect/focus-refresh work. The assembly branch had forked before backend PR #929, so restored its three exact policy/evaluation files to the isolated QA baseline. These already-deployed production fixes were not new website changes. Local backend compiled 511 files; all 56 policy tests passed; restarted only the loopback API and verified health 200, informational coordinated reward question false for staff handoff and explicit payout request true. The initial npm build encountered the running Prisma DLL's Windows lock; building with nest without regenerating the unchanged schema succeeded.
+
+### Homepage #146 device acceptance
+
+Run 44778035601, source a76be288aec7e6603e49220b438aa7165f806803, artifact 14650639563: ZIP SHA-256 153b9a0f9b2ca73d3d69c0648e0a9f7811327ad8c75d3325893df2ec0e0d38d8; APK SHA-256 0d062aaa8c0f52d77b98671968838e1be22697e1733e947c646f4d156a9a2896 (97,144,932 bytes). Both laptop checks matched build evidence. Installed in place with adb install -r; first install 14:39:37 retained, update 17:09:14. Build and Android 15 cold-launch jobs both passed.
+
+- Actual BlueStacks screenshot width 540 at density 240 (360dp) using wm size 960x540. Original size still must be restored after narrow-device testing.
+- Website-derived artwork renders locally in the native home, including the vehicle cycle, £1/road scene, Poppins heading, matching red/navy palette and theme-aware dark scene. Light and dark both observed. Pause held the campervan still across leaving Home and returning; Play control was shown.
+- Retail CTA opened SellCarFlow with Retail £1 selected, auction CTA opened Auction FREE selected, valuation opened SellLanding. No listing submitted.
+- AI example '7-seat family car' populated the native input. Existing AI generation was not exercised against the deliberately keyless sandbox.
+- Three discovery links correctly replaced each other's filters: hatchback = 1, seven seats = 1, Electric/Hybrid = 1 from three synthetic fixtures.
+- All eight body-type cards opened Search. Expected fixture counts: coupe 0, convertible 0, hatchback 1, MPV 0, pickup 0, saloon 0, SUV 2, estate 0.
+- Category links: sporty 0 with search text, Eco-friendly 1, seven-seater 1, affordable SUV 2, first car 1, dog-friendly 0, fuel-efficient 0. Automatic reproduced 0 instead of 2 due to label-case mismatch; corrected the new native category to AUTOMATIC.
+- Reproduced Explore Full Marketplace retaining the previous estate filter. Corrected all homepage unfiltered browse/see-all actions to send a fresh route marker, so Search resets previous category/text filters.
+- Synthetic marketplace card opened full native vehicle detail; How It Works, Pricing, and TradeXchange links opened their native screens.
+- All eight new website guide/partner/terms destinations returned HTTP 200; this checks destination availability, separate from in-app external navigation.
+- No full app certification or production transaction claim. The broader route matrix and transactional limitations still apply.
+
+Corrective workflow #147 (44782763101, source 1fe2ce7e1a3e3c7e601b2208127cea348d7963b6) was cancelled after the second navigation defect was reproduced. Replacement #148 (44783680229) is compiling source 4fcce13893d3bc7764996f8fa3e27065f6753d28 with both corrections and the aligned backend. Verify the final artifact and retest before considering these two failures closed. Full native TypeScript passed after both changes.
+
+Homepage draft PR #937 remains six native files over the aligned QA baseline; no website code was modified for the homepage request. Current homepage source 596d07f52ffeb06f7ffc371128cde5d3dd1d64da. No customer release, Play publication, production OTA, or live Stripe payment.
