@@ -21,6 +21,7 @@ const labelCls = "block text-[11px] font-extrabold uppercase tracking-widest tex
 type FormState = {
     nationwide: boolean
     postcodeAreas: string
+    inspectionScopes: ('VEHICLE' | 'COSMETIC')[]
     minValue: string
     maxValue: string
     minYear: string
@@ -36,6 +37,7 @@ type FormState = {
 const EMPTY: FormState = {
     nationwide: false,
     postcodeAreas: "",
+    inspectionScopes: ['VEHICLE'],
     minValue: "",
     maxValue: "",
     minYear: "",
@@ -75,6 +77,7 @@ export default function LeadMatchingSettingsPage() {
                 nationwide: cap.serviceType === "FINANCE" || cap.serviceType === "WARRANTY"
                     ? cap.leadNationwide
                     : cap.jobNationwide,
+                inspectionScopes: cap.inspectionScopes?.length ? cap.inspectionScopes : ['VEHICLE'],
                 postcodeAreas: (cap.serviceType === "FINANCE" || cap.serviceType === "WARRANTY"
                     ? cap.leadPostcodeAreas
                     : cap.jobPostcodeAreas).join(", "),
@@ -114,6 +117,10 @@ export default function LeadMatchingSettingsPage() {
             return
         }
 
+        if (capability.serviceType === 'INSPECTION' && form.inspectionScopes.length === 0) {
+            setError('Choose at least one inspection specialty.')
+            return
+        }
         setBusy(true)
         setSaved(false)
         setError(null)
@@ -139,6 +146,7 @@ export default function LeadMatchingSettingsPage() {
                 : await updateJobMatching(capability.id, {
                     jobNationwide: form.nationwide,
                     jobPostcodeAreas: areas,
+                    ...(capability.serviceType === 'INSPECTION' ? { inspectionScopes: form.inspectionScopes } : {}),
                 })
             setCapability(updated)
             setSaved(true)
@@ -198,6 +206,22 @@ export default function LeadMatchingSettingsPage() {
                                 <input className={inputCls} value={form.postcodeAreas} onChange={e => set("postcodeAreas", e.target.value)} placeholder="B, CV, WS, DY" />
                             </div>}
                         </section>
+
+                        {capability.serviceType === 'INSPECTION' && (
+                            <fieldset className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 space-y-3">
+                                <legend className="font-heading font-bold text-lg px-1">Inspection services you provide</legend>
+                                <p className="text-xs text-[var(--text-muted)]">Choose only the checks your business is qualified and insured to carry out. Selecting both also allows combined inspection requests.</p>
+                                {([
+                                    { value: 'VEHICLE', label: 'Vehicle inspection', description: 'Mechanical and functional checks within your stated expertise' },
+                                    { value: 'COSMETIC', label: 'Cosmetic inspection', description: 'Bodywork, paintwork, visible damage and condition reports' },
+                                ] as const).map((option) => (
+                                    <label key={option.value} className="flex cursor-pointer gap-3 rounded-xl border border-[var(--border-default)] p-4">
+                                        <input type="checkbox" className="mt-1 accent-primary" checked={form.inspectionScopes.includes(option.value)} onChange={e => set('inspectionScopes', e.target.checked ? [...form.inspectionScopes, option.value] : form.inspectionScopes.filter(x => x !== option.value))} />
+                                        <span><span className="block text-sm font-bold">{option.label}</span><span className="block text-xs text-[var(--text-muted)]">{option.description}</span></span>
+                                    </label>
+                                ))}
+                            </fieldset>
+                        )}
 
                         {(capability.serviceType === "FINANCE" || capability.serviceType === "WARRANTY") && <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
                             <h2 className="font-heading font-bold text-lg mb-5">Vehicle eligibility</h2>
