@@ -232,10 +232,17 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const route = useRoute<any>();
   const focusListingId: string | undefined = route.params?.focusListingId;
   const [focusHandled, setFocusHandled] = useState(false);
+  useEffect(() => {setFocusHandled(false);}, [focusListingId, route.params?.focusAction]);
   useEffect(() => {
     if (!focusListingId || focusHandled) return;
     const match = listings.find(l => l.id === focusListingId);
-    if (match) { setFocusHandled(true); setActionMenuListing(match); }
+    if (match) {
+      setFocusHandled(true);
+      // Only open the existing confirmation form; navigation must never record a sale.
+      if (route.params?.focusAction === 'mark_sold' && ['ACTIVE','OFFER_ACCEPTED'].includes(match.status || '')) {
+        setSoldPriceInput(match.price ? Number(match.price).toLocaleString('en-GB') : ''); setSellPriceModal(match);
+      } else setActionMenuListing(match);
+    }
   }, [focusListingId, focusHandled, listings]);
   const [sellPriceModal, setSellPriceModal] = useState<ApiListing | null>(null);
   const [soldPriceInput, setSoldPriceInput] = useState('');

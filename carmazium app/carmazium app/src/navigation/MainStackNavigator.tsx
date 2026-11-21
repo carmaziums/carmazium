@@ -228,7 +228,7 @@ export type MainStackParamList = {
     officialVehicleData?: import('../data/listings').OfficialVehicleData;
   } } | undefined;
   /** focusListingId: open that car's action menu once loaded (from My cars). */
-  SellerListings: { focusListingId?: string } | undefined;
+  SellerListings: { focusListingId?: string; focusAction?: 'mark_sold' } | undefined;
   MyCars: undefined;
   SellerAuctions: { focusListingId?: string; preselectListingId?: string; initialTab?: 'WON'; openCreate?: boolean; alsoRetailListingId?: string; alsoRetailPrice?: string; alsoRetailTier?: 'BASIC' | 'STANDARD' | 'PREMIUM' } | undefined;
   BuyerDashboard: undefined;

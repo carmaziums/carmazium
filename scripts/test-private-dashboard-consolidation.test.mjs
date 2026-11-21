@@ -73,7 +73,7 @@ test("native private dashboard groups selling and buying consistently", () => {
     assert.match(buyerPurchases, /AGREED RETAIL PURCHASES/)
     assert.match(buyerPurchases, /o\.status === 'ACCEPTED'/)
     assert.match(buyerPurchases, /PAID PLATFORM TRANSACTIONS/)
-    assert.match(buyerPurchases, /PLATFORM RECEIPTS/)
+    assert.match(buyerPurchases, /Receipts and payments/)
 })
 
 test("status filters use full private inventory instead of only one API page", () => {
