@@ -6,6 +6,14 @@ import React from 'react';
 import { act, create } from 'react-test-renderer';
 import ts from 'typescript';
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+// Compile the actual pure empty-state logic rather than bypassing it with a mock.
+const stateSource = readFileSync(new URL('../src/lib/sellerOffersEmptyState.ts', import.meta.url), 'utf8');
+const stateCompiled = ts.transpileModule(stateSource, { compilerOptions: {
+  jsx: ts.JsxEmit.React, module: ts.ModuleKind.CommonJS,
+  esModuleInterop: true, target: ts.ScriptTarget.ES2022,
+} });
+const offerStateExports = {};
+runInNewContext(stateCompiled.outputText, { exports: offerStateExports });
 async function screen(api) {
   const alerts=[];
   const modules={
@@ -18,6 +26,7 @@ async function screen(api) {
     'expo-linear-gradient':{LinearGradient:'Gradient'},'@/components/BrandIcon':{Ionicons:'Icon'},
     'expo-image':{Image:'Image'},'../../components/WebsiteTopBar':{WebsiteTopBar:'WebsiteTopBar'},'../../components/Button':{Button:'Button'},'../../lib/myListingsApi':{fetchAllMyListings:async()=>[]},
     '../../lib/apiClient':{apiClient:api},'../../lib/haptics':{haptics:{success:()=>{}}},
+    '../../lib/sellerOffersEmptyState':{sellerOffersEmptyState:offerStateExports.sellerOffersEmptyState},
     '../../components/BottomSheet':{BottomSheet:({visible,children,...props})=>visible?React.createElement('Sheet',props,children):null},
     '../../components/ui/ErrorBanner':{ErrorBanner:'Error'},'../../components/ui/Skeleton':{Skeleton:'Skeleton'},'../../components/ui/EmptyState':{EmptyState:'Empty'},
     '../../components/offers/CounterLedger':{CounterLedger:'Ledger'},'../../components/delivery/ReceivedDeliveryRequestsPanel':{ReceivedDeliveryRequestsPanel:'Delivery'},

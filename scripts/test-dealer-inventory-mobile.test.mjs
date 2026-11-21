@@ -53,7 +53,9 @@ test("web: compact header on phones only", () => {
 
 test("app: Status and Sort buttons open panels; no sideways status strip", () => {
     assert.ok(!/horizontal\s+showsHorizontalScrollIndicator=\{false\}\s+contentContainerStyle=\{styles\.filterScroll\}/.test(native))
-    assert.ok(native.includes("statusPanel: { flexDirection: 'row', flexWrap: 'wrap'"))
+    // The mobile dropdown renders full-width vertical options, not sideways chips.
+    assert.ok(native.includes("statusPanel: { width:"))
+    assert.ok(native.includes("borderBottomWidth: 1"))
     assert.ok(native.includes('{FILTERS.map((f) => {'))
     for (const status of ["'All'", "'Live'", "'Under Review'", "'Rejected'", "'Draft'", "'Sold'", "'Sale pending'", "'Other'"]) {
         assert.ok(native.includes(`label: ${status}`), status)
