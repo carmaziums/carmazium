@@ -26,6 +26,7 @@ import { DealerSavedScreen } from './DealerSavedScreen';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { getBottomTabBarHeight } from '../../lib/nativeLayoutParity';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Button } from '../../components/Button';
 import { IconButton } from '../../components/IconButton';
 import { CarListing, formatPrice } from '../../data/listings';
 import { useWatchlistStore } from '../../store/watchlistStore';
@@ -34,6 +35,7 @@ import { getListingById } from '../../lib/listingsApi';
 import { getSavedAuctionIdForListing } from '../../lib/watchlistApi';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { EmptyState } from '../../components/ui/EmptyState';
 
 const { width } = Dimensions.get('window');
@@ -51,24 +53,29 @@ type ViewMode = 'grid' | 'list';
 
 export const SavedScreen: React.FC = () => {
   const accountRole = useAuthStore(s => s.accountRole);
-  return accountRole === 'dealer' ? <DealerSavedScreen /> : <PersonalSavedScreen />;
+  const role = useAuthStore(s => s.role);
+  return accountRole === 'dealer' && role === 'dealer' ? <DealerSavedScreen /> : <PersonalSavedScreen />;
 };
 
 const PersonalSavedScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const accountRole = useAuthStore(s => s.accountRole);
   const insets = useSafeAreaInsets();
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, width: liveWidth } = useWindowDimensions();
+  const columns = fontScale >= 1.3 || liveWidth < 640 ? 1 : liveWidth >= 1024 ? 3 : 2;
+  const cardWidth = (liveWidth - 48 - (columns - 1) * 16) / columns;
+  const user = useAuthStore(s => s.user);
+  const role = useAuthStore(s => s.role);
   const [savedTab, setSavedTab] = useState<'auctions' | 'retail'>('auctions');
 
   // Readable website-style list first; a two-column grid remains optional.
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sortMode, setSortMode] = useState<'saved' | 'price-low' | 'price-high'>('saved');
   const [refreshing, setRefreshing] = useState(false);
   const openingRef = useRef(false);
   const [openingListing, setOpeningListing] = useState(false);
 
-  const { savedListings, isLoading, toggle, isSaved, hydrateFromApi } = useWatchlistStore();
+  const { savedListings, isLoading, loadError, toggle, isSaved, hydrateFromApi } = useWatchlistStore();
 
   // Refresh each time the Saved tab gains focus so web, iOS and Android
   // watchlist changes appear without requiring an app restart.
@@ -86,7 +93,7 @@ const PersonalSavedScreen: React.FC = () => {
   }, [hydrateFromApi]);
 
   const handleCardPress = useCallback(
-    async (listing: CarListing) => {
+    async (listing: CarListing, makeOffer = false) => {
       if (listing.listingType === 'AUCTION') {
         // A general watchlist result intentionally lacks trade-auction state.
         // Never route a trade auction through the retail purchase details.
@@ -119,7 +126,7 @@ const PersonalSavedScreen: React.FC = () => {
           Alert.alert('Vehicle unavailable', 'Could not load this vehicle. Check your connection and try again.');
           return;
         }
-        navigation.navigate('VehicleDetail', { listing: fullListing });
+        navigation.navigate('VehicleDetail', { listing: fullListing, makeOffer });
       } finally {
         openingRef.current = false;
         setOpeningListing(false);
@@ -129,19 +136,19 @@ const PersonalSavedScreen: React.FC = () => {
   );
 
   const displayedListings = [...savedListings]
-    .filter(l => accountRole !== 'dealer' || (savedTab === 'auctions' ? l.listingType === 'AUCTION' : l.listingType !== 'AUCTION'))
+    .filter(l => role !== 'dealer' || (savedTab === 'auctions' ? l.listingType === 'AUCTION' : l.listingType !== 'AUCTION'))
     .sort((a, b) =>
     sortMode === 'price-low' ? a.price - b.price :
       sortMode === 'price-high' ? b.price - a.price : 0
   );
   const totalCount = displayedListings.length;
   const headerSub = `${totalCount} saved`;
-  const headerTitle = 'Saved';
+  const headerTitle = 'Saved Cars';
   const sortLabel = sortMode === 'saved' ? 'Recently saved' : sortMode === 'price-low' ? 'Price: low to high' : 'Price: high to low';
 
   // ─── Empty State ───────────────────────────────────────────────────────────
 
-  const renderEmptyState = () => (
+  const renderEmptyState = () => loadError ? null : (
     <EmptyState
       icon="heart-outline"
       title="No saved cars yet"
@@ -178,15 +185,15 @@ const PersonalSavedScreen: React.FC = () => {
     const saved = isSaved(listing.id);
     return (
       <TouchableOpacity
-        style={styles.gridCard}
+        style={[styles.gridCard, { width: cardWidth }]}
         activeOpacity={0.88}
-        onPress={() => listing.status === 'ACTIVE' ? handleCardPress(listing) : toggle(listing)}
+        onPress={() => handleCardPress(listing)}
       >
-        <View style={styles.gridImgWrap}>
+        <View style={[styles.gridImgWrap, { height: 176 }]}>
           {listing.images[0] ? (
-            <Image source={{ uri: listing.images[0] }} style={styles.gridImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+            <Image source={{ uri: listing.images[0] }} style={[styles.gridImg, { height: 176 }]} contentFit="cover" transition={200} cachePolicy="memory-disk" />
           ) : (
-            <View style={[styles.gridImg, { backgroundColor: Colors.bgTertiary }]} />
+            <View style={[styles.gridImg, { height: 176, backgroundColor: Colors.bgTertiary }]} />
           )}
           {listing.status && (
             <View style={[styles.statusBadge, { backgroundColor: STATUS_BADGE_BG[listing.status] ?? Colors.textMuted }]}>
@@ -213,7 +220,7 @@ const PersonalSavedScreen: React.FC = () => {
             {listing.year} · {listing.mileage.toLocaleString('en-GB')} MI
           </Text>
           <Text style={styles.cardTitle} numberOfLines={1}>
-            {listing.make} {listing.model}
+            {listing.make} {listing.model} {listing.year}
           </Text>
           <Text style={styles.cardMeta} numberOfLines={1}>
             Gearbox: {listing.transmission || 'Not specified'}
@@ -221,6 +228,10 @@ const PersonalSavedScreen: React.FC = () => {
           <View style={styles.gridPriceRow}>
             <Text style={styles.cardPrice}>{formatPrice(listing.price)}</Text>
             <Text style={styles.viewCountText}>{listing.viewCount ?? 0} views</Text>
+          </View>
+          <View style={{gap: 8, marginTop: 12}}>
+            {listing.status === 'ACTIVE' && listing.listingType !== 'AUCTION' && listing.seller?.id !== user?.id && <Button label="Make Offer" onPress={() => void handleCardPress(listing, true)} />}
+            <Button label="View listing" variant="outline" onPress={() => void handleCardPress(listing)} />
           </View>
         </View>
       </TouchableOpacity>
@@ -302,6 +313,7 @@ const PersonalSavedScreen: React.FC = () => {
   // header) rather than sitting fixed above a flex:1 list.
   const pageHeader = (
     <View style={styles.headerBleed}>
+      {loadError && <ErrorBanner message={loadError} onRetry={() => void hydrateFromApi()} />}
       {openingListing && <View accessible accessibilityRole="progressbar" accessibilityLabel="Opening saved vehicle" style={{ padding: 8 }}>
         <ActivityIndicator color={Colors.accent} />
       </View>}
@@ -311,7 +323,7 @@ const PersonalSavedScreen: React.FC = () => {
           <Text style={styles.headerSub}>{headerSub}</Text>
           <Text style={styles.headerTitle}>{headerTitle}</Text>
         </View>
-        {accountRole !== "dealer" && <View style={styles.headerActions}>
+        {role !== "dealer" && <View style={styles.headerActions}>
           <IconButton
             icon={<Ionicons name={viewMode === 'grid' ? 'list-outline' : 'grid-outline'} size={20} color={Colors.textSecondary} />}
             accessibilityLabel={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
@@ -320,7 +332,7 @@ const PersonalSavedScreen: React.FC = () => {
           />
         </View>}
       </View>
-      {accountRole === 'dealer' && (
+      {role === 'dealer' && (
         <View style={styles.segTrack} accessibilityRole="tablist">
           {(['auctions', 'retail'] as const).map(tab => (
             <TouchableOpacity key={tab} accessibilityRole="tab" accessibilityState={{ selected: savedTab === tab }}
@@ -380,7 +392,7 @@ const PersonalSavedScreen: React.FC = () => {
         />
       ) : (
         <FlatList
-          key="saved-grid"
+          key={`saved-grid-${columns}`}
           style={{ flex: 1 }}
           contentContainerStyle={[styles.scrollContent, bottomPad, styles.gridGap]}
           showsVerticalScrollIndicator={false}
@@ -393,8 +405,8 @@ const PersonalSavedScreen: React.FC = () => {
             />
           }
           data={displayedListings}
-          numColumns={2}
-          columnWrapperStyle={styles.gridRow}
+          numColumns={columns}
+          columnWrapperStyle={columns > 1 ? styles.gridRow : undefined}
           keyExtractor={(item) => item.id}
           renderItem={renderGridItem}
           ListHeaderComponent={<>{pageHeader}{displayedListings.length > 0 ? renderListSortRow() : null}</>}

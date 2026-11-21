@@ -560,8 +560,10 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [myOffer, setMyOffer] = useState<{ id: string; amount: number; status: string; message?: string | null } | null>(null);
   useEffect(() => {
     if (!listing.id || !currentUser) return;
+    let cancelled = false;
     apiClient<{ data: { id: string; status: string; amount: number; message?: string | null } | null }>(`/offers/my/${listing.id}`)
       .then(res => {
+        if (cancelled) return;
         if (res?.data?.status) {
           setOfferStatus(res.data.status);
           setMyOffer({
@@ -574,9 +576,24 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           setMyOffer(null);
           setOfferStatus(null);
         }
+        // Saved Cars uses the same native offer form. Opening it never submits an offer.
+        if (route.params.makeOffer) {
+          navigation.setParams({ makeOffer: false });
+          if (listing.status !== 'ACTIVE' || listing.listingType === 'AUCTION' || listing.seller?.id === currentUser.id) return;
+          if (res.data?.status === 'COUNTERED' || res.data?.status === 'ACCEPTED') { navigation.navigate('BuyerOffers'); return; }
+          if (res.data?.status === 'PENDING') {
+            const amount = Number(res.data.amount);
+            setOfferAmount(amount); setOfferAmountDraft(String(amount));
+            setOfferMessage(res.data.message ?? '');
+          }
+          setOfferModalVisible(true);
+        }
       })
-      .catch(() => {});
-  }, [listing.id, currentUser]);
+      .catch(() => {
+        if (!cancelled && route.params.makeOffer) Alert.alert('Unable to load your offer', 'Please try again from the vehicle page.');
+      });
+    return () => { cancelled = true; };
+  }, [listing.id, currentUser, route.params.makeOffer]);
 
   const handleDeliveryRequest = async () => {
     if (!requireAccount()) return;
