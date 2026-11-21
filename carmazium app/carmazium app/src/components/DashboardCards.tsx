@@ -64,10 +64,10 @@ function AccountCards({ userId, mode }: { userId: string; mode: 'dealer' | 'pers
     if (item.tabName) navigation.navigate('Tabs', { screen: item.tabName, params: item.tabParams ?? item.tabStackParams });
     else if (item.stackScreen) navigation.navigate(item.stackScreen, item.stackParams);
   };
-  const columns = fontScale >= 1.4 || width < 360 ? 1 : width >= 1280 ? 3 : 2;
+  const columns = fontScale >= 1.3 || width < 360 ? 1 : width >= 1280 ? 3 : 2;
   const cardWidth = (width - 40 - (columns - 1) * 16) / columns;
   return <View style={s.section}>
-    <View style={s.header}>
+    <View style={[s.header, fontScale >= 1.3 && { flexDirection: 'column', alignItems: 'stretch' }]}>
       <View style={s.heading}><Text accessibilityRole="header" style={s.title}>Your dashboard</Text><Text style={s.hint}>Everything you need, in your order.</Text></View>
       <Button label={editing ? 'Done' : 'Customise'} variant="outline" disabled={!ready} onPress={() => setEditing(!editing)} />
     </View>

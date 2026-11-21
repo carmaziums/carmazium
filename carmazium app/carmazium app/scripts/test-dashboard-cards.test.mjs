@@ -22,11 +22,11 @@ test('saved layout tolerates corruption, adds new tools and cannot restore revok
   const revoked = preferences.orderDashboardItems(permitted.filter(x => x.id !== 'stock'), saved);
   assert.ok(!revoked.some(x => x.id === 'stock'));
 });
-async function harness(mode = 'personal', permissions = []) {
+async function harness(mode = 'personal', permissions = [], dimensions = { width: 360, fontScale: 1 }) {
   const saved = new Map(), nav = [], writes = [];
   let userId = 'account-a', failSave = false;
   const modules = {
-    react: React, 'react-native': { ActivityIndicator: 'Loading', Text: 'Text', View: 'View', TouchableOpacity: 'Press', StyleSheet: { create: x => x }, useWindowDimensions: () => ({ width: 360, fontScale: 1 }) },
+    react: React, 'react-native': { ActivityIndicator: 'Loading', Text: 'Text', View: 'View', TouchableOpacity: 'Press', StyleSheet: { create: x => x }, useWindowDimensions: () => dimensions },
     '@react-native-async-storage/async-storage': { getItem: async key => saved.get(key) || null, setItem: async (key, value) => { writes.push(key); if (failSave) throw Error('disk'); saved.set(key, value); } },
     '@react-navigation/native': { useNavigation: () => ({ navigate: (...args) => nav.push(args) }) },
     './BrandIcon': { Ionicons: 'Icon', MaterialCommunityIcons: 'Icon' }, './Button': { Button: 'Button' },
@@ -81,5 +81,12 @@ test('failed storage is visible and retry saves the current layout', async () =>
   await act(async () => h.button('Retry save').props.onPress());
   const persisted = JSON.parse(h.saved.get('carmazium:dashboard:v1:account-a:personal'));
   assert.ok(persisted.hidden.includes('user-cars'));
+  await act(async () => h.tree.unmount());
+});
+
+test('Android rounded 140 percent text uses a full-width dashboard card', async () => {
+  const h = await harness('personal', [], { width: 600, fontScale: 1.399999976 });
+  const card = h.press('Buy Cars').parent;
+  assert.equal(card.props.style[1].width, 560);
   await act(async () => h.tree.unmount());
 });

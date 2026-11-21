@@ -1,5 +1,4 @@
-import { apiClient } from '../../lib/apiClient';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -7,25 +6,20 @@ import {
   Linking,
   ScrollView,
   StatusBar,
-  Switch,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@/components/BrandIcon';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Button } from '../../components/Button';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
-import { FontFamily, FontSize } from '../../constants/typography';
-import { Elevation, Radius } from '../../constants/spacing';
+import { FontFamily } from '../../constants/typography';
 import { useAuthStore } from '../../store/authStore';
 import {
-  SERVICE_LABELS,
   ServiceType,
   PartnerProfile,
   PartnerTeam,
@@ -36,8 +30,7 @@ import {
   getPartnerTeam,
   savePartnerBusiness,
 } from '../../lib/servicesApi';
-import { HamburgerButton } from '../../components/HamburgerButton';
-import { IconButton } from '../../components/IconButton';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PartnerDashboard'>;
 
@@ -45,16 +38,15 @@ const SERVICE_ORDER: ServiceType[] = ['DELIVERY', 'INSPECTION'];
 
 const statusText = (status?: string) => {
   switch (status) {
-    case 'APPROVED': return 'Approved';
+    case 'APPROVED': return 'Active';
     case 'PENDING': return 'Awaiting approval';
-    case 'REJECTED': return 'Rejected';
+    case 'REJECTED': return 'Needs attention';
     case 'SUSPENDED': return 'Suspended';
     default: return 'Not activated';
   }
 };
 
 export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
-  const insets = useSafeAreaInsets();
   const accountRole = useAuthStore((s) => s.accountRole);
   const initializeAuth = useAuthStore((s) => s.initializeAuth);
   const [profile, setProfile] = useState<PartnerProfile | null>(null);
@@ -66,11 +58,15 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const [phone, setPhone] = useState('');
   const [businessAddress, setBusinessAddress] = useState('');
 
+  const generation = useRef(0);
   const load = useCallback(async () => {
+    const request = ++generation.current;
     setLoading(true);
     setError(null);
+    setTeam(null);
     try {
       const nextProfile = await getPartnerProfile();
+      if (request !== generation.current) return;
       setProfile(nextProfile);
       setCompanyName(nextProfile.dealerProfile?.companyName || '');
       setPhone(nextProfile.dealerProfile?.phone || '');
@@ -78,8 +74,10 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
 
       if (nextProfile.role === 'DEALER' && nextProfile.dealerProfile) {
         try {
-          setTeam(await getPartnerTeam());
+          const nextTeam = await getPartnerTeam();
+          if (request === generation.current) setTeam(nextTeam);
         } catch (err: any) {
+          if (request !== generation.current) return;
           setTeam(null);
           setError(err?.message || 'Could not load Partner services.');
         }
@@ -87,14 +85,14 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
         setTeam(null);
       }
     } catch (err: any) {
-      setError(err?.message || 'Could not load Partner Account.');
+      if (request === generation.current) setError(err?.message || 'Could not load Partner Account.');
     } finally {
-      setLoading(false);
+      if (request === generation.current) setLoading(false);
     }
   }, []);
 
   // Show updates to verification, matching and quotes when returning to the hub.
-  useFocusEffect(useCallback(() => { void load(); }, [load]));
+  useFocusEffect(useCallback(() => { void load(); return () => { generation.current++; }; }, [load]));
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
@@ -147,22 +145,14 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
     setBusy(serviceType);
     setError(null);
     try {
-      await applyPartnerCapability(serviceType);
-      await load();
+      const capability = await applyPartnerCapability(serviceType);
+      if (!capability?.id || !/^[a-zA-Z0-9_-]+$/.test(capability.id) || capability.serviceType !== serviceType) throw Error('Service setup is unavailable. Refresh and try again.');
+      navigation.navigate('ProviderVerification', { capabilityId: capability.id });
     } catch (err: any) {
       setError(err?.message || 'Could not add this service.');
     } finally {
       setBusy(null);
     }
-  };
-
-  const toggleService = async (key: string, enabled: boolean) => {
-    setBusy(key); setError(null);
-    try {
-      await apiClient('/users/dealer-profile', { method: 'PATCH', body: JSON.stringify({ [key]: enabled }) });
-      await load();
-    } catch (e: any) { setError(e?.message || 'Could not save preference.'); }
-    finally { setBusy(null); }
   };
 
   const startStripe = async () => {
@@ -180,41 +170,29 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
 
   const isPartnerRole = profile?.role === 'DEALER' || accountRole === 'dealer';
   const byType = new Map((team?.capabilities ?? []).map((cap) => [cap.serviceType, cap]));
-  const hasPaidJobCapability = Boolean(byType.get('DELIVERY') || byType.get('INSPECTION'));
-  const hasApprovedJobCapability =
-    byType.get('DELIVERY')?.status === 'APPROVED'
-    || byType.get('INSPECTION')?.status === 'APPROVED';
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
-      <View style={styles.header}>
-        <IconButton
-          style={styles.headerButton}
-          icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
-          onPress={() => navigation.goBack()}
-          accessibilityLabel="Go back"
-        />
-        <Text style={styles.headerTitle}>Partner Account</Text>
-        <HamburgerButton />
-      </View>
+      <WebsiteTopBar />
 
       {loading ? (
         <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.hero}>
-            <Text style={styles.eyebrow}>TRADEXCHANGE PARTNER</Text>
-            <Text style={styles.title}>One business account</Text>
+            <Text style={styles.eyebrow}>PARTNER ACCOUNT</Text>
+            <Text style={styles.title}>Partner Dashboard</Text>
             <Text style={styles.sub}>
-              Add Dealer, Delivery and Inspection services. Finance and warranty partnerships are managed by the CarMazium team.
+              One CarMazium business account. Add only the services your business provides and keep them all under the same login.
             </Text>
+            {profile?.dealerProfile && <Button label="Manage Team" variant="outline" onPress={() => navigation.navigate('DealerTeam')} />}
           </View>
 
           {error ? (
             <View style={styles.errorCard}>
               <Ionicons name="alert-circle-outline" size={16} color={Colors.accent} />
-              <Text style={styles.errorText}>{error}</Text>
+              <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text><Button label="Retry" variant="outline" onPress={() => void load()} />
             </View>
           ) : null}
 
@@ -222,11 +200,9 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Create a Partner Account</Text>
               <Text style={styles.cardText}>
-                Your existing CarMazium login is kept. This changes the business shell so multiple trade services can live under one account.
+                One business account lets you add Vehicle Dealer, Delivery & Recovery and Vehicle Inspection services. Finance and warranty partnerships are managed by the CarMazium team.
               </Text>
-              <TouchableOpacity style={styles.primaryButton} onPress={createPartner} disabled={busy === 'partner'}>
-                {busy === 'partner' ? <ActivityIndicator color={Colors.onAccent} /> : <Text style={styles.primaryText}>CREATE PARTNER ACCOUNT</Text>}
-              </TouchableOpacity>
+              <Button label="Create Partner Account" loading={busy === 'partner'} disabled={!!busy} onPress={() => void createPartner()} />
             </View>
           ) : !profile?.dealerProfile ? (
             <View style={styles.card}>
@@ -235,9 +211,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
               <TextInput style={styles.input} value={companyName} onChangeText={setCompanyName} placeholder="Business or trading name" placeholderTextColor={Colors.textMuted} />
               <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Business phone" placeholderTextColor={Colors.textMuted} keyboardType="phone-pad" />
               <TextInput style={styles.input} value={businessAddress} onChangeText={setBusinessAddress} placeholder="Business address / service area" placeholderTextColor={Colors.textMuted} multiline />
-              <TouchableOpacity style={styles.primaryButton} onPress={saveBusiness} disabled={busy === 'business'}>
-                {busy === 'business' ? <ActivityIndicator color={Colors.onAccent} /> : <Text style={styles.primaryText}>SAVE PARTNER BUSINESS</Text>}
-              </TouchableOpacity>
+              <Button label="Save Partner business" loading={busy === 'business'} disabled={!!busy} onPress={() => void saveBusiness()} />
             </View>
           ) : (
             <>
@@ -246,52 +220,20 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.label}>PARTNER BUSINESS</Text>
                     <Text style={styles.cardTitle}>{profile.dealerProfile.companyName || team?.companyName || 'Partner business'}</Text>
-                    {!!profile.dealerProfile.businessAddress && <Text style={styles.cardText}>{profile.dealerProfile.businessAddress}</Text>}
+
                   </View>
-                  <Ionicons name="business-outline" size={28} color={Colors.warning} />
+                  <Button label="Edit business details" variant="outline" onPress={() => navigation.navigate('Settings', { section: 'business' })} />
                 </View>
               </View>
 
-              <View style={styles.quickTasks}>
-                <Text style={styles.sectionTitle}>Your workspace</Text>
-                <View style={styles.quickTaskGrid}>
-                  <TouchableOpacity style={styles.quickTask} onPress={() => navigation.navigate('ProviderJobs')} accessibilityRole="button" accessibilityLabel="See available delivery and inspection jobs" activeOpacity={0.8}>
-                    <Ionicons name="briefcase-outline" size={21} color={Colors.accent} />
-                    <Text style={styles.quickTaskText}>Available jobs</Text>
-                    <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.quickTask} onPress={() => navigation.navigate('ProviderCapabilities')} accessibilityRole="button" accessibilityLabel="Manage services and matching areas" activeOpacity={0.8}>
-                    <Ionicons name="options-outline" size={21} color={Colors.accent} />
-                    <Text style={styles.quickTaskText}>My services</Text>
-                    <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
-                  </TouchableOpacity>
-                  {hasApprovedJobCapability && (
-                    <TouchableOpacity style={styles.quickTask} onPress={() => navigation.navigate('ProviderMessages')} accessibilityRole="button" accessibilityLabel="Read service job messages" activeOpacity={0.8}>
-                      <Ionicons name="chatbubble-outline" size={21} color={Colors.accent} />
-                      <Text style={styles.quickTaskText}>Job messages</Text>
-                      <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
               <View style={styles.sectionHeader}>
-                <View>
-                  <Text style={styles.sectionTitle}>Your services</Text>
-                  <Text style={styles.sectionSub}>Adding one service never removes another.</Text>
-                </View>
-                <Button label="Manage" onPress={() => navigation.navigate('ProviderCapabilities')} variant="outline" size="sm" />
+                <View><Text style={styles.sectionTitle}>Your add-ons</Text><Text style={styles.sectionSub}>Activate one service or several. Adding one never removes another.</Text></View>
               </View>
-
               <View style={styles.card}>
-                <Text style={styles.sectionTitle}>My dealership services</Text>
-                <Text style={styles.cardText}>New accounts start with all four on. Turn off services you do not offer. Finance and warranty badges apply only to your listings; buyers should contact you for details.</Text>
-                {([
-                  ['financeOffered', 'Finance badge'], ['warrantyOffered', 'Warranty badge'],
-                  ['deliveryServicesEnabled', 'Collection, delivery and recovery'], ['inspectionServicesEnabled', 'Vehicle inspection'],
-                ] as const).map(([key, label]) => <View key={key} style={styles.rowBetween}>
-                  <Text style={[styles.cardText, { flex: 1 }]}>{label}</Text><Switch accessibilityLabel={label} disabled={!!busy} value={profile.dealerProfile?.[key] !== false} onValueChange={value => toggleService(key, value)} />
-                </View>)}
-                <Text style={styles.cardText}>Paid jobs reuse your approved dealer KYC and one-time £1 account verification. No additional verification payment is required for services. Verified payouts and a declaration are required. Only trade insurance is uploaded for collection/delivery/recovery. No inspection documents are required.</Text>
+                <Text style={styles.serviceStatus}>{profile.dealerProfile.isVerified ? 'Active' : profile.dealerProfile.kyc?.status === 'PENDING' ? 'Awaiting verification' : 'Not activated'}</Text>
+                <Text style={styles.cardTitle}>Vehicle Dealer</Text>
+                <Text style={styles.cardText}>List retail stock, bid in auctions, manage inventory, CRM and dealer tools. Business KYC and the £1 verification payment are required before taking paid jobs.</Text>
+                <Button label={profile.dealerProfile.isVerified ? 'Open dealer tools' : 'Add Vehicle Dealer'} variant="outline" onPress={() => navigation.navigate('Tabs', { screen: 'DealerHome' })} />
               </View>
               {SERVICE_ORDER.map((type) => {
 
@@ -299,95 +241,39 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 const cap = byType.get(type);
                 const approved = cap?.status === 'APPROVED';
                 return (
-                  <View key={type} style={styles.serviceCard}>
-                    <View style={styles.serviceIcon}>
-                      <Ionicons
-                        name={type === 'DELIVERY' ? 'car-outline' : type === 'INSPECTION' ? 'search-outline' : 'shield-checkmark-outline'}
-                        size={21}
-                        color={approved ? Colors.accentGreen : Colors.textSecondary}
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.serviceTitle}>{SERVICE_LABELS[type]}</Text>
-                      <Text style={[styles.serviceStatus, approved && { color: Colors.accentGreen }]}>{statusText(cap?.status)}</Text>
-                      {cap?.reviewNote ? <Text style={styles.reviewNote}>{cap.reviewNote}</Text> : null}
-                    </View>
-                    {!cap || cap.status === 'REJECTED' ? (
-                      <TouchableOpacity style={styles.smallButton} onPress={() => applyService(type)} disabled={busy === type}>
-                        {busy === type ? <ActivityIndicator size="small" color={Colors.onAccent} /> : <Text style={styles.smallButtonText}>{cap ? 'REAPPLY' : 'ADD'}</Text>}
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity style={styles.smallOutline} onPress={() => navigation.navigate('ProviderCapabilities')}>
-                        <Text style={styles.smallOutlineText}>DETAILS</Text>
-                      </TouchableOpacity>
-                    )}
+                  <View key={type} style={styles.card}>
+                    <Text style={[styles.serviceStatus, approved && { color: Colors.success }]}>{!team ? 'Status unavailable' : statusText(cap?.status)}</Text>
+                    <Text style={styles.cardTitle}>{type === 'DELIVERY' ? 'Delivery & Recovery' : 'Vehicle Inspection'}</Text>
+                    <Text style={styles.cardText}>{type === 'DELIVERY' ? 'Quote on transport and recovery jobs on behalf of your Partner business.' : 'Quote on vehicle inspection jobs using the same Partner account and business payout details.'}</Text>
+                    {cap?.reviewNote && <Text style={styles.reviewNote}>{cap.reviewNote}</Text>}
+                    {approved ? <Button label="Open jobs" variant="outline" onPress={() => navigation.navigate('ProviderJobs')} />
+                      : cap?.status === 'PENDING' ? <Button label="Complete service setup" onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} />
+                      : <Button label="Complete setup" disabled={!team || !!busy} loading={busy === type} onPress={() => void applyService(type)} />}
                   </View>
                 );
               })}
 
               <View style={styles.card}>
-                <View style={styles.rowBetween}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>Service Jobs</Text>
-                    <Text style={styles.cardText}>
-                      Quote on matching Delivery, Recovery and Inspection work. Accepted jobs stay here through payment, chat, start and completion.
-                    </Text>
-                  </View>
-                  <Ionicons name="briefcase-outline" size={26} color={Colors.accent} />
-                </View>
-                <TouchableOpacity
-                  style={styles.secondaryButton}
-                  onPress={() => navigation.navigate('ProviderJobs')}
-                >
-                  <Ionicons name="construct-outline" size={17} color={Colors.white} />
-                  <Text style={styles.secondaryText}>OPEN SERVICE JOBS</Text>
-                </TouchableOpacity>
-              </View>
-
-              {hasApprovedJobCapability && (
-                <View style={styles.card}>
-                  <View style={styles.rowBetween}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>Service job messages</Text>
-                      <Text style={styles.cardText}>
-                        Keep Delivery, Recovery and Inspection customer conversations separate from your general CarMazium inbox.
-                      </Text>
-                    </View>
-                    <Ionicons name="chatbubbles-outline" size={26} color={Colors.accentGreen} />
-                  </View>
-                  <TouchableOpacity
-                    style={styles.secondaryButton}
-                    onPress={() => navigation.navigate('ProviderMessages')}
-                  >
-                    <Ionicons name="chatbubble-ellipses-outline" size={17} color={Colors.white} />
-                    <Text style={styles.secondaryText}>OPEN JOB MESSAGES</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {hasPaidJobCapability ? (
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Business payouts</Text>
+                  <Text style={styles.cardTitle}>TradeXchange payouts</Text>
                   <Text style={styles.cardText}>
-                    Delivery and Inspection customers pay through CarMazium. CarMazium deducts 9% and 91% is paid to the Partner business Stripe Connect account.
+                    For Delivery and Inspection, the job poster always pays through CarMazium. CarMazium deducts 9% and the remaining 91% is paid to the Partner business Stripe Connect account.
                   </Text>
                   {team?.stripeConnect.complete ? (
                     <View style={styles.successRow}>
                       <Ionicons name="checkmark-circle" size={18} color={Colors.accentGreen} />
-                      <Text style={styles.successText}>Stripe payouts connected</Text>
+                      <Text style={styles.successText}>Business payouts enabled</Text>
                     </View>
                   ) : (
-                    <TouchableOpacity style={styles.secondaryButton} onPress={startStripe} disabled={busy === 'stripe'}>
-                      {busy === 'stripe' ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.secondaryText}>{team?.stripeConnect.connected ? 'FINISH PAYOUT SETUP' : 'SET UP BUSINESS PAYOUTS'}</Text>}
-                    </TouchableOpacity>
+                    <Button label="Set up business payouts" variant="outline" loading={busy === 'stripe'} disabled={!team || !!busy} onPress={() => void startStripe()} />
                   )}
                 </View>
-              ) : null}
 
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('DealerTeam')}>
-                <Ionicons name="people-outline" size={17} color={Colors.white} />
-                <Text style={styles.secondaryText}>MANAGE PARTNER TEAM</Text>
-              </TouchableOpacity>
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>One team, service permissions</Text>
+                <Text style={styles.cardText}>Invite staff once, then decide who can quote, manage or complete Delivery and Inspection jobs on behalf of this business. Staff never receive the CarMazium payout personally.</Text>
+                <Button label="Manage Partner team" variant="outline" onPress={() => navigation.navigate('DealerTeam')} />
+              </View>
+
             </>
           )}
 
@@ -401,43 +287,19 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12 },
-  headerButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderBottomWidth: 2, ...Elevation.card },
-  headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
-  content: { padding: 18, gap: 14 },
-  hero: { paddingVertical: 8 },
-  quickTasks: { gap: 12, marginTop: 4 },
-  quickTaskGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
-  quickTask: { flexBasis: '47%', flexGrow: 1, minHeight: 70, borderRadius: Radius.inline, backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderHi, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 12 },
-  quickTaskText: { flex: 1, minWidth: 64, fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
-  eyebrow: { fontFamily: FontFamily.bold, color: Colors.accent, fontSize: FontSize.size10, letterSpacing: 1.6 },
-  title: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.xl, marginTop: 6 },
-  sub: { fontFamily: FontFamily.regular, color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 21, marginTop: 8 },
-  card: { borderRadius: Radius.card, borderWidth: 1, padding: 16, gap: 12, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
-  cardTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.base },
-  cardText: { fontFamily: FontFamily.regular, color: Colors.textSecondary, fontSize: FontSize.size12, lineHeight: 19 },
-  input: { borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.bgTertiary, borderRadius: Radius.inline, paddingHorizontal: 13, paddingVertical: 12, color: Colors.white, fontFamily: FontFamily.regular, fontSize: FontSize.sm },
-  primaryButton: { minHeight: 46, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
-  primaryText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: FontSize.size12, letterSpacing: 0.7 },
-  secondaryButton: { minHeight: 46, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, flexDirection: 'row', gap: 8, backgroundColor: Colors.bgCard, borderBottomWidth: 3, ...Elevation.card },
-  secondaryText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size12 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 8, gap: 12 },
-  sectionTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.lg },
-  sectionSub: { fontFamily: FontFamily.regular, color: Colors.textMuted, fontSize: FontSize.size12, marginTop: 3 },
-  linkText: { fontFamily: FontFamily.bold, color: Colors.accent, fontSize: FontSize.xs },
-  serviceCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: Radius.card, padding: 14, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
-  serviceIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
-  serviceTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.sm },
-  serviceStatus: { fontFamily: FontFamily.medium, color: Colors.textMuted, fontSize: FontSize.xs, marginTop: 3 },
-  reviewNote: { fontFamily: FontFamily.regular, color: Colors.paleRed_fca5a5, fontSize: FontSize.size10, marginTop: 3 },
-  smallButton: { minWidth: 72, minHeight: 44, borderRadius: 10, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
-  smallButtonText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: FontSize.size10 },
-  smallOutline: { minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: Colors.borderHi, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
-  smallOutlineText: { fontFamily: FontFamily.bold, color: Colors.textSecondary, fontSize: FontSize.size10 },
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  label: { fontFamily: FontFamily.bold, color: Colors.textMuted, fontSize: FontSize.size10, letterSpacing: 1.2, marginBottom: 4 },
-  successRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  successText: { fontFamily: FontFamily.bold, color: Colors.accentGreen, fontSize: FontSize.size12 },
-  errorCard: { flexDirection: 'row', gap: 9, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha25, backgroundColor: Colors.accentAlpha10, padding: 12 },
-  errorText: { flex: 1, fontFamily: FontFamily.regular, color: Colors.paleRed_fca5a5, fontSize: FontSize.size12, lineHeight: 18 },
+  content: { padding: 20, gap: 24, paddingBottom: 40 }, hero: { gap: 12 },
+  eyebrow: { fontFamily: FontFamily.bold, color: Colors.accent, fontSize: 12, letterSpacing: 1.6 },
+  title: { fontFamily: FontFamily.bold, color: Colors.textPrimary, fontSize: 36 },
+  sub: { color: Colors.textSecondary, fontSize: 16, lineHeight: 24 },
+  card: { borderRadius: 16, borderWidth: 1, padding: 24, gap: 16, backgroundColor: Colors.bgCard, borderColor: Colors.border },
+  cardTitle: { fontFamily: FontFamily.bold, color: Colors.textPrimary, fontSize: 20 },
+  cardText: { color: Colors.textSecondary, fontSize: 14, lineHeight: 22 },
+  input: { borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgTertiary, borderRadius: 12, padding: 14, color: Colors.textPrimary, fontSize: 16 },
+  rowBetween: { gap: 16 }, label: { fontSize: 12, fontFamily: FontFamily.bold, color: Colors.textMuted },
+  sectionHeader: { gap: 8 }, sectionTitle: { fontSize: 24, fontFamily: FontFamily.bold, color: Colors.textPrimary },
+  sectionSub: { fontSize: 14, lineHeight: 22, color: Colors.textSecondary },
+  serviceStatus: { fontFamily: FontFamily.bold, fontSize: 12, color: Colors.textSecondary },
+  reviewNote: { color: Colors.error, fontSize: 14, lineHeight: 22 },
+  successRow: { flexDirection: 'row', alignItems: 'center', gap: 8 }, successText: { fontSize: 14, fontFamily: FontFamily.bold, color: Colors.success },
+  errorCard: { gap: 12, padding: 16, borderWidth: 1, borderColor: Colors.error, borderRadius: 12 }, errorText: { color: Colors.error, fontSize: 14 },
 });

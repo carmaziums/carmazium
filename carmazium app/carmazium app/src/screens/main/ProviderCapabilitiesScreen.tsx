@@ -1,221 +1,111 @@
-import React, { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Linking,
-  RefreshControl,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Linking, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@/components/BrandIcon';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { Colors, themeStatusBarStyle } from '../../constants/colors';
-import { FontFamily, FontSize } from '../../constants/typography';
-import { Elevation, Radius } from '../../constants/spacing';
-import {
-  ContractorCapability,
-  SERVICE_LABELS,
-  ServiceType,
-  applyPartnerCapability,
-  createStripeConnectOnboarding,
-  getMyCapabilities,
-} from '../../lib/servicesApi';
-import { IconButton } from '../../components/IconButton';
+import { Colors } from '../../constants/colors';
+import { FontFamily } from '../../constants/typography';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { Button } from '../../components/Button';
+import { DealerPageTabs } from '../../components/dealer/DealerPageTabs';
+import { useAuthStore } from '../../store/authStore';
+import { apiClient } from '../../lib/apiClient';
+import { ContractorCapability, MyCapabilities, SERVICE_LABELS, ServiceType, applyPartnerCapability, createStripeConnectOnboarding, getMyCapabilities, getPartnerProfile } from '../../lib/servicesApi';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ProviderCapabilities'>;
-
 const TYPES: ServiceType[] = ['DELIVERY', 'INSPECTION'];
-
-const statusColor = (status?: string) => {
-  if (status === 'APPROVED') return Colors.accentGreen;
-  if (status === 'REJECTED' || status === 'SUSPENDED') return Colors.accent;
-  if (status === 'PENDING') return Colors.warning;
-  return Colors.textMuted;
-};
+const statusLabel = { APPROVED: 'Approved', PENDING: 'Awaiting review', REJECTED: 'Not approved', SUSPENDED: 'Suspended' };
 
 export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
-  const insets = useSafeAreaInsets();
-  const [caps, setCaps] = useState<ContractorCapability[]>([]);
-  const [stripe, setStripe] = useState({ connected: false, complete: false });
+  const accountRole = useAuthStore(s => s.accountRole);
+  const isPartner = accountRole === 'dealer';
+  const [data, setData] = useState<MyCapabilities | null>(null);
+  const [business, setBusiness] = useState({ name: '', phone: '', area: '' });
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async (refresh = false) => {
-    refresh ? setRefreshing(true) : setLoading(true);
-    setError(null);
+  const generation = useRef(0);
+  const load = useCallback(async () => {
+    const request = ++generation.current;
+    setLoading(true); setError(null);
     try {
-      const data = await getMyCapabilities();
-      setCaps(data.capabilities || []);
-      setStripe(data.stripeConnect);
-    } catch (err: any) {
-      setError(err?.message || 'Could not load service add-ons.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  // Returning from verification/matching should refresh capability status.
-  useFocusEffect(useCallback(() => { void load(); }, [load]));
+      const [next, profile] = await Promise.all([getMyCapabilities(), isPartner ? getPartnerProfile() : Promise.resolve(null)]);
+      if (!Array.isArray(next?.capabilities) || !next.stripeConnect) throw Error('Service settings are unavailable.');
+      if (request !== generation.current) return;
+      setData(next);
+      setBusiness({ name: next.profile?.businessName ?? profile?.dealerProfile?.companyName ?? '', phone: next.profile?.phone ?? profile?.dealerProfile?.phone ?? '', area: next.profile?.serviceArea ?? profile?.dealerProfile?.businessAddress ?? '' });
+    } catch (err: any) { if (request === generation.current) setError(err?.message || 'Could not load service settings.'); }
+    finally { if (request === generation.current) setLoading(false); }
+  }, [isPartner]);
+  useFocusEffect(useCallback(() => { void load(); return () => { generation.current++; }; }, [load]));
 
   const apply = async (type: ServiceType) => {
-    setBusy(type);
-    setError(null);
+    setBusy(type); setError(null);
     try {
-      await applyPartnerCapability(type);
-      await load(true);
-    } catch (err: any) {
-      setError(err?.message || 'Could not add this service.');
-    } finally {
-      setBusy(null);
-    }
+      const capability = isPartner ? await applyPartnerCapability(type) : (await apiClient<{ data: ContractorCapability }>('/services/capabilities', { method: 'POST', body: JSON.stringify({ serviceType: type, businessName: business.name.trim() || undefined, phone: business.phone.trim() || undefined, serviceArea: business.area.trim() || undefined }) })).data;
+      if (!capability?.id || !/^[a-zA-Z0-9_-]+$/.test(capability.id) || capability.serviceType !== type) throw Error('Service setup is unavailable. Refresh and try again.');
+      navigation.navigate('ProviderVerification', { capabilityId: capability.id });
+    } catch (err: any) { setError(err?.message || 'Could not apply.'); }
+    finally { setBusy(null); }
   };
-
   const connectStripe = async () => {
     setBusy('stripe');
-    try {
-      const url = await createStripeConnectOnboarding();
-      await Linking.openURL(url);
-    } catch (err: any) {
-      Alert.alert('Payout setup', err?.message || 'Could not start Stripe Connect.');
-    } finally {
-      setBusy(null);
-    }
+    try { await Linking.openURL(await createStripeConnectOnboarding()); }
+    catch (err: any) { Alert.alert('Payout setup', err?.message || 'Could not start Stripe Connect.'); }
+    finally { setBusy(null); }
   };
-
-  const byType = new Map(caps.map((cap) => [cap.serviceType, cap]));
-
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
-      <View style={styles.header}>
-        <IconButton style={styles.headerButton} icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>My services</Text>
-        <View style={styles.headerButton} />
-      </View>
-
-      {loading ? <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View> : (
-        <ScrollView
-          contentContainerStyle={styles.content}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={Colors.accent} />}
-        >
-          <Text style={styles.title}>Manage your services</Text>
-          <Text style={styles.sub}>Activate each service independently. Complete verification and set your coverage before matched delivery or inspection jobs can reach you.</Text>
-          <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.quickAction} onPress={() => navigation.navigate('ProviderJobs')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Open available delivery and inspection jobs">
-              <Ionicons name="briefcase-outline" size={19} color={Colors.accent} />
-              <Text style={styles.quickActionText}>Service jobs</Text>
-              <Ionicons name="chevron-forward" size={17} color={Colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          <View style={styles.payoutCard}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>Paid-job payouts</Text>
-              <Text style={styles.cardText}>Delivery and Inspection use a 9% CarMazium / 91% Partner payout split.</Text>
-            </View>
-            {stripe.complete ? (
-              <Ionicons name="checkmark-circle" size={24} color={Colors.accentGreen} />
-            ) : (
-              <TouchableOpacity style={styles.smallButton} onPress={connectStripe} disabled={busy === 'stripe'}>
-                {busy === 'stripe' ? <ActivityIndicator size="small" color={Colors.onAccent} /> : <Text style={styles.smallButtonText}>{stripe.connected ? 'FINISH' : 'SET UP'}</Text>}
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {TYPES.map((type) => {
-
-
-            const cap = byType.get(type);
-            const canApply = !cap || cap.status === 'REJECTED';
-            const coverageMissing = cap
-              ? (type === 'WARRANTY'
-                  ? !cap.leadNationwide && cap.leadPostcodeAreas.length === 0
-                  : !cap.jobNationwide && cap.jobPostcodeAreas.length === 0)
-              : false;
-            return (
-              <View key={type} style={styles.card}>
-                <View style={styles.row}>
-                  <View style={styles.icon}>
-                    <Ionicons name={type === 'DELIVERY' ? 'car-outline' : type === 'INSPECTION' ? 'search-outline' : 'shield-checkmark-outline'} size={21} color={statusColor(cap?.status)} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>{SERVICE_LABELS[type]}</Text>
-                    <Text style={[styles.status, { color: statusColor(cap?.status) }]}>{cap?.status || 'NOT ACTIVATED'}</Text>
-                  </View>
-                  {canApply ? (
-                    <TouchableOpacity style={styles.smallButton} onPress={() => apply(type)} disabled={busy === type} accessibilityRole="button" accessibilityLabel={`${cap ? 'Reapply for' : 'Add'} ${SERVICE_LABELS[type]} service`}>
-                      {busy === type ? <ActivityIndicator size="small" color={Colors.onAccent} /> : <Text style={styles.smallButtonText}>{cap ? 'REAPPLY' : 'ADD'}</Text>}
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-
-                <Text style={styles.cardText}>
-                  {type === 'DELIVERY' ? 'Quote on vehicle transport and recovery jobs.' :
-                   type === 'INSPECTION' ? 'Quote on independent vehicle inspection jobs.' :
-                   'Receive matched warranty enquiries.'}
-                </Text>
-
-                {cap?.reviewNote ? <Text style={styles.error}>{cap.reviewNote}</Text> : null}
-                {coverageMissing ? <Text style={styles.warning}>Matching coverage is not configured yet.</Text> : null}
-
-                {cap ? (
-                  <View style={styles.actions}>
-                    <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} accessibilityRole="button" accessibilityLabel={`View verification for ${SERVICE_LABELS[type]}`}>
-                      <Ionicons name="document-text-outline" size={15} color={Colors.white} />
-                      <Text style={styles.actionText}>VERIFICATION</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ProviderMatching', { capabilityId: cap.id })} accessibilityRole="button" accessibilityLabel={`Set matching coverage for ${SERVICE_LABELS[type]}`}>
-                      <Ionicons name="options-outline" size={15} color={Colors.white} />
-                      <Text style={styles.actionText}>MATCHING</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : null}
-              </View>
-            );
-          })}
-          <View style={{ height: 48 }} />
-        </ScrollView>
-      )}
-    </View>
-  );
+  const byType = new Map((data?.capabilities ?? []).map(cap => [cap.serviceType, cap]));
+  return <View style={s.screen}>
+    <WebsiteTopBar />
+    <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+      <Text accessibilityRole="header" style={s.title}>My services</Text>
+      <Text style={s.body}>Add services to the same Partner Account. Adding one never replaces another.</Text>
+      {isPartner && <Button label="Partner Dashboard" variant="outline" onPress={() => navigation.navigate('PartnerDashboard')} />}
+      {loading && <ActivityIndicator color={Colors.accent} accessibilityLabel="Loading services" />}
+      {error && <View style={s.card}><Text accessibilityRole="alert" style={s.error}>{error}</Text><Button label="Retry" disabled={loading} onPress={() => void load()} /></View>}
+      {!loading && data && <>
+        <View style={s.card}>
+          <Text style={s.label}>Your business</Text>
+          {([['name', 'Trading name'], ['phone', 'Business phone'], ['area', 'Area you cover']] as const).map(([key, label]) => <View key={key} style={{ gap: 8 }}>
+            <Text style={s.label}>{label}</Text><TextInput accessibilityLabel={label} editable={!isPartner} value={business[key]} maxLength={key === 'phone' ? 30 : key === 'name' ? 120 : 200} onChangeText={value => setBusiness(previous => ({ ...previous, [key]: value }))} style={s.input} />
+          </View>)}
+          {isPartner && <><Text style={s.body}>Your business details are shown here for reference.</Text><Button label="Edit them in Account Settings" variant="outline" onPress={() => navigation.navigate('Settings', { section: 'business' })} /></>}
+        </View>
+        <View style={s.card}>
+          <Text style={s.label}>Payments for job services</Text>
+          <Text style={s.body}>For Delivery & Recovery and Vehicle Inspections, the customer pays through CarMazium. CarMazium keeps 9% and pays the 91% balance to the Partner business Stripe Connect account.</Text>
+          {data.stripeConnect.complete ? <Text style={s.success}>Business payouts enabled</Text> : <Button variant="outline" label={data.stripeConnect.connected ? 'Finish Stripe setup' : 'Set up business payouts'} loading={busy === 'stripe'} disabled={!!busy} onPress={() => void connectStripe()} />}
+        </View>
+        <Text style={s.label}>Add services</Text>
+        {TYPES.map(type => {
+          const cap = byType.get(type);
+          const canApply = !cap || cap.status === 'REJECTED' || cap.status === 'SUSPENDED';
+          return <View key={type} style={s.card}>
+            <Text style={s.heading}>{SERVICE_LABELS[type]}</Text>
+            {cap && <Text style={cap.status === 'APPROVED' ? s.success : s.body}>{statusLabel[cap.status] ?? cap.status}</Text>}
+            <Text style={s.body}>{type === 'DELIVERY' ? 'Quote on vehicle moves and recoveries.' : 'Quote on pre-purchase and trade vehicle inspections.'} CarMazium keeps 9%; your Partner business receives 91% after completion.</Text>
+            {!data.stripeConnect.complete && <Text style={s.body}>Stripe Connect must be completed before admin can approve this paid-job service.</Text>}
+            {cap?.reviewNote && (cap.status === 'REJECTED' || cap.status === 'SUSPENDED') && <Text style={s.error}>{cap.reviewNote}</Text>}
+            {cap && <>
+              <Button label={type === 'INSPECTION' ? 'Service declaration' : 'Service declaration and trade insurance'} variant="outline" onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} />
+              <Button label="Matching settings" variant="outline" onPress={() => navigation.navigate('ProviderMatching', { capabilityId: cap.id })} />
+              {!cap.jobNationwide && cap.jobPostcodeAreas.length === 0 && <Text style={s.body}>Configure job coverage before this service can see or quote open work.</Text>}
+            </>}
+            {canApply ? <Button label={cap ? 'Apply again' : 'Add service'} variant="outline" loading={busy === type} disabled={!!busy || !!error} onPress={() => void apply(type)} /> : cap?.status === 'APPROVED' ? <Button label="See jobs" variant="outline" onPress={() => navigation.navigate('ProviderJobs')} /> : null}
+          </View>;
+        })}
+      </>}
+    </ScrollView>
+    {isPartner && <DealerPageTabs />}
+  </View>;
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgPrimary },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12 },
-  headerButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderBottomWidth: 2, ...Elevation.card },
-  headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
-  content: { padding: 18, gap: 14 },
-  title: { fontFamily: FontFamily.bold, fontSize: FontSize.xl, color: Colors.white },
-  quickActions: { gap: 9, marginTop: 4 },
-  quickAction: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 52, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgCardSolid, paddingHorizontal: 13 },
-  quickActionText: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
-  sub: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, lineHeight: 21, color: Colors.textSecondary },
-  payoutCard: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.warningAlpha30, backgroundColor: Colors.warningAlpha08, padding: 15 },
-  card: { borderRadius: Radius.card, borderWidth: 1, padding: 15, gap: 11, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
-  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 },
-  icon: { width: 42, height: 42, borderRadius: 12, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
-  cardTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
-  cardText: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, lineHeight: 19, color: Colors.textSecondary },
-  status: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, marginTop: 3 },
-  smallButton: { minHeight: 44, minWidth: 80, borderRadius: 10, backgroundColor: Colors.accent, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
-  smallButtonText: { fontFamily: FontFamily.bold, color: Colors.onAccent, fontSize: FontSize.size10 },
-  actions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  actionButton: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: 10, paddingHorizontal: 11, backgroundColor: Colors.bgCard, borderBottomWidth: 3, ...Elevation.card },
-  actionText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size10 },
-  error: { fontFamily: FontFamily.regular, color: Colors.paleRed_fca5a5, fontSize: FontSize.size12, lineHeight: 18 },
-  warning: { fontFamily: FontFamily.medium, color: Colors.warning, fontSize: FontSize.xs },
+const s = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: Colors.bgPrimary }, content: { padding: 20, paddingBottom: 32, gap: 20 },
+  title: { fontSize: 30, fontFamily: FontFamily.bold, color: Colors.textPrimary },
+  heading: { fontSize: 20, fontFamily: FontFamily.bold, color: Colors.textPrimary },
+  label: { fontSize: 14, fontFamily: FontFamily.bold, color: Colors.textPrimary },
+  body: { fontSize: 14, lineHeight: 22, color: Colors.textSecondary },
+  card: { padding: 20, gap: 16, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard },
+  input: { minHeight: 48, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgTertiary, color: Colors.textPrimary, fontSize: 14 },
+  success: { fontSize: 14, fontFamily: FontFamily.bold, color: Colors.success }, error: { fontSize: 14, color: Colors.error },
 });

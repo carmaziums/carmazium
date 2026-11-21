@@ -681,7 +681,7 @@ if (
   !mobileProviderMessages.includes("navigation.navigate('ChatScreen'") ||
   !mobileProviderMessages.includes('room.serviceJob?.title') ||
   !mobileMainNavigator.includes('ProviderMessages') ||
-  !mobilePartnerDashboard.includes("navigation.navigate('ProviderMessages')")
+  !mobileProviderJobs.includes("navigation.navigate('ProviderMessages')")
 ) {
   fail('Native provider Messages can drift from shared SERVICE_JOB chat context');
 } else {
@@ -1040,8 +1040,8 @@ if (
   !mobileDealerDrawer.includes("label: 'Finance Calculator'") ||
   !mobileDealerCustomers.includes('>Customers</Text>') ||
   !mobileDealerOffers.includes('>Offers received</Text>') ||
-  !mobilePartnerDashboard.includes('>Service Jobs</Text>') ||
-  !mobileProviderJobs.includes('>Service Jobs</Text>')
+  !mobilePartnerDashboard.includes('label="Open jobs"') ||
+  !mobileProviderJobs.includes("'My Work' : 'Available Jobs'")
 ) {
   fail('Shared dealer/Partner terminology drifted between web and native clients');
 } else {
