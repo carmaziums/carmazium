@@ -80,3 +80,29 @@ test('failed storage is visible and retry saves the current layout', async () =>
   assert.ok(persisted.hidden.includes('user-cars'));
   await act(async () => h.tree.unmount());
 });
+
+test('buyer-only dashboard renders the complete personal card menu without the old overflow', async () => {
+  const { BuyerDashboardScreen } = compile('screens/buyer/BuyerDashboardScreen.tsx', {
+    react: React,
+    'react-native': { View: 'View', Text: 'Text', TouchableOpacity: 'Press', ScrollView: 'Scroll', StatusBar: 'StatusBar', RefreshControl: 'Refresh', StyleSheet: { create: x => x } },
+    'expo-image': { Image: 'Image' }, '@/components/BrandIcon': { Ionicons: 'Icon' },
+    'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0 }) },
+    'expo-linear-gradient': { LinearGradient: 'Gradient' },
+    '../../store/authStore': { useAuthStore: () => ({ user: { id: 'buyer-account', firstName: 'Buyer', email: 'buyer@example.test' } }) },
+    '../../lib/apiClient': { apiClient: async () => ({ success: true, data: {} }) },
+    '../../lib/listingsApi': { getFeaturedListings: async () => [] },
+    '../../lib/notificationsApi': { getUnreadCount: async () => 0 },
+    '../../constants/colors': { Colors: {}, themeStatusBarStyle: () => 'dark-content' },
+    '../../constants/typography': { FontFamily: {}, FontSize: {} },
+    '../../constants/spacing': { Elevation: {}, Radius: {} },
+    '../../hooks/useTabBarClearance': { useTabBarClearance: () => 100 },
+    ...Object.fromEntries(['ScreenBackBar', 'Logo', 'IconButton', 'Button', 'DashboardCards'].map(name => ['../../components/' + name, { [name]: name }])),
+    '../../components/ui/ErrorBanner': { ErrorBanner: 'Error' },
+    '../../components/ui/Skeleton': { Skeleton: 'Skeleton' },
+  });
+  let tree; await act(async () => { tree = create(React.createElement(BuyerDashboardScreen)); });
+  assert.equal(tree.root.findByType('DashboardCards').props.mode, 'personal');
+  assert.ok(menu.USER_ITEMS.some(item => item.stackScreen === 'BuyerBids'));
+  assert.ok(menu.USER_ITEMS.some(item => item.stackScreen === 'BuyerDeliveryRequests'));
+  await act(async () => tree.unmount());
+});

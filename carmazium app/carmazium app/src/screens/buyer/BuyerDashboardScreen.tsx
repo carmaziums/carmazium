@@ -23,7 +23,7 @@ import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
 import { Logo } from '../../components/Logo';
-import { HamburgerButton } from '../../components/HamburgerButton';
+import { DashboardCards } from '../../components/DashboardCards';
 import { Skeleton } from '../../components/ui/Skeleton';
 
 import { IconButton } from '../../components/IconButton';
@@ -257,7 +257,6 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
             <Ionicons name="notifications-outline" size={18} color={Colors.white} />
             {unreadCount > 0 && <View style={styles.bellDot} />}
           </TouchableOpacity>
-          <HamburgerButton mode="dashboard" />
         </View>
       </View>
 
@@ -303,6 +302,8 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
             </View>
           </View>
         </View>
+
+        <DashboardCards mode="personal" />
 
         {/* Immediate everyday actions, before the account statistics. */}
         <View style={styles.buyerJourneyRow}>
@@ -473,103 +474,6 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               </>
             )}
           </View>
-        </View>
-
-        {/* ── 5. Quick actions ── */}
-        <View style={styles.quickActionsSection}>
-          <Text style={styles.activitySectionTitle}>QUICK ACTIONS</Text>
-          <View style={styles.quickRow}>
-            <TouchableOpacity
-              style={styles.quickTile}
-              activeOpacity={0.8}
-              onPress={() => navigation?.navigate('BuyerBids')}
-            >
-              <View style={[styles.quickIcon, { backgroundColor: Colors.successAlpha12 }]}>
-                <Ionicons name="hammer-outline" size={18} color={Colors.success} />
-              </View>
-              <Text style={styles.quickLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>My Bids</Text>
-              {activeBids > 0 && (
-                <View style={styles.quickBadge}>
-                  <Text style={styles.quickBadgeText}>{activeBids}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.quickTile}
-              activeOpacity={0.8}
-              onPress={() => navigation?.navigate('BuyerOffers')}
-            >
-              <View style={[styles.quickIcon, { backgroundColor: Colors.warningAlpha12 }]}>
-                <Ionicons name="document-text-outline" size={18} color={Colors.warning} />
-              </View>
-              <Text style={styles.quickLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>My Offers</Text>
-              {activeOffers > 0 && (
-                <View style={[styles.quickBadge, { backgroundColor: Colors.warning }]}>
-                  <Text style={styles.quickBadgeText}>{activeOffers}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.quickTile}
-              activeOpacity={0.8}
-              onPress={() => navigation?.navigate('Tabs', { screen: 'Saved' })}
-            >
-              <View style={[styles.quickIcon, { backgroundColor: Colors.accentAlpha12 }]}>
-                <Ionicons name="heart" size={18} color={Colors.accent} />
-              </View>
-              <Text style={styles.quickLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Watchlist</Text>
-              {watchlistCount > 0 && (
-                <View style={[styles.quickBadge, { backgroundColor: Colors.accent }]}>
-                  <Text style={styles.quickBadgeText}>{watchlistCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.quickTile}
-              activeOpacity={0.8}
-              onPress={() => navigation?.navigate('BuyerPurchaseHistory')}
-            >
-              <View style={[styles.quickIcon, { backgroundColor: Colors.infoBlueAlpha12 }]}>
-                <Ionicons name="receipt-outline" size={18} color={Colors.infoBlue} />
-              </View>
-              <Text style={styles.quickLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>History</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.quickTile}
-              activeOpacity={0.8}
-              onPress={() => navigation?.navigate('BuyerDeliveryRequests')}
-            >
-              <View style={[styles.quickIcon, { backgroundColor: Colors.accentGreenAlpha12 }]}>
-                <Ionicons name="car-outline" size={18} color={Colors.accentGreen} />
-              </View>
-              <Text style={styles.quickLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Delivery</Text>
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => navigation?.navigate('SaleCancellations')}
-            style={{
-              marginTop: 12,
-              minHeight: 48,
-              borderRadius: Radius.card,
-              borderWidth: 1,
-              borderColor: Colors.warningAlpha25,
-              backgroundColor: Colors.warningAlpha05,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
-            <Ionicons name="shield-checkmark-outline" size={17} color={Colors.warning} />
-            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.warning }}>
-              Sale Cancellations
-            </Text>
-          </TouchableOpacity>
         </View>
 
         {/* ── 6. Profile Card ── */}

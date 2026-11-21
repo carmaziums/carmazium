@@ -9,6 +9,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Gavel, Heart, DollarSign, TrendingUp, Loader2, Trophy } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import { DashboardCards } from "@/components/dashboard/DashboardCards"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { PeriodToggle } from "@/components/dashboard/PeriodToggle"
 import { useAuth } from "@/context/AuthContext"
@@ -82,6 +83,8 @@ function BuyerDashboard() {
                         <h2 className="text-2xl font-black font-heading uppercase tracking-tighter">Overview</h2>
                         <PeriodToggle value={period} onChange={setPeriod} />
                     </div>
+
+                    <DashboardCards mode="personal" />
 
                     {/* Stats Row */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

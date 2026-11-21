@@ -73,6 +73,15 @@
       "href": "/dashboard/user?tab=bids"
     },
     {
+      "id": "user-auction-bids",
+      "section": "Buying",
+      "label": "My Auction Bids",
+      "icon": "gavel",
+      "iconLib": "mci",
+      "stackScreen": "BuyerBids",
+      "href": "/dashboard/buyer/bids?legacy=1"
+    },
+    {
       "id": "user-watchlist",
       "section": "Buying",
       "label": "Saved Cars",
@@ -98,6 +107,15 @@
       "iconLib": "ion",
       "stackScreen": "CustomerServiceJobs",
       "href": "/services/jobs"
+    },
+    {
+      "id": "user-deliveries",
+      "section": "Services",
+      "label": "Seller Delivery Requests",
+      "icon": "car-outline",
+      "iconLib": "ion",
+      "stackScreen": "BuyerDeliveryRequests",
+      "href": "/dashboard/buyer/offers?legacy=1"
     },
     {
       "id": "user-warranties",

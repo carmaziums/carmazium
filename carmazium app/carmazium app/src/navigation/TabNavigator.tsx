@@ -54,7 +54,7 @@ const ProfileTabScreen: React.FC<any> = React.memo((props) => {
   //
   // Sellers keep UnifiedDashboard, which is where the inventory/revenue tiles
   // live. A buyer-role user who also lists still reaches every seller screen
-  // from the drawer — only the tiles differ, not the access.
+  // from the shared personal dashboard cards — only the activity tiles differ.
   // Business/platform roles must never be silently presented as a personal
   // Buyer simply because the mobile preview role is intentionally narrower.
   // Route each operational role to the same backend-backed workspace it has
