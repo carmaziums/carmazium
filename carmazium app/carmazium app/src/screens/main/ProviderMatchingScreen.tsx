@@ -24,6 +24,8 @@ import {
   getMyCapabilities,
   updateJobMatching,
   updateLeadMatching,
+  saveInspectionPrices,
+  type InspectionPrice,
 } from '../../lib/servicesApi';
 import { IconButton } from '../../components/IconButton';
 
@@ -39,6 +41,7 @@ const poundsToPence = (value: string) => {
   const n = numberOrUndefined(value);
   return n == null ? undefined : n * 100;
 };
+type EditablePrice = InspectionPrice & {priceText: string};
 const areasFromText = (value: string) =>
   [...new Set(value.split(/[\s,]+/).map((v) => v.trim().toUpperCase()).filter(Boolean))];
 
@@ -49,6 +52,8 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
   const [nationwide, setNationwide] = useState(false);
   const [areas, setAreas] = useState('');
   const [inspectionScopes, setInspectionScopes] = useState<('VEHICLE' | 'COSMETIC')[]>(['VEHICLE']);
+  const [prices, setPrices] = useState<EditablePrice[]>([]);
+  const [savingPrices, setSavingPrices] = useState(false);
   const [minValue, setMinValue] = useState('');
   const [maxValue, setMaxValue] = useState('');
   const [minYear, setMinYear] = useState('');
@@ -92,6 +97,7 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
       if (!next) throw new Error('Service capability not found on your Partner Account.');
       if (next.serviceType === 'FINANCE' || next.serviceType === 'WARRANTY') throw new Error('Finance and warranty providers are managed directly by CarMazium admin.');
       hydrate(next);
+      setPrices((mine.profile?.inspectionPrices ?? []).map(item => ({...item, priceText: String(item.pricePence / 100)})));
     } catch (err: any) {
       setError(err?.message || 'Could not load matching settings.');
     } finally {
@@ -151,6 +157,24 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
     } finally {
       setBusy(false);
     }
+  };
+
+  const updatePrice = (index: number, changes: Partial<EditablePrice>) => setPrices(previous => previous.map((item, i) => i === index ? {...item, ...changes} : item));
+  const savePrices = async () => {
+    const payload: InspectionPrice[] = prices.map(item => ({
+      name: item.name.trim(), description: item.description?.trim(),
+      pricePence: item.quoteOnly ? 0 : Math.round(Number(item.priceText) * 100),
+      quoteOnly: item.quoteOnly, vatIncluded: item.vatIncluded,
+    }));
+    if (payload.some(item => !item.name || (!item.quoteOnly && (!Number.isSafeInteger(item.pricePence) || item.pricePence < 100)))) {
+      Alert.alert('Check your prices', 'Every service requires a name and a fixed price of at least £1, or Quote required.'); return;
+    }
+    setSavingPrices(true);
+    try { const updated = await saveInspectionPrices(payload);
+      setPrices(updated.prices.map(item => ({...item, priceText: String(item.pricePence / 100)})));
+      Alert.alert('Saved', 'These inspection prices now belong to your business profile only.');
+    } catch (err: any) { Alert.alert('Unable to save prices', err?.message || 'Try again.'); }
+    finally { setSavingPrices(false); }
   };
 
   const coverageDescription = useMemo(() => {
@@ -265,6 +289,24 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
                   ) : null}
                 </View>
               ) : null}
+
+              {cap.serviceType === 'INSPECTION' ? <View style={styles.card}>
+                <Text style={styles.cardTitle}>My Inspection Services & Prices</Text>
+                <Text style={styles.cardText}>Only your business's prices are published on your verified profile. No CarMazium-wide prices are set.</Text>
+                {prices.map((item, i) => <View key={i} style={styles.field}>
+                  <Text style={styles.label}>SERVICE {i+1}</Text>
+                  <TextInput style={styles.input} value={item.name} onChangeText={name => updatePrice(i,{name})} placeholder="Inspection service name" placeholderTextColor={Colors.textMuted}/>
+                  <TextInput style={styles.input} value={item.description || ''} onChangeText={description => updatePrice(i,{description})} placeholder="Description (optional)" placeholderTextColor={Colors.textMuted}/>
+                  <View style={styles.switchRow}><Text style={[styles.cardText,{flex:1}]}>Quote required</Text><Switch value={item.quoteOnly} onValueChange={quoteOnly => updatePrice(i,{quoteOnly})}/></View>
+                  {!item.quoteOnly ? <>
+                    <TextInput style={styles.input} value={item.priceText} keyboardType="decimal-pad" onChangeText={priceText => updatePrice(i,{priceText})} placeholder="Price per vehicle (£)" placeholderTextColor={Colors.textMuted}/>
+                    <View style={styles.switchRow}><Text style={[styles.cardText,{flex:1}]}>Price includes VAT where applicable</Text><Switch value={item.vatIncluded} onValueChange={vatIncluded=>updatePrice(i,{vatIncluded})}/></View>
+                  </>: null}
+                  <TouchableOpacity accessibilityRole="button" onPress={() => setPrices(prices.filter((_,j)=>j!==i))}><Text style={styles.error}>REMOVE SERVICE</Text></TouchableOpacity>
+                </View>)}
+                <TouchableOpacity accessibilityRole="button" disabled={prices.length>=20} onPress={() => setPrices([...prices,{name:'',description:'',pricePence:0,priceText:'',quoteOnly:true,vatIncluded:true}])} style={styles.fileButton}><Text style={styles.fileButtonText}>ADD INSPECTION SERVICE</Text></TouchableOpacity>
+                <TouchableOpacity accessibilityRole="button" disabled={savingPrices} onPress={() => void savePrices()} style={styles.primaryButton}><Text style={styles.primaryText}>{savingPrices ? 'SAVING PRICES…' : 'SAVE MY PRICES'}</Text></TouchableOpacity>
+              </View> : null}
 
               <TouchableOpacity style={[styles.primaryButton, busy && { opacity: 0.6 }]} onPress={save} disabled={busy}>
                 {busy ? <ActivityIndicator color={Colors.onAccent} /> : <><Ionicons name="checkmark-circle-outline" size={17} color={Colors.onAccent} /><Text style={styles.primaryText}>SAVE MATCHING SETTINGS</Text></>}
