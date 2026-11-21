@@ -34,6 +34,12 @@ kill_timeout = 60
   MAZIUM_SUPPORT_MAX_DAILY_REPLIES = "200"
   NOTIFICATION_EMAILS_ENABLED = "true"
   NOTIFICATION_EMAIL_DAILY_CAP = "400"
+  # Phase 1: let authenticated business owners electronically sign the reviewed
+  # immutable agreement. Trade enforcement remains disabled until the existing
+  # public Android app is updated and the complete signing flow is verified.
+  PARTNER_AGREEMENT_LEGAL_REVIEW_COMPLETE = "true"
+  PARTNER_AGREEMENT_ACCEPT_ENABLED = "true"
+  PARTNER_AGREEMENT_ENFORCE = "false"
 
 [http_service]
   internal_port = 8080

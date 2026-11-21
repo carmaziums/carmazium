@@ -33,6 +33,14 @@ export function businessAgreementIsLive(): boolean {
     && process.env.PARTNER_AGREEMENT_LEGAL_REVIEW_COMPLETE === 'true';
 }
 
+/** Separate signing from enforcement to support a safe two-stage release.
+ * Signed records are collected only after legal approval and schema readiness.
+ * Existing traders keep access until the verified Android rollout is complete. */
+export function businessAgreementCanSign(): boolean {
+  return process.env.PARTNER_AGREEMENT_LEGAL_REVIEW_COMPLETE === 'true'
+    && (process.env.PARTNER_AGREEMENT_ACCEPT_ENABLED === 'true' || businessAgreementIsLive());
+}
+
 /**
  * The authenticated business owner signs once for the legal business.
  * Dealer employees inherit their employer's signed agreement. They cannot
@@ -49,7 +57,7 @@ export class PartnerAgreementService {
       sha256: PARTNER_AGREEMENT_SHA256,
       text: PARTNER_AGREEMENT_TEXT,
       requiresLegalReviewBeforeProduction: process.env.PARTNER_AGREEMENT_LEGAL_REVIEW_COMPLETE !== 'true',
-      signingEnabled: businessAgreementIsLive(),
+      signingEnabled: businessAgreementCanSign(),
     };
   }
 
@@ -98,7 +106,7 @@ export class PartnerAgreementService {
   async status(actorUserId: string) {
     // Do not query the optional ledger until the migration and legal review
     // are complete, even when some old users have a Partner role.
-    if (!businessAgreementIsLive()) {
+    if (!businessAgreementCanSign()) {
       return { required: false, accepted: true, canSign: false,
         version: PARTNER_AGREEMENT_VERSION, sha256: PARTNER_AGREEMENT_SHA256,
         signingEnabled: false, acceptance: null };
@@ -150,6 +158,9 @@ export class PartnerAgreementService {
   }
 
   async assertAccepted(actorUserId: string): Promise<void> {
+    // Signature collection may precede enforcement. Never block legacy clients
+    // or active trading until the coordinated production rollout is complete.
+    if (!businessAgreementIsLive()) return;
     const status = await this.status(actorUserId);
     if (status.required && !status.accepted) {
       throw new ForbiddenException(
@@ -163,7 +174,7 @@ export class PartnerAgreementService {
     input: PartnerAgreementAcceptanceInput,
     requestMeta: { userAgent?: string | null; ipAddress?: string | null } = {},
   ) {
-    if (!businessAgreementIsLive()) throw new ServiceUnavailableException('Business agreements are not yet activated.');
+    if (!businessAgreementCanSign()) throw new ServiceUnavailableException('Business agreements are not yet activated.');
     const identity = await this.identity(actorUserId);
     if (!identity.required || !identity.canSign) {
       throw new ForbiddenException('Only an authorised Partner Account owner may sign this agreement.');
