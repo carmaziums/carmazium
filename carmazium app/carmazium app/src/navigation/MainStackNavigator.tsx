@@ -136,7 +136,7 @@ export type MainStackParamList = {
   Messages: undefined;
   ChatScreen: { threadId: string };
   Compare: { initialListing?: CarListing } | undefined;
-  Settings: { section?: 'personal' | 'business' | 'verification' | 'notifications' | 'security' | 'payouts' } | undefined;
+  Settings: { section?: 'personal' | 'business' | 'verification' | 'notifications' | 'security' | 'payouts' | 'appearance' | 'reviews' | 'account' } | undefined;
   DealerAnalytics: undefined;
   DealerInventory: { status?: import('../screens/main/DealerInventoryScreen').FilterTab } | undefined;
   DealerLeads: undefined;
