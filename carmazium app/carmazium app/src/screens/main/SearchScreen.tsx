@@ -12,7 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { CarListing } from '../../data/listings';
 import { searchMakes, searchModels, searchVariants, VehicleSearchOption } from '../../data/vehicleSearchOptions';
 import { VEHICLE_FEATURE_GROUPS } from '../../data/vehicleFeatures';
-import { searchListings, getMakeCounts, getVehicleSearchOptions } from '../../lib/listingsApi';
+import { searchListings, getFeaturedListings, getMakeCounts, getVehicleSearchOptions } from '../../lib/listingsApi';
 import { ListPickerSheet } from '../../components/filters/ListPickerSheet';
 import { EXTERIOR_GRADE_OPTIONS } from '../../lib/exteriorGrade';
 import { naturalLanguageSearch } from '../../lib/aiApi';
@@ -32,6 +32,8 @@ import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { Button } from '../../components/Button';
+import { retailResultSections } from '../../lib/retailResultSections';
 import { Layout } from '../../constants/layout';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -267,6 +269,9 @@ export const SearchScreen: React.FC = () => {
 
   // ── Results state ──
   const [listings, setListings] = useState<CarListing[]>([]);
+  const [featured,setFeatured]=useState<CarListing[]>([]);
+  const resultList=useRef<FlatList<CarListing>>(null);
+  useEffect(()=>{let active=true;getFeaturedListings().then(items=>{if(active)setFeatured(items);});return()=>{active=false;};},[]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -276,12 +281,13 @@ export const SearchScreen: React.FC = () => {
   const [searchError, setSearchError] = useState<string | null>(null);
   // Ignore responses from earlier filter selections to prevent stale vehicle cards.
   const activeSearchRequest = useRef(0);
+  const requestedPage = useRef(1);
 
   // Stable id-keyed press handler so HorizontalVehicleCard's React.memo isn't busted by a
   // fresh closure every render (mobile-audit.md P4) — looked up via ref so its identity
   // never changes, including across pagination.
   const listingsRef = useRef<CarListing[]>([]);
-  useEffect(() => { listingsRef.current = listings; }, [listings]);
+  useEffect(() => { listingsRef.current = [...featured,...listings]; }, [listings,featured]);
   const handleCardPress = useCallback((id: string) => {
     const item = listingsRef.current.find(l => l.id === id);
     if (!item) return;
@@ -294,8 +300,8 @@ export const SearchScreen: React.FC = () => {
     }
   }, [navigation]);
   const renderListingItem = useCallback(
-    ({ item }: { item: CarListing }) => <HorizontalVehicleCard listing={item} onPress={handleCardPress} />,
-    [handleCardPress],
+    ({ item }: { item: CarListing }) => <HorizontalVehicleCard listing={item} onPress={handleCardPress} onWarranty={()=>navigation.navigate('Warranty')}/>,
+    [handleCardPress,navigation],
   );
 
   const debounceRef = useRef<any>(null);
@@ -373,33 +379,27 @@ export const SearchScreen: React.FC = () => {
       isImported: isImported === 'yes' ? true : isImported === 'no' ? false : undefined,
       sortBy: sortId,
       page: p,
-      limit: 20,
+      limit: 10,
     };
   }
 
-  const fetch = useCallback(async (reset = true) => {
-    const requestId = reset ? ++activeSearchRequest.current : activeSearchRequest.current;
+  const fetch = useCallback(async (reset = true, targetPage?:number) => {
+    const requestId = ++activeSearchRequest.current;
     if (reset) setLoading(true);
     else setLoadingMore(true);
-    const p = reset ? 1 : page;
+    const p = reset ? 1 : targetPage ?? page;
+    requestedPage.current = p;
     try {
-      if (reset) setSearchError(null);
+      setSearchError(null);
       if (maxDistanceMi != null && (userLat == null || userLng == null)) {
         if (reset) { setListings([]); setTotal(0); setHasMore(false); setSearchError('Enter a valid postcode to use the distance filter.'); }
         return;
       }
       const { listings: items, total: t } = await searchListings({ ...buildParams(p), strictErrors: true });
       if (requestId !== activeSearchRequest.current) return;
-      if (reset) {
-        setListings(items);
-        setPage(2);
-        setTotal(t);
-      } else {
-        setListings(prev => [...prev, ...items]);
-        setPage(prev => prev + 1);
-        setTotal(t);
-      }
-      setHasMore(items.length === 20 && p * 20 < t);
+      setListings(items);setPage(p);setTotal(t);
+      setHasMore(p * 10 < t);
+      if(!reset)resultList.current?.scrollToOffset({offset:0,animated:true});
     } catch {
       if (requestId !== activeSearchRequest.current) return;
       // A network/API error must never masquerade as zero matching cars.
@@ -669,30 +669,10 @@ export const SearchScreen: React.FC = () => {
 
   // Everything above the results scrolls away with the list. Kept as an
   // element (not a component) so the search TextInput keeps focus.
+  const sections=retailResultSections(listings,featured,{page,filterCount,query,sortId,quickFilter,loading,error:!!searchError});
   const listHeader = (
     <>
-      {/* Match website Search title; result counts belong beside sorting,
-          not as a changing page title that jumps between 0 and a number. */}
-      <View style={[s.header, { paddingTop: 12 }]}>
-        <View style={{ flex: 1 }}>
-          <Text style={s.headerSub}>BUY CARS · RETAIL</Text>
-          <Text style={s.headerTitle}>Find Your Perfect Car</Text>
-          <Text style={s.headerResults}>
-            {loading ? 'Loading vehicles…' : `${total.toLocaleString('en-GB')} vehicles available`}
-          </Text>
-        </View>
-      </View>
-      <TouchableOpacity style={s.auctionBrowseBanner}
-        onPress={() => navigation.navigate('Tabs', { screen: 'Live' })}
-        accessibilityRole="button" accessibilityLabel="Browse Live Auctions">
-        <Ionicons name="hammer-outline" size={19} color={Colors.accent}/>
-        <View style={{ flex: 1 }}>
-          <Text style={s.auctionBrowseTitle}>Looking for dealer auctions?</Text>
-          <Text style={s.auctionBrowseDesc}>Browse Live Auctions in TradeXchange</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={17} color={Colors.accent}/>
-      </TouchableOpacity>
-
+      <View style={[s.header,{paddingTop:48,paddingBottom:20}]}><Text style={[s.headerTitle,{fontSize:32,lineHeight:40}]}>Find Your Perfect Car</Text></View>
       {/* ── Search bar ── */}
       <View style={s.searchWrap}>
         <View style={s.searchBar}>
@@ -701,11 +681,12 @@ export const SearchScreen: React.FC = () => {
             style={s.searchInput}
             value={query}
             onChangeText={setQuery}
-            placeholder="Make, model, or keyword..."
+            placeholder="Search make, model, or keywords..."
             placeholderTextColor={Colors.inputPlaceholder}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
+            onSubmitEditing={()=>void fetch(true)}
           />
           {query.length > 0 && (
             <IconButton icon={<Ionicons name="close" size={16} color={Colors.iconMuted} />} onPress={() => setQuery('')} accessibilityLabel="Clear search" />
@@ -713,14 +694,7 @@ export const SearchScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* ── AI Search button ── */}
-      <View style={s.aiSearchWrap}>
-        <TouchableOpacity style={s.aiSearchBtn} onPress={() => setAiModalVisible(true)} activeOpacity={0.8}>
-          <Ionicons name="sparkles" size={13} color={Colors.warning} />
-          <Text style={s.aiSearchBtnText}>Try AI Search ✦</Text>
-        </TouchableOpacity>
-      </View>
-
+      <View style={{paddingHorizontal:24,paddingBottom:24}}><Button label="Search" onPress={()=>void fetch(true)}/></View>
       {/* ── AI Explanation banner ── */}
       {aiExplanation && (
         <View style={s.aiExplanationBanner}>
@@ -730,37 +704,16 @@ export const SearchScreen: React.FC = () => {
         </View>
       )}
 
-      {/* ── Quick filters ── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={[s.quickScroll, Layout.hScroll]}
-        contentContainerStyle={s.quickRow}
-      >
-        {QUICK_FILTERS.map(f => (
-          <TouchableOpacity
-            key={f.id}
-            style={[s.quickChip, quickFilter === f.id && s.quickChipActive]}
-            onPress={() => applyQuickFilter(f.id)}
-            activeOpacity={0.7}
-          >
-            <Text style={[s.quickChipText, quickFilter === f.id && s.quickChipTextActive]}>
-              {f.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
       {/* ── Sort + Filter row ── */}
       <View style={s.sortRow}>
         <Text style={s.resultsCount}>
-          {loading ? '...' : `${total.toLocaleString('en-GB')} results`}
+          {loading ? 'Loading vehicles…' : `Showing ${total?((page-1)*10+1):0}–${Math.min(page*10,total)} of ${total.toLocaleString('en-GB')} vehicles`}
         </Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {/* Sort */}
           <TouchableOpacity style={s.sortBtn} onPress={() => setShowSortMenu(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`Sort cars, currently ${sortLabel}`}>
             <Ionicons name="swap-vertical-outline" size={16} color={Colors.textSecondary} />
-            <Text style={s.sortBtnText}>Sort</Text>
+            <Text style={s.sortBtnText}>{sortLabel}</Text>
           </TouchableOpacity>
           {/* Filter */}
           <TouchableOpacity
@@ -783,6 +736,7 @@ export const SearchScreen: React.FC = () => {
           <Text style={s.clearBelowText}>Clear {filterCount} {filterCount === 1 ? 'filter' : 'filters'}</Text>
         </TouchableOpacity>
       )}
+      {!!sections.featured.length&&<View style={{paddingHorizontal:24,gap:16,paddingBottom:24}}><Text style={{color:Colors.warning,fontFamily:FontFamily.bold,fontSize:14}}>FEATURED LISTINGS</Text>{sections.featured.map(item=><HorizontalVehicleCard key={item.id} listing={{...item,isFeatured:true}} onPress={handleCardPress} onWarranty={()=>navigation.navigate('Warranty')}/>)}<Text style={{color:Colors.textMuted}}>All listings below</Text></View>}
     </>
   );
   const showResults = !(loading && listings.length === 0) && !(searchError && listings.length === 0) && listings.length > 0;
@@ -836,7 +790,8 @@ export const SearchScreen: React.FC = () => {
       {/* ── Results ── header scrolls with the list (like the website page)
            instead of a fixed block eating half the screen. */}
         <FlatList
-          data={showResults ? listings : []}
+          ref={resultList}
+          data={showResults ? sections.regular : []}
           ListHeaderComponent={listHeader}
           // Header sections carry their own 24pt gutters.
           ListHeaderComponentStyle={s.listHeaderBleed}
@@ -850,21 +805,11 @@ export const SearchScreen: React.FC = () => {
           }
           renderItem={renderListingItem}
           ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
-          onEndReached={() => { if (hasMore && !loadingMore) fetch(false); }}
-          onEndReachedThreshold={0.4}
-          ListFooterComponent={!showResults ? null : 
-            searchError ? (
-              <TouchableOpacity onPress={() => fetch(false)} style={s.loadMoreWrap} accessibilityRole="button">
-                <Text style={s.endText}>Loading failed — tap to retry</Text>
-              </TouchableOpacity>
-            ) : loadingMore ? (
-              <View style={s.loadMoreWrap}>
-                <ActivityIndicator size="small" color={Colors.accent} />
-              </View>
-            ) : hasMore ? null : listings.length > 10 ? (
-              <Text style={s.endText}>All {total.toLocaleString('en-GB')} results shown</Text>
-            ) : null
-          }
+          ListFooterComponent={loading?null:<View style={{paddingVertical:24,gap:12}}>
+            {!!searchError&&listings.length>0&&<Button label="Loading failed — retry" variant="outline" onPress={()=>void fetch(false,requestedPage.current)}/>}
+            {total>10&&<View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',alignItems:'center',gap:12}}><Button label="Previous" variant="outline" disabled={page===1||loadingMore} onPress={()=>void fetch(false,page-1)}/><Text style={{color:Colors.textPrimary}}>Page {page} of {Math.max(1,Math.ceil(total/10))}</Text><Button label="Next" variant="outline" disabled={!hasMore||loadingMore} onPress={()=>void fetch(false,page+1)}/></View>}
+            {loadingMore&&<ActivityIndicator color={Colors.accent}/>}
+          </View>}
         />
 
       {/* Sort choices live in a native sheet instead of a narrow overlay. */}
@@ -1776,7 +1721,7 @@ const s = StyleSheet.create({
   quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.textSecondary },
   quickChipTextActive: { color: Colors.onAccent },
 
-  sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 8, marginTop: 4, position: 'relative', zIndex: 10 },
+  sortRow: { flexDirection: 'row', flexWrap:'wrap',gap:12, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 8, marginTop: 4, position: 'relative', zIndex: 10 },
   resultsCount: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary },
   clearBelowRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginHorizontal: 24, paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start', marginBottom: 7, minHeight: 34, borderRadius: Radius.inline, borderWidth: 1.5, borderBottomWidth: 3, borderColor: Colors.accent, backgroundColor: Colors.bgCard },
   clearBelowText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: Colors.accent },

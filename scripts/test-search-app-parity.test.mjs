@@ -35,15 +35,15 @@ const plain = value => JSON.parse(JSON.stringify(value));
 test('AI mileage, price, booleans and technical filters survive native navigation and request construction', () => {
   const h=nativeState();
   h.applySearchParams({fuelType:'PETROL',transmission:'AUTOMATIC',maxPrice:'250000',maxMileage:'62500',minYear:'2015',maxEngine:'1600',ulezCompliant:'true',isImported:'false',location:'Birmingham'});
-  assert.deepEqual(plain(h.buildParams()), {fuelTypes:['PETROL'],transmissions:['AUTOMATIC'],maxPrice:250000,maxMileage:62500,minYear:2015,maxEngine:1600,ulezCompliant:true,isImported:false,location:'Birmingham',vehicleType:'CAR',sortBy:'newest',page:1,limit:20});
+  assert.deepEqual(plain(h.buildParams()), {fuelTypes:['PETROL'],transmissions:['AUTOMATIC'],maxPrice:250000,maxMileage:62500,minYear:2015,maxEngine:1600,ulezCompliant:true,isImported:false,location:'Birmingham',vehicleType:'CAR',sortBy:'newest',page:1,limit:10});
   h.applySearchParams({make:'Kia',model:'Ceed'});
-  assert.deepEqual(plain(h.buildParams()), {make:'Kia',model:'Ceed',vehicleType:'CAR',sortBy:'newest',page:1,limit:20});
+  assert.deepEqual(plain(h.buildParams()), {make:'Kia',model:'Ceed',vehicleType:'CAR',sortBy:'newest',page:1,limit:10});
 });
 test('native manual quick filter works and Reset removes keyword, quick and advanced criteria',()=>{
   const h=nativeState(); h.applySearchParams({maxCo2:'100',model:'Ceed',maxYear:'2018'}); h.setQuery('red');
   h.applyQuickFilter('manual');
-  assert.deepEqual(plain(h.buildParams()),{transmissions:['MANUAL'],vehicleType:'CAR',sortBy:'newest',page:1,limit:20});
-  h.resetFilters(); assert.deepEqual(plain(h.buildParams()),{vehicleType:'CAR',sortBy:'newest',page:1,limit:20});
+  assert.deepEqual(plain(h.buildParams()),{transmissions:['MANUAL'],vehicleType:'CAR',sortBy:'newest',page:1,limit:10});
+  h.resetFilters(); assert.deepEqual(plain(h.buildParams()),{vehicleType:'CAR',sortBy:'newest',page:1,limit:10});
   h.setMaxMiles('60k'); assert.equal(h.buildParams().maxMileage,60000);
   h.setMaxMiles('62500'); assert.equal(h.buildParams().maxMileage,62500);
   h.setMaxPrice(0); assert.equal(h.buildParams().maxPrice,0);
@@ -63,7 +63,7 @@ test('both API clients serialize every shared filter with the same values',async
   const urls=[];const apiClient=async url=>{urls.push(url);return {data:[],pagination:{total:0}};};
   const web=load('src/lib/listingApi.ts',{'./apiClient':{apiClient},'./listingMotHistory':{},'./approvedAuctionAttribution':{captureApprovedAuctionAttribution:()=>{throw Error('Search must not capture seller attribution');}}});
   const mobile=load(native+'lib/listingsApi.ts',{'./apiClient':{apiClient},'./transmission':{}});
-  const filters={make:'Citroën',model:'C4 Grand Picasso',minPrice:0,maxPrice:250000,minYear:1999,maxYear:2026,minMileage:12345,maxMileage:62500,fuelTypes:['PETROL','ELECTRIC'],transmissions:['AUTOMATIC','CVT'],bodyType:'SUV',minEngine:0,maxEngine:1600,maxCo2:100,minBhp:80,maxBhp:200,minCombinedMpg:45.5,maxZeroTo60Mph:9.8,driveType:'FWD',ulezCompliant:false,isImported:false,deliveryAvailable:true,motValid:true,taxedOnly:true,serviceHistories:['PARTIAL'],maxOwners:3,vehicleType:'CAR',location:'Birmingham',features:['Heated Seats'],conditions:['GOOD'],exteriorGrades:[1,2],writeOffCategories:['NONE'],euroStandard:'EURO_6',minDoors:5,minSeats:7,color:'Blue',sellerType:'PRIVATE',variant:'SE',sortBy:'price_asc',page:2,limit:20,maxDistanceMi:25,originLatitude:52.5,originLongitude:-1.9};
+  const filters={make:'Citroën',model:'C4 Grand Picasso',minPrice:0,maxPrice:250000,minYear:1999,maxYear:2026,minMileage:12345,maxMileage:62500,fuelTypes:['PETROL','ELECTRIC'],transmissions:['AUTOMATIC','CVT'],bodyType:'SUV',minEngine:0,maxEngine:1600,maxCo2:100,minBhp:80,maxBhp:200,minCombinedMpg:45.5,maxZeroTo60Mph:9.8,driveType:'FWD',ulezCompliant:false,isImported:false,deliveryAvailable:true,motValid:true,taxedOnly:true,serviceHistories:['PARTIAL'],maxOwners:3,vehicleType:'CAR',location:'Birmingham',features:['Heated Seats'],conditions:['GOOD'],exteriorGrades:[1,2],writeOffCategories:['NONE'],euroStandard:'EURO_6',minDoors:5,minSeats:7,color:'Blue',sellerType:'PRIVATE',variant:'SE',sortBy:'price_asc',page:2,limit:10,maxDistanceMi:25,originLatitude:52.5,originLongitude:-1.9};
   await web.getListings(filters);await mobile.searchListings({...filters,strictErrors:true});
   const entries=url=>Object.fromEntries([...new URL('https://example.test'+url).searchParams].sort());
   assert.deepEqual(entries(urls[0]),entries(urls[1]));
