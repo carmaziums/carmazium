@@ -192,3 +192,11 @@ Computed styles in foreground emulator Chrome confirmed loaded Inter for body te
 Validation: completed native TypeScript, 112 native tests, 778 repository tests, product/knowledge checks and Android Metro export. These final font/header changes still require signed-device acceptance.
 
 Build114 device checks confirmed dealer and personal dashboard cards, one-column Analytics, partner/services/provider navigation, large My Cars cards, and the correct Mark Sold confirmation (cancelled without a sale). Received offers group the Toyota with its withdrawn offer. Purchases shows the same two completed agreed purchases and ten recorded purchases as emulator Chrome, including collection dates. These checks use the dealer account and personal preview, not independent buyer/seller-role acceptance. Public APK remains111.
+
+### Automotive Guides archive
+
+Paired emulator inspection found the app was only a sequential article feed. Added the website hero, nine evergreen guide shortcuts in three categories, Google source-preferences action, three native goal destinations, featured first article, category/date/reading time, research library and matching twelve-article numbered pagination. First-party article and marketplace destinations remain native. Failed loads retain the last successful page; retry targets the failed page, malformed data shows an error and stale replies cannot overwrite newer navigation.
+
+Validation: native TypeScript, 115 native tests (three new archive behavior tests), all 778 root tests, parity/knowledge guards and Android Metro export. This newer source requires a later candidate than116.
+
+Build114 further verification: personal Saved Cars shows five retail vehicles; Earnings shows £701, one sale and its date; Performance shows48 listings/97.2h/0%/no reviews; My Offers shows Current0/History23/Accepted2/Rejected15/Cancelled6. My Bids shows1703 bids across171 pages (171 is the page count, not bid count); Next successfully loads the second page and returns to its top. No account records were changed.
