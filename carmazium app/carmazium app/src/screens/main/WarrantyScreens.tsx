@@ -104,16 +104,19 @@ export function WarrantyOrderScreen({ route, navigation }: any) {
     finally { lock.current = false; setBusy(false); }
   };
   const close = () => { setCheckout(null); void load(); };
-  return <NativePage title="Warranty order">
+  return <NativePage title="Your warranty order">
     {!!error && <><Text accessibilityRole="alert" style={s.error}>{error}</Text><Button label="Retry" onPress={() => void load()} /></>}
     {!order && !error && <ActivityIndicator accessibilityLabel="Loading warranty order" />}
     {order && <><Text style={s.title}>{String(order.vehicle.vrm)} · {String(order.vehicle.make)} {String(order.vehicle.model)}</Text><Text style={s.label}>{order.statusLabel}</Text>
       {order.price.lines.map(line => <Text key={line.code} style={s.body}>{line.label}: {money(line.amountPence)}</Text>)}<Text style={s.title}>Total {money(order.totalPence)} including VAT</Text>
+      <Text selectable style={s.body}>Order reference: {order.id}</Text>
       <Text style={s.body}>Payment purchases a warranty order, not the vehicle. Cover is active only once issued and the start date confirmed. If the selected cover cannot be arranged, the team will contact you and refund your payment.</Text>
       {order.warrantyReference && <Text style={s.body}>Reference: {order.warrantyReference}. Cover: {order.coverStart?.slice(0, 10)} to {order.coverEnd?.slice(0, 10)}.</Text>}
       {['QUOTED', 'CHECKOUT_PENDING'].includes(order.status) && <><Text style={s.body}>Payment has not been confirmed. Quote expires: {new Date(order.expiresAt).toLocaleString('en-GB')}.</Text><Button label={`Pay ${money(order.totalPence)} with Stripe`} loading={busy} onPress={() => void pay()} /></>}
-      {['EXPIRED', 'PAYMENT_FAILED'].includes(order.status) && <Text style={s.body}>Payment did not complete. No warranty has been issued. Request a new quote.</Text>}
-      <Button label="Refresh order status" variant="outline" onPress={() => void load()} /><Button label="New quote" variant="outline" onPress={() => navigation.navigate('Warranty')} />
+      {['EXPIRED', 'PAYMENT_FAILED'].includes(order.status) && <Text style={s.body}>This checkout did not complete successfully. No warranty has been issued. Request a fresh quote to try again.</Text>}
+      <Button label="Refresh payment status" variant="outline" onPress={() => void load()} /><Button label="Get a new quote" variant="outline" onPress={() => navigation.navigate('Warranty')} />
+      <Button label="My warranty orders" variant="outline" onPress={() => navigation.navigate('WarrantyOrders')} />
+      <Button label="Contact the team" variant="outline" onPress={() => navigation.navigate('Contact')} />
     </>}
     <Modal visible={!!checkout} onRequestClose={close} animationType="slide"><View style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: Colors.bgPrimary }}><Button label="Close payment and check status" variant="outline" onPress={close} />{checkout && <WebView source={{ uri: checkout }} originWhitelist={['https://*']} onError={() => { close(); setError('Payment page could not load. Refresh the order status before retrying.'); }} onShouldStartLoadWithRequest={({ url }) => { try { const target = new URL(url); if (['carmazium.com', 'www.carmazium.com'].includes(target.hostname)) { close(); return false; } return target.protocol === 'https:'; } catch { return false; } }} />}</View></Modal>
   </NativePage>;
@@ -122,5 +125,5 @@ export function WarrantyOrdersScreen({ navigation }: any) {
   const [orders, setOrders] = useState<WarrantyOrder[]>([]), [error, setError] = useState(''), [loading, setLoading] = useState(true);
   const load = useCallback(async () => { setLoading(true); setError(''); try { const { data } = await apiClient<{ data: WarrantyOrder[] }>('/warranties/mine'); setOrders(data); } catch (e: any) { setError(e.message || 'Could not load orders.'); } finally { setLoading(false); } }, []);
   useFocusEffect(useCallback(() => { void load(); }, [load]));
-  return <NativePage title="My warranty orders">{loading && <ActivityIndicator />}{!!error && <><Text style={s.error}>{error}</Text><Button label="Retry" onPress={() => void load()} /></>}{!loading && !error && !orders.length && <Text style={s.body}>No warranty orders are linked to this account.</Text>}{orders.map(order => <View key={order.id} style={s.panel}><Text style={s.label}>{String(order.vehicle.vrm)} · {String(order.vehicle.make)} {String(order.vehicle.model)}</Text><Text style={s.body}>{order.statusLabel} · {money(order.totalPence)}</Text><Button label="View order" onPress={() => navigation.navigate('WarrantyOrder', { id: order.id })} /></View>)}<Button label="Get a warranty quote" onPress={() => navigation.navigate('Warranty')} /></NativePage>;
+  return <NativePage title="My warranty orders">{loading && <ActivityIndicator />}{!!error && <><Text style={s.error}>{error}</Text><Button label="Retry" onPress={() => void load()} /></>}{!loading && !error && !orders.length && <Text style={s.body}>No warranty orders are linked to this account.</Text>}{orders.map(order => <View key={order.id} style={s.panel}><Text style={s.label}>{String(order.vehicle.vrm)} · {String(order.vehicle.make)} {String(order.vehicle.model)}</Text><Text style={s.body}>{order.statusLabel} · {money(order.totalPence)} including VAT</Text><Text selectable style={s.body}>Order reference: {order.id}</Text><Button label="View order" onPress={() => navigation.navigate('WarrantyOrder', { id: order.id })} /></View>)}<Button label="Get a warranty quote" onPress={() => navigation.navigate('Warranty')} /></NativePage>;
 }
