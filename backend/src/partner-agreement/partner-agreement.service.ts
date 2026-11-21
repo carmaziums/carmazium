@@ -71,7 +71,7 @@ export class PartnerAgreementService {
     });
     if (!actor || actor.deletedAt) throw new NotFoundException('Account not found.');
     if (actor.role === UserRole.ADMIN) {
-      return { required: false, ownerUserId: actorUserId, canSign: false };
+      return { required: false, ownerUserId: actorUserId, canSign: false, verifiedKyc: null };
     }
     // An active staff member inherits the owner's agreement, rather than
     // creating a fictitious new legal entity.
