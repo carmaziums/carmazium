@@ -13,7 +13,7 @@ const cap=(serviceType,status='APPROVED')=>({id:serviceType+'-test',serviceType,
 async function render(name,overrides={}){
  const nav=[],calls=[];
  const services={SERVICE_LABELS:{DELIVERY:'Delivery & Recovery',INSPECTION:'Vehicle Inspections'},getPartnerProfile:async()=>profile,getPartnerTeam:async()=>({capabilities:[cap('DELIVERY'),cap('INSPECTION')],stripeConnect:{complete:true}}),getMyCapabilities:async()=>({profile:null,capabilities:[cap('DELIVERY'),cap('INSPECTION')],stripeConnect:{complete:true}}),applyPartnerCapability:async type=>{calls.push(type);return cap(type,'PENDING');},...overrides};
- const modules={react:React,'react-native':{...Object.fromEntries(['View','Text','ScrollView','TextInput','StatusBar','ActivityIndicator'].map(n=>[n,n])),StyleSheet:{create:x=>x},Alert:{alert(){}},Linking:{openURL:async()=>{}},AppState:{addEventListener:()=>({remove(){}})}},'@react-navigation/native':{useFocusEffect:cb=>React.useEffect(cb,[cb])},'@/components/BrandIcon':{Ionicons:'Icon'},'../../components/WebsiteTopBar':{WebsiteTopBar:'WebsiteTopBar'},'../../components/Button':{Button:'Button'},'../../components/dealer/DealerPageTabs':{DealerPageTabs:'DealerPageTabs'},'../../constants/colors':{Colors:{}},'../../constants/typography':{FontFamily:{},FontSize:{}},'../../store/authStore':{useAuthStore:cb=>cb({accountRole:'dealer',initializeAuth:async()=>{}})},'../../lib/servicesApi':services,'../../lib/apiClient':{apiClient:async()=>{throw Error('Unexpected write');}}};
+ const modules={react:React,'react-native':{...Object.fromEntries(['View','Text','ScrollView','TextInput','StatusBar','ActivityIndicator'].map(n=>[n,n])),StyleSheet:{create:x=>x},useWindowDimensions:()=>({width:600,fontScale:1}),Alert:{alert(){}},Linking:{openURL:async()=>{}},AppState:{addEventListener:()=>({remove(){}})}},'@react-navigation/native':{useFocusEffect:cb=>React.useEffect(cb,[cb])},'@/components/BrandIcon':{Ionicons:'Icon'},'../../components/WebsiteTopBar':{WebsiteTopBar:'WebsiteTopBar'},'../../components/Button':{Button:'Button'},'../../components/dealer/DealerPageTabs':{DealerPageTabs:'DealerPageTabs'},'../../components/ProviderPageTabs':{ProviderPageTabs:'ProviderPageTabs'},'../../constants/colors':{Colors:{}},'../../constants/typography':{FontFamily:{},FontSize:{}},'../../store/authStore':{useAuthStore:cb=>cb({accountRole:'dealer',initializeAuth:async()=>{}})},'../../lib/servicesApi':services,'../../lib/apiClient':{apiClient:async()=>{throw Error('Unexpected write');}}};
  const rules={};runInNewContext(ts.transpileModule(readFileSync(new URL('../src/lib/tradeXchangeProviderJobLoad.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:rules,Error});
  modules['../../lib/tradeXchangeProviderJobLoad']=rules;modules['../../constants/spacing']={Elevation:{},Radius:{}};modules['react-native'].TouchableOpacity='Press';modules['react-native'].RefreshControl='Refresh';modules['react-native'].FlatList=({ListHeaderComponent,ListEmptyComponent,data,renderItem,onEndReached})=>React.createElement('List',{onEndReached},ListHeaderComponent,data.length?data.map((item)=>React.createElement(React.Fragment,{key:item.id},renderItem({item}))):ListEmptyComponent);
  const exports={};const source=readFileSync(new URL('../src/screens/main/'+name+'.tsx',import.meta.url),'utf8');runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:n=>{assert.ok(n in modules,n);return modules[n];}});
@@ -53,4 +53,16 @@ test('Late pagination after refresh cannot reinsert stale provider jobs',async()
  await click(h.tree,'Refresh jobs');assert.match(text(h.tree),/Synthetic work fresh/);
  assert.ok(finishMore);{await act(async()=>finishMore({items:[job('stale')],nextCursor:null}));assert.doesNotMatch(text(h.tree),/Synthetic work stale/);}
  await act(async()=>h.tree.unmount());
+});
+
+test('Provider overview aggregates every page for released earnings and preserves work when approvals fail',async()=>{
+ const calls=[];
+ const h=await render('ProviderOverviewScreen',{
+   getMyCapabilities:async()=>{throw Error('offline');},
+   getJobFeedPage:async()=>{throw Error('verification expired');},
+   getAssignedJobsPage:async cursor=>{calls.push(cursor);return cursor?{items:[{...job('release2'),status:'RELEASED',contractorAmountPence:20025,updatedAt:'2026-11-21'}],nextCursor:null}:{items:[{...job('live'),updatedAt:'2026-11-21'},{...job('release1'),status:'RELEASED',contractorAmountPence:10050,updatedAt:'2026-11-20'}],nextCursor:'next'};},
+   formatPence:p=>'£'+(p/100).toFixed(2),
+ });
+ assert.equal(calls.length,2);assert.match(text(h.tree),/£300.75/);assert.match(text(h.tree),/Setup needed/);assert.match(text(h.tree),/Unavailable/);assert.match(text(h.tree),/Synthetic work live/);
+ await click(h.tree,'My Work');assert.equal(h.nav[0][0],'ProviderJobs');assert.equal(h.nav[0][1].initialTab,'assigned');await act(async()=>h.tree.unmount());
 });

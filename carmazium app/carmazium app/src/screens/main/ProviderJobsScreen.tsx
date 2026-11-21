@@ -1,6 +1,7 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   RefreshControl,
   StatusBar,
@@ -25,8 +26,7 @@ import {
   getJobFeedPage,
 } from '../../lib/servicesApi';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
-import { DealerPageTabs } from '../../components/dealer/DealerPageTabs';
-import { useAuthStore } from '../../store/authStore';
+import { ProviderPageTabs } from '../../components/ProviderPageTabs';
 import { loadProviderJobLists, type ProviderJobLists } from '../../lib/tradeXchangeProviderJobLoad';
 import { Button } from '../../components/Button';
 
@@ -57,10 +57,10 @@ const timingText = (job: ServiceJob) => {
   return 'ASAP / flexible';
 };
 
-export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
-  const [tab, setTab] = useState<Tab>('open');
+export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
+  const [tab, setTab] = useState<Tab>(route?.params?.initialTab ?? 'open');
   const [filter, setFilter] = useState<Filter>('ALL');
-  const isDealer = useAuthStore(s => s.accountRole === 'dealer');
+  useEffect(() => { if (route?.params?.initialTab) setTab(route.params.initialTab); }, [route?.params?.initialTab]);
   const [lists, setLists] = useState<ProviderJobLists<ServiceJob> | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -174,10 +174,10 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
       <Text style={styles.pageDescription}>These are customer-posted Delivery, Recovery and Inspection jobs your approved Partner business can compete for. Send a quote on suitable work; jobs you win stay under My Work.</Text>
       <View style={styles.pageActions}>
         <Button label="Refresh jobs" variant="outline" disabled={loading} onPress={refresh} />
-        <Button label="Provider overview" variant="outline" onPress={() => navigation.navigate('PartnerDashboard')} />
+        <Button label="Provider overview" variant="outline" onPress={() => navigation.navigate('ProviderOverview')} />
         <Button label="Job messages" variant="outline" onPress={() => navigation.navigate('ProviderMessages')} />
       </View>
-      <View style={styles.postJobCard}><Text style={styles.pageDescription}>Looking for the customer side instead? Any signed-in CarMazium user can post a job and approved providers will see matching work in this marketplace.</Text><Button label="Post a job" variant="outline" onPress={() => navigation.navigate('CreateServiceJob', { serviceType: 'DELIVERY' })} /></View>
+      <View style={styles.postJobCard}><Text style={styles.pageDescription}>Looking for the customer side instead? Any signed-in CarMazium user can post a job and approved providers will see matching work in this marketplace.</Text><Button label="Post a job" variant="outline" onPress={() => Alert.alert('Post a job', 'Choose the service you need.', [{ text: 'Delivery & Recovery', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'DELIVERY' }) }, { text: 'Vehicle Inspection', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'INSPECTION' }) }, { text: 'Cancel', style: 'cancel' }])} /></View>
 
       <View style={styles.tabs}>
         <TouchableOpacity
@@ -299,7 +299,7 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
             loadingMore ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 18 }} /> : null
           }
         />
-        {isDealer && <DealerPageTabs />}
+        <ProviderPageTabs />
     </View>
   );
 };
