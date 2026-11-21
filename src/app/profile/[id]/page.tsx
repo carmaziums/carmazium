@@ -31,7 +31,7 @@ type PublicProfile = {
         openingHours: Record<string, string> | null
         isVerified: boolean
     }
-    provider: null | { businessName: string | null; serviceArea: string | null; certifications: string[] }
+    provider: null | { businessName: string | null; serviceArea: string | null; certifications: string[]; inspectionPrices?: Array<{name:string;description?:string;pricePence:number;quoteOnly:boolean;vatIncluded:boolean}> }
     badges: ServiceBadge[]
     rating: { average: number; count: number; distribution: Array<{ star: number; count: number }> }
 }
@@ -175,6 +175,19 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                                     </div>
                                 </div>
                             )}
+                        </section>
+                    )}
+
+                    {profile.provider?.inspectionPrices && profile.provider.inspectionPrices.length > 0 && (
+                        <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
+                            <h2 className="text-xl font-bold">Inspection services & prices</h2>
+                            <p className="mt-2 text-sm text-[var(--text-muted)]">Prices published by {profile.provider.businessName || profile.displayName}, not CarMazium-wide tariffs. Any travel charges and final price are confirmed in your accepted quotation.</p>
+                            <div className="mt-4 divide-y divide-[var(--border-default)]">
+                                {profile.provider.inspectionPrices.map((item, index) => <div key={index} className="flex justify-between gap-4 py-4 text-sm">
+                                    <div><p className="font-semibold">{item.name}</p>{item.description && <p className="mt-1 text-[var(--text-muted)]">{item.description}</p>}</div>
+                                    <div className="shrink-0 text-right font-bold">{item.quoteOnly ? 'Quote required' : `£${(item.pricePence / 100).toFixed(2)}`}{!item.quoteOnly && <p className="text-xs font-normal text-[var(--text-muted)]">{item.vatIncluded ? 'VAT included where applicable' : 'VAT may be added'}</p>}</div>
+                                </div>)}
+                            </div>
                         </section>
                     )}
 
