@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   ActivityIndicator,
@@ -24,7 +24,10 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
-import { IconButton } from '../../components/IconButton';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { useFocusEffect } from '@react-navigation/native';
+import { CompletePurchaseButton } from '../../components/purchases/CompletePurchaseButton';
+import { BuyerCollectedButton } from '../../components/purchases/BuyerCollectedButton';
 // ─────────────────────────── types ───────────────────────────────
 
 type TxStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
@@ -71,13 +74,15 @@ interface TransactionsResponse {
   data: RawTransaction[];
   pagination?: { total: number; page: number; limit: number; totalPages: number };
 }
+interface RecordedSale { id:string; title:string; imageUrl:string|null; price:number; purchasedAt:string; purchaseStatus:string; buyerCollectedAt:string|null; canConfirmCollection:boolean; }
 interface AcceptedOffer {
+  listingId?: string;
   id: string;
   status: string;
   amount: number | string;
   finalAmount?: number | string | null;
   counterAmount?: number | string | null;
-  listing?: { title?: string; images?: string[] };
+  listing?: { id?: string; title?: string; images?: string[]; status?: string };
 }
 interface OffersResponse { success: boolean; data: AcceptedOffer[] }
 
@@ -145,7 +150,10 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   // ── pagination ────────────────────────────────────────────────
-  const PAGE_LIMIT = 20;
+  const PAGE_LIMIT = 50;
+  const [sales,setSales] = useState<RecordedSale[]>([]);
+  const request = useRef(0);
+  const isPurchaseReceipt = (tx:RawTransaction) => ['COMMISSION','HPI_REPORT','REFUND','DEPOSIT','FULL_PAYMENT'].includes(tx.type);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -167,17 +175,22 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
 
   // ── fetch ──────────────────────────────────────────────────────
   const fetchData = useCallback(async (isRefresh = false) => {
+    const id = ++request.current;
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
     try {
-      const [transactionResult, offerResult] = await Promise.allSettled([
+      const [transactionResult, offerResult, saleResult] = await Promise.allSettled([
         apiClient<TransactionsResponse>(`/transactions/my?page=1&limit=${PAGE_LIMIT}`),
         apiClient<OffersResponse>('/offers/my'),
+        apiClient<{data:RecordedSale[]}>('/listings/my-purchase-sales'),
       ]);
+      if (id !== request.current) return;
+      if (saleResult.status === 'fulfilled' && Array.isArray(saleResult.value.data)) setSales(saleResult.value.data);
+      else setError('Recorded vehicle purchases could not be loaded.');
       if (transactionResult.status === 'fulfilled' && transactionResult.value.success) {
         const res = transactionResult.value;
-        setHistory((res.data || []).map(mapRow));
+        setHistory((res.data || []).filter(isPurchaseReceipt).map(mapRow));
         setPage(1);
         setTotalPages(res.pagination?.totalPages ?? 1);
       } else {
@@ -189,34 +202,34 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
         setError('Some accepted purchases could not be loaded.');
       }
     } catch {
-      setError('Could not load purchase history. Please try again.');
+      if (id === request.current) setError('Could not load purchase history. Please try again.');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (id === request.current) {setLoading(false);setRefreshing(false);}
     }
   }, []);
 
   const handleLoadMore = useCallback(async () => {
     if (loadingMore || page >= totalPages) return;
+    const requestId = request.current;
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
       const res = await apiClient<TransactionsResponse>(`/transactions/my?page=${nextPage}&limit=${PAGE_LIMIT}`);
-      if (res.success) {
-        setHistory((prev) => [...prev, ...(res.data || []).map(mapRow)]);
+      if (res.success && requestId === request.current) {
+        setHistory((prev) => [...prev, ...(res.data || []).filter(isPurchaseReceipt).map(mapRow)]);
         setPage(nextPage);
         setTotalPages(res.pagination?.totalPages ?? nextPage);
       }
     } catch {
-      // Non-fatal — the user can retap "Load more" to retry.
+      if (requestId === request.current) setError('More receipts could not be loaded. Please retry.');
     } finally {
       setLoadingMore(false);
     }
   }, [page, totalPages, loadingMore]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useFocusEffect(useCallback(() => {
+    void fetchData(); return () => {request.current++;};
+  }, [fetchData]));
 
   // ── receipt download ──────────────────────────────────────────
   // Must NOT use Linking.openURL() — it hands off to the OS browser as a
@@ -382,25 +395,7 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Safe-area spacer */}
-      <View style={{ height: insets.top }} />
-
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-
-        <Text style={styles.headerTitle}>Purchases</Text>
-
-        {history.length > 0 ? (
-          <View style={styles.countBadge}>
-            <Text style={styles.countBadgeText}>
-              {history.length > 99 ? '99+' : history.length}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.headerPlaceholder} />
-        )}
-      </View>
+      <WebsiteTopBar />
 
       {/* ── Content ── */}
       <ScrollView
@@ -416,12 +411,13 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
           />
         }
       >
+        <View style={{gap:8,marginBottom:24}}><Text accessibilityRole="header" style={{fontSize:24,fontFamily:FontFamily.bold,color:Colors.textPrimary}}>Purchases</Text><Text style={styles.acceptedHint}>Retail deals you agreed, and separate CarMazium transaction receipts. Vehicle sale proceeds go directly to the seller.</Text></View>
         {error && !loading && (
           <ErrorBanner message={error} onRetry={() => fetchData()} />
         )}
 
         <View style={styles.acceptedSection}>
-          <Text style={styles.acceptedHeading}>AGREED RETAIL PURCHASES</Text>
+          <Text style={styles.acceptedHeading}>AGREED RETAIL PURCHASES ({acceptedOffers.length})</Text>
           <Text style={styles.acceptedHint}>
             An accepted offer is a deal agreed, not proof of payment or collection.
             Vehicle money is paid directly to the seller.
@@ -433,21 +429,31 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
             <View key={offer.id} style={styles.historyCard}>
               <Text style={styles.historyTitle}>{offer.listing?.title || 'Retail vehicle'}</Text>
               <Text style={styles.historyPrice}>
-                £{Number(offer.finalAmount ?? offer.counterAmount ?? offer.amount).toLocaleString('en-GB')}
+                {Number(offer.finalAmount ?? offer.counterAmount ?? offer.amount).toLocaleString('en-GB',{style:'currency',currency:'GBP'})}
               </Text>
-              <Text style={styles.acceptedHint}>Offer accepted — confirm funds, inspection and collection directly with seller.</Text>
+              <Text style={styles.acceptedHint}>{offer.listing?.status === 'SOLD' ? 'Purchase completed' : 'Offer accepted — confirm funds, inspection and collection directly with seller.'}</Text>
+              {offer.listing?.status === 'OFFER_ACCEPTED' && (offer.listingId || offer.listing.id) && <CompletePurchaseButton listingId={(offer.listingId || offer.listing.id)!} onCompleted={() => void fetchData(true)} />}
               <TouchableOpacity accessibilityRole="button" style={styles.receiptBtn}
                 onPress={() => navigation?.navigate('BuyerOffers')}>
-                <Text style={styles.receiptBtnText}>View agreed offer</Text>
+                <Text style={styles.receiptBtnText}>View offer</Text>
               </TouchableOpacity>
             </View>
           ))}
         </View>
+        <View style={{gap:12,marginVertical:24}}><Text accessibilityRole="header" style={styles.acceptedHeading}>Recorded vehicle purchases ({sales.length})</Text>
+          {!loading && !error && sales.length === 0 && <Text style={styles.acceptedHint}>No recorded vehicle purchases yet.</Text>}
+          {!loading && sales.map(sale=><View key={sale.id} style={styles.historyCard}>
+            {sale.imageUrl && <Image source={{uri:sale.imageUrl}} style={{width:80,height:64,borderRadius:8}} contentFit="cover" />}
+            <Text style={styles.historyTitle}>{sale.title}</Text><Text style={styles.acceptedHint}>{Number(sale.price).toLocaleString('en-GB',{style:'currency',currency:'GBP'})} · {new Date(sale.purchasedAt).toLocaleDateString('en-GB')}</Text>
+            <Text style={[styles.acceptedHint,{color:sale.buyerCollectedAt?Colors.success:Colors.textMuted}]}>{sale.buyerCollectedAt?`Collected · ${new Date(sale.buyerCollectedAt).toLocaleDateString('en-GB')}`:`Stage: ${sale.purchaseStatus.replace(/_/g,' ').toLowerCase()}`}</Text>
+            {sale.canConfirmCollection && !sale.buyerCollectedAt && <BuyerCollectedButton saleId={sale.id} onCollected={() => void fetchData(true)} />}
+          </View>)}
+        </View>
         {/* Platform receipts are separate from vehicle sale proceeds. */}
-        <Text style={styles.acceptedHeading}>PLATFORM RECEIPTS</Text>
+        <Text style={styles.acceptedHeading}>Receipts and payments ({history.length})</Text>
 
         {/* Totals bar — only when there's data */}
-        {!loading && history.length > 0 && renderTotalsBar()}
+
 
         {loading
           ? renderSkeletons()
@@ -470,6 +476,7 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
           </TouchableOpacity>
         )}
 
+<Text style={[styles.acceptedHint,{marginTop:24}]}>For auction wins, use your won-auction and handover records. A platform fee receipt is not evidence that the vehicle was paid for.</Text>
         <View style={{ height: 110 }} />
       </ScrollView>
     </View>

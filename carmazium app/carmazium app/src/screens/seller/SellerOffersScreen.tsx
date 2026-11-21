@@ -12,6 +12,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { Button } from '../../components/Button';
+import { fetchAllMyListings } from '../../lib/myListingsApi';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -154,6 +158,9 @@ const STATUS_CONFIG: Record<
 export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
 
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [showDelivery, setShowDelivery] = useState(false);
+  const [listingImages, setListingImages] = useState<Record<string,string>>({});
   const [offers, setOffers] = useState<Offer[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -179,11 +186,13 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
     try {
       // The dashboard only includes pending/countered offers. Use the same
       // complete history as the website so accepted offers retain sale actions.
-      const [offersRes, countRes] = await Promise.allSettled([
+      const [offersRes, countRes, listingsRes] = await Promise.allSettled([
         apiClient<ReceivedOffersResponse>('/offers/received'),
         apiClient<PendingCountResponse>('/offers/pending-count'),
+        fetchAllMyListings<{id:string;images?:string[]}>(),
       ]);
 
+      if (listingsRes.status === 'fulfilled') setListingImages(Object.fromEntries(listingsRes.value.filter(l=>l.images?.[0]).map(l=>[l.id,l.images![0]])));
       if (offersRes.status === 'fulfilled' && offersRes.value?.success && Array.isArray(offersRes.value.data)) {
         // Prisma decimals arrive as strings on this endpoint.
         setOffers(offersRes.value.data.map(offer => ({
@@ -617,6 +626,18 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
     openSaleModal,
   ]);
 
+  const groups = Object.values(offers.reduce<Record<string,{id:string;title:string;offers:Offer[]}>>((map, offer) => {
+    const id = offer.listingId || offer.listing?.id || offer.id;
+    if (!map[id]) map[id] = {id,title:offer.listing?.title || 'Vehicle',offers:[]};
+    map[id].offers.push(offer); return map;
+  }, {}));
+  const pageHeader = <View style={{gap:12,marginBottom:24}}>
+    <Text accessibilityRole="header" style={{fontSize:24,fontFamily:FontFamily.bold,color:Colors.textPrimary,textTransform:'uppercase'}}>Offers Received</Text>
+    <Text style={{fontSize:14,lineHeight:22,color:Colors.textMuted}}>Offers buyers have made on your cars. Accept, decline or counter each one.</Text>
+    <Button label="Delivery requests from buyers" variant="outline" onPress={() => setShowDelivery(value=>!value)} />
+    {showDelivery && <ReceivedDeliveryRequestsPanel contextLabel="your listing" />}
+  </View>;
+
   // ─────────────── main render ───────────────────────
 
   return (
@@ -638,24 +659,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Safe-area top spacer */}
-      <View style={{ height: insets.top }} />
-
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-
-        <Text style={styles.headerTitle}>Incoming Offers</Text>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          {pendingCount > 0 && (
-            <View style={styles.pendingBadge}>
-              <Text style={styles.pendingBadgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
-            </View>
-          )}
-          <HamburgerButton />
-        </View>
-      </View>
+      <WebsiteTopBar />
 
       {/* Inline auto-reject toast — surfaces the sibling auto-decline behavior */}
       {toast && (
@@ -684,7 +688,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
         >
           {/* Pending delivery requests — surfaced above offers so acceptance
               lives near the offers that spawned them. */}
-          <ReceivedDeliveryRequestsPanel contextLabel="your listing" />
+          {pageHeader}
           {loading ? renderSkeleton() : !loadError ? renderEmptyState() : null}
         </ScrollView>
       ) : (
@@ -702,10 +706,17 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
               colors={[Colors.accent]}
             />
           }
-          data={offers}
+          data={groups}
           keyExtractor={(item) => item.id}
-          renderItem={renderOfferCard}
-          ListHeaderComponent={<ReceivedDeliveryRequestsPanel contextLabel="your listing" />}
+          renderItem={({item:group}) => <View style={{borderWidth:1,borderColor:Colors.border,borderRadius:16,backgroundColor:Colors.bgCard,overflow:'hidden',marginBottom:16}}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Offers for ${group.title}`} accessibilityState={{expanded:expanded.has(group.id)}} onPress={() => setExpanded(previous=>{const next=new Set(previous);if(next.has(group.id))next.delete(group.id);else next.add(group.id);return next;})} style={{flexDirection:'row',alignItems:'center',gap:16,padding:20}}>
+              <View style={{width:64,height:48,borderRadius:8,overflow:'hidden',backgroundColor:Colors.bgTertiary}}>{listingImages[group.id] && <Image source={{uri:listingImages[group.id]}} style={StyleSheet.absoluteFillObject} contentFit="cover" />}</View>
+              <View style={{flex:1,gap:4}}><Text style={{fontSize:16,fontFamily:FontFamily.bold,color:Colors.textPrimary,textTransform:'uppercase'}}>{group.title}</Text><Text style={{fontSize:12,color:Colors.textMuted}}>{group.offers.length} TOTAL OFFERS</Text></View>
+              <Ionicons name={expanded.has(group.id)?'chevron-down':'chevron-forward'} size={20} color={Colors.textMuted}/>
+            </TouchableOpacity>
+            {expanded.has(group.id) && <View style={{padding:16,gap:12,borderTopWidth:1,borderColor:Colors.border}}>{group.offers.map(offer=><React.Fragment key={offer.id}>{renderOfferCard({item:offer})}</React.Fragment>)}</View>}
+          </View>}
+          ListHeaderComponent={pageHeader}
           ListFooterComponent={<View style={{ height: 40 }} />}
         />
       )}

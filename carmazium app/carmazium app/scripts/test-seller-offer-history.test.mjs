@@ -16,6 +16,7 @@ async function screen(api) {
     '@react-navigation/native':{useFocusEffect:cb=>React.useEffect(cb,[cb])},
     'react-native-safe-area-context':{useSafeAreaInsets:()=>({top:0,bottom:0})},
     'expo-linear-gradient':{LinearGradient:'Gradient'},'@/components/BrandIcon':{Ionicons:'Icon'},
+    'expo-image':{Image:'Image'},'../../components/WebsiteTopBar':{WebsiteTopBar:'WebsiteTopBar'},'../../components/Button':{Button:'Button'},'../../lib/myListingsApi':{fetchAllMyListings:async()=>[]},
     '../../lib/apiClient':{apiClient:api},'../../lib/haptics':{haptics:{success:()=>{}}},
     '../../components/BottomSheet':{BottomSheet:({visible,children,...props})=>visible?React.createElement('Sheet',props,children):null},
     '../../components/ui/ErrorBanner':{ErrorBanner:'Error'},'../../components/ui/Skeleton':{Skeleton:'Skeleton'},'../../components/ui/EmptyState':{EmptyState:'Empty'},
@@ -27,9 +28,11 @@ async function screen(api) {
   const compiled=ts.transpileModule(source,{compilerOptions:{jsx:ts.JsxEmit.React,module:ts.ModuleKind.CommonJS,esModuleInterop:true,target:ts.ScriptTarget.ES2022}});
   const exports={};runInNewContext(compiled.outputText,{exports,setTimeout:()=>0,require:n=>{assert.ok(n in modules,n);return modules[n];}});
   let tree;await act(async()=>{tree=create(React.createElement(exports.SellerOffersScreen,{navigation:{}}));});
+  const expand=async()=>{const group=tree.root.findAllByType('Press').find(n=>n.props.accessibilityLabel?.startsWith('Offers for ')&&!n.props.accessibilityState?.expanded);if(group)await act(async()=>group.props.onPress());};
+  await expand();
   const text=()=>tree.root.findAllByType('Text').flatMap(n=>n.children).filter(x=>typeof x==='string');
   const press=label=>tree.root.findAllByType('Press').find(p=>p.findAllByType('Text').some(t=>t.children.includes(label)));
-  return {tree,alerts,text,press};
+  return {tree,alerts,text,press,expand};
 }
 const fixture=()=>({id:'offer-1',amount:'7000',status:'PENDING',buyerId:'buyer-1',buyer:{firstName:'Synthetic',lastName:'Buyer'},listingId:'listing-1',listing:{id:'listing-1',title:'Synthetic vehicle',status:'ACTIVE',price:'7500'}});
 test('accepting an offer retains sale controls; sold listings prevent duplicate sale',async()=>{
@@ -69,6 +72,7 @@ test('failed offer request shows retry instead of a false empty inbox',async()=>
   assert.match(s.tree.root.findByType('Error').props.message,/Could not load received offers/);
   fail=false;await act(async()=>s.tree.root.findByType('Error').props.onRetry());
   assert.equal(s.tree.root.findAllByType('Error').length,0);
+  await s.expand();
   assert.ok(s.press('Mark as Sold'));
   await act(async()=>s.tree.unmount());
 });
