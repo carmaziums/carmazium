@@ -77,3 +77,15 @@ The existing product-parity check verifies file presence plus selected business 
 ## Continuation
 
 Use the existing original package and the user's correct signed-in laptop sessions. Continue the authenticated same-emulator comparison and install a signed candidate before claiming the fixes verified on device. Preserve the explicit outstanding admin list. Do not confuse a successful candidate 111 with an APK containing this branch.
+
+## Same-emulator business-page follow-up
+
+Compared build 111 and signed-in Chrome inside the same BlueStacks display. Mobile website captures are under the laptop's `qa-dashboard/parity-pages`; native captures include `parity-native-finance-open`, `parity-native-earnings`, and `parity-native-analytics`.
+
+- Team: restored business service approval states, payout policy/readiness, eligible approval actions, visible invitation button and role totals. Existing individual permission toggles and invitation handling remain. No live staff permissions or service applications were submitted.
+- Finance Calculator: matched page title/header/card and explanatory copy; failed preference loads now stop the spinner and offer retry without showing a false Off setting.
+- Earnings: restored four metric cards with accurate Average Sale Price wording, sales/auction/receipt tabs, all auction records (no five-row truncation), registration and price differences, and filtered CSV with pennies and spreadsheet-formula protection. Receipt PDFs use authenticated transaction routes; historic KYC payments are deduplicated and synthetic entries remain non-downloadable.
+- Analytics: build 111 incorrectly hid the whole report when the selected period had no sales, despite 48 active stock and available lead/inventory metrics on the website. Valid zero-sale reports now render. Restored missing metrics, all top vehicles, model/mover/source/channel/area/team sections, 7/30/90-day and validated custom ranges, and CSV export. Stale requests cannot overwrite the selected period. Native charts still require on-device visual comparison; this is not a pixel-parity sign-off.
+- Added persistent, permission-filtered dealer destinations to these four stack pages.
+
+Validation: 778 root tests pass; native TypeScript passes; ten new component/contract tests cover zero-sale analytics, all auction rows, date validation, stale responses, filtered CSV, native authenticated receipts, KYC deduplication, approval visibility and failed preference retry. The existing 57 native tests also passed before the final three analytics tests were added. APK 112 is building from PR 947 and **does not include this follow-up**. These changes need a subsequent signed build and actual emulator acceptance. Buyer/seller, admin, remaining dealer/services pages and iOS remain outstanding.
