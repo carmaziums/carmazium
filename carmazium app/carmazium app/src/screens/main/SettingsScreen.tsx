@@ -23,6 +23,7 @@ import { getThemePreference, promptThemeChange, type ThemePreference } from '../
 import { IconButton } from '../../components/IconButton';
 import { BottomSheet } from '../../components/BottomSheet';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
+import { PresentedProfileImage, ProfileImageAdjustment } from '../../components/ProfileImagePresentation';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { useSingleColumnSettings } from '../../lib/nativeLayoutParity';
 import { getOrCreateSupportRoom } from '../../lib/chatApi';
@@ -205,6 +206,7 @@ export const SettingsScreen: React.FC = () => {
   const [firstName, setFirstName] = useState(user?.firstName ?? '');
   const [lastName, setLastName] = useState(user?.lastName ?? '');
   const [profileImage, setProfileImage] = useState(user?.profileImage ?? '');
+  const [adjustImage,setAdjustImage]=useState<'profile'|'business'|null>(null);
   // Preferences default to on, matching web's seller settings page defaults
   // before the real values load — same fields, same PATCH /users/me shape.
   const [notifyOnSale, setNotifyOnSale] = useState(true);
@@ -272,8 +274,6 @@ export const SettingsScreen: React.FC = () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'images' as any,
       allowsMultipleSelection: false,
-      allowsEditing: true,
-      aspect: [1,1],
       quality: 1.0,
     });
     if (result.canceled || !result.assets?.[0]) return;
@@ -287,6 +287,7 @@ export const SettingsScreen: React.FC = () => {
       await apiClient('/users/me', { method: 'PATCH', body: JSON.stringify({ profileImage: url }) });
       setProfileImage(url);
       updateUser({ profileImage: url });
+      setAdjustImage('profile');
     } catch (err: any) {
       Alert.alert('Error', err?.message ?? 'Could not upload photo. Please try again.');
     } finally {
@@ -325,8 +326,6 @@ export const SettingsScreen: React.FC = () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'images' as any,
       allowsMultipleSelection: false,
-      allowsEditing: true,
-      aspect: [1,1],
       quality: 1.0,
     });
     if (result.canceled || !result.assets?.[0]) return;
@@ -337,6 +336,7 @@ export const SettingsScreen: React.FC = () => {
       const url = await uploadToStorage(jpegUri, 'listings', `${userId}/dealer-logo/${Date.now()}.jpg`, 'image/jpeg');
       await apiClient('/users/dealer-profile',{method:'PATCH',body:JSON.stringify({logo:url})});
       setDealerLogo(url);
+      setAdjustImage('business');
     } catch (err: any) {
       Alert.alert('Error', err?.message ?? 'Could not upload logo. Please try again.');
     } finally {
@@ -780,7 +780,7 @@ export const SettingsScreen: React.FC = () => {
               {uploadingPhoto ? (
                 <ActivityIndicator size="small" color={Colors.accent} />
               ) : profileImage ? (
-                <Image source={{ uri: profileImage }} style={styles.avatarImage} contentFit="cover" />
+                <PresentedProfileImage uri={profileImage} style={styles.avatarImage}/>
               ) : (
                 <Text style={styles.avatarInitials}>{initials}</Text>
               )}
@@ -791,6 +791,7 @@ export const SettingsScreen: React.FC = () => {
             </View>
           </TouchableOpacity>
 
+          {!!profileImage&&<TouchableOpacity accessibilityRole="button" onPress={()=>setAdjustImage('profile')} disabled={!profileLoaded||uploadingPhoto}><Text style={styles.avatarChangeText}>Adjust profile display</Text></TouchableOpacity>}
           {!!profileImage&&<TouchableOpacity accessibilityRole="button" onPress={()=>removeImage(false)} disabled={!profileLoaded||uploadingPhoto}><Text style={styles.avatarChangeText}>Remove profile photo</Text></TouchableOpacity>}
           <View style={styles.fieldRow}>
             <View style={styles.fieldWrap}>
@@ -939,7 +940,7 @@ export const SettingsScreen: React.FC = () => {
                   {uploadingLogo ? (
                     <ActivityIndicator size="small" color={Colors.accent} />
                   ) : dealerLogo ? (
-                    <Image source={{ uri: dealerLogo }} style={styles.avatarImage} contentFit="cover" />
+                    <PresentedProfileImage uri={dealerLogo} style={styles.avatarImage} fallbackFit="contain"/>
                   ) : (
                     <Ionicons name="storefront-outline" size={22} color={Colors.iconMuted} />
                   )}
@@ -950,6 +951,7 @@ export const SettingsScreen: React.FC = () => {
                 </View>
               </TouchableOpacity>
 
+              {!!dealerLogo&&<TouchableOpacity accessibilityRole="button" onPress={()=>setAdjustImage('business')} disabled={!profileLoaded||uploadingLogo}><Text style={styles.avatarChangeText}>Adjust logo display</Text></TouchableOpacity>}
               {!!dealerLogo&&<TouchableOpacity accessibilityRole="button" onPress={()=>removeImage(true)} disabled={!profileLoaded||uploadingLogo}><Text style={styles.avatarChangeText}>Remove business logo</Text></TouchableOpacity>}
               <View>
                 <FieldLabel label={isSoleTraderDealer ? "TRADING NAME" : "COMPANY NAME"} />
@@ -1543,6 +1545,9 @@ export const SettingsScreen: React.FC = () => {
         </View>
       </BottomSheet>
 
+      <BottomSheet visible={!!adjustImage} onClose={()=>setAdjustImage(null)} title="Adjust display" maxHeightPercent={90} fillHeight>
+        <ScrollView>{adjustImage&&<ProfileImageAdjustment key={adjustImage} uri={adjustImage==='business'?dealerLogo:profileImage} fallbackFit={adjustImage==='business'?'contain':'cover'} onClose={()=>setAdjustImage(null)} onSave={async value=>{const business=adjustImage==='business';await apiClient(business?'/users/dealer-profile':'/users/me',{method:'PATCH',body:JSON.stringify(business?{logo:value}:{profileImage:value})});if(business)setDealerLogo(value);else{setProfileImage(value);updateUser({profileImage:value});}}}/>}</ScrollView>
+      </BottomSheet>
       {/* Address Verification Stepper Modal */}
       <BottomSheet
         visible={verifyModalVisible}
