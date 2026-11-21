@@ -3,7 +3,7 @@ import { boundedConversation, redactMaziumText, KNOWLEDGE_INDEX, MAZIUM_TOOLS, r
 import { normalizeAiSearchFilters, SEARCH_FILTER_GUIDANCE } from './search-filter-contract';
 import { platformKnowledgeFor } from './mazium-platform-knowledge';
 import { VERIFIED_SITE_NAVIGATION, verifiedNavigationReply, hasUnverifiedNavigationPath, UNVERIFIED_NAVIGATION_REPLY } from './mazium-site-navigation';
-import { contradictsDealerOnlyAuctionRule } from './mazium-auction-eligibility';
+import { blockedDealerTradingGuidance, contradictsDealerOnlyAuctionRule } from './mazium-auction-eligibility';
 import { maziumFailureCode, MaziumFailureCode } from './mazium-response-failure';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -443,6 +443,16 @@ export class AiService {
             }
             if (hasUnverifiedNavigationPath(parsed.text)) {
                 this.logger.warn('Withheld MaziuM answer containing an unverified navigation route after repair');
+                // Do not expose an invented route. For a narrow anonymous dealer
+                // access question, we can still provide known verification/
+                // permission guidance without pretending to inspect the account.
+                // Account-specific and multi-topic requests remain fail closed.
+                const verifiedGuidance = !context.userId
+                    ? blockedDealerTradingGuidance(messages)
+                    : null;
+                if (verifiedGuidance) {
+                    return await this.safeResult({ text: verifiedGuidance }) as AiChatResult;
+                }
                 return { requiresHumanReview: true, text: UNVERIFIED_NAVIGATION_REPLY };
             }
             if (parsed.filterCard) {
