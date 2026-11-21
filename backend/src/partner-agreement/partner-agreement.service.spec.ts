@@ -142,7 +142,7 @@ describe('Master Business Partner Agreement authenticated signing and gating', (
     await expect(service.accept('staff-1', signature)).rejects.toThrow(ForbiddenException);
   });
 
-  it('rejects a verified company's mismatched registration number and legal form', async () => {
+  it("rejects a verified company's mismatched registration number and legal form", async () => {
     prisma.user.findUnique.mockResolvedValue({
       ...baseUser(), dealerProfile: {
         userId: 'owner-1', isVerified: true,
