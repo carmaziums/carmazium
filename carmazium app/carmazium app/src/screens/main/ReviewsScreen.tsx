@@ -1,237 +1,61 @@
 import React from 'react';
-import {
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Alert, Linking, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@/components/BrandIcon';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Colors, themeStatusBarStyle } from '../../constants/colors';
-import { FontFamily, FontSize } from '../../constants/typography';
-import { Elevation, Radius } from '../../constants/spacing';
-import { MainStackParamList } from '../../navigation/MainStackNavigator';
+import { Ionicons } from '@/components/BrandIcon';
+import { PublicInfoPage, infoStyles as s } from '../../components/PublicInfoPage';
+import { Button } from '../../components/Button';
+import { Colors } from '../../constants/colors';
 
-import { IconButton } from '../../components/IconButton';
-import { WebsiteTopBar } from '../../components/WebsiteTopBar';
-type NavProp = NativeStackNavigationProp<MainStackParamList>;
-
-// Web's /reviews page (src/app/reviews/page.tsx) is a static marketing page
-// with hardcoded fake stats ("50k+ Happy Customers", "4.9/5 Average Rating")
-// and six identical fabricated testimonials. Mobile deliberately does not
-// port that content — this session's other fixes (mobile-audit.md W1, F8's
-// buyer-facing damage viewer) were specifically about removing fabricated
-// data shown to users, so adding more here would cut against that. Instead
-// this is an honest explainer: real claims about how the platform actually
-// works, and a pointer to where real reviews genuinely live (seller
-// profiles) rather than invented testimonials. See mobile-production-
-// readiness-plan.md F14 for the full reasoning.
-
-interface TrustBadge {
-  icon: string;
-  title: string;
-  sub: string;
-}
-
-const TRUST_BADGES: TrustBadge[] = [
-  { icon: 'shield-checkmark-outline', title: 'Verified Sellers', sub: 'Dealers complete KYC before listing' },
-  { icon: 'lock-closed-outline', title: 'Secure Payments', sub: 'All transactions run through Stripe' },
-  { icon: 'shield-outline', title: 'Buyer Protection', sub: 'Deposit and delivery safeguards' },
-];
+export const REVIEW_BUYER_CHECKS = [
+ { icon: 'car-outline', colour: '#0284c7', title: 'Examine the individual vehicle',
+   description: 'Compare the advertisement with the car itself. Check its condition, mileage, specification and history. A listing is not an independent mechanical inspection.',
+   label: 'Explore retail listings', screen: 'Tabs', params: { screen: 'Search' } },
+ { icon: 'shield-checkmark-outline', colour: '#7c3aed', title: 'Understand verification',
+   description: "Account and motor-trade checks support safer participation, but they are not a guarantee about a vehicle's condition, its value or the outcome of a purchase.",
+   label: 'How the marketplace works', screen: 'HowItWorks', params: undefined },
+ { icon: 'card-outline', colour: '#059669', title: 'Know who receives the money',
+   description: 'For the vehicle purchase, buyers pay the seller directly. CarMazium does not hold vehicle purchase funds; its own marketplace fees are separate.',
+   label: 'Understand marketplace fees', screen: 'Pricing', params: undefined },
+] as const;
 
 export const ReviewsScreen: React.FC = () => {
-  const insets = useSafeAreaInsets();
-  const navigation = useNavigation<NavProp>();
-
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
-      <LinearGradient
-        colors={[Colors.accentAlpha05, Colors.groundClear, Colors.bgPrimary]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 0.6 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      <WebsiteTopBar />
-
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.introTitle}>Buying and selling with confidence</Text>
-        <Text style={styles.introSub}>
-          Carmazium is built around verified sellers, secure payments, and transparent history checks —
-          here's what that means in practice.
-        </Text>
-
-        <View style={styles.badgeGrid}>
-          {TRUST_BADGES.map((b) => (
-            <View key={b.title} style={styles.badgeCard}>
-              <View style={styles.badgeIconWrap}>
-                <Ionicons name={b.icon} size={20} color={Colors.accent} />
-              </View>
-              <Text style={styles.badgeTitle}>{b.title}</Text>
-              <Text style={styles.badgeSub}>{b.sub}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Where reviews come from</Text>
-          <Text style={styles.bodyText}>
-            After a sale completes, buyers can leave a rating and comment for the seller they dealt with.
-            Those reviews — real ones, tied to a real transaction — show up on that seller's public profile,
-            alongside their reliability score, response rate, and sales history.
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.cta}
-          activeOpacity={0.85}
-          onPress={() => navigation.navigate('Tabs' as any, { screen: 'Search' } as any)}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.ctaTitle}>See a seller's reviews</Text>
-            <Text style={styles.ctaSub}>Open any listing and tap through to the seller's profile</Text>
-          </View>
-          <Ionicons name="arrow-forward" size={18} color={Colors.onAccent} />
-        </TouchableOpacity>
-
-        <View style={{ height: 60 }} />
-      </ScrollView>
-    </View>
-  );
+ const navigation = useNavigation<any>();
+ const feedback = () => { void Linking.openURL('mailto:info@carmazium.com?subject=CarMazium%20customer%20feedback').catch(() => Alert.alert('Email CarMazium', 'Send your feedback to info@carmazium.com.')); };
+ return <PublicInfoPage breadcrumb="Reviews & feedback" navigation={navigation}>
+  <LinearGradient colors={[Colors.accentAlpha10, Colors.bgCard, Colors.infoBlue + '18']} style={s.hero}>
+   <Text style={s.eyebrow}>CUSTOMER EXPERIENCES MATTER</Text>
+   <Text accessibilityRole="header" style={s.title}>CarMazium reviews and customer feedback</Text>
+   <Text style={s.lead}>Buying or selling a car is a significant decision. We welcome genuine experiences, questions and concerns, and we believe any published customer review should have a traceable source.</Text>
+   <View style={s.actions}><Button label="Share your experience" onPress={feedback}/><Button label="Browse used cars" variant="outline" onPress={() => navigation.navigate('Tabs', { screen: 'Search' })}/></View>
+  </LinearGradient>
+  <View style={[s.panel, { borderColor: '#f59e0b4d', backgroundColor: '#f59e0b10' }]}>
+   <Ionicons name="shield-checkmark-outline" size={25} color={Colors.warning}/>
+   <Text accessibilityRole="header" style={s.subheading}>Our approach to genuine reviews</Text>
+   <Text style={s.body}>We do not currently display a sourced customer-review feed or a calculated star average on this page. We will not use made-up customer quotes, names, star ratings or customer counts as substitutes for real feedback. If authenticated reviews become available, their publication will need an appropriate source and permission.</Text>
+  </View>
+  <View style={s.section}>
+   <Text style={s.eyebrow}>CONFIDENCE THROUGH INFORMATION</Text>
+   <Text accessibilityRole="header" style={s.heading}>What to check before buying</Text>
+   <Text style={s.body}>A positive testimonial cannot replace checking the individual car and seller. Use these practical steps alongside your own inspection and independent research.</Text>
+   {REVIEW_BUYER_CHECKS.map(item => <LinearGradient key={item.title} colors={[item.colour + '20', Colors.bgCard]} style={[s.panel, { borderColor: item.colour + '40' }]}>
+     <View style={[s.icon, { backgroundColor: item.colour }]}><Ionicons name={item.icon} size={24} color="#fff"/></View>
+     <Text accessibilityRole="header" style={s.subheading}>{item.title}</Text><Text style={s.body}>{item.description}</Text>
+     <Button label={item.label} variant="ghost" onPress={() => navigation.navigate(item.screen, item.params)}/>
+   </LinearGradient>)}
+  </View>
+  <View style={[s.panel, s.section]}>
+   <Ionicons name="search-outline" size={37} color={Colors.accent}/>
+   <Text accessibilityRole="header" style={s.heading}>Use independent vehicle checks</Text>
+   <Text style={s.body}>Before committing to a purchase, verify the vehicle registration and identity, review the available DVLA and MOT information, consider an independent history check where appropriate, and inspect or arrange an inspection of the vehicle. The details supplied in an advert should be checked against the actual car and its documents.</Text>
+   <Text style={s.body}>CarMazium does not require buyers to purchase a vehicle history report, but you can choose independent checks to suit your circumstances.</Text>
+   <Button label="Compare used-car body types" variant="outline" onPress={() => navigation.navigate('CarBodyGuide')}/>
+  </View>
+  <LinearGradient colors={[Colors.accentAlpha10, '#7c3aed18']} style={[s.panel, s.section]}>
+   <Ionicons name="checkmark-circle-outline" size={26} color={Colors.accent}/>
+   <Text accessibilityRole="header" style={s.heading}>Tell us about your experience</Text>
+   <Text style={s.body}>If you bought, sold or tried to use a service on CarMazium, email us with the relevant listing URL, a brief description and the date. Please do not send passwords, identity-document images or bank account details. Sending feedback by email does not automatically publish a public review.</Text>
+   <Button label="Email CarMazium feedback" onPress={feedback}/>
+  </LinearGradient>
+ </PublicInfoPage>;
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgPrimary },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-  },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderBottomWidth: 2,
-    ...Elevation.card,
-  },
-  headerTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.lg,
-    color: Colors.white,
-  },
-
-  scroll: { flex: 1 },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-  },
-
-  introTitle: {
-    fontFamily: FontFamily.extraBold,
-    fontSize: FontSize.xl,
-    color: Colors.white,
-    marginBottom: 8,
-  },
-  introSub: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-
-  badgeGrid: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 24,
-  },
-  badgeCard: {
-    flex: 1,
-    backgroundColor: Colors.glassBg,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    borderRadius: 14,
-    padding: 14,
-  },
-  badgeIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: Colors.accentAlpha12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  badgeTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size12,
-    color: Colors.white,
-    marginBottom: 2,
-  },
-  badgeSub: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.size10,
-    color: Colors.textMuted,
-    lineHeight: 14,
-  },
-
-  sectionCard: {
-    borderWidth: 1,
-    borderRadius: Radius.card,
-    padding: 18,
-    marginBottom: 16,
-    backgroundColor: Colors.bgCard,
-    borderColor: Colors.border,
-    ...Elevation.card,
-  },
-  sectionTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.base,
-    color: Colors.white,
-    marginBottom: 8,
-  },
-  bodyText: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    lineHeight: 21,
-  },
-
-  cta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.accent,
-    borderRadius: Radius.card,
-    padding: 18,
-    gap: 12,
-  },
-  ctaTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.sm,
-    color: Colors.onAccent,
-  },
-  ctaSub: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.xs,
-    color: 'rgba(255,255,255,0.75)',
-    marginTop: 2,
-  },
-});
