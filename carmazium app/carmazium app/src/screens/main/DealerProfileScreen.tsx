@@ -75,7 +75,7 @@ export const DealerProfileScreen: React.FC = () => {
   return <View style={styles.container}>
     <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
     <WebsiteTopBar />
-    <ScrollView contentContainerStyle={{ paddingTop: 12, paddingBottom: tabBarClearance }} showsVerticalScrollIndicator={false}
+    <ScrollView contentContainerStyle={{ paddingTop: 32, paddingBottom: tabBarClearance }} showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={false} onRefresh={() => setOverviewRefreshToken(token => token + 1)} tintColor={Colors.accent} />}>
         {showPhoneBanner && (
           <TouchableOpacity

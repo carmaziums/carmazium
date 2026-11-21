@@ -1,6 +1,5 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -30,7 +29,6 @@ export const PurchaseDestinations: React.FC<{
           onPress={() => { if (!selected) onSelect(item.id); }}
           activeOpacity={0.8}
         >
-          <Ionicons name={item.icon} size={18} color={selected ? Colors.onAccent : Colors.textMuted} />
           <Text style={[styles.label, selected && styles.labelActive]} numberOfLines={2}>
             {item.label}
           </Text>
@@ -44,7 +42,7 @@ const styles = StyleSheet.create({
   wrap: {
     flexDirection: 'row',
     gap: 4,
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     marginBottom: 12,
     padding: 4,
     borderRadius: Radius.inline,
@@ -60,7 +58,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 3,
     paddingHorizontal: 4,
-    paddingVertical: 6,
+    paddingVertical: 10,
     borderRadius: Radius.chip,
   },
   itemActive: { backgroundColor: Colors.accent },

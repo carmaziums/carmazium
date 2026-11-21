@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
   heading: { padding: 20, gap: 6 },
   title: { fontSize: 24, fontFamily: FontFamily.bold, color: Colors.textPrimary, textTransform: 'uppercase' },
   subtitle: { fontSize: 14, lineHeight: 22, color: Colors.textSecondary },
-  attention: { marginHorizontal: 16, padding: 20, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard, gap: 12 },
+  attention: { marginHorizontal: 20, marginBottom: 32, padding: 20, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard, gap: 12 },
   sectionTitle: { fontSize: 18, fontFamily: FontFamily.bold, color: Colors.textPrimary, textTransform: 'uppercase' },
   hint: { fontSize: 13, lineHeight: 20, color: Colors.textSecondary },
   body: { fontSize: 14, lineHeight: 22, color: Colors.textPrimary },

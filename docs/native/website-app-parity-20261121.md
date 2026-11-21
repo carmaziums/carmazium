@@ -6,10 +6,13 @@ The requested acceptance target is the same options, pages, labels, workflows an
 
 - Website source baseline: main `7abd37badf761f1bdbdafca8d8eeaedcb093172c` (PR #946).
 - User laptop: DESKTOP-LPIB4R3, BlueStacks emulator-5554.
-- Installed production identity: `uk.carmazium.app`, versionCode 110, versionName 1.0.1; firstInstallTime 2026-11-20 11:36:34; lastUpdateTime 2026-11-21 00:53:46. No uninstall, clearing data or replacement package was performed.
-- Original installed app homepage and Dashboard were opened. Dashboard requires sign-in at present.
-- Laptop Chrome's prior CarMazium session expired on interaction. The normal Google sign-in returned `info@carmazium.com`, which is stopped by “Complete Your Account”. No profile fields were invented or submitted. Correct dealer and personal sessions are needed for authenticated acceptance.
-- Signed candidate 111, run 44849568481, was already in progress before this work. It contains PR #946, not these new changes. No new APK, OTA or customer distribution was published by this work.
+- Installed production identity initially build 110, then user upgraded to build 111; package `uk.carmazium.app`, versionName 1.0.1. No uninstall, clearing data or replacement package was performed by this work.
+- User signed in to PULSE CARS LIMITED in both native app and **Chrome inside BlueStacks**. Both use the same 900×1600 portrait display (240 density, 600dp content width). Desktop Chrome is not the mobile acceptance reference.
+- Compared live mobile dealer home, Customise, Stock, Customers and Purchases. Dealer cards have the same 20 destinations. Reset layout is present; live reset/hide/reorder round-trip remains to verify on the updated candidate.
+- Stock: both return 48 vehicles; the first Audi A1 has the same £10,495 asking price and 65 views. Website mobile action menu includes view, boost, auction conversion and delete. No listing mutation was submitted.
+- Customers: both show 0 new / 2 active / 0 follow-up / 0 sold. App hides later stages in a horizontal strip; web wraps all six stages.
+- Completed Purchases: website shows 12, app 111 shows 10. Two owner-confirmed recovered acquisitions are missing from the native request. Collected retail sales are also incorrectly relabelled Purchased by the native status mapper.
+- Current app 111 is the prior PR #946 candidate. None of the new branch changes are installed or published yet. Screenshots are laptop-local comparison evidence, not acceptance of the new code.
 
 ## Confirmed mismatches and corrections in this branch
 
@@ -28,6 +31,15 @@ The requested acceptance target is the same options, pages, labels, workflows an
 | Blog manifest | Existing native blog screens were incorrectly declared web-only. | Record the existing native implementation; this does not itself certify content parity. |
 
 The native personal delivery link goes directly to BuyerDeliveryRequests; the web attention action currently points at the seller offers page. The shared rule retains the website's wording, while the native action resolves to the existing delivery workflow.
+
+## Same-emulator comparison corrections
+
+- Match dashboard gutters, card widths/gaps, title sizing, attention panel and green all-clear presentation. Shared buttons now use the website's rounded geometry, sentence case, readable text and neutral outlines instead of the app's red bevelled uppercase outlines. Correct purchase, auction and verification icons.
+- Stock: match page heading, import ordering and result count; show the asking-price/auction-estimate distinction and engagement bar; expose Withdrawn separately. Existing native grid view and truthful transmission/lead data remain available.
+- Customers: wrap every stage with no horizontal hiding and include the matching explanatory hint.
+- Purchases: shared site header, page title/subtitle, stage→search/type→auction actions order, Refresh and Browse live auctions controls. Fetch recovered records, native recovered detail, authenticated PDF download/share for server-confirmed collection records, and correct status precedence.
+- Failed purchase sources preserve successful records, report incomplete data and provide retry. Invalid/over-limit pagination fails explicitly. Unknown historical prices remain Not recorded; no sale or payment data is invented.
+- Regression tests exercise the real purchase screen with ten regular plus two recovered records, native routing, unknown-price display and partial failure. The updated APK still needs the same-account comparison proving the live count is 12 and that PDF preview works.
 
 ## Confirmed outstanding scope
 
@@ -57,11 +69,11 @@ The existing product-parity check verifies file presence plus selected business 
 ## Validation
 
 - 778 repository tests passed.
-- 53 native/component tests passed, including actual personal and dealer screen rendering against controlled data, role permissions, native destinations, partial failures, retries, malformed responses, delivery requests, buyer-role seller tasks and correct handover eligibility.
+- 57 native/component tests passed, including actual personal and dealer screen rendering against controlled data, role permissions, native destinations, partial failures, retries, malformed responses, delivery requests, buyer-role seller tasks and correct handover eligibility.
 - Native TypeScript passed before final packaging; final validation is recorded in the PR.
 - Website and native dashboard-card catalog remains unchanged and matching.
 - No live listings, offers, bids, account profiles or financial transactions were created or changed.
 
 ## Continuation
 
-Use the existing original package and the user's correct signed-in laptop sessions. Finish the authenticated comparison before treating this branch as ready for release. Preserve the explicit outstanding admin list. Do not confuse a successful candidate 111 with an APK containing this branch.
+Use the existing original package and the user's correct signed-in laptop sessions. Continue the authenticated same-emulator comparison and install a signed candidate before claiming the fixes verified on device. Preserve the explicit outstanding admin list. Do not confuse a successful candidate 111 with an APK containing this branch.

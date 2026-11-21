@@ -86,7 +86,7 @@ export const DealerWebParityOverview: React.FC<Props> = ({
           <Text style={styles.heroSubtitle}>RUN YOUR DEALERSHIP FROM ONE PLACE, {userName}</Text>
           {summary?.isVerified === true && <View style={styles.verifiedLine}>
             <Ionicons name="shield-checkmark-outline" size={14} color={Colors.warning} />
-            <Text style={styles.verifiedText}>Verified Dealer</Text>
+            <Text style={styles.verifiedText}>VERIFIED DEALER</Text>
           </View>}
         </View>
       </View>
@@ -105,7 +105,7 @@ export const DealerWebParityOverview: React.FC<Props> = ({
           <View style={styles.actionText}><Text style={styles.actionTitle}>{item.title}</Text><Text style={styles.actionDescription}>{item.detail}</Text></View>
           <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
         </TouchableOpacity>)}
-        {!checks.failed && items.length === 0 && <Text style={styles.sectionHint}>You're all caught up. Nothing needs your attention right now.</Text>}
+        {!checks.failed && items.length === 0 && <View style={styles.allClear}><Ionicons name="checkmark-circle-outline" size={20} color={Colors.success} /><Text style={styles.allClearText}>You're all caught up. Nothing needs your attention right now.</Text></View>}
       </>}
     </View>
     <DashboardCards mode="dealer" />
@@ -113,7 +113,7 @@ export const DealerWebParityOverview: React.FC<Props> = ({
 };
 
 const styles = StyleSheet.create({
-  main: { paddingTop: 12, gap: 18 },
+  main: { paddingTop: 0, gap: 32 },
   hero: { marginHorizontal: 20, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.borderSubtle,
     borderRadius: 16, padding: 20, overflow: 'hidden' },
   heroHeading: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
@@ -121,17 +121,19 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.borderSubtle, borderRadius: 12,
     justifyContent: 'center', alignItems: 'center' },
   heroCopy: { flex: 1 },
-  heroTitle: { fontFamily: FontFamily.extraBold, fontSize: 22,
-    lineHeight: 27, letterSpacing: -0.6, color: Colors.textPrimary },
-  heroSubtitle: { fontFamily: FontFamily.bold, fontSize: 10, letterSpacing: 1.1,
-    lineHeight: 17, color: Colors.textMuted, marginTop: 4 },
+  heroTitle: { fontFamily: FontFamily.extraBold, fontSize: 24,
+    lineHeight: 32, letterSpacing: -0.6, color: Colors.textPrimary },
+  heroSubtitle: { fontFamily: FontFamily.bold, fontSize: 12, letterSpacing: 1.2,
+    lineHeight: 16, color: Colors.textMuted, marginTop: 4 },
   verifiedLine: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },
-  verifiedText: { fontFamily: FontFamily.bold, fontSize: 11, color: Colors.warning },
+  verifiedText: { fontFamily: FontFamily.bold, fontSize: 12, letterSpacing: 1.2, color: Colors.warning },
   sectionHint: { color: Colors.textMuted, fontFamily: FontFamily.regular,
-    fontSize: 12, lineHeight: 19 },
-  actionSection: { marginHorizontal: 20, padding: 20, borderWidth: 1, borderColor: Colors.border, borderRadius: 16, backgroundColor: Colors.bgCard, gap: 10 },
-  actionsTitle: { fontFamily: FontFamily.extraBold, fontSize: 19,
+    fontSize: 12, lineHeight: 16 },
+  actionSection: { marginHorizontal: 20, padding: 20, borderWidth: 1, borderColor: Colors.border, borderRadius: 16, backgroundColor: Colors.bgCard, gap: 16 },
+  actionsTitle: { fontFamily: FontFamily.extraBold, fontSize: 18, lineHeight: 28,
     color: Colors.textPrimary, textTransform: 'uppercase' },
+  allClear: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: Colors.successAlpha20, backgroundColor: Colors.successAlpha06 },
+  allClearText: { flex: 1, fontFamily: FontFamily.semiBold, fontSize: 14, lineHeight: 20, color: Colors.textPrimary },
   actionCard: { flexDirection: 'row', alignItems: 'center', gap: 13,
     minHeight: 82, padding: 16, borderWidth: 1, borderColor: Colors.borderSubtle,
     borderRadius: 16, backgroundColor: Colors.bgCard },
