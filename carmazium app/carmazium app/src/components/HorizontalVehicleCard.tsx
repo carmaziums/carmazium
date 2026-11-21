@@ -50,7 +50,8 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({listin
     {icon:'water-outline',label:fuel},{icon:'settings-outline',label:gearbox},{icon:'car-outline',label:bodyType},
     {icon:'location-outline',label:miles!=null?(miles<1?'< 1 mi away':Math.round(miles)+' mi away'):listing.location?.split(',')[0]?.trim()},
   ].filter(x=>x.label);
-  const category=listing.writeOffCategory||(/^CAT_[SNAB]$/.test(listing.conditionRaw||'')?listing.conditionRaw?.slice(4):null);
+  const rawCategory=(listing.writeOffCategory||'').toUpperCase().replace(/^CAT_/, '');
+  const category=/^[SNAB]$/.test(rawCategory)?rawCategory:(/^CAT_[SNAB]$/.test(listing.conditionRaw||'')?listing.conditionRaw?.slice(4):null);
   const linkedAuction=listing.linkedListing?.type==='AUCTION';
   const sold=listing.status==='SOLD',pending=listing.status==='OFFER_ACCEPTED';
   const gallery=listing.images.filter(Boolean).slice(0,100);
@@ -58,15 +59,15 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({listin
     <View onLayout={e=>setCardWidth(e.nativeEvent.layout.width)} style={[s.card,{borderColor:premium?'rgba(251,191,36,0.4)':standard?'rgba(96,165,250,0.3)':Colors.border}]}>
       <LinearGradient colors={['rgba(30,41,59,0.5)',Colors.groundClear]} style={s.imageContainer}>
         <ImageCarousel images={gallery} width={Math.max(1,cardWidth-50)} height={192} onPress={i=>{setLightboxIndex(i);setLightboxOpen(true);}}/>
-        {listing.isFeatured&&<View style={s.featured}><Ionicons name="flash" size={14} color="#0f172a"/><Text style={s.featuredText}>FEATURED</Text></View>}
-        {linkedAuction&&<View style={[s.linked,{top:listing.isFeatured?40:12}]}><Ionicons name="hammer-outline" size={10} color="#fff"/><Text style={s.whiteBadge}>Also at Auction</Text></View>}
+        {listing.isFeatured&&<View pointerEvents="none" style={s.featured}><Ionicons name="flash" size={14} color="#0f172a"/><Text style={s.featuredText}>FEATURED</Text></View>}
+        {linkedAuction&&<View pointerEvents="none" style={[s.linked,{top:listing.isFeatured?40:12}]}><Ionicons name="hammer-outline" size={10} color="#fff"/><Text style={s.whiteBadge}>Also at Auction</Text></View>}
         {!sold&&<View style={s.save}><IconButton icon={<Ionicons name={saved?'heart':'heart-outline'} size={24} color={saved?Colors.accent:'#fff'}/>} onPress={()=>toggle(listing)} accessibilityLabel={saved?'Remove from watchlist':'Save to watchlist'}/></View>}
-        <View style={s.trust}>
+        <View pointerEvents="none" style={s.trust}>
           {listing.isImported&&<View style={[s.trustBadge,{backgroundColor:'#fbbf24'}]}><Ionicons name="globe-outline" size={11} color="#0f172a"/><Text style={[s.trustText,{color:'#0f172a'}]}>IMPORTED VEHICLE</Text></View>}
           {!!category&&<View style={[s.trustBadge,{backgroundColor:'#ffedd5'}]}><Text style={[s.trustText,{color:'#9a3412'}]}>Category {category.replace('CAT_','')}</Text></View>}
           {(standard||premium)&&listing.bodyTypeRaw!=='CARAVAN'&&<View style={s.trustBadge}><Ionicons name="shield-checkmark-outline" size={12} color="#3b82f6"/><Text style={s.trustText}>History Report Included</Text></View>}
         </View>
-        {!!listing.bannerLabel&&!sold&&<View style={[s.banner,{backgroundColor:BANNER_COLORS[listing.bannerLabel]??Colors.accent}]}><Text style={s.bannerText}>{listing.bannerLabel.toUpperCase()}</Text></View>}
+        {!!listing.bannerLabel&&!sold&&<View pointerEvents="none" style={[s.banner,{backgroundColor:BANNER_COLORS[listing.bannerLabel]??Colors.accent}]}><Text style={s.bannerText}>{listing.bannerLabel.toUpperCase()}</Text></View>}
         {(sold||pending)&&<View pointerEvents="none" style={s.statusOverlay}><Text style={[s.statusText,{color:sold?'#ef4444':'#fbbf24'}]}>{sold?'SOLD':'SALE PENDING'}</Text></View>}
       </LinearGradient>
       <LinearGradient colors={[dark?'rgba(255,255,255,0.05)':Colors.accentAlpha05,Colors.groundClear]} style={s.details}>
