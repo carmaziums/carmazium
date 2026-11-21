@@ -109,5 +109,6 @@ export async function getReceivedDeliveryRequests(): Promise<DeliveryRequest[]> 
   const res = await apiClient<{ data: DeliveryRequest[] }>('/delivery-requests/received', {
     method: 'GET',
   });
-  return res.data ?? [];
+  if (!Array.isArray(res?.data)) throw new Error('Delivery requests are unavailable');
+  return res.data;
 }

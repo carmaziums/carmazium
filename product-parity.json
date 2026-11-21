@@ -649,9 +649,10 @@
       "web": [
         "src/app/blog/page.tsx"
       ],
-      "mobile": [],
-      "status": "web_only",
-      "reason": "The public blog is a web SEO/content surface. It has no transactional app-only behaviour and remains accessible to mobile users through the public website."
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/NativeInformationScreens.tsx"
+      ],
+      "status": "required"
     },
     {
       "id": "legal.privacy_policy",
