@@ -20,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { BidsService } from './bids.service';
 import { CreateBidDto } from './dto/create-bid.dto';
+import { PartnerAgreementGuard } from '../partner-agreement/partner-agreement.guard';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
@@ -34,7 +35,7 @@ export class BidsController {
      * Place a bid on an auction listing.
      */
     @Post()
-    @UseGuards(SessionAuthGuard)
+    @UseGuards(SessionAuthGuard, PartnerAgreementGuard)
     @ApiCookieAuth()
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Place a bid on an auction listing' })
