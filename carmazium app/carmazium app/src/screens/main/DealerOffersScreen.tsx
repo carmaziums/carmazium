@@ -33,19 +33,21 @@ import { ReceivedDeliveryRequestsPanel } from '../../components/delivery/Receive
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 
 import { IconButton } from '../../components/IconButton';
-import { HamburgerButton } from '../../components/HamburgerButton';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { DealerPageTabs } from '../../components/dealer/DealerPageTabs';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── interfaces ───────────────────────────
 
-type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED';
+type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED' | 'WITHDRAWN' | 'CANCELLED';
 
 interface Offer {
   id: string;
   amount: number;
   status: OfferStatus;
+  finalAmount?: number | null;
   counterAmount?: number | null;
   sellerCounterAmount?: number | null;
   buyerCounterAmount?: number | null;
@@ -138,6 +140,9 @@ const STATUS_CONFIG: Record<
     chipText: Colors.infoBlue,
     chipLabel: 'COUNTERED',
   },
+  WITHDRAWN: {leftBorder:Colors.textMuted,chipBg:Colors.bgSecondary,chipText:Colors.textMuted,chipLabel:'WITHDRAWN'},
+  CANCELLED: {leftBorder:Colors.textMuted,chipBg:Colors.bgSecondary,chipText:Colors.textMuted,chipLabel:'CANCELLED'},
+
 };
 
 // ═══════════════════════════ COMPONENT ════════════════════════════
@@ -147,7 +152,7 @@ export const DealerOffersScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
 
   const [offers, setOffers] = useState<Offer[]>([]);
-  const [pendingCount, setPendingCount] = useState(0);
+  const pendingCount = offers.filter(o => o.status === 'PENDING').length;
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
@@ -162,30 +167,23 @@ export const DealerOffersScreen: React.FC = () => {
   // SellerOffersScreen.tsx; web's offers page has this for dealers too.
   const [saleModalOffer, setSaleModalOffer] = useState<Offer | null>(null);
   const [saleSoldPrice, setSaleSoldPrice] = useState('');
+  const [buyerPostcode, setBuyerPostcode] = useState('');
+  const offersRequest = useRef(0);
   const [saleSubmitting, setSaleSubmitting] = useState(false);
   const [saleError, setSaleError] = useState<string | null>(null);
 
   const fetchData = useCallback(async (isRefresh = false) => {
+    const request = ++offersRequest.current;
     if (isRefresh) setRefreshing(true);
     setFetchError(false);
     try {
-      const [offersRes, countRes] = await Promise.allSettled([
-        apiClient<ReceivedOffersResponse>('/offers/received'),
-        apiClient<PendingCountResponse>('/offers/pending-count'),
-      ]);
-
-      if (offersRes.status === 'fulfilled' && offersRes.value?.success) {
-        const raw = offersRes.value.data;
-        setOffers(Array.isArray(raw) ? raw : []);
-      }
-      if (countRes.status === 'fulfilled' && countRes.value?.success) {
-        setPendingCount(countRes.value.data?.count ?? 0);
-      }
+      const res = await apiClient<ReceivedOffersResponse>('/offers/received');
+      if (!res?.success || !Array.isArray(res.data)) throw Error('Offers unavailable');
+      if (request === offersRequest.current) setOffers(res.data);
     } catch {
-      setFetchError(true);
+      if (request === offersRequest.current) setFetchError(true);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (request === offersRequest.current) {setLoading(false);setRefreshing(false);}
     }
   }, []);
 
@@ -310,7 +308,8 @@ export const DealerOffersScreen: React.FC = () => {
 
   const openSaleModal = (offer: Offer) => {
     setSaleModalOffer(offer);
-    setSaleSoldPrice(String(offer.amount));
+    setSaleSoldPrice(String(offer.finalAmount ?? offer.counterAmount ?? offer.amount));
+    setBuyerPostcode('');
     setSaleError(null);
   };
 
@@ -326,6 +325,11 @@ export const DealerOffersScreen: React.FC = () => {
       setSaleError('Enter a valid sale price.');
       return;
     }
+    const postcode = buyerPostcode.trim();
+    if (postcode && !/^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i.test(postcode)) {
+      setSaleError('Please enter a valid UK postcode, or leave it blank.');
+      return;
+    }
     setSaleSubmitting(true);
     setSaleError(null);
     try {
@@ -334,6 +338,7 @@ export const DealerOffersScreen: React.FC = () => {
         method: 'PATCH',
         body: JSON.stringify({
           soldPrice,
+          buyerPostcode: postcode || undefined,
           buyerId: saleModalOffer.buyerId ?? saleModalOffer.buyer?.id,
           ...(buyerNameParts.length > 0 && { buyerName: buyerNameParts.join(' ') }),
           ...(saleModalOffer.buyer?.email && { buyerEmail: saleModalOffer.buyer.email }),
@@ -372,7 +377,7 @@ export const DealerOffersScreen: React.FC = () => {
   );
 
   const renderOfferCard = useCallback(({ item: offer }: { item: Offer }) => {
-    const cfg = STATUS_CONFIG[offer.status] ?? STATUS_CONFIG.PENDING;
+    const cfg = STATUS_CONFIG[offer.status] ?? {...STATUS_CONFIG.REJECTED, chipLabel: String(offer.status || 'UNKNOWN')};
     const initials = getBuyerInitials(offer.buyer);
     const name = getBuyerName(offer.buyer);
     const listingTitle = offer.listing?.title ?? 'Your listing';
@@ -407,6 +412,7 @@ export const DealerOffersScreen: React.FC = () => {
           {/* Name + chip */}
           <View style={styles.cardTopCenter}>
             <Text style={styles.buyerName} numberOfLines={1}>{name}</Text>
+            {!!offer.buyer?.email && <Text style={styles.pageBody}>{offer.buyer.email}</Text>}
             <View style={[styles.statusChip, { backgroundColor: cfg.chipBg }]}>
               <Text style={[styles.statusChipText, { color: cfg.chipText }]}>
                 {cfg.chipLabel}
@@ -596,24 +602,7 @@ export const DealerOffersScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Safe-area top spacer */}
-      <View style={{ height: insets.top }} />
-
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-
-        <Text style={styles.headerTitle}>Offers received</Text>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          {pendingCount > 0 && (
-            <View style={styles.pendingBadge}>
-              <Text style={styles.pendingBadgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
-            </View>
-          )}
-          <HamburgerButton />
-        </View>
-      </View>
+      <WebsiteTopBar />
 
       {/* ── Content ── */}
       {fetchError ? (
@@ -633,7 +622,11 @@ export const DealerOffersScreen: React.FC = () => {
           data={offers}
           keyExtractor={(o) => o.id}
           renderItem={renderOfferCard}
-          ListHeaderComponent={<ReceivedDeliveryRequestsPanel contextLabel="your inventory" />}
+          ListHeaderComponent={<View style={{gap:24,marginBottom:24}}>
+            <Text accessibilityRole="header" style={styles.pageTitle}>Offers received</Text><Text style={styles.pageBody}>Manage offers received from buyers on your listings</Text>
+            <View style={{gap:16}}>{[{label:'Pending Offers',count:pendingCount,hint:'Action Required'},{label:'Accepted',count:offers.filter(o=>o.status==='ACCEPTED').length,hint:'Closed'},{label:'Total Received',count:offers.length,hint:''}].map(metric=><View key={metric.label} style={styles.metricCard}><Text style={styles.pageBody}>{metric.hint}</Text><Text style={styles.pageTitle}>{metric.count}</Text><Text style={styles.pageBody}>{metric.label}</Text></View>)}</View>
+            <ReceivedDeliveryRequestsPanel contextLabel="your inventory" /><Text style={styles.pageTitle}>Offers Registry</Text>
+          </View>}
           ListEmptyComponent={renderEmptyState}
           ListFooterComponent={<View style={{ height: 40 }} />}
           contentContainerStyle={[styles.scrollContent, offers.length === 0 && { flexGrow: 1 }]}
@@ -697,6 +690,8 @@ export const DealerOffersScreen: React.FC = () => {
         </View>
       </BottomSheet>
 
+      <DealerPageTabs />
+
       {/* ── Mark as Sold modal ── */}
       <BottomSheet
         visible={saleModalOffer != null}
@@ -724,6 +719,8 @@ export const DealerOffersScreen: React.FC = () => {
             selectionColor={Colors.accent}
           />
 
+          <Text style={styles.inputLabel}>Buyer postcode (optional)</Text>
+          <TextInput style={styles.counterInput} value={buyerPostcode} onChangeText={v=>{setBuyerPostcode(v);setSaleError(null);}} placeholder="e.g. B19 1ES" placeholderTextColor={Colors.textMuted} accessibilityLabel="Buyer postcode (optional)" autoCapitalize="characters" />
           {saleError && <ErrorBanner message={saleError} />}
 
           <View style={styles.modalActions}>
@@ -764,6 +761,9 @@ export const DealerOffersScreen: React.FC = () => {
 // ═══════════════════════════ STYLES ════════════════════════════════
 
 const styles = StyleSheet.create({
+  pageTitle:{fontFamily:FontFamily.bold,fontSize:24,lineHeight:32,color:Colors.textPrimary},
+  pageBody:{fontSize:14,lineHeight:22,color:Colors.textMuted},
+  metricCard:{padding:24,gap:12,borderWidth:1,borderRadius:16,borderColor:Colors.border,backgroundColor:Colors.bgCard},
   container: {
     flex: 1,
     backgroundColor: Colors.bgPrimary,

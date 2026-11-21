@@ -9,6 +9,8 @@ import {
   TextInput,
   StatusBar,
 } from 'react-native';
+import { Image } from 'expo-image';
+import { Logo } from '../../components/Logo';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -18,6 +20,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useChat } from '../../context/ChatContext';
 import { ChatRoom, ChatUser } from '../../lib/chatApi';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
+import { DealerPageTabs } from '../../components/dealer/DealerPageTabs';
+import { useAuthStore } from '../../store/authStore';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
@@ -87,7 +91,7 @@ interface ThreadRowProps {
 // every parent re-render (mobile-audit.md P3/P4).
 const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress, isOnline }) => {
   const isUnread = room.unreadCount > 0;
-  const displayName = getDisplayName(room.otherUser);
+  const displayName = room.context === 'SUPPORT' ? 'CarMazium' : getDisplayName(room.otherUser);
   const initials = getInitials(displayName);
   const lastMsgContent = room.lastMessage
     ? room.lastMessage.attachmentPath
@@ -108,8 +112,8 @@ const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress, isOnlin
     >
       {/* Left avatar with badge */}
       <View style={styles.avatarContainer}>
-        <View style={[styles.avatar, { backgroundColor: getAvatarBg(initials) }]}>
-          <Text style={styles.avatarText}>{initials}</Text>
+        <View style={[styles.avatar,{alignItems:'center',justifyContent:'center'}]}>
+          {room.context === 'SUPPORT' ? <Logo width={44} /> : room.otherUser?.profileImage ? <Image source={{uri:room.otherUser.profileImage}} style={{width:48,height:48,borderRadius:24}} /> : <Ionicons name="person-outline" size={24} color={Colors.textMuted} />}
         </View>
         {/* Presence (DASH-023). Only ever shown when we positively know the
             partner is online — absence means "unknown or offline", never a
@@ -128,26 +132,11 @@ const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress, isOnlin
           <Text style={styles.timeText}>{formatMessageTime(room.lastMessage?.createdAt)}</Text>
         </View>
 
-        <Text style={styles.carModelText} numberOfLines={1}>
-          {room.listing?.title || 'General Inquiry'}
-        </Text>
+        {room.listing && <Text style={styles.carModelText} numberOfLines={1}>
+          {room.listing.title}
+        </Text>}
 
-        {hasOfferCounter ? (
-          <View style={styles.offerTagRow}>
-            <Ionicons name="pricetag" size={12} color={Colors.accent} style={{ marginRight: 4 }} />
-            <Text style={styles.offerTagText}>{lastMsgContent}</Text>
-          </View>
-        ) : (
-          <Text
-            style={[
-              styles.lastMessageText,
-              isUnread && styles.lastMessageTextUnread
-            ]}
-            numberOfLines={1}
-          >
-            {lastMsgContent}
-          </Text>
-        )}
+        <Text style={[styles.lastMessageText,isUnread&&styles.lastMessageTextUnread]} numberOfLines={1}>{lastMsgContent}</Text>
       </View>
 
       {/* Right indicators */}
@@ -183,7 +172,8 @@ export const MessagesScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const { rooms, unreadCount, markAsRead, refreshRooms, isLoading, onlineUserIds } = useChat();
 
-  const [activeTab, setActiveTab] = useState<'all' | 'vehicle'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'support'>('all');
+  const accountRole = useAuthStore(s => s.accountRole);
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -204,12 +194,13 @@ export const MessagesScreen: React.FC = () => {
   // Tab filtering logic
   const filteredRooms = rooms.filter((r) => {
     // 1. Tab check
-    if (activeTab === 'vehicle' && !r.listing) return false;
+    if (activeTab === 'unread' && r.unreadCount <= 0) return false;
+    if (activeTab === 'support' && r.context !== 'SUPPORT') return false;
 
     // 2. Search check
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const name = getDisplayName(r.otherUser).toLowerCase();
+      const name = r.context === 'SUPPORT' ? 'carmazium support' : getDisplayName(r.otherUser).toLowerCase();
       const model = r.listing?.title.toLowerCase() || 'general inquiry';
       const lastMsg = r.lastMessage?.content.toLowerCase() || '';
       return name.includes(q) || model.includes(q) || lastMsg.includes(q);
@@ -217,8 +208,8 @@ export const MessagesScreen: React.FC = () => {
     return true;
   });
 
-  const getTabCount = (tab: 'all' | 'vehicle') =>
-    tab === 'all' ? rooms.length : rooms.filter(r => Boolean(r.listing)).length;
+  const getTabCount = (tab: 'all' | 'unread' | 'support') =>
+    tab === 'all' ? rooms.length : rooms.filter(r => tab === 'unread' ? r.unreadCount > 0 : r.context === 'SUPPORT').length;
 
   const handleThreadPress = useCallback((roomId: string) => {
     markAsRead(roomId);
@@ -257,20 +248,23 @@ export const MessagesScreen: React.FC = () => {
         // scrolling smooth as a user's conversation history grows over time
         // (unlike the previous ScrollView+.map() that rendered every row upfront).
         renderItem={renderThreadRow}
-        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        ItemSeparatorComponent={() => <View style={{ height: 0 }} />}
         ListHeaderComponent={
           <>
             {/* Header navigation bar */}
             <View style={styles.header}>
               <View>
-                <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-                <Text style={styles.unreadTag}>{unreadCount > 0 ? `${unreadCount} UNREAD` : 'ALL CAUGHT UP'}</Text>
                 <Text style={styles.title}>Messages</Text>
               </View>
 
               <IconButton style={styles.searchIconBtn} icon={<Ionicons name="refresh-outline" size={20} color={Colors.white} />} onPress={() => void handleRefresh()} accessibilityLabel="Refresh conversations" />
             </View>
 
+            <View style={styles.tabsRow} accessibilityRole="tablist">
+              {(['all','unread','support'] as const).map(tab => <TouchableOpacity key={tab} accessibilityRole="tab" accessibilityState={{selected:activeTab===tab}} style={[styles.tabPill,activeTab===tab&&styles.tabPillActive]} onPress={()=>setActiveTab(tab)}>
+                <Text style={[styles.tabLabel,activeTab===tab&&styles.tabLabelActive]}>{tab==='all'?'All':tab==='unread'?'Unread':'CarMazium support'}{getTabCount(tab)>0?` · ${getTabCount(tab)}`:''}</Text>
+              </TouchableOpacity>)}
+            </View>
             {/* Website-style search is always visible and usable. */}
               <View style={styles.searchWrapper}>
                 <View style={styles.searchBar}>
@@ -279,7 +273,7 @@ export const MessagesScreen: React.FC = () => {
                     style={styles.searchInput}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
-                    placeholder="Search messages..."
+                    placeholder="Search conversations..."
                     placeholderTextColor={Colors.inputPlaceholder}
                     autoCapitalize="none"
                   />
@@ -289,42 +283,14 @@ export const MessagesScreen: React.FC = () => {
                 </View>
               </View>
 
-            {/* Tab Pills */}
-            <View style={styles.tabsRow}>
-              <TouchableOpacity
-                style={[styles.tabPill, activeTab === 'all' && styles.tabPillActive]}
-                onPress={() => setActiveTab('all')}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.tabLabel, activeTab === 'all' && styles.tabLabelActive]}>
-                  All <Text style={styles.tabCount}>{getTabCount('all')}</Text>
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.tabPill, activeTab === 'vehicle' && styles.tabPillActive]}
-                onPress={() => setActiveTab('vehicle')}
-                activeOpacity={0.8}
-              >
-                <View style={styles.tabPillContent}>
-                  {rooms.some((r) => Boolean(r.listing) && r.unreadCount > 0) && (
-                    <View style={styles.tabDot} />
-                  )}
-                  <Text style={[styles.tabLabel, activeTab === 'vehicle' && styles.tabLabelActive]}>
-                    Vehicle chats <Text style={styles.tabCount}>{getTabCount('vehicle')}</Text>
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-            </View>
           </>
         }
         ListEmptyComponent={
           !isLoading ? (
             <EmptyState
               icon="chatbubbles-outline"
-              title={searchQuery ? 'No matching conversations' : activeTab === 'vehicle' ? 'No vehicle conversations yet' : 'No messages yet'}
-              subtitle={searchQuery ? 'Try another name, vehicle or message.' : activeTab === 'vehicle' ? 'Conversations linked to a vehicle will appear here.' : 'Messages from people you contact about cars, or from CarMazium support, will appear here.'}
+              title={searchQuery ? 'No matching conversations' : activeTab === 'unread' ? 'No unread conversations' : activeTab === 'support' ? 'No support conversations' : 'No messages yet'}
+              subtitle={searchQuery ? 'Try another name, vehicle or message.' : activeTab !== 'all' ? 'Choose All to see your other conversations.' : 'Messages from people you contact about cars, or from CarMazium support, will appear here.'}
             />
           ) : null
         }
@@ -336,11 +302,12 @@ export const MessagesScreen: React.FC = () => {
             colors={[Colors.accent]}
           />
         }
-        contentContainerStyle={[styles.scroll, { paddingTop: 16, paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[styles.scroll, { paddingTop: 16, paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
       />
+      {accountRole === 'dealer' && <DealerPageTabs />}
     </View>
   );
 };
@@ -377,8 +344,8 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize['3xl'] - 2,
-    color: Colors.white,
+    fontSize: 18,
+    color: Colors.textPrimary,
     letterSpacing: -0.6,
   },
   searchIconBtn: {
@@ -425,19 +392,18 @@ const styles = StyleSheet.create({
   tabPill: {
     paddingHorizontal: 16,
     minHeight: 44,
-    borderRadius: 18,
+    borderRadius: 8,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: Colors.bgCard,
     borderColor: Colors.border,
-    borderBottomWidth: 2,
+    borderBottomWidth: 1,
   },
   tabPillActive: {
     backgroundColor: Colors.accent,
     borderColor: Colors.accent,
     borderBottomColor: Colors.accentDark,
-    ...Elevation.neon,
   },
   tabPillContent: {
     flexDirection: 'row',
@@ -464,17 +430,16 @@ const styles = StyleSheet.create({
   },
   // Thread list
   threadCardSpacing: {
-    marginHorizontal: 18,
+    marginHorizontal: 8,
   },
   threadCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: Radius.card,
+    borderBottomWidth: 1,
+    borderRadius: 0,
     padding: 16,
     backgroundColor: Colors.bgCard,
     borderColor: Colors.border,
-    ...Elevation.card,
   },
   threadCardUnread: {
     borderColor: Colors.accentAlpha25,
@@ -516,7 +481,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   dealerName: {
-    fontFamily: FontFamily.medium,
+    fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
     color: Colors.textSecondary,
     flex: 1,
@@ -532,9 +497,9 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
   carModelText: {
-    fontFamily: FontFamily.bold,
+    fontFamily: FontFamily.regular,
     fontSize: FontSize.size12,
-    color: Colors.textSecondary,
+    color: Colors.accent,
     marginBottom: 4,
   },
   lastMessageText: {
