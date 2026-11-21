@@ -37,23 +37,25 @@ describe('TradeXchange provider verification standard', () => {
         evidenceReference: 'REF',
         evidenceValidFrom: null,
         evidenceExpiresAt: expiresAt,
+        evidenceCoverAmountGbp: evidenceType === 'PUBLIC_LIABILITY_INSURANCE' || evidenceType === 'DELIVERY_BUSINESS_INSURANCE' ? 2000000 : null,
         evidenceReviewedAt: now,
         evidenceReviewedById: 'admin-1',
         evidenceReviewNote: null,
         createdAt: now,
     });
 
-    it('requires only trade insurance for delivery and no inspection uploads while preserving partnership checks', () => {
-        expect(capabilityRequirements(ServiceType.DELIVERY).map(r => r.type)).toEqual(['DELIVERY_BUSINESS_INSURANCE']);
-        expect(capabilityRequirements(ServiceType.INSPECTION)).toEqual([]);
+    it('requires public liability plus motor trade for delivery and public liability only for inspection', () => {
+        expect(capabilityRequirements(ServiceType.DELIVERY).map(r => r.type)).toEqual(['PUBLIC_LIABILITY_INSURANCE', 'DELIVERY_BUSINESS_INSURANCE']);
+        expect(capabilityRequirements(ServiceType.INSPECTION).map(r => r.type)).toEqual(['PUBLIC_LIABILITY_INSURANCE']);
         expect(capabilityRequirements(ServiceType.FINANCE).map(r => r.type)).toEqual(['BUSINESS_IDENTITY', 'FINANCE_REGULATORY_AUTHORITY']);
         expect(capabilityRequirements(ServiceType.WARRANTY).map(r => r.type)).toEqual(['BUSINESS_IDENTITY', 'WARRANTY_REGULATORY_AUTHORITY', 'WARRANTY_PRODUCT_AUTHORITY']);
     });
 
-    it('allows inspection review with a current registered-business declaration and no documents', async () => {
-        const summary = await assertCapabilityVerificationReady(prismaFor(ServiceType.INSPECTION, []), 'cap-1', ServiceType.INSPECTION);
-        expect(summary.ready).toBe(true);
-        expect(summary.requirements).toEqual([]);
+    it('blocks inspection without approved public liability and permits it once verified', async () => {
+        await expect(assertCapabilityVerificationReady(prismaFor(ServiceType.INSPECTION, []), 'cap-1', ServiceType.INSPECTION))
+            .rejects.toThrow(/Public liability insurance/);
+        const ready = await assertCapabilityVerificationReady(prismaFor(ServiceType.INSPECTION, [approved('PUBLIC_LIABILITY_INSURANCE', new Date('2027-01-01'))]), 'cap-1', ServiceType.INSPECTION);
+        expect(ready.ready).toBe(true);
     });
 
     it.each([null, { version: 1, registeredBusiness: false, acceptedAt: now.toISOString() }, { version: 1, registeredBusiness: true, acceptedAt: '2025-01-01' }])('blocks missing, unregistered or expired declarations (%j)', async providerDeclaration => {
@@ -95,6 +97,7 @@ describe('TradeXchange provider verification standard', () => {
         const earliest = new Date('2027-01-15T00:00:00Z');
         const prisma = prismaFor(ServiceType.DELIVERY, [
             approved('BUSINESS_IDENTITY'),
+            approved('PUBLIC_LIABILITY_INSURANCE', new Date('2027-05-01T00:00:00Z')),
             approved('DELIVERY_BUSINESS_INSURANCE', earliest),
             approved('DELIVERY_GOODS_IN_TRANSIT', new Date('2027-05-01T00:00:00Z')),
         ]);
