@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Image, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { DollarSign, TrendingUp, TrendingDown, Minus, Tag, Clock, Car, BarChart3, Percent, Users, Eye, MapPin } from 'lucide-react-native';
 import { LineChart } from 'react-native-gifted-charts';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -15,6 +16,8 @@ import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
 const money=(n:number)=>n>=1000000?`£${(n/1000000).toFixed(1)}M`:n>=1000?`£${(n/1000).toFixed(1)}k`:`£${Number(n||0).toFixed(0)}`;
 const label=(value:string)=>value.replace(/_/g,' ');
+const metricIcons = [DollarSign, TrendingUp, Tag, Clock, Car, BarChart3, Percent, Users, TrendingUp, Clock, Eye, MapPin];
+const metricColors = ['#10b981', '#60a5fa', '#a78bfa', '#fbbf24', '#38bdf8', '#818cf8', '#c084fc', '#22d3ee', '#10b981', '#f87171', '#ed1220', '#94a3b8'];
 function Section({title,children}:{title:string;children:React.ReactNode}){return <View style={styles.section}><Text accessibilityRole="header" style={styles.sectionTitle}>{title}</Text>{children}</View>;}
 function Row({name,value}:{name:string;value:string|number}){return <View style={styles.row}><Text style={[styles.body,{flex:1}]}>{name}</Text><Text style={styles.rowValue}>{value}</Text></View>;}
 function Distribution({values}:{values:[string,number][]}){
@@ -23,6 +26,7 @@ function Distribution({values}:{values:[string,number][]}){
 }
 export const DealerAnalyticsScreen:React.FC<{navigation?:any}>=()=>{
   const {width,fontScale}=useWindowDimensions();
+  const metricColumns = width >= 768 && fontScale < 1.3 ? 3 : 1;
   const [range,setRange]=useState('30d');
   const [from,setFrom]=useState('');const [to,setTo]=useState('');
   const [retry,setRetry]=useState(0);
@@ -68,13 +72,21 @@ export const DealerAnalyticsScreen:React.FC<{navigation?:any}>=()=>{
   };
   return <View style={styles.screen}><WebsiteTopBar/>
     <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={loading} onRefresh={()=>setRetry(n=>n+1)} colors={[Colors.accent]}/>}>
-      <Text accessibilityRole="header" style={styles.title}>Performance Analytics</Text><Text style={styles.subtitle}>Real-time dealership performance metrics &amp; strategic insights</Text>
-      <Button label="Export Report" variant="outline" disabled={!data} loading={exporting} onPress={()=>void exportReport()}/>
-      <View style={styles.ranges}>{[['7d','Last 7 days'],['30d','Last 30 days'],['90d','Last 90 days'],['custom','Custom']].map(([value,name])=><Button key={value} size="sm" label={name} variant={range===value?'primary':'outline'} onPress={()=>setRange(value)}/>)}</View>
+      <View style={{gap:16}}><View style={{gap:6,paddingBottom:20,marginBottom:28,borderBottomWidth:1,borderColor:Colors.border}}><Text accessibilityRole="header" style={styles.title}>Performance Analytics</Text><Text style={styles.subtitle}>Real-time dealership performance metrics &amp; strategic insights</Text></View>
+      <Button label="Export Report" variant="outline" disabled={!data} loading={exporting} onPress={()=>void exportReport()}/></View>
+      <View style={[styles.ranges,{alignSelf:'flex-start',padding:4,borderRadius:12,borderWidth:1,borderColor:Colors.border,backgroundColor:Colors.bgSecondary}]}>{[['7d','Last 7 days'],['30d','Last 30 days'],['90d','Last 90 days'],['custom','Custom']].map(([value,name])=><Button key={value} size="sm" label={name} variant={range===value?'primary':'ghost'} onPress={()=>setRange(value)}/>)}</View>
       {range==='custom'&&<View style={styles.ranges}><View style={{flex:1,minWidth:150}}><Text style={styles.body}>Start date</Text><TextInput style={styles.input} value={from} onChangeText={setFrom} placeholder="YYYY-MM-DD" placeholderTextColor={Colors.textMuted} accessibilityLabel="Start date" autoCapitalize="none"/></View><View style={{flex:1,minWidth:150}}><Text style={styles.body}>End date</Text><TextInput style={styles.input} value={to} onChangeText={setTo} placeholder="YYYY-MM-DD" placeholderTextColor={Colors.textMuted} accessibilityLabel="End date" autoCapitalize="none"/></View></View>}
       {issue?<Text accessibilityRole="alert" style={styles.body}>{issue}</Text>:loading?<ActivityIndicator color={Colors.accent}/>:error?<View style={{gap:16}}><Text accessibilityRole="alert" style={styles.body}>{error}</Text><Button label="Try again" onPress={()=>setRetry(n=>n+1)}/></View>:null}
       {data&&<>
-        <Text style={styles.sectionTitle}>Sales &amp; Stock Overview</Text><View style={styles.metrics}>{metrics.map(m=><View key={m.name} style={[styles.metric,{width:fontScale>=1.4?'100%':'48%'}]}><Text style={styles.value}>{m.value}</Text><Text style={styles.metricName}>{m.name}</Text>{m.trend!==undefined&&<Text style={styles.meta}>{m.trend>0?'+':''}{m.trend}% · {m.name==='Avg Days to Sell'?'lower is better':'vs prev period'}</Text>}</View>)}</View>
+        <Text style={styles.sectionTitle}>Sales &amp; Stock Overview</Text><View style={styles.metrics}>{metrics.map((m,i)=>{
+          const Icon=metricIcons[i]; const color=metricColors[i]; const Trend=m.trend&&m.trend>0?TrendingUp:m.trend&&m.trend<0?TrendingDown:Minus;
+          return <View key={m.name} style={[styles.metric,{width:(width-40-(metricColumns-1)*16)/metricColumns}]}>
+            <View style={[styles.row,{marginBottom:16}]}><View style={{padding:10,borderRadius:12,borderWidth:1,borderColor:color+'33',backgroundColor:color+'1a'}}><Icon size={16} color={color}/></View>
+              {m.trend!==undefined&&<View style={{flexDirection:'row',alignItems:'center',gap:4,paddingHorizontal:8,paddingVertical:4,borderRadius:6,backgroundColor:m.trend>0?Colors.successAlpha10:m.trend<0?Colors.errorAlpha10:Colors.bgSecondary}}><Trend size={10} color={m.trend>0?Colors.success:m.trend<0?Colors.error:Colors.textMuted}/><Text style={[styles.meta,{fontFamily:FontFamily.bold}]}>{Math.abs(m.trend)}%</Text></View>}
+            </View>
+            <Text style={styles.value}>{m.value}</Text><View style={[styles.row,{marginTop:8}]}><Text style={styles.metricName}>{m.name}</Text>{m.trend!==undefined&&<Text style={styles.meta}>{m.name==='Avg Days to Sell'?'lower is better':'vs prev period'}</Text>}</View>
+          </View>;
+        })}</View>
         <Section title="Revenue & Sales Trend"><Text style={styles.body}>Monthly revenue and units sold over the past year</Text>{data.revenueTrend.length>0?<>
           <Text style={styles.body}>Revenue (£)</Text><LineChart data={data.revenueTrend.map(p=>({value:p.revenue,label:p.month.slice(5)}))} width={Math.max(180,width-120)} height={160} color={Colors.accent} areaChart startFillColor={Colors.accent} startOpacity={0.15} endOpacity={0} yAxisTextStyle={{color:Colors.textMuted}} xAxisLabelTextStyle={{color:Colors.textMuted}}/>
           <Text style={styles.body}>Units sold</Text><LineChart data={data.revenueTrend.map(p=>({value:p.unitsSold,label:p.month.slice(5)}))} width={Math.max(180,width-120)} height={130} color={Colors.infoBlue} yAxisTextStyle={{color:Colors.textMuted}} xAxisLabelTextStyle={{color:Colors.textMuted}}/>
@@ -94,4 +106,4 @@ export const DealerAnalyticsScreen:React.FC<{navigation?:any}>=()=>{
     </ScrollView><DealerPageTabs/>
   </View>;
 };
-const styles=StyleSheet.create({screen:{flex:1,backgroundColor:Colors.bgPrimary},content:{padding:20,paddingTop:24,paddingBottom:40,gap:20},title:{fontFamily:FontFamily.bold,fontSize:30,lineHeight:36,color:Colors.textPrimary},subtitle:{fontSize:12,lineHeight:18,letterSpacing:1.2,textTransform:'uppercase',color:Colors.textMuted},ranges:{flexDirection:'row',flexWrap:'wrap',gap:8},input:{padding:12,minHeight:48,borderWidth:1,borderRadius:12,borderColor:Colors.border,color:Colors.textPrimary,marginTop:8},section:{backgroundColor:Colors.bgCard,padding:20,borderRadius:20,borderWidth:1,borderColor:Colors.border,gap:16,overflow:'hidden'},sectionTitle:{fontSize:14,lineHeight:22,fontFamily:FontFamily.bold,textTransform:'uppercase',letterSpacing:1,color:Colors.textPrimary},body:{fontSize:14,lineHeight:22,color:Colors.textSecondary},metrics:{flexDirection:'row',flexWrap:'wrap',gap:12},metric:{padding:20,gap:8,borderRadius:16,borderWidth:1,borderColor:Colors.border,backgroundColor:Colors.bgCard},value:{fontFamily:FontFamily.bold,fontSize:24,color:Colors.textPrimary},metricName:{fontFamily:FontFamily.bold,fontSize:12,lineHeight:18,color:Colors.textMuted,textTransform:'uppercase'},meta:{fontSize:12,lineHeight:18,color:Colors.textMuted},row:{flexDirection:'row',flexWrap:'wrap',alignItems:'center',justifyContent:'space-between',gap:12},rowValue:{fontSize:14,lineHeight:22,fontFamily:FontFamily.semiBold,color:Colors.textPrimary,flexShrink:1},track:{height:8,borderRadius:4,backgroundColor:Colors.bgSecondary,overflow:'hidden'},fill:{height:8,borderRadius:4,backgroundColor:Colors.accent},vehicle:{borderTopWidth:1,borderColor:Colors.border,paddingVertical:12,gap:10},vehicleTitle:{fontFamily:FontFamily.semiBold,fontSize:14,color:Colors.textPrimary},image:{height:56,width:56,borderRadius:12}});
+const styles=StyleSheet.create({screen:{flex:1,backgroundColor:Colors.bgPrimary},content:{padding:20,paddingTop:80,paddingBottom:40,gap:24},title:{fontFamily:FontFamily.bold,fontSize:24,lineHeight:32,color:Colors.textPrimary},subtitle:{fontSize:12,lineHeight:18,letterSpacing:1.2,textTransform:'uppercase',color:Colors.textMuted},ranges:{flexDirection:'row',flexWrap:'wrap',gap:8},input:{padding:12,minHeight:48,borderWidth:1,borderRadius:12,borderColor:Colors.border,color:Colors.textPrimary,marginTop:8},section:{backgroundColor:Colors.bgCard,padding:20,borderRadius:20,borderWidth:1,borderColor:Colors.border,gap:16,overflow:'hidden'},sectionTitle:{fontSize:14,lineHeight:22,fontFamily:FontFamily.bold,textTransform:'uppercase',letterSpacing:1,color:Colors.textPrimary},body:{fontSize:14,lineHeight:22,color:Colors.textSecondary},metrics:{flexDirection:'row',flexWrap:'wrap',gap:16},metric:{padding:20,borderRadius:16,borderWidth:1,borderColor:Colors.border,backgroundColor:Colors.bgCard},value:{fontFamily:FontFamily.bold,fontSize:30,color:Colors.textPrimary},metricName:{fontFamily:FontFamily.bold,fontSize:12,lineHeight:18,color:Colors.textMuted,textTransform:'uppercase'},meta:{fontSize:12,lineHeight:18,color:Colors.textMuted},row:{flexDirection:'row',flexWrap:'wrap',alignItems:'center',justifyContent:'space-between',gap:12},rowValue:{fontSize:14,lineHeight:22,fontFamily:FontFamily.semiBold,color:Colors.textPrimary,flexShrink:1},track:{height:8,borderRadius:4,backgroundColor:Colors.bgSecondary,overflow:'hidden'},fill:{height:8,borderRadius:4,backgroundColor:Colors.accent},vehicle:{borderTopWidth:1,borderColor:Colors.border,paddingVertical:12,gap:10},vehicleTitle:{fontFamily:FontFamily.semiBold,fontSize:14,color:Colors.textPrimary},image:{height:56,width:56,borderRadius:12}});
