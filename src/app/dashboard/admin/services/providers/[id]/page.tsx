@@ -57,6 +57,7 @@ export default function AdminProviderReviewPage() {
     const [uploadType, setUploadType] = React.useState<CapabilityEvidenceType | "">("")
     const [uploadIssuer, setUploadIssuer] = React.useState("")
     const [uploadReference, setUploadReference] = React.useState("")
+    const [uploadCoverAmountGbp, setUploadCoverAmountGbp] = React.useState("")
     const [uploadValidFrom, setUploadValidFrom] = React.useState("")
     const [uploadExpiresAt, setUploadExpiresAt] = React.useState("")
     const [uploadFile, setUploadFile] = React.useState<File | null>(null)
@@ -66,6 +67,7 @@ export default function AdminProviderReviewPage() {
     const [editLabel, setEditLabel] = React.useState("")
     const [editIssuer, setEditIssuer] = React.useState("")
     const [editReference, setEditReference] = React.useState("")
+    const [editCoverAmountGbp, setEditCoverAmountGbp] = React.useState("")
     const [editValidFrom, setEditValidFrom] = React.useState("")
     const [editExpiresAt, setEditExpiresAt] = React.useState("")
 
@@ -159,6 +161,10 @@ export default function AdminProviderReviewPage() {
             return
         }
         const requirement = data?.verification.requirements.find(req => req.type === uploadType)
+        if ((uploadType === 'PUBLIC_LIABILITY_INSURANCE' || uploadType === 'DELIVERY_BUSINESS_INSURANCE') &&
+          (!uploadIssuer.trim() || !uploadReference.trim() || !Number.isSafeInteger(Number(uploadCoverAmountGbp)) || Number(uploadCoverAmountGbp) <= 0)) {
+            setError('Enter insurer, policy number and the limit of indemnity in pounds.'); return
+        }
         if (requirement?.expiryRequired && !uploadExpiresAt) {
             setError(`${requirement.title} requires an expiry date.`)
             return
@@ -173,10 +179,12 @@ export default function AdminProviderReviewPage() {
                 reference: uploadReference.trim() || undefined,
                 validFrom: uploadValidFrom || undefined,
                 expiresAt: uploadExpiresAt || undefined,
+                ...((uploadType === 'PUBLIC_LIABILITY_INSURANCE' || uploadType === 'DELIVERY_BUSINESS_INSURANCE') ? { coverAmountGbp: Number(uploadCoverAmountGbp) } : {}),
             })
             setUploadFile(null)
             setUploadIssuer("")
             setUploadReference("")
+            setUploadCoverAmountGbp("")
             setUploadValidFrom("")
             setUploadExpiresAt("")
             const input = document.getElementById("admin-verification-file") as HTMLInputElement | null
@@ -196,6 +204,7 @@ export default function AdminProviderReviewPage() {
         setEditLabel(entry.label || "")
         setEditIssuer(entry.evidenceIssuer || "")
         setEditReference(entry.evidenceReference || "")
+        setEditCoverAmountGbp(entry.evidenceCoverAmountGbp != null ? String(entry.evidenceCoverAmountGbp) : "")
         setEditValidFrom(toDateInput(entry.evidenceValidFrom))
         setEditExpiresAt(toDateInput(entry.evidenceExpiresAt))
         setError(null)
@@ -222,6 +231,7 @@ export default function AdminProviderReviewPage() {
                 reference: editReference.trim() || undefined,
                 validFrom: editValidFrom || undefined,
                 expiresAt: editExpiresAt || undefined,
+                ...((editEvidenceType === 'PUBLIC_LIABILITY_INSURANCE' || editEvidenceType === 'DELIVERY_BUSINESS_INSURANCE') ? { coverAmountGbp: Number(editCoverAmountGbp) } : {}),
             })
             setEditingEvidenceId(null)
             setNotice(entry.evidenceStatus === "PENDING"
@@ -371,6 +381,7 @@ export default function AdminProviderReviewPage() {
                                 <label className={labelCls}>Policy / reference</label>
                                 <input className={inputCls} value={uploadReference} onChange={e => setUploadReference(e.target.value)} placeholder="Reference number"/>
                             </div>
+                            {(uploadType === 'PUBLIC_LIABILITY_INSURANCE' || uploadType === 'DELIVERY_BUSINESS_INSURANCE') && <div><label className={labelCls}>Limit of indemnity (£)</label><input type="number" min="1" className={inputCls} value={uploadCoverAmountGbp} onChange={e => setUploadCoverAmountGbp(e.target.value)} /></div>}
                             <div>
                                 <label className={labelCls}>Valid from</label>
                                 <input className={inputCls} type="date" value={uploadValidFrom} onChange={e => setUploadValidFrom(e.target.value)}/>
@@ -408,7 +419,7 @@ export default function AdminProviderReviewPage() {
                                         <FileText size={18} className="text-primary shrink-0 mt-0.5"/>
                                         <div className="min-w-0">
                                             <p className="font-bold text-sm">{a.label || "Verification evidence"}</p>
-                                            <p className="text-xs text-[var(--text-muted)] mt-1">{a.evidenceType || "Unclassified"}{a.evidenceIssuer ? " · " + a.evidenceIssuer : ""}{a.evidenceReference ? " · " + a.evidenceReference : ""}</p>
+                                            <p className="text-xs text-[var(--text-muted)] mt-1">{a.evidenceType || "Unclassified"}{a.evidenceIssuer ? " · " + a.evidenceIssuer : ""}{a.evidenceReference ? " · " + a.evidenceReference : ""}{a.evidenceCoverAmountGbp ? " · Cover £" + a.evidenceCoverAmountGbp.toLocaleString('en-GB') : ""}</p>
                                             <p className="text-xs text-[var(--text-muted)] mt-1">Uploaded {new Date(a.createdAt).toLocaleString("en-GB")}{a.evidenceExpiresAt ? " · Expires " + new Date(a.evidenceExpiresAt).toLocaleDateString("en-GB") : ""}</p>
                                             {a.evidenceType?.includes('INSURANCE') && a.evidenceExpiresAt && new Date(a.evidenceExpiresAt).getTime() > Date.now() + 5 * 366 * 86400000 && <p className="mt-2 text-sm text-amber-600">Check the insurance document: this expiry is more than five years away. Correct it to the date on the policy if needed.</p>}
                                             {a.submittedByRole && <p className="text-[11px] text-[var(--text-muted)] mt-1">Uploaded by {a.submittedByRole === "ADMIN" ? "CarMazium admin" : a.submittedByEmail || a.submittedByRole}</p>}
@@ -445,6 +456,7 @@ export default function AdminProviderReviewPage() {
                                             <label className={labelCls}>Policy / reference</label>
                                             <input className={inputCls} value={editReference} onChange={e => setEditReference(e.target.value)}/>
                                         </div>
+                                        {(editEvidenceType === 'PUBLIC_LIABILITY_INSURANCE' || editEvidenceType === 'DELIVERY_BUSINESS_INSURANCE') && <div><label className={labelCls}>Limit of indemnity (£)</label><input type="number" min="1" className={inputCls} value={editCoverAmountGbp} onChange={e => setEditCoverAmountGbp(e.target.value)} /></div>}
                                         <div>
                                             <label className={labelCls}>Valid from</label>
                                             <input className={inputCls} type="date" value={editValidFrom} onChange={e => setEditValidFrom(e.target.value)}/>
