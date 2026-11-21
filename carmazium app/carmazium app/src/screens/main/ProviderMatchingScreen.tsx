@@ -304,7 +304,7 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
                   </>: null}
                   <TouchableOpacity accessibilityRole="button" onPress={() => setPrices(prices.filter((_,j)=>j!==i))}><Text style={styles.error}>REMOVE SERVICE</Text></TouchableOpacity>
                 </View>)}
-                <TouchableOpacity accessibilityRole="button" disabled={prices.length>=20} onPress={() => setPrices([...prices,{name:'',description:'',pricePence:0,priceText:'',quoteOnly:true,vatIncluded:true}])} style={styles.fileButton}><Text style={styles.fileButtonText}>ADD INSPECTION SERVICE</Text></TouchableOpacity>
+                <TouchableOpacity accessibilityRole="button" disabled={prices.length>=20} onPress={() => setPrices([...prices,{name:'',description:'',pricePence:0,priceText:'',quoteOnly:true,vatIncluded:true}])} style={styles.primaryButton}><Text style={styles.primaryText}>ADD INSPECTION SERVICE</Text></TouchableOpacity>
                 <TouchableOpacity accessibilityRole="button" disabled={savingPrices} onPress={() => void savePrices()} style={styles.primaryButton}><Text style={styles.primaryText}>{savingPrices ? 'SAVING PRICES…' : 'SAVE MY PRICES'}</Text></TouchableOpacity>
               </View> : null}
 
