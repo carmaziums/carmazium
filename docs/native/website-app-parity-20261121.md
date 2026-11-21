@@ -1,0 +1,79 @@
+# Website/app comparison — 21 November 2026
+
+The requested acceptance target is the same options, pages, labels, workflows and dashboard presentation as the live website, implemented in the original native app. A menu or file existing is not evidence that a workflow is equivalent. This is an incomplete comparison and an initial dashboard correction, not full-app sign-off.
+
+## Baseline and laptop observations
+
+- Website source baseline: main `7abd37badf761f1bdbdafca8d8eeaedcb093172c` (PR #946).
+- User laptop: DESKTOP-LPIB4R3, BlueStacks emulator-5554.
+- Installed production identity initially build 110, then user upgraded to build 111; package `uk.carmazium.app`, versionName 1.0.1. No uninstall, clearing data or replacement package was performed by this work.
+- User signed in to PULSE CARS LIMITED in both native app and **Chrome inside BlueStacks**. Both use the same 900×1600 portrait display (240 density, 600dp content width). Desktop Chrome is not the mobile acceptance reference.
+- Compared live mobile dealer home, Customise, Stock, Customers and Purchases. Dealer cards have the same 20 destinations. Reset layout is present; live reset/hide/reorder round-trip remains to verify on the updated candidate.
+- Stock: both return 48 vehicles; the first Audi A1 has the same £10,495 asking price and 65 views. Website mobile action menu includes view, boost, auction conversion and delete. No listing mutation was submitted.
+- Customers: both show 0 new / 2 active / 0 follow-up / 0 sold. App hides later stages in a horizontal strip; web wraps all six stages.
+- Completed Purchases: website shows 12, app 111 shows 10. Two owner-confirmed recovered acquisitions are missing from the native request. Collected retail sales are also incorrectly relabelled Purchased by the native status mapper.
+- Current app 111 is the prior PR #946 candidate. None of the new branch changes are installed or published yet. Screenshots are laptop-local comparison evidence, not acceptance of the new code.
+
+## Confirmed mismatches and corrections in this branch
+
+| Area | Website/current app difference | Correction |
+| --- | --- | --- |
+| Personal dashboard entry | Website has a combined buyer/seller home. Native BUYER opens a separate cards-only screen while SELLER opens a bespoke profile/dashboard. | Both entry points use the same native personal home, website header, My Dashboard title, task panel and existing configurable cards. |
+| Buyer who also sells | Native seller follow-ups were either absent or restricted by original account role. | Read the same authenticated owner-auction and summary sources for all personal accounts. Backend permissions remain authoritative. |
+| Delivery requests | Website includes pending delivery requests in its attention list; app home omitted them. | Fetch received requests and open the existing native delivery-request screen. |
+| Task wording/order | Native task text and ordering drifted from the website. | Generated native copies of the website's pure personal/dealer attention rules; CI compares them against the website sources. |
+| Provisional offers | Native showed only a count and general destination. Website names the vehicle and its UK decision deadline. | Same vehicle-specific copy and direct native auction navigation. |
+| Dealer buyer fees | Native read only the first 50 won auctions and showed a count. | Use complete paginated won-auction retrieval, website vehicle/deadline copy and native purchases destination. |
+| Dealer handover eligibility | Native simplified condition could request handover before the buyer fee was paid. | Use the website seller-stage rules through the shared attention builder. |
+| Failure/retry | Missing data could hide checks or look like no work. | Independently settle sources, show successful tasks plus a failure notice, retry all checks and never display all-clear after a failed/malformed source. |
+| Permissions/focus | Dealer checks could run before access resolved; personal tasks did not refresh after returning. | Wait for dealer permission loading, skip forbidden collections, refresh on focus and invalidate stale requests. |
+| Card alignment | Dealer cards had an extra nested horizontal inset. | Remove the extra outer inset while retaining heading/task spacing. |
+| Blog manifest | Existing native blog screens were incorrectly declared web-only. | Record the existing native implementation; this does not itself certify content parity. |
+
+The native personal delivery link goes directly to BuyerDeliveryRequests; the web attention action currently points at the seller offers page. The shared rule retains the website's wording, while the native action resolves to the existing delivery workflow.
+
+## Same-emulator comparison corrections
+
+- Match dashboard gutters, card widths/gaps, title sizing, attention panel and green all-clear presentation. Shared buttons now use the website's rounded geometry, sentence case, readable text and neutral outlines instead of the app's red bevelled uppercase outlines. Correct purchase, auction and verification icons.
+- Stock: match page heading, import ordering and result count; show the asking-price/auction-estimate distinction and engagement bar; expose Withdrawn separately. Existing native grid view and truthful transmission/lead data remain available.
+- Customers: wrap every stage with no horizontal hiding and include the matching explanatory hint.
+- Purchases: shared site header, page title/subtitle, stage→search/type→auction actions order, Refresh and Browse live auctions controls. Fetch recovered records, native recovered detail, authenticated PDF download/share for server-confirmed collection records, and correct status precedence.
+- Failed purchase sources preserve successful records, report incomplete data and provide retry. Invalid/over-limit pagination fails explicitly. Unknown historical prices remain Not recorded; no sale or payment data is invented.
+- Regression tests exercise the real purchase screen with ten regular plus two recovered records, native routing, unknown-price display and partial failure. The updated APK still needs the same-account comparison proving the live count is 12 and that PDF preview works.
+
+## Confirmed outstanding scope
+
+AdminDashboardScreen still opens these 12 first-party destinations in a browser:
+
+| Menu | Website route |
+| --- | --- |
+| Messages | /dashboard/admin/messages |
+| Auctions | /dashboard/admin/auctions |
+| Sale Cancellations | /dashboard/admin/cancellations |
+| Transactions | /dashboard/admin/transactions |
+| Vehicle History Reports | /dashboard/admin/hpi |
+| Free Listing Grants | /dashboard/admin/free-listings |
+| All Dealers | /dashboard/admin/dealers |
+| Trade Services | /dashboard/admin/services |
+| Analytics | /dashboard/admin/analytics |
+| AI Reports | /dashboard/admin/ai-reports |
+| Marketing Popup | /dashboard/admin/marketing-popup |
+| Blog | /dashboard/admin/blog |
+
+Other admin differences: account detail/list pages direct management actions to the website; handover reward payment controls remain on the website; listing review references the website vehicle-history queue. These are not fixed by this branch.
+
+Still required: authenticated dealer and buyer/seller page-by-page comparison; complete admin and partner parity; listing/editing, filters, offers/bidding, purchases, services, settings, messages and notifications acceptance; mobile light/dark and large-text visual review; correct-account native upgrade testing; iOS verification; production download/automatic-update verification for the final candidate. The public/personal forms and marketplace pages have not all been visually compared. No completion percentage is asserted.
+
+The existing product-parity check verifies file presence plus selected business contracts. Passing it must not be presented as all-page functional or visual parity.
+
+## Validation
+
+- 778 repository tests passed.
+- 57 native/component tests passed, including actual personal and dealer screen rendering against controlled data, role permissions, native destinations, partial failures, retries, malformed responses, delivery requests, buyer-role seller tasks and correct handover eligibility.
+- Native TypeScript passed before final packaging; final validation is recorded in the PR.
+- Website and native dashboard-card catalog remains unchanged and matching.
+- No live listings, offers, bids, account profiles or financial transactions were created or changed.
+
+## Continuation
+
+Use the existing original package and the user's correct signed-in laptop sessions. Continue the authenticated same-emulator comparison and install a signed candidate before claiming the fixes verified on device. Preserve the explicit outstanding admin list. Do not confuse a successful candidate 111 with an APK containing this branch.

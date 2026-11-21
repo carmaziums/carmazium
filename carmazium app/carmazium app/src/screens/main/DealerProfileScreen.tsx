@@ -18,7 +18,7 @@ export const DealerProfileScreen: React.FC = () => {
   const tabBarClearance = useTabBarClearance();
   const navigation = useNavigation<NavProp>();
   const { user } = useAuthStore();
-  const { access, hasPermission } = useDealerAccess(true);
+  const { access, hasPermission, loading: accessLoading } = useDealerAccess(true);
   const [overviewRefreshToken, setOverviewRefreshToken] = useState(0);
   const canManageInventory = hasPermission('MANAGE_INVENTORY');
   const canManageCrm = hasPermission('MANAGE_CRM');
@@ -75,7 +75,7 @@ export const DealerProfileScreen: React.FC = () => {
   return <View style={styles.container}>
     <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
     <WebsiteTopBar />
-    <ScrollView contentContainerStyle={{ paddingTop: 12, paddingBottom: tabBarClearance }} showsVerticalScrollIndicator={false}
+    <ScrollView contentContainerStyle={{ paddingTop: 32, paddingBottom: tabBarClearance }} showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={false} onRefresh={() => setOverviewRefreshToken(token => token + 1)} tintColor={Colors.accent} />}>
         {showPhoneBanner && (
           <TouchableOpacity
@@ -98,7 +98,7 @@ export const DealerProfileScreen: React.FC = () => {
           </TouchableOpacity>
         )}
 
-      <DealerWebParityOverview userName={dealerDisplayName || 'Dealer'}
+      <DealerWebParityOverview accessLoading={accessLoading} userName={dealerDisplayName || 'Dealer'}
         canManageInventory={canManageInventory} canManageCrm={canManageCrm}
         canManageOffers={canManageOffers} canViewPurchases={canViewPurchases}
         canViewTrade={canViewTrade} canViewAnalytics={canViewAnalytics}

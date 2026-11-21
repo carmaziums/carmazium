@@ -17,8 +17,7 @@ const doc = read('docs/native/website-native-visual-parity-block4-20261010.md');
 test('website Stock identity, main actions and search match without a fixed footer overlay', () => {
   assert.ok(web.includes('DEALER_ROUTE_CONFIG[1].title'));
   assert.ok(web.includes('Search by make, model, VRM...'));
-  assert.ok(native.includes('>Inventory</Text>'));
-  assert.ok(native.includes('Manage live, draft and sold stock'));
+  assert.ok(native.includes('>Dealer Command Centre</Text>'));
   assert.ok(native.includes('Search by make, model, VRM...'));
   for (const action of ['Add Vehicle', 'Import Listing', 'Bulk Import']) {
     assert.ok(native.includes(action), action);

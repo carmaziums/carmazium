@@ -45,8 +45,8 @@ const VIEW_MODE_STORAGE_KEY = 'czm_dealer_inventory_view_mode';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Types ──────────────────────────────────────────────────────────────────
-type StatusTag = 'LIVE' | 'DRAFT' | 'REVIEW' | 'SALE_PENDING' | 'REJECTED' | 'SOLD' | 'OTHER';
-export type FilterTab = 'All' | 'Live' | 'Under Review' | 'Rejected' | 'Draft' | 'Sold' | 'Sale pending' | 'Other';
+type StatusTag = 'LIVE' | 'DRAFT' | 'REVIEW' | 'SALE_PENDING' | 'REJECTED' | 'SOLD' | 'WITHDRAWN' | 'OTHER';
+export type FilterTab = 'All' | 'Live' | 'Under Review' | 'Rejected' | 'Draft' | 'Sold' | 'Sale pending' | 'Withdrawn' | 'Other';
 
 interface Listing {
   id: string;
@@ -107,6 +107,7 @@ const mapApiListing = (l: any): Listing => ({
       : l.status === 'OFFER_ACCEPTED' ? 'SALE_PENDING'
       : l.status === 'REJECTED' ? 'REJECTED'
       : l.status === 'SOLD' ? 'SOLD'
+      : l.status === 'WITHDRAWN' ? 'WITHDRAWN'
       : 'OTHER'
   ) as StatusTag,
   linkedListingId: l.linkedListingId ?? null,
@@ -127,6 +128,7 @@ const STATUS_STYLE: Record<StatusTag, { bg: string; color: string; label: string
   SALE_PENDING: { bg: Colors.warning, color: Colors.onAccent, label: 'SALE PENDING' },
   REJECTED:     { bg: Colors.error, color: Colors.onAccent, label: 'Rejected' },
   SOLD:         { bg: Colors.infoBlue, color: Colors.onAccent, label: 'Sold' },
+  WITHDRAWN:    { bg: Colors.midBlue_6b7280, color: Colors.onAccent, label: 'Withdrawn' },
   OTHER:        { bg: Colors.midBlue_6b7280, color: Colors.onAccent, label: 'Not Live' },
 };
 
@@ -561,6 +563,7 @@ const InventoryRow: React.FC<{
         <View style={styles.stockMetricTile}>
           <Text style={styles.stockMetricLabel}>PRICE</Text>
           <Text style={styles.stockPrice}>{listing.price}</Text>
+          <View style={styles.askingPrice}><Ionicons name="trending-up-outline" size={9} color={Colors.success} /><Text style={styles.askingPriceLabel}>{listing.listingType === 'AUCTION' ? 'AUCTION ESTIMATE' : 'ASKING PRICE'}</Text></View>
         </View>
         <View style={styles.stockMetricTile}>
           <Text style={styles.stockMetricLabel}>STATUS</Text>
@@ -574,6 +577,7 @@ const InventoryRow: React.FC<{
         <View style={styles.stockMetricTile}>
           <Text style={styles.stockMetricLabel}>ENGAGEMENT</Text>
           <Text style={styles.stockMetricValue}>{listing.views.toLocaleString('en-GB')}</Text>
+          <View style={styles.engagementTrack}><View style={[styles.engagementFill, { width: `${Math.min(listing.views / 10, 100)}%` }]} /></View>
         </View>
         <View style={styles.stockMetricTile}>
           <Text style={styles.stockMetricLabel}>HOT LEADS</Text>
@@ -894,6 +898,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any; route?: any }> 
     { label: 'Draft', value: 'DRAFT', count: listings.filter(l => l.status === 'DRAFT').length },
     { label: 'Sold', value: 'SOLD', count: listings.filter(l => l.status === 'SOLD').length },
     { label: 'Sale pending', value: 'SALE_PENDING', count: listings.filter(l => l.status === 'SALE_PENDING').length },
+    { label: 'Withdrawn', value: 'WITHDRAWN', count: listings.filter(l => l.status === 'WITHDRAWN').length },
     { label: 'Other', value: 'OTHER', count: listings.filter(l => l.status === 'OTHER').length },
   ];
   const chosenStatus = FILTERS.find(f => f.label === activeFilter)?.value;
@@ -922,8 +927,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any; route?: any }> 
           view picker and inventory count remain below it. */}
       <View style={[styles.listHeader, { paddingTop: 8 }]}>
         <View style={styles.listHeaderCenter}>
-          <Text style={styles.listHeaderTitle}>Inventory</Text>
-          <Text style={styles.listHeaderSub} numberOfLines={1}>Manage live, draft and sold stock</Text>
+          <Text style={styles.listHeaderTitle}>Dealer Command Centre</Text>
         </View>
         <IconButton
           style={styles.backBtn}
@@ -1054,7 +1058,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any; route?: any }> 
       )}
 
       <View style={styles.sortRow}>
-        <Text style={styles.sortLabel}>{filtered.length} {filtered.length === 1 ? 'vehicle' : 'vehicles'} shown</Text>
+        <Text style={styles.sortLabel}>Showing {filtered.length} of {listings.length} vehicles</Text>
       </View>
     </View>
   );
@@ -1187,14 +1191,14 @@ const styles = StyleSheet.create({
   // Website mobile PageHeader keeps the main listing CTA and imports in the
   // page header rather than a bottom fixed overlay.
   stockHeaderActions: {
-    flexDirection: 'row',
-    paddingHorizontal: 20, marginBottom: 10, gap: 8,
+    flexDirection: 'row-reverse',
+    paddingHorizontal: 20, marginBottom: 24, gap: 8,
   },
   stockAddAction: {
     flex: 1, justifyContent: 'center',
     flexDirection: 'row', alignItems: 'center', gap: 7,
     backgroundColor: Colors.accent, borderRadius: 12,
-    minHeight: 46, paddingHorizontal: 16,
+    minHeight: 52, paddingHorizontal: 16,
   },
   stockAddActionText: {
     fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent,
@@ -1263,6 +1267,10 @@ const styles = StyleSheet.create({
   },
   stockMake: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: 11 },
   stockFact: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: 11 },
+  askingPrice: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  askingPriceLabel: { color: Colors.success, fontFamily: FontFamily.bold, fontSize: 10, letterSpacing: 1 },
+  engagementTrack: { height: 4, backgroundColor: Colors.bgElevated, borderRadius: 4, overflow: 'hidden', marginTop: 6 },
+  engagementFill: { height: 4, backgroundColor: 'rgba(59, 130, 246, 0.5)' },
   stockMetrics: {
     flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16,
   },
@@ -1280,8 +1288,8 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary, marginTop: 6,
   },
   stockMetricValue: {
-    fontFamily: FontFamily.extraBold, fontSize: 18,
-    color: Colors.textPrimary, marginTop: 6,
+    fontFamily: FontFamily.extraBold, fontSize: 16,
+    color: Colors.textPrimary, marginTop: 4,
   },
   stockOutlinedStatus: {
     alignSelf: 'flex-start', borderWidth: 1, borderRadius: 8,
@@ -1323,7 +1331,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xl,
     color: Colors.white,
     letterSpacing: -0.4,
-    textTransform: 'uppercase',
   },
 
   inventorySearchWrap: { marginHorizontal: 20, marginBottom: 12, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgSecondary },
@@ -1370,10 +1377,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   sortLabel: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size10,
-    color: Colors.iconMuted,
-    letterSpacing: 1.2,
+    fontFamily: FontFamily.regular,
+    fontSize: 14,
+    color: Colors.textMuted,
   },
   // Listing cards
   listScroll: {

@@ -189,7 +189,7 @@ test("native app uses the same stage tabs while keeping the auction-win and docu
     assert.match(screen, /HISTORY_STATUSES/)
     assert.match(screen, /getMySaleCancellations/)
     assert.match(screen, /loadAllPurchasePages\(\)/)
-    assert.match(screen, /navigation.navigate\('DealerPurchaseDetail', \{ saleId: item.id \}\)/)
+    assert.match(screen, /navigation.navigate\('DealerPurchaseDetail', \{ saleId: item.id, reconciled: item.reconciledPurchase \}\)/)
     assert.match(screen, /navigation.navigate\('SellerAuctions', \{ initialTab: 'WON' \}\)/)
     const wins = read(APP + "screens/seller/SellerAuctionsScreen.tsx")
     assert.match(wins, /purchaseByListing/)

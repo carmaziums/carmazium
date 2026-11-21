@@ -46,21 +46,9 @@ const GatedDealerBuyBidTab = withDealerGate(DealerBuyBidScreen, 'VIEW_TRADE');
 const ProfileTabScreen: React.FC<any> = React.memo((props) => {
   const role = useAuthStore((s) => s.role);
   const accountRole = useAuthStore((s) => s.accountRole);
-  // Buyers get the buyer-specific dashboard (DASH-004 / OQ-29). It was fully
-  // built and completely unreachable — zero navigate() call sites and absent
-  // from the drawer's 33 stackScreen targets — while carrying the richer tile
-  // set (Active Offers, Watching, Live Bids, Auctions Won, Total Spent) and the
-  // 7d/30d period toggle that the live screen lacks (DASH-005).
-  //
-  // Sellers keep UnifiedDashboard, which is where the inventory/revenue tiles
-  // live. A buyer-role user who also lists still reaches every seller screen
-  // from the shared personal dashboard cards — only the activity tiles differ.
-  // Business/platform roles must never be silently presented as a personal
-  // Buyer simply because the mobile preview role is intentionally narrower.
-  // Route each operational role to the same backend-backed workspace it has
-  // on web. Admin gets the native admin dashboard (phase 1: overview, listings
-  // review, dealer KYC, handovers, accounts read-only; other sections open
-  // the website — product-parity.json admin.operations).
+  // Buyers and sellers share the website's personal dashboard, including
+  // seller tasks for accounts originally registered as BUYER. Operational
+  // business roles retain their own permission-protected workspaces.
   if (accountRole === 'contractor') {
     return <PartnerDashboardScreen {...props} />;
   }

@@ -60,6 +60,7 @@ const ICON_MAP: Record<string, string> = {
   'wallet-outline': 'Wallet',
   'wallet': 'Wallet',
   'receipt-outline': 'Receipt',
+  'bag-outline': 'Receipt',
   'receipt': 'Receipt',
 
   // Notifications
@@ -81,7 +82,7 @@ const ICON_MAP: Record<string, string> = {
   'checkmark-circle-sharp': 'CheckCircle2',
   'add-circle-outline': 'PlusCircle',
   'add-circle': 'PlusCircle',
-  'shield-checkmark-outline': 'ShieldAlert',
+  'shield-checkmark-outline': 'ShieldCheck',
   'shield-checkmark': 'ShieldCheck',
   'shield-outline': 'Shield',
   'shield': 'Shield',
@@ -101,8 +102,8 @@ const ICON_MAP: Record<string, string> = {
   'car-minivan': 'Car',
   'van-utility': 'Truck',
   'car-pickup': 'Truck',
-  'gavel': 'Hammer',
-  'hammer-outline': 'Hammer',
+  'gavel': 'Gavel',
+  'hammer-outline': 'Gavel',
   'hammer': 'Hammer',
   'pricetag-outline': 'Tag',
   'pricetag': 'Tag',

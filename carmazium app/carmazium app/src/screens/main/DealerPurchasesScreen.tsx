@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   FlatList,
@@ -12,7 +12,6 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@/components/BrandIcon';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
@@ -35,8 +34,10 @@ import { useAuthStore } from '../../store/authStore';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { CompletePurchaseButton } from '../../components/purchases/CompletePurchaseButton';
 
-import { IconButton } from '../../components/IconButton';
-import { HamburgerButton } from '../../components/HamburgerButton';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { Button } from '../../components/Button';
+import { PurchaseReceiptButton } from '../../components/purchases/PurchaseReceiptButton';
+import { mapReconciledPurchases, normalisePurchaseStatus, type ReconciledPurchase } from '../../lib/dealerPurchaseRecords';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
@@ -48,7 +49,8 @@ type PurchaseStatus =
   | 'REVIEWING_DOCS'
   | 'CHECKS_COMPLETE'
   | 'DELIVERY_REQUESTED'
-  | 'SOLD';
+  | 'SOLD'
+  | 'SALE_CONFIRMED';
 
 interface PurchaseItem {
   id: string;
@@ -63,7 +65,12 @@ interface PurchaseItem {
   sellerPhone?: string;
   status: PurchaseStatus;
   retailSold?: boolean;
-  purchaseChannel?: 'AUCTION' | 'RETAIL';
+  purchaseChannel?: 'AUCTION' | 'RETAIL' | 'RECONCILED';
+  buyerCollectedAt?: string | null;
+  purchasePriceUnrecorded?: boolean;
+  reconciledPurchase?: boolean;
+  originalListedAt?: string;
+  offerAccepted?: boolean;
 }
 
 interface PurchasesResponse {
@@ -112,10 +119,13 @@ const PURCHASE_MAX_PAGES = 20; // safety cap, same as web
 async function loadAllPurchasePages(): Promise<PurchaseItem[]> {
   const page = (n: number) => apiClient<PurchasesResponse>(`/dealers/purchases?page=${n}&limit=${PURCHASE_PAGE_SIZE}`);
   const first = await page(1);
+  if (!first?.success || !Array.isArray(first.data)) throw Error('Purchase records unavailable');
+  if (Number(first.pagination?.totalPages) > PURCHASE_MAX_PAGES) throw Error('Purchase history exceeds the page limit. Please contact support.');
   const lastPage = Math.min(Math.max(1, Number(first?.pagination?.totalPages) || 1), PURCHASE_MAX_PAGES);
   const rest = lastPage > 1
     ? await Promise.all(Array.from({ length: lastPage - 1 }, (_, i) => page(i + 2)))
     : [];
+  if (rest.some(r => !r?.success || !Array.isArray(r.data))) throw Error('Some purchase pages could not be loaded');
   return [first, ...rest].flatMap(r => (r?.success && Array.isArray(r.data) ? r.data : []));
 }
 
@@ -124,7 +134,7 @@ async function loadAllPurchasePages(): Promise<PurchaseItem[]> {
 // A view filter only — it never changes a purchase's status.
 const HISTORY_STATUSES: PurchaseStatus[] = ['SOLD', 'CHECKS_COMPLETE', 'DELIVERY_REQUESTED'];
 const STATUS_FILTER_ORDER: PurchaseStatus[] = [
-  'AWAITING_CONFIRMATION', 'SOLD', 'REVIEWING_DOCS', 'CHECKS_COMPLETE', 'DELIVERY_REQUESTED',
+  'AWAITING_CONFIRMATION', 'SALE_CONFIRMED', 'SOLD', 'REVIEWING_DOCS', 'CHECKS_COMPLETE', 'DELIVERY_REQUESTED',
 ];
 
 const matchesSearch = (fields: (string | undefined | null)[], query: string): boolean => {
@@ -144,6 +154,7 @@ const STATUS_CONFIG: Record<
   PurchaseStatus,
   { label: string; icon: string; color: string; bg: string; border: string }
 > = {
+  SALE_CONFIRMED: { label: 'Sale Confirmed', icon: 'checkmark-circle-outline', color: Colors.success, bg: Colors.successAlpha12, border: Colors.successAlpha25 },
   SOLD: {
     // The dealer bought this car, so it reads "Purchased", as on web.
     label: 'Purchased',
@@ -167,7 +178,7 @@ const STATUS_CONFIG: Record<
     border: Colors.infoBlueAlpha25,
   },
   CHECKS_COMPLETE: {
-    label: 'Checks Complete',
+    label: 'Collected / Checks Complete',
     icon: 'checkmark-circle-outline',
     color: Colors.success,
     bg: Colors.successAlpha12,
@@ -185,7 +196,6 @@ const STATUS_CONFIG: Record<
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const DealerPurchasesScreen: React.FC = () => {
-  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteProp<MainStackParamList, 'DealerPurchases'>>();
   const stage: PurchaseDestination = route.params?.stage ?? (route.params?.view === 'history' ? 'completed' : 'progress');
@@ -206,6 +216,8 @@ export const DealerPurchasesScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
+  const [sourceError, setSourceError] = useState(false);
+  const requestSequence = useRef(0);
 
   // Switching destination resets the filter so a stage hidden in this view
   // can't leave the list looking empty.
@@ -236,33 +248,37 @@ export const DealerPurchasesScreen: React.FC = () => {
   }, [navigation]);
 
   const fetchData = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    setFetchError(false);
-    try {
-      const [all, cancellations, offers] = await Promise.all([
-        // Every page (as on web), so search and history include older purchases.
-        loadAllPurchasePages(),
-        // An approved cancellation deletes the Sale, so the request is the
-        // only remaining record. Only buyer-side, approved ones are history.
-        getMySaleCancellations('purchase-history').catch(() => [] as SaleCancellationRequest[]),
-        // Agreed retail deals (Sale Pending) belong to All Purchases only.
-        stage !== 'progress' || channel === 'auction'
-          ? Promise.resolve([] as PendingRetailOffer[])
-          : apiClient<{ data: PendingRetailOffer[] }>('/offers/my').then(r => r?.data ?? []).catch(() => [] as PendingRetailOffer[]),
-      ]);
-      setCancelled(cancellations);
-      setPendingRetail(pendingRetailFrom(offers, new Set(all.map(p => p.listingId))));
-      setPurchases(all.map(item => ({ ...item, status: item.retailSold ? 'SOLD' as const : item.status })));
-    } catch {
-      setFetchError(true);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+    const request = ++requestSequence.current;
+    if (isRefresh) setRefreshing(true); else setLoading(true);
+    setFetchError(false); setSourceError(false);
+    const [sales, recovered, cancellations, offers] = await Promise.allSettled([
+      loadAllPurchasePages(),
+      apiClient<{ data: ReconciledPurchase[] }>('/dealers/purchases/reconciled')
+        .then(r => mapReconciledPurchases(r?.data)),
+      getMySaleCancellations('purchase-history'),
+      stage !== 'progress' || channel === 'auction'
+        ? Promise.resolve([] as PendingRetailOffer[])
+        : apiClient<{ data: PendingRetailOffer[] }>('/offers/my').then(r => {
+          if (!Array.isArray(r?.data)) throw Error('Accepted offers unavailable');
+          return r.data;
+        }),
+    ]);
+    if (request !== requestSequence.current) return;
+    const regular = sales.status === 'fulfilled' ? sales.value.map(item => ({
+      ...item, status: normalisePurchaseStatus(item) as PurchaseStatus,
+    })) : [];
+    const all = [...regular, ...(recovered.status === 'fulfilled' ? recovered.value : [])];
+    setPurchases(all);
+    setCancelled(cancellations.status === 'fulfilled' ? cancellations.value : []);
+    setPendingRetail(pendingRetailFrom(offers.status === 'fulfilled' ? offers.value : [], new Set(all.map(p => p.listingId))));
+    setSourceError([sales, recovered, cancellations, offers].some(r => r.status === 'rejected'));
+    setFetchError(sales.status === 'rejected' && recovered.status === 'rejected');
+    setLoading(false); setRefreshing(false);
   }, [stage, channel]);
 
   useEffect(() => {
-    fetchData();
+    void fetchData();
+    return () => { requestSequence.current += 1; };
   }, [fetchData]);
 
   // ─────────────── render helpers ─────────────────────
@@ -276,10 +292,12 @@ export const DealerPurchasesScreen: React.FC = () => {
   );
 
   const narrowed = query.trim() !== '' || statusFilter !== 'ALL';
-  const renderEmptyState = () => (shownCancelled.length > 0 || shownPendingRetail.length > 0 ? null : (
+  const renderEmptyState = () => (sourceError || shownCancelled.length > 0 || shownPendingRetail.length > 0 ? null : (
     <View style={styles.emptyState}>
       <EmptyState
         icon="receipt-outline"
+        ctaLabel={!narrowed && !isCancelled ? 'Browse live auctions' : undefined}
+        onCtaPress={() => navigation.navigate('Tabs', { screen: 'DealerBuyBid', params: { initialSection: 'live' } })}
         title={narrowed ? 'No purchases match' : isCancelled ? 'No cancelled purchases' : isHistory ? 'No completed purchases yet' : 'No purchases yet'}
         subtitle={narrowed ? 'Try a different search or type.' :
           isCancelled ? 'Cancelled purchase records will appear here.' :
@@ -297,7 +315,7 @@ export const DealerPurchasesScreen: React.FC = () => {
           style={styles.searchInput}
           value={query}
           onChangeText={setQuery}
-          placeholder="Search vehicle, reg, seller or reference"
+          placeholder="Search vehicle, reg or reference"
           placeholderTextColor={Colors.textMuted}
           accessibilityLabel="Search purchases"
           returnKeyType="search"
@@ -394,11 +412,13 @@ export const DealerPurchasesScreen: React.FC = () => {
     const cfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.AWAITING_CONFIRMATION;
 
     return (
+      <View style={styles.purchaseCard}>
       <TouchableOpacity
         activeOpacity={0.8}
-        onPress={() => navigation.navigate('DealerPurchaseDetail', { saleId: item.id })}
+        accessibilityRole="button" accessibilityLabel={`View purchase details: ${item.vehicleTitle}`}
+        onPress={() => navigation.navigate('DealerPurchaseDetail', { saleId: item.id, reconciled: item.reconciledPurchase })}
       >
-        <View style={styles.purchaseCard}>
+        <View>
           <View style={styles.cardTopRow}>
             {/* Thumbnail */}
             {item.imageUrl ? (
@@ -415,20 +435,24 @@ export const DealerPurchasesScreen: React.FC = () => {
               {!!item.vehicleSubtitle && (
                 <Text style={styles.vehicleSubtitle} numberOfLines={1}>{item.vehicleSubtitle}</Text>
               )}
-              <Text style={styles.purchaseDate}>Purchased {formatDate(item.purchaseDate)}</Text>
+              <Text style={styles.purchaseDate}>{item.reconciledPurchase ? 'Collected' : 'Purchased'} {formatDate(item.purchaseDate)}</Text>
             </View>
 
             {/* Price */}
-            <Text style={styles.purchasePrice}>{formatPrice(item.purchasePrice)}</Text>
+            <Text style={styles.purchasePrice}>{item.purchasePriceUnrecorded ? 'Not recorded' : formatPrice(item.purchasePrice)}</Text>
           </View>
 
           {/* Status pipeline chip */}
           <View style={[styles.statusChip, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
             <Ionicons name={cfg.icon} size={13} color={cfg.color} />
-            <Text style={[styles.statusChipText, { color: cfg.color }]}>{cfg.label}</Text>
+            <Text style={[styles.statusChipText, { color: cfg.color }]}>{item.buyerCollectedAt ? 'Collected' : cfg.label}</Text>
           </View>
         </View>
       </TouchableOpacity>
+      {!!item.sellerName && <Text style={styles.purchaseDate}>{item.reconciledPurchase ? 'Original auction seller' : 'Seller'}: {item.sellerName}</Text>}
+      {item.reconciledPurchase && <Text style={styles.purchaseDate}>Purchased from original CarMazium auction listing · Owner confirmed</Text>}
+      {!!item.buyerCollectedAt && <PurchaseReceiptButton saleId={item.id} reconciled={item.reconciledPurchase} />}
+      </View>
     );
   }, [navigation]);
 
@@ -439,15 +463,24 @@ export const DealerPurchasesScreen: React.FC = () => {
   // until the list below had no height.
   const stageHeader = (
     <View style={styles.stageHeaderBleed}>
-    <PurchaseDestinations active={stage} onSelect={selectDestination} />
-    {isHistory && <Text style={styles.purchaseDate}>Delivery Requested counts as completed; delivery may still be on its way.</Text>}
-    {channel !== 'retail' && stage !== 'cancelled' && (
-      <TouchableOpacity accessibilityRole="button" style={[styles.purchaseCard, { marginHorizontal: 16, marginBottom: 10 }]}
-        onPress={() => navigation.navigate('SellerAuctions', { initialTab: 'WON' })}>
-        <Text style={styles.vehicleTitle}>Auction wins, fees & handovers</Text>
-        <Text style={styles.purchaseDate}>Pay the £125 fee and check handover steps.</Text>
-      </TouchableOpacity>
-    )}
+      <View style={styles.pageHeading}>
+        <Text accessibilityRole="header" style={styles.headerTitle}>Purchases</Text>
+        <Text style={styles.pageSubtitle}>Cars you've bought or agreed to buy.</Text>
+      </View>
+      <PurchaseDestinations active={stage} onSelect={selectDestination} />
+      <View style={styles.purchaseTools}>
+        {renderFilters()}
+        {sourceError && <View accessibilityRole="alert"><Text style={styles.purchaseDate}>Some purchase records could not be loaded. This list may be incomplete.</Text><Button label="Retry purchases" variant="outline" onPress={() => void fetchData(true)} /></View>}
+        {isHistory && <Text style={styles.purchaseDate}>Delivery Requested remains under Completed; delivery may still be in progress.</Text>}
+        {channel !== 'retail' && stage !== 'cancelled' && (
+          <Button variant="outline" label="Auction wins, £125 fee and handover actions"
+            onPress={() => navigation.navigate('SellerAuctions', { initialTab: 'WON' })} />
+        )}
+        <View style={styles.refreshRow}>
+          <Text style={[styles.purchaseDate, { flex: 1 }]}>{isCancelled ? 'Approved cancelled purchases and their records.' : isHistory ? 'Completed purchases and delivery updates.' : 'Purchases awaiting confirmation, inspection or payment.'}</Text>
+          <Button variant="outline" size="sm" label="Refresh" loading={refreshing} disabled={loading} onPress={() => void fetchData(true)} />
+        </View>
+      </View>
     </View>
   );
 
@@ -462,25 +495,7 @@ export const DealerPurchasesScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <View style={{ height: insets.top }} />
-
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-
-        <Text style={styles.headerTitle}>Purchases</Text>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          {purchases.length > 0 && (
-            <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>
-                {purchases.length > 99 ? '99+' : purchases.length}
-              </Text>
-            </View>
-          )}
-          <HamburgerButton />
-        </View>
-      </View>
+      <WebsiteTopBar />
 
       {/* ── Content ── */}
       {fetchError ? (
@@ -506,7 +521,6 @@ export const DealerPurchasesScreen: React.FC = () => {
             <>
               {stageHeader}
               {renderPendingRetail()}
-              {renderFilters()}
               {stage === 'progress' && isRetail && shownPendingRetail.length === 0 && (
                 <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('DealerMyOffers')}
                   style={[styles.purchaseCard, { marginBottom: 12 }]}
@@ -565,9 +579,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  pageHeading: { marginHorizontal: 20, marginTop: 32, marginBottom: 24, gap: 8 },
+  pageSubtitle: { fontSize: 12, lineHeight: 18, fontFamily: FontFamily.bold, letterSpacing: 1.2, textTransform: 'uppercase', color: Colors.textMuted },
+  purchaseTools: { marginHorizontal: 20, gap: 24, marginTop: 12, marginBottom: 24 },
+  refreshRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   headerTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.lg,
+    fontSize: 24,
     color: Colors.white,
   },
   headerPlaceholder: { width: 38 },
@@ -608,10 +626,10 @@ const styles = StyleSheet.create({
   },
   statusWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   statusPill: {
-    minHeight: 36,
-    justifyContent: 'center',
+    flex: 1, minHeight: 44,
+    alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 12,
-    borderRadius: Radius.pill,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
     backgroundColor: Colors.bgCard,

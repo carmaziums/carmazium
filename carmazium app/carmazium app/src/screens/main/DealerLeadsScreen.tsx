@@ -37,7 +37,7 @@ import { IconButton } from '../../components/IconButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
-import { getBottomTabBarHeight, getScrollableStageHeight } from '../../lib/nativeLayoutParity';
+import { getBottomTabBarHeight } from '../../lib/nativeLayoutParity';
 import { Layout } from '../../constants/layout';
 type FilterTab = 'All' | 'Hot' | 'Warm' | 'New' | 'Won' | 'Lost';
 type ViewMode = 'list' | 'board';
@@ -87,13 +87,13 @@ const STATUS_OPTIONS: { key: string; label: string; color: string }[] = [
 // acts, so it still needs a column. Mirrors web's dashboard/dealer/crm Kanban
 // stage set (mobile-production-readiness-plan.md F16) as a tap-based board
 // rather than drag-and-drop — see that finding for why.
-const BOARD_STAGES: { key: string; label: string; color: string }[] = [
-  { key: 'NEW', label: 'New Leads', color: Colors.infoBlue },
-  { key: 'CONTACTED', label: 'Contacted', color: Colors.warning },
-  { key: 'QUALIFIED', label: 'Viewing / Qualified', color: Colors.lightPurple },
-  { key: 'NEGOTIATING', label: 'Negotiating', color: Colors.infoBlueLight },
-  { key: 'WON', label: 'Closed Won', color: Colors.success },
-  { key: 'LOST', label: 'Lost', color: Colors.error },
+const BOARD_STAGES = [
+  { key: 'NEW', label: 'New Leads', hint: 'Just enquired, not yet contacted', color: Colors.infoBlue },
+  { key: 'CONTACTED', label: 'Contacted', hint: "You've replied or called", color: Colors.warning },
+  { key: 'QUALIFIED', label: 'Viewing / Qualified', hint: 'Viewed or test-drove the car', color: Colors.lightPurple },
+  { key: 'NEGOTIATING', label: 'Negotiating', hint: 'Agreeing price or terms', color: Colors.infoBlueLight },
+  { key: 'WON', label: 'Closed Won', hint: 'Sale agreed', color: Colors.success },
+  { key: 'LOST', label: 'Lost', hint: 'No longer buying', color: Colors.error },
 ];
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -896,14 +896,13 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
         </View>
       )}
       {viewMode === 'board' && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}
-          style={[styles.crmStagesScroll, { maxHeight: getScrollableStageHeight(fontScale) }, Layout.hScroll]}
-          contentContainerStyle={styles.crmStagesList}>
+        <View>
+        <View style={styles.crmStagesList}>
           {BOARD_STAGES.map(stage => {
             const selected = stage.key === mobileStage;
             return (
               <TouchableOpacity key={stage.key}
-                style={[styles.crmStageTab, { minHeight: Math.max(42, getScrollableStageHeight(fontScale) - 12) }, selected && styles.crmStageSelected]}
+                style={[styles.crmStageTab, selected && styles.crmStageSelected]}
                 onPress={() => setMobileStage(stage.key)}
                 accessibilityRole="button"
                 accessibilityLabel={`${stage.label}, ${(leadsByStage[stage.key] || []).length} customers`}
@@ -914,7 +913,9 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
+        <Text style={styles.crmStageHint}>{BOARD_STAGES.find(stage => stage.key === mobileStage)?.hint}</Text>
+        </View>
       )}
 
       {viewMode === 'list' && (
@@ -1176,7 +1177,7 @@ const styles = StyleSheet.create({
   // Website /dashboard/dealer/crm canonical mobile hierarchy.
   crmPageHeader: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 13 },
   crmSubtitle: { color: Colors.textMuted, fontFamily: FontFamily.regular,
-    fontSize: 12, lineHeight: 18, marginTop: 3 },
+    fontSize: 12, lineHeight: 18, marginTop: 8, textTransform: 'uppercase', letterSpacing: 1.2 },
   crmHeaderActions: { flexDirection: 'row', flexWrap: 'wrap',
     alignItems: 'center', gap: 8, marginTop: 13 },
   crmAddButton: { flexDirection: 'row', alignItems: 'center', gap: 7,
@@ -1198,12 +1199,12 @@ const styles = StyleSheet.create({
   crmMetrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 10,
     marginHorizontal: 20, marginBottom: 14 },
   crmMetricCard: { width: '47%', flexGrow: 1,
-    padding: 14, minHeight: 82, borderRadius: 16,
+    padding: 14, minHeight: 80, borderRadius: 16,
     borderColor: Colors.borderSubtle, borderWidth: 1,
     backgroundColor: Colors.bgCard, alignItems: 'center', justifyContent: 'center' },
-  crmMetricCount: { fontFamily: FontFamily.extraBold, fontSize: 25 },
+  crmMetricCount: { fontFamily: FontFamily.extraBold, fontSize: 24, lineHeight: 32 },
   crmMetricLabel: { color: Colors.textMuted, fontFamily: FontFamily.bold,
-    fontSize: 11, letterSpacing: 0.5, marginTop: 4, textTransform: 'uppercase' },
+    fontSize: 10, lineHeight: 15, letterSpacing: 1, marginTop: 0, textTransform: 'uppercase' },
   crmErrorBanner: { flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 15, paddingVertical: 9, marginHorizontal: 20, marginBottom: 10,
     borderRadius: 10, borderWidth: 1, borderColor: Colors.warning,
@@ -1212,9 +1213,9 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium },
   crmRetry: { color: Colors.accent, fontSize: 12, fontFamily: FontFamily.bold },
   crmStagesScroll: { maxHeight: 54, marginBottom: 8 },
-  crmStagesList: { paddingHorizontal: 20, alignItems: 'center', gap: 7,
-    paddingBottom: 6 },
-  crmStageTab: { minHeight: 42, paddingHorizontal: 13, justifyContent: 'center',
+  crmStagesList: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, alignItems: 'center', gap: 8, paddingBottom: 6 },
+  crmStageHint: { marginHorizontal: 20, marginTop: 12, marginBottom: 16, fontSize: 12, lineHeight: 18, color: Colors.textMuted },
+  crmStageTab: { minHeight: 44, paddingHorizontal: 13, justifyContent: 'center',
     borderRadius: 12, borderWidth: 1, borderColor: Colors.borderSubtle,
     backgroundColor: Colors.bgCard },
   crmStageSelected: { borderColor: Colors.accent, backgroundColor: Colors.accent },

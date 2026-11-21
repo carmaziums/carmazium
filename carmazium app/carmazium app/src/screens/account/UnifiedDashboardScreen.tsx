@@ -1,282 +1,134 @@
+import React, { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { DashboardCards } from '../../components/DashboardCards';
-import React, { useEffect, useState, useCallback } from 'react';
-import { ScreenBackBar } from '../../components/ScreenBackBar';
-import {
-  Alert,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
-import { Logo } from '../../components/Logo';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { Button } from '../../components/Button';
+import { Ionicons } from '../../components/BrandIcon';
+import { useTabBarClearance } from '../../hooks/useTabBarClearance';
+import { useAuthStore } from '../../store/authStore';
 import { apiClient } from '../../lib/apiClient';
 import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
-import { getSellerAuctionStage, type SellerAuctionProgressInput } from '../../lib/auctionSellerStage';
-import { ErrorBanner } from '../../components/ui/ErrorBanner';
-import { useAuthStore } from '../../store/authStore';
+import { getReceivedDeliveryRequests } from '../../lib/deliveryApi';
+import { buildUserAttentionItems, type UserAttentionItem } from '../../lib/userAttention';
+import type { AttentionAuction } from '../../lib/dealerAttention';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
-import {FontFamily, FontSize } from '../../constants/typography';
-import { Elevation, Radius } from '../../constants/spacing';
+import { FontFamily } from '../../constants/typography';
 
-// ─────────────────────────── types ───────────────────────────────
-
-interface UnifiedDashboardData {
-  buyer: { activeBids: number; watchlistCount: number; counteredOffersPending: number };
-  seller: { totalListings: number; activeListings: number; soldListings: number; totalViews: number; totalRevenue: number; incomingOffers: number };
+interface Summary {
+  buyer: { counteredOffersPending: number };
+  seller: { incomingOffers: number };
   unreadMessages: number;
 }
-
-interface UnifiedDashboardResponse { success: boolean; data: UnifiedDashboardData }
-interface SellerAttentionAuction extends SellerAuctionProgressInput {
-  id: string;
-  provisionalOfferBidId?: string | null;
-  provisionalOfferedAt?: string | null;
-  listing?: { title?: string | null; make?: string | null; model?: string | null; year?: number | null };
-}
-
-const EMPTY: UnifiedDashboardData = {
-  buyer: { activeBids: 0, watchlistCount: 0, counteredOffersPending: 0 },
-  seller: { totalListings: 0, activeListings: 0, soldListings: 0, totalViews: 0, totalRevenue: 0, incomingOffers: 0 },
-  unreadMessages: 0,
+interface Checks { summary: Summary | null; auctions: AttentionAuction[]; deliveries: number; failed: boolean }
+const EMPTY: Checks = { summary: null, auctions: [], deliveries: 0, failed: false };
+const icons: Record<UserAttentionItem['kind'], string> = {
+  provisional: 'hammer-outline', handover: 'car-outline', incomingOffers: 'pricetag-outline',
+  counterOffers: 'repeat-outline', deliveryRequests: 'car-outline', messages: 'chatbubbles-outline',
 };
 
-function getInitials(firstName: string | null, lastName: string | null, email: string) {
-  if (firstName || lastName) return `${(firstName || '').charAt(0)}${(lastName || '').charAt(0)}`.toUpperCase();
-  return email.charAt(0).toUpperCase();
-}
-
-// ══════════════════════════ COMPONENT ════════════════════════════
-
-export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
-  const insets = useSafeAreaInsets();
-  const { user, role, accountRole, logout } = useAuthStore();
-  const [data, setData] = useState<UnifiedDashboardData>(EMPTY);
+/** The website has one personal home for buyers AND sellers. Keep all entry
+ * points on this screen so a buyer who lists a car never loses seller tasks. */
+export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = () => {
+  const navigation = useNavigation<any>();
+  const userId = useAuthStore(s => s.user?.id);
+  const clearance = useTabBarClearance();
+  const sequence = useRef(0);
+  const [checks, setChecks] = useState<Checks>(EMPTY);
   const [loading, setLoading] = useState(true);
-  // Three states, not two. `loading` covers the fetch; `error` covers a
-  // failure; and no error with zeroed data means the account genuinely has
-  // nothing yet, which must still render as zeros (CROSS-023 / DASH-047).
-  // Previously the catch swallowed everything into `/* show zeros */`, so a
-  // dead network rendered as a confident, wrong dashboard.
-  const [error, setError] = useState<string | null>(null);
-  const [sellerAuctions, setSellerAuctions] = useState<SellerAttentionAuction[]>([]);
-  const [auctionCheckError, setAuctionCheckError] = useState(false);
-  const [auctionChecking, setAuctionChecking] = useState(true);
-
   const load = useCallback(async () => {
+    const request = ++sequence.current;
     setLoading(true);
-    setError(null);
-    try {
-      const res = await apiClient<UnifiedDashboardResponse>('/dashboard/unified');
-      if (res?.success) setData(res.data);
-    } catch (err: any) {
-      // Reset to EMPTY as well as flagging: leaving the previous render's
-      // numbers on screen under an error banner is its own kind of lie.
-      setData(EMPTY);
-      setError(err?.message === 'REQUEST_TIMEOUT'
-        ? 'Timed out loading your dashboard.'
-        : 'Could not load your dashboard.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { void load(); }, [load]);
-  useEffect(() => {
-    let cancelled = false;
-    if (accountRole !== 'seller' && accountRole !== 'dealer') {
-      setSellerAuctions([]);
-      setAuctionCheckError(false);
-      setAuctionChecking(false);
-      return;
-    }
-    setAuctionChecking(true);
-    setAuctionCheckError(false);
-    void fetchAllMyAuctions<SellerAttentionAuction>('list').then(items => {
-      if (!cancelled) setSellerAuctions(items);
-    }).catch(() => {
-      if (!cancelled) { setSellerAuctions([]); setAuctionCheckError(true); }
-    }).finally(() => { if (!cancelled) setAuctionChecking(false); });
-    return () => { cancelled = true; };
-  }, [accountRole]);
-
-  const { buyer, seller, unreadMessages } = data;
-  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User';
-  const email = user?.email || '';
-  const initials = getInitials(user?.firstName ?? null, user?.lastName ?? null, email);
-  const isDealer = role === 'dealer';
-  const isSeller = role === 'seller' || isDealer;
-  // Real account status, independent of the "preview as buyer" toggle
-  // (DealerProfileScreen's "VIEW MY PROFILE" flips `role` to 'buyer' without
-  // changing what the account actually is) — used only where routing
-  // depends on the real account, not the buyer/seller/dealer preview
-  // currently being shown (mobile-production-readiness-plan.md F38).
-
-  const handleSignOut = () => {
-    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: logout },
+    setChecks(EMPTY);
+    const [summary, auctions, deliveries] = await Promise.allSettled([
+      apiClient<{ success: boolean; data: Summary }>('/dashboard/unified').then(result => {
+        const data = result?.data;
+        if (!result?.success || !data?.buyer || !data?.seller ||
+          ![data.buyer.counteredOffersPending, data.seller.incomingOffers, data.unreadMessages]
+            .every(n => typeof n === 'number' && Number.isFinite(n) && n >= 0)) {
+          throw Error('Dashboard checks unavailable');
+        }
+        return data;
+      }),
+      fetchAllMyAuctions<AttentionAuction>('list'),
+      getReceivedDeliveryRequests(),
     ]);
+    if (request !== sequence.current) return;
+    setChecks({
+      summary: summary.status === 'fulfilled' ? summary.value : null,
+      auctions: auctions.status === 'fulfilled' ? auctions.value : [],
+      deliveries: deliveries.status === 'fulfilled' ? deliveries.value.filter(d => d.status === 'PENDING').length : 0,
+      failed: [summary, auctions, deliveries].some(result => result.status === 'rejected'),
+    });
+    setLoading(false);
+  }, [userId]);
+  useFocusEffect(useCallback(() => {
+    void load();
+    return () => { sequence.current += 1; };
+  }, [load]));
+
+  const items = buildUserAttentionItems({
+    now: Date.now(), myAuctions: checks.auctions,
+    incomingOffers: checks.summary?.seller.incomingOffers ?? 0,
+    counterOffersAwaitingMe: checks.summary?.buyer.counteredOffersPending ?? 0,
+    pendingDeliveryRequests: checks.deliveries, unreadMessages: checks.summary?.unreadMessages ?? 0,
+  });
+  const open = (item: UserAttentionItem) => {
+    switch (item.kind) {
+      case 'provisional': navigation.navigate('AuctionDeepLink', { auctionId: item.href.split('/').pop() }); break;
+      case 'handover': navigation.navigate('SellerAuctions'); break;
+      case 'incomingOffers': navigation.navigate('SellerOffers'); break;
+      case 'counterOffers': navigation.navigate('BuyerOffers'); break;
+      case 'deliveryRequests': navigation.navigate('BuyerDeliveryRequests'); break;
+      case 'messages': navigation.navigate('Messages'); break;
+    }
   };
-
-  const nav = (screen: string) => navigation?.navigate(screen);
-  // Use the verified auction list and seller stage rules for auction follow-ups.
-  // Never present a successful all-clear when the auction request failed.
-  const pendingProvisional = sellerAuctions.filter(a => a.status === 'ENDED' && !a.winnerId && !!a.provisionalOfferBidId && !!a.provisionalOfferedAt && Number.isFinite(Date.parse(a.provisionalOfferedAt)) && Date.now() < Date.parse(a.provisionalOfferedAt) + 72 * 60 * 60 * 1000);
-  const pendingHandovers = sellerAuctions.filter(a => ['ARRANGE_INSPECTION_PAYMENT', 'READY_FOR_HANDOVER', 'CORRECT_PROOF'].includes(getSellerAuctionStage(a)));
-  const attentionActions = [
-    ...(pendingProvisional.length ? [{ key: 'provisional', title: `${pendingProvisional.length} provisional auction offer${pendingProvisional.length === 1 ? '' : 's'} awaiting your decision`, detail: 'Review before the 72-hour deadline', screen: 'SellerAuctions' }] : []),
-    ...(pendingHandovers.length ? [{ key: 'handover', title: `${pendingHandovers.length} sold car${pendingHandovers.length === 1 ? '' : 's'} need handover steps`, detail: 'Confirm cleared funds and complete handover', screen: 'SellerAuctions' }] : []),
-    ...(isSeller && seller.incomingOffers > 0 ? [{ key: 'incoming', title: `${seller.incomingOffers} buyer offer${seller.incomingOffers === 1 ? '' : 's'} awaiting your reply`, detail: 'Review or counter incoming offers', screen: 'SellerOffers' }] : []),
-    ...(buyer.counteredOffersPending > 0 ? [{ key: 'countered', title: `${buyer.counteredOffersPending} counter-offer${buyer.counteredOffersPending === 1 ? '' : 's'} awaiting you`, detail: 'Respond to the seller', screen: 'BuyerOffers' }] : []),
-    ...(unreadMessages > 0 ? [{ key: 'messages', title: `${unreadMessages} unread message${unreadMessages === 1 ? '' : 's'}`, detail: 'Read your messages', screen: 'Messages' }] : []),
-  ];
-
-  return (
-    <View style={styles.container}>
-      <ScreenBackBar />
-      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
-      <LinearGradient
-        colors={[Colors.accentAlpha06, Colors.infoBlueAlpha03, Colors.bgPrimary]}
-        start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-      <View style={{ height: insets.top }} />
-
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <Logo size="sm" />
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.bellBtn} activeOpacity={0.75} onPress={() => nav('Notifications')} accessibilityLabel="Notifications" accessibilityRole="button" hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}>
-            {unreadMessages > 0 && <View style={styles.bellDot} />}
-            <Ionicons name="notifications-outline" size={18} color={Colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
+  return <View style={styles.screen}>
+    <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
+    <WebsiteTopBar />
+    <ScrollView contentContainerStyle={{ paddingBottom: clearance }} showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} tintColor={Colors.accent} />}>
+      <View style={styles.heading}>
+        <Text accessibilityRole="header" style={styles.title}>My Dashboard</Text>
+        <Text style={styles.subtitle}>Everything you need to buy, sell and manage your cars in one place.</Text>
       </View>
-
-      <ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 110 }]} showsVerticalScrollIndicator={false}>
-
-        {error ? (
-          <View style={{ marginBottom: 16 }}>
-            <ErrorBanner message={error} onRetry={load} />
-          </View>
-        ) : null}
-
-        {/* ── Profile card ── */}
-        <View style={styles.profileCard}>
-          <View style={[styles.avatar, isDealer && styles.avatarDealer, isSeller && !isDealer && styles.avatarSeller]}>
-            <Text style={styles.avatarText}>{initials}</Text>
-
-          </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName} numberOfLines={1}>{fullName}</Text>
-            <Text style={styles.profileEmail} numberOfLines={1}>{email}</Text>
-          </View>
-          <View style={[styles.rolePill, isDealer ? styles.rolePillAmber : isSeller ? styles.rolePillBlue : styles.rolePillGreen]}>
-            <Text style={[styles.rolePillText, isDealer ? { color: Colors.warning } : isSeller ? { color: Colors.infoBlue } : { color: Colors.success }]}>
-              {isDealer ? 'DEALER' : isSeller ? 'SELLER' : 'BUYER'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Prioritised tasks use real unified-dashboard counts, never guessed values. */}
-        <View style={{ marginBottom: 16, padding: 16, borderRadius: 14, backgroundColor: Colors.whiteAlpha05 }}>
-          <Text style={{ color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 18, marginBottom: 6 }}>Needs your attention</Text>
-          {loading || auctionChecking ? <Text style={{ color: Colors.textSecondary }}>Checking your account...</Text> : error ? (
-            <Text style={{ color: Colors.textSecondary }}>Unable to check your tasks. Retry above.</Text>
-          ) : attentionActions.length ? attentionActions.map(item => (
-            <TouchableOpacity key={item.key} accessibilityRole="button" accessibilityLabel={item.title} onPress={() => nav(item.screen)} activeOpacity={0.75} style={{ paddingVertical: 12, borderTopWidth: 1, borderTopColor: Colors.whiteAlpha12, flexDirection: 'row', alignItems: 'center' }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: Colors.textPrimary, fontFamily: FontFamily.bold }}>{item.title}</Text>
-                <Text style={{ color: Colors.textSecondary, marginTop: 3 }}>{item.detail}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.accent} />
-            </TouchableOpacity>
-          )) : <Text style={{ color: Colors.textSecondary }}>{auctionCheckError ? 'Auction status unavailable. Open My Auctions to check outstanding steps.' : 'No outstanding offers, messages or auction steps found.'}</Text>}
-          {auctionCheckError && attentionActions.length > 0 ? <Text style={{ color: Colors.textSecondary, marginTop: 8 }}>Auction status could not be checked. Open My Auctions for updates.</Text> : null}
-        </View>
-
-        <DashboardCards mode="personal" />
-
-        {/* ── Sign out ── */}
-        <TouchableOpacity style={styles.signOutRow} activeOpacity={0.75} onPress={handleSignOut}>
-          <View style={styles.signOutIcon}>
-            <Ionicons name="log-out-outline" size={17} color={Colors.accent} />
-          </View>
-          <Text style={styles.signOutText}>Sign out</Text>
-          <Ionicons name="chevron-forward" size={14} color={Colors.accent} accessibilityElementsHidden importantForAccessibility="no" />
-        </TouchableOpacity>
-
-      </ScrollView>
-    </View>
-  );
+      <View style={styles.attention}>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>Needs your attention</Text>
+        <Text style={styles.hint}>Your to-do list, most urgent first.</Text>
+        {loading ? <ActivityIndicator accessibilityLabel="Checking your account" color={Colors.accent} /> : <>
+          {checks.failed && <View accessibilityRole="alert" style={styles.warning}>
+            <Text style={styles.body}>Some checks failed. This list may be incomplete. Open your offers, auctions or messages to check them directly.</Text>
+            <Button label="Retry checks" size="sm" variant="outline" onPress={() => void load()} />
+          </View>}
+          {!items.length && !checks.failed && checks.summary && <View style={styles.clear}>
+            <Ionicons name="checkmark-circle-outline" size={22} color={Colors.success} />
+            <Text style={[styles.body, styles.flex]}>You're all caught up. Nothing needs your attention right now.</Text>
+          </View>}
+          {items.map(item => <TouchableOpacity key={item.key} accessibilityRole="button" accessibilityLabel={item.title}
+            onPress={() => open(item)} style={[styles.task, item.urgent && styles.urgent]} activeOpacity={0.8}>
+            <Ionicons name={icons[item.kind] as any} size={22} color={item.urgent ? Colors.warning : Colors.accent} />
+            <View style={styles.flex}><Text style={styles.taskTitle}>{item.title}</Text><Text style={styles.hint}>{item.detail}</Text></View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
+          </TouchableOpacity>)}
+        </>}
+      </View>
+      <DashboardCards mode="personal" />
+    </ScrollView>
+  </View>;
 };
-
-// ═══════════════════════════ STYLES ════════════════════════════════
-
-const CARD_BG = Colors.bgSecondary;
-const BORDER = Colors.whiteAlpha07;
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgPrimary },
-  scroll: { flex: 1 },
-  scrollContent: { paddingTop: 8 },
-
-  // Header
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 14 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  bellBtn: { width: 38, height: 38, borderRadius: Radius.inline, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderBottomWidth: 2, ...Elevation.card },
-  bellDot: { position: 'absolute', top: 8, right: 8, width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.accent },
-
-  // Profile card
-  profileCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 20, borderRadius: Radius.card, borderWidth: 1, padding: 16, gap: 14, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.cardHi },
-  avatar: { width: 50, height: 50, borderRadius: 14, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
-  avatarDealer: { backgroundColor: Colors.midOrange_b8860b, borderWidth: 1.5, borderColor: Colors.warning },
-  avatarSeller: { backgroundColor: Colors.midBlue_1d4ed8, borderWidth: 1.5, borderColor: Colors.infoBlue },
-  avatarText: { fontFamily: FontFamily.bold, fontSize: FontSize.xl, color: Colors.onAccent },
-  avatarCheck: { position: 'absolute', bottom: -2, right: -2, width: 16, height: 16, borderRadius: 8, backgroundColor: Colors.success, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: Colors.bgPrimary },
-  profileInfo: { flex: 1 },
-  profileName: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 2 },
-  profileEmail: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textSecondary },
-  rolePill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1 },
-  rolePillAmber: { backgroundColor: Colors.warningAlpha10, borderColor: Colors.warningAlpha30 },
-  rolePillBlue: { backgroundColor: Colors.infoBlueAlpha10, borderColor: Colors.infoBlueAlpha30 },
-  rolePillGreen: { backgroundColor: Colors.successAlpha10, borderColor: 'rgba(34,197,94,0.3)' },
-  rolePillText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, letterSpacing: 1 },
-
-  // Section header
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, marginBottom: 12 },
-  sectionLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 1.6 },
-
-  accountQuickActions: { flexDirection: 'row', gap: 10, marginHorizontal: 20, marginBottom: 22 },
-  accountQuickBuy: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: Colors.accent, borderRadius: Radius.inline, paddingHorizontal: 8, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
-  accountQuickManage: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.inline, paddingHorizontal: 8, borderBottomWidth: 3, borderBottomColor: Colors.blackAlpha45, ...Elevation.card },
-  onAccentText: { color: Colors.onAccent },
-  accountQuickText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
-  // Overview stats
-  statsRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 24, borderRadius: Radius.card, borderWidth: 1, paddingVertical: 18, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
-  statCell: { flex: 1, alignItems: 'center' },
-  statValue: { fontFamily: FontFamily.extraBold, fontSize: FontSize.size22, color: Colors.white, marginBottom: 2 },
-  statName: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 0.5 },
-  statDivider: { width: 1, height: 30, backgroundColor: BORDER },
-
-  // Tile grid
-  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12, marginBottom: 20 },
-  tile: { width: '47%', borderRadius: Radius.card, borderWidth: 1, padding: 16, gap: 8, backgroundColor: Colors.bgCard, borderColor: Colors.border, ...Elevation.card },
-  tileWide: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 14 },
-  tileTextWrap: { flex: 1, gap: 3 },
-  tileIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', position: 'relative' },
-  tileBadge: { position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, borderWidth: 1.5, borderColor: Colors.bgPrimary },
-  tileBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.onAccent },
-  tileLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
-  tileSublabel: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
-
-  // Sign out
-  signOutRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, borderWidth: 1, borderColor: Colors.accentAlpha20, borderRadius: Radius.inline, paddingHorizontal: 16, paddingVertical: 14, gap: 12, backgroundColor: Colors.bgCard, borderBottomWidth: 3, ...Elevation.card },
-  signOutIcon: { width: 34, height: 34, borderRadius: Radius.inline, backgroundColor: Colors.accentAlpha12, alignItems: 'center', justifyContent: 'center' },
-  signOutText: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.accent },
+  screen: { flex: 1, backgroundColor: Colors.bgPrimary },
+  heading: { padding: 20, gap: 6 },
+  title: { fontSize: 24, fontFamily: FontFamily.bold, color: Colors.textPrimary, textTransform: 'uppercase' },
+  subtitle: { fontSize: 14, lineHeight: 22, color: Colors.textSecondary },
+  attention: { marginHorizontal: 20, marginBottom: 32, padding: 20, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard, gap: 12 },
+  sectionTitle: { fontSize: 18, fontFamily: FontFamily.bold, color: Colors.textPrimary, textTransform: 'uppercase' },
+  hint: { fontSize: 13, lineHeight: 20, color: Colors.textSecondary },
+  body: { fontSize: 14, lineHeight: 22, color: Colors.textPrimary },
+  flex: { flex: 1, gap: 4 },
+  task: { flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: 1, borderColor: Colors.border, borderRadius: 12, padding: 16 },
+  urgent: { backgroundColor: Colors.warningAlpha10, borderColor: Colors.warningAlpha30 },
+  taskTitle: { fontSize: 14, lineHeight: 22, fontFamily: FontFamily.bold, color: Colors.textPrimary },
+  warning: { padding: 14, gap: 10, borderRadius: 12, borderWidth: 1, borderColor: Colors.warningAlpha30 },
+  clear: { flexDirection: 'row', gap: 12, alignItems: 'center', padding: 16, borderRadius: 12, backgroundColor: Colors.successAlpha06 },
 });

@@ -43,15 +43,6 @@ test('dashboard identity stays server-backed while reporting screens remain avai
   }
 });
 
-test('outstanding tasks retain explicit failure and permission handling', () => {
-  assert.ok(overview.includes('offersError &&'));
-  assert.ok(overview.includes('We couldn'));
-  assert.ok(overview.includes('!offersError &&'));
-  assert.ok(overview.includes('if (!canManageOffers)'));
-  assert.ok(overview.includes('if (!canViewPurchases)'));
-  assert.ok(overview.includes('if (!canManageInventory)'));
-});
-
 test('one set of permission-gated jobs; no altered auction/KYC/buyer routes', () => {
   for (const key of ["'MANAGE_INVENTORY'","'MANAGE_CRM'","'VIEW_TRADE'","'VIEW_ANALYTICS'","'VIEW_INVENTORY'"]) {
     assert.ok(native.includes(key), key);

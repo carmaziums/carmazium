@@ -64,11 +64,12 @@ function AccountCards({ userId, mode }: { userId: string; mode: 'dealer' | 'pers
     if (item.tabName) navigation.navigate('Tabs', { screen: item.tabName, params: item.tabParams ?? item.tabStackParams });
     else if (item.stackScreen) navigation.navigate(item.stackScreen, item.stackParams);
   };
-  const columns = fontScale >= 1.4 || width < 360 ? 1 : width >= 760 ? 3 : 2;
+  const columns = fontScale >= 1.4 || width < 360 ? 1 : width >= 1280 ? 3 : 2;
+  const cardWidth = (width - 40 - (columns - 1) * 16) / columns;
   return <View style={s.section}>
     <View style={s.header}>
       <View style={s.heading}><Text accessibilityRole="header" style={s.title}>Your dashboard</Text><Text style={s.hint}>Everything you need, in your order.</Text></View>
-      <Button label={editing ? 'Done' : 'Customise'} size="sm" variant="outline" disabled={!ready} onPress={() => setEditing(!editing)} />
+      <Button label={editing ? 'Done' : 'Customise'} variant="outline" disabled={!ready} onPress={() => setEditing(!editing)} />
     </View>
     {error && <View accessibilityRole="alert"><Text style={s.error}>{error}</Text><Button label="Retry save" variant="outline" onPress={() => save(current.current)} /></View>}
     {mode === 'dealer' && access.error && <View><Text style={s.error}>Some tools are hidden because permissions could not be loaded.</Text><Button label="Retry permissions" variant="outline" onPress={() => void access.refresh(true)} /></View>}
@@ -79,7 +80,7 @@ function AccountCards({ userId, mode }: { userId: string; mode: 'dealer' | 'pers
         const color = palette[item.section || 'Account'] || '#334155';
         const hidden = preferences.hidden.includes(item.id);
         const index = ordered.findIndex(entry => entry.id === item.id);
-        return <View key={item.id} style={[s.card, { width: columns === 1 ? '100%' : columns === 3 ? '31%' : '47%', backgroundColor: color, opacity: hidden ? 0.55 : 1 }]}>
+        return <View key={item.id} style={[s.card, { width: cardWidth, backgroundColor: color, opacity: hidden ? 0.55 : 1 }]}>
           <TouchableOpacity accessibilityRole="button" accessibilityLabel={item.label} onPress={() => open(item)} style={s.cardAction} activeOpacity={0.8}>
             <View style={s.icon}>{item.iconLib === 'mci' ? <MaterialCommunityIcons name={item.icon} size={27} color="#fff" /> : <Ionicons name={item.icon as any} size={27} color="#fff" />}</View>
             <Text style={s.group}>{item.section}</Text><Text style={s.label}>{item.label}</Text>
@@ -95,16 +96,16 @@ function AccountCards({ userId, mode }: { userId: string; mode: 'dealer' | 'pers
 }
 
 const s = StyleSheet.create({
-  section: { paddingHorizontal: 16, marginVertical: 20, gap: 16 },
+  section: { paddingHorizontal: 20, marginVertical: 0, gap: 16 },
   header: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 },
-  heading: { flexGrow: 1, flexShrink: 1 }, title: { fontSize: 23, fontFamily: FontFamily.bold, color: Colors.textPrimary },
+  heading: { flexGrow: 1, flexShrink: 1 }, title: { fontSize: 24, fontFamily: FontFamily.bold, color: Colors.textPrimary },
   hint: { fontSize: 14, lineHeight: 22, color: Colors.textSecondary }, error: { fontSize: 14, color: Colors.accent, marginBottom: 8 },
-  editIntro: { gap: 8 }, grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 14 },
+  editIntro: { gap: 8 }, grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 16 },
   card: { borderRadius: 20, borderBottomWidth: 4, borderColor: '#00000030', overflow: 'hidden' },
-  cardAction: { minHeight: 166, padding: 18, gap: 8 }, icon: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#ffffff20', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  cardAction: { minHeight: 166, padding: 18, gap: 8 }, icon: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#ffffff26', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   group: { fontSize: 12, color: '#ffffff', fontFamily: FontFamily.medium },
   label: { fontSize: 17, lineHeight: 24, fontFamily: FontFamily.bold, color: '#fff' },
   controls: { padding: 8, gap: 6, borderTopWidth: 1, borderColor: '#ffffff40' },
-  control: { minHeight: 48, justifyContent: 'center', alignItems: 'center', padding: 10, borderRadius: 10, backgroundColor: '#ffffff20' },
+  control: { minHeight: 48, justifyContent: 'center', alignItems: 'center', padding: 10, borderRadius: 10, backgroundColor: '#ffffff26' },
   controlLabel: { fontSize: 14, color: '#fff', fontFamily: FontFamily.bold },
 });

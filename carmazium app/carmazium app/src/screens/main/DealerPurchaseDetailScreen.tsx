@@ -20,6 +20,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
 import type { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Layout } from '../../constants/layout';
+import { ReconciledPurchaseScreen } from './ReconciledPurchaseScreen';
 
 type Nav = NativeStackNavigationProp<MainStackParamList>;
 type DetailRoute = RouteProp<MainStackParamList, 'DealerPurchaseDetail'>;
@@ -116,6 +117,10 @@ const DetailSection = ({
 
 /** Never request seller PII outside the fee-gated /:id/seller endpoint. */
 export const DealerPurchaseDetailScreen: React.FC = () => {
+  const { params } = useRoute<DetailRoute>();
+  return params.reconciled ? <ReconciledPurchaseScreen id={params.saleId} /> : <RecordedPurchaseDetailScreen />;
+};
+const RecordedPurchaseDetailScreen: React.FC = () => {
   // Paused while a finger is on the 3D damage viewer (lib/scrollLock.ts).
   const scrollLocked = useScrollLocked();
   const navigation = useNavigation<Nav>();

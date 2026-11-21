@@ -150,7 +150,7 @@ export type MainStackParamList = {
   DealerMyOffers: { fromBidsOffers?: boolean } | undefined;
   /** view: All Purchases (default), Retail Purchases or Purchase History. */
   DealerPurchases: { view?: 'all' | 'retail' | 'history'; stage?: 'progress' | 'completed' | 'cancelled'; channel?: 'all' | 'auction' | 'retail' } | undefined;
-  DealerPurchaseDetail: { saleId: string };
+  DealerPurchaseDetail: { saleId: string; reconciled?: boolean };
   DealerEarnings: undefined;
   DealerFinance: undefined;
   FinancePreferences: undefined;
