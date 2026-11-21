@@ -1,4 +1,3 @@
-
 export type VehicleImageFit = "cover" | "contain"
 export type VehicleImageCategory = "EXTERIOR" | "INTERIOR" | "DAMAGE" | "UNASSIGNED"
 
@@ -115,4 +114,3 @@ export function encodeVehicleImageCategory(
         category,
     })
 }
-
