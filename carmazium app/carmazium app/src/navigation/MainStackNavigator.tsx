@@ -2,10 +2,6 @@ import { GuestEnquiriesScreen } from '../screens/main/GuestEnquiriesScreen';
 import { WarrantyScreen, WarrantyOrderScreen, WarrantyOrdersScreen } from '../screens/main/WarrantyScreens';
 import { BlogScreen, BlogArticleScreen, BusinessSpotlightScreen, CarBodyGuideScreen, PartnerGuideScreen, WarrantyTermsScreen, CookiePolicyScreen } from '../screens/main/NativeInformationScreens';
 import React from 'react';
-import { View } from 'react-native';
-import { AdminBottomNav } from '../components/AdminBottomNav';
-import { PersonalDashboardBottomNav } from '../components/PersonalDashboardBottomNav';
-import { isPersonalDashboardRoute } from '../lib/personalDashboardTabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigatorScreenParams } from '@react-navigation/native';
 import { TabNavigator, TabParamList } from './TabNavigator';
@@ -284,24 +280,15 @@ const Stack = createNativeStackNavigator<MainStackParamList>();
  * whose API calls could only fail. Module scope (not inline) so React
  * Navigation never remounts screens because the layout identity changed.
  */
-const GuestAwareLayout = ({ children, route }: { children: React.ReactNode; route: { name: string; params?: object } }) => {
-  const accountRole = useAuthStore((s) => s.accountRole);
-  const showAdminNav = accountRole === 'admin' && route.name.startsWith('Admin');
-  const showPersonalNav = (accountRole === 'buyer' || accountRole === 'seller') && isPersonalDashboardRoute(route.name);
-  return <GuestGate routeName={route.name} routeParams={route.params}>
-    {showAdminNav ? (
-      <View style={{ flex: 1 }}>
-        <View style={{ flex: 1 }}>{children}</View>
-        <AdminBottomNav routeName={route.name} />
-      </View>
-    ) : showPersonalNav ? (
-      <View style={{ flex: 1 }}>
-        <View style={{ flex: 1 }}>{children}</View>
-        <PersonalDashboardBottomNav role={accountRole as 'buyer' | 'seller'} activeRoute={route.name} />
-      </View>
-    ) : children}
-  </GuestGate>;
-};
+// Keep the native stack screen layout stable across pushes and transitions.
+// The original guest gate remains on every stack route; signed-out users must
+// still sign in for account-only destinations. Avoid embedding role-dependent
+// bottom navigation in the screenLayout: production build 122 crashes when a
+// guest pushes VehicleDetail or Pricing. Dashboard tabs retain their own
+// role-specific navigation; additional stack-page shortcuts need separate QA.
+const GuestAwareLayout = ({ children, route }: { children: React.ReactNode; route: { name: string; params?: object } }) => (
+  <GuestGate routeName={route.name} routeParams={route.params}>{children}</GuestGate>
+);
 
 const GuestGate: React.FC<{ routeName: string; routeParams?: object; children: React.ReactNode }> = ({ routeName, routeParams, children }) => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
