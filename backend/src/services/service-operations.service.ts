@@ -473,7 +473,6 @@ export class ServiceOperationsService {
         }
 
         const coverAmountGbp = this.parseInsuranceLimit(input, requirement);
-        const coverAmountGbp = this.parseInsuranceLimit(input, requirement);
         const validFrom = this.parseOptionalDate(input?.validFrom, 'Valid-from date');
         const expiresAt = this.parseOptionalDate(input?.expiresAt, 'Expiry date');
         if (requirement.expiryRequired && !expiresAt) {
@@ -682,6 +681,7 @@ export class ServiceOperationsService {
         if (!requirement) {
             throw new BadRequestException('Choose a verification evidence type required for this service.');
         }
+        const coverAmountGbp = this.parseInsuranceLimit(input, requirement);
         const validFrom = this.parseOptionalDate(input?.validFrom, 'Valid-from date');
         const expiresAt = this.parseOptionalDate(input?.expiresAt, 'Expiry date');
         if (requirement.expiryRequired && !expiresAt) {
