@@ -24,10 +24,13 @@ import {
   getNotifications,
   markNotificationRead,
   markAllRead,
+  getUnreadCount,
   notifStyle,
   notifTimeAgo,
 } from '../../lib/notificationsApi';
 import { resolveMobileNotificationTarget } from '../../lib/notificationRouting';
+import { getVisibleNotifications, buildEmailNotificationPreferences } from '../../lib/nativeNotificationParity';
+import { apiClient } from '../../lib/apiClient';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuthStore } from '../../store/authStore';
@@ -72,6 +75,12 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   const accountRole = useAuthStore((s) => s.accountRole);
 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [unreadTotal, setUnreadTotal] = useState(0);
+  const [emailEnabled, setEmailEnabled] = useState(true);
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [preferencesReady, setPreferencesReady] = useState(false);
+  const [profilePreferences, setProfilePreferences] = useState<Record<string, unknown>>({});
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -81,15 +90,37 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
-  const groups = groupByDate(notifications);
+  const visibleNotifications = getVisibleNotifications(notifications, filter);
+  const groups = groupByDate(visibleNotifications);
 
   // ── fetch ────────────────────────────────────────────────────────────────────
 
   const load = useCallback(async (isRefresh = false) => {
+    setPreferencesReady(false);
     try {
-      const data = await getNotifications(1, 50);
-      setNotifications(data.notifications);
-      setTotal(data.total);
+      // Preference/profile failures must never prevent the notification inbox
+      // from loading. The website keeps its list visible in that situation too.
+      const [data, count, me] = await Promise.allSettled([
+        getNotifications(1, 50),
+        getUnreadCount(),
+        apiClient<{ data?: { preferences?: Record<string, unknown> } }>('/users/me'),
+      ] as const);
+      if (data.status !== 'fulfilled') throw Error('Notifications unavailable');
+      setNotifications(data.value.notifications);
+      setTotal(data.value.total);
+      setUnreadTotal(Math.max(
+        count.status === 'fulfilled' ? count.value : 0,
+        data.value.notifications.filter(n => !n.isRead).length,
+      ));
+      if (me.status === 'fulfilled') {
+        const preferences = me.value.data?.preferences ?? {};
+        setProfilePreferences(preferences);
+        const prefs = preferences.notifications;
+        const notificationPrefs = prefs && typeof prefs === 'object' && !Array.isArray(prefs)
+          ? prefs as Record<string, unknown> : {};
+        setEmailEnabled(notificationPrefs.email !== false);
+        setPreferencesReady(true);
+      }
       setPage(1);
       setLoadError(null);
     } catch {
@@ -133,7 +164,9 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
         setNotifications((prev) =>
           prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)),
         );
+        setUnreadTotal(count => Math.max(0, count - 1));
         markNotificationRead(n.id).catch(() => {
+          setUnreadTotal(count => count + 1);
           // Keep the unread badge truthful if the server could not save it.
           setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, isRead: false } : x));
         });
@@ -148,20 +181,42 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   );
 
   const handleMarkAll = useCallback(async () => {
-    if (markingAll || unreadCount === 0) return;
+    if (markingAll || unreadTotal === 0) return;
     setMarkingAll(true);
     try {
       await markAllRead();
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadTotal(0);
     } catch {
       Alert.alert('Unable to mark notifications read', 'Your notifications are unchanged. Please try again.');
       await load();
     } finally {
       setMarkingAll(false);
     }
-  }, [markingAll, unreadCount, load]);
+  }, [markingAll, unreadTotal, load]);
 
   // ── render helpers ────────────────────────────────────────────────────────────
+
+  const handleToggleEmail = useCallback(async () => {
+    if (emailSaving || !preferencesReady) return;
+    const previous = emailEnabled;
+    const next = !previous;
+    setEmailSaving(true);
+    setEmailEnabled(next);
+    try {
+      const preferences = buildEmailNotificationPreferences(profilePreferences, next);
+      await apiClient('/users/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ preferences }),
+      });
+      setProfilePreferences(preferences);
+    } catch {
+      setEmailEnabled(previous);
+      Alert.alert('Preference not saved', 'Could not save your email notification preference. Please try again.');
+    } finally {
+      setEmailSaving(false);
+    }
+  }, [emailEnabled, emailSaving, profilePreferences, preferencesReady]);
 
   const renderSkeleton = () =>
     Array.from({ length: 5 }).map((_, i) => (
@@ -259,10 +314,10 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Notifications</Text>
-          {unreadCount > 0 && (
+          {unreadTotal > 0 && (
             <View style={styles.unreadBadge}>
               <Text style={styles.unreadBadgeText}>
-                {unreadCount > 99 ? '99+' : unreadCount}
+                {unreadTotal > 99 ? '99+' : unreadTotal}
               </Text>
             </View>
           )}
@@ -271,11 +326,11 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
         <TouchableOpacity
           style={[
             styles.markAllBtn,
-            (markingAll || unreadCount === 0) && styles.markAllBtnDisabled,
+            (markingAll || unreadTotal === 0) && styles.markAllBtnDisabled,
           ]}
           activeOpacity={0.7}
           onPress={handleMarkAll}
-          disabled={markingAll || unreadCount === 0}
+          disabled={markingAll || unreadTotal === 0}
         >
           {markingAll ? (
             <ActivityIndicator size="small" color={Colors.accent} />
@@ -283,12 +338,41 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
             <Text
               style={[
                 styles.markAllText,
-                unreadCount === 0 && { opacity: 0.35 },
+                unreadTotal === 0 && { opacity: 0.35 },
               ]}
             >
-              Read all
+              Mark all read
             </Text>
           )}
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.websiteControls}>
+        <Text style={styles.statusSummary}>{unreadTotal > 0 ? `${unreadTotal} unread` : "You're all caught up"}</Text>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Refresh notifications"
+          onPress={() => void load(true)} disabled={loading || refreshing} style={styles.refreshButton}>
+          <Ionicons name="refresh-outline" size={17} color={Colors.textSecondary} />
+          <Text style={styles.refreshText}>Refresh</Text>
+        </TouchableOpacity>
+        <View style={styles.filtersRow} accessibilityRole="tablist">
+          {(['all', 'unread'] as const).map(tab => <TouchableOpacity key={tab}
+            accessibilityRole="tab" accessibilityState={{ selected: filter === tab }}
+            onPress={() => setFilter(tab)}
+            style={[styles.filterButton, filter === tab && styles.filterActive]}>
+            <Text style={[styles.filterLabel, filter === tab && styles.filterActiveLabel]}>{tab === 'all' ? 'All' : 'Unread'}</Text>
+          </TouchableOpacity>)}
+        </View>
+        <TouchableOpacity accessibilityRole="switch" accessibilityLabel="Email notifications"
+          accessibilityState={{ checked: emailEnabled, disabled: emailSaving || !preferencesReady }}
+          disabled={emailSaving || !preferencesReady} onPress={() => void handleToggleEmail()} style={styles.emailRow}>
+          <Ionicons name="mail-outline" size={21} color={Colors.accent} />
+          <View style={styles.emailTextWrap}>
+            <Text style={styles.emailTitle}>Email notifications</Text>
+            <Text style={styles.emailHint}>{!preferencesReady ? 'Preference unavailable' : emailEnabled ? 'On' : 'Off'}</Text>
+          </View>
+          <View style={[styles.emailSwitch, emailEnabled && styles.emailSwitchOn]}>
+            <View style={[styles.emailKnob, emailEnabled && styles.emailKnobOn]} />
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -302,7 +386,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
       )}
 
       {/* ── Content ── */}
-      {loading || notifications.length === 0 ? (
+      {loading || visibleNotifications.length === 0 ? (
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
@@ -359,6 +443,23 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 // ═══════════════════════════ STYLES ═══════════════════════════════════════════
 
 const styles = StyleSheet.create({
+  websiteControls: { marginHorizontal: 20, marginBottom: 8, padding: 16, gap: 12, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard, borderRadius: 18 },
+  statusSummary: { color: Colors.textSecondary, fontSize: FontSize.sm, fontFamily: FontFamily.medium },
+  refreshButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, minHeight: 44, borderRadius: 11, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.inputBg, paddingHorizontal: 15, alignSelf: 'flex-start' },
+  refreshText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary },
+  filtersRow: { alignSelf: 'flex-start', flexDirection: 'row', gap: 6, padding: 5, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.inputBg, borderRadius: 12 },
+  filterButton: { minHeight: 42, paddingHorizontal: 17, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  filterActive: { backgroundColor: Colors.accent },
+  filterLabel: { color: Colors.textSecondary, fontSize: FontSize.base, fontFamily: FontFamily.bold },
+  filterActiveLabel: { color: Colors.onAccent },
+  emailRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 65, padding: 12, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.inputBg, borderRadius: 13 },
+  emailTextWrap: { flex: 1, gap: 3 },
+  emailTitle: { color: Colors.textPrimary, fontSize: FontSize.base, fontFamily: FontFamily.bold },
+  emailHint: { color: Colors.textMuted, fontSize: FontSize.sm },
+  emailSwitch: { width: 48, height: 27, borderRadius: 15, backgroundColor: Colors.border, padding: 3, justifyContent: 'center' },
+  emailSwitchOn: { backgroundColor: Colors.accent },
+  emailKnob: { width: 21, height: 21, borderRadius: 12, backgroundColor: Colors.onAccent, alignSelf: 'flex-start' },
+  emailKnobOn: { alignSelf: 'flex-end' },
   container: {
     flex: 1,
     backgroundColor: Colors.bgPrimary,

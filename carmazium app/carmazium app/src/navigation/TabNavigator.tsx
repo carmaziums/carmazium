@@ -24,6 +24,7 @@ import { DealerProfileScreen } from '../screens/main/DealerProfileScreen';
 import { DealerInventoryScreen } from '../screens/main/DealerInventoryScreen';
 import { DealerLeadsScreen } from '../screens/main/DealerLeadsScreen';
 import { useDealerAccess } from '../hooks/useDealerAccess';
+import { PersonalDashboardBottomNav } from '../components/PersonalDashboardBottomNav';
 import { withDealerGate } from '../components/DealerGate';
 import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScreen';
 import { BuyerDashboardScreen } from '../screens/buyer/BuyerDashboardScreen';
@@ -213,6 +214,13 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
     });
     return handlers;
   }, [state.routes, state.index, navigation]);
+
+  // On the signed-in personal dashboard the website has four role-specific
+  // shortcuts, not the five public marketplace tabs. Do not change public
+  // Home/Search/Live/Saved navigation; this only applies on Profile.
+  if ((accountRole === 'seller' || accountRole === 'buyer') && state.routes[state.index]?.name === 'Profile') {
+    return <PersonalDashboardBottomNav role={accountRole} activeRoute="Profile" />;
+  }
 
   return (
     // Match website DashboardSidebar's edge-to-edge five-item bar, including

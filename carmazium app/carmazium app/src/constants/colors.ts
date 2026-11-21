@@ -152,8 +152,22 @@ const darkPalette = {
   bgDropdown: '#243047',
   /** Website --color-secondary navy. Fixed in both themes (avatar gradients). */
   brandNavy: '#1E293B',
+  // Exact fixed colours used by the website's dashboardCards.json sections.
+  // Keep these identical in both native themes for website/app tile parity.
+  dashboardSell: '#9d174d',
+  dashboardBuy: '#1e40af',
+  dashboardBusiness: '#6b21a8',
+  dashboardServices: '#0f766e',
+  dashboardAccount: '#334155',
+  dashboardShadowBorder: '#00000030',
+  dashboardWhite15: '#ffffff26',
+  dashboardWhite25: '#ffffff40',
   /** UK number-plate / featured-badge yellow. Fixed in both themes. */
   plateYellow: '#FBBF24',
+  vehicleImportYellow: '#FACC15',
+  vehicleImportBorder: '#FDE68A',
+  vehicleImportInk: '#111827',
+  vehicleElectricalBg: 'rgba(59, 130, 246, 0.07)',
   /** bgBody at alpha 0 — gradient stop that fades into the page ground. */
   groundClear: 'rgba(27, 37, 56, 0)',
 
@@ -486,7 +500,21 @@ const lightPalette: Palette = {
   iconMuted: lMuted,
   bgDropdown: lCard,
   brandNavy: '#1E293B',
+  // Exact fixed colours used by the website's dashboardCards.json sections.
+  // Keep these identical in both native themes for website/app tile parity.
+  dashboardSell: '#9d174d',
+  dashboardBuy: '#1e40af',
+  dashboardBusiness: '#6b21a8',
+  dashboardServices: '#0f766e',
+  dashboardAccount: '#334155',
+  dashboardShadowBorder: '#00000030',
+  dashboardWhite15: '#ffffff26',
+  dashboardWhite25: '#ffffff40',
   plateYellow: '#FBBF24',
+  vehicleImportYellow: '#FACC15',
+  vehicleImportBorder: '#FDE68A',
+  vehicleImportInk: '#111827',
+  vehicleElectricalBg: 'rgba(59, 130, 246, 0.07)',
   groundClear: 'rgba(238, 245, 251, 0)',
   whiteAlpha08Hex: '#0F172A14',
   whiteAlpha06Hex: '#0F172A0F',

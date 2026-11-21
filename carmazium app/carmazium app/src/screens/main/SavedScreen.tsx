@@ -36,7 +36,6 @@ import { getSavedAuctionIdForListing } from '../../lib/watchlistApi';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
-import { EmptyState } from '../../components/ui/EmptyState';
 
 const { width } = Dimensions.get('window');
 
@@ -149,13 +148,16 @@ const PersonalSavedScreen: React.FC = () => {
   // ─── Empty State ───────────────────────────────────────────────────────────
 
   const renderEmptyState = () => loadError ? null : (
-    <EmptyState
-      icon="heart-outline"
-      title="No saved cars yet"
-      subtitle="Save the vehicles you're interested in by clicking the heart icon on any listing."
-      ctaLabel="Browse listings"
-      onCtaPress={() => navigation.navigate('Tabs', { screen: 'Search' })}
-    />
+    <View style={styles.personalSavedEmptyCard}>
+      <View style={styles.personalSavedEmptyIcon}>
+        <Ionicons name="heart-outline" size={40} color={Colors.accent} />
+      </View>
+      <Text style={styles.personalSavedEmptyTitle}>No Saved Cars Yet</Text>
+      <Text style={styles.personalSavedEmptyText}>
+        Save the vehicles you're interested in by clicking the heart icon on any listing.
+      </Text>
+      <Button label="BROWSE LISTINGS" variant="primary" onPress={() => navigation.navigate('Tabs', { screen: 'Search' })} />
+    </View>
   );
 
   // ─── Skeleton ──────────────────────────────────────────────────────────────
@@ -320,10 +322,10 @@ const PersonalSavedScreen: React.FC = () => {
       {/* Website watchlist header below global navigation. */}
       <View style={[styles.header, { paddingTop: 12 }]}>
         <View>
-          <Text style={styles.headerSub}>{headerSub}</Text>
+          {totalCount > 0 ? <Text style={styles.headerSub}>{headerSub}</Text> : null}
           <Text style={styles.headerTitle}>{headerTitle}</Text>
         </View>
-        {role !== "dealer" && <View style={styles.headerActions}>
+        {role !== "dealer" && totalCount > 0 && <View style={styles.headerActions}>
           <IconButton
             icon={<Ionicons name={viewMode === 'grid' ? 'list-outline' : 'grid-outline'} size={20} color={Colors.textSecondary} />}
             accessibilityLabel={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
@@ -496,6 +498,10 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   gridGap: { gap: 16 },
+  personalSavedEmptyCard: { marginTop: 26, minHeight: 500, paddingHorizontal: 25, paddingVertical: 70, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard, justifyContent: 'center', alignItems: 'center', gap: 15 },
+  personalSavedEmptyIcon: { width: 88, height: 88, borderRadius: 44, borderWidth: 1, borderColor: Colors.accentAlpha25, backgroundColor: Colors.accentAlpha10, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  personalSavedEmptyTitle: { color: Colors.textPrimary, fontFamily: FontFamily.extraBold, fontSize: FontSize.xl, textTransform: 'uppercase', textAlign: 'center' },
+  personalSavedEmptyText: { color: Colors.textSecondary, fontFamily: FontFamily.regular, fontSize: FontSize.base, lineHeight: 23, textAlign: 'center', marginBottom: 22, maxWidth: 400 },
   // Header rows carry their own 24pt gutters inside the padded list.
   headerBleed: { marginHorizontal: -24 },
 

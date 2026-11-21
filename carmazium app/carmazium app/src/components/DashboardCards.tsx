@@ -5,15 +5,15 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from './BrandIcon';
 import { Button } from './Button';
 import { Colors } from '../constants/colors';
-import { FontFamily } from '../constants/typography';
+import { FontFamily, FontSize } from '../constants/typography';
 import { useAuthStore } from '../store/authStore';
 import { useDealerAccess } from '../hooks/useDealerAccess';
 import { DEALER_ITEMS, USER_ITEMS, type MenuItem } from '../lib/dashboardNavigation';
 import { defaultPreferences, moveDashboardItem, orderDashboardItems, parseDashboardPreferences, type DashboardPreferences } from '../lib/dashboardPreferences';
 
 const palette: Record<string, string> = {
-  Sell: '#9d174d', Selling: '#9d174d', Buy: '#1e40af', Buying: '#1e40af',
-  Business: '#6b21a8', Services: '#0f766e', Account: '#334155',
+  Sell: Colors.dashboardSell, Selling: Colors.dashboardSell, Buy: Colors.dashboardBuy, Buying: Colors.dashboardBuy,
+  Business: Colors.dashboardBusiness, Services: Colors.dashboardServices, Account: Colors.dashboardAccount,
 };
 
 export function DashboardCards({ mode }: { mode: 'dealer' | 'personal' }) {
@@ -50,7 +50,7 @@ function AccountCards({ userId, mode }: { userId: string; mode: 'dealer' | 'pers
       .catch(() => { setError('Layout has not been saved. Tap Retry to save your changes.'); });
   };
   const items: MenuItem[] = mode === 'dealer' ? [
-    { id: 'add-vehicle', label: 'Add Vehicle', section: 'Sell', icon: 'add-circle-outline', iconLib: 'ion', stackScreen: 'SellCarFlow', requiredPermission: 'MANAGE_INVENTORY' } as MenuItem,
+    { id: 'add-vehicle', label: 'Add Vehicle', section: 'Sell', icon: 'add-circle-outline', iconLib: 'ion', stackScreen: 'DealerListingMethod', requiredPermission: 'MANAGE_INVENTORY' } as MenuItem,
     ...DEALER_ITEMS.filter(item => item.id !== 'dealer-home'),
   ].filter(item => (item.id !== 'dealer-offers-only' || (!access.loading && !access.hasPermission('VIEW_TRADE')))
     && (!item.requiredPermission || (!access.loading && access.hasPermission(item.requiredPermission)))) : [
@@ -77,12 +77,12 @@ function AccountCards({ userId, mode }: { userId: string; mode: 'dealer' | 'pers
       {editing && <View style={s.editIntro}><Text style={s.hint}>Show or hide cards, then use Earlier and Later to change their order. Your layout is saved on this device.</Text><Button label="Reset layout" size="sm" variant="ghost" onPress={() => save(defaultPreferences())} /></View>}
       {!shown.length && <Text style={s.hint}>All cards are hidden. Choose Customise to show them again.</Text>}
       <View style={s.grid}>{shown.map(item => {
-        const color = palette[item.section || 'Account'] || '#334155';
+        const color = palette[item.section || 'Account'] || Colors.dashboardAccount;
         const hidden = preferences.hidden.includes(item.id);
         const index = ordered.findIndex(entry => entry.id === item.id);
         return <View key={item.id} style={[s.card, { width: cardWidth, backgroundColor: color, opacity: hidden ? 0.55 : 1 }]}>
           <TouchableOpacity accessibilityRole="button" accessibilityLabel={item.label} onPress={() => open(item)} style={s.cardAction} activeOpacity={0.8}>
-            <View style={s.icon}>{item.iconLib === 'mci' ? <MaterialCommunityIcons name={item.icon} size={27} color="#fff" /> : <Ionicons name={item.icon as any} size={27} color="#fff" />}</View>
+            <View style={s.icon}>{item.iconLib === 'mci' ? <MaterialCommunityIcons name={item.icon} size={27} color={Colors.onAccent} /> : <Ionicons name={item.icon as any} size={27} color={Colors.onAccent} />}</View>
             <Text style={s.group}>{item.section}</Text><Text style={s.label}>{item.label}</Text>
           </TouchableOpacity>
           {editing && <View style={s.controls}>
@@ -98,14 +98,14 @@ function AccountCards({ userId, mode }: { userId: string; mode: 'dealer' | 'pers
 const s = StyleSheet.create({
   section: { paddingHorizontal: 20, marginVertical: 0, gap: 16 },
   header: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 },
-  heading: { flexGrow: 1, flexShrink: 1 }, title: { fontSize: 24, fontFamily: FontFamily.bold, color: Colors.textPrimary },
-  hint: { fontSize: 14, lineHeight: 22, color: Colors.textSecondary }, error: { fontSize: 14, color: Colors.accent, marginBottom: 8 },
+  heading: { flexGrow: 1, flexShrink: 1 }, title: { fontSize: FontSize['2xl'], fontFamily: FontFamily.bold, color: Colors.textPrimary },
+  hint: { fontSize: FontSize.base - 1, lineHeight: 22, color: Colors.textSecondary }, error: { fontSize: FontSize.base - 1, color: Colors.accent, marginBottom: 8 },
   editIntro: { gap: 8 }, grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 16 },
-  card: { borderRadius: 20, borderBottomWidth: 4, borderColor: '#00000030', overflow: 'hidden' },
-  cardAction: { minHeight: 166, padding: 18, gap: 8 }, icon: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#ffffff26', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  group: { fontSize: 12, color: '#ffffff', fontFamily: FontFamily.medium },
-  label: { fontSize: 17, lineHeight: 24, fontFamily: FontFamily.bold, color: '#fff' },
-  controls: { padding: 8, gap: 6, borderTopWidth: 1, borderColor: '#ffffff40' },
-  control: { minHeight: 48, justifyContent: 'center', alignItems: 'center', padding: 10, borderRadius: 10, backgroundColor: '#ffffff26' },
-  controlLabel: { fontSize: 14, color: '#fff', fontFamily: FontFamily.bold },
+  card: { borderRadius: 20, borderBottomWidth: 4, borderColor: Colors.dashboardShadowBorder, overflow: 'hidden' },
+  cardAction: { minHeight: 166, padding: 18, gap: 8 }, icon: { width: 48, height: 48, borderRadius: 14, backgroundColor: Colors.dashboardWhite15, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  group: { fontSize: FontSize.sm - 1, color: Colors.onAccent, fontFamily: FontFamily.medium },
+  label: { fontSize: FontSize.lg - 1, lineHeight: 24, fontFamily: FontFamily.bold, color: Colors.onAccent },
+  controls: { padding: 8, gap: 6, borderTopWidth: 1, borderColor: Colors.dashboardWhite25 },
+  control: { minHeight: 48, justifyContent: 'center', alignItems: 'center', padding: 10, borderRadius: 10, backgroundColor: Colors.dashboardWhite15 },
+  controlLabel: { fontSize: FontSize.base - 1, color: Colors.onAccent, fontFamily: FontFamily.bold },
 });

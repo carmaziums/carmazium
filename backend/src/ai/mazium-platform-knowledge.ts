@@ -24,6 +24,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'Dealer and buyer/seller dashboards expose their permitted tools as colourful cards on both website and the updated native app. The customer More/More tools menu has been replaced by these cards.',
             'Personal cards include My Auction Bids and Seller Delivery Requests as well as My Offers and Delivery & Inspections. Updated app builds use one personal dashboard for buyer and seller accounts, including seller tasks when a buyer also lists a car.',
             'Dealer and personal dashboard home pages show the navigation cards without the old Overview, period filters, statistic tiles or repeated shortcut panels below them. Open the relevant card for stock, purchases, earnings, saved cars or performance details.',
+            'In the updated Android personal dashboard, sellers see Home, My cars, Offers Received and Messages shortcuts; buyer mode shows Home, My Offers, Purchases and Messages. The wider marketplace tabs remain available outside the account dashboard.',
             'Open Dashboard, then Customise to show or hide cards, move them Earlier or Later, or Reset layout. Choose Done to leave customisation. Cards are shown by default and hiding a card never deletes the feature or account data.',
             'Layout preferences are remembered separately for each signed-in account and dashboard type in that browser or app device. They are not synchronised between the website and app or across devices.',
             'Dealer staff see only tools their permissions allow. Restoring a hidden card cannot grant missing access. An older installed app may still show its previous navigation until the new app build is installed.',
@@ -52,7 +53,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         triggers: /\b(?:new listing|list a|sell my|upload a|upload my|advertise a|create a listing|add vehicle|post a car|start auction|sell a car)\b/i,
         facts: [
             'To CREATE a new private seller listing, start at /sell, then choose free Auction or paid Retail. CarMazium can look up a motor vehicle registration and estimate values, with a manual flow where supported.',
-            'To add new dealer stock use /dashboard/dealer/add-listing (reachable from Stock/Inventory).',
+            'To add new dealer stock on the website use /dashboard/dealer/add-listing (reachable from Stock/Inventory). In the updated Android app, Add Vehicle opens a native Auction or Retail choice first; editing an existing stock vehicle still goes directly to its editing form. Opening the choice screen does not submit or pay for a listing.',
             'Provide truthful registration, mileage and vehicle details, photos, service history, keys, damage and mechanical/electrical faults; required inputs are validated by the wizard.',
             'Auction seller listing fee is £0; Basic Retail is £1 one-off until sold. Never imply every listing is guaranteed approval or publication.',
             'Do not tell an existing owner to create a duplicate listing to edit or relist an existing one.'

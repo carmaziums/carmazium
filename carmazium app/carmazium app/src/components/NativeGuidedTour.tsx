@@ -1,17 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
+import { FontSize } from '../constants/typography';
 import { useAuthStore } from '../store/authStore';
 import { useGuidedTourStore } from '../store/guidedTourStore';
 import { getGuidedWebsiteSteps } from '../lib/guidedTourContent';
 import { nativeTourDestination } from '../lib/nativeTourRoutes';
 import { navigationRef } from '../lib/navigationRef';
 import { apiClient } from '../lib/apiClient';
+import { nativeGuidedTourKey, shouldAutoRunNativeTour } from '../lib/nativeTourCompletion';
 import { NativeTourVoice } from './NativeTourVoice';
 
-const supported = ['buyer', 'seller', 'dealer', 'contractor'];
-const safeRoutes = ['Home', 'DealerHome', 'Profile', 'UnifiedDashboard', 'BuyerDashboard', 'SellerDashboard', 'Search', 'PartnerDashboard', 'ProviderOverview'];
+const supported = ['buyer', 'seller', 'dealer', 'contractor', 'admin', 'finance_partner', 'insurance_partner'];
+const safeRoutes = ['Home', 'DealerHome', 'Profile', 'UnifiedDashboard', 'BuyerDashboard', 'SellerDashboard', 'Search', 'PartnerDashboard', 'ProviderOverview', 'AdminDashboard'];
 type FinishAction = 'tour_skipped' | 'tour_completed';
 
 function TourButton({ title, onPress, disabled = false }: { title: string; onPress: () => void; disabled?: boolean }) {
@@ -52,14 +55,15 @@ export function NativeGuidedTour() {
     const id = user.id;
     seen.current.add(id);
     let active = true;
-    void apiClient<{ data: { id: string; preferences?: { websiteIntroductionV2?: { version?: number; status?: string } } } }>('/users/me')
-      .then(response => {
+    // Website-completion state must not prevent a first-time Android tour.
+    // Never reset other app preferences or account data.
+    void AsyncStorage.getItem(nativeGuidedTourKey(id))
+      .then(saved => {
         const auth = useAuthStore.getState();
-        if (!active || auth.user?.id !== id || !auth.isAuthenticated || response.data?.id !== id) return;
-        const saved = response.data.preferences?.websiteIntroductionV2;
-        if (saved?.version === 2 && ['skipped', 'completed'].includes(saved.status ?? '')) return;
+        if (!active || auth.user?.id !== id || !auth.isAuthenticated) return;
+        if (!shouldAutoRunNativeTour(saved)) return;
         if (safeRoutes.includes(navigationRef.getCurrentRoute()?.name ?? '')) replay(id);
-      }).catch(() => { /* Replay stays available; a failed read must not interrupt the user. */ });
+      }).catch(() => { /* Replay stays available if local storage is unavailable. */ });
     return () => { active = false; };
   }, [eligible, user?.id, routeName, replay]);
   useEffect(() => {
@@ -91,6 +95,8 @@ export function NativeGuidedTour() {
   const finish = (action: FinishAction) => {
     close();
     if (!user) return;
+    void AsyncStorage.setItem(nativeGuidedTourKey(user.id), action === 'tour_completed' ? 'completed' : 'skipped')
+      .catch(() => { /* A failed local save may show the tour next sign-in; replay still works. */ });
     void persist(action, user.id);
     if (action === 'tour_skipped') Alert.alert('Tour skipped', 'Replay it whenever you like in Account Settings → Personal details → Replay website tour.');
   };
@@ -126,14 +132,14 @@ export function NativeGuidedTour() {
   </Modal>;
 }
 const styles = StyleSheet.create({
-  overlay: { flex: 1, paddingHorizontal: 12, gap: 12, backgroundColor: 'rgba(0,0,0,0.55)' },
+  overlay: { flex: 1, paddingHorizontal: 12, gap: 12, backgroundColor: Colors.blackAlpha55 },
   pageOutline: { flex: 1, borderWidth: 3, borderColor: Colors.accent, borderRadius: 14 },
   panel: { borderRadius: 18, padding: 16, backgroundColor: Colors.bgPrimary, borderWidth: 1, borderColor: Colors.glassBorder },
   row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
-  progress: { fontSize: 14, color: Colors.textSecondary },
-  heading: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8 },
-  description: { fontSize: 16, lineHeight: 24, color: Colors.textSecondary },
+  progress: { fontSize: FontSize.base - 1, color: Colors.textSecondary },
+  heading: { fontSize: FontSize.size22, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8 },
+  description: { fontSize: FontSize.md, lineHeight: 24, color: Colors.textSecondary },
   button: { minHeight: 44, paddingHorizontal: 12, paddingVertical: 12, justifyContent: 'center' },
-  buttonText: { fontSize: 16, fontWeight: '700', color: Colors.accent },
+  buttonText: { fontSize: FontSize.md, fontWeight: '700', color: Colors.accent },
   failure: { position: 'absolute', bottom: 90, left: 16, right: 16, padding: 16, backgroundColor: Colors.bgPrimary, borderWidth: 1, borderColor: Colors.glassBorder },
 });

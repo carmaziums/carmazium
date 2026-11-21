@@ -258,7 +258,6 @@ const ListingDetail: React.FC<{
     initialActionDone.current = true;
     if (initialAction === 'sold') openMarkSold();
     if (initialAction === 'boost') void handleBoost();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialAction]);
 
   const statusS = STATUS_STYLE[listing.status];
@@ -783,7 +782,6 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any; route?: any }> 
     } else {
       fetchListings(true); // background refresh via refreshing spinner path
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []));
 
   // Stable id-keyed handler so InventoryRow's React.memo isn't busted by a fresh
@@ -843,7 +841,6 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any; route?: any }> 
         ]);
         return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listings, navigation]);
   const handlePutOnAuction = useCallback((listingId: string) => {
     navigation?.navigate('SellerAuctions', { preselectListingId: listingId });
@@ -940,7 +937,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any; route?: any }> 
           floating footer that can overlap the dealer bottom navigation. */}
       {canManageInventory && (
         <View style={styles.stockHeaderActions}>
-          <TouchableOpacity style={styles.stockAddAction} onPress={() => navigation?.navigate('SellCarFlow')}
+          <TouchableOpacity style={styles.stockAddAction} onPress={() => navigation?.navigate('DealerListingMethod')}
             accessibilityRole="button" accessibilityLabel="Add Vehicle">
             <Ionicons name="add-circle-outline" size={18} color={Colors.onAccent} />
             <Text style={styles.stockAddActionText}>Add Vehicle</Text>
@@ -1037,8 +1034,8 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any; route?: any }> 
                 accessibilityState={{ selected }}
                 activeOpacity={0.75}
               >
-                <Text style={[styles.filterTabText, selected && styles.filterTabTextActive]}>{f.label}</Text>
-                <Text style={[styles.filterTabCount, selected && styles.filterTabCountActive]}>{' '}{f.count}</Text>
+                <Text style={[styles.filterTabText, selected && styles.filterTabTextActive]}>{f.label === 'All' ? 'All statuses' : f.label}</Text>
+                <Text style={[styles.filterTabCount, selected && styles.filterTabCountActive]}> ({f.count})</Text>
               </TouchableOpacity>
             );
           })}
@@ -1230,7 +1227,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.inline, borderWidth: 1,
     borderColor: Colors.borderSubtle, backgroundColor: Colors.bgElevated,
   },
-  statusPanel: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 10 },
+  statusPanel: { width: Math.max(190, (SCREEN_WIDTH - 48) / 2), padding: 0, gap: 0, overflow: 'hidden' },
   panelRow: {
     minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 10, borderRadius: Radius.chip,
@@ -1255,7 +1252,7 @@ const styles = StyleSheet.create({
   stockImage: { width: '100%', height: '100%' },
   stockIdentity: { flex: 1, minWidth: 0 },
   stockTitle: {
-    fontFamily: FontFamily.extraBold, fontSize: 15, lineHeight: 21,
+    fontFamily: FontFamily.extraBold, fontSize: FontSize.base, lineHeight: 21,
     color: Colors.textPrimary,
   },
   stockFacts: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 5 },
@@ -1263,12 +1260,12 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary, backgroundColor: Colors.bgElevated,
     borderWidth: 1, borderColor: Colors.borderSubtle,
     borderRadius: 4, overflow: 'hidden', paddingHorizontal: 5,
-    paddingVertical: 2, fontSize: 11, fontFamily: FontFamily.bold,
+    paddingVertical: 2, fontSize: FontSize.xs, fontFamily: FontFamily.bold,
   },
-  stockMake: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: 11 },
-  stockFact: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: 11 },
+  stockMake: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: FontSize.xs },
+  stockFact: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: FontSize.xs },
   askingPrice: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  askingPriceLabel: { color: Colors.success, fontFamily: FontFamily.bold, fontSize: 10, letterSpacing: 1 },
+  askingPriceLabel: { color: Colors.success, fontFamily: FontFamily.bold, fontSize: FontSize.xs - 1, letterSpacing: 1 },
   engagementTrack: { height: 4, backgroundColor: Colors.bgElevated, borderRadius: 4, overflow: 'hidden', marginTop: 6 },
   engagementFill: { height: 4, backgroundColor: 'rgba(59, 130, 246, 0.5)' },
   stockMetrics: {
@@ -1281,31 +1278,31 @@ const styles = StyleSheet.create({
   },
   stockMetricLabel: {
     fontFamily: FontFamily.bold, color: Colors.textMuted,
-    fontSize: 10, letterSpacing: 0.6,
+    fontSize: FontSize.xs - 1, letterSpacing: 0.6,
   },
   stockPrice: {
-    fontFamily: FontFamily.extraBold, fontSize: 20,
+    fontFamily: FontFamily.extraBold, fontSize: FontSize.xl,
     color: Colors.textPrimary, marginTop: 6,
   },
   stockMetricValue: {
-    fontFamily: FontFamily.extraBold, fontSize: 16,
+    fontFamily: FontFamily.extraBold, fontSize: FontSize.md,
     color: Colors.textPrimary, marginTop: 4,
   },
   stockOutlinedStatus: {
     alignSelf: 'flex-start', borderWidth: 1, borderRadius: 8,
     paddingHorizontal: 7, paddingVertical: 4, marginTop: 6,
   },
-  stockStatusText: { fontFamily: FontFamily.bold, fontSize: 11 },
-  stockRejection: { fontFamily: FontFamily.medium, fontSize: 10,
+  stockStatusText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs },
+  stockRejection: { fontFamily: FontFamily.medium, fontSize: FontSize.xs - 1,
     color: Colors.error, marginTop: 5 },
   stockOpenRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
     gap: 4, marginTop: 13, paddingTop: 10,
     borderTopWidth: 1, borderTopColor: Colors.borderSubtle,
   },
-  stockOpenText: { color: Colors.textSecondary, fontFamily: FontFamily.bold, fontSize: 12 },
+  stockOpenText: { color: Colors.textSecondary, fontFamily: FontFamily.bold, fontSize: FontSize.sm - 1 },
   stockGridFact: { color: Colors.textMuted, fontFamily: FontFamily.medium,
-    fontSize: 11, marginBottom: 3 },
+    fontSize: FontSize.xs, marginBottom: 3 },
   // ── LIST VIEW ────────────────────────────────────────────────────────────
   listHeader: {
     flexDirection: 'row',
@@ -1333,38 +1330,38 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
   },
 
-  inventorySearchWrap: { marginHorizontal: 20, marginBottom: 12, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgSecondary },
-  inventorySearchInput: { flex: 1, paddingVertical: 12, fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
+  inventorySearchWrap: { marginHorizontal: 20, marginBottom: 12, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.inputBg },
+  inventorySearchInput: { flex: 1, paddingVertical: 12, fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textPrimary },
   // Status options (inside the Status panel)
   filterTab: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 40,
+    minHeight: 47,
     paddingHorizontal: 14,
-    borderRadius: Radius.card,
-    backgroundColor: Colors.whiteAlpha04,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha07,
+    borderRadius: 0,
+    backgroundColor: Colors.bgCard,
+    borderBottomWidth: 1,
+    borderColor: Colors.border,
   },
   filterTabActive: {
-    backgroundColor: Colors.accent,
-    borderColor: Colors.accent,
+    backgroundColor: Colors.accentAlpha10,
+    borderColor: Colors.border,
   },
   filterTabText: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.sm,
-    color: Colors.iconMuted,
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.base,
+    color: Colors.textPrimary,
   },
   filterTabTextActive: {
-    color: Colors.onAccent,
+    color: Colors.accent,
   },
   filterTabCount: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.sm,
-    color: Colors.iconMuted,
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.base,
+    color: Colors.textPrimary,
   },
   filterTabCountActive: {
-    color: 'rgba(255,255,255,0.80)',
+    color: Colors.accent,
   },
 
   // Sort row
@@ -1378,7 +1375,7 @@ const styles = StyleSheet.create({
   },
   sortLabel: {
     fontFamily: FontFamily.regular,
-    fontSize: 14,
+    fontSize: FontSize.base - 1,
     color: Colors.textMuted,
   },
   // Listing cards

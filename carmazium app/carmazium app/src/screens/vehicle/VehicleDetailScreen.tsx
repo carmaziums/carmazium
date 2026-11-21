@@ -1,4 +1,5 @@
 import { shareVehicle } from '../../lib/shareVehicle';
+import { clampPhotoIndex, getNextFullscreenPhotoIndex, fullscreenPhotoCounter, fullscreenPhotoAccessibilityLabel } from '../../lib/fullscreenGalleryNavigation';
 import { SellerServiceBadges } from '../../components/SellerServiceBadges';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useScrollLocked } from '../../lib/scrollLock';
@@ -219,6 +220,17 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const panY = useSharedValue(0);
   const savedPanX = useSharedValue(0);
   const savedPanY = useSharedValue(0);
+
+  // Keep inline gallery and its photo number in sync with the fullscreen viewer.
+  // Closing fullscreen now returns to the photo that was actually selected.
+  useEffect(() => {
+    if (!fullscreenVisible) return;
+    setActiveImage(fullscreenIndex);
+    const galleryTarget = -fullscreenIndex * SCREEN_WIDTH;
+    translateX.value = galleryTarget;
+    savedTranslateX.value = galleryTarget;
+  }, [fullscreenVisible, fullscreenIndex, translateX, savedTranslateX]);
+
   const saved = isSaved(listing.id);
 
   // Dynamic States for Make an Offer
@@ -769,14 +781,54 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       }
     });
 
+  const advanceFullscreenFromSwipe = useCallback((translationX: number, velocityX: number) => {
+    setFullscreenIndex(currentIndex => getNextFullscreenPhotoIndex({
+      currentIndex, photoCount: totalImages, translationX, velocityX,
+      zoomScale: 1, viewportWidth: SCREEN_WIDTH,
+    }));
+  }, [totalImages]);
+
+  const moveFullscreenBy = useCallback((delta: number) => {
+    setFullscreenIndex(current => clampPhotoIndex(current + delta, totalImages));
+    // Each photo starts unzoomed, with a centred image.
+    pinchScale.value = 1;
+    panX.value = 0;
+    panY.value = 0;
+    savedPanX.value = 0;
+    savedPanY.value = 0;
+  }, [totalImages, pinchScale, panX, panY, savedPanX, savedPanY]);
+
   const fullscreenPanGesture = Gesture.Pan()
+    .minDistance(12)
+    .maxPointers(1)
     .onUpdate((e) => {
-      panX.value = savedPanX.value + e.translationX;
-      panY.value = savedPanY.value + e.translationY;
+      if (pinchScale.value > 1.05) {
+        // Single-finger panning is reserved for zoomed photographs.
+        panX.value = savedPanX.value + e.translationX;
+        panY.value = savedPanY.value + e.translationY;
+      } else {
+        // At normal zoom, horizontal movement is a photo-swipe preview.
+        panX.value = e.translationX * 0.65;
+        panY.value = 0;
+      }
     })
-    .onEnd(() => {
-      savedPanX.value = panX.value;
-      savedPanY.value = panY.value;
+    .onEnd((e) => {
+      if (pinchScale.value > 1.05) {
+        savedPanX.value = panX.value;
+        savedPanY.value = panY.value;
+      } else {
+        runOnJS(advanceFullscreenFromSwipe)(e.translationX, e.velocityX);
+        panX.value = withSpring(0, { damping: 20, stiffness: 200 });
+        panY.value = withSpring(0, { damping: 20, stiffness: 200 });
+        savedPanX.value = 0;
+        savedPanY.value = 0;
+      }
+    })
+    .onFinalize(() => {
+      if (pinchScale.value <= 1.05) {
+        panX.value = withSpring(0, { damping: 20, stiffness: 200 });
+        panY.value = 0;
+      }
     });
 
   const combinedFullscreenGesture = Gesture.Simultaneous(pinchGesture, fullscreenPanGesture);
@@ -885,10 +937,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           )}
 
           {/* Photo counter */}
-          <View style={styles.photoCounter}>
-            <Text style={styles.photoCounterText}>
-              {activeImage + 1}/{totalImages}
-            </Text>
+          <View style={styles.photoCounter} accessible accessibilityRole="text" accessibilityLabel={fullscreenPhotoAccessibilityLabel(activeImage, totalImages)}>
+            <Text style={styles.photoCounterText}>{fullscreenPhotoCounter(activeImage, totalImages)}</Text>
           </View>
 
           {/* Floating Header Actions */}
@@ -1036,7 +1086,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Vehicle-origin import badge — separate from "imported listing from another platform". */}
           {listing.isImported ? (
             <View style={styles.vehicleImportBadge}>
-              <Ionicons name="globe-outline" size={12} color="#111827" />
+              <Ionicons name="globe-outline" size={12} color={Colors.vehicleImportInk} />
               <Text style={styles.vehicleImportBadgeText}>IMPORTED VEHICLE</Text>
             </View>
           ) : null}
@@ -1258,19 +1308,19 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* The search card is incomplete by design. A failed full fetch
               must not quietly masquerade as "no MOT data exists". */}
           {vehicleFactsState === 'loading' && (
-            <Text style={{ color: Colors.textSecondary, marginVertical: 10, fontSize: 12 }}>
+            <Text style={{ color: Colors.textSecondary, marginVertical: 10, fontSize: FontSize.sm - 1 }}>
               Loading saved vehicle specifications and MOT history…
             </Text>
           )}
           {vehicleFactsState === 'failed' && (
             <View style={{ marginVertical: 12, padding: 13, borderWidth: 1, borderColor: Colors.warning, borderRadius: 11, gap: 9 }}>
-              <Text style={{ color: Colors.textPrimary, fontSize: 12 }}>
+              <Text style={{ color: Colors.textPrimary, fontSize: FontSize.sm - 1 }}>
                 Could not retrieve the complete vehicle information. The basic listing is shown below; MOT and DVLA records may be missing.
               </Text>
               <TouchableOpacity accessibilityRole="button" accessibilityLabel="Retry loading full vehicle information"
                 style={{ paddingVertical: 10, alignItems: 'center', borderRadius: 8, backgroundColor: Colors.bgElevated }}
                 onPress={() => setVehicleFactsAttempt(previous => previous + 1)}>
-                <Text style={{ fontSize: 13, color: Colors.infoBlue, fontFamily: FontFamily.bold }}>Retry full vehicle details</Text>
+                <Text style={{ fontSize: FontSize.sm, color: Colors.infoBlue, fontFamily: FontFamily.bold }}>Retry full vehicle details</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -1436,14 +1486,14 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {!isCaravan && listing.bodyTypeRaw !== 'CAMPERVAN' && <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />}
             {listing.mechanicalIssues ? (
               <View style={{ marginTop: 14, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(245,158,11,0.28)', backgroundColor: 'rgba(245,158,11,0.07)' }}>
-                <Text style={{ color: Colors.warning, fontFamily: FontFamily.bold, fontSize: 11, marginBottom: 6 }}>KNOWN MECHANICAL PROBLEMS</Text>
-                <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 20 }}>{listing.mechanicalIssues}</Text>
+                <Text style={{ color: Colors.warning, fontFamily: FontFamily.bold, fontSize: FontSize.xs, marginBottom: 6 }}>KNOWN MECHANICAL PROBLEMS</Text>
+                <Text style={{ color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 }}>{listing.mechanicalIssues}</Text>
               </View>
             ) : null}
             {listing.electricalIssues ? (
-              <View style={{ marginTop: 10, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(59,130,246,0.28)', backgroundColor: 'rgba(59,130,246,0.07)' }}>
-                <Text style={{ color: Colors.infoBlueLight, fontFamily: FontFamily.bold, fontSize: 11, marginBottom: 6 }}>KNOWN ELECTRICAL PROBLEMS</Text>
-                <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 20 }}>{listing.electricalIssues}</Text>
+              <View style={{ marginTop: 10, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: Colors.infoBlueAlpha28, backgroundColor: Colors.vehicleElectricalBg }}>
+                <Text style={{ color: Colors.infoBlueLight, fontFamily: FontFamily.bold, fontSize: FontSize.xs, marginBottom: 6 }}>KNOWN ELECTRICAL PROBLEMS</Text>
+                <Text style={{ color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 }}>{listing.electricalIssues}</Text>
               </View>
             ) : null}
           </View>
@@ -2435,13 +2485,16 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       >
         <View style={styles.fullscreenBackdrop}>
           {/* Close button */}
-          <IconButton style={[styles.fullscreenCloseBtn, { top: insets.top + 12 }]} icon={<Ionicons name="close" size={22} color={Colors.white} />} onPress={() => setFullscreenVisible(false)} accessibilityLabel="Close" />
+          <IconButton style={[styles.fullscreenCloseBtn, { top: insets.top + 12 }]} icon={<Ionicons name="close" size={22} color={Colors.onAccent} />} onPress={() => setFullscreenVisible(false)} accessibilityLabel="Close" />
 
           {/* Photo counter */}
-          <View style={[styles.fullscreenCounter, { top: insets.top + 14 }]}>
-            <Text style={styles.fullscreenCounterText}>
-              {fullscreenIndex + 1}/{totalImages}
-            </Text>
+          <View
+            style={[styles.fullscreenCounter, { top: insets.top + 14 }]}
+            accessible
+            accessibilityRole="text"
+            accessibilityLabel={fullscreenPhotoAccessibilityLabel(fullscreenIndex, totalImages)}
+          >
+            <Text style={styles.fullscreenCounterText}>{fullscreenPhotoCounter(fullscreenIndex, totalImages)}</Text>
           </View>
 
           {/* Zoomable image */}
@@ -2457,6 +2510,29 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               />
             </Animated.View>
           </GestureDetector>
+          {totalImages > 1 && <>
+            <TouchableOpacity
+              style={[styles.fullscreenArrowButton, styles.fullscreenPrevArrow, fullscreenIndex === 0 && styles.fullscreenArrowDisabled]}
+              onPress={() => moveFullscreenBy(-1)}
+              disabled={fullscreenIndex === 0}
+              accessibilityRole="button"
+              accessibilityLabel="Previous vehicle photo"
+            >
+              <Ionicons name="chevron-back" size={26} color={Colors.onAccent} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.fullscreenArrowButton, styles.fullscreenNextArrow, fullscreenIndex >= totalImages - 1 && styles.fullscreenArrowDisabled]}
+              onPress={() => moveFullscreenBy(1)}
+              disabled={fullscreenIndex >= totalImages - 1}
+              accessibilityRole="button"
+              accessibilityLabel="Next vehicle photo"
+            >
+              <Ionicons name="chevron-forward" size={26} color={Colors.onAccent} />
+            </TouchableOpacity>
+            <View style={[styles.fullscreenHint, { bottom: insets.bottom + 22 }]} pointerEvents="none">
+              <Text style={styles.fullscreenHintText}>Swipe left or right to change photos · Pinch to zoom</Text>
+            </View>
+          </>}
         </View>
       </Modal>
     </View>
@@ -2517,17 +2593,15 @@ const styles = StyleSheet.create({
   },
   photoCounter: {
     position: 'absolute',
-    top: 8,
-    right: 16,
-    backgroundColor: Colors.blackAlpha55,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    zIndex: 92,
+    top: 8, right: 16, zIndex: 102,
+    backgroundColor: Colors.blackAlpha75,
+    borderRadius: 12, borderWidth: 1, borderColor: Colors.whiteAlpha20,
+    minWidth: 75, alignItems: 'center',
+    paddingHorizontal: 12, paddingVertical: 8,
   },
   photoCounterText: {
-    fontFamily: FontFamily.mono,
-    fontSize: FontSize.size12,
+    fontFamily: FontFamily.extraBold,
+    fontSize: FontSize.base,
     color: Colors.onAccent,
   },
   floatingHeader: {
@@ -2722,9 +2796,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#FACC15',
+    backgroundColor: Colors.vehicleImportYellow,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: Colors.vehicleImportBorder,
     paddingHorizontal: 9,
     paddingVertical: 5,
     borderRadius: 8,
@@ -2733,7 +2807,7 @@ const styles = StyleSheet.create({
   vehicleImportBadgeText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size9,
-    color: '#111827',
+    color: Colors.vehicleImportInk,
     letterSpacing: 0.6,
   },
   importedBadge: {
@@ -3929,16 +4003,41 @@ const styles = StyleSheet.create({
   fullscreenCounter: {
     position: 'absolute',
     right: 20,
-    zIndex: 99,
-    backgroundColor: Colors.blackAlpha55,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    zIndex: 110,
+    backgroundColor: Colors.blackAlpha75,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    minWidth: 80,
+    alignItems: 'center',
   },
   fullscreenCounterText: {
-    fontFamily: FontFamily.mono,
-    fontSize: FontSize.sm,
+    fontFamily: FontFamily.extraBold,
+    fontSize: FontSize.lg,
     color: Colors.onAccent,
+  },
+  fullscreenArrowButton: {
+    position: 'absolute',
+    top: '48%',
+    zIndex: 105,
+    width: 44, height: 50,
+    borderRadius: 15,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.blackAlpha75,
+    borderWidth: 1, borderColor: Colors.whiteAlpha20,
+  },
+  fullscreenPrevArrow: { left: 12 },
+  fullscreenNextArrow: { right: 12 },
+  fullscreenArrowDisabled: { opacity: 0.25 },
+  fullscreenHint: {
+    position: 'absolute', left: 25, right: 25,
+    zIndex: 101, alignItems: 'center',
+  },
+  fullscreenHintText: {
+    color: Colors.onAccent, fontSize: FontSize.sm,
+    fontFamily: FontFamily.medium, textAlign: 'center',
   },
   fullscreenImageWrap: {
     width: SCREEN_WIDTH,

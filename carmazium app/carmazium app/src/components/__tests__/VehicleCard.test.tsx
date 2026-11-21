@@ -1,10 +1,10 @@
 /**
- * VehicleCard carousel — RED test stubs (Plan 17-01)
+ * VehicleCard carousel regression tests.
  *
- * These 5 tests describe the carousel behaviour that will be implemented in
- * Plan 17-02. All tests MUST FAIL before the carousel is added to VehicleCard.
- * The testIDs (carousel-image, carousel-dots, carousel-dot) and Image.prefetch
- * calls do not exist in the current component.
+ * VehicleCard delegates paging to native ImageCarousel, which displays dots
+ * for 2–5 images and an N/M counter for larger galleries (as on the website).
+ * It loads the current and next image, rather than eagerly prefetching the
+ * first three images on every card in a long scrolling vehicle grid.
  */
 
 import React from 'react';
@@ -105,10 +105,7 @@ describe('VehicleCard carousel', () => {
       <VehicleCard listing={listing} onPress={() => {}} />,
     );
 
-    // For a single-image card the carousel image strip should NOT be rendered.
-    // 'carousel-image' testID will be added to VehicleCard in Plan 17-02.
-    // Currently the component does NOT render it — this test fails RED because
-    // getByTestId throws when the element is not found.
+    // A single photo is immediately visible, with no pagination controls.
     getByTestId('carousel-image');
   });
 
@@ -118,21 +115,25 @@ describe('VehicleCard carousel', () => {
       <VehicleCard listing={listing} onPress={() => {}} />,
     );
 
-    // Expects the dots container to exist for 2+ image listings.
-    // 'carousel-dots' testID does not exist in the current VehicleCard — FAILS RED.
     getByTestId('carousel-dots');
   });
 
-  it('renders exactly 5 dots when card has 7 images (capped at 5)', () => {
-    const listing = makeListing(7);
+  it('renders 5 dots for exactly 5 images', () => {
+    const listing = makeListing(5);
     const { getAllByTestId } = render(
       <VehicleCard listing={listing} onPress={() => {}} />,
     );
 
-    // Expects 5 dot elements (capped) for a 7-image listing.
-    // No 'carousel-dot' testIDs exist in the current component — FAILS RED.
-    const dots = getAllByTestId('carousel-dot');
-    expect(dots).toHaveLength(5);
+    expect(getAllByTestId('carousel-dot')).toHaveLength(5);
+  });
+
+  it('shows a 1 / N counter instead of dots for galleries larger than five', () => {
+    const listing = makeListing(7);
+    const { getByTestId, queryAllByTestId } = render(
+      <VehicleCard listing={listing} onPress={() => {}} />,
+    );
+    expect(getByTestId('carousel-counter').props.accessibilityLabel).toBe('Photo 1 of 7');
+    expect(queryAllByTestId('carousel-dot')).toHaveLength(0);
   });
 
   it('renders active dot at index 0 on mount', () => {
@@ -141,23 +142,17 @@ describe('VehicleCard carousel', () => {
       <VehicleCard listing={listing} onPress={() => {}} />,
     );
 
-    // The first dot should carry accessibilityState.selected=true on mount.
-    // No 'carousel-dot' testIDs exist in the current component — FAILS RED.
     const dots = getAllByTestId('carousel-dot');
     expect(dots[0].props.accessibilityState?.selected).toBe(true);
   });
 
-  it('calls Image.prefetch for first 3 image URIs on mount', () => {
+  it('renders only the current and adjacent images instead of eager prefetching each card', () => {
     const listing = makeListing(5);
     const { Image } = require('expo-image');
+    const { getAllByTestId } = render(<VehicleCard listing={listing} onPress={() => {}} />);
 
-    render(<VehicleCard listing={listing} onPress={() => {}} />);
-
-    // VehicleCard should prefetch the first 3 images on mount.
-    // Currently it does NOT call Image.prefetch at all — FAILS RED.
-    expect(Image.prefetch).toHaveBeenCalledTimes(3);
-    expect(Image.prefetch).toHaveBeenNthCalledWith(1, listing.images[0]);
-    expect(Image.prefetch).toHaveBeenNthCalledWith(2, listing.images[1]);
-    expect(Image.prefetch).toHaveBeenNthCalledWith(3, listing.images[2]);
+    // Avoid flooding the network when many marketplace cards are visible.
+    expect(Image.prefetch).not.toHaveBeenCalled();
+    expect(getAllByTestId('carousel-image')).toHaveLength(2);
   });
 });

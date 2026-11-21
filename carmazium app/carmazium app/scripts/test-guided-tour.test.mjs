@@ -18,6 +18,7 @@ function compile(path, modules = {}) {
 }
 const content = compile('lib/guidedTourContent.ts');
 const routes = compile('lib/nativeTourRoutes.ts');
+const nativeCompletion = compile('lib/nativeTourCompletion.ts');
 test('native tour keeps the exact approved website copy for narration', () => {
   const website = readFileSync(new URL('../../../src/lib/guidedWebsiteTour.ts', import.meta.url), 'utf8');
   const native = readFileSync(new URL('../src/lib/guidedTourContent.ts', import.meta.url), 'utf8');
@@ -38,7 +39,7 @@ test('tour navigation keeps personal offers, retail offers and provider tabs dis
   assert.equal(routes.nativeTourDestination('https://example.test'), null);
   assert.equal(routes.nativeTourDestination('/profile?section=delete'), null);
 });
-async function mount({ acknowledged = true, failSave = false, replay = true } = {}) {
+async function mount({ acknowledged = true, nativeAcknowledged = false, failSave = false, replay = true } = {}) {
   const calls = [], nav = [], notices = [];
   const auth = { user: { id: 'personal-test' }, accountRole: 'buyer', isAuthenticated: true, hasCompletedOnboarding: true };
   const state = { openFor: replay ? auth.user.id : null, replay(id) { state.openFor = id; }, close() { state.openFor = null; } };
@@ -56,6 +57,12 @@ async function mount({ acknowledged = true, failSave = false, replay = true } = 
     },
     'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) },
     '../constants/colors': { Colors: {} },
+    '../constants/typography': { FontSize: { sm: 13, base: 15, md: 16, size22: 22 } },
+    '../lib/nativeTourCompletion': nativeCompletion,
+    '@react-native-async-storage/async-storage': {
+      getItem: async () => nativeAcknowledged ? 'completed' : null,
+      setItem: async () => {},
+    },
     '../store/authStore': { useAuthStore: Object.assign(() => auth, { getState: () => auth }) },
     '../store/guidedTourStore': { useGuidedTourStore: () => state },
     '../lib/guidedTourContent': content, '../lib/nativeTourRoutes': routes,
@@ -99,8 +106,20 @@ test('failed preference save offers retry and cannot write for a switched accoun
   assert.equal(h.tree.root.findAllByType('Modal').length, 0);
   await act(async () => h.tree.unmount());
 });
-test('website acknowledgement prevents automatic tour replay on native login', async () => {
-  const h = await mount({ replay: false }); await h.onRoute(); await h.rerender();
-  assert.equal(h.state.openFor, null); assert.equal(h.calls.length, 1);
-  assert.equal(h.calls[0][1], undefined); await act(async () => h.tree.unmount());
+test('website acknowledgement does not suppress a first native tour', async () => {
+  const h = await mount({ replay: false, acknowledged: true, nativeAcknowledged: false });
+  await h.onRoute(); await h.rerender();
+  assert.equal(h.state.openFor, h.auth.user.id);
+  assert.equal(h.calls.length, 0);
+  await act(async () => h.tree.unmount());
+});
+
+test('completed native tour does not repeat automatically, but manual replay still works', async () => {
+  const h = await mount({ replay: false, nativeAcknowledged: true });
+  await h.onRoute(); await h.rerender();
+  assert.equal(h.state.openFor, null);
+  h.state.replay(h.auth.user.id);
+  await h.rerender();
+  assert.equal(h.tree.root.findAllByType('Modal').length, 1);
+  await act(async () => h.tree.unmount());
 });
