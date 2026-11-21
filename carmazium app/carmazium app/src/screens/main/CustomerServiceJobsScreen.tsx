@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   RefreshControl,
   StatusBar,
@@ -25,10 +26,12 @@ import {
 } from '../../lib/servicesApi';
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { Button } from '../../components/Button';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CustomerServiceJobs'>;
 
-const statusLabel = (status: ServiceJob['status']) => status.replace(/_/g, ' ');
+const statusLabel = (status: ServiceJob['status']) => ({ OPEN: 'Open for quotes', ACCEPTED: 'Awaiting payment', PAID: 'Paid — ready', IN_PROGRESS: 'In progress', COMPLETED: 'Awaiting confirmation', RELEASED: 'Complete', CANCELLED: 'Cancelled', EXPIRED: 'Expired', DISPUTED: 'Disputed' }[status]);
+const isPast = (job: ServiceJob) => ['RELEASED', 'CANCELLED', 'EXPIRED'].includes(job.status);
 
 const locationText = (job: ServiceJob) => {
   if (job.serviceType === 'INSPECTION') {
@@ -91,7 +94,14 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
     void load('reset');
   }, [load]);
 
-  const renderJob = ({ item: job }: { item: ServiceJob }) => (
+  const ordered = [...jobs.filter(job => !isPast(job)), ...jobs.filter(isPast)];
+  const postJob = () => Alert.alert('Post a Job', 'Choose the service you need.', [
+    { text: 'Delivery or recovery', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'DELIVERY' }) },
+    { text: 'Vehicle inspection', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'INSPECTION' }) },
+    { text: 'Cancel', style: 'cancel' },
+  ]);
+  const renderJob = ({ item: job, index }: { item: ServiceJob; index: number }) => (<>
+    {(index === 0 || isPast(ordered[index - 1]) !== isPast(job)) && <Text style={styles.typeText}>{isPast(job) ? 'Past' : 'Active'}</Text>}
     <TouchableOpacity
       style={styles.card}
       activeOpacity={0.82}
@@ -112,6 +122,7 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
               : SERVICE_LABELS[job.serviceType]}
           </Text>
           <Text style={styles.title} numberOfLines={2}>{job.title}</Text>
+          <Text style={styles.metaText}>{job.requestedFor ? `Wanted ${new Date(job.requestedFor).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : 'As soon as possible'}</Text>
         </View>
         <View style={styles.statusPill}>
           <Text style={styles.statusText}>{statusLabel(job.status)}</Text>
@@ -152,13 +163,13 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
       ) : null}
 
       <View style={styles.footer}>
-        <Text style={styles.trailing}>{trailingText(job)}</Text>
+        <Text style={styles.trailing}>{job.status === 'OPEN' ? trailingText(job) : ''}</Text>
         <View style={styles.openRow}>
           <Text style={styles.openText}>VIEW JOB</Text>
           <Ionicons name="chevron-forward" size={15} color={Colors.accent} />
         </View>
       </View>
-    </TouchableOpacity>
+    </TouchableOpacity></>
   );
 
   return (
@@ -173,10 +184,20 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
           accessibilityLabel="Go back"
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>My Service Jobs</Text>
-          <Text style={styles.headerSub}>Delivery & inspection requests</Text>
+          <Text style={styles.headerTitle}>My Posted Jobs</Text>
+          <Text style={styles.headerSub}>TradeXchange</Text>
         </View>
         <HamburgerButton />
+      </View>
+
+      <View style={{ padding: 18, gap: 10 }}>
+        <Text style={styles.metaText}>Track the delivery, recovery and inspection jobs you posted, compare quotes and manage the provider you choose.</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          <Button label="TradeXchange Services" variant="outline" size="sm" onPress={() => navigation.navigate('Services')} />
+          <Button label="Post a Job" size="sm" onPress={postJob} />
+        </View>
+        <Text style={styles.metaText}>This is the customer side of TradeXchange. If you run an approved service-provider business and want to compete for open work, use:</Text>
+        <Button label="Available Jobs in the provider dashboard" variant="ghost" size="sm" onPress={() => navigation.navigate('ProviderJobs', { initialTab: 'open' })} />
       </View>
 
       {loading && jobs.length === 0 ? (
@@ -193,22 +214,22 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
       ) : jobs.length === 0 ? (
         <View style={styles.centerCard}>
           <Ionicons name="briefcase-outline" size={34} color={Colors.textMuted} />
-          <Text style={styles.emptyTitle}>No service jobs yet</Text>
+          <Text style={styles.emptyTitle}>No jobs yet</Text>
           <Text style={styles.emptyText}>
-            Post a delivery, recovery or inspection request to receive quotes from approved service providers.
+            Post a delivery, recovery or inspection job and approved providers can compete for it with quotes.
           </Text>
           <TouchableOpacity
             style={styles.primaryButton}
-            onPress={() => navigation.navigate('Services')}
+            onPress={postJob}
             accessibilityRole="button"
-            accessibilityLabel="Open TradeXchange services to post a job"
+            accessibilityLabel="Post your first job"
           >
-            <Text style={styles.primaryText}>POST A SERVICE JOB</Text>
+            <Text style={styles.primaryText}>Post your first job</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <FlatList
-          data={jobs}
+          data={ordered}
           keyExtractor={(item) => item.id}
           renderItem={renderJob}
           contentContainerStyle={styles.list}

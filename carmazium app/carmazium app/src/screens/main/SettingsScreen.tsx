@@ -11,6 +11,7 @@ import { useFocusEffect, useNavigation, useRoute, type RouteProp } from '@react-
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../store/authStore';
+import { useGuidedTourStore } from '../../store/guidedTourStore';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
@@ -27,7 +28,6 @@ import { PresentedProfileImage, ProfileImageAdjustment } from '../../components/
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { useSingleColumnSettings } from '../../lib/nativeLayoutParity';
 import { getOrCreateSupportRoom } from '../../lib/chatApi';
-import { requestNativeAppTourReplay } from '../../lib/nativeAppTour';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 const BUSINESS_DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] as const;
 const THEME_OPTIONS: { id: ThemePreference; label: string; icon: string }[] = [
@@ -701,7 +701,7 @@ export const SettingsScreen: React.FC = () => {
         {!!user?.id && <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel="Replay App Tour"
-          onPress={requestNativeAppTourReplay}
+          onPress={() => { if (user?.id) useGuidedTourStore.getState().replay(user.id); }}
           style={styles.replayTourButton}
         >
           <Ionicons name="play-circle-outline" size={23} color={Colors.onAccent} />

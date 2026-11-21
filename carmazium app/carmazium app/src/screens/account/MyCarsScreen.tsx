@@ -107,7 +107,9 @@ export const MyCarsScreen: React.FC = () => {
             ? <View style={styles.loading}><ActivityIndicator color={Colors.accent}/></View>
             : error ? <Button label="Retry" onPress={() => void load()} /> : <View style={styles.emptyListings}>
               <Text style={styles.emptyListingsText}>
-                {channel === 'Listings' && filter === 'ALL' ? 'No listings found. Start selling today!' : 'No listings matching this status.'}
+                {channel === 'Listings'
+                  ? filter === 'ALL' ? 'No listings found. Start selling today!' : 'No listings matching this status.'
+                  : 'No auctions matching this status.'}
               </Text>
             </View>}
           renderItem={({ item }) => {

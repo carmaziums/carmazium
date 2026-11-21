@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase, hybridStorageAdapter } from '../lib/supabase';
+import { subscribeDeferredAuthChanges } from '../lib/authSubscription';
 
 // See logout(): blocks automatic re-authentication while signing out.
 let signingOutUntil = 0;
@@ -253,7 +254,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // the sole subscriber repo-wide was VerifyEmailScreen, scoped to SIGNED_IN
     // and alive only while that screen was mounted — so a remote sign-out or a
     // failed token refresh was never observed anywhere else.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    return subscribeDeferredAuthChanges(async (event, session) => {
       const state = get();
 
       if (event === 'SIGNED_OUT') {
@@ -279,7 +280,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // spinner while the account is confirmed. Standing aside here avoids
         // two initializeAuth() calls racing over the same profile fetch.
         if (state.pendingEmailVerification) return;
-        if (!state.isAuthenticated) await get().initializeAuth();
+        // Explicit login/startup already owns hydration while loading.
+        if (!state.isAuthenticated && !state.isLoading) await get().initializeAuth();
         return;
       }
 
@@ -290,12 +292,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // refresh arriving while local state thinks it is signed out — a cold
         // restore that lost the race — where rehydrating is right.
         resetAuthRedirectLatch();
-        if (session?.access_token && !state.isAuthenticated) await get().initializeAuth();
+        if (session?.access_token && !state.isAuthenticated && !state.isLoading) await get().initializeAuth();
         return;
       }
     });
 
-    return () => subscription.unsubscribe();
   },
 
   setLoading: (loading: boolean) => set({ isLoading: loading }),

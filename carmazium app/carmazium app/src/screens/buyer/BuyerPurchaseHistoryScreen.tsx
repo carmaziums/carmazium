@@ -289,8 +289,7 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <Ionicons name="receipt-outline" size={36} color={Colors.textMuted} />
-      <Text style={styles.emptyTitle}>No purchases yet</Text>
-      <Text style={styles.emptySub}>Completed vehicle purchases will appear here</Text>
+      <Text style={styles.emptyTitle}>No platform receipts found.</Text>
     </View>
   );
 

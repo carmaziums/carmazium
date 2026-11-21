@@ -24,7 +24,7 @@ A 10% checkpoint is a **scope milestone**, not a measured functional equality pe
 | 60–70% | Buyer/Seller to Buyer/Seller: dashboard, navigation, search, filters, saved vehicles and detail | SAME-ACCOUNT EMULATOR COMPARISON COMPLETED; source navigation/saved/search fixes; new APK verification and detail page still outstanding; PAUSED |
 | 70-80% | Buyer/Seller listing, offers, messages, fullscreen gallery and sales paths | SAME-ACCOUNT EMULATOR COMPARISON COMPLETED; gallery failure reproduced; source fixes + tests saved; new APK QA and live actions still pending; PAUSED |
 | 80–90% | Account-specific guided tours, jump/replay/voice, settings, notifications and theme comparison | SOURCE CHANGES SAVED; same-emulator buyer/seller settings and notifications compared, role routes unit-tested; new APK visual QA and full cross-role acceptance still pending; PAUSED |
-| 90–100% | Regression across all three roles in emulator; account persistence, screenshots, functional assertions, release candidate readiness. Public rollout stays separate from testing | NOT STARTED |
+| 90-100% | Integrate with current production main, run regression, verify correct package/download and signed-update readiness | SOURCE MERGE + 51/51 native Jest tests + Android production JS export PASS; signed APK, emulator update and final 100% feature parity NOT VERIFIED; PUBLIC RELEASE BLOCKED |
 
 ## 10% checkpoint evidence (read-only)
 
