@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { PresentedProfileImage } from '../../components/ProfileImagePresentation';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -228,7 +229,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
         {/* Hero card */}
         <View style={styles.heroCard}>
           {user.profileImage ? (
-            <Image source={{ uri: user.profileImage }} style={styles.avatarImg} contentFit="cover" cachePolicy="memory-disk" />
+            <PresentedProfileImage uri={user.profileImage} style={styles.avatarImg}/>
           ) : (
             <LinearGradient colors={[Colors.brandSlate, Colors.brandNavy]} style={styles.avatar}>
               <Text style={styles.avatarText}>{getInitials(user)}</Text>

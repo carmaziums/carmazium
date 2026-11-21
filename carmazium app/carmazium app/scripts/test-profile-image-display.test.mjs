@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {readFileSync} from 'node:fs';
+import {runInNewContext} from 'node:vm';
+import React from 'react';
+import {act,create} from 'react-test-renderer';
+import ts from 'typescript';
+globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+const compile=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.React,module:ts.ModuleKind.CommonJS,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText;
+const source=readFileSync(new URL('../src/lib/profileImagePresentation.ts',import.meta.url),'utf8');const api={};runInNewContext(compile(source),{exports:api});
+const modules={react:React,'react-native':{View:'View',Text:'Text'},'expo-image':{Image:'Image'},'./Button':{Button:'Button'},'../constants/colors':{Colors:{}},'../lib/profileImagePresentation':api};const exports={};runInNewContext(compile(readFileSync(new URL('../src/components/ProfileImagePresentation.tsx',import.meta.url),'utf8')),{exports,require:n=>modules[n]});
+const click=(t,label)=>act(async()=>t.root.findAllByType('Button').find(n=>n.props.label===label).props.onPress());
+test('native display encoding matches website and preserves original image URI',()=>{assert.equal(source,readFileSync(new URL('../../../src/lib/profileImagePresentation.ts',import.meta.url),'utf8'));const url=api.encodeProfileImagePresentation('https://example.test/photo.png',{fit:'contain',x:25,y:75,zoom:2});assert.equal(url,'https://example.test/photo.png#cm-view=contain,25,75,2.00');assert.equal(api.parseProfileImagePresentation(url).src,'https://example.test/photo.png');});
+test('adjust/reset is local until Save; failed save remains retryable without closing',async()=>{let fail=true,closed=0;const saved=[];let t;await act(async()=>{t=create(React.createElement(exports.ProfileImageAdjustment,{uri:'https://example.test/photo.png',onClose:()=>closed++,onSave:async value=>{saved.push(value);if(fail)throw Error('offline');}}));});await click(t,'Show full image');await click(t,'Increase Zoom');assert.equal(saved.length,0);await click(t,'Save display');assert.equal(closed,0);assert.equal(saved[0],'https://example.test/photo.png#cm-view=contain,50,50,1.05');assert.ok(t.root.findAllByType('Text').some(n=>n.props.accessibilityRole==='alert'));await click(t,'Reset display');fail=false;await click(t,'Save display');assert.equal(saved[1],'https://example.test/photo.png#cm-view=cover,50,50,1.00');assert.equal(closed,1);await act(async()=>t.unmount());});
