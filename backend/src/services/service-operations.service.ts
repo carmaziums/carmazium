@@ -37,6 +37,7 @@ export interface CapabilityEvidenceUploadInput {
     reference?: string;
     validFrom?: string;
     expiresAt?: string;
+    coverAmountGbp?: string | number;
 }
 
 export interface CapabilityEvidenceReviewInput {
@@ -191,6 +192,19 @@ export class ServiceOperationsService {
         return data.signedUrl;
     }
 
+    private parseInsuranceLimit(input: CapabilityEvidenceUploadInput, requirement: {type: string;title: string}): number | null {
+        const insured = requirement.type === 'PUBLIC_LIABILITY_INSURANCE' || requirement.type === 'DELIVERY_BUSINESS_INSURANCE';
+        if (!insured) return null;
+        const amount = Number(input?.coverAmountGbp);
+        if (!Number.isSafeInteger(amount) || amount < 1 || amount > 100_000_000) {
+            throw new BadRequestException(`${requirement.title} requires a valid coverage limit in GBP.`);
+        }
+        if (!this.cleanText(input?.issuer, 160) || !this.cleanText(input?.reference, 160)) {
+            throw new BadRequestException(`${requirement.title} requires the insurer name and policy number.`);
+        }
+        return amount;
+    }
+
     private async hydrateEntry(entry: any) {
         const { storagePath, ...safeEntry } = entry;
         return {
@@ -205,7 +219,7 @@ export class ServiceOperationsService {
                 e."id", e."scope", e."entityId", e."submittedById", e."kind",
                 e."label", e."storagePath", e."note", e."createdAt",
                 e."evidenceType", e."evidenceStatus", e."evidenceIssuer",
-                e."evidenceReference", e."evidenceValidFrom", e."evidenceExpiresAt",
+                e."evidenceReference", e."evidenceValidFrom", e."evidenceExpiresAt", e."evidenceCoverAmountGbp",
                 e."evidenceReviewedAt", e."evidenceReviewedById", e."evidenceReviewNote",
                 u."firstName" AS "submittedByFirstName",
                 u."lastName" AS "submittedByLastName",
@@ -255,6 +269,7 @@ export class ServiceOperationsService {
             reference: string | null;
             validFrom: Date | null;
             expiresAt: Date | null;
+            coverAmountGbp?: number | null;
         },
     ) {
         const rawInput = input as ServiceCaseEntryInput & { url?: unknown; storagePath?: unknown };
@@ -284,13 +299,13 @@ export class ServiceOperationsService {
                 "id", "scope", "entityId", "submittedById", "kind", "label",
                 "storagePath", "url", "note",
                 "evidenceType", "evidenceStatus", "evidenceIssuer", "evidenceReference",
-                "evidenceValidFrom", "evidenceExpiresAt", "createdAt"
+                "evidenceValidFrom", "evidenceExpiresAt", "evidenceCoverAmountGbp", "createdAt"
             ) VALUES (
                 gen_random_uuid()::text, ${scope}, ${entityId}, ${submittedById}, ${kind}, ${label},
                 ${storagePath}, NULL, ${note},
                 ${evidence?.type ?? null}, ${evidence?.status ?? null},
                 ${evidence?.issuer ?? null}, ${evidence?.reference ?? null},
-                ${evidence?.validFrom ?? null}, ${evidence?.expiresAt ?? null}, CURRENT_TIMESTAMP
+                ${evidence?.validFrom ?? null}, ${evidence?.expiresAt ?? null}, ${evidence?.coverAmountGbp ?? null}, CURRENT_TIMESTAMP
             )
             RETURNING *
         `);
@@ -310,6 +325,7 @@ export class ServiceOperationsService {
             reference: string | null;
             validFrom: Date | null;
             expiresAt: Date | null;
+            coverAmountGbp?: number | null;
         },
     ) {
         const mime = this.validateDocumentFile(file);
@@ -456,6 +472,8 @@ export class ServiceOperationsService {
             throw new BadRequestException('Choose a verification evidence type required for this service.');
         }
 
+        const coverAmountGbp = this.parseInsuranceLimit(input, requirement);
+        const coverAmountGbp = this.parseInsuranceLimit(input, requirement);
         const validFrom = this.parseOptionalDate(input?.validFrom, 'Valid-from date');
         const expiresAt = this.parseOptionalDate(input?.expiresAt, 'Expiry date');
         if (requirement.expiryRequired && !expiresAt) {
@@ -487,6 +505,7 @@ export class ServiceOperationsService {
                 reference: this.cleanText(input?.reference, 160),
                 validFrom,
                 expiresAt,
+                coverAmountGbp,
             },
         );
 
@@ -694,6 +713,7 @@ export class ServiceOperationsService {
                 reference: this.cleanText(input?.reference, 160),
                 validFrom,
                 expiresAt,
+                coverAmountGbp,
             },
         );
         const verification = await this.refreshCapabilityVerificationAfterMutation(
@@ -735,6 +755,7 @@ export class ServiceOperationsService {
 
         const evidenceType = input?.evidenceType || entry.evidenceType;
         const requirement = capabilityEvidenceRequirement(capability.serviceType, evidenceType);
+        const coverAmountGbp = requirement ? this.parseInsuranceLimit(input, requirement) : null;
         if (!requirement) {
             throw new BadRequestException('Choose a verification evidence type required for this service.');
         }
@@ -764,6 +785,7 @@ export class ServiceOperationsService {
                 "evidenceReference" = ${reference},
                 "evidenceValidFrom" = ${validFrom},
                 "evidenceExpiresAt" = ${expiresAt},
+                "evidenceCoverAmountGbp" = ${coverAmountGbp},
                 "evidenceStatus" = 'PENDING',
                 "evidenceReviewedAt" = NULL,
                 "evidenceReviewedById" = NULL,
@@ -856,7 +878,7 @@ export class ServiceOperationsService {
 
         const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
             SELECT
-                "id", "evidenceType", "evidenceStatus", "evidenceExpiresAt",
+                "id", "evidenceType", "evidenceStatus", "evidenceExpiresAt", "evidenceCoverAmountGbp",
                 "submittedById", "kind"
             FROM "service_case_entries"
             WHERE "id" = ${entryId}
@@ -878,6 +900,10 @@ export class ServiceOperationsService {
                 : null;
 
         if (input.status === 'APPROVED') {
+            if ((entry.evidenceType === 'PUBLIC_LIABILITY_INSURANCE' || entry.evidenceType === 'DELIVERY_BUSINESS_INSURANCE')
+              && (!Number.isSafeInteger(entry.evidenceCoverAmountGbp) || entry.evidenceCoverAmountGbp <= 0)) {
+                throw new BadRequestException('Insurance cover limit must be recorded before approval.');
+            }
             if (requirement.expiryRequired && !reviewedExpiry) {
                 throw new BadRequestException(`${requirement.title} requires an expiry date before approval.`);
             }
