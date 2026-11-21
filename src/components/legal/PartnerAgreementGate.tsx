@@ -15,7 +15,10 @@ export function PartnerAgreementGate({children}: {children: React.ReactNode}) {
   const {user, profile, loading: authLoading} = useAuth()
   const pathname = usePathname()
   const partner = profile?.role === "DEALER" || profile?.role === "CONTRACTOR"
-  const inBusinessFlow = /^\/(dashboard(?:\/|$)|auctions\/browse(?:\/|$)|auctions\/live(?:\/|$)|services(?:\/|$))/.test(pathname || "")
+  // Gate business entry points, never existing paid jobs, disputes, refunds or account-deletion pages.
+  const inBusinessFlow = /^\/dashboard\/?$/.test(pathname || "")
+    || /^\/dashboard\/(?:partner|dealer|service)\/?$/.test(pathname || "")
+    || /^\/auctions\/(?:browse|live)(?:\/|$)/.test(pathname || "")
   const [status, setStatus] = React.useState<PartnerAgreementStatus | null>(null)
   const [checkedIdentity, setCheckedIdentity] = React.useState("")
   const [busy, setBusy] = React.useState(false)
