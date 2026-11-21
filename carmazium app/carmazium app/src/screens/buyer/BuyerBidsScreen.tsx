@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   ActivityIndicator,
@@ -31,6 +31,8 @@ import { DealerAccess, getDealerAccess } from '../../lib/dealerAccessApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { Image } from 'expo-image';
 import { IconButton } from '../../components/IconButton';
 // ─────────────────────────── types ───────────────────────────────
 
@@ -215,7 +217,8 @@ const STATUS_CFG: Record<AuctionStatus, StatusCfg> = {
 export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const currentUserId = useAuthStore((s) => s.user?.id);
-  const role = useAuthStore((s) => s.role);
+  const role = useAuthStore((s) => s.accountRole);
+  const generation=useRef(0), cancelLock=useRef(false);
   const [dealerAccess, setDealerAccess] = useState<DealerAccess | null>(null);
   const [dealerAccessLoading, setDealerAccessLoading] = useState(false);
 
@@ -256,20 +259,21 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
   // Dedicated, paginated /bids/my (same endpoint web uses) instead of the
   // non-paginated bids slice off /dashboard/buyer.
   const fetchData = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
+    const request=++generation.current;
+    if (isRefresh) setRefreshing(true); else setLoading(true);
     setError(null);
     try {
       const res = await apiClient<BidsResponse>(`/bids/my?page=${page}&limit=${PAGE_SIZE}`);
-      if (res.success) {
+      if(request!==generation.current)return;
+      if (res.success && Array.isArray(res.data)) {
         setBids((res.data || []).map((b) => mapRawBid(b, businessUserId)));
         setTotalPages(res.pagination?.totalPages ?? 1);
         setTotalCount(res.pagination?.total ?? (res.data || []).length);
-      }
+      } else throw new Error("Invalid bid history");
     } catch {
-      setError('Could not load bids. Please try again.');
+      if(request===generation.current)setError('Could not load bids. Please try again.');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if(request===generation.current){setLoading(false);setRefreshing(false);}
     }
   }, [page, businessUserId]);
 
@@ -279,6 +283,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
   useFocusEffect(
     useCallback(() => {
       fetchData();
+      return ()=>{generation.current++;};
     }, [fetchData]),
   );
 
@@ -373,6 +378,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
 
   // ── cancel bid ────────────────────────────────────────────────
   const handleCancelBid = (bid: Bid) => {
+    if(!canPlaceBid||!isCancelable(bid)||cancelLock.current)return;
     Alert.alert(
       'Cancel your bid?',
       'Your bid will be removed. The auction continues with the previous highest bid.',
@@ -382,6 +388,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
           text: 'Cancel Bid',
           style: 'destructive',
           onPress: async () => {
+            if(cancelLock.current)return;cancelLock.current=true;
             setCancelingId(bid.id);
             try {
               await apiClient(`/bids/${bid.id}/cancel`, { method: 'PATCH' });
@@ -391,7 +398,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
             } catch (err: any) {
               Alert.alert('Failed', err?.message ?? 'Could not cancel bid. Please try again.');
             } finally {
-              setCancelingId(null);
+              cancelLock.current=false;setCancelingId(null);
             }
           },
         },
@@ -454,15 +461,16 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
             isNavigating && { opacity: 0.6 },
           ]}
         >
+          {!!bid.listing.images?.[0]&&<Image source={{uri:bid.listing.images[0]}} style={{width:72,height:64,borderRadius:10,marginRight:12}} contentFit="cover"/>}
           {/* Left section */}
           <View style={styles.bidLeft}>
             <Text style={styles.bidTitle} numberOfLines={1}>
               {bid.listing?.title ?? 'Vehicle'}
             </Text>
             <Text style={styles.bidAmount}>
-              £{bid.amount.toLocaleString('en-GB')}
+              {new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(bid.amount)}
             </Text>
-            <Text style={styles.bidTime}>{timeAgo(bid.createdAt)}</Text>
+            <Text style={styles.bidTime}>{new Date(bid.createdAt).toLocaleDateString('en-GB')}</Text>
           </View>
 
           {/* Right section */}
@@ -614,36 +622,8 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
   // ── main render ────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
-
-      {/* Gradient backdrop */}
-      <LinearGradient
-        colors={[Colors.accentAlpha04, Colors.infoBlueAlpha04, Colors.bgPrimary]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 0.6 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      {/* Safe-area spacer */}
-      <View style={{ height: insets.top }} />
-
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-
-        <Text style={styles.headerTitle}>Auction Bids</Text>
-
-        {totalCount > 0 ? (
-          <View style={styles.countBadge}>
-            <Text style={styles.countBadgeText}>
-              {totalCount > 99 ? '99+' : totalCount}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.headerPlaceholder} />
-        )}
-      </View>
-
+      <WebsiteTopBar/>
+      <View style={{padding:24,gap:8}}><Text style={{fontSize:24,fontFamily:FontFamily.bold,color:Colors.textPrimary}}>My Bids &amp; Offers</Text><Text style={{color:Colors.textMuted}}>Track your auction bids and listing offers</Text><Text style={{color:Colors.textMuted}}>{totalCount} bids</Text></View>
       {/* ── Content ── */}
       {loading || (bids.length === 0 && !error) ? (
         <ScrollView

@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  useWindowDimensions,
   Alert,
   Dimensions,
   FlatList,
@@ -18,6 +19,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
+import { getListingById } from '../../lib/listingsApi';
 import { apiClient } from '../../lib/apiClient';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -37,6 +39,11 @@ import {
   type DeliveryRequest,
 } from '../../lib/deliveryApi';
 
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { Image } from 'expo-image';
+import { Button } from '../../components/Button';
+import { BottomSheet } from '../../components/BottomSheet';
+import { OUTGOING_OFFER_VIEWS, filterOutgoingOffers, outgoingOfferEmptyMessage, type OutgoingOfferView } from '../../lib/outgoingOfferFilters';
 import { IconButton } from '../../components/IconButton';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -47,6 +54,7 @@ type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED' | 'WITHDRAW
 interface Offer {
   id: string;
   amount: number;
+  message?: string;
   status: OfferStatus;
   // Canonical counter fields — prefer these; fall back to counterAmount for old records
   sellerCounterAmount?: number | null;
@@ -85,7 +93,7 @@ interface MyOffersResponse {
 // ─────────────────────────── helpers ──────────────────────────────
 
 const formatPrice = (amount: number): string =>
-  `£${amount.toLocaleString('en-GB')}`;
+  new Intl.NumberFormat('en-GB', {style:'currency',currency:'GBP'}).format(Number(amount));
 
 const timeAgo = (iso?: string): string => {
   if (!iso) return '';
@@ -180,6 +188,15 @@ const STATUS_CONFIG: Record<
 
 export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const {width,fontScale}=useWindowDimensions();
+  const [viewMode,setViewMode]=useState<OutgoingOfferView>('current');
+  const [amending,setAmending]=useState<Offer|null>(null);
+  const [amendAmount,setAmendAmount]=useState('');
+  const [amendMessage,setAmendMessage]=useState('');
+  const [amendError,setAmendError]=useState<string|null>(null);
+  const [amendBusy,setAmendBusy]=useState(false);
+  const amendLock=useRef(false), generation=useRef(0);
+
 
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -208,6 +225,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
   const [deliveryActionId, setDeliveryActionId] = useState<string | null>(null);
 
   const fetchData = useCallback(async (isRefresh = false) => {
+    const request=++generation.current;
     if (isRefresh) setRefreshing(true);
     setError(null);
     try {
@@ -215,10 +233,11 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
         apiClient<MyOffersResponse>('/offers/my'),
         getMyDeliveryRequests(),
       ]);
-      if (res.status === 'fulfilled' && res.value?.success) {
+      if(request!==generation.current)return;
+      if (res.status === 'fulfilled' && res.value?.success && Array.isArray(res.value.data)) {
         const raw = res.value.data;
         setOffers(Array.isArray(raw) ? raw : []);
-      } else if (res.status === 'rejected') {
+      } else {
         setError('Could not load offers. Please try again.');
       }
       if (deliveryRes.status === 'fulfilled') {
@@ -227,8 +246,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
     } catch {
       setError('Could not load offers. Please try again.');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if(request===generation.current){setLoading(false); setRefreshing(false);}
     }
   }, []);
 
@@ -244,6 +262,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
       } else {
         fetchData(true);
       }
+      return ()=>{generation.current++;};
     }, [fetchData]),
   );
 
@@ -447,7 +466,31 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
 
   // ─────────────── computed ───────────────
 
-  const counteredPending = offers.filter((o) => o.status === 'COUNTERED').length;
+  const currentOffers=filterOutgoingOffers(offers,'current');
+  const displayedOffers=filterOutgoingOffers(offers,viewMode);
+  const counteredPending=currentOffers.filter(o=>o.status==='COUNTERED'&&o.lastCounteredBy==='SELLER').length;
+  const saveAmendment=async()=>{
+    if(!amending||amendLock.current)return;
+    const amount=Number(amendAmount),minimum=Math.floor(Number(amending.listing?.price||0)*0.7);
+    if(!amendAmount.trim()||!Number.isFinite(amount)||amount<=0||amount<minimum){setAmendError(`Enter a valid amount${minimum>0?` of at least ${formatPrice(minimum)}`:''}.`);return;}
+    amendLock.current=true;setAmendBusy(true);setAmendError(null);
+    try{await apiClient(`/offers/${encodeURIComponent(amending.id)}/amend`,{method:'PATCH',body:JSON.stringify({amount,amountMin:amount,amountMax:amount,message:amendMessage})});setAmending(null);await fetchData(true);}
+    catch(err){setAmendError(err instanceof Error?err.message:'Could not amend this offer.');}
+    finally{amendLock.current=false;setAmendBusy(false);}
+  };
+  const listHeader=<View style={{gap:16,marginBottom:20}}>
+    <Text style={{fontFamily:FontFamily.bold,fontSize:24,color:Colors.textPrimary}}>MY OFFERS</Text>
+    <Text style={{color:Colors.textMuted,lineHeight:22}}>Offers you have made on other people's cars. Current offers are shown separately from your history.</Text>
+    <Button label="Ask a seller to arrange delivery" variant="outline" onPress={()=>navigation?.navigate('BuyerDeliveryRequests')}/>
+    <Button label="View auction bids and cancellation options" variant="outline" onPress={()=>navigation?.navigate('BuyerBids')}/>
+    <View style={{flexDirection:width>=640&&fontScale<1.3?'row':'column',gap:16}}>{[
+      ['ACTIVE',currentOffers.length,'CURRENT OFFERS'],['COUNTER',counteredPending,'ACTION REQUIRED'],['CLOSED',filterOutgoingOffers(offers,'accepted').length,'ACCEPTED OFFERS']
+    ].map(([status,value,label])=><View key={label} style={{flex:1,padding:20,borderRadius:16,borderWidth:1,borderColor:Colors.border,backgroundColor:Colors.bgCard,gap:10}}><Text style={{color:Colors.textMuted,fontSize:12}}>{status}</Text><Text style={{color:Colors.textPrimary,fontSize:30,fontFamily:FontFamily.bold}}>{loading?'—':error?'Unavailable':value}</Text><Text style={{color:Colors.textMuted,fontSize:12}}>{label}</Text></View>)}</View>
+    <Text style={{color:Colors.textMuted,fontFamily:FontFamily.bold}}>{OUTGOING_OFFER_VIEWS.find(v=>v.value===viewMode)?.heading.toUpperCase()}</Text>
+    <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{OUTGOING_OFFER_VIEWS.map(v=><Button key={v.value} label={`${v.label} ${filterOutgoingOffers(offers,v.value).length}`} size="sm" variant={viewMode===v.value?'primary':'outline'} onPress={()=>setViewMode(v.value)}/>)}</View>
+    {error&&<ErrorBanner message={error} onRetry={()=>void fetchData()}/>}
+  </View>;
+
 
   // ─────────────── render helpers ─────────────────────
 
@@ -459,7 +502,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <Ionicons name="document-text-outline" size={40} color={Colors.textMuted} />
-      <Text style={styles.emptyTitle}>No offers sent yet</Text>
+      <Text style={styles.emptyTitle}>{outgoingOfferEmptyMessage(viewMode)}</Text>
       <Text style={styles.emptySub}>
         Make offers on listings to see them here
       </Text>
@@ -521,7 +564,8 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
       >
         {/* Status chip */}
         <View style={styles.cardTopRow}>
-          <Text style={styles.listingTitle} numberOfLines={1}>{listingTitle}</Text>
+          {!!offer.listing?.images?.[0]&&<Image source={{uri:offer.listing.images[0]}} style={{width:80,height:64,borderRadius:12}} contentFit="cover"/>}
+          <TouchableOpacity style={{flex:1}} accessibilityLabel={`View ${listingTitle}`} disabled={!listingId} onPress={async()=>{try{const listing=await getListingById(listingId!);if(listing)navigation?.navigate('VehicleDetail',{listing});else Alert.alert('Not available','This listing is no longer available.');}catch{Alert.alert('Could not load vehicle','Please try again.');}}}><Text style={styles.listingTitle} numberOfLines={2}>{listingTitle}</Text></TouchableOpacity>
           <View style={[styles.statusChip, { backgroundColor: cfg.chipBg }]}>
             <Text style={[styles.statusChipText, { color: cfg.chipText }]}>
               {cfg.chipLabel}
@@ -592,6 +636,8 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
         {/* Actions: PENDING — withdraw */}
         {offer.status === 'PENDING' && (
           <View style={styles.actionsRow}>
+            <Button label="Amend" variant="outline" onPress={()=>{setAmending(offer);setAmendAmount(String(Number(offer.amount)));setAmendMessage(offer.message||'');setAmendError(null);}}/>
+
             <TouchableOpacity
               style={[styles.actionBtn, styles.actionBtnWithdraw]}
               activeOpacity={0.75}
@@ -617,7 +663,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                   price. displayedCounter already resolves the canonical
                   accepted counter amount, falling back to the original offer
                   when there was no counter. */}
-              {displayedCounter != null
+              {offer.listing?.status==='SOLD' ? 'Purchase completed.' : displayedCounter != null
                 ? `Your negotiated price of ${formatPrice(displayedCounter)} was accepted! Arrange payment and collection with the seller; once paid, either of you can complete the sale.`
                 : `Your offer of ${formatPrice(offer.amount)} was accepted! Arrange payment and collection with the seller; once paid, either of you can complete the sale.`}
             </Text>
@@ -662,7 +708,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
           <Text style={styles.closedStatusText}>
             {offer.status === 'REJECTED'
               ? 'This offer was declined by the seller.'
-              : 'You withdrew this offer.'}
+              : offer.status==='CANCELLED' ? 'This offer was cancelled.' : 'You withdrew this offer.'}
           </Text>
         )}
 
@@ -923,34 +969,13 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
           onCreated={() => void fetchData(true)}
         />
       )}
-      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
-      <LinearGradient
-        colors={[Colors.accentAlpha06, Colors.groundClear, Colors.bgPrimary]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0, y: 0.5 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      {/* Safe-area top spacer */}
-      <View style={{ height: insets.top }} />
-
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-
-        <Text style={styles.headerTitle}>My Sent Offers</Text>
-
-        {counteredPending > 0 ? (
-          <View style={styles.counterBadge}>
-            <Text style={styles.counterBadgeText}>
-              {counteredPending > 99 ? '99+' : counteredPending}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.headerRight} />
-        )}
-      </View>
-
+      <WebsiteTopBar/>
+      <BottomSheet visible={!!amending} onClose={()=>{if(!amendBusy)setAmending(null);}} title="Amend offer" avoidKeyboard>
+        <View style={{gap:14,paddingBottom:20}}><Text style={{color:Colors.textPrimary}}>Your offer (£)</Text><TextInput accessibilityLabel="Amended offer amount" style={styles.counterBackInput} value={amendAmount} onChangeText={setAmendAmount} keyboardType="decimal-pad"/>
+        <Text style={{color:Colors.textPrimary}}>Message (optional)</Text><TextInput accessibilityLabel="Amended offer message" style={styles.counterBackInput} value={amendMessage} onChangeText={setAmendMessage} multiline maxLength={2000}/>
+        {!!amendError&&<Text accessibilityRole="alert" style={{color:Colors.error}}>{amendError}</Text>}
+        <Button label="Save amended offer" loading={amendBusy} onPress={()=>void saveAmendment()}/><Text style={{color:Colors.textMuted}}>You can amend an offer only while it is awaiting the seller. Once negotiation starts, use the counter-offer controls.</Text></View>
+      </BottomSheet>
       {/* ── Content ── */}
       {/* Cards below have inline (non-modal) counter-back and delivery-address
           TextInputs — wrapping the list keeps whichever card is expanded from
@@ -961,47 +986,12 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
         behavior="padding"
         keyboardVerticalOffset={insets.top}
       >
-        {loading || (offers.length === 0 && !error) ? (
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={() => fetchData(true)}
-                tintColor={Colors.accent}
-                colors={[Colors.accent]}
-              />
-            }
-          >
-            {error && !loading && (
-              <ErrorBanner message={error} onRetry={() => fetchData()} />
-            )}
-            {loading ? renderSkeleton() : renderEmptyState()}
-          </ScrollView>
-        ) : (
-          // FlatList so a long offer history virtualizes instead of mounting every
-          // card at once (mobile-audit.md P3).
-          <FlatList
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={() => fetchData(true)}
-                tintColor={Colors.accent}
-                colors={[Colors.accent]}
-              />
-            }
-            data={offers}
-            keyExtractor={(item) => item.id}
-            renderItem={renderOfferCard}
-            ListHeaderComponent={error ? <ErrorBanner message={error} onRetry={() => fetchData()} /> : null}
-            ListFooterComponent={<View style={{ height: 40 }} />}
-          />
-        )}
+        <FlatList style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={()=>void fetchData(true)} tintColor={Colors.accent}/>}
+          data={loading?[]:displayedOffers} keyExtractor={item=>item.id} renderItem={renderOfferCard}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={loading?<View>{renderSkeleton()}</View>:error?null:renderEmptyState()}
+          ListFooterComponent={<View style={{height:40}}/>}/>
       </KeyboardStickyView>
     </View>
   );
@@ -1064,7 +1054,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingTop: 8,
+    paddingTop: 32,
     gap: 16,
   },
 
