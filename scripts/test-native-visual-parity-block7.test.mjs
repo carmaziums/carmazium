@@ -35,8 +35,8 @@ test('native retail Browse uses website heading and canonical shared top bar wit
 });
 
 test('actual market vehicle cards expose photo, truthfully unknown gearbox, mileage and price',()=>{
-  for(const item of ['ImageCarousel','listing.images','Gearbox:','Not specified',
-    'formatMileage(listing.mileage)','listing.fuelType','getNativeListingPrice(listing).amount','ImageLightbox']){
+  for(const item of ['ImageCarousel','listing.images','TRANSMISSION_LABELS','Not specified',
+    "listing.mileage.toLocaleString('en-GB')",'listing.fuelType','getNativeListingPrice(listing)','pricing.amount','ImageLightbox']){
     assert.ok(card.includes(item),item);
   }
   assert.ok(app('data/listings.ts').includes('Retail asking price'));

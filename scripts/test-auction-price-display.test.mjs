@@ -84,7 +84,8 @@ test("web and app cards use API bid display and the actual auction route", () =>
   assert.match(card, /detailHref = listingType === "AUCTION"/);
   assert.match(card, /listingType !== "AUCTION" && status === 'ACTIVE'/);
   assert.match(mobileCard, /getNativeListingPrice\(listing\)\.amount/);
-  assert.match(mobileHorizontal, /getNativeListingPrice\(listing\)\.amount/);
+  assert.ok(mobileHorizontal.includes('const pricing=getNativeListingPrice(listing)'));
+  assert.ok(mobileHorizontal.includes("listing.listingType==='AUCTION'?pricing.amount:"));
   assert.match(mobileSearch, /item\.listingType === 'AUCTION' && item\.auction\?\.id/);
   assert.match(mobileSearch, /navigation\.navigate\('LiveAuctionDetailed'/);
   for (const p of ["src/app/buy-cars/[slug]/page.tsx", "src/app/vehicle/[id]/page.tsx"]) {

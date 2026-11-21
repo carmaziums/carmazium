@@ -46,6 +46,8 @@ test('result card keeps native gallery, detail, saved and warranty actions with 
  await act(async()=>t.root.findByType('Button').props.onPress());assert.deepEqual(opened,['bmw']);
  await act(async()=>t.root.findByType('IconButton').props.onPress());assert.deepEqual(saved,['bmw']);
  await act(async()=>t.root.findByType('TouchableOpacity').props.onPress());assert.deepEqual(warranties,['quote']);
+ await act(async()=>t.update(React.createElement(Card,{listing:{...listing,transmissionRaw:'UNKNOWN',transmission:undefined},onPress:id=>opened.push(id)})));
+ assert.ok(texts(t).includes('Not specified'));assert.equal(texts(t).includes('Automatic'),false);
  await act(async()=>t.update(React.createElement(Card,{listing:{...listing,status:'SOLD'},onPress:id=>opened.push(id),onWarranty:()=>warranties.push('quote')})));
  assert.equal(t.root.findAllByType('IconButton').length,0);assert.equal(t.root.findAllByType('TouchableOpacity').length,0);assert.equal(t.root.findByType('Button').props.label,'View Sold Vehicle');assert.equal(texts(t).includes('OFFERS WELCOME'),false);await act(async()=>t.unmount());
 });

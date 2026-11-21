@@ -43,7 +43,7 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({listin
   const grade=listing.exteriorGrade&&GRADE_COLORS[listing.exteriorGrade];
   const bodyType=listing.bodyTypeRaw?BODY_TYPE_LABELS[listing.bodyTypeRaw]:listing.category;
   const fuel=listing.fuelTypeRaw?FUEL_TYPE_LABELS[listing.fuelTypeRaw]:listing.fuelType;
-  const gearbox=listing.transmissionRaw?TRANSMISSION_LABELS[listing.transmissionRaw]:listing.transmission;
+  const gearbox=(listing.transmissionRaw?TRANSMISSION_LABELS[listing.transmissionRaw]:undefined)||listing.transmission||'Not specified';
   const specs=[
     {icon:'calendar-outline',label:listing.year?String(listing.year):''},
     {icon:'speedometer-outline',label:listing.mileage!=null?listing.mileage.toLocaleString('en-GB')+' mi':''},
