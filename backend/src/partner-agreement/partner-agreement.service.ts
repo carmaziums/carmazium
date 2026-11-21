@@ -60,12 +60,12 @@ export class PartnerAgreementService {
         id: true,
         role: true,
         deletedAt: true,
-        dealerProfile: { select: { userId: true } },
+        dealerProfile: { select: { userId: true, isVerified: true, kyc: { select: { status: true, businessType: true, companyRegistrationNumber: true } } } },
         contractorProfile: { select: { userId: true } },
         dealerStaffMemberships: {
           where: { isActive: true },
           take: 1,
-          select: { dealerProfile: { select: { userId: true } } },
+          select: { dealerProfile: { select: { userId: true, isVerified: true, kyc: { select: { status: true, businessType: true, companyRegistrationNumber: true } } } } },
         },
       },
     });
@@ -75,15 +75,20 @@ export class PartnerAgreementService {
     }
     // An active staff member inherits the owner's agreement, rather than
     // creating a fictitious new legal entity.
+    const legalBusiness = actor.dealerProfile || actor.dealerStaffMemberships?.[0]?.dealerProfile;
+    const verifiedKyc = legalBusiness?.isVerified && legalBusiness.kyc?.status === 'APPROVED'
+      ? legalBusiness.kyc : null;
     if (!actor.dealerProfile && !actor.contractorProfile &&
         actor.dealerStaffMemberships?.length) {
       return {
         required: true,
         ownerUserId: actor.dealerStaffMemberships[0].dealerProfile.userId,
         canSign: false,
+        verifiedKyc,
       };
     }
     return {
+      verifiedKyc,
       required: SIGNABLE_ROLES.has(actor.role),
       ownerUserId: actorUserId,
       canSign: SIGNABLE_ROLES.has(actor.role),
@@ -117,9 +122,17 @@ export class PartnerAgreementService {
       },
       orderBy: { acceptedAt: 'desc' },
     });
+    const signedEntityMatchesVerifiedKyc = !identity.verifiedKyc || (
+      identity.verifiedKyc.businessType === 'SOLE_PROPRIETORSHIP'
+        ? record?.businessKind === 'SOLE_TRADER'
+        : (record?.businessKind === 'COMPANY' && (
+          !identity.verifiedKyc.companyRegistrationNumber ||
+          record.registrationNumber?.replace(/\s/g, '').toUpperCase() === identity.verifiedKyc.companyRegistrationNumber.replace(/\s/g, '').toUpperCase()
+        ))
+    );
     return {
       required: true,
-      accepted: Boolean(record),
+      accepted: Boolean(record && signedEntityMatchesVerifiedKyc),
       canSign: identity.canSign,
       version: PARTNER_AGREEMENT_VERSION,
       sha256: PARTNER_AGREEMENT_SHA256,
@@ -185,6 +198,19 @@ export class PartnerAgreementService {
     }
     if (businessKind === 'COMPANY' && !registrationNumber) {
       throw new BadRequestException('Registered companies must provide their company registration number.');
+    }
+    // Prevent an already-KYC-verified business signing for a different entity.
+    // Unverified new partners must still have their chosen entity checked in KYC.
+    const verified = identity.verifiedKyc;
+    if (verified?.businessType === 'SOLE_PROPRIETORSHIP' && businessKind !== 'SOLE_TRADER') {
+      throw new BadRequestException('Your verified sole-trader business must sign as a sole trader.');
+    }
+    if (verified && verified.businessType !== 'SOLE_PROPRIETORSHIP' && businessKind !== 'COMPANY') {
+      throw new BadRequestException('Your verified registered company must sign as a company.');
+    }
+    if (verified && verified.businessType !== 'SOLE_PROPRIETORSHIP' && verified.companyRegistrationNumber
+        && registrationNumber.replace(/\s/g, '').toUpperCase() !== verified.companyRegistrationNumber.replace(/\s/g, '').toUpperCase()) {
+      throw new BadRequestException('Company registration number does not match the verified business.');
     }
     // User agent and an optionally keyed one-way IP pseudonym are supplemental
     // evidence, not a substitute for authenticated identity or an e-signature.
