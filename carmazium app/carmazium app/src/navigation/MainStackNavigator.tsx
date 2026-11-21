@@ -4,6 +4,8 @@ import { BlogScreen, BlogArticleScreen, BusinessSpotlightScreen, CarBodyGuideScr
 import React from 'react';
 import { View } from 'react-native';
 import { AdminBottomNav } from '../components/AdminBottomNav';
+import { PersonalDashboardBottomNav } from '../components/PersonalDashboardBottomNav';
+import { isPersonalDashboardRoute } from '../lib/personalDashboardTabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigatorScreenParams } from '@react-navigation/native';
 import { TabNavigator, TabParamList } from './TabNavigator';
@@ -283,11 +285,17 @@ const Stack = createNativeStackNavigator<MainStackParamList>();
 const GuestAwareLayout = ({ children, route }: { children: React.ReactNode; route: { name: string; params?: object } }) => {
   const accountRole = useAuthStore((s) => s.accountRole);
   const showAdminNav = accountRole === 'admin' && route.name.startsWith('Admin');
+  const showPersonalNav = (accountRole === 'buyer' || accountRole === 'seller') && isPersonalDashboardRoute(route.name);
   return <GuestGate routeName={route.name} routeParams={route.params}>
     {showAdminNav ? (
       <View style={{ flex: 1 }}>
         <View style={{ flex: 1 }}>{children}</View>
         <AdminBottomNav routeName={route.name} />
+      </View>
+    ) : showPersonalNav ? (
+      <View style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>{children}</View>
+        <PersonalDashboardBottomNav role={accountRole as 'buyer' | 'seller'} activeRoute={route.name} />
       </View>
     ) : children}
   </GuestGate>;
