@@ -113,6 +113,41 @@ describe('AiService safety and reporting', () => {
         expect(systemPrompts).toContain('verified');
     });
 
+    it.each([
+        'I am a dealer but cannot bid. What should I check?',
+        'I switched my profile role to dealer. Why is trade access still blocked?',
+    ])('recovers verified public dealer-access guidance after an invented navigation route: %s', async question => {
+        const { service, completionCreate } = build();
+        completionCreate.mockResolvedValue({
+            choices: [{ message: { content: JSON.stringify({
+                text: 'You need /dashboard/dealer/unverified-bid-access to unlock trade bidding.',
+            }) } }],
+        });
+        const result = await service.chatCompletion([{ role: 'user', content: question }]);
+        expect(completionCreate).toHaveBeenCalledTimes(2);
+        expect(result.requiresHumanReview).not.toBe(true);
+        expect(result.text).toMatch(/verification/);
+        expect(result.text).toMatch(/approved/);
+        expect(result.text).toMatch(/permission/);
+        expect(result.text).toContain('I have not checked your account');
+        expect(result.text).not.toContain('/dashboard/dealer/unverified-bid-access');
+    });
+
+    it('does not provide a dealer-only canned answer to a complex or multi-topic request', async () => {
+        const { service, completionCreate } = build();
+        completionCreate.mockResolvedValue({
+            choices: [{ message: { content: JSON.stringify({
+                text: 'Go to /dashboard/dealer/not-a-page to bid and pay.',
+            }) } }],
+        });
+        const result = await service.chatCompletion([{
+            role: 'user',
+            content: 'As a dealer I cannot bid and I also need warranty cover and delivery quotes.',
+        }]);
+        expect(result.requiresHumanReview).toBe(true);
+        expect(result.text).toContain('wrong page');
+    });
+
     it('never sends customers to an invented edit route even if the model generates it', async () => {
         const { service, completionCreate } = build();
         completionCreate.mockResolvedValue({

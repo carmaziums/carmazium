@@ -1,5 +1,6 @@
 import {
     verifiedAuctionEligibilityReply,
+    blockedDealerTradingGuidance,
     contradictsDealerOnlyAuctionRule,
     MaziumConversationMessage,
 } from './mazium-auction-eligibility';
@@ -8,6 +9,32 @@ const u = (content: string): MaziumConversationMessage => ({ role: 'user', conte
 const a = (content: string): MaziumConversationMessage => ({ role: 'assistant', content });
 
 describe('MaziuM verified dealer-only auction policy', () => {
+    it.each([
+        'I am a dealer but cannot bid. What should I check?',
+        'I switched my profile role to dealer. Why is trade access still blocked?',
+        'My dealership cannot bid. Please explain.',
+    ])('gives account-neutral verification and permission guidance for blocked dealer access: %s', question => {
+        const answer = blockedDealerTradingGuidance([u(question)]) || '';
+        expect(answer).toMatch(/verification/);
+        expect(answer).toMatch(/approved/);
+        expect(answer).toMatch(/permission/);
+        expect(answer).toContain('I have not checked your account');
+        expect(answer).not.toContain('/dashboard/dealer/listings');
+    });
+
+    it.each([
+        'I want to list my car for auction',
+        'I cannot bid and also need warranty cover and finance application',
+        'I am a private buyer and cannot bid',
+        'What are your payment options for dealers?',
+    ])('does not hijack unrelated or multi-topic requests: %s', question => {
+        expect(blockedDealerTradingGuidance([u(question)])).toBeNull();
+    });
+
+    it('does not answer unauthorised role claims in multi-turn or authenticated conversations', () => {
+        expect(blockedDealerTradingGuidance([u('I cannot bid as a dealer'), a('Let me check'), u('And my refund?')])).toBeNull();
+    });
+
     it.each([
         'tell me how to bid on auction cars if you are not dealer',
         'Can I bid as a private buyer?',

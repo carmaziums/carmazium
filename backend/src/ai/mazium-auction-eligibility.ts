@@ -15,6 +15,30 @@ const FOLLOW_UP = /^(?:but|so|then|and|what if|what about|how about|can i|could 
 const CLEAR_NON_DEALER = /\b(?:not (?:a |an )?(?:car |motor[- ]trade )?(?:dealer|trader)|don't (?:have|own|run) (?:a |an )?(?:dealership|motor[- ]trade business)|without (?:a |an )?(?:dealer|trade) account|non[- ]?dealers?|private (?:buyer|seller|customer|person)|individual(?: buyer)?|regular customer|anyone|everyone|not in (?:the )?motor trade)\b/i;
 const VERIFIED_DEALER = /\b(?:verified|approved|registered|authorised) (?:motor[- ]trade )?(?:dealer|trader|dealership)\b/i;
 
+/**
+ * Safe, source-grounded recovery when a model answer about blocked dealer
+ * trade access is rejected for an invented website route. This is NOT an
+ * account lookup: only short, anonymous, single-topic questions qualify.
+ * Authenticated requests must still use read_my_account and staff permissions.
+ */
+export function blockedDealerTradingGuidance(messages: MaziumConversationMessage[]): string | null {
+    if (messages.length !== 1 || messages[0]?.role !== 'user') return null;
+    const question = messages[0].content.trim();
+    if (!question || question.length > 220) return null;
+    if (!/\b(?:dealer|dealership|motor[- ]trader|trade access)\b/i.test(question)) return null;
+    const denied = /\b(?:cannot|can't|can not|unable|blocked|not allowed|no access)\b.{0,80}\b(?:bid|bidding|trade access)\b/i.test(question);
+    const switchedRole = /\b(?:switch(?:ed)?|chang(?:ed)?|upgrad(?:ed)?)\b.{0,55}\b(?:role|dealer)\b.{0,80}\b(?:blocked|trade access|bidding)\b/i.test(question);
+    if (!denied && !switchedRole) return null;
+    if (/\b(?:warranty|refund|payout|deposit|insurance|finance application|delivery|payment)\b/i.test(question)) return null;
+
+    return 'Changing your profile role to Dealer does not automatically approve trade access. ' +
+        'To place an auction bid, the dealership must have completed business verification and be approved for motor-trade bidding, and your dealership role must have bidding permission. The authorised business owner must also accept the current Master Business Partner Agreement. ' +
+        'Check Account Settings, then Verification, and ask the dealership owner to check your bidding role. ' +
+        'A Finance Manager may view trade stock but cannot place bids; the auction must also still be live. ' +
+        'I have not checked your account, so I cannot say which requirement is missing.';
+}
+
+
 /** We only carry the *user's* auction subject across short follow-ups.
  * Previous model answers are untrusted and can be wrong.
  */
