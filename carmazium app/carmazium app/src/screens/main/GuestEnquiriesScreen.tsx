@@ -19,7 +19,7 @@ export function GuestEnquiriesScreen() {
   }, []);
   useEffect(() => { void load(); return () => { generation.current++; }; }, [load]);
   const contact = async (url: string) => { try { await Linking.openURL(url); } catch { setError('Could not open your email or phone app. Use the contact details shown here.'); } };
-  return <NativePage title="Guest Enquiries">
+  return <NativePage title="Guest vehicle enquiries">
     <Text style={s.body}>Buyers can contact you without creating an account. Their email address is confirmed before the enquiry arrives. Reply by email or phone. Showing your latest 100 enquiries from the last 90 days.</Text>
     <Button label={loading ? 'Loading…' : 'Refresh enquiries'} disabled={loading} onPress={() => void load()} />
     {!!error && <Text accessibilityRole="alert" style={s.error}>{error}</Text>}

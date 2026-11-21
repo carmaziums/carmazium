@@ -27,6 +27,7 @@ import {
 } from '../../lib/servicesApi';
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { Button } from '../../components/Button';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ProviderJobs'>;
 type Tab = 'open' | 'assigned';
@@ -192,6 +193,8 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
   // larger system font size can't leave the list too little height.
   const listHeader = (
     <View>
+      <Button label="Job messages" variant="outline" onPress={() => navigation.navigate('ProviderMessages')} />
+
       <View style={styles.tabs}>
         <TouchableOpacity
           style={[styles.tab, tab === 'open' && styles.tabActive]}

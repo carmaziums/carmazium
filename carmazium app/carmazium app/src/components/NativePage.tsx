@@ -1,16 +1,15 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, type TextInputProps } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { WebsiteTopBar } from './WebsiteTopBar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button } from './Button';
 import { Colors } from '../constants/colors';
 import { FontFamily } from '../constants/typography';
 
 export function NativePage({ title, children }: { title: string; children: React.ReactNode }) {
-  const insets = useSafeAreaInsets(), navigation = useNavigation();
-  return <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: Colors.bgPrimary }}>
-    <View style={pageStyles.header}><Button label="Back" variant="ghost" size="sm" onPress={() => navigation.goBack()} /><Text accessibilityRole="header" style={pageStyles.title}>{title}</Text></View>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[pageStyles.content, { paddingBottom: insets.bottom + 40 }]}>{children}</ScrollView>
+  const insets = useSafeAreaInsets();
+  return <View style={{ flex: 1, backgroundColor: Colors.bgPrimary }}>
+    <WebsiteTopBar />
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[pageStyles.content, { paddingBottom: insets.bottom + 40 }]}><Text accessibilityRole="header" style={pageStyles.title}>{title}</Text>{children}</ScrollView>
   </View>;
 }
 export function FormField({ label, ...props }: TextInputProps & { label: string }) {
