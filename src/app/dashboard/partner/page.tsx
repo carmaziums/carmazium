@@ -27,6 +27,7 @@ type PartnerCapability = {
     id: string
     serviceType: "DELIVERY" | "INSPECTION" | "FINANCE" | "WARRANTY"
     status: CapabilityStatus
+    verificationStatus?: string | null
     reviewNote?: string | null
 }
 type PartnerTeam = {
@@ -263,6 +264,10 @@ export default function PartnerDashboardPage() {
                     </section>
 
                     <DealerServicesNotice />
+                    <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div><h2 className="text-xl font-bold">Service-provider insurance documents</h2><p className="mt-1 text-sm text-[var(--text-muted)]">Collection, delivery and recovery require Motor Trade and Public Liability Insurance. Inspections require Public Liability Insurance. Apply for a service first, then securely upload or renew certificates here.</p></div>
+                        <Link href="/dashboard/service/capabilities"><Button variant="outline">Manage services &amp; insurance documents</Button></Link>
+                    </section>
                     <section>
                         <div className="flex items-end justify-between gap-4 mb-5">
                             <div><h2 className="text-2xl font-black font-heading">Your add-ons</h2><p className="text-sm text-[var(--text-muted)]">Activate one service or several. Adding one never removes another.</p></div>
@@ -280,24 +285,24 @@ export default function PartnerDashboardPage() {
                                 icon={Truck}
                                 title="Delivery & Recovery"
                                 description="Quote on transport and recovery jobs on behalf of your Partner business."
-                                status={loadingTeam ? "Checking status…" : !team ? "Status unavailable" : delivery ? statusLabel[delivery.status] : "Not activated"}
-                                active={delivery?.status === "APPROVED"}
-                                action={delivery?.status === "APPROVED"
-                                    ? <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">Open jobs</Button></Link>
-                                    : delivery?.status === "PENDING"
-                                        ? <Link href={`/dashboard/service/capabilities/${delivery.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Complete service setup</Button></Link>
+                                status={loadingTeam ? "Checking status…" : !team ? "Status unavailable" : delivery ? delivery.verificationStatus === "REVERIFICATION_REQUIRED" ? "Insurance re-verification required" : statusLabel[delivery.status] : "Not activated"}
+                                active={delivery?.status === "APPROVED" && delivery?.verificationStatus !== "REVERIFICATION_REQUIRED"}
+                                action={delivery?.status === "APPROVED" && delivery?.verificationStatus !== "REVERIFICATION_REQUIRED"
+                                    ? <><Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">Open jobs</Button></Link><Link href={`/dashboard/service/capabilities/${delivery.id}/verification`} className="ml-2 text-xs font-bold text-primary underline">Renew insurance certificates</Link></>
+                                    : (delivery?.status === "PENDING" || delivery?.verificationStatus === "REVERIFICATION_REQUIRED")
+                                        ? <Link href={`/dashboard/service/capabilities/${delivery.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Upload insurance &amp; complete setup</Button></Link>
                                         : <Button size="sm" onClick={() => applyService("DELIVERY")} disabled={loadingTeam || !team || busy === "DELIVERY"}>{busy === "DELIVERY" ? <Loader2 className="animate-spin" size={14} /> : "Complete setup"}</Button>}
                             />
                             <AddonCard
                                 icon={Wrench}
                                 title="Vehicle Inspection"
                                 description="Quote on vehicle inspection jobs using the same Partner account and business payout details."
-                                status={loadingTeam ? "Checking status…" : !team ? "Status unavailable" : inspection ? statusLabel[inspection.status] : "Not activated"}
-                                active={inspection?.status === "APPROVED"}
-                                action={inspection?.status === "APPROVED"
-                                    ? <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">Open jobs</Button></Link>
-                                    : inspection?.status === "PENDING"
-                                        ? <Link href={`/dashboard/service/capabilities/${inspection.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Complete service setup</Button></Link>
+                                status={loadingTeam ? "Checking status…" : !team ? "Status unavailable" : inspection ? inspection.verificationStatus === "REVERIFICATION_REQUIRED" ? "Insurance re-verification required" : statusLabel[inspection.status] : "Not activated"}
+                                active={inspection?.status === "APPROVED" && inspection?.verificationStatus !== "REVERIFICATION_REQUIRED"}
+                                action={inspection?.status === "APPROVED" && inspection?.verificationStatus !== "REVERIFICATION_REQUIRED"
+                                    ? <><Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">Open jobs</Button></Link><Link href={`/dashboard/service/capabilities/${inspection.id}/verification`} className="ml-2 text-xs font-bold text-primary underline">Renew liability certificate</Link></>
+                                    : (inspection?.status === "PENDING" || inspection?.verificationStatus === "REVERIFICATION_REQUIRED")
+                                        ? <Link href={`/dashboard/service/capabilities/${inspection.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Upload insurance &amp; complete setup</Button></Link>
                                         : <Button size="sm" onClick={() => applyService("INSPECTION")} disabled={loadingTeam || !team || busy === "INSPECTION"}>{busy === "INSPECTION" ? <Loader2 className="animate-spin" size={14} /> : "Complete setup"}</Button>}
                             />
 

@@ -230,6 +230,11 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 <View><Text style={styles.sectionTitle}>Your add-ons</Text><Text style={styles.sectionSub}>Activate one service or several. Adding one never removes another.</Text></View>
               </View>
               <View style={styles.card}>
+                <Text style={styles.cardTitle}>Service-provider insurance documents</Text>
+                <Text style={styles.cardText}>Delivery, collection and recovery: Motor Trade and Public Liability certificates. Vehicle inspection: Public Liability certificate. Add the service first, then upload securely for approval; you can renew documents here later.</Text>
+                <Button label="Manage services & insurance documents" variant="outline" onPress={() => navigation.navigate('ProviderCapabilities')} />
+              </View>
+              <View style={styles.card}>
                 <Text style={styles.serviceStatus}>{profile.dealerProfile.isVerified ? 'Active' : profile.dealerProfile.kyc?.status === 'PENDING' ? 'Awaiting verification' : 'Not activated'}</Text>
                 <Text style={styles.cardTitle}>Vehicle Dealer</Text>
                 <Text style={styles.cardText}>List retail stock, bid in auctions, manage inventory, CRM and dealer tools. Business KYC and the £1 verification payment are required before taking paid jobs.</Text>
@@ -239,16 +244,18 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
 
 
                 const cap = byType.get(type);
-                const approved = cap?.status === 'APPROVED';
+                const needsInsuranceReview = cap?.status === 'APPROVED' && cap?.verificationStatus === 'REVERIFICATION_REQUIRED';
+                const approved = cap?.status === 'APPROVED' && !needsInsuranceReview;
                 return (
                   <View key={type} style={styles.card}>
-                    <Text style={[styles.serviceStatus, approved && { color: Colors.success }]}>{!team ? 'Status unavailable' : statusText(cap?.status)}</Text>
+                    <Text style={[styles.serviceStatus, approved && { color: Colors.success }]}>{!team ? 'Status unavailable' : needsInsuranceReview ? 'Insurance re-verification required' : statusText(cap?.status)}</Text>
                     <Text style={styles.cardTitle}>{type === 'DELIVERY' ? 'Delivery & Recovery' : 'Vehicle Inspection'}</Text>
                     <Text style={styles.cardText}>{type === 'DELIVERY' ? 'Quote on transport and recovery jobs on behalf of your Partner business.' : 'Quote on vehicle inspection jobs using the same Partner account and business payout details.'}</Text>
                     {cap?.reviewNote && <Text style={styles.reviewNote}>{cap.reviewNote}</Text>}
+                    {cap && <Button label={type === 'DELIVERY' ? 'Upload / renew Motor Trade & Public Liability Insurance' : 'Upload / renew Public Liability Insurance'} variant="outline" onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} />}
                     {approved ? <Button label="Open jobs" variant="outline" onPress={() => navigation.navigate('ProviderJobs')} />
-                      : cap?.status === 'PENDING' ? <Button label="Complete service setup" onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} />
-                      : <Button label="Complete setup" disabled={!team || !!busy} loading={busy === type} onPress={() => void applyService(type)} />}
+                      : cap ? <Button label="Complete service setup" onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} />
+                      : <Button label="Apply for this service & upload insurance" disabled={!team || !!busy} loading={busy === type} onPress={() => void applyService(type)} />}
                   </View>
                 );
               })}

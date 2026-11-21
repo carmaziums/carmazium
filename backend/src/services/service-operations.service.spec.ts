@@ -42,7 +42,7 @@ describe('ServiceOperationsService', () => {
         prisma.$queryRaw.mockResolvedValue([]);
         jest.spyOn(service, 'providerCapabilityVerification').mockResolvedValue({} as any);
         await service.declareProviderBusiness('owner-1', 'cap-1', { accepted: true, registeredBusiness: true, businessName: 'Test', businessAddress: 'Test address', phone: '07000000000', acceptedAt: '2000-01-01', status: 'APPROVED' });
-        expect(cap).toMatchObject({ status: 'PENDING', verificationStatus: 'READY', providerDeclaration: { acceptedBy: 'owner-1', registeredBusiness: true, version: 1 } });
+        expect(cap).toMatchObject({ status: 'PENDING', verificationStatus: 'IN_REVIEW', providerDeclaration: { acceptedBy: 'owner-1', registeredBusiness: true, version: 1 } });
         expect((cap.providerDeclaration as any).acceptedAt).not.toBe('2000-01-01');
         expect(prisma.$queryRaw.mock.calls.some(([sql]: any) => sql.sql.includes('INSERT INTO "service_case_entries"'))).toBe(true);
     });

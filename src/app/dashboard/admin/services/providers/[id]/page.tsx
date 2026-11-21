@@ -320,7 +320,7 @@ export default function AdminProviderReviewPage() {
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                             <div>
                                 <h2 className="font-heading font-bold text-lg">Verification checklist</h2>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">Check the business declaration, KYC, £1 dealer verification and payouts. Collection/delivery/recovery requires trade insurance only. Inspection requires no documents.</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">Check the business declaration, KYC, £1 dealer verification and payouts. Collection/delivery/recovery requires Motor Trade and Public Liability Insurance certificates. Inspection requires Public Liability Insurance.</p>
                             </div>
                             <div className="text-right text-xs">
                                 <span className={`inline-flex rounded-full border px-3 py-1 font-black uppercase tracking-wider ${data.verification.ready ? "text-emerald-500 border-emerald-500/30 bg-emerald-500/5" : "text-amber-500 border-amber-500/30 bg-amber-500/5"}`}>

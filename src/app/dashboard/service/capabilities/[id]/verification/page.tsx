@@ -130,7 +130,7 @@ export default function ProviderVerificationPage() {
             <div>
                 <Link href="/dashboard/service/capabilities" className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] hover:text-primary mb-5"><ArrowLeft size={14}/> My services</Link>
                 <h1 className="text-3xl font-bold font-heading">Provider verification</h1>
-                <p className="text-sm text-[var(--text-muted)] mt-1">{capability ? SERVICE_LABELS[capability.serviceType] : "Service application"} · business details, declaration and secure payout setup. Delivery/collection/recovery requires trade insurance only; inspection requires no uploads.</p>
+                <p className="text-sm text-[var(--text-muted)] mt-1">{capability ? SERVICE_LABELS[capability.serviceType] : "Service application"} · business details, declaration and secure payout setup. Collection, delivery and recovery require both Motor Trade and Public Liability Insurance. Inspection-only work requires Public Liability Insurance.</p>
             </div>
 
             {error && <div role="alert" className="p-4 rounded-xl border border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-300 text-sm flex items-start gap-3"><AlertCircle size={18} className="shrink-0 mt-0.5"/>{error}</div>}
@@ -163,7 +163,7 @@ export default function ProviderVerificationPage() {
                     <Link href="/dashboard/service/capabilities" className="block text-primary underline">Set up or check business payouts</Link>
                 </section>}
                 <section className="space-y-3">
-                    <div><h2 className="font-heading font-bold text-lg">{capability?.serviceType === "INSPECTION" ? "No inspection documents required" : "Trade insurance"}</h2><p className="text-xs text-[var(--text-muted)] mt-1">{capability?.serviceType === "INSPECTION" ? "Complete your business details, declaration and verified payout setup. No inspection documents need to be uploaded." : "Your trade insurance must be approved alongside your business details, declaration and verified payout setup."}</p></div>
+                    <div><h2 className="font-heading font-bold text-lg">Required insurance documents</h2><p className="text-xs text-[var(--text-muted)] mt-1">{capability?.serviceType === "INSPECTION" ? "Upload a current Public Liability Insurance certificate covering vehicle or cosmetic inspections, alongside your business declaration and verified payout setup." : "Upload current Motor Trade Insurance and Public Liability Insurance certificates, alongside business details, declaration and verified payout setup."}</p></div>
                     {detail.verification.requirements.filter(req => !req.optional).map(req => <div key={req.type} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                         <div className="flex items-start justify-between gap-4">
                             <div className="flex gap-3">
@@ -180,13 +180,13 @@ export default function ProviderVerificationPage() {
                     <p className="text-xs text-[var(--text-muted)] leading-relaxed">Formal certificates are not required to join as a Vehicle Inspection provider. Experienced businesses and providers using third-party mechanics may apply. You may upload references, sample reports or certificates if available; none are required for onboarding. Your business remains responsible for competent inspections and appropriate insurance, including subcontracted work.</p>
                 </section>}
 
-                {capability?.serviceType === "DELIVERY" && <>
+                {(capability?.serviceType === "DELIVERY" || capability?.serviceType === "INSPECTION") && <>
                 <section className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
-                    <div className="flex gap-3"><ShieldCheck size={20} className="text-amber-500 shrink-0 mt-0.5"/><div><h2 className="font-bold">Business evidence only</h2><p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">Upload only trade insurance covering collection, delivery and recovery. Do not upload passports, driving licences, personal bank statements or unrelated identity documents.</p></div></div>
+                    <div className="flex gap-3"><ShieldCheck size={20} className="text-amber-500 shrink-0 mt-0.5"/><div><h2 className="font-bold">Business evidence only</h2><p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{capability?.serviceType === "INSPECTION" ? "Upload Public Liability Insurance covering inspections. Motor Trade Insurance is not required for inspection-only work." : "Upload Motor Trade Insurance covering custody and movement of customer vehicles and Public Liability Insurance covering collection, delivery and recovery."} Do not upload passports, driving licences, personal bank statements or unrelated identity documents.</p></div></div>
                 </section>
 
                 <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 space-y-5">
-                    <div><h2 className="font-heading font-bold text-lg">Upload evidence</h2><p className="text-xs text-[var(--text-muted)] mt-1">PDF, JPG, PNG or WEBP, maximum 10 MB each. Reviewed evidence is retained for audit.</p></div>
+                    <div><h2 className="font-heading font-bold text-lg">Upload insurance certificates</h2><p className="text-xs text-[var(--text-muted)] mt-1">Select and upload each required certificate separately. Your document should show the insurer, policy number, dates, coverage and Public Liability limit of indemnity. PDF, JPG, PNG or WEBP, maximum 10 MB per file.</p></div>
                     <div><label className={labelCls}>Requirement</label><select className={inputCls} value={evidenceType} onChange={e => setEvidenceType(e.target.value as CapabilityEvidenceType)}>{detail.verification.requirements.map(req => <option key={req.type} value={req.type}>{req.title}{req.optional ? " — optional" : ""}</option>)}</select></div>
                     <div className="grid sm:grid-cols-2 gap-4">
                         <div><label className={labelCls}>Issuer / organisation</label><input className={inputCls} value={issuer} onChange={e => setIssuer(e.target.value)} placeholder="Insurer"/></div>

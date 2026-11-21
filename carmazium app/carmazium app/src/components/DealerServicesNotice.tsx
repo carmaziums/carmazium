@@ -58,7 +58,7 @@ export const DealerServicesNotice: React.FC = () => {
   if (!show || !userId || accountRole !== 'dealer') return null;
   return <View style={styles.notice} accessibilityRole="summary">
     <Text style={styles.title}>Manage your dealership services in Settings</Text>
-    <Text style={styles.description}>Set your listing badges and complete collection, delivery or inspection setup in Account Settings → Business.</Text>
+    <Text style={styles.description}>Set your listing badges and open insurance-document uploads for collection, delivery, recovery or inspection through Account Settings → Business.</Text>
     <View style={styles.actions}>
       <TouchableOpacity
         accessibilityRole="button" accessibilityLabel="Open dealership services settings"

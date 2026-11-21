@@ -142,7 +142,7 @@ function ProviderJobs() {
                             <AlertCircle size={22} className="text-amber-500 shrink-0" />
                             <div className="flex-1">
                                 <p className="font-bold text-sm">Verification required for new jobs</p>
-                                <p className="text-xs text-[var(--text-muted)] mt-0.5">Complete business verification, verified payouts and the declaration. Delivery and recovery require trade insurance; inspections need no inspection documents. Your original £1 dealer verification is reused. Previously accepted jobs remain under My Work.</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-0.5">Complete business verification, verified payouts and the declaration. Delivery and recovery require Motor Trade and Public Liability Insurance; inspections require Public Liability Insurance. Your original £1 dealer verification is reused. Previously accepted jobs remain under My Work.</p>
                             </div>
                             <Link href="/dashboard/service/capabilities" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>Review verification →</Link>
                         </div>

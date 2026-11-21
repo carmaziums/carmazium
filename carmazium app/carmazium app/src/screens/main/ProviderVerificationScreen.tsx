@@ -194,7 +194,7 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
       {loading ? <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View> : (
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.title}>{serviceType ? SERVICE_LABELS[serviceType] : 'Service application'}</Text>
-          <Text style={styles.sub}>Complete business details, the declaration and secure payout setup. Only trade insurance is uploaded for collection, delivery and recovery. No inspection documents are required.</Text>
+          <Text style={styles.sub}>Insurance documents are required before approval. Collection, delivery and recovery need both Motor Trade and Public Liability Insurance. Inspection-only providers need Public Liability Insurance. Complete the declaration and business payout setup as well.</Text>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -248,17 +248,17 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
                 </TouchableOpacity>
               ))}
 
-              {serviceType === 'DELIVERY' && <>
+              {(serviceType === 'DELIVERY' || serviceType === 'INSPECTION') && <>
               <View style={styles.warningCard}>
                 <Ionicons name="business-outline" size={18} color={Colors.warning} />
                 <Text style={styles.warningText}>
-                  Upload only trade insurance covering collection, delivery and recovery. Do not upload passports, driving licences, personal bank statements or unrelated identity documents.
+                  {serviceType === 'DELIVERY' ? 'Upload both Motor Trade Insurance and Public Liability Insurance certificates covering collection, delivery and recovery.' : 'Upload your Public Liability Insurance certificate covering vehicle and cosmetic inspection work. Motor Trade Insurance is not required for inspection-only work.'} Do not upload passports, driving licences, bank statements or unrelated identity documents.
                 </Text>
               </View>
 
               <View style={styles.card}>
-                <Text style={styles.sectionTitle}>Upload evidence</Text>
-                <Text style={styles.cardText}>PDF, JPG, PNG or WEBP. Maximum 10 MB.</Text>
+                <Text style={styles.sectionTitle}>Upload insurance documents</Text>
+                <Text style={styles.cardText}>{selectedRequirement ? `Selected: ${selectedRequirement.title}. ` : 'Choose a requirement above. '}Upload a separate certificate for each required insurance type. The document must show insurer, policy reference, applicable cover, indemnity limit for Public Liability, and validity dates. PDF, JPG, PNG or WEBP, maximum 10 MB.</Text>
 
                 <TouchableOpacity style={styles.fileButton} onPress={pickFile}>
                   <Ionicons name="attach-outline" size={17} color={Colors.white} />
@@ -266,8 +266,8 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
                 </TouchableOpacity>
 
                 <TextInput style={styles.input} value={label} onChangeText={setLabel} placeholder="Label (optional)" placeholderTextColor={Colors.textMuted} />
-                <TextInput style={styles.input} value={issuer} onChangeText={setIssuer} placeholder="Issuer (optional)" placeholderTextColor={Colors.textMuted} />
-                <TextInput style={styles.input} value={reference} onChangeText={setReference} placeholder="Policy / authority reference (optional)" placeholderTextColor={Colors.textMuted} />
+                <TextInput style={styles.input} value={issuer} onChangeText={setIssuer} placeholder="Insurer name (as shown on certificate)" placeholderTextColor={Colors.textMuted} />
+                <TextInput style={styles.input} value={reference} onChangeText={setReference} placeholder="Insurance policy / certificate reference" placeholderTextColor={Colors.textMuted} />
                 <TextInput
                   style={styles.input}
                   value={expiresAt}

@@ -151,7 +151,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         facts: [
             'Dealer identity/business verification is required for trade auction access; there is a one-time £1 dealer account verification charge in the normal onboarding workflow.',
             'Partner service preferences do not automatically approve service-provider capability. Approval can require business verification, a signed Master Business Partner Agreement and payout setup.',
-            'Collection, delivery and recovery capability also requires valid trade insurance; inspection capability follows its own declaration process.',
+            'Collection, delivery and recovery capability requires valid Motor Trade and Public Liability Insurance certificates. Vehicle inspection requires Public Liability Insurance and its own declaration.',
             'Dealers manage profile verification in /profile?section=verification; approved partner service capabilities use /dashboard/service/capabilities.',
             'Never claim verification has passed, failed or been charged without authenticated account records.'
         ].join(' '),
