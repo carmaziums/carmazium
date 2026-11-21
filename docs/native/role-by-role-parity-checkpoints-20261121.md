@@ -16,9 +16,9 @@ A 10% checkpoint is a **scope milestone**, not a measured functional equality pe
 | Block | Scope | State |
 | --- | --- | --- |
 | 0–10% | Check connection, actual Android package/build, same-emulator Chrome, account/role availability, baseline captures and a route comparison inventory | CHECKPOINT REACHED (environment + inventory); account identity not independently proven |
-| 10–20% | Admin↔admin: sign-in, dashboard, bottom navigation, cards, alerts, tour and settings entry points | PAUSED — requires next 'proceed' |
-| 20–30% | Admin↔admin: listings, auctions, approvals, dealer verification, users, transactions, services, handovers, refunds/cancellations, content and reporting | NOT STARTED |
-| 30–40% | Dealer↔dealer: sign-in, dashboard cards, stock, profile, business settings, customisation, mobile menu and appearance | NOT STARTED |
+| 10–20% | Admin↔admin: sign-in, dashboard, bottom navigation, cards, alerts, tour and settings entry points | SOURCE CHANGES SAVED — emulator acceptance still pending |
+| 20–30% | Admin↔admin: listings, auctions, approvals, dealer verification, users, transactions, services, handovers, refunds/cancellations, content and reporting | PARTIAL SOURCE IMPLEMENTATION — several modules and runtime QA outstanding |
+| 30–40% | Dealer↔dealer: sign-in, dashboard cards, stock, profile, business settings, customisation, mobile menu and appearance | SOURCE AUDIT & NOTICE FIXES — LIVE DEALER COMPARISON BLOCKED by admin sessions; paused until proceed |
 | 40–50% | Dealer↔dealer: listing wizard, drafts, cover photo selection, edits, status, auction/retail controls, real car details | NOT STARTED |
 | 50–60% | Dealer↔dealer: bids, offers, wins, purchases, handovers, chat, team, analytics, trade services | NOT STARTED |
 | 60–70% | Buyer/Seller↔Buyer/Seller: dashboard, search, filters, vehicle detail, tabs, saved vehicles, walkthrough | NOT STARTED |

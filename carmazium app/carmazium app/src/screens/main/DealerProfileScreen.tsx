@@ -4,8 +4,10 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
-import { FontFamily } from '../../constants/typography';
+import { FontFamily, FontSize } from '../../constants/typography';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { DealerServicesNotice } from '../../components/DealerServicesNotice';
+import { DealerUnsoldAuctionNotice } from '../../components/DealerUnsoldAuctionNotice';
 import { DealerWebParityOverview, type DealerHomeDestination } from './DealerWebParityOverview';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { apiClient } from '../../lib/apiClient';
@@ -98,17 +100,19 @@ export const DealerProfileScreen: React.FC = () => {
           </TouchableOpacity>
         )}
 
+      <DealerServicesNotice />
       <DealerWebParityOverview accessLoading={accessLoading} userName={dealerDisplayName || 'Dealer'}
         canManageInventory={canManageInventory} canManageCrm={canManageCrm}
         canManageOffers={canManageOffers} canViewPurchases={canViewPurchases}
         canViewTrade={canViewTrade} canViewAnalytics={canViewAnalytics}
         onNavigate={openMainAction} refreshToken={overviewRefreshToken} />
     </ScrollView>
+    <DealerUnsoldAuctionNotice />
   </View>;
 };
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   phoneBanner: { marginHorizontal: 20, marginBottom: 16, padding: 14, borderRadius: 14, backgroundColor: Colors.warningAlpha08, borderWidth: 1, borderColor: Colors.warningAlpha15, flexDirection: 'row', alignItems: 'center' },
-  phoneBannerTitle: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 14 },
-  phoneBannerSub: { color: Colors.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 4 },
+  phoneBannerTitle: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: FontSize.base - 1 },
+  phoneBannerSub: { color: Colors.textSecondary, fontSize: FontSize.sm - 1, lineHeight: 18, marginTop: 4 },
 });
