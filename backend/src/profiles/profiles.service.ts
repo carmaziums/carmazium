@@ -154,9 +154,10 @@ export class ProfilesService {
                         businessName: true,
                         serviceArea: true,
                         certifications: true,
+                        inspectionPrices: true,
                         capabilities: {
                             where: { status: CapabilityStatus.APPROVED },
-                            select: { serviceType: true, status: true },
+                            select: { serviceType: true, status: true, verificationStatus: true, verificationExpiresAt: true },
                         },
                     },
                 },
@@ -209,6 +210,12 @@ export class ProfilesService {
                     businessName: user.contractorProfile.businessName,
                     serviceArea: user.contractorProfile.serviceArea,
                     certifications: user.contractorProfile.certifications,
+                    inspectionPrices: user.contractorProfile.capabilities.some(c =>
+                        c.serviceType === ServiceType.INSPECTION && c.status === CapabilityStatus.APPROVED
+                        && c.verificationStatus === 'VERIFIED' && !!c.verificationExpiresAt
+                        && new Date(c.verificationExpiresAt) > new Date())
+                        && Array.isArray(user.contractorProfile.inspectionPrices)
+                        ? user.contractorProfile.inspectionPrices : [],
                 }
                 : null,
             badges: this.buildBadges(user),
