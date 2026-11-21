@@ -28,7 +28,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { resolveFrontendUrl } from '../core/frontend-url';
 import {
     ServiceJobChangeDto, CreateJobDto, JobFromPurchaseDto, InspectionFromAuctionDto, CompleteJobDto, CancelJobDto, UpsertQuoteDto,
-    ApplyCapabilityDto, UpdateLeadMatchingDto, UpdateJobMatchingDto, ReviewCapabilityDto, ResolveDisputeDto, CreateServiceReviewDto, JOB_SERVICE_TYPES,
+    ApplyCapabilityDto, UpdateLeadMatchingDto, UpdateJobMatchingDto, ReviewCapabilityDto, ResolveDisputeDto, CreateServiceReviewDto, SetInspectionPricesDto, JOB_SERVICE_TYPES,
 } from './dto';
 import { assertServiceAcceptingNewRequests } from './service-availability';
 import { providerSupportsInspection, eligibleInspectionJobScopes } from './inspection-scope';
@@ -471,7 +471,8 @@ export class ServicesService {
         });
         return {
             profile: profile
-                ? { id: profile.id, businessName: profile.businessName, phone: profile.phone, serviceArea: profile.serviceArea }
+                ? { id: profile.id, businessName: profile.businessName, phone: profile.phone, serviceArea: profile.serviceArea,
+                    inspectionPrices: Array.isArray(profile.inspectionPrices) ? profile.inspectionPrices : [] }
                 : null,
             capabilities: profile?.capabilities ?? [],
             stripeConnect: {
@@ -479,6 +480,32 @@ export class ServicesService {
                 complete: !!user?.stripeConnectOnboardingComplete,
             },
         };
+    }
+
+    async setInspectionPrices(userId: string, dto: SetInspectionPricesDto) {
+        const profile = await this.prisma.contractorProfile.findFirst({
+            where: { userId, deletedAt: null, capabilities: { some: { serviceType: ServiceType.INSPECTION } } },
+            select: { id: true },
+        });
+        if (!profile) throw new ForbiddenException('Apply for the Inspection capability before managing inspection prices.');
+        const prices = dto.prices.map(item => ({
+            name: item.name.trim(),
+            description: item.description?.trim() || '',
+            pricePence: item.quoteOnly ? 0 : item.pricePence,
+            quoteOnly: item.quoteOnly,
+            vatIncluded: item.vatIncluded,
+        }));
+        if (prices.some(item => !item.name || (!item.quoteOnly && item.pricePence < 100))) {
+            throw new BadRequestException('Each fixed inspection price must be at least £1 or marked Quote required.');
+        }
+        if (new Set(prices.map(item => item.name.toLowerCase())).size !== prices.length) {
+            throw new BadRequestException('Service names must be unique on your price list.');
+        }
+        const updated = await this.prisma.contractorProfile.update({
+            where: { id: profile.id }, data: { inspectionPrices: prices },
+            select: { inspectionPrices: true },
+        });
+        return { prices: updated.inspectionPrices };
     }
 
     async updateJobMatching(userId: string, capabilityId: string, dto: UpdateJobMatchingDto) {
