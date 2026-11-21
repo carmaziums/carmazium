@@ -15,6 +15,9 @@ export const FontFamily = {
   regular: 'Inter_400Regular',
   medium: 'Inter_500Medium',
   semiBold: 'Inter_600SemiBold',
+  bodyBold: 'Inter_700Bold',
+  bodyBlack: 'Inter_900Black',
+  headingBlack: 'Poppins_900Black',
   
   // Headings (Poppins)
   bold: 'Poppins_700Bold',

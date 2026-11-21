@@ -410,7 +410,7 @@ const lInput = '#E5EEF7';
 const lSurfaceHi = '#D5E1EC';
 const lText = '#0F172A';
 const lText2 = '#334155';
-const lMuted = '#56667C';
+const lMuted = '#526078';
 const lDisabled = '#94A3B8';
 const lBorder = '#D5E1EC';
 const lBorderHi = '#B8CADD';
@@ -434,7 +434,8 @@ const lightPalette: Palette = {
   bgPrimary: lBody,
   bgSecondary: lCard,
   bgTertiary: lInput,
-  // Brand
+  // Brand: match the website's deeper light-mode UI red; logo assets stay unchanged.
+  accent: '#C91620',
   // Text
   textPrimary: lText,
   textSecondary: lText2,
