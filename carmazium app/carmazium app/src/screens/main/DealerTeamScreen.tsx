@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { apiClient } from '../../lib/apiClient';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -24,6 +23,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import {
   getPartnerTeam,
+  applyPartnerCapability,
   updatePartnerTeamPermissions,
   type PartnerTeam,
   type TradeTeamPermissionInput,
@@ -33,8 +33,9 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
-import { IconButton } from '../../components/IconButton';
-import { HamburgerButton } from '../../components/HamburgerButton';
+import { DealerPageTabs } from '../../components/dealer/DealerPageTabs';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { Button } from '../../components/Button';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface StaffMember {
@@ -219,7 +220,6 @@ const StaffCard: React.FC<StaffCardProps> = React.memo(({ member, removing, onRe
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
-  const insets = useSafeAreaInsets();
 
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
@@ -234,6 +234,9 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
   const [tradeDrafts, setTradeDrafts] = useState<Record<string, TradeTeamPermissionInput>>({});
   const [tradeSaving, setTradeSaving] = useState<string | null>(null);
   const [tradeError, setTradeError] = useState<string | null>(null);
+  const [staffError, setStaffError] = useState<string | null>(null);
+  const [applying, setApplying] = useState<string | null>(null);
+  const [tradeMessage, setTradeMessage] = useState<string | null>(null);
 
   // ── Fetch staff ─────────────────────────────────────────────────────────────
   // GET /dealers/staff returns { active: [...], pending: [...] }, not a bare
@@ -243,11 +246,13 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
   // section (confirmed against dealers.service.ts's getStaff()).
   const fetchStaff = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
+    setStaffError(null); setTradeError(null);
     try {
       const [res, team] = await Promise.all([
         apiClient<{ success: boolean; data: { active: StaffMember[]; pending: PendingInvite[] } }>('/dealers/staff'),
-        getPartnerTeam().catch(() => null),
+        getPartnerTeam().catch(() => { setTradeError('TradeXchange team permissions could not be loaded. Please refresh.'); return null; }),
       ]);
+      if (!res?.success || !Array.isArray(res.data?.active) || !Array.isArray(res.data?.pending)) throw Error('Team unavailable');
       if (res.success) {
         const active = Array.isArray(res.data?.active) ? res.data.active : [];
         const pending = Array.isArray(res.data?.pending) ? res.data.pending : [];
@@ -280,7 +285,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
         }
       }
     } catch {
-      /* silently fail */
+      setStaffError('Team members could not be loaded. Please refresh.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -431,7 +436,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
   };
 
   const renderTradeAccess = () => {
-    if (!tradeTeam || (!staff.length && !pendingInvites.length)) return null;
+    if (!tradeTeam) return tradeError ? <View accessibilityRole="alert"><Text style={styles.pageBody}>{tradeError}</Text><Button label="Retry service permissions" onPress={() => void fetchStaff(true)} /></View> : null;
     const people = [
       ...staff.map((member) => ({
         id: member.id,
@@ -452,9 +457,30 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
         <View>
           <Text style={styles.pendingSectionTitle}>TRADEXCHANGE TEAM ACCESS</Text>
           <Text style={{ color: Colors.textMuted, fontFamily: FontFamily.regular, fontSize: FontSize.xs, lineHeight: 18 }}>
-            Match the website controls: choose Delivery/Recovery or Inspection, then grant view, chat, bid, manage and complete rights. Payouts always stay with the Partner business.
+            Give selected staff precise Delivery &amp; Recovery or Vehicle Inspection rights on behalf of {tradeTeam.companyName}. Viewing jobs, customer chat, bidding, management and completion are controlled separately. Staff can never become the payout recipient.
           </Text>
         </View>
+        <Button label="Refresh" variant="outline" size="sm" loading={refreshing} onPress={() => void fetchStaff(true)} />
+        <View style={styles.serviceInfo}><Text style={styles.serviceTitle}>Payment rule</Text>
+          <Text style={styles.pageBody}>{tradeTeam.payoutPolicy}</Text>
+          <Text style={styles.serviceTitle}>Business Stripe Connect: {tradeTeam.stripeConnect.complete ? 'Ready for payouts' : tradeTeam.stripeConnect.connected ? 'Onboarding incomplete' : 'Not connected'}</Text>
+        </View>
+        {(['DELIVERY', 'INSPECTION'] as const).map(serviceType => {
+          const capability = tradeTeam.capabilities.find(c => c.serviceType === serviceType);
+          return <View key={serviceType} style={styles.serviceInfo}>
+            <Text style={styles.serviceTitle}>{serviceType === 'DELIVERY' ? 'Delivery & Recovery' : 'Vehicle Inspection'}</Text>
+            <Text style={styles.pageBody}>Business-level approval required before staff can see these jobs.</Text>
+            <Text style={styles.serviceTitle}>{capability?.status || 'Not applied'}</Text>
+            {!!capability?.reviewNote && <Text style={styles.pageBody}>Admin note: {capability.reviewNote}</Text>}
+            {!['APPROVED', 'PENDING', 'SUSPENDED'].includes(capability?.status || '') && <Button label="Apply for approval" loading={applying === serviceType} disabled={applying !== null} onPress={async () => {
+              setApplying(serviceType); setTradeError(null); setTradeMessage(null);
+              try { await applyPartnerCapability(serviceType); setTradeMessage(`${serviceType === 'DELIVERY' ? 'Delivery & Recovery' : 'Vehicle Inspection'} application submitted for admin approval.`); await fetchStaff(true); }
+              catch (err) { setTradeError(err instanceof Error ? err.message : 'Unable to submit the business service application.'); }
+              finally { setApplying(null); }
+            }} />}
+          </View>;
+        })}
+        {tradeMessage && <Text accessibilityRole="alert" style={styles.pageBody}>{tradeMessage}</Text>}
         {tradeError ? (
           <Text style={{ color: Colors.error, fontFamily: FontFamily.medium, fontSize: FontSize.xs }}>{tradeError}</Text>
         ) : null}
@@ -484,8 +510,8 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
                 accessibilityRole="button"
               >
                 {tradeSaving === person.email
-                  ? <ActivityIndicator size="small" color={Colors.white} />
-                  : <Text style={{ color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.xs }}>SAVE TRADEXCHANGE ACCESS</Text>}
+                  ? <ActivityIndicator size="small" color={Colors.accent} />
+                  : <Text style={{ color: Colors.textPrimary, fontFamily: FontFamily.semiBold, fontSize: 14 }}>Save</Text>}
               </TouchableOpacity>
             </View>
           );
@@ -542,30 +568,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
         end={{ x: 1, y: 0.5 }}
       />
 
-      {/* Status bar spacer */}
-      <View style={{ height: insets.top }} />
-
-      {/* Header */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-
-        <Text style={styles.headerTitle}>Team</Text>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <IconButton style={styles.inviteBtn} icon={<Ionicons name="person-add-outline" size={18} color={Colors.white} />} onPress={() => setInviteModalVisible(true)} accessibilityLabel="Invite team member" />
-          <HamburgerButton />
-        </View>
-      </View>
-
-      {/* Summary row */}
-      <View style={styles.summaryRow}>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLeft}>
-            <Text style={styles.summaryCount}>{staff.length}</Text> MEMBERS
-          </Text>
-          <Text style={styles.summaryRight}>MANAGE TEAM</Text>
-        </View>
-      </View>
+      <WebsiteTopBar />
 
       {/* Staff list */}
       {loading ? (
@@ -577,6 +580,16 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
       ) : (
         <FlatList
           data={staff}
+          ListHeaderComponent={<View style={{ gap: 24, marginBottom: 24 }}>
+            <View style={styles.pageHeading}><Text accessibilityRole="header" style={styles.pageTitle}>Team</Text><Text style={styles.pageSubtitle}>Manage staff and permissions</Text>
+              <Button label="Invite team member" onPress={() => setInviteModalVisible(true)} />
+            </View>
+            {staffError && <View accessibilityRole="alert"><Text style={styles.pageBody}>{staffError}</Text><Button label="Retry team" variant="outline" onPress={() => void fetchStaff(true)} /></View>}
+            {renderTradeAccess()}
+            <View style={styles.roleSummary}>{(['ADMIN', 'SALES_AGENT', 'FINANCE_MANAGER'] as const).map(role => <View key={role} style={styles.roleSummaryCard}>
+              <Text style={styles.pageBody}>ACTIVE</Text><Text style={styles.pageTitle}>{staff.filter(member => member.role === role).length}</Text><Text style={styles.serviceTitle}>{role === 'ADMIN' ? 'TEAM ADMINS' : role === 'SALES_AGENT' ? 'SALES AGENTS' : 'FINANCE MANAGERS'}</Text>
+            </View>)}</View>
+          </View>}
           keyExtractor={(item) => item.id}
           contentContainerStyle={[
             styles.listContent,
@@ -587,7 +600,6 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
           ListFooterComponent={() => (
             <>
               {renderPendingInvites()}
-              {renderTradeAccess()}
             </>
           )}
           showsVerticalScrollIndicator={false}
@@ -602,6 +614,8 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
           renderItem={renderStaffCard}
         />
       )}
+
+      <DealerPageTabs />
 
       {/* ── INVITE MODAL ─────────────────────────────────────────────────── */}
       <BottomSheet
@@ -687,6 +701,14 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
 };
 
 const styles = StyleSheet.create({
+  pageHeading: { gap: 16, paddingTop: 24 },
+  pageTitle: { fontFamily: FontFamily.bold, fontSize: 24, lineHeight: 32, color: Colors.textPrimary },
+  pageSubtitle: { fontFamily: FontFamily.bold, fontSize: 12, lineHeight: 18, color: Colors.textMuted, letterSpacing: 1.2, textTransform: 'uppercase' },
+  pageBody: { fontSize: 14, lineHeight: 22, color: Colors.textSecondary },
+  serviceInfo: { padding: 16, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard, gap: 10 },
+  serviceTitle: { fontSize: 14, lineHeight: 20, fontFamily: FontFamily.semiBold, color: Colors.textPrimary },
+  roleSummary: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  roleSummaryCard: { flexGrow: 1, flexBasis: '30%', minWidth: 120, backgroundColor: Colors.bgCard, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, padding: 16, gap: 6 },
   container: {
     flex: 1,
     backgroundColor: Colors.bgPrimary,
@@ -767,7 +789,7 @@ const styles = StyleSheet.create({
     paddingBottom: 110,
   },
   listContentEmpty: {
-    flex: 1,
+    flexGrow: 1,
   },
 
   // Staff card

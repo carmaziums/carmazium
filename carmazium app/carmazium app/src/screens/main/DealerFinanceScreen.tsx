@@ -1,35 +1,54 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, Switch, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, Switch, ScrollView, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { HamburgerButton } from '../../components/HamburgerButton';
+import { DealerPageTabs } from '../../components/dealer/DealerPageTabs';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { Button } from '../../components/Button';
 import { Colors } from '../../constants/colors';
+import { FontFamily } from '../../constants/typography';
 import { apiClient } from '../../lib/apiClient';
 
 export const DealerFinanceScreen: React.FC = () => {
-  const inset = useSafeAreaInsets();
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
   useFocusEffect(useCallback(() => {
     let active = true;
-    setLoading(true);
-    apiClient<{data: {enabled: boolean}}>('/finance/referrals/preference').then(r => { if (active) { setEnabled(r.data.enabled); setLoading(false); } }).catch(() => Alert.alert('Could not load finance setting', 'Please reopen this screen to try again.'));
+    setLoading(true); setError(null);
+    apiClient<{data: {enabled: boolean}}>('/finance/referrals/preference')
+      .then(r => { if (typeof r.data?.enabled !== 'boolean') throw Error('Invalid preference'); if (active) setEnabled(r.data.enabled); })
+      .catch(() => { if (active) setError('Could not load finance setting. Please try again.'); })
+      .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, []));
+  }, [retry]));
   const save = async (value: boolean) => {
     setSaving(true);
     try {
       const r = await apiClient<{data: {enabled: boolean}}>('/finance/referrals/preference', {method:'PATCH', body:JSON.stringify({enabled:value})});
+      if (typeof r.data?.enabled !== 'boolean') throw Error('Invalid preference');
       setEnabled(r.data.enabled);
     } catch { Alert.alert('Setting not saved', 'Please try again.'); }
     finally { setSaving(false); }
   };
-  return <ScrollView style={{flex:1,backgroundColor:Colors.bgPrimary}} contentContainerStyle={{padding:24,paddingTop:inset.top+20,gap:20}}>
-    <HamburgerButton />
-    <Text style={{fontSize:24,fontWeight:'700',color:Colors.textPrimary}}>Show finance calculator</Text>
-    <Text style={{color:Colors.textSecondary}}>Show the finance calculator and Apply for Finance button on my current and future retail listings. This is on by default; you can turn it off at any time.</Text>
-    {loading ? <ActivityIndicator /> : <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}><Text style={{flex:1,color:Colors.textPrimary}}>{enabled ? 'On' : 'Off'}</Text><Switch value={enabled} disabled={saving} onValueChange={save} accessibilityLabel="Show finance calculator on my listings" /></View>}
-    <Text style={{color:Colors.textSecondary}}>Buyers enter their name, email and phone, then continue to the application selected by CarMazium admin. CarMazium does not provide finance or make lending decisions.</Text>
-  </ScrollView>;
+  return <View style={styles.screen}><WebsiteTopBar />
+    <ScrollView contentContainerStyle={styles.content}>
+      <Text accessibilityRole="header" style={styles.title}>Finance Calculator</Text>
+      <View style={styles.card}>
+        <Text style={styles.label}>Show finance calculator</Text>
+        <Text style={styles.body}>Choose whether the calculator and Apply for Finance button appear on your current and future retail listings. It is on by default. You can turn it off or back on at any time. Buyers enter their name, email and phone number, then continue to the application with the finance provider selected by CarMazium admin.</Text>
+        {loading ? <ActivityIndicator color={Colors.accent} /> : error ? <View style={{gap:12}}><Text accessibilityRole="alert" style={styles.body}>{error}</Text><Button label="Try again" variant="outline" onPress={() => setRetry(n => n + 1)} /></View> :
+          <View style={styles.toggle}><Text style={styles.body}>{enabled ? 'On' : 'Off'}</Text><Switch value={enabled} disabled={saving} onValueChange={save} trackColor={{true:Colors.accent}} accessibilityLabel="Show finance calculator on my listings" /></View>}
+        <Text style={styles.body}>CarMazium does not provide finance or make lending decisions. Enabling this option does not register you as a finance provider.</Text>
+      </View>
+    </ScrollView><DealerPageTabs />
+  </View>;
 };
+const styles = StyleSheet.create({
+  screen:{flex:1,backgroundColor:Colors.bgPrimary}, content:{padding:20,paddingTop:24,gap:24},
+  title:{fontSize:24,lineHeight:32,fontFamily:FontFamily.bold,color:Colors.textPrimary},
+  card:{padding:24,gap:16,borderRadius:24,borderWidth:1,borderColor:Colors.border,backgroundColor:Colors.bgCard},
+  label:{fontSize:18,lineHeight:26,fontFamily:FontFamily.semiBold,color:Colors.textPrimary},
+  body:{fontSize:14,lineHeight:22,color:Colors.textSecondary}, toggle:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
+});
