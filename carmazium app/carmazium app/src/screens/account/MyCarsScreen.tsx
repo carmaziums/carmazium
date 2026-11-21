@@ -10,7 +10,7 @@ import { fetchAllMyListings } from '../../lib/myListingsApi';
 import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
 import { Colors } from '../../constants/colors';
 import { Elevation, Radius } from '../../constants/spacing';
-import { FontFamily } from '../../constants/typography';
+import { FontFamily, FontSize } from '../../constants/typography';
 import { Layout } from '../../constants/layout';
 
 type Vehicle = {
@@ -80,9 +80,9 @@ export const MyCarsScreen: React.FC = () => {
       <View style={{paddingHorizontal:20,gap:12,marginVertical:20}}>
         <Text style={[styles.name,{textTransform:'uppercase'}]}>{channel === 'Listings' ? 'Retail and other listings' : 'Auctions'}</Text>
         <Text style={styles.muted}>{channel === 'Listings' ? 'Cars you are selling, waiting for review, in draft or sold.' : 'Manage your auction listings and completed sales.'}</Text>
-        <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>
-          {channel === 'Listings' && <Button label="Import Listing" variant="outline" onPress={() => setImporting(true)} />}
-          <Button label="New Listing" onPress={() => navigation.navigate('SellCarFlow')} />
+        <View style={{ gap: 12 }}>
+          {channel === 'Listings' && <Button label="Import Listing" variant="outline" style={{ width: '100%' }} onPress={() => setImporting(true)} />}
+          <Button label="New Listing" style={{ width: '100%' }} onPress={() => navigation.navigate('SellLanding')} />
         </View>
       </View>
       <View style={{flexDirection:'row',flexWrap:'wrap',gap:8,paddingHorizontal:20,marginBottom:20}}>
@@ -105,7 +105,11 @@ export const MyCarsScreen: React.FC = () => {
           ListFooterComponent={!busy && totalPages > 1 ? <View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',alignItems:'center',gap:12,paddingVertical:20}}><Button label="Prev" variant="outline" disabled={currentPage===1} onPress={() => {setPage(currentPage-1);listRef.current?.scrollToOffset({offset:0,animated:false});}} /><Text style={styles.muted}>Page {currentPage} of {totalPages}</Text><Button label="Next" variant="outline" disabled={currentPage===totalPages} onPress={() => {setPage(currentPage+1);listRef.current?.scrollToOffset({offset:0,animated:false});}} /></View> : null}
           ListEmptyComponent={busy
             ? <View style={styles.loading}><ActivityIndicator color={Colors.accent}/></View>
-            : error ? <Button label="Retry" onPress={() => void load()} /> : <Text style={styles.muted}>No {channel.toLowerCase()} matching this status.</Text>}
+            : error ? <Button label="Retry" onPress={() => void load()} /> : <View style={styles.emptyListings}>
+              <Text style={styles.emptyListingsText}>
+                {channel === 'Listings' && filter === 'ALL' ? 'No listings found. Start selling today!' : 'No listings matching this status.'}
+              </Text>
+            </View>}
           renderItem={({ item }) => {
             const vehicle = item.listing || item;
             return (
@@ -118,7 +122,7 @@ export const MyCarsScreen: React.FC = () => {
                   <Text style={styles.name} numberOfLines={2}>{vehicle.title || [vehicle.year,vehicle.make,vehicle.model].filter(Boolean).join(' ') || 'Vehicle'}</Text>
                   <Text style={styles.muted}>{vehicle.year || 'Year not recorded'}{item.mileage != null ? ` • ${Number(item.mileage).toLocaleString('en-GB')} miles` : ''}</Text>
                   <Text style={[styles.manage,{color:item.status==='ACTIVE'?Colors.success:Colors.textMuted}]}>{item.status === 'ACTIVE' ? 'LIVE' : item.status?.replace(/_/g,' ') || 'Not provided'}</Text>
-                  {channel === 'Listings' && <><Text style={{fontSize:22,fontFamily:FontFamily.bold,color:Colors.accent}}>{item.price == null ? 'Price not recorded' : Number(item.price).toLocaleString('en-GB',{style:'currency',currency:'GBP'})}</Text><Text style={styles.muted}>{item.viewCount ?? 0} views</Text>{item.createdAt && <Text style={styles.muted}>Listed on {new Date(item.createdAt).toLocaleDateString('en-GB')}</Text>}</>}
+                  {channel === 'Listings' && <><Text style={{fontSize:FontSize.size22,fontFamily:FontFamily.bold,color:Colors.accent}}>{item.price == null ? 'Price not recorded' : Number(item.price).toLocaleString('en-GB',{style:'currency',currency:'GBP'})}</Text><Text style={styles.muted}>{item.viewCount ?? 0} views</Text>{item.createdAt && <Text style={styles.muted}>Listed on {new Date(item.createdAt).toLocaleDateString('en-GB')}</Text>}</>}
                   <View style={{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:12}}>
                     {channel === 'Listings' && <>
                       {['ACTIVE','OFFER_ACCEPTED'].includes(item.status || '') && <Button label="Mark Sold" onPress={() => navigation.navigate('SellerListings',{focusListingId:item.id,focusAction:'mark_sold'})} />}
@@ -138,8 +142,8 @@ export const MyCarsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.bgPrimary },
   heading: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 20, gap: 8 },
-  title: { fontSize: 25, color: Colors.textPrimary, fontFamily: FontFamily.extraBold },
-  muted: { fontSize: 14, lineHeight: 22, color: Colors.textMuted, fontFamily: FontFamily.medium },
+  title: { fontSize: FontSize['2xl'] + 1, color: Colors.textPrimary, fontFamily: FontFamily.extraBold },
+  muted: { fontSize: FontSize.base - 1, lineHeight: 22, color: Colors.textMuted, fontFamily: FontFamily.medium },
   channelRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 20 },
   channel: { minHeight: 44, flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, backgroundColor: Colors.bgCard, borderColor: Colors.borderHi, borderBottomWidth: 3, ...Elevation.card },
   selected: { backgroundColor: Colors.accent, borderColor: Colors.accent, borderBottomColor: Colors.accentDark, ...Elevation.neon },
@@ -149,17 +153,19 @@ const styles = StyleSheet.create({
   filterContent: { gap: 8, paddingHorizontal: 20, alignItems: 'center' },
   filter: { minHeight: 38, borderWidth: 1, borderRadius: 10, justifyContent: 'center', paddingHorizontal: 11, backgroundColor: Colors.bgCard, borderColor: Colors.borderHi, borderBottomWidth: 2 },
   filterSelected: { backgroundColor: Colors.accent, borderColor: Colors.accent, borderBottomColor: Colors.accentDark },
-  filterText: { color: Colors.textSecondary, fontSize: 11, fontFamily: FontFamily.bold },
+  filterText: { color: Colors.textSecondary, fontSize: FontSize.xs, fontFamily: FontFamily.bold },
   list: { flex: 1 },
   listContent: { paddingHorizontal: 20, paddingBottom: 110, gap: 10 },
   card: { gap: 16, backgroundColor: Colors.bgCard, padding: 16, borderWidth: 1, borderRadius: Radius.card, borderColor: Colors.border, ...Elevation.card },
   image: { width: '100%', height: 192, borderRadius: 12 },
   thumb: { width: '100%', height: 192, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgElevated },
   details: { gap: 8 },
-  name: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 14 },
-  manage: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: 11, alignSelf: 'flex-start', marginTop: 2, paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.chip, borderWidth: 1, borderColor: Colors.accent, backgroundColor: Colors.bgSurface, overflow: 'hidden' },
-  error: { paddingHorizontal: 20, color: Colors.warning, fontSize: 12 },
+  name: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: FontSize.base - 1 },
+  manage: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: FontSize.xs, alignSelf: 'flex-start', marginTop: 2, paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.chip, borderWidth: 1, borderColor: Colors.accent, backgroundColor: Colors.bgSurface, overflow: 'hidden' },
+  error: { paddingHorizontal: 20, color: Colors.warning, fontSize: FontSize.sm - 1 },
   loading: { paddingVertical: 40, alignItems: 'center', justifyContent: 'center' },
+  emptyListings: { minHeight: 255, padding: 30, borderRadius: 18, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard, justifyContent: 'center', alignItems: 'center' },
+  emptyListingsText: { color: Colors.textSecondary, fontSize: FontSize.base, fontStyle: 'italic', textAlign: 'center' },
   // Header rows carry their own 20pt gutters inside the padded list.
   headerBleed: { marginHorizontal: -20 },
 });

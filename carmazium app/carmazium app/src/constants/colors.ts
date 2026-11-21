@@ -164,6 +164,10 @@ const darkPalette = {
   dashboardWhite25: '#ffffff40',
   /** UK number-plate / featured-badge yellow. Fixed in both themes. */
   plateYellow: '#FBBF24',
+  vehicleImportYellow: '#FACC15',
+  vehicleImportBorder: '#FDE68A',
+  vehicleImportInk: '#111827',
+  vehicleElectricalBg: 'rgba(59, 130, 246, 0.07)',
   /** bgBody at alpha 0 — gradient stop that fades into the page ground. */
   groundClear: 'rgba(27, 37, 56, 0)',
 
@@ -507,6 +511,10 @@ const lightPalette: Palette = {
   dashboardWhite15: '#ffffff26',
   dashboardWhite25: '#ffffff40',
   plateYellow: '#FBBF24',
+  vehicleImportYellow: '#FACC15',
+  vehicleImportBorder: '#FDE68A',
+  vehicleImportInk: '#111827',
+  vehicleElectricalBg: 'rgba(59, 130, 246, 0.07)',
   groundClear: 'rgba(238, 245, 251, 0)',
   whiteAlpha08Hex: '#0F172A14',
   whiteAlpha06Hex: '#0F172A0F',
