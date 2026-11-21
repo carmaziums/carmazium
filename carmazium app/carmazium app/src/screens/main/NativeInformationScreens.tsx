@@ -24,23 +24,7 @@ export const CarBodyGuideScreen = ({ navigation }: any) => <NativePage title="Ch
 </NativePage>;
 
 type Post = { id: string; slug: string; title: string; excerpt: string; coverImage?: string; content?: string };
-export const BlogScreen = ({ navigation }: any) => {
-  const [posts, setPosts] = useState<Post[]>([]), [page, setPage] = useState(1), [loading, setLoading] = useState(true), [error, setError] = useState(''), [hasMore, setHasMore] = useState(true), [retry, setRetry] = useState(0);
-  useEffect(() => {
-    let active = true; setLoading(true); setError('');
-    apiClient<{ data: Post[]; pagination?: { totalPages?: number } }>(`/blog?page=${page}&limit=12`).then(({ data, pagination }) => {
-      if (!active) return;
-      setPosts(previous => page === 1 ? data : [...previous, ...data.filter(p => !previous.some(old => old.id === p.id))]);
-      setHasMore(pagination?.totalPages !== undefined ? page < pagination.totalPages : data.length === 12);
-    }).catch(() => { if (active) setError('Could not load the guides. Please retry.'); }).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [page, retry]);
-  return <NativePage title="Automotive guides">{posts.map(post => <View key={post.id} style={s.panel}>{post.coverImage && <Image source={{ uri: post.coverImage }} contentFit="cover" style={{ height: 180, borderRadius: 12 }} />}<Text style={s.title}>{post.title}</Text><Text style={s.body}>{post.excerpt}</Text><Button label="Read article" accessibilityLabel={`Read ${post.title}`} onPress={() => navigation.navigate('BlogArticle', { slug: post.slug })} /></View>)}
-    {loading && <ActivityIndicator accessibilityLabel="Loading guides" />}{!!error && <><Text style={s.error}>{error}</Text><Button label="Retry" onPress={() => setRetry(n => n + 1)} /></>}
-    {!loading && !error && !posts.length && <Text style={s.body}>No guides have been published yet.</Text>}
-    {!loading && !error && hasMore && <Button label="More guides" variant="outline" onPress={() => setPage(p => p + 1)} />}
-  </NativePage>;
-};
+export { BlogScreen } from './BlogScreen';
 export const BlogArticleScreen = ({ route }: any) => {
   const [post, setPost] = useState<Post | null>(null), [error, setError] = useState(''), [retry, setRetry] = useState(0);
   useEffect(() => {

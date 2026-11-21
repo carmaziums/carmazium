@@ -1,0 +1,271 @@
+{
+  "marketplace": {
+    "SELLER_STEPS": [
+      {
+        "title": "Get your valuation",
+        "desc": "Enter your reg and details for a free, instant estimate.",
+        "tag": "Sample valuation"
+      },
+      {
+        "title": "Go live in auction",
+        "desc": "Your car goes live for verified dealers to view and bid on.",
+        "tag": "LIVE · 24h"
+      },
+      {
+        "title": "Dealers compete",
+        "desc": "Verified trade buyers bid against each other, not against you.",
+        "tag": "Dealer bids"
+      },
+      {
+        "title": "Dealer contacts you",
+        "desc": "The winning dealer arranges collection and inspection directly.",
+        "tag": "Direct chat"
+      },
+      {
+        "title": "Dealer pays you directly",
+        "desc": "The money moves dealer → you. CarMazium is never in that chain.",
+        "tag": "Seller paid"
+      },
+      {
+        "title": "Get your £100 reward",
+        "desc": "After you confirm payment and your handover photo is approved, qualifying auction sales earn a £100 reward.",
+        "tag": "+£100"
+      }
+    ],
+    "DEALER_STEPS": [
+      {
+        "title": "Search & find",
+        "desc": "Filter by make, model, grade and location to shortlist cars.",
+        "tag": "Browse stock"
+      },
+      {
+        "title": "Join the auction",
+        "desc": "Only verified motor traders with bidding access can bid live in the dealer auction.",
+        "tag": "LIVE · 24h"
+      },
+      {
+        "title": "Win the auction",
+        "desc": "Highest bid when the clock runs out takes the car.",
+        "tag": "Won"
+      },
+      {
+        "title": "Complete checkout",
+        "desc": "Pay the one-off buyer fee that unlocks the seller's contact details.",
+        "tag": "£125 fee"
+      },
+      {
+        "title": "Arrange collection",
+        "desc": "Coordinate inspection and collection directly with the seller.",
+        "tag": "Direct chat"
+      },
+      {
+        "title": "Drive with confidence",
+        "desc": "Inspect, complete the handover, and it's yours.",
+        "tag": "✓ Done"
+      }
+    ],
+    "RECEIPTS": {
+      "seller": {
+        "label": "Illustrative seller auction example",
+        "rows": [
+          {
+            "k": "Vehicle sale price",
+            "v": "£8,450",
+            "note": "paid to you, by the dealer"
+          },
+          {
+            "k": "CarMazium listing fee",
+            "v": "£0",
+            "note": "free, always"
+          },
+          {
+            "k": "CarMazium seller reward",
+            "v": "+£100",
+            "note": "qualifying sales, after approval"
+          }
+        ],
+        "total": {
+          "k": "You receive",
+          "v": "£8,550"
+        }
+      },
+      "buyer": {
+        "label": "Illustrative dealer auction example",
+        "rows": [
+          {
+            "k": "Winning bid",
+            "v": "£8,450",
+            "note": "paid to the seller, directly"
+          },
+          {
+            "k": "CarMazium buyer fee",
+            "v": "£125",
+            "note": "unlocks the seller's contact details"
+          }
+        ],
+        "total": {
+          "k": "Total to drive away",
+          "v": "£8,575"
+        }
+      }
+    },
+    "TRUST_STRIP": [
+      {
+        "label": "Free auction listing"
+      },
+      {
+        "label": "Verified dealers only"
+      },
+      {
+        "label": "Paid direct, no middleman"
+      },
+      {
+        "label": "£100 reward for qualifying sales"
+      }
+    ],
+    "BID_LOG": [
+      {
+        "t": "23:57:02",
+        "amount": "£41,000",
+        "reset": true
+      },
+      {
+        "t": "23:58:41",
+        "amount": "£42,500",
+        "reset": true
+      }
+    ]
+  },
+  "auction": {
+    "SELLER_STEPS": [
+      {
+        "title": "List for free.",
+        "desc": "Add your vehicle details, photos and known damage. Motor vehicles use the registration-assisted form. Touring caravans use manual details, need at least one photo and do not require registration, VIN, mileage or year; you choose your price without an automated valuation."
+      },
+      {
+        "title": "Set your reserve.",
+        "desc": "This is the minimum you're willing to accept. It's never shown to bidders — only you know it."
+      },
+      {
+        "title": "Go live for 24 hours.",
+        "desc": "Your auction runs for a full 24-hour window, with real-time bidding from verified trade dealers."
+      },
+      {
+        "title": "Anti-snipe protection.",
+        "desc": "Any bid placed in the final 3 minutes automatically extends the auction by 3 more minutes — so a last-second bid can't end things before you've had a fair chance to respond."
+      },
+      {
+        "title": "Auction ends.",
+        "desc": "If your reserve is met, the winning dealer is notified. In-app chat with them opens once they've paid the £125 buyer fee, or straight away if a fee waiver applies."
+      },
+      {
+        "title": "Arrange handover.",
+        "desc": "Agree the final details and handover directly with the buyer, then submit proof once it's done."
+      },
+      {
+        "title": "Get paid — plus £100.",
+        "desc": "Once your handover proof is approved, CarMazium pays your £100 seller bonus directly to your account."
+      }
+    ],
+    "BUYER_STEPS": [
+      {
+        "title": "Get verified.",
+        "desc": "Apply for a Dealer account and complete our KYC check."
+      },
+      {
+        "title": "Browse live and upcoming auctions.",
+        "desc": "Filter by make, model, condition grade, and more."
+      },
+      {
+        "title": "Check the vehicle.",
+        "desc": "Review the seller’s photos, description and disclosures. Motor vehicles show available official history; touring caravans use seller-supplied information without DVLA/MOT history or a car-shaped damage model."
+      },
+      {
+        "title": "Bid in real time,",
+        "desc": "or use Buy It Now if the seller has set one for an instant win."
+      },
+      {
+        "title": "Win the auction.",
+        "desc": "Highest bid wins, provided the seller's reserve is met."
+      },
+      {
+        "title": "Pay the buyer fee, if applicable.",
+        "desc": "After winning, pay the one-off £125 buyer fee unless your account has an approved fee waiver. Paying the fee, or an eligible waiver, unlocks in-app chat with the seller to arrange handover. The fee is separate from the vehicle price."
+      },
+      {
+        "title": "Complete the purchase",
+        "desc": "directly with the seller."
+      }
+    ],
+    "RULES": [
+      {
+        "term": "24-Hour Auctions",
+        "def": "Auctions start with a 24-hour window. Late bids can extend the end time under the anti-snipe rule."
+      },
+      {
+        "term": "Anti-Snipe Rule",
+        "def": "A bid in the last 3 minutes extends the auction by 3 minutes — repeats until bidding settles."
+      },
+      {
+        "term": "Reserve Price",
+        "def": "Set privately by the seller. If it isn't met, there's no sale and nothing is owed by anyone."
+      },
+      {
+        "term": "Buy It Now",
+        "def": "Optional — sellers can set an instant-buy price. Buyers can request it; the seller has 24 hours to confirm or decline."
+      },
+      {
+        "term": "Free to List",
+        "def": "Listing a car for auction costs nothing."
+      },
+      {
+        "term": "£100 Seller Bonus",
+        "def": "Paid once CarMazium approves your submitted handover proof."
+      },
+      {
+        "term": "£125 Buyer Fee",
+        "def": "Charged on auction wins unless an approved fee waiver applies. Payment or a waiver unlocks seller chat."
+      },
+      {
+        "term": "Verified Bidders Only",
+        "def": "Every bidder is a KYC-verified trade dealer."
+      }
+    ],
+    "TRUST": [
+      {
+        "title": "Automatic condition grading (1–5)",
+        "desc": "Computed from the damage you report, not self-selected."
+      },
+      {
+        "title": "Condition & damage information",
+        "desc": "Review seller photographs and disclosures before bidding. Touring caravans use photographs instead of a car-shaped 3D damage model."
+      },
+      {
+        "title": "Vehicle history where available",
+        "desc": "Motor-vehicle listings show available official MOT and registration information. Touring caravan details are supplied manually by the seller."
+      }
+    ],
+    "FAQS": [
+      {
+        "q": "Do I need to be a dealer to bid?",
+        "a": "Yes — bidding is limited to verified dealer accounts. Anyone can list and sell a car, though."
+      },
+      {
+        "q": "What happens if my reserve isn't met?",
+        "a": "No sale happens, no fees are charged, and you're free to relist."
+      },
+      {
+        "q": "When do I actually get my £100?",
+        "a": "After you submit proof of handover and CarMazium's team approves it."
+      },
+      {
+        "q": "What's the £125 buyer fee for?",
+        "a": "The standard fee is £125 after an auction win, unless your account has an approved waiver. Paying it, or having an eligible waiver, unlocks in-app chat with the seller for handover. The vehicle price is settled directly between buyer and seller."
+      },
+      {
+        "q": "Does CarMazium handle payment for the car itself?",
+        "a": "No. The vehicle sale is agreed and completed directly between you and the buyer — CarMazium isn't a party to that payment. CarMazium's role covers the auction, verification, the seller bonus, and the buyer connection fee."
+      }
+    ]
+  }
+}

@@ -45,7 +45,7 @@ import { ProviderLeadDetailScreen } from '../screens/main/ProviderLeadDetailScre
 import { ProviderMessagesScreen } from '../screens/main/ProviderMessagesScreen';
 import { TermsScreen } from '../screens/main/TermsScreen';
 import { PrivacyPolicyScreen } from '../screens/main/PrivacyPolicyScreen';
-import { HowItWorksScreen } from '../screens/main/HowItWorksScreen';
+import { HowItWorksScreen, AuctionGuideScreen } from '../screens/main/HowItWorksScreen';
 import { AboutScreen } from '../screens/main/AboutScreen';
 import { ContactScreen } from '../screens/main/ContactScreen';
 import { PricingScreen, TraderPricingScreen } from '../screens/main/PricingScreen';
@@ -175,6 +175,7 @@ export type MainStackParamList = {
   Terms: undefined;
   PrivacyPolicy: undefined;
   HowItWorks: undefined;
+  AuctionGuide: undefined;
   About: undefined;
   Contact: undefined;
   Pricing: undefined;
@@ -409,6 +410,7 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="ProviderMessages" component={ProviderMessagesScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Terms" component={TermsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="AuctionGuide" component={AuctionGuideScreen} />
       <Stack.Screen name="HowItWorks" component={HowItWorksScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="About" component={AboutScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Contact" component={ContactScreen} options={{ animation: 'slide_from_right' }} />
