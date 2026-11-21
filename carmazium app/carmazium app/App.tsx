@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { reportFirstOpenOnce, sendOnlineHeartbeat } from './src/lib/appInsights';
 import { AppUpdatePrompt } from './src/components/AppUpdatePrompt';
+import { NativeAppTour } from './src/components/NativeAppTour';
 import { AppState } from 'react-native';
 import { Alert } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -364,6 +365,8 @@ export default function App() {
             <ChatProvider>
               <GlobalToastProvider>
                 <RootNavigator />
+                {/* Role-based guided native tour; never sends users to website pages. */}
+                <NativeAppTour />
                 {/* "New version available" for the Android app from carmazium.com */}
                 <AppUpdatePrompt />
               </GlobalToastProvider>

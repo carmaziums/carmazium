@@ -27,6 +27,7 @@ import { PresentedProfileImage, ProfileImageAdjustment } from '../../components/
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { useSingleColumnSettings } from '../../lib/nativeLayoutParity';
 import { getOrCreateSupportRoom } from '../../lib/chatApi';
+import { requestNativeAppTourReplay } from '../../lib/nativeAppTour';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 const BUSINESS_DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] as const;
 const THEME_OPTIONS: { id: ThemePreference; label: string; icon: string }[] = [
@@ -768,6 +769,13 @@ export const SettingsScreen: React.FC = () => {
         {activeCategory === 'personal' && (
           <>
         {/* ── 1. PROFILE INFORMATION ── */}
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Replay App Tour"
+          style={[styles.accountToolButton, { marginBottom: 14, justifyContent: 'center' }]}
+          onPress={requestNativeAppTourReplay}>
+          <Ionicons name="play-circle-outline" size={22} color={Colors.accent} />
+          <Text style={[styles.accountToolLabel, { flex: 1 }]}>Replay App Tour</Text>
+          <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
+        </TouchableOpacity>
         <SectionHeader icon="person-circle-outline" label="PROFILE INFORMATION" />
         <View style={styles.card}>
           <TouchableOpacity

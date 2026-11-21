@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { getThemePreference, promptThemeChange, resolveThemeMode } from '../lib/themePreference';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
@@ -103,6 +104,7 @@ export const SiteMenu: React.FC<{
   const [open, setOpen] = useState<string | null>(null);
   const [openEntry, setOpenEntry] = useState<string | null>(null);
   const groups = buildSiteGroups(dealerMode);
+  const currentTheme = resolveThemeMode(getThemePreference());
 
   const icon = (e: { icon: string; iconLib?: 'ion' | 'mci' }) => e.iconLib === 'mci'
     ? <MaterialCommunityIcons name={e.icon} size={20} color={Colors.accent} />
@@ -111,6 +113,16 @@ export const SiteMenu: React.FC<{
   return (
     <View style={[styles.panel, { top }]}>
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 28 }} showsVerticalScrollIndicator={false}>
+        {/* The mobile website has Appearance at the top of its main menu, not
+            an extra header action. Keep this control in the same place. */}
+        <TouchableOpacity style={styles.appearanceRow} accessibilityRole="button"
+          accessibilityLabel="Appearance, change light or dark theme"
+          onPress={() => promptThemeChange(currentTheme === 'dark' ? 'light' : 'dark')}>
+          <Text style={styles.appearanceLabel}>Appearance</Text>
+          <View style={styles.appearanceIcon}>
+            <Ionicons name={currentTheme === 'dark' ? 'sunny-outline' : 'moon-outline'} size={22} color={Colors.textPrimary} />
+          </View>
+        </TouchableOpacity>
         {groups.map(group => {
           if (group.target) {
             const active = !!group.target.tab && group.target.tab === activeTab;
@@ -204,8 +216,17 @@ export const SiteMenu: React.FC<{
 const styles = StyleSheet.create({
   panel: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
-    backgroundColor: Colors.bgPrimary,
+    backgroundColor: Colors.bgDropdown,
     borderTopWidth: 1, borderTopColor: Colors.border,
+  },
+  appearanceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    minHeight: 88, marginHorizontal: 18, marginTop: 18, marginBottom: 6,
+    paddingHorizontal: 16, borderRadius: 16, borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.bgCard,
+  },
+  appearanceLabel: { fontFamily: FontFamily.semiBold, fontSize: FontSize.base, color: Colors.textPrimary },
+  appearanceIcon: { width: 48, height: 48, borderRadius: 12, borderWidth: 1, borderColor: Colors.border,
+    justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bgDropdown,
   },
   navRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 64 },
   navLabel: { fontFamily: FontFamily.medium, fontSize: FontSize.xl, color: Colors.textPrimary, textAlign: 'center' },
