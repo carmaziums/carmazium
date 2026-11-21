@@ -8,6 +8,14 @@ import { PARTNER_AGREEMENT_VERSION, PARTNER_AGREEMENT_TEXT } from './partner-agr
 import { createHash } from 'crypto';
 
 describe('Master Business Partner Agreement authenticated signing and gating', () => {
+  const previousEnforce = process.env.PARTNER_AGREEMENT_ENFORCE;
+  const previousReview = process.env.PARTNER_AGREEMENT_LEGAL_REVIEW_COMPLETE;
+  afterAll(() => {
+    if (previousEnforce === undefined) delete process.env.PARTNER_AGREEMENT_ENFORCE;
+    else process.env.PARTNER_AGREEMENT_ENFORCE = previousEnforce;
+    if (previousReview === undefined) delete process.env.PARTNER_AGREEMENT_LEGAL_REVIEW_COMPLETE;
+    else process.env.PARTNER_AGREEMENT_LEGAL_REVIEW_COMPLETE = previousReview;
+  });
   let prisma: any;
   let service: PartnerAgreementService;
   const baseUser = (role: UserRole = UserRole.DEALER) => ({
@@ -29,6 +37,8 @@ describe('Master Business Partner Agreement authenticated signing and gating', (
   };
 
   beforeEach(() => {
+    process.env.PARTNER_AGREEMENT_ENFORCE = 'true';
+    process.env.PARTNER_AGREEMENT_LEGAL_REVIEW_COMPLETE = 'true';
     prisma = {
       user: { findUnique: jest.fn().mockResolvedValue(baseUser()) },
       partnerAgreementAcceptance: {
@@ -39,6 +49,17 @@ describe('Master Business Partner Agreement authenticated signing and gating', (
       },
     };
     service = new PartnerAgreementService(prisma);
+  });
+
+  it('stays disabled until BOTH rollout and completed legal review switches are enabled', async () => {
+    delete process.env.PARTNER_AGREEMENT_ENFORCE;
+    await expect(service.assertAccepted('owner-1')).resolves.toBeUndefined();
+    await expect(service.accept('owner-1', signature)).rejects.toThrow('Business agreements are not yet activated.');
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(prisma.partnerAgreementAcceptance.findFirst).not.toHaveBeenCalled();
+    process.env.PARTNER_AGREEMENT_ENFORCE = 'true';
+    delete process.env.PARTNER_AGREEMENT_LEGAL_REVIEW_COMPLETE;
+    await expect(service.assertAccepted('owner-1')).resolves.toBeUndefined();
   });
 
   it('fingerprints the complete immutable source rather than a user-supplied document', () => {
