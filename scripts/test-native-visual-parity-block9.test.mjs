@@ -90,7 +90,7 @@ test('shared header has 44dp targets and messages no longer doubles top safe-are
   assert.ok(profile.includes('settingsBackLink'));
   assert.ok(profile.includes('minHeight: 44, alignSelf'));
   assert.ok(message.includes('<WebsiteTopBar />'));
-  assert.ok(message.includes("paddingTop: 16, paddingBottom: insets.bottom + 100"));
+  assert.ok(message.includes("paddingTop: 16, paddingBottom: insets.bottom + 24"));
   assert.ok(!message.includes('paddingTop: insets.top + 16'));
   assert.ok(message.includes('keyboardDismissMode="on-drag"'));
   assert.ok(message.includes('keyboardShouldPersistTaps="handled"'));
