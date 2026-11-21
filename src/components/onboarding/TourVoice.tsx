@@ -37,7 +37,14 @@ export function TourVoice({ text, ready }: { text: string; ready: boolean }) {
                 player!.src = objectUrl
                 setStatus("paused")
                 // Browsers that require another gesture keep the native Play control available.
-                await player!.play()
+                try {
+                    await player!.play()
+                } catch (playbackError) {
+                    // Delayed fetches lose the original click's autoplay gesture in
+                    // Chrome and Android WebView. A loaded MP3 is still playable
+                    // manually; do not wrongly report it as a failed download.
+                    if (active) setStatus((playbackError as Error)?.name === "NotAllowedError" ? "paused" : "error")
+                }
             } catch {
                 clearTimeout(timeout)
                 if (active) setStatus("error")

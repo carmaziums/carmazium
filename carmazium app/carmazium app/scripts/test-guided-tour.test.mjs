@@ -114,6 +114,18 @@ test('website acknowledgement does not suppress a first native tour', async () =
   await act(async () => h.tree.unmount());
 });
 
+test('the full native tour advances across every topic without submitting business actions', async () => {
+  const h = await mount();
+  const steps = content.getGuidedWebsiteSteps({ id: 'personal-test', role: 'BUYER' });
+  for (let index = 1; index < steps.length; index++) {
+    await h.press(index === 1 ? 'Start tour' : 'Next');
+  }
+  assert.equal(h.calls.filter(([, options]) => options).length, 0);
+  await h.press('Finish tour');
+  assert.equal(h.calls.filter(([path]) => path === '/users/me/introduction').length, 1);
+  await act(async () => h.tree.unmount());
+});
+
 test('completed native tour does not repeat automatically, but manual replay still works', async () => {
   const h = await mount({ replay: false, nativeAcknowledged: true });
   await h.onRoute(); await h.rerender();
