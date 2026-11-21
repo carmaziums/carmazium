@@ -25,6 +25,26 @@ export class ServiceJobFeedQueryDto extends ServiceListQueryDto {
     serviceType?: ServiceType;
 }
 
+export class InspectionPriceItemDto {
+    @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(110)
+    name: string;
+    @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(400)
+    description?: string;
+    @ApiProperty() @IsInt() @Min(0) @Max(5_000_000)
+    pricePence: number;
+    @ApiProperty() @IsBoolean()
+    quoteOnly: boolean;
+    @ApiProperty() @IsBoolean()
+    vatIncluded: boolean;
+}
+
+export class SetInspectionPricesDto {
+    @ApiProperty({type:[InspectionPriceItemDto]})
+    @IsArray() @ArrayMaxSize(20)
+    @ValidateNested({each:true}) @Type(() => InspectionPriceItemDto)
+    prices: InspectionPriceItemDto[];
+}
+
 export class JobVehicleDto {
     @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(10)
     registration?: string;
