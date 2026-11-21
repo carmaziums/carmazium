@@ -4,6 +4,7 @@ import {
 import { ApiTags, ApiOperation, ApiCookieAuth, ApiQuery } from '@nestjs/swagger';
 import { ServiceType } from '@prisma/client';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { PartnerAgreementGuard } from '../partner-agreement/partner-agreement.guard';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
@@ -53,6 +54,7 @@ export class ServicesController {
     // ── Contractor onboarding ──────────────────────────────────────────────
 
     @Post('capabilities')
+    @UseGuards(PartnerAgreementGuard)
     @ApiOperation({ summary: 'Apply to provide a service area (creates the contractor profile on first use)' })
     async apply(@CurrentUser() user: any, @Body() dto: ApplyCapabilityDto) {
         return new StandardResponse(await this.services.applyCapability(user.id, dto));
@@ -75,6 +77,7 @@ export class ServicesController {
     }
 
     @Patch('capabilities/:id/job-matching')
+    @UseGuards(PartnerAgreementGuard)
     @ApiOperation({ summary: 'Configure Delivery/Inspection UK postcode coverage' })
     async updateJobMatching(
         @CurrentUser() user: any,
@@ -122,6 +125,7 @@ export class ServicesController {
     // ── Provider / authorised dealership team ─────────────────────────────
 
     @Get('jobs/feed')
+    @UseGuards(PartnerAgreementGuard)
     @UseGuards(ContractorGuard)
     @ApiOperation({ summary: 'Open jobs in approved service and postcode areas (cursor paginated)' })
     async feed(@Req() req: any, @Query() query: ServiceJobFeedQueryDto) {
@@ -149,6 +153,7 @@ export class ServicesController {
     }
 
     @Put('jobs/:id/quote')
+    @UseGuards(PartnerAgreementGuard)
     @UseGuards(ContractorGuard)
     @Throttle({ default: { limit: 20, ttl: 60_000 } })
     @ApiOperation({ summary: 'Create or update a quote on behalf of the provider business' })
