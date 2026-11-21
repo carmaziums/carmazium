@@ -20,6 +20,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
 import { haptics } from '../../lib/haptics';
+import { getDealerOfferMetrics } from '../../lib/dealerOfferSummary';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -624,7 +625,21 @@ export const DealerOffersScreen: React.FC = () => {
           renderItem={renderOfferCard}
           ListHeaderComponent={<View style={{gap:24,marginBottom:24}}>
             <Text accessibilityRole="header" style={styles.pageTitle}>Offers received</Text><Text style={styles.pageBody}>Manage offers received from buyers on your listings</Text>
-            <View style={{gap:16}}>{[{label:'Pending Offers',count:pendingCount,hint:'Action Required'},{label:'Accepted',count:offers.filter(o=>o.status==='ACCEPTED').length,hint:'Closed'},{label:'Total Received',count:offers.length,hint:''}].map(metric=><View key={metric.label} style={styles.metricCard}><Text style={styles.pageBody}>{metric.hint}</Text><Text style={styles.pageTitle}>{metric.count}</Text><Text style={styles.pageBody}>{metric.label}</Text></View>)}</View>
+            <View style={styles.metricList}>{getDealerOfferMetrics(offers).map(metric => {
+              const tint = metric.tone === 'warning' ? Colors.warning : metric.tone === 'success' ? Colors.success : Colors.infoBlue;
+              const fill = metric.tone === 'warning' ? Colors.warningAlpha10 : metric.tone === 'success' ? Colors.successAlpha10 : Colors.infoBlueAlpha10;
+              return <View key={metric.key} style={styles.metricCard}>
+              <View style={styles.metricTop}>
+                <View style={[styles.metricIconBadge, { backgroundColor: fill, borderColor: tint }]}>
+                  <Ionicons name={metric.icon as any} size={20} color={tint} />
+                </View>
+                {!!metric.hint && <Text style={styles.metricHint}>{metric.hint}</Text>}
+              </View>
+              <Text style={styles.metricValue}>{metric.count}</Text>
+              <Text style={styles.metricLabel}>{metric.label}</Text>
+              <View style={[styles.metricBottomAccent, { backgroundColor: fill }]} accessibilityElementsHidden importantForAccessibility="no" />
+            </View>;
+            })}</View>
             <ReceivedDeliveryRequestsPanel contextLabel="your inventory" /><Text style={styles.pageTitle}>Offers Registry</Text>
           </View>}
           ListEmptyComponent={renderEmptyState}
@@ -761,9 +776,20 @@ export const DealerOffersScreen: React.FC = () => {
 // ═══════════════════════════ STYLES ════════════════════════════════
 
 const styles = StyleSheet.create({
-  pageTitle:{fontFamily:FontFamily.bold,fontSize:24,lineHeight:32,color:Colors.textPrimary},
-  pageBody:{fontSize:14,lineHeight:22,color:Colors.textMuted},
-  metricCard:{padding:24,gap:12,borderWidth:1,borderRadius:16,borderColor:Colors.border,backgroundColor:Colors.bgCard},
+  pageTitle:{fontFamily:FontFamily.bold,fontSize:FontSize['2xl'],lineHeight:32,color:Colors.textPrimary},
+  pageBody:{fontSize:FontSize.base - 1,lineHeight:22,color:Colors.textMuted},
+  metricList: { gap: 16 },
+  metricCard: {
+    minHeight: 220, padding: 24, gap: 11,
+    borderWidth: 1, borderRadius: 20, borderColor: Colors.border,
+    backgroundColor: Colors.bgCard, overflow: 'hidden',
+  },
+  metricTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  metricIconBadge: { width: 52, height: 52, borderRadius: 13, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  metricHint: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, textTransform: 'uppercase', letterSpacing: 1, color: Colors.textMuted },
+  metricValue: { fontFamily: FontFamily.extraBold, fontSize: FontSize['3xl'], color: Colors.textPrimary },
+  metricLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, textTransform: 'uppercase', letterSpacing: 1, color: Colors.textMuted },
+  metricBottomAccent: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 16 },
   container: {
     flex: 1,
     backgroundColor: Colors.bgPrimary,

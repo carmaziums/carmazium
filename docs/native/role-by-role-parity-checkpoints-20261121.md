@@ -20,7 +20,7 @@ A 10% checkpoint is a **scope milestone**, not a measured functional equality pe
 | 20–30% | Admin↔admin: listings, auctions, approvals, dealer verification, users, transactions, services, handovers, refunds/cancellations, content and reporting | PARTIAL SOURCE IMPLEMENTATION — several modules and runtime QA outstanding |
 | 30–40% | Dealer↔dealer: sign-in, dashboard cards, stock, profile, business settings, customisation, mobile menu and appearance | SOURCE AUDIT & NOTICE FIXES — LIVE DEALER COMPARISON BLOCKED by admin sessions; paused until proceed |
 | 40–50% | Dealer to dealer: listing wizard, drafts, cover photos, edits, filters and inventory | SAME-ACCOUNT EMULATOR COMPARISON COMPLETED; new source changes saved; new APK visual QA still pending; no draft available to test |
-| 50–60% | Dealer↔dealer: bids, offers, wins, purchases, handovers, chat, team, analytics, trade services | NOT STARTED |
+| 50–60% | Dealer to dealer: bids, offers, purchases, handovers, messages and trade services | SAME-ACCOUNT EMULATOR COMPARISON COMPLETE FOR AVAILABLE READ-ONLY STATES; source fixes saved, live actions and new APK QA outstanding; paused until proceed |
 | 60–70% | Buyer/Seller↔Buyer/Seller: dashboard, search, filters, vehicle detail, tabs, saved vehicles, walkthrough | NOT STARTED |
 | 70–80% | Buyer/Seller↔Buyer/Seller: auction/retail listing, offers, purchases, messages, delivery, cancellations, finance/warranty flows | NOT STARTED |
 | 80–90% | Cross-role: settings, tour/replay, voice, navigation, alerts, permissions, responsiveness, light/dark, auto-update and notification flows | NOT STARTED |

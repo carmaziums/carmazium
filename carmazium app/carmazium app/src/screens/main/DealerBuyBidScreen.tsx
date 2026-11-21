@@ -10,7 +10,7 @@ import { DealerActiveBidPositions, DealerAuctionShortlist } from './DealerAuctio
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Colors } from '../../constants/colors';
 import { Button } from '../../components/Button';
-import { FontFamily } from '../../constants/typography';
+import { FontFamily, FontSize } from '../../constants/typography';
 import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { getBottomTabBarHeight, getScrollableStageHeight } from '../../lib/nativeLayoutParity';
@@ -182,7 +182,7 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
   // larger system font size. Other sections keep it above their own view.
   const pageHeading = (
     <View style={styles.heading}>
-      <Text style={styles.pageTitle}>{section === 'bids' ? 'Bids & offers' : section === 'mine' ? 'My Auctions' : 'Live Auctions'}</Text>
+      <Text style={[styles.pageTitle, section === 'bids' && styles.bidsPageTitle]}>{section === 'bids' ? 'Bids & offers' : section === 'mine' ? 'My Auctions' : 'Live Auctions'}</Text>
       <Text style={styles.subtitle}>{section === 'bids' ? 'YOUR LIVE AUCTION BIDS, ONE POSITION PER VEHICLE' : 'Cars available to bid on.'}</Text>
       {canManageInventory && section === 'mine' && (
         <TouchableOpacity accessibilityRole="button"
@@ -221,24 +221,23 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
           <DealerActiveBidPositions
             canPlaceBid={canPlaceBid}
             navigation={navigation}
-            header={<>
-              {pageHeading}
-          {canManageOffers && (
-                <View style={styles.bidsSwitch} accessibilityRole="tablist">
-                  <View style={[styles.bidsSwitchItem, styles.bidsSwitchItemActive]} accessibilityRole="tab" accessibilityState={{ selected: true }}>
-                    <Text style={[styles.bidsSwitchText, styles.bidsSwitchTextActive]}>Auction bids</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.bidsSwitchItem}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: false }}
-                    onPress={() => navigation?.navigate('DealerMyOffers', { fromBidsOffers: true })}
-                  >
-                    <Text style={styles.bidsSwitchText}>Retail offers</Text>
-                  </TouchableOpacity>
+            header={pageHeading}
+            onBrowseLive={() => setSection('live')}
+            tabSwitch={canManageOffers ? (
+              <View style={styles.bidsSwitch} accessibilityRole="tablist">
+                <View style={[styles.bidsSwitchItem, styles.bidsSwitchItemActive]} accessibilityRole="tab" accessibilityState={{ selected: true }}>
+                  <Text style={[styles.bidsSwitchText, styles.bidsSwitchTextActive]}>Auction bids</Text>
                 </View>
-              )}
-            </>}
+                <TouchableOpacity
+                  style={styles.bidsSwitchItem}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: false }}
+                  onPress={() => navigation?.navigate('DealerMyOffers', { fromBidsOffers: true })}
+                >
+                  <Text style={styles.bidsSwitchText}>Retail offers</Text>
+                </TouchableOpacity>
+              </View>
+            ) : undefined}
           />
         </>
       ) : (
@@ -321,22 +320,23 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.bgPrimary },
   liveContainer: { flex: 1 },
-  bidsSwitch: { flexDirection: 'row', alignSelf: 'flex-start', marginHorizontal: 20, marginBottom: 10,
+  bidsSwitch: { flexDirection: 'row', alignSelf: 'flex-start', marginBottom: 8,
     padding: 4, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCard },
   bidsSwitchItem: { minHeight: 44, paddingHorizontal: 14, borderRadius: 9, justifyContent: 'center' },
   bidsSwitchItemActive: { backgroundColor: Colors.accent },
-  bidsSwitchText: { fontFamily: FontFamily.bold, fontSize: 14, color: Colors.textMuted },
+  bidsSwitchText: { fontFamily: FontFamily.bold, fontSize: FontSize.base - 1, color: Colors.textMuted },
   bidsSwitchTextActive: { color: Colors.onAccent },
+  bidsPageTitle: { textTransform: 'none' },
   permissionNotice: { color: Colors.textMuted, paddingHorizontal: 20, paddingBottom: 5,
-    fontFamily: FontFamily.medium, fontSize: 12 },
+    fontFamily: FontFamily.medium, fontSize: FontSize.sm - 1 },
   heading: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 9, gap: 5 },
-  pageTitle: { fontFamily: FontFamily.extraBold, fontSize: 25,
+  pageTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize['2xl'] + 1,
     color: Colors.textPrimary, letterSpacing: -0.5, textTransform: 'uppercase' },
-  subtitle: { fontFamily: FontFamily.regular, fontSize: 12, color: Colors.textMuted },
+  subtitle: { fontFamily: FontFamily.regular, fontSize: FontSize.sm - 1, color: Colors.textMuted },
   createButton: { flexDirection: 'row', gap: 7, alignItems: 'center',
     backgroundColor: Colors.accent, borderRadius: 12,
     minHeight: 44, paddingHorizontal: 15, alignSelf: 'flex-start', marginTop: 10 },
-  createText: { color: Colors.onAccent, fontFamily: FontFamily.bold, fontSize: 13 },
+  createText: { color: Colors.onAccent, fontFamily: FontFamily.bold, fontSize: FontSize.sm },
   navScroller: { flexGrow: 0, marginBottom: 9, maxHeight: 58 },
   navContent: { gap: 4, padding: 5, marginHorizontal: 20, alignItems: 'center',
     borderRadius: 14, borderWidth: 1, borderColor: Colors.borderSubtle,
@@ -344,34 +344,34 @@ const styles = StyleSheet.create({
   navButton: { flexDirection: 'row', alignItems: 'center', gap: 6,
     minHeight: 44, paddingHorizontal: 13, borderRadius: 11 },
   navSelected: { backgroundColor: Colors.accent },
-  navText: { color: Colors.textMuted, fontFamily: FontFamily.bold, fontSize: 12 },
+  navText: { color: Colors.textMuted, fontFamily: FontFamily.bold, fontSize: FontSize.sm - 1 },
   navTextActive: { color: Colors.white },
   warning: { flexDirection: 'row', marginHorizontal: 20, padding: 13, gap: 9,
     borderColor: Colors.warning, borderWidth: 1, borderRadius: 13, marginBottom: 9,
     backgroundColor: Colors.bgCard },
   warningText: { flex: 1, color: Colors.warning,
-    fontFamily: FontFamily.medium, fontSize: 12, lineHeight: 18 },
+    fontFamily: FontFamily.medium, fontSize: FontSize.sm - 1, lineHeight: 18 },
   errorBox: { marginHorizontal: 20, padding: 13, marginBottom: 9,
     borderWidth: 1, borderColor: Colors.warning, borderRadius: 13,
     backgroundColor: Colors.bgCard, gap: 7 },
-  errorText: { color: Colors.warning, fontSize: 12, fontFamily: FontFamily.medium },
-  retryText: { color: Colors.accent, fontSize: 12, fontFamily: FontFamily.bold },
+  errorText: { color: Colors.warning, fontSize: FontSize.sm - 1, fontFamily: FontFamily.medium },
+  retryText: { color: Colors.accent, fontSize: FontSize.sm - 1, fontFamily: FontFamily.bold },
   metrics: { flexDirection: 'row', flexWrap: 'wrap',
     marginHorizontal: 20, marginBottom: 10, gap: 8 },
   metric: { flexGrow: 1, width: '46%', padding: 12, minHeight: 75,
     borderRadius: 12, backgroundColor: Colors.bgCard,
     borderColor: Colors.borderSubtle, borderWidth: 1, alignItems: 'center' },
-  metricCount: { color: Colors.textPrimary, fontFamily: FontFamily.extraBold, fontSize: 21 },
-  metricLabel: { color: Colors.textMuted, fontFamily: FontFamily.bold, fontSize: 11 },
+  metricCount: { color: Colors.textPrimary, fontFamily: FontFamily.extraBold, fontSize: FontSize.xl + 1 },
+  metricLabel: { color: Colors.textMuted, fontFamily: FontFamily.bold, fontSize: FontSize.xs },
   list: { flex: 1 },
   listContent: { paddingHorizontal: 20, paddingBottom: 110 },
   // Header rows carry their own 20pt gutters inside the padded list.
   listHeaderBleed: { marginHorizontal: -20 },
   sectionHeading: { flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between', paddingVertical: 12 },
-  sectionTitle: { color: Colors.textPrimary, fontSize: 16,
+  sectionTitle: { color: Colors.textPrimary, fontSize: FontSize.md,
     fontFamily: FontFamily.extraBold },
-  manageLink: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: 12 },
+  manageLink: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: FontSize.sm - 1 },
   auctionCard: { borderRadius: 15, padding: 15, marginBottom: 10,
     borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCard },
   rowTitle: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -379,20 +379,20 @@ const styles = StyleSheet.create({
     borderRadius: 10, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   auctionImage: { width: '100%', height: '100%' },
   rowCopy: { flex: 1, gap: 3 },
-  vehicleTitle: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 14 },
-  auctionIdText: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: 11 },
+  vehicleTitle: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: FontSize.base - 1 },
+  auctionIdText: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: FontSize.xs },
   statusPill: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 7,
     borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgElevated },
   statusPillLive: { borderColor: Colors.success },
-  statusText: { fontFamily: FontFamily.bold, color: Colors.textSecondary, fontSize: 10 },
+  statusText: { fontFamily: FontFamily.bold, color: Colors.textSecondary, fontSize: FontSize.xs - 1 },
   statusTextLive: { color: Colors.success },
   auctionMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
-  metaText: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: 11 },
+  metaText: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: FontSize.xs },
   cardFooter: { marginTop: 10, paddingTop: 10, flexDirection: 'row',
     justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: Colors.borderSubtle },
-  cardAction: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: 11 },
+  cardAction: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: FontSize.xs },
   emptyState: { alignItems: 'center', gap: 10, paddingVertical: 40, paddingHorizontal: 20 },
-  emptyText: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 13 },
+  emptyText: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: FontSize.sm },
   emptyHint: { color: Colors.textMuted, fontFamily: FontFamily.regular,
-    fontSize: 12, lineHeight: 18, textAlign: 'center' },
+    fontSize: FontSize.sm - 1, lineHeight: 18, textAlign: 'center' },
 });
