@@ -11,10 +11,10 @@ import { PixelRatio } from 'react-native';
 export const scaledFontSize = (base: number): number => base * PixelRatio.getFontScale();
 
 export const FontFamily = {
-  // Body & UI Tones (Montserrat)
-  regular: 'Montserrat_400Regular',
-  medium: 'Montserrat_500Medium',
-  semiBold: 'Montserrat_600SemiBold',
+  // Body and controls match the live mobile website (Inter).
+  regular: 'Inter_400Regular',
+  medium: 'Inter_500Medium',
+  semiBold: 'Inter_600SemiBold',
   
   // Headings (Poppins)
   bold: 'Poppins_700Bold',

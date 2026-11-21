@@ -184,3 +184,11 @@ Same-emulator Pricing comparison found missing package CTAs, all six customer FA
 Validation: completed TypeScript, 111 native tests plus the added valuation/tier handoff regression (three Pricing tests passed), all 778 root tests, product/knowledge guards and Android Metro export. Two old source guards were updated for the new optional selling package parameters; the new behavior is exercised directly.
 
 Build114 was installed in place from source b1502e1442ee34ff6cf1c23eb0630dbe8708f40e, package uk.carmazium.app, unchanged UID10064/first install/login. APK SHA256 1be2515af4f01ce5e760619dd2967fb26bc8f86d66fdcdecb685ce2af857ee71. Dealer Analytics now visibly uses one-column metrics at the emulator's 600dp width, matching the mobile website. Further visual checks continue. Public version endpoint was checked and still advertises111; no claim is made that these internal candidates reached the user's phone.
+
+### Shared mobile typography and public-page headers
+
+Computed styles in foreground emulator Chrome confirmed loaded Inter for body text and controls, with Poppins headings. Native body/control typography used Montserrat. Switched the three existing body font weights to bundled Inter assets, retaining Poppins and numeric fonts without adding dependencies or extra loaded weights. Shared NativePage inputs/body now explicitly use the same font. About, How It Works, Reviews and Compare now expose the shared site header. Trader Pricing includes its missing native Partner Guide link.
+
+Validation: completed native TypeScript, 112 native tests, 778 repository tests, product/knowledge checks and Android Metro export. These final font/header changes still require signed-device acceptance.
+
+Build114 device checks confirmed dealer and personal dashboard cards, one-column Analytics, partner/services/provider navigation, large My Cars cards, and the correct Mark Sold confirmation (cancelled without a sale). Received offers group the Toyota with its withdrawn offer. Purchases shows the same two completed agreed purchases and ten recorded purchases as emulator Chrome, including collection dates. These checks use the dealer account and personal preview, not independent buyer/seller-role acceptance. Public APK remains111.

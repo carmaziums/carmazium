@@ -145,22 +145,15 @@ export default function App() {
     registerForPushNotifications(authedUserId);
   }, [authedUserId]);
 
-  // Only the nine variants actually referenced anywhere in src/ are loaded.
-  // This used to load twenty — including all six weights of Inter, which the
-  // app never uses at all (typography.ts pairs Poppins with Montserrat), plus
-  // four other unreferenced weights. Every one of them was read from disk
-  // before the splash screen could be dismissed, so the app held a blank
-  // screen loading fonts nothing would ever render in. Verified by grepping
-  // every literal font-family string in src/ — if you add a weight to
-  // FontFamily or TextPresets, add it here too or it will silently fall back
-  // to the system font.
+  // Load the nine referenced variants: Inter body/controls, Poppins headings
+  // and JetBrains Mono for numeric/technical text. Keep FontFamily in sync.
   const [fontsLoaded, fontLoadError] = useFonts({
     'Poppins_600SemiBold': require('@expo-google-fonts/poppins/600SemiBold/Poppins_600SemiBold.ttf'),
     'Poppins_700Bold': require('@expo-google-fonts/poppins/700Bold/Poppins_700Bold.ttf'),
     'Poppins_800ExtraBold': require('@expo-google-fonts/poppins/800ExtraBold/Poppins_800ExtraBold.ttf'),
-    'Montserrat_400Regular': require('@expo-google-fonts/montserrat/400Regular/Montserrat_400Regular.ttf'),
-    'Montserrat_500Medium': require('@expo-google-fonts/montserrat/500Medium/Montserrat_500Medium.ttf'),
-    'Montserrat_600SemiBold': require('@expo-google-fonts/montserrat/600SemiBold/Montserrat_600SemiBold.ttf'),
+    'Inter_400Regular': require('@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf'),
+    'Inter_500Medium': require('@expo-google-fonts/inter/500Medium/Inter_500Medium.ttf'),
+    'Inter_600SemiBold': require('@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf'),
     'JetBrainsMono_400Regular': require('@expo-google-fonts/jetbrains-mono/400Regular/JetBrainsMono_400Regular.ttf'),
     'JetBrainsMono_700Bold': require('@expo-google-fonts/jetbrains-mono/700Bold/JetBrainsMono_700Bold.ttf'),
     'JetBrainsMono_800ExtraBold': require('@expo-google-fonts/jetbrains-mono/800ExtraBold/JetBrainsMono_800ExtraBold.ttf'),
