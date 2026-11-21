@@ -50,7 +50,7 @@ export const CarBodyGuideScreen = ({ navigation }: any) => {
    <Button label="All listings" variant="outline" onPress={() => browse()}/>
    {cars.map(car => <TouchableOpacity key={car.id} accessibilityRole="link" style={[s.panel, { borderRadius: 16, padding: 20 }]} onPress={() => navigation.navigate('VehicleDetail', { listing: car })}>
     <Text style={s.subheading}>{car.title}</Text>
-    <Text style={s.muted}>{[car.title.includes(String(car.year)) ? null : car.year,
+    <Text style={s.muted}>{[car.title?.includes(String(car.year)) ? null : car.year,
       car.fuelTypeRaw ? FUEL_TYPE_LABELS[car.fuelTypeRaw] ?? car.fuelTypeRaw : car.fuelType,
       car.transmissionRaw ? TRANSMISSION_LABELS[car.transmissionRaw] ?? car.transmissionRaw : car.transmission].filter(Boolean).join(' · ')}</Text>
     <Text style={[s.subheading, { color: Colors.accent }]}>{new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(car.price)}</Text>
