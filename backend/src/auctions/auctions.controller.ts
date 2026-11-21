@@ -27,6 +27,7 @@ import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
 import { RefuseAfterInspectionDto } from './dto/refuse-after-inspection.dto';
+import { PartnerAgreementGuard } from '../partner-agreement/partner-agreement.guard';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { OptionalSessionAuthGuard } from '../auth/guards/optional-session-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -63,7 +64,7 @@ export class AuctionsController {
     // that page applies its own seller-or-dealer rule.
 
     @Get('active')
-    @UseGuards(SessionAuthGuard, VerifiedDealerGuard)
+    @UseGuards(SessionAuthGuard, VerifiedDealerGuard, PartnerAgreementGuard)
     @ApiCookieAuth()
     @ApiOperation({ summary: 'Get all live (ACTIVE) auctions — dealers only' })
     @ApiResponse({ status: 200, description: 'List of active auctions' })
@@ -74,7 +75,7 @@ export class AuctionsController {
     }
 
     @Get('scheduled')
-    @UseGuards(SessionAuthGuard, VerifiedDealerGuard)
+    @UseGuards(SessionAuthGuard, VerifiedDealerGuard, PartnerAgreementGuard)
     @ApiCookieAuth()
     @ApiOperation({ summary: 'Get all upcoming (SCHEDULED) auctions — dealers only' })
     @ApiResponse({ status: 200, description: 'List of scheduled auctions' })
@@ -134,7 +135,7 @@ export class AuctionsController {
     }
 
     @Post()
-    @UseGuards(SessionAuthGuard)
+    @UseGuards(SessionAuthGuard, PartnerAgreementGuard)
     @ApiCookieAuth()
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Schedule or re-schedule an owned auction and submit it for review' })
@@ -255,7 +256,7 @@ export class AuctionsController {
     // ── Buy It Now Routes ────────────────────────────────────────────────────
 
     @Post(':id/bin-trigger')
-    @UseGuards(SessionAuthGuard)
+    @UseGuards(SessionAuthGuard, PartnerAgreementGuard)
     @ApiCookieAuth()
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Buyer triggers Buy It Now — seller response expires at the earlier of 24h or auction close' })
