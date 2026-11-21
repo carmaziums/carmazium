@@ -698,6 +698,15 @@ export const SettingsScreen: React.FC = () => {
         </View>
 
         {!!profileLoadError&&<ErrorBanner message={profileLoadError} onRetry={()=>void loadProfile()}/>}
+        {!!user?.id && <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Replay App Tour"
+          onPress={requestNativeAppTourReplay}
+          style={styles.replayTourButton}
+        >
+          <Ionicons name="play-circle-outline" size={23} color={Colors.onAccent} />
+          <Text style={styles.replayTourButtonText}>Replay App Tour</Text>
+        </TouchableOpacity>}
         {!!user?.id&&<TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('SellerProfile',{sellerId:user.id})}><Text style={styles.avatarChangeText}>View Public Profile</Text></TouchableOpacity>}
         <View style={styles.accountToolsPanel}>
           <Text style={styles.accountToolsHeading}>YOUR ACCOUNT TOOLS</Text>
@@ -769,13 +778,6 @@ export const SettingsScreen: React.FC = () => {
         {activeCategory === 'personal' && (
           <>
         {/* ── 1. PROFILE INFORMATION ── */}
-        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Replay App Tour"
-          style={[styles.accountToolButton, { marginBottom: 14, justifyContent: 'center' }]}
-          onPress={requestNativeAppTourReplay}>
-          <Ionicons name="play-circle-outline" size={22} color={Colors.accent} />
-          <Text style={[styles.accountToolLabel, { flex: 1 }]}>Replay App Tour</Text>
-          <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
-        </TouchableOpacity>
         <SectionHeader icon="person-circle-outline" label="PROFILE INFORMATION" />
         <View style={styles.card}>
           <TouchableOpacity
@@ -1633,22 +1635,31 @@ export const SettingsScreen: React.FC = () => {
 // ══════════════════════════ STYLES ════════════════════════════════
 
 const styles = StyleSheet.create({
+  replayTourButton: {
+    minHeight: 52, marginHorizontal: 20, marginBottom: 14,
+    borderRadius: 14, backgroundColor: Colors.accent,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    paddingHorizontal: 18, paddingVertical: 13,
+  },
+  replayTourButtonText: {
+    color: Colors.onAccent, fontFamily: FontFamily.bold, fontSize: FontSize.base,
+  },
   settingsPageHeader: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14 },
   // Inside the 20pt-padded scroll content; keeps its own gutters.
   settingsPageHeaderBleed: { marginHorizontal: -20 },
   settingsPageTitle: { fontFamily: FontFamily.extraBold, color: Colors.textPrimary,
-    fontSize: 25, lineHeight: 32 },
+    fontSize: FontSize['2xl'] + 1, lineHeight: 32 },
   settingsPageSubtitle: { fontFamily: FontFamily.medium, color: Colors.textMuted,
-    fontSize: 12, lineHeight: 18, marginTop: 3 },
+    fontSize: FontSize.sm - 1, lineHeight: 18, marginTop: 3 },
   settingsBackLink: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingTop: 8,
     minHeight: 44, alignSelf: 'flex-start' },
-  settingsBackText: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: 12 },
+  settingsBackText: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: FontSize.sm - 1 },
   accountToolsPanel: { borderWidth: 1, borderColor: Colors.borderSubtle,
     backgroundColor: Colors.bgCard, borderRadius: 16, padding: 13, marginBottom: 11 },
   accountToolsHeading: { fontFamily: FontFamily.extraBold, color: Colors.textPrimary,
-    fontSize: 12, letterSpacing: 0.7 },
+    fontSize: FontSize.sm - 1, letterSpacing: 0.7 },
   accountToolsSub: { fontFamily: FontFamily.regular, color: Colors.textMuted,
-    fontSize: 11, lineHeight: 16, marginTop: 4, marginBottom: 10 },
+    fontSize: FontSize.xs, lineHeight: 16, marginTop: 4, marginBottom: 10 },
   accountToolsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   fullWidthTool: { width: '100%', flexBasis: '100%' },
   fullWidthCategory: { flexBasis: '100%' },
@@ -1656,25 +1667,25 @@ const styles = StyleSheet.create({
     gap: 8, minHeight: 48, paddingHorizontal: 10, borderRadius: 10,
     backgroundColor: Colors.bgElevated, borderWidth: 1, borderColor: Colors.borderSubtle },
   accountToolLabel: { color: Colors.textPrimary, fontFamily: FontFamily.bold,
-    fontSize: 11, flex: 1 },
+    fontSize: FontSize.xs, flex: 1 },
   accountSectionCard: { backgroundColor: Colors.bgCard, padding: 15, marginTop: 8,
     borderWidth: 1, borderColor: Colors.borderSubtle, borderRadius: 15, gap: 10 },
-  accountSectionTitle: { color: Colors.textPrimary, fontFamily: FontFamily.extraBold, fontSize: 15 },
+  accountSectionTitle: { color: Colors.textPrimary, fontFamily: FontFamily.extraBold, fontSize: FontSize.base },
   accountSectionText: { color: Colors.textSecondary, fontFamily: FontFamily.regular,
-    fontSize: 12, lineHeight: 19 },
-  accountErrorText: { color: Colors.warning, fontFamily: FontFamily.medium, fontSize: 12 },
+    fontSize: FontSize.sm - 1, lineHeight: 19 },
+  accountErrorText: { color: Colors.warning, fontFamily: FontFamily.medium, fontSize: FontSize.sm - 1 },
   reviewSummary: { flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 5 },
-  reviewScore: { fontFamily: FontFamily.extraBold, color: Colors.textPrimary, fontSize: 20 },
+  reviewScore: { fontFamily: FontFamily.extraBold, color: Colors.textPrimary, fontSize: FontSize.xl },
   reviewGroup: { gap: 10, marginTop: 11 },
   reviewRow: { padding: 11, gap: 5, backgroundColor: Colors.bgElevated, borderRadius: 10 },
   reviewRowHeading: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  reviewName: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 12, flex: 1 },
-  reviewStars: { color: Colors.warning, fontFamily: FontFamily.bold, fontSize: 12 },
-  reviewDate: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: 10 },
+  reviewName: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: FontSize.sm - 1, flex: 1 },
+  reviewStars: { color: Colors.warning, fontFamily: FontFamily.bold, fontSize: FontSize.sm - 1 },
+  reviewDate: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: FontSize.xs - 1 },
   accountAction: { backgroundColor: Colors.accent, borderRadius: 11, minHeight: 46,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 13 },
-  accountActionText: { color: Colors.onAccent, fontFamily: FontFamily.bold, fontSize: 12 },
+  accountActionText: { color: Colors.onAccent, fontFamily: FontFamily.bold, fontSize: FontSize.sm - 1 },
   accountActionSecondary: { marginTop: 10, backgroundColor: Colors.bgCard, borderWidth: 1.5, borderColor: Colors.accent },
   accountActionSecondaryText: { color: Colors.accent },
   container: { flex: 1, backgroundColor: Colors.bgPrimary },

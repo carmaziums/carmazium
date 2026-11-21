@@ -27,6 +27,7 @@ export const NativeAppTour: React.FC = () => {
   const hasCompletedOnboarding = useAuthStore(s => s.hasCompletedOnboarding);
   const [visible, setVisible] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+  const [showTopics, setShowTopics] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const steps = useMemo(() => getNativeAppTourSteps(role), [role]);
   const step = steps[Math.min(stepIndex, steps.length - 1)];
@@ -46,6 +47,7 @@ export const NativeAppTour: React.FC = () => {
         .then(value => {
           if (active && value !== 'completed' && value !== 'skipped') {
             setStepIndex(0);
+            setShowTopics(false);
             setVisible(true);
           }
         })
@@ -58,6 +60,7 @@ export const NativeAppTour: React.FC = () => {
   useEffect(() => subscribeNativeAppTourReplay(() => {
     if (!canShow) return;
     setStepIndex(0);
+    setShowTopics(false);
     setVisible(true);
   }), [canShow]);
 
@@ -79,11 +82,13 @@ export const NativeAppTour: React.FC = () => {
   const goTo = useCallback((nextIndex: number) => {
     if (nextIndex < 0 || nextIndex >= steps.length) return;
     setStepIndex(nextIndex);
+    setShowTopics(false);
     navigateToStep(steps[nextIndex]);
   }, [navigateToStep, steps]);
 
   const closeTour = useCallback((result: TourResult) => {
     setVisible(false);
+    setShowTopics(false);
     void Speech.stop();
     if (userId) {
       void AsyncStorage.setItem(nativeTourStorageKey(userId), result).catch(() => {
@@ -159,7 +164,32 @@ export const NativeAppTour: React.FC = () => {
             <ScrollView style={styles.bodyScroll} contentContainerStyle={styles.bodyScrollContent}>
               <Text style={styles.title} accessibilityRole="header">{step.title}</Text>
               <Text style={styles.description}>{step.description}</Text>
-              {!isWelcome && <Text style={styles.hint}>The relevant app page is shown behind this guide.</Text>}
+              {!isWelcome && <Text style={styles.hint}>The relevant app page is shown behind this guide. Some controls may require account approval.</Text>}
+              <Text style={styles.topicLabel}>Jump to a topic</Text>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={`Jump to a tour topic, currently ${step.title}`}
+                accessibilityState={{ expanded: showTopics }}
+                style={styles.topicPicker}
+                onPress={() => setShowTopics(open => !open)}
+              >
+                <Text style={styles.topicPickerText} numberOfLines={1}>{stepIndex + 1}. {step.title}</Text>
+                <Ionicons name={showTopics ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textSecondary} />
+              </TouchableOpacity>
+              {showTopics && <ScrollView nestedScrollEnabled style={[styles.topicList, { maxHeight: Math.min(height * 0.28, 210) }]}>
+                {steps.map((topic, index) => <TouchableOpacity
+                  key={topic.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Go to tour topic ${index + 1}: ${topic.title}`}
+                  accessibilityState={{ selected: index === stepIndex }}
+                  onPress={() => goTo(index)}
+                  style={[styles.topicOption, index === stepIndex && styles.topicOptionActive]}
+                >
+                  <Text style={[styles.topicOptionText, index === stepIndex && styles.topicOptionActiveText]}>
+                    {index + 1}. {topic.title}
+                  </Text>
+                </TouchableOpacity>)}
+              </ScrollView>}
             </ScrollView>
             <View style={styles.voiceRow}>
               <Ionicons name={voiceEnabled ? 'volume-high-outline' : 'volume-mute-outline'} size={18} color={Colors.textPrimary} />
@@ -219,6 +249,14 @@ const styles = StyleSheet.create({
   title: { color: Colors.textPrimary, fontSize: FontSize.xl, fontWeight: '800', marginBottom: 7 },
   description: { color: Colors.textSecondary, fontSize: FontSize.base, lineHeight: 22 },
   hint: { color: Colors.textMuted, fontSize: FontSize.sm - 1, marginTop: 8 },
+  topicLabel: { color: Colors.textSecondary, fontSize: FontSize.sm, fontWeight: '700', marginTop: 14, marginBottom: 7 },
+  topicPicker: { minHeight: 46, borderWidth: 1, borderColor: Colors.border, borderRadius: 11, backgroundColor: Colors.inputBg, paddingHorizontal: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  topicPickerText: { flex: 1, fontSize: FontSize.sm, color: Colors.textPrimary, fontWeight: '600' },
+  topicList: { marginTop: 8, borderWidth: 1, borderColor: Colors.border, borderRadius: 12, backgroundColor: Colors.bgCard },
+  topicOption: { minHeight: 43, paddingHorizontal: 12, paddingVertical: 10, justifyContent: 'center', borderBottomWidth: 1, borderColor: Colors.border },
+  topicOptionActive: { backgroundColor: Colors.accentAlpha10 },
+  topicOptionText: { color: Colors.textPrimary, fontSize: FontSize.sm },
+  topicOptionActiveText: { color: Colors.accent, fontWeight: '700' },
   voiceRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 8 },
   voiceLabel: { flex: 1, color: Colors.textPrimary, fontSize: FontSize.sm, fontWeight: '600' },
   voiceToggle: { width: 46, height: 27, borderRadius: 16, padding: 3, backgroundColor: Colors.border, justifyContent: 'center' },

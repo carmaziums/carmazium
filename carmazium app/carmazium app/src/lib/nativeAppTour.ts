@@ -1,13 +1,18 @@
 /**
- * Native account tour. Keep this separate from pre-sign-in welcome slides and
- * websiteIntroductionV2: each client needs its own completion/replay state.
+ * Native role-specific account tour, aligned to the website's guidedWebsiteTour.
+ * Never submits a form, approves content, changes role/settings, bids or pays.
+ * The native completion key intentionally differs from website completion state.
  */
-export const NATIVE_APP_TOUR_VERSION = 1;
+export const NATIVE_APP_TOUR_VERSION = 2;
 export const nativeTourStorageKey = (userId: string) =>
   `carmazium:native-app-tour:v${NATIVE_APP_TOUR_VERSION}:${userId}`;
 
+export type NativeTourTab =
+  'Home' | 'Search' | 'Live' | 'Saved' | 'Profile' | 'DealerHome' |
+  'DealerStock' | 'DealerCustomers' | 'DealerBuyBid';
+
 export type TourDestination =
-  | { screen: 'Tabs'; tab: 'Home' | 'Search' | 'Live' | 'Saved' | 'Profile' }
+  | { screen: 'Tabs'; tab: NativeTourTab }
   | { screen: string; params?: Record<string, unknown> };
 
 export type NativeTourStep = {
@@ -18,128 +23,190 @@ export type NativeTourStep = {
   focus?: 'top' | 'bottom' | 'centre';
 };
 
-const dashboard: NativeTourStep = {
-  id: 'dashboard', title: 'Your dashboard',
-  description: 'Your dashboard brings together your listings, purchases, offers and messages. Select a card to open its native screen. Each account sees the tools available to its role.',
-  destination: { screen: 'Tabs', tab: 'Profile' }, focus: 'top',
-};
+const step = (
+  id: string, title: string, description: string,
+  destination?: TourDestination, focus: NativeTourStep['focus'] = 'top',
+): NativeTourStep => ({ id, title, description, ...(destination ? { destination } : {}), focus });
+
+const tab = (name: NativeTourTab): TourDestination => ({ screen: 'Tabs', tab: name });
+const page = (screen: string, params?: Record<string, unknown>): TourDestination => ({
+  screen, ...(params ? { params } : {}),
+});
+
+const welcome = step(
+  'welcome', 'Let’s explore CarMazium',
+  'This walkthrough opens real app pages and highlights how to find their features. Use Next, Back, Jump to a topic or Skip at any time. Voice guidance is optional. Your account permissions still apply. No forms, bids, approvals or payments are submitted.',
+);
+
+const dashboard = step(
+  'dashboard', 'Your dashboard',
+  'Your dashboard brings together vehicle listings, purchases, offers and messages. Use the colourful cards and the account menu to reach the tools available to your account.',
+  tab('Profile'),
+);
 
 const shared: NativeTourStep[] = [
-  {
-    id: 'browse', title: 'Find a vehicle',
-    description: 'Browse cars, caravans, campervans and other vehicles. Apply search filters and open listings to review photographs, vehicle information and seller contact options.',
-    destination: { screen: 'Tabs', tab: 'Search' }, focus: 'top',
-  },
-  {
-    id: 'auctions', title: 'Explore live auctions',
-    description: 'View auction vehicles and their details here. Only verified motor traders can place auction bids. Winning dealers pay the CarMazium auction buyer fee.',
-    destination: { screen: 'Tabs', tab: 'Live' }, focus: 'top',
-  },
-  {
-    id: 'sell', title: 'Auction or retail selling',
-    description: 'Choose free auction listing or a retail listing, starting at £1 for Basic. The £100 auction seller reward applies only after a qualifying completed sale and approved handover. This tour never creates a listing.',
-    destination: { screen: 'SellLanding' }, focus: 'top',
-  },
-  {
-    id: 'pricing', title: 'Compare listing packages',
-    description: 'Review Basic, Standard and Premium retail options and their current features before selecting a package. No payments are made during the tour.',
-    destination: { screen: 'Pricing' }, focus: 'top',
-  },
+  step('browse', 'Find a vehicle',
+    'Search cars, caravans, campervans, bikes and commercial vehicles. Open the filter controls to narrow results by make, model, price and other details. Inspect photos and contact sellers from the vehicle listing.',
+    tab('Search')),
+  step('sell', 'Choose how to sell',
+    'Choose auction or retail, then follow the native listing form. Auctions are free to list. Basic retail listings start at £1 until sold. Caravans use manual details rather than an automatic valuation.',
+    page('SellLanding')),
+  step('pricing', 'Listing packages',
+    'Compare Basic, Standard and Premium retail packages before selecting. Payment and admin approval requirements still apply. The tour never buys a package.',
+    page('Pricing')),
 ];
 
 const dealer: NativeTourStep[] = [
-  {
-    id: 'inventory', title: 'Manage dealership stock',
-    description: 'See live, draft, under-review and sold vehicles. Search your stock, add a vehicle and manage its status from the inventory screen.',
-    destination: { screen: 'DealerInventory' }, focus: 'top',
-  },
-  {
-    id: 'customers', title: 'Customer enquiries',
-    description: 'Review enquiries linked to your vehicles and manage your follow-ups. Record phone calls and walk-in customers without losing the vehicle context.',
-    destination: { screen: 'DealerLeads' }, focus: 'top',
-  },
-  {
-    id: 'bids', title: 'Bids and retail offers',
-    description: 'Track auction bids you have placed and offers made on retail vehicles. Review the amount and sale status before responding.',
-    destination: { screen: 'DealerMyOffers' }, focus: 'top',
-  },
-  {
-    id: 'purchases', title: 'Purchases and handovers',
-    description: 'Review purchases in progress and completed or cancelled transactions. Confirm collection only after the actual vehicle handover.',
-    destination: { screen: 'DealerPurchases' }, focus: 'top',
-  },
-  {
-    id: 'services', title: 'Dealership services',
-    description: 'Explore collection, delivery, recovery and inspection services. Approval, verification and payout requirements still apply before taking service jobs.',
-    destination: { screen: 'ProviderOverview' }, focus: 'top',
-  },
-];
-
-const personal: NativeTourStep[] = [
-  {
-    id: 'my-cars', title: 'Your vehicle listings',
-    description: 'Manage your current listings and unfinished drafts here. Check review feedback and continue a listing whenever you are ready.',
-    destination: { screen: 'MyListingDashboard' }, focus: 'top',
-  },
-  {
-    id: 'saved', title: 'Saved vehicles',
-    description: 'Keep interesting vehicles together and return to them later. Saving a vehicle does not reserve it or confirm a purchase.',
-    destination: { screen: 'Tabs', tab: 'Saved' }, focus: 'top',
-  },
-  {
-    id: 'purchases', title: 'Your purchases',
-    description: 'Check your purchase history and follow your agreed purchase and collection arrangements. Vehicle payments go directly to the seller.',
-    destination: { screen: 'BuyerPurchaseHistory' }, focus: 'top',
-  },
-  {
-    id: 'messages', title: 'Messages and support',
-    description: 'Talk to vehicle sellers and buyers in their relevant conversations. Check the vehicle and participant before sending information.',
-    destination: { screen: 'Messages' }, focus: 'top',
-  },
-];
-
-const partner: NativeTourStep[] = [
-  {
-    id: 'jobs', title: 'Service jobs',
-    description: 'Check available and assigned delivery, recovery or inspection work. Only bid on or accept a job when your business is approved for that service.',
-    destination: { screen: 'ProviderJobs' }, focus: 'top',
-  },
+  step('stock', 'Manage your stock',
+    'Find your vehicle stock by registration, make or model. See Live, Under review, Rejected, Draft and Sold statuses. Choose a car to inspect available actions.', tab('DealerStock')),
+  step('add', 'Add a vehicle',
+    'Add Vehicle lets you choose Auction or Retail, declare faults, add photos and review the listing. Drafts let you return later. The tour does not submit a listing.', page('DealerListingMethod')),
+  step('customers', 'Customer enquiries',
+    'Vehicle enquiries stay linked to the listing. Record phone, walk-in and other customer interactions, then track follow-ups and their stages.', tab('DealerCustomers')),
+  step('own-auctions', 'Your auctions',
+    'Track auctions for your own vehicles, their schedules, bids, outcomes and handover requirements.', page('SellerAuctions')),
+  step('live', 'Live dealer auctions',
+    'Verified dealers can browse live auctions. Review the vehicle, next bid and end time before deciding whether to bid. The winning dealer pays a £125 buyer fee; vehicle funds go directly to the seller.',
+    tab('DealerBuyBid')),
+  step('bids', 'Your auction bids',
+    'Open the Auctions tab and switch to Bids & offers to review live positions, including whether you are leading. A provisional result is still subject to the seller’s decision.',
+    tab('DealerBuyBid')),
+  step('retail-offers', 'Your retail offers',
+    'Review offers you have made on retail vehicles, including current and historical responses.', page('DealerMyOffers')),
+  step('offers-received', 'Offers on your stock',
+    'Review offers received for your vehicle listings, including the buyer and amount, before taking any action.',
+    page('DealerOffers')),
+  step('saved', 'Saved vehicles',
+    'Your shortlist has Auctions and Retail views. Saving a vehicle does not reserve or purchase it.', tab('Saved')),
+  step('purchases', 'Purchases and handovers',
+    'Review In progress, Completed and Cancelled purchases, with Auction and Retail filters. Confirm collection only after the vehicle is actually handed over.', page('DealerPurchases')),
+  step('messages', 'Dealer messages',
+    'Keep every buyer and seller conversation linked to its vehicle. Confirm the participant before replying.', page('Messages')),
+  step('team', 'Your dealership team',
+    'Review authorised team members and their permissions. This tour never sends an invitation or changes access.', page('DealerTeam')),
+  step('finance-calculator', 'Platform finance calculator',
+    'Choose whether the platform finance calculator appears on your own listings. This is separate from your own finance-offered badge.', page('DealerFinance')),
+  step('analytics', 'Dealership performance',
+    'Review recorded enquiries, listing performance and activity for your dealership.', page('DealerAnalytics')),
+  step('earnings', 'Sales and earnings',
+    'Review completed sales and eligible incentives. Vehicle asking prices are not amounts held by CarMazium.', page('DealerEarnings')),
 ];
 
 const admin: NativeTourStep[] = [
-  {
-    id: 'admin', title: 'Admin dashboard',
-    description: 'Use the admin dashboard to review operational tasks and jump into moderation, accounts, handovers and platform activity. The tour never approves or changes live records.',
-    destination: { screen: 'AdminDashboard' }, focus: 'top',
-  },
+  step('admin-overview', 'Admin Command Centre',
+    'Review live activity, outstanding work and platform-wide performance. Nothing is approved or published during this guide.', page('AdminDashboard')),
+  step('admin-listings', 'Listing moderation',
+    'Review photographs, seller declarations and approval status before making a moderation decision.', page('AdminListingsReview')),
+  step('admin-dealers', 'Dealer verification',
+    'Review business and account verification. Existing dealer verification is reused when checking eligible service applications.', page('AdminDealerKyc')),
+  step('admin-users', 'Account management',
+    'Search for the correct user before inspecting their details or permissions. This tour does not alter accounts.', page('AdminAccounts')),
+  step('admin-auctions', 'Auction management',
+    'Inspect auction vehicles, seller details, reserves and bid history. No winner is assigned and no bid or reserve is changed here.', page('AdminAuctions')),
+  step('admin-transactions', 'Transactions',
+    'Review recorded payment statuses. Buyers pay vehicle sellers directly; platform listing fees and service payments are separate.', page('AdminTransactions')),
+  step('admin-handovers', 'Vehicle handovers',
+    'Review collection evidence and required confirmations before any eligible seller incentive is approved.', page('AdminHandovers')),
+  step('admin-analytics', 'Online activity and app installs',
+    'View recent visitor signals and reported first opens of the Android and web apps. These do not prove completed vehicle sales.', page('AdminAppInsights')),
+];
+
+const personal: NativeTourStep[] = [
+  step('my-cars', 'Your vehicle listings',
+    'My cars contains your retail and auction listings, drafts and review statuses. Continue unfinished listings and check feedback before publishing.', page('MyCars')),
+  step('offers-received', 'Offers you receive',
+    'Review offers made on your vehicles and any counter-offers. An accepted offer is not proof that vehicle funds have arrived.', page('SellerOffers')),
+  step('earnings', 'Sales and earnings',
+    'Track sales and eligible incentives. The seller receives vehicle payment directly from the buyer, followed by any qualifying handover confirmation.', page('Earnings')),
+  step('performance', 'Listing performance',
+    'See recorded vehicle views and enquiries in the listing-performance report.', page('SellerPerformance')),
+  step('offers-made', 'Offers you make',
+    'Track offers made on retail vehicles and the seller’s responses. Dealer-auction bidding remains restricted to verified dealers.', page('BuyerOffers')),
+  step('saved', 'Saved vehicles',
+    'Return to saved cars and check their current availability. Saving a car does not reserve it.', tab('Saved')),
+  step('purchases', 'Your purchases',
+    'Review vehicles you agreed to buy, payment arrangements and collection. Check the seller and vehicle before proceeding.', page('BuyerPurchaseHistory')),
+  step('messages', 'Your messages',
+    'Read conversations in their vehicle context. Check the recipient and listing before sending a message.', page('Messages')),
+  step('warranties', 'Warranty purchases',
+    'Review warranties and their terms and claim limits. A dealership warranty badge is not the same as a CarMazium warranty order.', page('WarrantyOrders')),
+  step('services', 'Delivery requests',
+    'Review delivery requests and their progress. Confirm vehicle and provider details before accepting a quote. The tour does not request or pay for delivery.', page('BuyerDeliveryRequests')),
+  step('cancellations', 'Sale cancellations',
+    'View cancellation requests and their status. Submitting a request alone does not cancel a sale.', page('SaleCancellations')),
+];
+
+const partner: NativeTourStep[] = [
+  step('services', 'Service-provider overview',
+    'Review your approved services, job activity and released earnings. Preferences alone do not grant service approval.', page('ProviderOverview')),
+  step('capabilities', 'Service setup and verification',
+    'Review verification, payout information and service permissions. Collection, delivery and recovery require trade insurance; vehicle inspection does not require inspection documents.', page('ProviderCapabilities')),
+  step('jobs', 'Available service jobs',
+    'Review jobs matching your approved service categories, and quote only when eligible.', page('ProviderJobs', { initialTab: 'open' })),
+  step('my-work', 'Your assigned jobs',
+    'Review the jobs assigned to you and their payment and completion requirements.', page('ProviderJobs', { initialTab: 'assigned' })),
+  step('messages', 'Service messages',
+    'Check provider conversations and job details before responding.', page('ProviderMessages')),
+];
+
+const specialist: NativeTourStep[] = [
+  step('specialist-home', 'Your partner workspace',
+    'Review the account-specific partner tools and integration status available for your specialist role.', tab('Profile')),
+  step('messages', 'Messages',
+    'Check support conversations and relevant job context before replying.', page('Messages')),
+];
+
+const settings = (
+  id: string, title: string, description: string, section: string,
+): NativeTourStep => step(id, title, description, page('Settings', { section }));
+
+const commonSettings: NativeTourStep[] = [
+  settings('settings-personal', 'Personal details',
+    'Keep your name, contact information and location current. Review any change before saving.', 'personal'),
+  settings('settings-notifications', 'Notifications & privacy',
+    'Choose supported notification and public-profile preferences. Essential transaction messages still apply.', 'notifications'),
+  settings('settings-payouts', 'Payouts & bank account',
+    'Check your payout connection and bank details. Buyers pay sellers directly. Service payouts require verified details.', 'payouts'),
+  settings('settings-appearance', 'Appearance',
+    'Switch between light and dark mode. Your selected theme is applied across native screens.', 'appearance'),
+  settings('settings-security', 'Password and security',
+    'Manage your account security. Deletion is permanent and this tour never changes security settings.', 'security'),
+  settings('settings-reviews', 'Ratings and reviews',
+    'Review the feedback you received and the reviews you have given.', 'reviews'),
+  settings('settings-account', 'Account type',
+    'Review the account type and available options. Changing roles can affect your permissions and features.', 'account'),
 ];
 
 export function getNativeAppTourSteps(accountRole: string): NativeTourStep[] {
-  const welcome: NativeTourStep = {
-    id: 'welcome', title: 'Welcome to the CarMazium app',
-    description: 'This guided tour takes you around real pages of the Android app. Use Next, Back or Skip at any time. Optional voice narration can read each explanation. No bids, listings or payments are submitted.',
-  };
-  const roleSteps = accountRole === 'dealer' ? dealer
-    : accountRole === 'admin' ? admin
+  const roleSteps = accountRole === 'admin' ? admin
+    : accountRole === 'dealer' ? dealer
     : accountRole === 'contractor' ? partner
-    : accountRole === 'finance_partner' || accountRole === 'insurance_partner' ? []
+    : ['finance_partner', 'insurance_partner'].includes(accountRole) ? specialist
     : personal;
-  const settings: NativeTourStep = {
-    id: 'settings', title: 'Account settings and tour replay',
-    description: 'Manage your personal details, account preferences and security. To see this guide again, open Account Settings, Personal details and choose Replay App Tour.',
-    destination: { screen: 'Settings', params: { section: 'personal' } }, focus: 'top',
-  };
-  const usefulShared = accountRole === 'admin' ? shared.slice(0, 2) : shared;
-  return [welcome, dashboard, ...usefulShared, ...roleSteps, settings];
+  const dealerOrContractor = accountRole === 'dealer' || accountRole === 'contractor';
+  const specialistRole = accountRole === 'finance_partner' || accountRole === 'insurance_partner';
+  const detailSettings = commonSettings.filter(s => !specialistRole || s.id !== 'settings-payouts');
+  const businessSettings = dealerOrContractor ? [
+    settings('settings-business', 'Business services',
+      'Manage your business and service preferences, including finance and warranty listing badges and collection, delivery and inspection switches.', 'business'),
+    settings('settings-verification', 'Business verification',
+      'Review account verification and approval requirements. Your original dealer verification is not charged again for services.', 'verification'),
+  ] : [];
+  const roleShared = accountRole === 'admin' ? [] : shared;
+  const roleDashboard = accountRole === 'admin' ? [] : [dashboard];
+
+  return [
+    welcome, ...roleDashboard, ...roleShared, ...roleSteps,
+    ...businessSettings, ...detailSettings,
+    step('finish', 'Replay whenever you need',
+      'Open Account Settings, Personal details, and choose the red Replay App Tour button to start this guided walkthrough again. Voice guidance is optional.',
+      page('Settings', { section: 'personal' })),
+  ];
 }
 
 type ReplayListener = () => void;
 const replayListeners = new Set<ReplayListener>();
-
-/** Local event, not account mutation. The Settings button triggers this. */
-export function requestNativeAppTourReplay() {
-  replayListeners.forEach(listener => listener());
-}
+export function requestNativeAppTourReplay() { replayListeners.forEach(listener => listener()); }
 export function subscribeNativeAppTourReplay(listener: ReplayListener) {
   replayListeners.add(listener);
   return () => { replayListeners.delete(listener); };
