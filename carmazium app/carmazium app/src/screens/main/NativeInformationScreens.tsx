@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { NativePage, pageStyles as s } from '../../components/NativePage';
 import { NativeRichContent } from '../../components/NativeRichContent';
 import { Button } from '../../components/Button';
-import { nativeDocuments, nativePartners, nativeBodyTypes } from '../../data/nativeDocuments';
+import { nativeDocuments, nativePartners } from '../../data/nativeDocuments';
 import { apiClient } from '../../lib/apiClient';
 
 export const PrivacyPolicyScreen = () => <NativePage title="Privacy Policy"><NativeRichContent html={nativeDocuments.privacy} /></NativePage>;
@@ -19,9 +19,7 @@ export const BusinessSpotlightScreen = ({ navigation, route }: any) => {
     <Button label="Contact CarMazium" variant="outline" onPress={() => navigation.navigate('Contact')} />
   </NativePage>;
 };
-export const CarBodyGuideScreen = ({ navigation }: any) => <NativePage title="Choose a body type">
-  {nativeBodyTypes.map(b => <View key={b.key} style={s.panel}><Text style={s.title}>{b.name}</Text><Text style={s.body}>{b.description}</Text><Text style={s.label}>What to check</Text><Text style={s.body}>{b.check}</Text><Button label={`Browse ${b.name}`} onPress={() => navigation.navigate('Tabs', { screen: 'Search', params: { bodyType: b.key, _t: Date.now() } })} /></View>)}
-</NativePage>;
+export { CarBodyGuideScreen } from './CarBodyGuideScreen';
 
 type Post = { id: string; slug: string; title: string; excerpt: string; coverImage?: string; content?: string };
 export { BlogScreen } from './BlogScreen';

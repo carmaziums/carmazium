@@ -46,6 +46,10 @@ test('result card keeps native gallery, detail, saved and warranty actions with 
  await act(async()=>t.root.findByType('Button').props.onPress());assert.deepEqual(opened,['bmw']);
  await act(async()=>t.root.findByType('IconButton').props.onPress());assert.deepEqual(saved,['bmw']);
  await act(async()=>t.root.findByType('TouchableOpacity').props.onPress());assert.deepEqual(warranties,['quote']);
+ await act(async()=>t.update(React.createElement(Card,{listing:{...listing,writeOffCategory:'NONE'},onPress:()=>{}})));
+ assert.equal(texts(t).join(' ').includes('Category NONE'),false);
+ await act(async()=>t.update(React.createElement(Card,{listing:{...listing,writeOffCategory:'CAT_S'},onPress:()=>{}})));
+ assert.ok(texts(t).join(' ').includes('Category S'));
  await act(async()=>t.update(React.createElement(Card,{listing:{...listing,transmissionRaw:'UNKNOWN',transmission:undefined},onPress:id=>opened.push(id)})));
  assert.ok(texts(t).includes('Not specified'));assert.equal(texts(t).includes('Automatic'),false);
  await act(async()=>t.update(React.createElement(Card,{listing:{...listing,status:'SOLD'},onPress:id=>opened.push(id),onWarranty:()=>warranties.push('quote')})));

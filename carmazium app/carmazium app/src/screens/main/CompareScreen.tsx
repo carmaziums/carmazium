@@ -1,1132 +1,165 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  ActivityIndicator,
-  Dimensions,
-  StatusBar,
-  Alert,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@/components/BrandIcon';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
-
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@/components/BrandIcon';
+import { PublicInfoPage, infoStyles as s } from '../../components/PublicInfoPage';
+import { Button } from '../../components/Button';
+import { Colors } from '../../constants/colors';
 import { CarListing } from '../../data/listings';
 import { searchListings } from '../../lib/listingsApi';
-import { BottomSheet } from '../../components/BottomSheet';
-import { Colors, themeStatusBarStyle } from '../../constants/colors';
-import { FontFamily, FontSize } from '../../constants/typography';
-import { Elevation, Radius } from '../../constants/spacing';
-import { MainStackParamList } from '../../navigation/MainStackNavigator';
+import { FUEL_TYPE_LABELS, TRANSMISSION_LABELS } from '../../lib/vehicleLabels';
 
-import { IconButton } from '../../components/IconButton';
-import { WebsiteTopBar } from '../../components/WebsiteTopBar';
-type NavProp = NativeStackNavigationProp<MainStackParamList>;
-
-const getMileageText = (car: CarListing) => `${(car.mileage / 1000).toFixed(1)}k`;
-
-// ─── Comparison rows — mirrors the web app's compare page field set
-// (src/app/compare/page.tsx: Key Details / Engine & Performance / Style
-// sections). Engine size/CO2/doors/seats are confirmed-present fields on
-// the backend response (ApiListing/CarListing now carry them) rather than
-// guessed (CLAUDE.md: never ship a field the backend hasn't confirmed).
-// A single data-driven row list (rather than one hand-written JSX block
-// per field) is used deliberately so every row renders identically. ──
-
-type BestMode = 'lowest' | 'highest';
-
-interface SpecRow {
-  label: string;
-  getValue: (car: CarListing) => string;
-  best?: { getValue: (car: CarListing) => number | null | undefined; mode: BestMode };
-}
-
-const SPEC_ROWS: SpecRow[] = [
-  { label: 'Make', getValue: (c) => c.make || '—' },
-  { label: 'Model', getValue: (c) => c.model || '—' },
-  { label: 'Year', getValue: (c) => `${c.year}`, best: { getValue: (c) => c.year, mode: 'highest' } },
-  { label: 'Mileage', getValue: (c) => `${getMileageText(c)} mi`, best: { getValue: (c) => c.mileage, mode: 'lowest' } },
-  { label: 'Price', getValue: (c) => `£${c.price.toLocaleString('en-GB')}`, best: { getValue: (c) => c.price, mode: 'lowest' } },
-  { label: 'Condition', getValue: (c) => (c.condition ? String(c.condition).replace(/_/g, ' ') : '—') },
-  { label: 'Fuel', getValue: (c) => c.fuelType || '—' },
-  { label: 'Gearbox', getValue: (c) => (c.transmission === 'Automatic' ? 'Auto' : c.transmission) || '—' },
-  { label: 'Power', getValue: (c) => (c.bhp ? `${c.bhp} bhp` : '—'), best: { getValue: (c) => c.bhp, mode: 'highest' } },
-  { label: 'Engine Size', getValue: (c) => (c.engineSize ? `${c.engineSize} cc` : '—'), best: { getValue: (c) => c.engineSize, mode: 'highest' } },
-  { label: 'CO₂ Emissions', getValue: (c) => (c.co2Emissions != null ? `${c.co2Emissions} g/km` : '—'), best: { getValue: (c) => c.co2Emissions, mode: 'lowest' } },
-  { label: 'Body', getValue: (c) => c.category || '—' },
-  { label: 'Colour', getValue: (c) => c.colour || '—' },
-  { label: 'Doors', getValue: (c) => (c.doors != null ? `${c.doors}` : '—') },
-  { label: 'Seats', getValue: (c) => (c.seats != null ? `${c.seats}` : '—'), best: { getValue: (c) => c.seats, mode: 'highest' } },
+type Mode = 'lowest' | 'highest';
+type Row = { label: string; value: (car: CarListing) => string; best?: (car: CarListing) => number | null | undefined; mode?: Mode };
+const money = (n: number) => Number.isFinite(n) ? '£' + n.toLocaleString('en-GB') : '—';
+const value = (n: unknown, suffix = '') => n == null || n === '' ? '—' : String(n) + suffix;
+const rows: { title: string; icon: string; items: Row[] }[] = [
+ { title: 'Key Details', icon: 'ribbon-outline', items: [
+  { label: 'Make', value: c => c.make || '—' }, { label: 'Model', value: c => c.model || '—' },
+  { label: 'Year', value: c => value(c.year), best: c => c.year, mode: 'highest' },
+  { label: 'Mileage', value: c => c.mileage == null ? '—' : c.mileage.toLocaleString('en-GB') + ' mi', best: c => c.mileage },
+  { label: 'Price', value: c => money(c.price), best: c => c.price },
+  { label: 'Condition', value: c => c.condition ? String(c.condition).replace(/_/g, ' ') : '—' }
+ ] },
+ { title: 'Engine & Performance', icon: 'flash-outline', items: [
+  { label: 'Fuel Type', value: c => c.fuelTypeRaw ? FUEL_TYPE_LABELS[c.fuelTypeRaw] ?? c.fuelTypeRaw : c.fuelType || '—' },
+  { label: 'Transmission', value: c => c.transmissionRaw ? TRANSMISSION_LABELS[c.transmissionRaw] ?? c.transmissionRaw : c.transmission || '—' },
+  { label: 'Engine Size', value: c => value(c.engineSize, ' cc'), best: c => c.engineSize, mode: 'highest' },
+  { label: 'Power (BHP)', value: c => value(c.bhp, ' bhp'), best: c => c.bhp, mode: 'highest' },
+  { label: 'CO₂ Emissions', value: c => value(c.co2Emissions, ' g/km'), best: c => c.co2Emissions }
+ ] },
+ { title: 'Dimensions & Style', icon: 'color-palette-outline', items: [
+  { label: 'Body Type', value: c => c.category || '—' }, { label: 'Colour', value: c => c.colour || '—' },
+  { label: 'Doors', value: c => value(c.doors) }, { label: 'Seats', value: c => value(c.seats), best: c => c.seats, mode: 'highest' }
+ ] }
 ];
-
-const getBestIndex = (
-  cars: (CarListing | null)[],
-  getValue: (c: CarListing) => number | null | undefined,
-  mode: BestMode,
-): number | null => {
-  let bestIdx: number | null = null;
-  let bestVal: number | null = null;
-  cars.forEach((car, idx) => {
-    if (!car) return;
-    const v = getValue(car);
-    if (v == null) return;
-    if (bestVal === null || (mode === 'lowest' ? v < bestVal : v > bestVal)) {
-      bestVal = v;
-      bestIdx = idx;
-    }
-  });
-  return bestIdx;
-};
-
-const getCapsuleTitle = (car: CarListing) => {
-  const title = `${car.make} ${car.model}`;
-  return title.length > 12 ? `${title.substring(0, 12)}...` : title;
-};
-
-export const CompareScreen: React.FC = () => {
-  const insets = useSafeAreaInsets();
-  const navigation = useNavigation<NavProp>();
-  const route = useRoute<any>();
-  // "Compare" icon on VehicleDetailScreen navigates here with the car the
-  // buyer was already looking at — previously there was no entry point from
-  // a listing at all, and Compare always started from scratch.
-  const initialListing: CarListing | undefined = route.params?.initialListing;
-
-  const [listings, setListings] = useState<CarListing[]>([]);
-  const [loadingListings, setLoadingListings] = useState(true);
-
-  // Default compared cars (populated once real listings load; user can add a 3rd)
-  const [selectedCarIds, setSelectedCarIds] = useState<string[]>([]);
-  const [selectModalVisible, setSelectModalVisible] = useState(false);
-  const [activeSlotToReplace, setActiveSlotToReplace] = useState<number | null>(null);
-
-  // Picker search — was previously just the same static 30-newest-listings
-  // array with no way to actually search for a specific car (mobile-audit.md
-  // finding). null = showing the default 30-newest list; non-null = a real
-  // search result set.
-  const [pickerQuery, setPickerQuery] = useState('');
-  const [pickerResults, setPickerResults] = useState<CarListing[] | null>(null);
-  const [pickerSearching, setPickerSearching] = useState(false);
-
-  // Highlight Winners Toggle State
-  const [highlightWinners, setHighlightWinners] = useState(true);
-
-  useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      const { listings: fetched } = await searchListings({ limit: 30, sortBy: 'newest' });
-      if (!isMounted) return;
-      const merged = initialListing && !fetched.some(l => l.id === initialListing.id)
-        ? [initialListing, ...fetched]
-        : fetched;
-      setListings(merged);
-      // Only pre-fill the slot for whatever listing the user arrived from
-      // (e.g. tapping "Compare" on a listing detail screen) — every other
-      // slot starts empty for the user to search/add via the picker below,
-      // matching web's src/app/compare/page.tsx ([null, null, null] by
-      // default, single-slot pre-fill only via a `slug` query param).
-      // Previously this always filled 2 slots regardless of how the screen
-      // was reached (mobile-production-readiness-plan.md F37).
-      setSelectedCarIds(initialListing ? [initialListing.id] : []);
-      setLoadingListings(false);
-    })();
-    return () => { isMounted = false; };
-  }, []);
-
-  // Debounced search within the "select vehicle" picker modal — falls back
-  // to the default 30-newest list when the query is cleared.
-  useEffect(() => {
-    if (!selectModalVisible || !pickerQuery.trim()) {
-      setPickerResults(null);
-      setPickerSearching(false);
-      return;
-    }
-    let cancelled = false;
-    setPickerSearching(true);
-    const timer = setTimeout(async () => {
-      const { listings: results } = await searchListings({ search: pickerQuery.trim(), limit: 30 });
-      if (!cancelled) {
-        setPickerResults(results);
-        setPickerSearching(false);
-      }
-    }, 350);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [pickerQuery, selectModalVisible]);
-
-  const carA = selectedCarIds[0] ? (listings.find((l) => l.id === selectedCarIds[0]) ?? null) : null;
-  const carB = selectedCarIds[1] ? (listings.find((l) => l.id === selectedCarIds[1]) ?? null) : null;
-  const carC = selectedCarIds[2] ? (listings.find((l) => l.id === selectedCarIds[2]) ?? null) : null;
-
-  const activeCarsCount = selectedCarIds.filter(Boolean).length;
-  const isThreeCars = activeCarsCount === 3;
-
-  const compareCars = isThreeCars ? [carA, carB, carC] : [carA, carB];
-
-  // 2-car verdict paragraph, derived entirely from real listing data
-  const getVerdictText = () => {
-    if (!carA || !carB) return 'Select two cars to see side-by-side verdict analysis.';
-
-    const priceDiff = Math.abs(carA.price - carB.price);
-    const priceDiffStr = `£${(priceDiff / 1000).toFixed(1)}k`;
-    const cheaper = carA.price < carB.price ? 'A' : carB.price < carA.price ? 'B' : null;
-    const cheaperCar = cheaper === 'A' ? carA : carB;
-    const otherCar = cheaper === 'A' ? carB : carA;
-    const other = cheaper === 'A' ? 'B' : 'A';
-
-    const mileageNote = carA.mileage !== carB.mileage
-      ? `${carA.mileage < carB.mileage ? 'A' : 'B'} has covered fewer miles`
-      : 'both have covered similar mileage';
-    const yearNote = carA.year !== carB.year
-      ? `${carA.year > carB.year ? 'A' : 'B'} brings the newer plate`
-      : 'both share the same model year';
-
-    if (!cheaper) {
-      return `Both are priced the same at £${carA.price.toLocaleString('en-GB')}. ${mileageNote}, and ${yearNote}. Weigh those factors against your priorities to pick a winner.`;
-    }
-
-    return `${cheaper} wins on value — ${priceDiffStr} less than ${other}. ${mileageNote}, and ${yearNote}. If budget is the priority, ${cheaper} is the stronger pick.`;
-  };
-
-  const handleOpenSelect = (slotIndex: number) => {
-    setActiveSlotToReplace(slotIndex);
-    setPickerQuery('');
-    setPickerResults(null);
-    setSelectModalVisible(true);
-  };
-
-  const handleSelectCar = (car: CarListing) => {
-    // A car picked from a search result may not be in the base `listings`
-    // array the display rows read from — merge it in, or carA/B/C would
-    // silently render as null despite selectedCarIds pointing at a real id.
-    setListings(prev => (prev.some(l => l.id === car.id) ? prev : [...prev, car]));
-    const carId = car.id;
-    if (activeSlotToReplace === 0) {
-      setSelectedCarIds([carId, selectedCarIds[1] || '', selectedCarIds[2] || ''].filter(Boolean));
-    } else if (activeSlotToReplace === 1) {
-      setSelectedCarIds([selectedCarIds[0] || '', carId, selectedCarIds[2] || ''].filter(Boolean));
-    } else if (activeSlotToReplace === 2) {
-      setSelectedCarIds([selectedCarIds[0] || '', selectedCarIds[1] || '', carId].filter(Boolean));
-    }
-    setSelectModalVisible(false);
-  };
-
-  const handleRemoveCar = (index: number) => {
-    const updated = [...selectedCarIds];
-    updated.splice(index, 1);
-    setSelectedCarIds(updated);
-  };
-
-  // Avatar backgrounds
-  const getAvatarBadgeColor = (index: number) => {
-    if (index === 0) return Colors.accent;
-    if (index === 1) return Colors.midBlue_1e40af;
-    return Colors.midPink; // Magenta
-  };
-
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
-
-      {/* Background glow gradient */}
-      <LinearGradient
-        colors={[Colors.accentAlpha03, Colors.infoBlueAlpha03, Colors.bgPrimary]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0.6 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      <WebsiteTopBar />
-      {/* Comparison controls remain below the shared site header. */}
-      <View style={[styles.header, { paddingTop: 16 }]}>
-
-        
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>
-            {isThreeCars ? 'COMPARE · 3 CARS' : 'Side by side'}
-          </Text>
-          {!isThreeCars && (
-            <Text style={styles.headerTag}>
-              {activeCarsCount} OF 3 COMPARED
-            </Text>
-          )}
-        </View>
-
-      </View>
-
-      <ScrollView 
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Highlight winners switch container (Only for 3-cars view) */}
-        {isThreeCars && (
-          <View style={styles.toggleContainer}>
-            <View style={styles.toggleLeft}>
-              <Ionicons name="flash" size={15} color={Colors.accent} style={{ marginRight: 8 }} />
-              <Text style={styles.toggleLabel}>Highlight winners</Text>
-            </View>
-            <TouchableOpacity 
-              style={[styles.toggleSwitch, highlightWinners ? styles.toggleSwitchActive : styles.toggleSwitchInactive]}
-              onPress={() => setHighlightWinners(!highlightWinners)}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.toggleThumb, highlightWinners ? styles.toggleThumbActive : styles.toggleThumbInactive]} />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Car Previews Section */}
-        {!isThreeCars ? (
-          /* 2-CAR VIEW PREVIEWS */
-          <View style={styles.cardsRow}>
-            {/* Card A */}
-            <View style={styles.cardCol}>
-              {carA ? (
-                <View style={[styles.carCard, styles.carCardA]}>
-                  <Image source={{ uri: carA.images[0] }} style={styles.carImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-                  <View style={[styles.badgeIndicator, styles.badgeA]}>
-                    <Text style={styles.badgeIndicatorText}>A</Text>
-                  </View>
-                  <IconButton style={styles.removeBtn} icon={<Ionicons name="close-circle" size={16} color={Colors.textSecondary} />} onPress={() => handleRemoveCar(0)} accessibilityLabel="Remove vehicle A from comparison" />
-
-                  <View style={styles.carCardMeta}>
-                    <Text style={styles.carModel} numberOfLines={2}>{carA.make} {carA.model}</Text>
-                    <Text style={styles.carPrice}>£{carA.price.toLocaleString('en-GB')}</Text>
-                    <Text style={styles.carSub}>{carA.year} • {getMileageText(carA)} mi</Text>
-                  </View>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.emptyCard}
-                  onPress={() => handleOpenSelect(0)}
-                  activeOpacity={0.8}
-                  disabled={loadingListings}
-                >
-                  <Ionicons name={loadingListings ? 'hourglass-outline' : 'add'} size={24} color={Colors.textMuted} />
-                  <Text style={styles.emptyCardText}>{loadingListings ? 'Loading vehicles…' : 'Add vehicle A'}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Card B */}
-            <View style={styles.cardCol}>
-              {carB ? (
-                <View style={[styles.carCard, styles.carCardB]}>
-                  <Image source={{ uri: carB.images[0] }} style={styles.carImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-                  <View style={[styles.badgeIndicator, styles.badgeB]}>
-                    <Text style={styles.badgeIndicatorText}>B</Text>
-                  </View>
-                  <IconButton style={styles.removeBtn} icon={<Ionicons name="close-circle" size={16} color={Colors.textSecondary} />} onPress={() => handleRemoveCar(1)} accessibilityLabel="Remove vehicle B from comparison" />
-
-                  <View style={styles.carCardMeta}>
-                    <Text style={styles.carModel} numberOfLines={2}>{carB.make} {carB.model}</Text>
-                    <Text style={styles.carPrice}>£{carB.price.toLocaleString('en-GB')}</Text>
-                    <Text style={styles.carSub}>{carB.year} • {getMileageText(carB)} mi</Text>
-                  </View>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.emptyCard}
-                  onPress={() => handleOpenSelect(1)}
-                  activeOpacity={0.8}
-                  disabled={loadingListings}
-                >
-                  <Ionicons name={loadingListings ? 'hourglass-outline' : 'add'} size={24} color={Colors.textMuted} />
-                  <Text style={styles.emptyCardText}>{loadingListings ? 'Loading vehicles…' : 'Add vehicle B'}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        ) : (
-          /* 3-CAR VIEW PREVIEWS (Horizontal capsule headers) */
-          <View style={styles.capsuleRow}>
-            {[carA, carB, carC].map((car, idx) => {
-              if (!car) return null;
-              const char = idx === 0 ? 'A' : idx === 1 ? 'B' : 'C';
-              return (
-                <TouchableOpacity 
-                  key={car.id} 
-                  style={styles.capsuleCard}
-                  onPress={() => handleOpenSelect(idx)}
-                  activeOpacity={0.8}
-                >
-                  <Image source={{ uri: car.images[0] }} style={styles.capsuleImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-                  <View style={styles.capsuleBadge}>
-                    <Text style={styles.capsuleBadgeText}>{char}</Text>
-                  </View>
-                  <View style={styles.capsuleMeta}>
-                    <Text style={styles.capsuleTitle} numberOfLines={1}>
-                      {getCapsuleTitle(car)}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-
-        {/* Highlights wins summary row (Only for 2-cars) — winners derived from real listing data */}
-        {!isThreeCars && carA && carB && (() => {
-          const priceWinner = carA.price <= carB.price ? 'A' : 'B';
-          const yearWinner = carA.year >= carB.year ? 'A' : 'B';
-          const yearWinnerCar = yearWinner === 'A' ? carA : carB;
-          return (
-            <View style={styles.highlightsRow}>
-              <View style={[styles.highBox, styles.highBoxA]}>
-                <View style={priceWinner === 'A' ? styles.highBadgeA : styles.highBadgeB}>
-                  <Text style={styles.highBadgeText}>{priceWinner} WINS</Text>
-                </View>
-                <Text style={styles.highTitle}>Lower price</Text>
-                <Text style={styles.highValueA}>
-                  £{(Math.abs(carA.price - carB.price) / 1000).toFixed(1)}k cheaper
-                </Text>
-              </View>
-
-              <View style={[styles.highBox, styles.highBoxB]}>
-                <View style={yearWinner === 'A' ? styles.highBadgeA : styles.highBadgeB}>
-                  <Text style={styles.highBadgeText}>{yearWinner} WINS</Text>
-                </View>
-                <Text style={styles.highTitle}>Newer plate</Text>
-                <Text style={styles.highValueB}>
-                  {yearWinnerCar.year} • {yearWinnerCar.location || `${(yearWinnerCar.mileage / 1000).toFixed(1)}k mi`}
-                </Text>
-              </View>
-            </View>
-          );
-        })()}
-
-        {/* Specs Table container — data-driven from SPEC_ROWS so every row
-            renders through the same path (see mobile-audit.md-style note
-            above SPEC_ROWS for why this replaced 8 hand-duplicated blocks) */}
-        <View style={styles.specsTable}>
-          {/* Header Row — always shown so column labels stay visible when scrolling */}
-          <View style={styles.tableHeaderRow}>
-            <Text style={styles.tableHeaderLabel}></Text>
-            <Text style={[styles.tableHeaderCol, styles.textRed]}>A</Text>
-            <Text style={[styles.tableHeaderCol, styles.textBlue]}>B</Text>
-            {isThreeCars && <Text style={[styles.tableHeaderCol, styles.textMagenta]}>C</Text>}
-          </View>
-
-          {SPEC_ROWS.map((row, rowIndex) => {
-            const bestIdx = row.best ? getBestIndex(compareCars, row.best.getValue, row.best.mode) : null;
-            return (
-              <View
-                key={row.label}
-                style={[styles.tableRow, rowIndex === SPEC_ROWS.length - 1 && { borderBottomWidth: 0 }]}
-              >
-                <Text style={styles.rowLabel}>{row.label}</Text>
-                {compareCars.map((car, idx) => {
-                  const isWinner = highlightWinners && bestIdx === idx;
-                  if (!car) {
-                    return isThreeCars ? (
-                      <View key={idx} style={styles.cellCol}>
-                        <Text style={styles.rowVal}>-</Text>
-                      </View>
-                    ) : (
-                      <Text key={idx} style={styles.rowVal}>-</Text>
-                    );
-                  }
-                  const value = row.getValue(car);
-                  if (isThreeCars) {
-                    return (
-                      <View key={idx} style={styles.cellCol}>
-                        <View style={[styles.cellValBox, isWinner && styles.cellValBoxWinner]}>
-                          <Text style={[styles.rowValThreeCol, isWinner && styles.rowValWinner]}>{value}</Text>
-                        </View>
-                      </View>
-                    );
-                  }
-                  return (
-                    <Text key={idx} style={[styles.rowVal, isWinner && styles.textGreen]}>
-                      {value}{isWinner ? ' ✔' : ''}
-                    </Text>
-                  );
-                })}
-              </View>
-            );
-          })}
-        </View>
-
-        {/* 2-Car Verdict Card (Hidden in 3-car view) */}
-        {!isThreeCars && carA && carB && (
-          <View style={styles.verdictCard}>
-            <View style={styles.verdictHeader}>
-              <View style={styles.verdictIconBg}>
-                <Ionicons name="document-text" size={16} color={Colors.onAccent} />
-              </View>
-              <Text style={styles.verdictTitle}>MARCUS' VERDICT</Text>
-            </View>
-            <Text style={styles.verdictBody}>
-              {getVerdictText()}
-            </Text>
-          </View>
-        )}
-
-        {/* Add a third car button (Hidden when 3 cars compared) */}
-        {!isThreeCars && (
-          <TouchableOpacity 
-            style={styles.addThirdBtn}
-            onPress={() => handleOpenSelect(2)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="add" size={16} color={Colors.white} style={{ marginRight: 6 }} />
-            <Text style={styles.addThirdText}>Add a third car to compare</Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={{ height: 110 }} />
-      </ScrollView>
-
-      {/* Sticky Bottom View CTAs (Only in 2-cars layout) */}
-      {!isThreeCars && carA && carB && (
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
-          <TouchableOpacity 
-            style={[styles.footerBtn, styles.footerBtnDark]}
-            onPress={() => navigation.navigate('VehicleDetail', { listing: carA })}
-            activeOpacity={0.75}
-          >
-            <Text style={styles.footerBtnText}>VIEW A</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.footerBtn, styles.footerBtnRed]}
-            onPress={() => navigation.navigate('VehicleDetail', { listing: carB })}
-            activeOpacity={0.75}
-          >
-            <Text style={[styles.footerBtnText, styles.onAccentText]}>VIEW B</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Selective overlay modal */}
-      <BottomSheet
-        visible={selectModalVisible}
-        onClose={() => setSelectModalVisible(false)}
-        title="Select Vehicle"
-        maxHeightPercent={75}
-        avoidKeyboard
-      >
-        <View style={styles.pickerSearchWrap}>
-          <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
-          <TextInput
-            style={styles.pickerSearchInput}
-            value={pickerQuery}
-            onChangeText={setPickerQuery}
-            placeholder="Search make, model, or keyword..."
-            placeholderTextColor={Colors.textMuted}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {pickerSearching && <ActivityIndicator size="small" color={Colors.accent} />}
-        </View>
-        <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-          {(pickerResults ?? listings).length === 0 && (
-            <Text style={styles.selectCarDetails}>
-              {pickerQuery.trim() ? 'No matching listings found.' : 'No listings available right now.'}
-            </Text>
-          )}
-          {(pickerResults ?? listings).map((car) => {
-            const isAlreadySelected = selectedCarIds.includes(car.id);
-            return (
-              <TouchableOpacity
-                key={car.id}
-                style={[
-                  styles.carSelectRow,
-                  isAlreadySelected && styles.carSelectRowDisabled,
-                ]}
-                onPress={() => handleSelectCar(car)}
-                disabled={isAlreadySelected}
-                activeOpacity={0.7}
-              >
-                <Image source={{ uri: car.images[0] }} style={styles.selectCarThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-                <View style={styles.selectCarMeta}>
-                  <Text style={styles.selectCarName}>{car.make} {car.model}</Text>
-                  <Text style={styles.selectCarDetails}>
-                    £{car.price.toLocaleString('en-GB')} • {car.year} • {Math.round(car.mileage / 1000)}k mi
-                  </Text>
-                </View>
-                {isAlreadySelected ? (
-                  <Text style={styles.selectedLabelText}>Compared</Text>
-                ) : (
-                  <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </BottomSheet>
+export function getBestIndex(cars: (CarListing | null)[], get: (c: CarListing) => number | null | undefined, mode: Mode = 'lowest') {
+ let index: number | null = null, best: number | null = null;
+ cars.forEach((car, i) => { if (!car) return; const n = get(car); if (n == null || !Number.isFinite(n)) return;
+  if (best === null || (mode === 'lowest' ? n < best : n > best)) { best = n; index = i; } });
+ return index;
+}
+export const CompareScreen = () => {
+ const navigation = useNavigation<any>(), route = useRoute<any>(), insets = useSafeAreaInsets();
+ const [cars, setCars] = useState<(CarListing | null)[]>([route.params?.initialListing ?? null, null, null]);
+ const [slot, setSlot] = useState<number | null>(null), [query, setQuery] = useState('');
+ const [results, setResults] = useState<CarListing[]>([]), [loading, setLoading] = useState(false), [error, setError] = useState(false), [retry, setRetry] = useState(0);
+ const count = cars.filter(Boolean).length;
+ useEffect(() => { const car = route.params?.initialListing; if (car) setCars(previous => [car, previous[1]?.id === car.id ? null : previous[1], previous[2]?.id === car.id ? null : previous[2]]); }, [route.params?.initialListing]);
+ useEffect(() => {
+  if (slot === null) return;
+  let active = true;
+  setLoading(true); setError(false); setResults([]);
+  const timer = setTimeout(async () => {
+   try { const response = await searchListings({ search: query.trim(), limit: 12 });
+    if (active) setResults(response.listings.filter(car => !car.status || car.status === 'ACTIVE'));
+   } catch { if (active) setError(true); }
+   finally { if (active) setLoading(false); }
+  }, query.trim() ? 350 : 0);
+  return () => { active = false; clearTimeout(timer); };
+ }, [query, slot, retry]);
+ const open = (index: number) => { setQuery(''); setSlot(index); };
+ const select = (car: CarListing) => {
+  if (slot === null || cars.some(c => c?.id === car.id)) return;
+  setCars(previous => previous.map((old, i) => i === slot ? car : old)); setSlot(null);
+ };
+ const badgeSpecs: [string, (c: CarListing) => number | null | undefined, Mode][] = [
+  ['Best Price', c => c.price, 'lowest'], ['Lowest Miles', c => c.mileage, 'lowest'], ['Most Power', c => c.bhp, 'highest'], ['Newest', c => c.year, 'highest']
+ ];
+ const photo = (car: CarListing) => car.images?.find(url => !url.includes('example.com'));
+ return <>
+  <PublicInfoPage navigation={navigation} breadcrumb="Compare Cars">
+   <LinearGradient colors={[Colors.accentAlpha10, Colors.bgCard, Colors.infoBlue + '18']} style={s.hero}>
+    <Text style={s.eyebrow}>SIDE-BY-SIDE COMPARISON</Text>
+    <Text accessibilityRole="header" style={s.title}>Compare Vehicles Head-to-Head</Text>
+    <Text style={s.lead}>Select up to three live listings and compare the key details in one clear desktop view.</Text>
+   </LinearGradient>
+   <View style={[s.panel, { padding: 0, overflow: 'hidden' }]}>
+    <View style={{ padding: 20, gap: 8 }}>
+     <Text style={s.eyebrow}>BUILD YOUR COMPARISON</Text>
+     <Text accessibilityRole="header" style={s.subheading}>Choose the first vehicle, then add up to two more</Text>
+     <Text style={s.muted}>{count} of 3 selected</Text>
     </View>
-  );
+    <ScrollView horizontal showsHorizontalScrollIndicator accessibilityLabel="Vehicle comparison: scroll horizontally to view all three slots">
+     <View style={{ width: 840 }}>
+      <View style={styles.row}>
+       {cars.map((car, index) => <View key={index} style={[styles.column, { padding: 20 }]}>
+        {car ? <View style={styles.card}>
+         <View style={{ height: 176, backgroundColor: Colors.inputBg }}>
+          {photo(car) ? <Image source={{ uri: photo(car) }} contentFit="cover" style={StyleSheet.absoluteFillObject}/> : <Text style={[s.muted, { padding: 20 }]}>Photo unavailable</Text>}
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={'Remove ' + car.title + ' from comparison'} style={styles.remove} onPress={() => setCars(previous => previous.map((old, i) => i === index ? null : old))}><Ionicons name="close" color="#fff" size={20}/></TouchableOpacity>
+          <Text style={styles.price}>{money(car.price)}</Text>
+         </View>
+         <View style={{ padding: 16, gap: 12 }}>
+          <Text style={s.subheading}>{car.title || [car.make, car.model].filter(Boolean).join(' ')}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>{badgeSpecs.filter(([, get, mode]) => getBestIndex(cars, get, mode) === index).map(([label]) => <Text key={label} style={styles.badge}>{label}</Text>)}</View>
+          <Text style={s.muted}>{[car.year || 'Year n/a', car.mileage == null ? null : car.mileage.toLocaleString('en-GB') + ' mi', car.fuelType].filter(Boolean).join(' · ')}</Text>
+          <Button label="View details" variant="outline" onPress={() => navigation.navigate('VehicleDetail', { listing: car })}/>
+         </View>
+        </View> : <TouchableOpacity accessibilityRole="button" accessibilityLabel={'Add vehicle to slot ' + (index + 1)} style={[styles.empty, count === 0 && index === 0 && { borderColor: Colors.accent, backgroundColor: Colors.accentAlpha10 }]} onPress={() => open(index)}>
+         <View style={styles.plus}><Ionicons name="add" size={24} color="#fff"/></View>
+         <Text style={[s.subheading, { textAlign: 'center' }]}>{count === 0 && index === 0 ? 'Add first vehicle' : 'Add vehicle'}</Text>
+         <Text style={[s.muted, { textAlign: 'center' }]}>Search and select from live CarMazium listings</Text>
+        </TouchableOpacity>}
+       </View>)}
+      </View>
+      {count > 0 ? rows.map(section => <View key={section.title}>
+       <View style={styles.section}><Ionicons name={section.icon as any} color={Colors.accent} size={20}/><Text style={s.eyebrow}>{section.title}</Text></View>
+       {section.items.map((row, ri) => { const best = row.best ? getBestIndex(cars, row.best, row.mode) : null;
+        return <View key={row.label} style={[styles.row, ri % 2 === 1 && { backgroundColor: Colors.inputBg }]}>
+         {cars.map((car, index) => <View key={index} style={[styles.column, styles.cell, best === index && !!car && { backgroundColor: '#05966912' }]}>
+          <Text style={styles.label}>{row.label}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><Text style={[s.body, best === index && !!car && { color: Colors.successLight, fontWeight: '700' }]}>{car ? row.value(car) : '—'}</Text>{car && best === index && <Ionicons name="trophy-outline" size={14} color={Colors.successLight}/>}</View>
+         </View>)}
+        </View>;
+       })}
+      </View>) : null}
+     </View>
+    </ScrollView>
+    {count === 0 && <View style={{ padding: 24, gap: 16 }}>
+     <Text style={s.subheading}>Start with one vehicle</Text>
+     <Text style={s.body}>Use the highlighted first slot above or the button below. Your existing listing search opens immediately, so there is no extra setup step.</Text>
+     <Button label="Add first vehicle" onPress={() => open(0)}/>
+    </View>}
+   </View>
+  </PublicInfoPage>
+  <Modal visible={slot !== null} animationType="slide" onRequestClose={() => setSlot(null)}>
+   <View style={{ flex: 1, backgroundColor: Colors.bgPrimary, paddingTop: insets.top, paddingBottom: insets.bottom }}>
+    <View style={styles.modalHeading}>
+     <View style={{ flex: 1, gap: 8 }}><Text style={s.subheading}>Select Vehicle to Compare</Text><Text style={s.muted}>Search live CarMazium listings</Text></View>
+     <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close vehicle selector" onPress={() => setSlot(null)} style={{ padding: 12 }}><Ionicons name="close" size={24} color={Colors.textPrimary}/></TouchableOpacity>
+    </View>
+    <View style={{ padding: 20, gap: 10 }}><Text style={styles.label}>SEARCH VEHICLES</Text><TextInput accessibilityLabel="Search vehicles" placeholder="Search by make, model, or title..." placeholderTextColor={Colors.textMuted} value={query} onChangeText={setQuery} style={styles.input} autoCapitalize="none" autoCorrect={false}/></View>
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 36 }}>
+     {loading ? <View style={styles.message}><ActivityIndicator color={Colors.accent}/><Text style={s.muted}>Loading listings...</Text></View> : error ? <View style={styles.message}><Text style={s.body}>Unable to load listings. Please try again.</Text><Button label="Retry" onPress={() => setRetry(n => n + 1)}/></View> : results.length === 0 ? <Text style={s.muted}>{query ? 'No listings found for “' + query + '”.' : 'No listings found.'}</Text> : results.map(car => {
+      const selected = cars.some(c => c?.id === car.id);
+      return <TouchableOpacity key={car.id} accessibilityRole="button" accessibilityLabel={'Select ' + car.title} accessibilityState={{ disabled: selected }} disabled={selected} onPress={() => select(car)} style={[styles.result, selected && { opacity: 0.55 }]}>
+       {photo(car) && <Image source={{ uri: photo(car) }} contentFit="cover" style={{ width: 80, height: 64, borderRadius: 8 }}/>}
+       <View style={{ flex: 1, gap: 6 }}><Text style={s.body}>{car.title}</Text><Text style={s.muted}>{[car.year, car.mileage == null ? null : car.mileage.toLocaleString('en-GB') + ' mi'].filter(Boolean).join(' · ')}</Text><Text style={[s.body, { color: Colors.accent, fontWeight: '700' }]}>{money(car.price)}</Text>{selected && <Text style={s.muted}>Selected</Text>}</View>
+      </TouchableOpacity>;
+     })}
+    </ScrollView>
+   </View>
+  </Modal>
+ </>;
 };
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.bgPrimary,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 24,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    marginBottom: 20,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderBottomWidth: 2,
-    ...Elevation.card,
-  },
-  headerTitleContainer: {
-    alignItems: 'center',
-  },
-  headerTag: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size9,
-    color: Colors.textFaint,
-    letterSpacing: 1.2,
-    marginBottom: 2,
-  },
-  headerTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.lg - 1,
-    color: Colors.white,
-  },
-  shareBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderBottomWidth: 2,
-    ...Elevation.card,
-  },
-  // Toggle Switch Container
-  toggleContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: Colors.bgSecondary,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha05,
-    borderRadius: Radius.inline,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginHorizontal: 24,
-    marginBottom: 20,
-  },
-  toggleLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  toggleLabel: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.sm,
-    color: Colors.white,
-  },
-  toggleSwitch: {
-    width: 38,
-    height: 20,
-    borderRadius: 10,
-    padding: 2,
-    justifyContent: 'center',
-  },
-  toggleSwitchActive: {
-    backgroundColor: Colors.accent,
-  },
-  toggleSwitchInactive: {
-    backgroundColor: Colors.borderSubtle,
-  },
-  toggleThumb: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: Colors.onAccent,
-  },
-  toggleThumbActive: {
-    alignSelf: 'flex-end',
-  },
-  toggleThumbInactive: {
-    alignSelf: 'flex-start',
-  },
-  // Previews row 2-car
-  cardsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 12,
-    marginBottom: 20,
-  },
-  cardCol: {
-    flex: 1,
-  },
-  carCard: {
-    borderRadius: Radius.card,
-    borderWidth: 1,
-    overflow: 'hidden',
-    position: 'relative',
-    height: 180,
-    backgroundColor: Colors.bgCard,
-    borderColor: Colors.border,
-    ...Elevation.card,
-  },
-  carCardA: {
-    borderColor: Colors.accentAlpha30,
-  },
-  carCardB: {
-    borderColor: Colors.infoBlueAlpha25,
-  },
-  carImg: {
-    width: '100%',
-    height: 96,
-    backgroundColor: Colors.whiteAlpha02,
-  },
-  badgeIndicator: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    width: 18,
-    height: 18,
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeA: {
-    backgroundColor: Colors.accent,
-  },
-  badgeB: {
-    backgroundColor: Colors.midBlue_1e40af,
-  },
-  badgeIndicatorText: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size10,
-    color: Colors.onAccent,
-  },
-  removeBtn: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-  },
-  carCardMeta: {
-    padding: 10,
-    justifyContent: 'center',
-  },
-  carModel: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size12,
-    color: Colors.white,
-    marginBottom: 3,
-  },
-  carPrice: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.xs + 1,
-    color: Colors.textSecondary,
-    marginBottom: 2,
-  },
-  carSub: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.xs - 2,
-    color: Colors.textMuted,
-  },
-  emptyCard: {
-    height: 180,
-    borderRadius: Radius.card,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.bgCard,
-    borderColor: Colors.border,
-    ...Elevation.card,
-  },
-  emptyCardText: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
-    marginTop: 8,
-  },
-  // Capsule header row 3-car
-  capsuleRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 24,
-    gap: 8,
-    marginBottom: 20,
-  },
-  capsuleCard: {
-    flex: 1,
-    borderRadius: Radius.inline,
-    borderWidth: 1,
-    overflow: 'hidden',
-    position: 'relative',
-    height: 80,
-    backgroundColor: Colors.bgCard,
-    borderColor: Colors.border,
-    ...Elevation.card,
-  },
-  capsuleImg: {
-    width: '100%',
-    height: 52,
-    backgroundColor: Colors.whiteAlpha02,
-  },
-  capsuleBadge: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    width: 16,
-    height: 16,
-    borderRadius: 4,
-    backgroundColor: Colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  capsuleBadgeText: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size9,
-    color: Colors.onAccent,
-  },
-  capsuleMeta: {
-    backgroundColor: Colors.deepBlue_15151b,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  capsuleTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size10,
-    color: Colors.white,
-    textAlign: 'center',
-  },
-  // Highlights box
-  highlightsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 24,
-    gap: 12,
-    marginBottom: 24,
-  },
-  highBox: {
-    flex: 1,
-    backgroundColor: Colors.bgSecondary,
-    borderWidth: 1,
-    borderRadius: Radius.card,
-    padding: 14,
-    alignItems: 'center',
-  },
-  highBoxA: {
-    borderColor: Colors.accentAlpha12,
-  },
-  highBoxB: {
-    borderColor: Colors.infoBlueAlpha10,
-  },
-  highBadgeA: {
-    backgroundColor: Colors.accentAlpha12,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginBottom: 6,
-  },
-  highBadgeB: {
-    backgroundColor: Colors.infoBlueAlpha12,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginBottom: 6,
-  },
-  highBadgeText: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.xs - 3,
-    color: Colors.white,
-    letterSpacing: 0.5,
-  },
-  highTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.xs - 1,
-    color: Colors.textFaint,
-    marginBottom: 4,
-  },
-  highValueA: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.sm,
-    color: Colors.accent,
-  },
-  highValueB: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.sm,
-    color: Colors.lightBlue_0084ff,
-  },
-  // Specs Table Grid
-  specsTable: {
-    marginHorizontal: 24,
-    backgroundColor: Colors.bgSecondary,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
-    borderRadius: Radius.card,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginBottom: 20,
-  },
-  tableHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.whiteAlpha05,
-  },
-  tableHeaderLabel: {
-    flex: 1.2,
-  },
-  tableHeaderCol: {
-    flex: 1,
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.sm,
-    textAlign: 'center',
-  },
-  tableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.whiteAlpha03,
-  },
-  rowLabel: {
-    flex: 1.2,
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-  },
-  cellCol: {
-    flex: 1,
-    flexShrink: 1,
-    minWidth: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cellValBox: {
-    width: '100%',
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cellValBoxWinner: {
-    borderColor: Colors.darkRed_5c1d24,
-    backgroundColor: Colors.deepPink_221217,
-  },
-  rowVal: {
-    flex: 1,
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size12,
-    color: Colors.white,
-    textAlign: 'center',
-  },
-  // Used instead of `rowVal` inside the 3-car cellValBox — that box is the
-  // sole flex child of `cellCol` (not a row of siblings sharing space like
-  // 2-car mode), so `flex: 1` there fights the box's own sizing instead of
-  // just letting the text wrap within the width cellCol already gives it.
-  rowValThreeCol: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size12,
-    color: Colors.white,
-    textAlign: 'center',
-    flexShrink: 1,
-  },
-  rowValWinner: {
-    color: Colors.white,
-  },
-  textRed: {
-    color: Colors.accent,
-  },
-  textBlue: {
-    color: Colors.lightBlue_0084ff,
-  },
-  textMagenta: {
-    color: Colors.accentGlow,
-  },
-  textGreen: {
-    color: Colors.accentGreen,
-  },
-  // Verdict Card
-  verdictCard: {
-    marginHorizontal: 24,
-    borderWidth: 1,
-    borderRadius: Radius.card,
-    padding: 16,
-    marginBottom: 20,
-    backgroundColor: Colors.bgCard,
-    borderColor: Colors.border,
-    ...Elevation.card,
-  },
-  verdictHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  verdictIconBg: {
-    width: 26,
-    height: 26,
-    borderRadius: 6,
-    backgroundColor: Colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  verdictTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size10,
-    color: Colors.accent,
-    letterSpacing: 1.2,
-  },
-  verdictBody: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.xs + 1,
-    color: Colors.white,
-    lineHeight: 18,
-  },
-  // Add third car button
-  addThirdBtn: {
-    marginHorizontal: 24,
-    flexDirection: 'row',
-    borderRadius: Radius.inline,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    minHeight: 48,
-    backgroundColor: Colors.bgCard,
-    borderColor: Colors.borderHi,
-    borderBottomWidth: 3,
-    ...Elevation.card,
-  },
-  addThirdText: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.base - 1,
-    color: Colors.white,
-  },
-  // Sticky Bottom footer
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: Colors.deepBlue_0d0d12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.whiteAlpha06,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    flexDirection: 'row',
-    gap: 12,
-  },
-  footerBtn: {
-    flex: 1,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-    borderBottomWidth: 3,
-    ...Elevation.card,
-  },
-  footerBtnDark: {
-    borderWidth: 1,
-    backgroundColor: Colors.bgCard,
-    borderColor: Colors.borderHi,
-    borderBottomColor: Colors.borderHi,
-  },
-  footerBtnRed: {
-    backgroundColor: Colors.accent,
-    borderBottomColor: Colors.accentDark,
-  },
-  onAccentText: { color: Colors.onAccent },
-  footerBtnText: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.sm,
-    color: Colors.white,
-    letterSpacing: 1,
-  },
-  // Modal selection styles
-  modalBody: {
-    padding: 20,
-  },
-  pickerSearchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginHorizontal: 20,
-    marginTop: 4,
-    paddingHorizontal: 14,
-    height: 46,
-    borderRadius: Radius.inline,
-    backgroundColor: Colors.whiteAlpha04,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha08,
-  },
-  pickerSearchInput: {
-    flex: 1,
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.sm,
-    color: Colors.white,
-  },
-  carSelectRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.bgTertiary,
-    borderWidth: 1,
-    borderColor: Colors.whiteAlpha04,
-    borderRadius: Radius.inline,
-    padding: 12,
-    marginBottom: 10,
-  },
-  carSelectRowDisabled: {
-    opacity: 0.45,
-  },
-  selectCarThumb: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: Colors.whiteAlpha02,
-    marginRight: 12,
-  },
-  selectCarMeta: {
-    flex: 1,
-  },
-  selectCarName: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size14,
-    color: Colors.white,
-    marginBottom: 4,
-  },
-  selectCarDetails: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.xs - 1,
-    color: Colors.textSecondary,
-  },
-  selectedLabelText: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.xs - 2,
-    color: Colors.accent,
-  },
+ row: { flexDirection: 'row', borderBottomWidth: 1, borderColor: Colors.border },
+ column: { width: 280, borderRightWidth: 1, borderColor: Colors.border },
+ card: { borderWidth: 1, borderColor: Colors.border, borderRadius: 16, overflow: 'hidden', backgroundColor: Colors.bgPrimary },
+ empty: { minHeight: 340, borderWidth: 2, borderStyle: 'dashed', borderColor: Colors.border, borderRadius: 16, padding: 24, justifyContent: 'center', alignItems: 'center', gap: 20 },
+ plus: { backgroundColor: Colors.accent, borderRadius: 16, width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
+ remove: { position: 'absolute', right: 12, top: 12, borderRadius: 12, backgroundColor: '#0f172abf', padding: 9 },
+ price: { position: 'absolute', left: 12, bottom: 12, borderRadius: 8, backgroundColor: '#0f172abf', color: '#fff', fontSize: 16, fontWeight: '900', paddingHorizontal: 12, paddingVertical: 6 },
+ badge: { color: Colors.successLight, backgroundColor: '#05966918', borderColor: '#05966933', borderWidth: 1, borderRadius: 8, padding: 6, fontWeight: '700', fontSize: 10 },
+ section: { padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: Colors.inputBg, borderBottomWidth: 1, borderColor: Colors.border },
+ cell: { minHeight: 96, padding: 20, gap: 8, alignItems: 'center', justifyContent: 'center' },
+ label: { fontSize: 10, fontWeight: '900', letterSpacing: 1.1, color: Colors.textMuted, textTransform: 'uppercase' },
+ modalHeading: { padding: 20, borderBottomWidth: 1, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', gap: 16 },
+ input: { minHeight: 48, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.inputBg, borderRadius: 12, padding: 12, color: Colors.textPrimary, fontSize: 16 },
+ result: { padding: 12, gap: 16, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: Colors.border, borderRadius: 12, backgroundColor: Colors.bgCard },
+ message: { padding: 24, gap: 16, alignItems: 'center' }
 });

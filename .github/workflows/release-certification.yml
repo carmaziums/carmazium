@@ -365,6 +365,8 @@ jobs:
       - name: Resolve Expo production config
         run: npx expo config --type public > /tmp/carmazium-expo-config.json
       - run: npm run typescript
+      - name: Verify native website-parity interactions and photo selection
+        run: node --test scripts/*.test.mjs
 
   backend:
     name: Backend typecheck + tests + build

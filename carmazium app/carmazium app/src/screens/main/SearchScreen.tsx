@@ -694,7 +694,7 @@ export const SearchScreen: React.FC = () => {
         </View>
       </View>
 
-      <View style={{paddingHorizontal:24,paddingBottom:24}}><Button label="Search" onPress={()=>void fetch(true)}/></View>
+      <View style={{paddingHorizontal: 20,paddingBottom:24}}><Button label="Search" onPress={()=>void fetch(true)}/></View>
       {/* ── AI Explanation banner ── */}
       {aiExplanation && (
         <View style={s.aiExplanationBanner}>
@@ -736,7 +736,7 @@ export const SearchScreen: React.FC = () => {
           <Text style={s.clearBelowText}>Clear {filterCount} {filterCount === 1 ? 'filter' : 'filters'}</Text>
         </TouchableOpacity>
       )}
-      {!!sections.featured.length&&<View style={{paddingHorizontal:24,gap:16,paddingBottom:24}}><Text style={{color:Colors.warning,fontFamily:FontFamily.bold,fontSize:14}}>FEATURED LISTINGS</Text>{sections.featured.map(item=><HorizontalVehicleCard key={item.id} listing={{...item,isFeatured:true}} onPress={handleCardPress} onWarranty={item.status==='ACTIVE'&&item.listingType==='CLASSIFIED'?()=>navigation.navigate('Warranty',{listingId:item.id}):undefined}/>)}<Text style={{color:Colors.textMuted}}>All listings below</Text></View>}
+      {!!sections.featured.length&&<View style={{paddingHorizontal: 20,gap:16,paddingBottom:24}}><Text style={{color:Colors.warning,fontFamily:FontFamily.bold,fontSize:14}}>FEATURED LISTINGS</Text>{sections.featured.map(item=><HorizontalVehicleCard key={item.id} listing={{...item,isFeatured:true}} onPress={handleCardPress} onWarranty={item.status==='ACTIVE'&&item.listingType==='CLASSIFIED'?()=>navigation.navigate('Warranty',{listingId:item.id}):undefined}/>)}<Text style={{color:Colors.textMuted}}>All listings below</Text></View>}
     </>
   );
   const showResults = !(loading && listings.length === 0) && !(searchError && listings.length === 0) && listings.length > 0;
@@ -793,7 +793,7 @@ export const SearchScreen: React.FC = () => {
           ref={resultList}
           data={showResults ? sections.regular : []}
           ListHeaderComponent={listHeader}
-          // Header sections carry their own 24pt gutters.
+          // Header sections carry their own 20pt gutters.
           ListHeaderComponentStyle={s.listHeaderBleed}
           ListEmptyComponent={<View style={s.listHeaderBleed}>{listEmpty}</View>}
           keyboardShouldPersistTaps="handled"
@@ -1685,18 +1685,18 @@ export const SearchScreen: React.FC = () => {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
 
-  header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 16 },
+  header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 16 },
   headerSub: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accent, letterSpacing: 1.5, marginBottom: 4 },
   headerTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.size22, color: Colors.white },
   headerResults: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: 12, marginTop: 7 },
-  auctionBrowseBanner: { marginHorizontal: 24, marginBottom: 13, flexDirection: 'row',
+  auctionBrowseBanner: { marginHorizontal: 20, marginBottom: 13, flexDirection: 'row',
     alignItems: 'center', gap: 11, padding: 12, minHeight: 60, backgroundColor: Colors.bgCard,
     borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.card, ...Elevation.card },
   auctionBrowseTitle: { fontFamily: FontFamily.bold, color: Colors.textPrimary, fontSize: 13 },
   auctionBrowseDesc: { fontFamily: FontFamily.medium, color: Colors.textMuted, fontSize: 11 },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center' },
 
-  searchWrap: { paddingHorizontal: 24, marginBottom: 8 },
+  searchWrap: { paddingHorizontal: 20, marginBottom: 8 },
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgCard, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 16, minHeight: 52, gap: 10, ...Elevation.card },
   searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.white },
 
@@ -1714,16 +1714,16 @@ const s = StyleSheet.create({
   // Inside the list header the row sizes to its chips (flexGrow: 0), so a
   // larger system font grows the row instead of clipping the labels.
   quickScroll: { flexGrow: 0, marginBottom: 4 },
-  quickRow: { paddingHorizontal: 24, paddingVertical: 10, gap: 10, alignItems: 'center', flexDirection: 'row' },
+  quickRow: { paddingHorizontal: 20, paddingVertical: 10, gap: 10, alignItems: 'center', flexDirection: 'row' },
   // Solid raised chips; the selected one is an accent fill with a bevel.
   quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: Radius.card, backgroundColor: Colors.bgCard, borderWidth: 1, borderBottomWidth: 2, borderColor: Colors.border, ...Elevation.card },
   quickChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.textSecondary },
   quickChipTextActive: { color: Colors.onAccent },
 
-  sortRow: { flexDirection: 'row', flexWrap:'wrap',gap:12, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 8, marginTop: 4, position: 'relative', zIndex: 10 },
+  sortRow: { flexDirection: 'row', flexWrap:'wrap',gap:12, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 8, marginTop: 4, position: 'relative', zIndex: 10 },
   resultsCount: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary },
-  clearBelowRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginHorizontal: 24, paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start', marginBottom: 7, minHeight: 34, borderRadius: Radius.inline, borderWidth: 1.5, borderBottomWidth: 3, borderColor: Colors.accent, backgroundColor: Colors.bgCard },
+  clearBelowRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginHorizontal: 20, paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start', marginBottom: 7, minHeight: 34, borderRadius: Radius.inline, borderWidth: 1.5, borderBottomWidth: 3, borderColor: Colors.accent, backgroundColor: Colors.bgCard },
   clearBelowText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: Colors.accent },
   sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, minHeight: 38, backgroundColor: Colors.bgCard, borderRadius: Radius.inline, borderWidth: 1, borderBottomWidth: 3, borderColor: Colors.borderHi, ...Elevation.card },
   sortBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
@@ -1737,7 +1737,7 @@ const s = StyleSheet.create({
   sortOptionActive: { backgroundColor: Colors.accentAlpha08 },
   sortOptionText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
 
-  listContent: { paddingHorizontal: 24 },
+  listContent: { paddingHorizontal: 20 },
   pickerRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 52,
     borderBottomWidth: 1, borderBottomColor: Colors.borderSubtle,
@@ -1745,10 +1745,10 @@ const s = StyleSheet.create({
   pickerRowDisabled: { opacity: 0.45 },
   pickerRowLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.textPrimary },
   pickerRowValue: { flex: 1, textAlign: 'right', fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textSecondary },
-  listHeaderBleed: { marginHorizontal: -24 },
+  listHeaderBleed: { marginHorizontal: -20 },
   loadMoreWrap: { alignItems: 'center', paddingVertical: 20 },
   endText: { textAlign: 'center', fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, paddingVertical: 20 },
-  skeletonList: { paddingHorizontal: 24, gap: 14 },
+  skeletonList: { paddingHorizontal: 20, gap: 14 },
   skeletonCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: Colors.bgCard, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.border, padding: 14, ...Elevation.card },
   skeletonInfo: { flex: 1, gap: 6 },
 
@@ -1811,12 +1811,12 @@ const s = StyleSheet.create({
   postcodeChangeBtn: { minHeight: 32, paddingHorizontal: 12, justifyContent: 'center', alignItems: 'center', borderRadius: Radius.inline, borderWidth: 1.5, borderBottomWidth: 3, borderColor: Colors.accent, backgroundColor: Colors.bgCard },
 
   // AI search button
-  aiSearchWrap: { paddingHorizontal: 24, marginBottom: 6 },
+  aiSearchWrap: { paddingHorizontal: 20, marginBottom: 6 },
   aiSearchBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 8, minHeight: 36, borderRadius: Radius.card, backgroundColor: Colors.bgCard, borderWidth: 1, borderBottomWidth: 3, borderColor: Colors.warning, ...Elevation.card },
   aiSearchBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.warning },
 
   // AI explanation banner
-  aiExplanationBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginHorizontal: 24, marginBottom: 6, backgroundColor: Colors.warningAlpha08, borderWidth: 1, borderColor: Colors.warningAlpha20, borderRadius: Radius.inline, paddingHorizontal: 12, paddingVertical: 9 },
+  aiExplanationBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginHorizontal: 20, marginBottom: 6, backgroundColor: Colors.warningAlpha08, borderWidth: 1, borderColor: Colors.warningAlpha20, borderRadius: Radius.inline, paddingHorizontal: 12, paddingVertical: 9 },
   aiExplanationText: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.lightYellow, lineHeight: 18 },
 
   // AI modal

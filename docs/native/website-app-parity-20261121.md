@@ -227,3 +227,14 @@ On the same 600dp BlueStacks device, native build 117 showed only eight of the t
 - The exact photo order is retained across category tabs, edits and account-scoped saved drafts. Create and update requests submit that order, so the shared listing's first photo is the cover used by both clients. Partial upload failures retain successfully uploaded photos.
 - Native automated suite: 128 passed, including gallery/crop/action tests and five cover-selection tests for successful recommendations, bounds, confidence, failures, metadata and draft/edit order. TypeScript and Android bundle checks are recorded separately.
 - Live uploads/publication were not performed with the dealer's real vehicles. Final candidate emulator validation and public artifact publication remain pending.
+
+
+## Reviews and body-type guide follow-up — 21 November 2026
+
+Emulator QA found that the native Reviews screen still claimed all transactions ran through Stripe and referred to deposit/delivery protection. The current website instead explains direct buyer-to-seller vehicle payment and the limits of verification. The native page now reproduces the website's current review, feedback, payment and inspection content, with native navigation to search, how-it-works, pricing and the body-type guide. Feedback opens a customer-reviewed email draft only.
+
+The body-type guide now includes all eight website illustrations, descriptions and checks, the same introductory and closing sections, native filtered search buttons and a preview restricted to genuine active retail listings. The optional preview failing does not hide the guide. Four new regression tests cover content, routing, all body types, filtered stock and outages. The existing 128 native tests passed; the new tests passed after correcting a test-only regex typo. TypeScript, product-parity and Android Metro export passed. The full native suite is now included in release certification.
+
+Additional device evidence: build 118 installed over the original package with UID 10064 and first-install time unchanged; PULSE CARS LIMITED remained signed in. At 411dp, pricing cards/benefits/add-ons and the native Standard-package route were verified; two FAQ answers remain expanded. Dark-mode pricing was readable and light mode restored. At 411dp and font scale 1.3, dealer dashboard labels wrapped without clipping. No vehicle edit was saved.
+
+A live advisory cover request using the BMW 7 SERIES's ten existing photos in reverse order returned HTTP 200, front view, recommended index 9, confidence 0.98. This request did not alter the listing. Final candidate installation and public download publication are still pending.
