@@ -2656,7 +2656,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   useFocusEffect(useCallback(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => { handleBack(); return true; });
     return () => sub.remove();
-  }, [step]));
+  }, [step, uploadingPhoto]));
 
   // ─── Stepper ─────────────────────────────────────────────────────────────────
 
