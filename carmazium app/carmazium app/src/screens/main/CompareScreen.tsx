@@ -27,7 +27,7 @@ import { Elevation, Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
-import { HamburgerButton } from '../../components/HamburgerButton';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 const getMileageText = (car: CarListing) => `${(car.mileage / 1000).toFixed(1)}k`;
@@ -242,9 +242,10 @@ export const CompareScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Dynamic Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+      <WebsiteTopBar />
+      {/* Comparison controls remain below the shared site header. */}
+      <View style={[styles.header, { paddingTop: 16 }]}>
+
         
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>
@@ -257,10 +258,6 @@ export const CompareScreen: React.FC = () => {
           )}
         </View>
 
-        {/* Share was alert-only with no real implementation — removed rather
-            than faking it (mobile-ui-ux-audit.md §C13). Hamburger keeps
-            drawer access reachable from this screen instead of a dead spacer. */}
-        <HamburgerButton />
       </View>
 
       <ScrollView 

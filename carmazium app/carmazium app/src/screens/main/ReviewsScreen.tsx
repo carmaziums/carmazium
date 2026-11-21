@@ -18,7 +18,7 @@ import { Elevation, Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
-import { HamburgerButton } from '../../components/HamburgerButton';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // Web's /reviews page (src/app/reviews/page.tsx) is a static marketing page
@@ -58,13 +58,7 @@ export const ReviewsScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <View style={{ height: insets.top }} />
-
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Trust & Reviews</Text>
-        <HamburgerButton />
-      </View>
+      <WebsiteTopBar />
 
       <ScrollView
         style={styles.scroll}

@@ -8,7 +8,7 @@ import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
 import type { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { IconButton } from '../../components/IconButton';
-import { HamburgerButton } from '../../components/HamburgerButton';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 
 // Copy follows the current website About page; no invented marketplace totals.
 const values = [{"title": "Clarity first", "text": "Fees, marketplace roles and service workflows should be understandable before a user commits to an action."}, {"title": "Trust through information", "text": "Vehicle data, seller information and relevant checks are presented so buyers can make their own informed decisions."}, {"title": "Direct marketplace relationships", "text": "CarMazium provides the platform and workflow while buyers and sellers remain responsible for the vehicle transaction between them."}];
@@ -21,12 +21,9 @@ export const AboutScreen: React.FC = () => {
   const [openQuestion, setOpenQuestion] = useState<number | null>(0);
   const browse = () => navigation.navigate('Tabs', { screen: 'Search', params: { _t: Date.now() } } as any);
   const action = (label: string, onPress: () => void) => <TouchableOpacity accessibilityRole="button" onPress={onPress} style={s.action}><Text style={s.actionText}>{label} →</Text></TouchableOpacity>;
-  return <View style={[s.container, { paddingTop: insets.top }]}>
+  return <View style={s.container}>
     <StatusBar barStyle={themeStatusBarStyle} backgroundColor={Colors.bgPrimary} />
-    <View style={s.header}>
-      <IconButton icon={<Ionicons name="chevron-back" size={20} color={Colors.textPrimary} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-      <Text style={s.headerTitle}>About CarMazium</Text><HamburgerButton />
-    </View>
+    <WebsiteTopBar />
     <ScrollView contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 80 }]}>
       <Text style={s.eyebrow}>ABOUT CARMAZIUM</Text>
       <Text accessibilityRole="header" style={s.hero}>A clearer way to connect the UK vehicle marketplace</Text>
