@@ -1,36 +1,137 @@
 import assert from 'node:assert/strict';
-import {test} from 'node:test';
-import {readFileSync} from 'node:fs';
-import {runInNewContext} from 'node:vm';
+import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import React from 'react';
-import {act,create} from 'react-test-renderer';
+import { act, create } from 'react-test-renderer';
 import ts from 'typescript';
-globalThis.IS_REACT_ACT_ENVIRONMENT=true;
-const rn={...Object.fromEntries(['View','Text','ScrollView','TouchableOpacity','ActivityIndicator','RefreshControl','StatusBar'].map(n=>[n,n])),StyleSheet:{create:x=>x},Platform:{OS:'android'},useWindowDimensions:()=>({width:600,fontScale:1}),Dimensions:{get:()=>({width:600})},Alert:{alert(){}}};
-function compile(file,extra){const modules={react:React,'react-native':rn,'@react-navigation/native':{useFocusEffect:cb=>React.useEffect(cb,[cb])},'react-native-safe-area-context':{useSafeAreaInsets:()=>({top:0,bottom:24})},'../../constants/colors':{Colors:{}},'../../constants/typography':{FontFamily:{},FontSize:{}},'../../constants/spacing':{Elevation:{},Radius:{}},'../../components/WebsiteTopBar':{WebsiteTopBar:'WebsiteTopBar'},'../../components/Button':{Button:'Button'},'../../components/ui/ErrorBanner':{ErrorBanner:'ErrorBanner'},'../../components/ui/Skeleton':{Skeleton:'Skeleton'},'../../components/ui/EmptyState':{EmptyState:'EmptyState'},'@/components/BrandIcon':{Ionicons:'Icon'},'expo-linear-gradient':{LinearGradient:'Gradient'},'expo-image':{Image:'Image'},'expo-file-system/legacy':{},'expo-sharing':{},'../../lib/supabase':{},...extra};const exports={};runInNewContext(ts.transpileModule(readFileSync(new URL('../src/'+file,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:n=>{assert.ok(n in modules,n);return modules[n];},Date,process:{env:{}}});return exports;}
-const words=t=>t.root.findAllByType('Text').map(n=>n.children.join('')).join('|');
-const performance={totalListings:48,conversionRate:0,avgResponseHours:97.2,sellerRating:null,totalReviews:0,recentListingViews:Array.from({length:12},(_,i)=>({id:String(i),title:'Car '+i,views:i}))};
-test('Personal performance uses response time and rating, and all 12 recent vehicle bars',async()=>{
- const paths=[];const {SellerPerformanceScreen}=compile('screens/seller/SellerPerformanceScreen.tsx',{'../../lib/apiClient':{apiClient:async p=>{paths.push(p);return{data:performance};}}});let t;await act(async()=>{t=create(React.createElement(SellerPerformanceScreen));});assert.deepEqual(paths,['/listings/performance?scope=personal']);assert.match(words(t),/97.2h/);assert.match(words(t),/No reviews/);assert.match(words(t),/Car 11/);assert.doesNotMatch(words(t),/VIEWS OVER TIME|TOTAL REVENUE/);await act(async()=>t.unmount());
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+function compile(path, modules = {}) {
+  const source = readFileSync(new URL('../src/' + path, import.meta.url), 'utf8');
+  const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const exports = {}; runInNewContext(code, { exports, require: name => { assert.ok(name in modules, name); return modules[name]; }, Date }); return exports;
+}
+const stage = compile('lib/auctionSellerStage.ts');
+const dealerRules = compile('lib/dealerAttention.ts', { './auctionSellerStage': stage });
+const rules = compile('lib/userAttention.ts', { './auctionSellerStage': stage, './dealerAttention': dealerRules });
+const defaultSummary = { success: true, data: { buyer: { counteredOffersPending: 1 }, seller: { incomingOffers: 2 }, unreadMessages: 3 } };
+async function harness({ summary = async () => defaultSummary, auctions = async () => [], deliveries = async () => [{ status: 'PENDING' }], buyer = true } = {}) {
+  const nav = [], apiCalls = [];
+  const modules = {
+    react: React,
+    'react-native': { View: 'View', Text: 'Text', TouchableOpacity: 'Press', ScrollView: 'Scroll', StatusBar: 'StatusBar', RefreshControl: 'Refresh', ActivityIndicator: 'Loading', StyleSheet: { create: x => x } },
+    '@react-navigation/native': { useNavigation: () => ({ navigate: (...args) => nav.push(args) }), useFocusEffect: effect => React.useEffect(effect, [effect]) },
+    '../../store/authStore': { useAuthStore: select => select({ user: { id: 'buyer-who-also-sells' }, role: 'buyer', accountRole: 'buyer' }) },
+    '../../lib/apiClient': { apiClient: async path => { apiCalls.push(path); return summary(); } },
+    '../../lib/myAuctionsApi': { fetchAllMyAuctions: auctions },
+    '../../lib/deliveryApi': { getReceivedDeliveryRequests: deliveries },
+    '../../lib/userAttention': rules,
+    '../../constants/colors': { Colors: {}, themeStatusBarStyle: 'dark-content' },
+    '../../constants/typography': { FontFamily: {} },
+    '../../hooks/useTabBarClearance': { useTabBarClearance: () => 100 },
+    '../../components/BrandIcon': { Ionicons: 'Icon' },
+    ...Object.fromEntries(['DashboardCards', 'WebsiteTopBar', 'Button'].map(name => ['../../components/' + name, { [name]: name }])),
+  };
+  const unified = compile('screens/account/UnifiedDashboardScreen.tsx', modules);
+  const Screen = buyer ? compile('screens/buyer/BuyerDashboardScreen.tsx', { '../account/UnifiedDashboardScreen': unified }).BuyerDashboardScreen : unified.UnifiedDashboardScreen;
+  let tree; await act(async () => { tree = create(React.createElement(Screen)); });
+  return { tree, nav, apiCalls, text: () => tree.root.findAllByType('Text').flatMap(n => n.children).filter(x => typeof x === 'string').join(' '), tasks: () => tree.root.findAllByType('Press'), retry: () => tree.root.findAllByType('Button').find(x => x.props.label === 'Retry checks') };
+}
+test('buyer and seller entry points render the same website tasks, header and complete card controls', async () => {
+  for (const buyer of [true, false]) {
+    const h = await harness({ buyer });
+    assert.equal(h.tree.root.findByType('DashboardCards').props.mode, 'personal');
+    assert.equal(h.tree.root.findAllByType('WebsiteTopBar').length, 1);
+    assert.match(h.text(), /My Dashboard/);
+    assert.match(h.text(), /2 buyer offers are waiting for your reply/);
+    assert.match(h.text(), /1 buyer asked you about delivery/);
+    assert.doesNotMatch(h.text(), /ACTIVE OFFERS|TOTAL SPENT|RECENT ACTIVITY|7D|30D/);
+    for (const task of h.tasks()) await act(async () => task.props.onPress());
+    assert.deepEqual(h.nav.map(x => x[0]), ['SellerOffers', 'BuyerOffers', 'BuyerDeliveryRequests', 'Messages']);
+    await act(async () => h.tree.unmount());
+  }
 });
-test('Personal performance rejects malformed and failed reads without false no-data metrics',async()=>{
- for(const result of [{data:{}},null]){const {SellerPerformanceScreen}=compile('screens/seller/SellerPerformanceScreen.tsx',{'../../lib/apiClient':{apiClient:async()=>{if(!result)throw Error('offline');return result;}}});let t;await act(async()=>{t=create(React.createElement(SellerPerformanceScreen));});assert.equal(t.root.findAllByType('ErrorBanner').length,1);assert.doesNotMatch(words(t),/No listing data available|No reviews|0%/);await act(async()=>t.unmount());}
+test('auction follow-ups are visible to buyer-role sellers and open the specific auction natively', async () => {
+  const h = await harness({ auctions: async () => [{ id: 'auction-a', status: 'ENDED', winnerId: null, provisionalOfferBidId: 'bid-a', provisionalOfferedAt: new Date().toISOString(), listing: { make: 'Toyota', model: 'Yaris' } }] });
+  assert.match(h.tasks()[0].props.accessibilityLabel, /Toyota Yaris/);
+  await act(async () => h.tasks()[0].props.onPress());
+  assert.equal(h.nav[0][0], 'AuctionDeepLink'); assert.equal(h.nav[0][1].auctionId, 'auction-a');
+  await act(async () => h.tree.unmount());
 });
-test('Personal earnings preserves pennies, average sale and native receipts; failure hides zero totals',async()=>{
- for(const fail of [false,true]){const nav=[],paths=[];const {EarningsScreen}=compile('screens/seller/EarningsScreen.tsx',{'../../lib/apiClient':{apiClient:async p=>{paths.push(p);if(fail)throw Error('offline');return{success:true,data:{sales:[],totalRevenue:701.05,totalSales:1,auctionSales:[]}};}}});let t;await act(async()=>{t=create(React.createElement(EarningsScreen,{navigation:{navigate:p=>nav.push(p)}}));});assert.equal(paths[0],'/listings/earnings?scope=personal');if(fail){assert.equal(t.root.findAllByType('ErrorBanner').length,1);assert.doesNotMatch(words(t),/£0.00|TOTAL REVENUE/);}else{assert.match(words(t),/Avg. Sale Price/);assert.match(words(t),/£701.05/);await act(async()=>t.root.findAllByType('Button').find(n=>n.props.label==='Payment receipts').props.onPress());assert.deepEqual(nav,['PaymentHistory']);}await act(async()=>t.unmount());}
+test('failed checks preserve tasks from successful sources, suppress all-clear, and can be retried', async () => {
+  let fail = true;
+  const h = await harness({ auctions: async () => { if (fail) throw Error('offline'); return []; } });
+  assert.match(h.text(), /Some checks failed/); assert.match(h.text(), /2 buyer offers/);
+  assert.doesNotMatch(h.text(), /all caught up/); assert.ok(h.retry());
+  fail = false; await act(async () => h.retry().props.onPress());
+  assert.doesNotMatch(h.text(), /Some checks failed/);
+  await act(async () => h.tree.unmount());
 });
-test('Saved dispatch follows personal preview without granting dealer permissions',()=>{
- let state={accountRole:'dealer',role:'dealer'};function DealerSavedScreen(){};
- const {SavedScreen}=compile('screens/main/SavedScreen.tsx',{'expo-image':{Image:'Image'},'../../screens/main/DealerSavedScreen':{},'./DealerSavedScreen':{DealerSavedScreen},'../../lib/nativeLayoutParity':{},'../../components/IconButton':{},'../../data/listings':{},'../../store/watchlistStore':{},'../../store/authStore':{useAuthStore:selector=>selector(state)},'../../lib/listingsApi':{},'../../lib/watchlistApi':{},'../../navigation/MainStackNavigator':{}});
- assert.equal(SavedScreen().type,DealerSavedScreen);state={accountRole:'dealer',role:'buyer'};assert.equal(SavedScreen().type.name,'PersonalSavedScreen');state={accountRole:'buyer',role:'dealer'};assert.equal(SavedScreen().type.name,'PersonalSavedScreen');
+test('malformed summary cannot become a successful empty dashboard', async () => {
+  const h = await harness({ summary: async () => ({ success: true, data: {} }), deliveries: async () => [] });
+  assert.match(h.text(), /Some checks failed/); assert.doesNotMatch(h.text(), /all caught up/);
+  await act(async () => h.tree.unmount());
+});
+test('all-clear appears only after all three sources succeed with no pending tasks', async () => {
+  const h = await harness({ summary: async () => ({ success: true, data: { buyer: { counteredOffersPending: 0 }, seller: { incomingOffers: 0 }, unreadMessages: 0 } }), deliveries: async () => [] });
+  assert.match(h.text(), /all caught up/); assert.equal(h.tasks().length, 0);
+  await act(async () => h.tree.unmount());
 });
 
-test('Saved hydration retains hearts on failure, rejects repeated pages and ignores stale responses',async()=>{
- const {create:zustandCreate}=await import('zustand');let resolver;let mode='initial';let reads=0;
- const item=id=>({id, mappedListing:{id,make:'Test',model:'Car'}});
- const modules={zustand:{create:zustandCreate},'./authStore':{useAuthStore:{getState:()=>({user:{id:'user'},isAuthenticated:true})}},'../lib/navigationRef':{navigationRef:{}},'../lib/watchlistApi':{getWatchlist:async()=>{reads++;if(mode==='initial')return{items:[item('saved')],total:1};if(mode==='old')return new Promise(resolve=>resolver=resolve);if(mode==='failure')throw Error('offline');if(mode==='duplicate')return{items:[item('loop')],total:2};return{items:[item('fresh')],total:1};}}};
- const exports={};runInNewContext(ts.transpileModule(readFileSync(new URL('../src/store/watchlistStore.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:n=>modules[n]});const store=exports.useWatchlistStore;
- await store.getState().hydrateFromApi();mode='failure';await store.getState().hydrateFromApi();assert.equal(store.getState().savedListings[0].id,'saved');assert.match(store.getState().loadError,/could not be loaded/);
- mode='duplicate';reads=0;await store.getState().hydrateFromApi();assert.equal(reads,2);assert.equal(store.getState().savedListings[0].id,'saved');
- mode='old';const pending=store.getState().hydrateFromApi();mode='fresh';await store.getState().hydrateFromApi();resolver({items:[item('stale')],total:1});await pending;assert.equal(store.getState().savedListings[0].id,'fresh');assert.equal(store.getState().loadError,null);
+async function dealerHarness({ permitted = true, failUnread = false, accessLoading = false } = {}) {
+  const nav = [], endpoints = [], collections = [];
+  const modules = {
+    react: React,
+    'react-native': { View: 'View', Text: 'Text', TouchableOpacity: 'Press', ActivityIndicator: 'Loading', StyleSheet: { create: x => x } },
+    '@react-navigation/native': { useNavigation: () => ({ navigate: (...args) => nav.push(args) }), useFocusEffect: effect => React.useEffect(effect, [effect]) },
+    '../../components/DashboardCards': { DashboardCards: 'DashboardCards' },
+    '../../components/Button': { Button: 'Button' },
+    '@/components/BrandIcon': { Ionicons: 'Icon' },
+    '../../constants/colors': { Colors: {} }, '../../constants/typography': { FontFamily: {} },
+    '../../lib/dealerAttention': dealerRules,
+    '../../lib/apiClient': { apiClient: async path => {
+      endpoints.push(path);
+      if (path === '/dashboard/dealer') return { data: { isVerified: true } };
+      if (path === '/chat/unread' && failUnread) throw Error('offline');
+      return { data: { count: path === '/offers/pending-count' ? 2 : 0 } };
+    } },
+    '../../lib/myAuctionsApi': { fetchAllMyAuctions: async kind => {
+      collections.push(kind);
+      return kind === 'won'
+        ? [{ id: 'won-a', status: 'ENDED', buyerFeePaid: false, buyerFeeDeadlineAt: new Date().toISOString(), listing: { make: 'Ford', model: 'Focus' } }]
+        : [
+          { id: 'own-a', status: 'ENDED', provisionalOfferBidId: 'bid-a', provisionalOfferedAt: new Date().toISOString(), listing: { make: 'Toyota', model: 'Yaris' } },
+          { id: 'waiting-a', status: 'ENDED', winnerId: 'winner', buyerFeePaid: false },
+        ];
+    } },
+  };
+  const { DealerWebParityOverview } = compile('screens/main/DealerWebParityOverview.tsx', modules);
+  let tree; await act(async () => { tree = create(React.createElement(DealerWebParityOverview, {
+    userName: 'Dealer', canManageInventory: permitted, canManageCrm: permitted,
+    canManageOffers: permitted, canViewPurchases: permitted, canViewTrade: permitted,
+    canViewAnalytics: permitted, accessLoading, onNavigate: target => nav.push([target]),
+  })); });
+  return { tree, nav, endpoints, collections, tasks: () => tree.root.findAllByType('Press'), text: () => tree.root.findAllByType('Text').flatMap(n => n.children).filter(x => typeof x === 'string').join(' ') };
+}
+test('dealer uses website priority, specific vehicle/deadline and correct handover eligibility', async () => {
+  const h = await dealerHarness();
+  assert.deepEqual(h.collections, ['won', 'list']);
+  const labels = h.tasks().map(t => t.props.accessibilityLabel);
+  assert.match(labels[0], /Toyota Yaris/); assert.match(labels[1], /Ford Focus/); assert.match(labels[2], /2 buyer offers/);
+  assert.equal(labels.length, 3, 'unpaid buyer fee must not prematurely require seller handover');
+  for (const task of h.tasks()) await act(async () => task.props.onPress());
+  assert.equal(h.nav[0][0], 'AuctionDeepLink'); assert.equal(h.nav[0][1].auctionId, 'own-a');
+  assert.equal(h.nav[1][0], 'won-auctions'); assert.equal(h.nav[2][0], 'offers');
+  await act(async () => h.tree.unmount());
+});
+test('dealer staff cannot fetch forbidden collections and unread failure never renders an all-clear', async () => {
+  const h = await dealerHarness({ permitted: false, failUnread: true });
+  assert.deepEqual(h.collections, []); assert.ok(!h.endpoints.includes('/offers/pending-count'));
+  assert.match(h.text(), /Some checks failed/); assert.doesNotMatch(h.text(), /all caught up/);
+  await act(async () => h.tree.unmount());
+});
+test('dealer waits for permission loading instead of showing a false all-clear', async () => {
+  const h = await dealerHarness({ permitted: false, accessLoading: true });
+  assert.deepEqual(h.endpoints, []); assert.equal(h.tree.root.findAllByType('Loading').length, 1);
+  assert.doesNotMatch(h.text(), /all caught up/); await act(async () => h.tree.unmount());
 });
