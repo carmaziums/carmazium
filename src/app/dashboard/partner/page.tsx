@@ -219,6 +219,7 @@ export default function PartnerDashboardPage() {
                     <p className="text-[var(--text-muted)] mt-2 max-w-2xl">
                         One CarMazium business account. Add only the services your business provides and keep them all under the same login.
                     </p>
+                    <Link href="/business-partner-agreement" className="mt-3 inline-flex text-sm font-bold text-primary underline">View signed Business Partner Agreement and legal record</Link>
                 </div>
                 {partnerBusiness && (
                     <Link href="/dashboard/dealer/team">

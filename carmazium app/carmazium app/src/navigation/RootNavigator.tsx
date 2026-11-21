@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigatorScreenParams } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
@@ -8,11 +8,14 @@ import { PostSignupOnboardingScreen } from '../screens/auth/PostSignupOnboarding
 import { VerifyEmailScreen } from '../screens/auth/VerifyEmailScreen';
 import { Colors } from '../constants/colors';
 import { navigationRef } from '../lib/navigationRef';
+import { fetchPartnerAgreementStatus } from '../lib/partnerAgreementApi';
+import { PartnerAgreementScreen } from '../screens/main/PartnerAgreementScreen';
 
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList> | undefined;
   VerifyEmail: undefined;
   PostSignupOnboarding: undefined;
+  PartnerAgreement: undefined;
   Main: NavigatorScreenParams<MainStackParamList> | undefined;
 };
 
@@ -20,7 +23,12 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const RootNavigator: React.FC = () => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const accountRole = useAuthStore(s => s.accountRole);
+  const actorId = useAuthStore(s => s.user?.id);
+  const isPartner = accountRole === 'dealer' || accountRole === 'contractor';
+  const [agreementState, setAgreementState] = useState<'checking' | 'accepted' | 'required'>('checking');
   const hasCompletedOnboarding = useAuthStore((s) => s.hasCompletedOnboarding);
+  const requiresAgreementCheck = isAuthenticated && hasCompletedOnboarding && isPartner;
   const pendingEmailVerification = useAuthStore((s) => s.pendingEmailVerification);
   const postLoginRedirect = useAuthStore((s) => s.postLoginRedirect);
   const consumePostLoginRedirect = useAuthStore((s) => s.consumePostLoginRedirect);
@@ -53,7 +61,20 @@ export const RootNavigator: React.FC = () => {
   // Main stack actually exists to navigate within (AUTH-034). Web does this
   // with `?redirect=`; here the destination is captured in forceLogout() and
   // consumed exactly once.
-  const canRestore = isAuthenticated && hasCompletedOnboarding && !!postLoginRedirect;
+  useEffect(() => {
+    if (!requiresAgreementCheck || !actorId) {
+      setAgreementState('checking');
+      return;
+    }
+    let active = true;
+    setAgreementState('checking');
+    fetchPartnerAgreementStatus()
+      .then(status => {if(active) setAgreementState(status.accepted ? 'accepted' : 'required')})
+      .catch(() => {if(active) setAgreementState('required')});
+    return () => {active = false};
+  }, [requiresAgreementCheck, actorId]);
+
+  const canRestore = isAuthenticated && hasCompletedOnboarding && (!isPartner || agreementState === 'accepted') && !!postLoginRedirect;
   useEffect(() => {
     if (!canRestore) return;
     // One frame after the stack swap: navigating in the same tick targets the
@@ -104,6 +125,10 @@ export const RootNavigator: React.FC = () => {
         <Stack.Screen name="Auth" component={AuthNavigator} />
       ) : !hasCompletedOnboarding ? (
         <Stack.Screen name="PostSignupOnboarding" component={PostSignupOnboardingScreen} />
+      ) : isPartner && agreementState !== 'accepted' ? (
+        <Stack.Screen name="PartnerAgreement" options={{animation:'fade'}}>
+          {() => <PartnerAgreementScreen onAccepted={() => setAgreementState('accepted')}/>}
+        </Stack.Screen>
       ) : (
         <Stack.Screen name="Main" component={MainStackNavigator} />
       )}

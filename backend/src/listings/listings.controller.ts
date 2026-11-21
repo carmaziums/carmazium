@@ -34,6 +34,7 @@ import { RecordSaleDto } from './dto/record-sale.dto';
 import { ListingFilterDto } from './dto/listing-filter.dto';
 import { StandardResponse, PaginatedResponse } from './dto/response.dto';
 import { Listing } from '@prisma/client';
+import { PartnerAgreementGuard } from '../partner-agreement/partner-agreement.guard';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { OptionalSessionAuthGuard } from '../auth/guards/optional-session-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -71,7 +72,7 @@ export class ListingsController {
      * Creates a DRAFT CLASSIFIED listing; user must still pay to activate it.
      */
     @Post('import-from-url')
-    @UseGuards(SessionAuthGuard)
+    @UseGuards(SessionAuthGuard, PartnerAgreementGuard)
     @ApiCookieAuth()
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Import a listing from an external marketplace URL' })
@@ -140,7 +141,7 @@ export class ListingsController {
      * Requires authentication
      */
     @Post()
-    @UseGuards(SessionAuthGuard)
+    @UseGuards(SessionAuthGuard, PartnerAgreementGuard)
     @ApiCookieAuth()
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({
@@ -476,7 +477,7 @@ export class ListingsController {
     }
 
     @Post(':id/also-list-retail')
-    @UseGuards(SessionAuthGuard)
+    @UseGuards(SessionAuthGuard, PartnerAgreementGuard)
     @ApiCookieAuth()
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Create a linked CLASSIFIED retail listing alongside an existing AUCTION listing' })
@@ -495,7 +496,7 @@ export class ListingsController {
     }
 
     @Post(':id/also-auction')
-    @UseGuards(SessionAuthGuard)
+    @UseGuards(SessionAuthGuard, PartnerAgreementGuard)
     @ApiCookieAuth()
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Create a linked AUCTION listing alongside an existing CLASSIFIED retail listing' })
@@ -516,7 +517,7 @@ export class ListingsController {
      * Idempotent: returns { activated: true } if listing is already ACTIVE.
      */
     @Post(':id/publish')
-    @UseGuards(SessionAuthGuard)
+    @UseGuards(SessionAuthGuard, PartnerAgreementGuard)
     @ApiCookieAuth()
     @ApiOperation({ summary: 'Activate a DRAFT listing after payment verification' })
     @ApiParam({ name: 'id', description: 'UUID of the listing' })

@@ -35,6 +35,8 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [reviewedBusinessAgreement, setReviewedBusinessAgreement] = useState(false);
+  const partnerAgreementSignupEnabled = process.env.EXPO_PUBLIC_PARTNER_AGREEMENT_SIGNING_ENABLED === 'true';
   // Public account choice matches web: Personal Account (BUYER) or Partner
   // Account (DEALER compatibility role). SELLER is not a separate signup type:
   // a Personal Account may both buy and sell. Additional Partner capabilities
@@ -56,9 +58,10 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const [formError, setFormError] = useState<string | null>(null);
 
   const passwordsMatch = confirmPassword.length > 0 && confirmPassword === password;
-  const isFormValid = !!(name && email && password.length >= 8 && passwordsMatch && agreeTerms);
+  const isFormValid = !!(name && email && password.length >= 8 && passwordsMatch && agreeTerms && (role !== 'DEALER' || !partnerAgreementSignupEnabled || reviewedBusinessAgreement));
 
   const handleGoogleSignIn = async () => {
+    if (partnerAgreementSignupEnabled && role === 'DEALER' && !reviewedBusinessAgreement) {setFormError('Review the Business Partner Agreement before continuing.');return;}
     setFormError(null);
     setIsGoogleLoading(true);
     try {
@@ -83,6 +86,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleAppleSignIn = async () => {
+    if (partnerAgreementSignupEnabled && role === 'DEALER' && !reviewedBusinessAgreement) {setFormError('Review the Business Partner Agreement before continuing.');return;}
     setFormError(null);
     setIsAppleLoading(true);
     try {
@@ -374,6 +378,16 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.boldText} onPress={() => navigation.navigate('PrivacyPolicy')}>Privacy Policy</Text>.
               </Text>
             </TouchableOpacity>
+
+            {role === 'DEALER' && partnerAgreementSignupEnabled ? <View>
+              <Text style={styles.checkboxLabel}>Partner Accounts must electronically sign the full business agreement after email verification, before using trade services.</Text>
+              <Text style={styles.boldText} onPress={() => void Linking.openURL('https://www.carmazium.com/business-partner-agreement')}>READ THE COMPLETE BUSINESS PARTNER AGREEMENT</Text>
+              <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{checked:reviewedBusinessAgreement}}
+                style={styles.checkboxContainer} onPress={() => setReviewedBusinessAgreement(!reviewedBusinessAgreement)}>
+                <View style={[styles.checkbox, reviewedBusinessAgreement && styles.checkboxChecked]}>{reviewedBusinessAgreement && <Ionicons name="checkmark" size={12} color={Colors.white}/>}</View>
+                <Text style={styles.checkboxLabel}>I understand that an authorised business owner must sign the Master Business Partner Agreement with their legal name before business access.</Text>
+              </TouchableOpacity>
+            </View> : null}
 
             {/* CTA Button */}
             <View style={styles.ctaWrapper}>

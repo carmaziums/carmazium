@@ -12,6 +12,7 @@ import { MarketplaceJsonLd } from "@/components/seo/JsonLd";
 import { Providers } from "@/components/providers/Providers";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
+import { PartnerAgreementGate } from "@/components/legal/PartnerAgreementGate";
 import { WebsiteIntroduction } from "@/components/onboarding/WebsiteIntroduction";
 import { ChatProvider } from "@/context/ChatContext";
 import { CompareProvider } from "@/context/CompareContext";
@@ -146,7 +147,7 @@ export default function RootLayout({
                       <OfflineBanner />
                       <Header />
                       <main id="main-content" tabIndex={-1} className="flex-grow pt-20">
-                        {children}
+                        <PartnerAgreementGate>{children}</PartnerAgreementGate>
                       </main>
                       <ConditionalFooter />
                       <MaziumWidgetLoader />
