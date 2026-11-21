@@ -36,11 +36,13 @@ interface HorizontalVehicleCardProps {
   /** Receives the listing id so callers can pass a stable, id-keyed callback
    * instead of a fresh closure per row — see mobile-audit.md P4. */
   onPress: (id: string) => void;
+  onWarranty?: () => void;
 }
 
 const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
   listing,
   onPress,
+  onWarranty,
 }) => {
   // Selector-subscribed rather than destructuring the whole store — see the
   // note in VehicleCard.tsx. Re-renders only when this row's own saved state
@@ -114,16 +116,8 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
           onPress={openLightbox}
         />
 
-        {/* Banner label takes priority over the tier badge — same corner, tight space */}
-        {listing.bannerLabel ? (
-          <View style={styles.bannerBadge}>
-            <Text style={styles.bannerText} numberOfLines={1}>{listing.bannerLabel}</Text>
-          </View>
-        ) : (listing.isPremium || listing.badgeTier === 'PREMIUM') && (
-          <View style={styles.premiumBadge}>
-            <Text style={styles.premiumText}>• PREMIUM</Text>
-          </View>
-        )}
+        {listing.isFeatured&&<View style={[styles.premiumBadge,{top:0,left:0,padding:10}]}><Text style={[styles.premiumText,{fontSize:12}]}>FEATURED</Text></View>}
+        {(listing.badgeTier==='STANDARD'||listing.badgeTier==='PREMIUM')&&<View style={{position:'absolute',right:8,bottom:28,padding:6,backgroundColor:Colors.bgCard,borderRadius:6}}><Text style={{fontSize:11,color:Colors.infoBlue}}>History Report Included</Text></View>}
         {listing.isDepartedSale && (
           <View style={styles.estateBadge}>
             <Text style={styles.estateText}>ESTATE</Text>
@@ -134,6 +128,7 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
         </View>
       </View>
 
+      {!!listing.bannerLabel&&<View style={{backgroundColor:'#7c3aed',padding:8}}><Text style={{color:'#fff',fontFamily:FontFamily.bold,textAlign:'center'}}>{listing.bannerLabel}</Text></View>}
       {/* Full-width details, with a clear hierarchy and no tiny cramped column. */}
       <View style={styles.infoContainer}>
         {/* Specs Row: Colour & Distance */}
@@ -144,9 +139,11 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
         {/* Title: Make & Model */}
         <SellerServiceBadges seller={listing.seller} />
         <Text style={styles.titleText} numberOfLines={2}>
-          {listing.make} {listing.model}
+          {listing.title||`${listing.make} ${listing.model} ${listing.year}`}
         </Text>
 
+        <Text style={{color:Colors.textMuted,fontFamily:FontFamily.semiBold}}>{listing.make} {listing.model}</Text>
+        <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}><Text style={{color:Colors.accent,fontSize:11}}>MARKETPLACE LISTING</Text>{listing.badgeTier&&<Text style={{color:Colors.textMuted,fontSize:11}}>{listing.badgeTier}</Text>}{listing.isImported&&<Text style={{color:Colors.warning,fontSize:11}}>IMPORT</Text>}</View>
         {/* Vehicle details are visible without opening each listing. */}
         <Text style={styles.subSpecsText} numberOfLines={2}>
           {[`Gearbox: ${listing.transmission || 'Not specified'}`, formatMileage(listing.mileage), listing.fuelType, listing.category].filter(Boolean).join('  ·  ')}
@@ -156,7 +153,7 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
         <View style={styles.bottomRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
             <View style={styles.priceWrapper}>
-              <Text style={styles.priceText}>{getNativeListingPrice(listing).amount}</Text>
+              <Text style={styles.priceText}>{listing.listingType==='AUCTION'?getNativeListingPrice(listing).amount:new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(listing.price)}</Text>
               <Text style={{ fontSize: 11, color: Colors.textMuted }}>{getNativeListingPrice(listing).label}</Text>
               {getNativeListingPrice(listing).reserveLabel && <Text style={{ fontSize: 10, color: Colors.warning }}>{getNativeListingPrice(listing).reserveLabel}</Text>}
               {getNativeListingPrice(listing).buyItNowLabel && <Text style={{ fontSize: 10, color: Colors.textMuted }}>{getNativeListingPrice(listing).buyItNowLabel}</Text>}
@@ -169,6 +166,8 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
             <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
           </View>
         </View>
+        {!!listing.location&&<Text style={{color:Colors.textMuted,fontSize:13}}>{listing.location}</Text>}
+        {!!onWarranty&&<TouchableOpacity accessibilityRole="button" onPress={onWarranty} style={{paddingVertical:12,borderTopWidth:1,borderTopColor:Colors.border}}><Text style={{color:Colors.textPrimary,fontFamily:FontFamily.semiBold}}>Buy this car with warranty</Text></TouchableOpacity>}
       </View>
     </AnimatedTouchable>
     <ImageLightbox

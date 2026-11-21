@@ -47,6 +47,7 @@ export interface NativeMotTest {
 
 export interface CarListing {
   id: string;
+  title?: string;
   make: string;
   model: string;
   variant: string;

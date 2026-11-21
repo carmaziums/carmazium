@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {readFileSync} from 'node:fs';
+import {runInNewContext} from 'node:vm';
+import ts from 'typescript';
+const exports={};runInNewContext(ts.transpileModule(readFileSync(new URL('../src/lib/retailResultSections.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports});
+const state={page:1,filterCount:0,query:'',sortId:'newest',quickFilter:'all',loading:false,error:false};
+const regular=[{id:'promoted'},{id:'normal'}],promoted=[{id:'promoted'},{id:'extra'},{id:'extra'}];
+test('default first page pins complete featured source and deduplicates normal results',()=>{const result=exports.retailResultSections(regular,promoted,state);assert.equal(result.featured.map(x=>x.id).join(','),'promoted,extra');assert.equal(result.regular.map(x=>x.id).join(','),'normal');});
+test('promotions never bypass filters, sort, later pages or unsuccessful result loads',()=>{for(const patch of [{page:2},{filterCount:1},{query:'Toyota'},{sortId:'price_asc'},{quickFilter:'manual'},{loading:true},{error:true}]){const result=exports.retailResultSections(regular,promoted,{...state,...patch});assert.equal(result.featured.length,0);assert.equal(result.regular.length,2);}});

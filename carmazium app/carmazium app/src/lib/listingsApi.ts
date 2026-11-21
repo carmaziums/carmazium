@@ -261,6 +261,7 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
 
   return {
     id:           l.id,
+    title:        l.title,
     make:         l.make         ?? 'Unknown',
     model:        l.model        ?? 'Unknown',
     variant:      l.variant      ?? '',

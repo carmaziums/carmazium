@@ -24,9 +24,9 @@ test('native retail Browse uses website heading and canonical shared top bar wit
   assert.ok(webSearch.includes('Find Your Perfect Car'));
   assert.ok(search.includes('Find Your Perfect Car'));
   assert.ok(search.includes('<WebsiteTopBar />'));
-  assert.ok(search.includes('vehicles available'));
-  assert.ok(search.includes('Browse Live Auctions'));
-  assert.ok(search.includes("navigation.navigate('Tabs', { screen: 'Live' })"));
+  assert.ok(search.includes('Showing ${total?'));
+  assert.ok(search.includes('FEATURED LISTINGS'));
+  assert.ok(search.includes('retailResultSections'));
   assert.ok(search.includes('searchListings('));
   assert.ok(search.includes('<HorizontalVehicleCard'));
   assert.ok(search.includes('setSelectedMakes'));
