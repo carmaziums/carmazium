@@ -1,0 +1,7 @@
+import {readFileSync,writeFileSync} from 'node:fs';import {resolve} from 'node:path';const root=resolve(import.meta.dirname,'..'),f=JSON.parse(readFileSync(resolve(root,'private/checkout-fixtures.json'),'utf8'));async function api(role,path,body,expected=201){const r=await fetch('http://127.0.0.1:8080'+path,{method:body?'POST':'GET',headers:{'content-type':'application/json',cookie:f.cookies[role]},...(body?{body:JSON.stringify(body)}:{})});const j=await r.json();if(r.status!==expected)throw Error(path+' '+r.status+' '+JSON.stringify(j));return j.data??j;}
+const id=f.items[0].jobId;const results=[];
+await api('buyer','/services/jobs/'+id+'/confirm',{},400);results.push('premature release blocked');
+await api('provider','/services/jobs/'+id+'/complete',{},400);results.push('completion before start blocked');
+await api('provider','/services/jobs/'+id+'/start',{});await api('provider','/services/jobs/'+id+'/complete',{});results.push('provider start and complete passed');
+await api('buyer','/services/jobs/'+id+'/confirm',{});results.push('customer confirm released payment');
+const job=await api('buyer','/services/jobs/'+id,undefined,200);console.log(JSON.stringify({results,jobStatus:job.status,payment:job.payment},null,2));writeFileSync(resolve(root,'delivery-settlement-result.json'),JSON.stringify({results,jobStatus:job.status,payment:job.payment},null,2));

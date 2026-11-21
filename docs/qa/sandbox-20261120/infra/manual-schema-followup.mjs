@@ -1,0 +1,4 @@
+import {readFileSync} from 'node:fs';import {createRequire} from 'node:module';import {resolve} from 'node:path';
+const root=resolve(import.meta.dirname,'..'),require=createRequire(import.meta.url),qa=JSON.parse(readFileSync(resolve(root,'private/qa-env.json'),'utf8'));const {Client}=require('pg');const c=new Client({host:'127.0.0.1',port:5544,user:'postgres',password:qa.password,database:'carmazium_sandbox_utf8'});await c.connect();
+for(const role of ['anon','authenticated'])if(!(await c.query('select 1 from pg_roles where rolname=$1',[role])).rowCount)await c.query('CREATE ROLE '+role+' NOLOGIN');
+for(const file of ['20260919_tradexchange_private_documents.sql','20260919_tradexchange_provider_verification.sql']){let sql=readFileSync(resolve(root,'source/backend/prisma/manual-migrations',file),'utf8');if(file.includes('private_documents'))sql=sql.slice(0,sql.indexOf('insert into storage.buckets'));await c.query(sql);console.log('APPLIED',file)}await c.end();
