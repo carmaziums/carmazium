@@ -111,7 +111,7 @@ function SignupForm() {
             setError("Please select an account type to continue.")
             return
         }
-        if (partnerAgreementSignupEnabled && partnerAgreementSignupEnabled && formData.role === "DEALER" && !reviewedBusinessAgreement) {
+        if (partnerAgreementSignupEnabled && formData.role === "DEALER" && !reviewedBusinessAgreement) {
             setError("Review the Master Business Partner Agreement before creating a Partner Account.")
             return
         }
@@ -293,7 +293,7 @@ function SignupForm() {
                                 setGoogleLoading(false)
                                 return
                             }
-                            if (formData.role === "DEALER" && !reviewedBusinessAgreement) {
+                            if (partnerAgreementSignupEnabled && formData.role === "DEALER" && !reviewedBusinessAgreement) {
                                 setError("Review the Business Partner Agreement before continuing with Google.")
                                 setGoogleLoading(false)
                                 return
