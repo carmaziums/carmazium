@@ -46,6 +46,9 @@ test('customisation persists hide/order, restores after account switch, and navi
   const h = await harness();
   await act(async () => h.press('Purchases').props.onPress());
   assert.equal(h.nav[0][0], 'BuyerPurchaseHistory');
+  await act(async () => h.press('Buy Cars').props.onPress());
+  assert.equal(h.nav[1][0], 'Tabs');
+  assert.equal(h.nav[1][1].screen, 'Search');
   await act(async () => h.button('Customise').props.onPress());
   await act(async () => h.press('Show My Cars').props.onPress());
   await act(async () => h.press('Move Messages earlier').props.onPress());
