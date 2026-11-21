@@ -51,6 +51,7 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
   const [file, setFile] = useState<MobileEvidenceFile | null>(null);
   const [issuer, setIssuer] = useState('');
   const [reference, setReference] = useState('');
+  const [coverAmountGbp, setCoverAmountGbp] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
   const [label, setLabel] = useState('');
   const [loading, setLoading] = useState(true);
@@ -122,6 +123,11 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
       return;
     }
 
+    if ((evidenceType === 'PUBLIC_LIABILITY_INSURANCE' || evidenceType === 'DELIVERY_BUSINESS_INSURANCE') &&
+      (!issuer.trim() || !reference.trim() || !Number.isSafeInteger(Number(coverAmountGbp)) || Number(coverAmountGbp) <= 0)) {
+      Alert.alert('Insurance details required', 'Enter insurer, policy number and limit of indemnity in pounds.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -131,10 +137,12 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
         issuer: issuer.trim() || undefined,
         reference: reference.trim() || undefined,
         expiresAt: expiresAt.trim() || undefined,
+        ...((evidenceType === 'PUBLIC_LIABILITY_INSURANCE' || evidenceType === 'DELIVERY_BUSINESS_INSURANCE') ? { coverAmountGbp: Number(coverAmountGbp) } : {}),
       });
       setFile(null);
       setIssuer('');
       setReference('');
+      setCoverAmountGbp('');
       setExpiresAt('');
       setLabel('');
       await load();
@@ -248,11 +256,11 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
                 </TouchableOpacity>
               ))}
 
-              {serviceType === 'DELIVERY' && <>
+              {(serviceType === 'DELIVERY' || serviceType === 'INSPECTION') && <>
               <View style={styles.warningCard}>
                 <Ionicons name="business-outline" size={18} color={Colors.warning} />
                 <Text style={styles.warningText}>
-                  Upload only trade insurance covering collection, delivery and recovery. Do not upload passports, driving licences, personal bank statements or unrelated identity documents.
+                  Public liability insurance is required for all inspections and delivery work. Collection, delivery and recovery also require motor trade insurance. Upload insurance certificates only, not personal identity or banking documents.
                 </Text>
               </View>
 
@@ -268,6 +276,7 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
                 <TextInput style={styles.input} value={label} onChangeText={setLabel} placeholder="Label (optional)" placeholderTextColor={Colors.textMuted} />
                 <TextInput style={styles.input} value={issuer} onChangeText={setIssuer} placeholder="Issuer (optional)" placeholderTextColor={Colors.textMuted} />
                 <TextInput style={styles.input} value={reference} onChangeText={setReference} placeholder="Policy / authority reference (optional)" placeholderTextColor={Colors.textMuted} />
+                {(evidenceType === 'PUBLIC_LIABILITY_INSURANCE' || evidenceType === 'DELIVERY_BUSINESS_INSURANCE') ? <TextInput style={styles.input} keyboardType="number-pad" value={coverAmountGbp} onChangeText={setCoverAmountGbp} placeholder="Limit of indemnity (£) required" placeholderTextColor={Colors.textMuted}/> : null}
                 <TextInput
                   style={styles.input}
                   value={expiresAt}
@@ -293,7 +302,7 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
                       <Text style={styles.cardTitle}>{entry.label || 'Verification evidence'}</Text>
                       <Text style={styles.cardText}>
                         {entry.evidenceIssuer || 'Issuer not supplied'}
-                        {entry.evidenceReference ? ` · ${entry.evidenceReference}` : ''}
+                        {entry.evidenceReference ? ` · ${entry.evidenceReference}` : ''}{entry.evidenceCoverAmountGbp ? ` · Cover £${entry.evidenceCoverAmountGbp.toLocaleString('en-GB')}` : ''}
                       </Text>
                       <Text style={styles.cardText}>
                         Uploaded {new Date(entry.createdAt).toLocaleDateString('en-GB')}
