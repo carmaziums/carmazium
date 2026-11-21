@@ -55,7 +55,7 @@ export function BlogScreen({ navigation }: any) {
       <Text style={s.eyebrow}>Explore by goal</Text><Text accessibilityRole="header" style={s.heading}>Find the right CarMazium guide</Text>
       {[
         { title: 'Find used cars for sale', text: 'Search available retail cars from CarMazium sellers.', action: () => navigation.navigate('Tabs', { screen: 'Search' }) },
-        { title: 'Understand dealer car auctions', text: 'Learn how sellers list for free and verified traders bid.', action: () => navigation.navigate('HowItWorks') },
+        { title: 'Understand dealer car auctions', text: 'Learn how sellers list for free and verified traders bid.', action: () => navigation.navigate('AuctionGuide') },
         { title: 'Compare used-car body types', text: 'Choose between hatchbacks, SUVs, estates and more.', action: () => navigation.navigate('CarBodyGuide') },
       ].map(item => <TouchableOpacity key={item.title} accessibilityRole="button" accessibilityLabel={item.title} style={s.panel} onPress={item.action}><Text style={s.label}>{item.title} →</Text><Text style={s.body}>{item.text}</Text></TouchableOpacity>)}
     </>}

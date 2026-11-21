@@ -26,7 +26,7 @@ export const GUEST_ROUTES = new Set<string>([
   'Services',
   'Terms',
   'PrivacyPolicy',
-  'HowItWorks',
+  'HowItWorks', 'AuctionGuide',
   'About',
   'Contact',
   'ReportProblem',

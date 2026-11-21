@@ -1,470 +1,76 @@
 import React, { useState } from 'react';
-import {
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@/components/BrandIcon';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Colors, themeStatusBarStyle } from '../../constants/colors';
-import { FontFamily, FontSize } from '../../constants/typography';
-import { Elevation, Radius } from '../../constants/spacing';
-import { MainStackParamList } from '../../navigation/MainStackNavigator';
-
-import { IconButton } from '../../components/IconButton';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
-type NavProp = NativeStackNavigationProp<MainStackParamList>;
+import { Button } from '../../components/Button';
+import { Colors } from '../../constants/colors';
+import { FontFamily } from '../../constants/typography';
+import guides from '../../data/marketplaceGuides.json';
 
-// ─────────────────────────── data ──────────────────────────────────
-
-type Mode = 'buyer' | 'seller';
-
-interface Step {
-  id: string;
-  icon: string;
-  title: string;
-  desc: string;
-  details: string[];
+function Timeline({steps,start=0}:{steps:{title:string;desc:string;tag?:string}[];start?:number}){
+ return <View>{steps.map((step,i)=><View key={step.title} style={s.step}><Text style={s.number}>{String(start+i+1).padStart(2,'0')}</Text><View style={s.stepBody}><Text style={s.label}>{step.title}</Text><Text style={s.body}>{step.desc}</Text>{step.tag&&<Text style={s.tag}>{step.tag}</Text>}</View></View>)}</View>;
 }
-
-/**
- * The itemised fee ledger, mirroring web's RECEIPTS (how-it-works/page.tsx:45).
- * Figures kept identical to web on purpose — two different numbers for the same
- * fee across platforms is worse than showing none.
- */
-const RECEIPTS = {
-  seller: {
-    label: 'Your sale, itemised',
-    rows: [
-      { k: 'Vehicle sale price', v: '£8,450', note: 'paid to you, by the dealer' },
-      { k: 'CarMazium listing fee', v: '£0', note: 'free, always' },
-      { k: 'CarMazium seller reward', v: '+£100', note: 'paid to you, after handover' },
-    ],
-    total: { k: 'You receive', v: '£8,550' },
-  },
-  buyer: {
-    label: 'Your purchase, itemised',
-    rows: [
-      { k: 'Winning bid', v: '£8,450', note: 'paid to the seller, directly' },
-      { k: 'CarMazium buyer fee', v: '£125', note: "unlocks the seller's contact details" },
-    ],
-    total: { k: 'Total to drive away', v: '£8,575' },
-  },
-} as const;
-
-const BUYER_STEPS: Step[] = [
-  {
-    id: '01',
-    icon: 'search-outline',
-    title: 'Smart Search',
-    desc: 'Filter by make, model, price, and location to find vehicles that match exactly what you need — with smart sorting to surface the best matches first.',
-    details: ['Powerful filters', 'Saved searches & alerts', 'Side-by-side compare'],
-  },
-  {
-    id: '02',
-    icon: 'shield-checkmark-outline',
-    title: 'Verified Listings',
-    desc: 'Every listing comes with seller verification, vehicle history checks, and clear photos — so you know what you are looking at before you reach out.',
-    details: ['Seller verification', 'History checks', 'Service records'],
-  },
-  {
-    id: '03',
-    icon: 'card-outline',
-    title: 'Secure Purchase',
-    desc: 'Message the seller directly, agree your terms, and complete the deal through the platform. Delivery and warranty options are available via trusted partners.',
-    details: ['Direct messaging', 'Trusted delivery partners', 'Optional warranty'],
-  },
-];
-
-const SELLER_STEPS: Step[] = [
-  {
-    id: '01',
-    icon: 'calculator-outline',
-    title: 'Quick Valuation',
-    desc: 'Get an instant estimate of your vehicle’s value based on current market data — no obligation, just a clear starting point.',
-    details: ['Instant estimate', 'Market comparison', 'No obligation'],
-  },
-  {
-    id: '02',
-    icon: 'hammer-outline',
-    title: 'Choose Your Method',
-    desc: 'List your car for retail sale to maximise your price, or enter it into a live auction for a quicker turnaround — whichever suits you best.',
-    details: ['Retail listing', 'Live auctions', 'You set the reserve'],
-  },
-  {
-    id: '03',
-    icon: 'wallet-outline',
-    title: 'Get Paid',
-    desc: 'Once a deal is agreed and finalised with your buyer, the paperwork and handover are guided step-by-step so the process stays smooth from start to finish.',
-    details: ['Guided handover', 'Clear paperwork steps', 'Direct buyer contact'],
-  },
-];
-
-const PEACE_OF_MIND = [
-  { icon: 'car-outline', title: 'Delivery', desc: 'Via trusted 3rd-party couriers' },
-  { icon: 'umbrella-outline', title: 'Warranty', desc: 'Optional 3rd-party coverage' },
-  { icon: 'people-outline', title: 'Direct Deals', desc: 'Buyer & seller connect directly' },
-  { icon: 'headset-outline', title: 'Support', desc: 'Help on hand when you need it' },
-];
-
-// ═══════════════════════════ COMPONENT ════════════════════════════
-
-export const HowItWorksScreen: React.FC = () => {
-  const insets = useSafeAreaInsets();
-  const navigation = useNavigation<NavProp>();
-  const [mode, setMode] = useState<Mode>('buyer');
-  const steps = mode === 'buyer' ? BUYER_STEPS : SELLER_STEPS;
-  const receipt = mode === 'buyer' ? RECEIPTS.buyer : RECEIPTS.seller;
-
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
-      <LinearGradient
-        colors={[Colors.accentAlpha05, Colors.groundClear, Colors.bgPrimary]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 0.6 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      <WebsiteTopBar />
-
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.introSub}>
-          Whether you’re buying your next car or selling your current one, here’s exactly
-          what to expect at every step.
-        </Text>
-
-        {/* Tab toggle */}
-        <View style={styles.toggleRow}>
-          <TouchableOpacity
-            style={[styles.toggleBtn, mode === 'buyer' && styles.toggleBtnActive]}
-            activeOpacity={0.8}
-            onPress={() => setMode('buyer')}
-          >
-            <Text style={[styles.toggleText, mode === 'buyer' && styles.toggleTextActive]}>I’M BUYING</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleBtn, mode === 'seller' && styles.toggleBtnActive]}
-            activeOpacity={0.8}
-            onPress={() => setMode('seller')}
-          >
-            <Text style={[styles.toggleText, mode === 'seller' && styles.toggleTextActive]}>I’M SELLING</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Steps */}
-        {steps.map((step) => (
-          <View key={step.id} style={styles.stepCard}>
-            <View style={styles.stepTopRow}>
-              <View style={styles.stepIconWrap}>
-                <Ionicons name={step.icon} size={22} color={Colors.accent} />
-              </View>
-              <Text style={styles.stepNumber}>{step.id}</Text>
-            </View>
-            <Text style={styles.stepTitle}>{step.title}</Text>
-            <Text style={styles.stepDesc}>{step.desc}</Text>
-            <View style={styles.detailChipsRow}>
-              {step.details.map((d) => (
-                <View key={d} style={styles.detailChip}>
-                  <Ionicons name="checkmark" size={11} color={Colors.success} />
-                  <Text style={styles.detailChipText}>{d}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        ))}
-
-        {/* Itemised receipt — web's how-it-works rewrite (7ee31c40) added this
-            and it's the most useful thing on that page: it states the actual
-            economics instead of describing them. Mobile had no fee figures on
-            this screen at all, so a seller couldn't find out what they'd be
-            paid, or a buyer what they'd owe, without starting a transaction. */}
-        <Text style={styles.sectionTitle}>{receipt.label}</Text>
-        <View style={styles.receiptCard}>
-          {receipt.rows.map((row) => (
-            <View key={row.k} style={styles.receiptRow}>
-              <View style={styles.receiptRowLeft}>
-                <Text style={styles.receiptKey}>{row.k}</Text>
-                <Text style={styles.receiptNote}>{row.note}</Text>
-              </View>
-              <Text style={styles.receiptValue}>{row.v}</Text>
-            </View>
-          ))}
-          <View style={styles.receiptTotalRow}>
-            <Text style={styles.receiptTotalKey}>{receipt.total.k}</Text>
-            <Text style={styles.receiptTotalValue}>{receipt.total.v}</Text>
-          </View>
-          <Text style={styles.receiptFootnote}>
-            Example figures on an £8,450 vehicle. CarMazium never holds the sale
-            money — it moves directly between buyer and seller.
-          </Text>
-        </View>
-
-        {/* Peace of mind grid */}
-        <Text style={styles.sectionTitle}>Complete Peace of Mind</Text>
-        <View style={styles.peaceGrid}>
-          {PEACE_OF_MIND.map((item) => (
-            <View key={item.title} style={styles.peaceCard}>
-              <Ionicons name={item.icon} size={20} color={Colors.textSecondary} />
-              <Text style={styles.peaceTitle}>{item.title}</Text>
-              <Text style={styles.peaceDesc}>{item.desc}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={{ height: 60 }} />
-      </ScrollView>
-    </View>
-  );
-};
-
-// ═══════════════════════════ STYLES ════════════════════════════════
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgPrimary },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-  },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderBottomWidth: 2,
-    ...Elevation.card,
-  },
-  headerTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.lg,
-    color: Colors.white,
-  },
-  headerPlaceholder: { width: 38 },
-
-  scroll: { flex: 1 },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 6,
-    gap: 16,
-  },
-
-  introSub: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    lineHeight: 21,
-  },
-
-  // ── Toggle ──
-  toggleRow: {
-    flexDirection: 'row',
-    borderRadius: Radius.inline,
-    borderWidth: 1,
-    padding: 4,
-    gap: 4,
-    backgroundColor: Colors.bgCard,
-    borderColor: Colors.border,
-    ...Elevation.card,
-  },
-  toggleBtn: {
-    flex: 1,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 40,
-  },
-  toggleBtnActive: {
-    backgroundColor: Colors.accent,
-    borderBottomWidth: 3,
-    borderBottomColor: Colors.accentDark,
-    ...Elevation.neon,
-  },
-  toggleText: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.xs,
-    letterSpacing: 0.6,
-    color: Colors.textMuted,
-  },
-  toggleTextActive: {
-    color: Colors.onAccent,
-  },
-
-  // ── Step card ──
-  stepCard: {
-    borderRadius: Radius.card,
-    borderWidth: 1,
-    padding: 18,
-    gap: 8,
-    backgroundColor: Colors.bgCard,
-    borderColor: Colors.border,
-    ...Elevation.card,
-  },
-  stepTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  stepIconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: Radius.inline,
-    backgroundColor: Colors.accentAlpha10,
-    borderWidth: 1,
-    borderColor: Colors.accentAlpha22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepNumber: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize['3xl'],
-    color: Colors.whiteAlpha07,
-  },
-  stepTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size17,
-    color: Colors.white,
-  },
-  stepDesc: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    lineHeight: 20,
-  },
-  detailChipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 4,
-  },
-  detailChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: Colors.successAlpha08,
-    borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.18)',
-    borderRadius: Radius.card,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  detailChipText: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.xs,
-    color: Colors.textSecondary,
-  },
-
-  // ── Peace of mind ──
-  receiptCard: {
-    backgroundColor: Colors.bgCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.card,
-    padding: 18,
-    marginBottom: 8,
-  },
-  receiptRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  receiptRowLeft: {
-    flex: 1,
-    minWidth: 0,
-  },
-  receiptKey: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.sm,
-    color: Colors.white,
-  },
-  receiptNote: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.size11_5,
-    color: Colors.textMuted,
-    marginTop: 2,
-  },
-  receiptValue: {
-    fontFamily: FontFamily.mono,
-    fontSize: FontSize.sm,
-    color: Colors.white,
-  },
-  receiptTotalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingTop: 14,
-  },
-  receiptTotalKey: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size9,
-    color: Colors.textMuted,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  receiptTotalValue: {
-    fontFamily: FontFamily.monoExtraBold,
-    fontSize: FontSize.size22,
-    color: Colors.accent,
-  },
-  receiptFootnote: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.size11_5,
-    lineHeight: 16,
-    color: Colors.textMuted,
-    marginTop: 12,
-  },
-  sectionTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.lg,
-    color: Colors.white,
-    marginTop: 6,
-  },
-  peaceGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  peaceCard: {
-    width: '48%',
-    borderRadius: Radius.inline,
-    borderWidth: 1,
-    padding: 14,
-    gap: 6,
-    backgroundColor: Colors.bgCard,
-    borderColor: Colors.border,
-    ...Elevation.card,
-  },
-  peaceTitle: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.sm,
-    color: Colors.white,
-  },
-  peaceDesc: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
-    lineHeight: 16,
-  },
+function Receipt({kind}:{kind:'seller'|'buyer'}){
+ const receipt=guides.marketplace.RECEIPTS[kind];
+ return <View style={s.panel}><Text style={s.eyebrow}>{receipt.label}</Text>{receipt.rows.map(row=><View key={row.k} style={s.receiptRow}><View style={{flex:1}}><Text style={s.label}>{row.k}</Text><Text style={s.small}>{row.note}</Text></View><Text style={s.amount}>{row.v}</Text></View>)}<View style={s.receiptRow}><Text style={[s.label,{flex:1}]}>{receipt.total.k}</Text><Text style={[s.amount,{color:Colors.accent}]}>{receipt.total.v}</Text></View><Text style={s.small}>Example figures only: not live bids, a confirmed valuation, or a guarantee of sale proceeds.</Text></View>;
+}
+function PhotoBreak({image,quote}:{image:string;quote:string}){
+ return <View style={s.photoBreak}><Image source={{uri:'https://www.carmazium.com/assets/images/'+image}} contentFit="cover" style={StyleSheet.absoluteFillObject}/><View style={[StyleSheet.absoluteFillObject,{backgroundColor:'#02061799'}]}/><Text style={s.quote}>{quote}</Text></View>;
+}
+export function HowItWorksScreen({navigation}:any){
+ const insets=useSafeAreaInsets(),{height}=useWindowDimensions();
+ return <View style={s.page}><WebsiteTopBar/><ScrollView contentContainerStyle={{paddingBottom:insets.bottom+80}}>
+  <View style={[s.hero,{minHeight:Math.max(500,height*.7)}]}>
+   <Image source={{uri:'https://www.carmazium.com/assets/images/live-auction-hero.webp'}} contentFit="cover" style={StyleSheet.absoluteFillObject}/>
+   <LinearGradient colors={['#02061780','#020617b3','#020617']} style={StyleSheet.absoluteFillObject}/>
+   <Text accessibilityRole="header" style={s.heroTitle}>The Future of Car Trading is Here</Text>
+   <Text style={s.heroBody}>Sellers can list in a free dealer auction or advertise to retail buyers for £1. Everyone can browse retail cars; only verified motor traders can bid in dealer auctions.</Text>
+  </View>
+  <View style={s.content}>
+   <View style={[s.panel,{marginTop:-40}]}>{guides.marketplace.TRUST_STRIP.map(item=><Text key={item.label} style={[s.label,{textAlign:'center'}]}>{item.label}</Text>)}</View>
+   <Text style={s.eyebrow}>For Sellers</Text><Text accessibilityRole="header" style={s.heading}>How it works for sellers</Text>
+   <Text style={s.body}>List in the dealer auction without a seller fee, let verified traders compete, and receive £100 for qualifying sales after an approved handover.</Text>
+   <Timeline steps={guides.marketplace.SELLER_STEPS.slice(0,3)}/><PhotoBreak image="blog-keys.webp" quote="The dealer pays you. Not us."/><Timeline steps={guides.marketplace.SELLER_STEPS.slice(3)} start={3}/><Receipt kind="seller"/>
+   <Button label="Start Selling For Free" onPress={()=>navigation.navigate('SellLanding',{listingType:'AUCTION'})}/>
+   <Text style={s.eyebrow}>For Verified Motor Traders</Text><Text accessibilityRole="header" style={s.heading}>How auctions work for dealers</Text>
+   <Text style={s.body}>Only verified dealer accounts can place bids. Retail customers can browse and buy cars through the separate retail marketplace.</Text>
+   <Timeline steps={guides.marketplace.DEALER_STEPS.slice(0,3)}/><PhotoBreak image="featured-suv.webp" quote="One fee. Nothing else moves through CarMazium."/><Timeline steps={guides.marketplace.DEALER_STEPS.slice(3)} start={3}/><Receipt kind="buyer"/>
+   <Button label="Learn About Dealer Auctions" onPress={()=>navigation.navigate('AuctionGuide')}/>
+   <View style={s.panel}><Text style={s.label}>Buying as a private customer?</Text><Text style={s.body}>You do not need to bid in a trade auction. Browse available retail listings and contact the seller through the retail purchase process.</Text><Button label="Browse retail cars" onPress={()=>navigation.navigate('Tabs',{screen:'Search'})}/></View>
+   <View style={s.panel}><Text style={s.eyebrow}>Live Auctions</Text><Text style={s.heading}>Fairness Built-In with Anti-Snipe Tech</Text><Text style={s.body}>Say goodbye to last-second “sniping”. Our auction system simulates a real auction room—if a bid comes in during the final 3 minutes, the clock resets, giving everyone a fair chance to win.</Text>
+    <Text style={s.label}>Community Driven</Text><Text style={s.body}>Bidding requires dealer verification, with marketplace controls to help detect suspicious activity.</Text><Text style={s.label}>True Market Value</Text><Text style={s.body}>Dealer competition helps test trade-market demand, but a final price is not guaranteed.</Text>
+    <Text style={s.eyebrow}>EXAMPLE · NOT LIVE</Text><Text style={s.small}>Demo auction · Example time remaining</Text><Text style={[s.amount,{fontSize:36,color:Colors.accent}]}>00:01:58</Text><Text style={s.small}>Resets to 3:00 on every bid in the final 3 minutes</Text>
+    {guides.marketplace.BID_LOG.map(row=><View key={row.t} style={s.receiptRow}><Text style={s.small}>{row.t}</Text><Text style={s.amount}>{row.amount}</Text>{row.reset&&<Text style={s.small}>clock reset</Text>}</View>)}
+    <Text style={s.small}>Demonstration amounts, bid times and countdown only. No live auction activity is shown here.</Text>
+   </View>
+   <Text style={s.heading}>Complete Peace of Mind</Text><Text style={s.body}>Everything you need to handle your vehicle effortlessly.</Text>
+   {[['Delivery','Via trusted 3rd party'],['Warranty','Via 3rd-party providers'],['Direct Deals','Buyer & seller connect'],['Support','Mon–Fri, 9am–6pm UK time']].map(([title,detail])=><View key={title} style={s.panel}><Text style={s.label}>{title}</Text><Text style={s.body}>{detail}</Text></View>)}
+  </View>
+ </ScrollView></View>;
+}
+export function AuctionGuideScreen({navigation}:any){
+ const insets=useSafeAreaInsets(),[track,setTrack]=useState<'seller'|'buyer'>('seller'),[open,setOpen]=useState<string[]>([]);
+ return <View style={s.page}><WebsiteTopBar/><ScrollView contentContainerStyle={[s.content,{paddingTop:56,paddingBottom:insets.bottom+60}]}>
+  <Button label="Back to TradeXchange" variant="ghost" onPress={()=>navigation.navigate('Services')}/>
+  <Text style={s.eyebrow}>TradeXchange · Vehicle Auctions</Text><Text accessibilityRole="header" style={s.heading}>Buy and sell vehicles through live trade auctions.</Text>
+  <Text style={s.body}>Sellers can list for free and verified dealers compete in 24-hour auctions. The reserve stays private, anti-snipe protection keeps the finish fair, and CarMazium connects the winner and seller after the auction.</Text>
+  <Button label="Browse auctions" onPress={()=>navigation.navigate('Tabs',{screen:'Live'})}/><Button label="Sell a vehicle at auction" variant="outline" onPress={()=>navigation.navigate('SellLanding',{listingType:'AUCTION'})}/>
+  <Text style={s.eyebrow}>How It Works</Text><Text accessibilityRole="header" style={s.heading}>How CarMazium Auctions Work</Text><Text style={s.body}>Two audiences, two tracks — pick the one that's you, then see exactly what happens next.</Text>
+  <View style={s.toggle}>{(['seller','buyer'] as const).map(value=><TouchableOpacity key={value} accessibilityRole="tab" accessibilityState={{selected:track===value}} onPress={()=>setTrack(value)} style={[s.pill,track===value&&{backgroundColor:Colors.accent}]}><Text style={[s.label,track===value&&{color:'#fff'}]}>{value==='seller'?'For Sellers':'For Buyers'}</Text></TouchableOpacity>)}</View>
+  <View style={s.panel}>{track==='buyer'&&<Text style={s.body}>Bidding is restricted to KYC-verified dealer accounts — every bid comes from a checked, trade buyer, not an anonymous account.</Text>}<Timeline steps={track==='seller'?guides.auction.SELLER_STEPS:guides.auction.BUYER_STEPS}/><Text style={s.body}>{track==='seller'?"Note: CarMazium isn't a party to the vehicle sale itself — that's agreed directly between you and the buyer. The £100 bonus is CarMazium's reward for selling through the platform.":"Note: The standard £125 fee is payable only after an auction win, unless an approved waiver applies — there's nothing to pay just for bidding or browsing."}</Text></View>
+  <Text accessibilityRole="header" style={s.heading}>The Rules, Explained</Text><Text style={s.body}>The fine print, in plain English.</Text>{guides.auction.RULES.map(rule=><View key={rule.term} style={s.panel}><Text style={s.label}>{rule.term}</Text><Text style={s.body}>{rule.def}</Text></View>)}
+  <Text accessibilityRole="header" style={s.heading}>Trust & Transparency</Text><Text style={s.body}>Every listing tells you exactly what you're bidding on.</Text>{guides.auction.TRUST.map(item=><View key={item.title} style={s.panel}><Text style={s.label}>{item.title}</Text><Text style={s.body}>{item.desc}</Text></View>)}
+  <Text accessibilityRole="header" style={s.heading}>FAQ</Text><Button label="Get in touch" variant="ghost" onPress={()=>navigation.navigate('Contact')}/>
+  {guides.auction.FAQS.map(faq=><View key={faq.q} style={s.panel}><TouchableOpacity accessibilityRole="button" accessibilityLabel={faq.q} accessibilityState={{expanded:open.includes(faq.q)}} onPress={()=>setOpen(prev=>prev.includes(faq.q)?prev.filter(q=>q!==faq.q):[...prev,faq.q])}><Text style={s.label}>{faq.q} {open.includes(faq.q)?'−':'+'}</Text></TouchableOpacity>{open.includes(faq.q)&&<Text style={s.body}>{faq.a}</Text>}</View>)}
+ </ScrollView></View>;
+}
+const s=StyleSheet.create({
+ page:{flex:1,backgroundColor:Colors.bgPrimary},content:{paddingHorizontal:20,gap:24},
+ hero:{paddingHorizontal:24,paddingVertical:100,gap:32,alignItems:'center',justifyContent:'center'},heroTitle:{fontFamily:FontFamily.bold,fontSize:48,lineHeight:54,color:'#fff',textAlign:'center',letterSpacing:-1},heroBody:{fontFamily:FontFamily.medium,fontSize:20,lineHeight:32,color:'#e2e8f0',textAlign:'center'},
+ heading:{fontFamily:FontFamily.bold,fontSize:30,lineHeight:38,color:Colors.textPrimary,marginTop:24},label:{fontFamily:FontFamily.bold,fontSize:16,lineHeight:24,color:Colors.textPrimary},body:{fontFamily:FontFamily.regular,fontSize:14,lineHeight:24,color:Colors.textSecondary},small:{fontFamily:FontFamily.regular,fontSize:12,lineHeight:20,color:Colors.textMuted},
+ eyebrow:{fontFamily:FontFamily.bold,fontSize:11,letterSpacing:1.8,textTransform:'uppercase',color:Colors.accent,marginTop:12},panel:{padding:24,gap:16,borderWidth:1,borderColor:Colors.border,borderRadius:18,backgroundColor:Colors.bgCard},
+ step:{flexDirection:'row',alignItems:'flex-start',gap:14,paddingVertical:16},number:{fontFamily:FontFamily.bold,color:Colors.accent,fontSize:15,paddingTop:3,width:30},stepBody:{flex:1,gap:7,borderBottomWidth:1,borderColor:Colors.border,paddingBottom:16},tag:{alignSelf:'flex-start',borderRadius:20,borderWidth:1,borderColor:Colors.border,paddingVertical:5,paddingHorizontal:12,fontFamily:FontFamily.medium,fontSize:12,color:Colors.textSecondary},
+ receiptRow:{flexDirection:'row',flexWrap:'wrap',alignItems:'center',gap:16,justifyContent:'space-between',paddingVertical:10,borderBottomWidth:1,borderColor:Colors.border},amount:{fontFamily:FontFamily.bold,color:Colors.textPrimary,fontSize:20},photoBreak:{height:280,borderRadius:16,overflow:'hidden',justifyContent:'center',padding:32},quote:{fontFamily:FontFamily.bold,fontSize:22,lineHeight:32,color:'#fff'},toggle:{flexDirection:'row',flexWrap:'wrap',gap:8,justifyContent:'center'},pill:{paddingVertical:14,paddingHorizontal:24,borderRadius:28,borderWidth:1,borderColor:Colors.border},
 });

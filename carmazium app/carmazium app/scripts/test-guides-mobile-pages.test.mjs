@@ -31,7 +31,7 @@ test('published guide shortcuts and goals open native destinations without a bro
  const { tree, nav, groups, exports } = await mount(async () => fixture(1));
  for (const node of tree.root.findAllByType('TouchableOpacity')) await act(async () => node.props.onPress());
  assert.equal(nav.filter(n => n[0] === 'BlogArticle').length, 9);
- assert.deepEqual(JSON.parse(JSON.stringify(nav.slice(-3))), [['Tabs', { screen: 'Search' }], ['HowItWorks'], ['CarBodyGuide']]);
+ assert.deepEqual(JSON.parse(JSON.stringify(nav.slice(-3))), [['Tabs', { screen: 'Search' }], ['AuctionGuide'], ['CarBodyGuide']]);
  await click(tree, 'Sell My Car'); assert.equal(nav.at(-1)[0], 'SellLanding');
  assert.equal(exports.guideReadTime('words '.repeat(441)), 3);
  const web = readFileSync(new URL('../../../src/components/blog/SellerGuideLinks.tsx', import.meta.url), 'utf8');

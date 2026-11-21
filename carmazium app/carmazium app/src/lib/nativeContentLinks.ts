@@ -15,7 +15,7 @@ export function nativeContentTarget(href: string): { name: string; params?: obje
   }
   if (path === '/dashboard/user' || path === '/dashboard') return { name: 'Tabs', params: { screen: 'Profile' } };
   if (path === '/dashboard/dealer') return { name: 'Tabs', params: { screen: 'DealerHome' } };
-  const simple: Record<string, string> = { '/terms': 'Terms', '/privacy-policy': 'PrivacyPolicy', '/contact': 'Contact', '/pricing': 'Pricing', '/about': 'About', '/services': 'Services', '/blog': 'Blog', '/business-spotlight': 'BusinessSpotlight', '/used-car-types': 'CarBodyGuide', '/services/warranty': 'Warranty', '/dashboard/warranties': 'WarrantyOrders', '/delete-account': 'Settings', '/cookie-policy': 'CookiePolicy' };
+  const simple: Record<string, string> = { '/terms': 'Terms', '/privacy-policy': 'PrivacyPolicy', '/contact': 'Contact', '/pricing': 'Pricing', '/about': 'About', '/how-it-works': 'HowItWorks', '/auctions/how-it-works': 'AuctionGuide', '/services': 'Services', '/blog': 'Blog', '/business-spotlight': 'BusinessSpotlight', '/used-car-types': 'CarBodyGuide', '/services/warranty': 'Warranty', '/dashboard/warranties': 'WarrantyOrders', '/delete-account': 'Settings', '/cookie-policy': 'CookiePolicy' };
   if (simple[path]) return { name: simple[path] };
   if (path === '/services/finance') return { name: 'Finance', params: { listingId: url.searchParams.get('listingId') || undefined } };
   if (path === '/become-a-partner') return { name: 'PartnerGuide' };
