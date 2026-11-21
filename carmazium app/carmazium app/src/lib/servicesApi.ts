@@ -2,6 +2,7 @@ import { apiClient } from './apiClient';
 
 export type ServiceType = 'DELIVERY' | 'INSPECTION' | 'FINANCE' | 'WARRANTY';
 export type InspectionScope = 'VEHICLE' | 'COSMETIC' | 'BOTH';
+export interface InspectionPrice { name: string; description?: string; pricePence: number; quoteOnly: boolean; vatIncluded: boolean }
 export type CapabilityStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
 
 export const SERVICE_LABELS: Record<ServiceType, string> = {
@@ -45,6 +46,7 @@ export interface MyCapabilities {
     businessName: string | null;
     phone: string | null;
     serviceArea: string | null;
+    inspectionPrices?: InspectionPrice[];
   } | null;
   capabilities: ContractorCapability[];
   stripeConnect: { connected: boolean; complete: boolean };
@@ -617,4 +619,12 @@ export async function addServiceCaseNote(id: string, note: string): Promise<void
 }
 export async function uploadServiceCaseEvidence(id: string, body: FormData): Promise<void> {
   await apiClient(`/services/operations/jobs/${encodeURIComponent(id)}/evidence`, { method: 'POST', body });
+}
+
+/** Provider prices belong to the signed-in business, never other providers. */
+export async function saveInspectionPrices(prices: InspectionPrice[]): Promise<{prices: InspectionPrice[]}> {
+  const result = await apiClient<{data: { prices: InspectionPrice[] }}>('/services/capabilities/inspection/prices', {
+    method: 'PUT', body: JSON.stringify({prices}),
+  });
+  return result.data;
 }
