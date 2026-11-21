@@ -699,6 +699,8 @@ model ContractorProfile {
   totalReviews   Int       @default(0)
   serviceArea    String? // e.g., "London, UK" or JSON for coordinates
   certifications String[]
+  /// Provider-owned published inspection offerings. Never shared across businesses.
+  inspectionPrices Json?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
