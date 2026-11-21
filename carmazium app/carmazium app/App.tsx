@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { reportFirstOpenOnce, sendOnlineHeartbeat } from './src/lib/appInsights';
 import { AppUpdatePrompt } from './src/components/AppUpdatePrompt';
 import { AppState } from 'react-native';
+import { NativeGuidedTour } from './src/components/NativeGuidedTour';
 import { Alert } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
@@ -366,6 +367,7 @@ export default function App() {
                 <RootNavigator />
                 {/* "New version available" for the Android app from carmazium.com */}
                 <AppUpdatePrompt />
+                <NativeGuidedTour />
               </GlobalToastProvider>
             </ChatProvider>
           </LocationProvider>

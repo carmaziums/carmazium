@@ -11,6 +11,7 @@ import { useFocusEffect, useNavigation, useRoute, type RouteProp } from '@react-
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../store/authStore';
+import { useGuidedTourStore } from '../../store/guidedTourStore';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
@@ -767,6 +768,12 @@ export const SettingsScreen: React.FC = () => {
 
         {activeCategory === 'personal' && (
           <>
+        {['buyer', 'seller', 'dealer', 'contractor'].includes(accountRole) && <TouchableOpacity
+          accessibilityRole="button" accessibilityLabel="Replay website tour"
+          onPress={() => { if (user?.id) useGuidedTourStore.getState().replay(user.id); }}
+          style={{ backgroundColor: Colors.accent, borderRadius: 12, padding: 16, minHeight: 48, marginBottom: 20 }}>
+          <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '700' }}>Replay website tour</Text>
+        </TouchableOpacity>}
         {/* ── 1. PROFILE INFORMATION ── */}
         <SectionHeader icon="person-circle-outline" label="PROFILE INFORMATION" />
         <View style={styles.card}>

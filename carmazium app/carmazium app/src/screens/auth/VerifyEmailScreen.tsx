@@ -9,6 +9,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { supabase } from '../../lib/supabase';
+import { subscribeDeferredAuthChanges } from '../../lib/authSubscription';
 import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
@@ -36,16 +37,20 @@ export const VerifyEmailScreen: React.FC = () => {
   // ── Listen for Supabase SIGNED_IN event (fired when the user clicks the
   //    verification link and the deep-link hands control back to the app).
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    let active = true;
+    const unsubscribe = subscribeDeferredAuthChanges(
       async (event) => {
         if (event === 'SIGNED_IN') {
           setChecking(true);
-          await initializeAuth();
-          setChecking(false);
+          try {
+            await initializeAuth();
+          } finally {
+            if (active) setChecking(false);
+          }
         }
       }
     );
-    return () => subscription.unsubscribe();
+    return () => { active = false; unsubscribe(); };
   }, [initializeAuth]);
 
   const handleResend = async () => {
