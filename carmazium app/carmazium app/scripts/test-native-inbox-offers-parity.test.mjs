@@ -10,6 +10,7 @@ function compile(path,modules={}){
   const code=ts.transpileModule(readFileSync(new URL('../src/'+path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText;
   const exports={};runInNewContext(code,{exports,require:n=>{assert.ok(n in modules,n);return modules[n];},Date,URLSearchParams,setInterval:()=>1,clearInterval:()=>{},setTimeout:()=>1,process:{env:{}}});return exports;
 }
+const { getDealerOfferMetrics } = compile('lib/dealerOfferSummary.ts');
 const rn={...Object.fromEntries(['View','Text','FlatList','ActivityIndicator','RefreshControl','TextInput','ScrollView','StatusBar','TouchableOpacity'].map(n=>[n,n])),Dimensions:{get:()=>({width:600})},StyleSheet:{create:x=>x,absoluteFillObject:{}},Alert:{alert(){}}};
 const base={react:React,'expo-image':{Image:'Image'},'../../components/Logo':{Logo:'Logo'},'react-native':rn,'@/components/BrandIcon':{Ionicons:'Icon'},'react-native-safe-area-context':{useSafeAreaInsets:()=>({top:0,bottom:0})},'expo-linear-gradient':{LinearGradient:'LinearGradient'},'../../constants/colors':{Colors:{}},'../../constants/typography':{FontFamily:{},FontSize:{}},'../../constants/spacing':{Radius:{},Elevation:{}},'../../lib/haptics':{haptics:{success(){}}}};
 for(const name of ['WebsiteTopBar','IconButton','BottomSheet','SaleCancellationSheet'])base['../../components/'+name]={[name]:name};
@@ -26,7 +27,7 @@ test('inbox exposes unread and support filters without marking or sending messag
 });
 async function offers(status='WITHDRAWN',fail=false){
  const calls=[];const record={id:'offer',status,amount:7900,finalAmount:8000,listingId:'listing',listing:{id:'listing',title:'Toyota Aygo',price:11000,status:'ACTIVE'},buyer:{id:'buyer',firstName:'Buyer',email:'buyer@example.test'}};
- const {DealerOffersScreen}=compile('screens/main/DealerOffersScreen.tsx',{...base,'@react-navigation/native':{useNavigation:()=>({navigate(){}}),useFocusEffect:fn=>React.useEffect(fn,[fn])},'../../components/offers/CounterLedger':{CounterLedger:'CounterLedger'},'../../components/delivery/ReceivedDeliveryRequestsPanel':{ReceivedDeliveryRequestsPanel:'ReceivedDeliveryRequestsPanel'},'../../lib/apiClient':{apiClient:async(path,options)=>{calls.push([path,options]);if(fail)throw Error('offline');return{success:true,data:[record]};}}});
+ const {DealerOffersScreen}=compile('screens/main/DealerOffersScreen.tsx',{...base,'@react-navigation/native':{useNavigation:()=>({navigate(){}}),useFocusEffect:fn=>React.useEffect(fn,[fn])},'../../components/offers/CounterLedger':{CounterLedger:'CounterLedger'},'../../components/delivery/ReceivedDeliveryRequestsPanel':{ReceivedDeliveryRequestsPanel:'ReceivedDeliveryRequestsPanel'},'../../lib/dealerOfferSummary':{getDealerOfferMetrics},'../../lib/apiClient':{apiClient:async(path,options)=>{calls.push([path,options]);if(fail)throw Error('offline');return{success:true,data:[record]};}}});
  let tree,card;await act(async()=>{tree=create(React.createElement(DealerOffersScreen));});if(!fail)await act(async()=>{card=create(tree.root.findByType('FlatList').props.renderItem({item:record}));});return{tree,card,calls};
 }
 test('withdrawn offers retain the authoritative status and offer no pending actions',async()=>{
