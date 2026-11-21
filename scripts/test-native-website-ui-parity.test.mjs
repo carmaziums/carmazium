@@ -65,7 +65,10 @@ test('native shared header follows actual website logo, notification, account an
   assert.ok(bar.includes('<HamburgerButton websiteStyle />'));
   // Themed: bgElevated is #1E293B in the dark palette, white in light.
   assert.ok(bar.includes('backgroundColor: Colors.bgElevated'));
-  assert.ok(!bar.includes("setRole("));
+  assert.ok(bar.includes("role === 'dealer' && <TouchableOpacity"));
+  assert.ok(bar.includes("const role = useAuthStore(s => s.accountRole)"));
+  assert.ok(bar.includes("setRole(viewRole === 'dealer' ? 'buyer' : 'dealer')"));
+  assert.ok(!bar.includes("setAccountRole"));
   for (const screen of [
     'DealerProfileScreen.tsx',
     'DealerInventoryScreen.tsx',

@@ -42,6 +42,7 @@ export const WebsiteTopBar: React.FC = () => {
     || (role === 'dealer' ? 'D' : 'C')).toUpperCase();
   const viewRole = useAuthStore(s => s.role);
   const logout = useAuthStore(s => s.logout);
+  const setRole = useAuthStore(s => s.setRole);
   const { setSiteMenuTop, closeDrawer } = useDrawer();
   const [accountOpen, setAccountOpen] = useState(false);
   const [headerBottom, setHeaderBottom] = useState(0);
@@ -143,6 +144,11 @@ export const WebsiteTopBar: React.FC = () => {
               <Ionicons name="car-outline" size={19} color={Colors.textSecondary} />
               <Text style={styles.dropdownText}>Dashboard</Text>
             </TouchableOpacity>
+            {role === 'dealer' && <TouchableOpacity style={styles.dropdownRow}
+              onPress={() => goAccount(() => setRole(viewRole === 'dealer' ? 'buyer' : 'dealer'))} accessibilityRole="button">
+              <Ionicons name="swap-horizontal-outline" size={19} color={Colors.textSecondary} />
+              <Text style={styles.dropdownText}>{viewRole === 'dealer' ? 'Switch to personal view' : 'Switch to dealer view'}</Text>
+            </TouchableOpacity>}
             <TouchableOpacity
               style={styles.dropdownRow}
               onPress={() => goAccount(() => navigation.navigate('Settings'))}

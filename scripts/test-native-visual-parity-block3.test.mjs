@@ -15,54 +15,41 @@ const native = get('carmazium app/carmazium app/src/screens/main/DealerProfileSc
 const routes = get('carmazium app/carmazium app/src/navigation/TabNavigator.tsx');
 const docs = get('docs/native/website-native-visual-parity-block3-20261010.md');
 
-test('one website command centre and one native matching first fold', () => {
+test('dealer homes show the same card navigation without duplicated reporting panels', () => {
   assert.ok(web.includes("getDealerRoute('/dashboard/dealer')?.title"));
   assert.ok(web.includes('<DashboardCards mode="dealer"'));
-  assert.ok(web.includes('label="Active Stock"'));
-  assert.ok(web.includes('label="Vehicle Views"'));
-  assert.ok(web.includes('label="Active Leads"'));
-  assert.ok(web.includes('label="Vehicles Sold"'));
-  for (const label of ['DEALER COMMAND CENTRE','RUN YOUR DEALERSHIP FROM ONE PLACE','Overview',
-    'Active Stock','Vehicle Views','Active Leads','Vehicles Sold']) {
-    assert.ok(overview.includes(label), label);
-  }
   assert.ok(overview.includes('<DashboardCards mode="dealer"'));
-  const cards = get('carmazium app/carmazium app/src/components/DashboardCards.tsx');
-  assert.ok(cards.includes('Your dashboard'));
   assert.ok(native.includes('<DealerWebParityOverview'));
-  assert.ok(native.indexOf('<DealerWebParityOverview') < native.indexOf('Additional insights'));
-  assert.ok(!overview.includes('PRO</Text>'), 'no fake verification status');
-  assert.ok(overview.includes('summary?.isVerified === true'), 'verification comes from API');
+  for (const source of [web, overview, native]) {
+    assert.ok(!source.includes('<MetricCard'));
+    assert.ok(!source.includes('<FlexiblePeriodControl'));
+    assert.ok(!source.includes('Compare previous'));
+    assert.ok(!source.includes('Additional insights'));
+  }
+  assert.ok(overview.includes('DEALER COMMAND CENTRE'));
+  assert.ok(overview.includes('Needs your attention'));
 });
 
-test('same web report endpoint and flexible range, never 7d analytics as 30d stats', () => {
-  assert.ok(web.includes('/dashboard/dealer?${rangeQuery.toString()}'));
-  assert.ok(overview.includes('/dashboard/dealer?${query}'));
-  for (const preset of ["'7D'","'30D'","'3M'","'1Y'","'All'"]) {
-    assert.ok(selector.includes('"' + preset.slice(1,-1) + '"'), 'website ' + preset);
-    assert.ok(overview.includes(preset), 'native ' + preset);
+test('dashboard identity stays server-backed while reporting screens remain available', () => {
+  assert.ok(web.includes("'/dashboard/dealer'"));
+  assert.ok(overview.includes("'/dashboard/dealer'"));
+  assert.ok(overview.includes('summary?.isVerified === true'));
+  assert.ok(overview.includes('setSummary(null)'));
+  assert.ok(!overview.includes('PRO</Text>'));
+  assert.ok(!overview.includes('/dealers/analytics?range=7d'));
+  const cards = JSON.parse(get('src/data/dashboardCards.json')).dealer;
+  for (const label of ['Stock', 'Analytics', 'Earnings', 'Purchases']) {
+    assert.ok(cards.some(card => card.label === label), label);
   }
-  for (const unit of ["'days'","'months'","'years'"]) {
-    assert.ok(overview.includes(unit), unit);
-  }
-  for (const param of ["'rangeValue'","'rangeUnit'","'range'","'compare'"]) {
-    assert.ok(overview.includes(param), param);
-  }
-  assert.ok(overview.includes('Math.min(10000, Math.max(1'));
-  assert.ok(overview.includes("accessibilityRole=\"switch\""));
-  assert.ok(overview.includes("accessibilityState={{ checked: range.compare }}"));
-  assert.ok(overview.includes("No earlier account data available"));
 });
 
-test('real data only and coherent stale/error states', () => {
-  assert.ok(overview.includes("value.toLocaleString('en-GB')"));
-  assert.ok(overview.includes("return '—'"));
-  assert.ok(overview.includes('setError(true)'));
-  assert.ok(overview.includes('Previously loaded values are shown below.'));
-  assert.ok(overview.includes('Values are hidden until data is available.'));
-  assert.ok(native.includes('error && !stats && !analytics'));
-  assert.ok(native.includes('if (advancedExpanded) void loadData();'));
-  assert.ok(!overview.includes("'/dealers/analytics?range=7d'"));
+test('outstanding tasks retain explicit failure and permission handling', () => {
+  assert.ok(overview.includes('offersError &&'));
+  assert.ok(overview.includes('We couldn'));
+  assert.ok(overview.includes('!offersError &&'));
+  assert.ok(overview.includes('if (!canManageOffers)'));
+  assert.ok(overview.includes('if (!canViewPurchases)'));
+  assert.ok(overview.includes('if (!canManageInventory)'));
 });
 
 test('one set of permission-gated jobs; no altered auction/KYC/buyer routes', () => {
@@ -79,7 +66,7 @@ test('one set of permission-gated jobs; no altered auction/KYC/buyer routes', ()
   assert.ok(native.includes("navigation.navigate('Tabs', { screen: 'DealerBuyBid' })"));
   assert.ok(routes.includes('<Tab.Screen name="DealerBuyBid" component={GatedDealerBuyBidTab} />'));
   assert.ok(!routes.includes('<Tab.Screen name="DealerMore"'));
-  assert.ok(native.includes('setRole(\'buyer\')')); // legacy buyer preview retained
+  assert.ok(get('carmazium app/carmazium app/src/components/WebsiteTopBar.tsx').includes('Switch to personal view')); // existing preview is now in the account menu
   assert.ok(native.includes('showPhoneBanner')); // existing KYC/phone affordance retained
 });
 

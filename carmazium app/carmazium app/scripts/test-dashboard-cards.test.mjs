@@ -96,12 +96,14 @@ test('buyer-only dashboard renders the complete personal card menu without the o
     '../../constants/typography': { FontFamily: {}, FontSize: {} },
     '../../constants/spacing': { Elevation: {}, Radius: {} },
     '../../hooks/useTabBarClearance': { useTabBarClearance: () => 100 },
-    ...Object.fromEntries(['ScreenBackBar', 'Logo', 'IconButton', 'Button', 'DashboardCards'].map(name => ['../../components/' + name, { [name]: name }])),
+    ...Object.fromEntries(['ScreenBackBar', 'Logo', 'IconButton', 'Button', 'DashboardCards', 'WebsiteTopBar'].map(name => ['../../components/' + name, { [name]: name }])),
     '../../components/ui/ErrorBanner': { ErrorBanner: 'Error' },
     '../../components/ui/Skeleton': { Skeleton: 'Skeleton' },
   });
   let tree; await act(async () => { tree = create(React.createElement(BuyerDashboardScreen)); });
   assert.equal(tree.root.findByType('DashboardCards').props.mode, 'personal');
+  const text = tree.root.findAllByType('Text').flatMap(node => node.children).filter(value => typeof value === 'string').join(' ');
+  assert.doesNotMatch(text, /ACTIVE OFFERS|TOTAL SPENT|RECENT ACTIVITY|7D|30D/);
   assert.ok(menu.USER_ITEMS.some(item => item.stackScreen === 'BuyerBids'));
   assert.ok(menu.USER_ITEMS.some(item => item.stackScreen === 'BuyerDeliveryRequests'));
   await act(async () => tree.unmount());

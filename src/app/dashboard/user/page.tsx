@@ -220,7 +220,6 @@ function UnifiedUserDashboardContent() {
                                 loading={loading}
                                 error={dashboardError}
                                 onRetry={fetchStats}
-                                setTab={setTab}
                             />
                         )}
                         {activeTab === "cars" && <MyCarsTab onRefreshStats={fetchStats} />}
@@ -248,13 +247,11 @@ function OverviewTab({
     loading,
     error,
     onRetry,
-    setTab,
 }: {
     data: UnifiedDashboardData | null
     loading: boolean
     error: string | null
     onRetry: () => void
-    setTab: (t: string) => void
 }) {
     if (error && !data && !loading) {
         return <div className="space-y-8"><DashboardCards mode="personal" /><ErrorState message={error} onRetry={onRetry} className="min-h-[50vh]" /></div>
@@ -274,112 +271,6 @@ function OverviewTab({
 
             <DashboardCards mode="personal" />
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <MetricCard 
-                    label="Live Listings"
-                    value={data?.seller?.activeListings || 0} 
-                    icon={Car} 
-                    color="text-primary" 
-                    bg="bg-primary/10" 
-                    border="border-primary/20" 
-                    loading={loading} 
-                />
-                <MetricCard 
-                    label="Sales Revenue" 
-                    value={formatPrice(data?.seller?.totalRevenue || 0)} 
-                    icon={DollarSign} 
-                    color="text-emerald-400" 
-                    bg="bg-emerald-500/10" 
-                    border="border-emerald-500/20" 
-                    loading={loading} 
-                />
-                <MetricCard 
-                    label="Saved Cars" 
-                    value={data?.buyer?.watchlistCount || 0} 
-                    icon={Heart} 
-                    color="text-pink-400" 
-                    bg="bg-pink-500/10" 
-                    border="border-pink-500/20" 
-                    loading={loading} 
-                />
-                <MetricCard 
-                    label="Listing Views" 
-                    value={data?.seller?.totalViews || 0} 
-                    icon={Eye} 
-                    color="text-yellow-400" 
-                    bg="bg-yellow-500/10" 
-                    border="border-yellow-500/20" 
-                    loading={loading} 
-                />
-            </div>
-
-            {/* Recent Activity / Next Steps */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="glass-card p-6 border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
-                    <h3 className="text-lg font-black font-heading uppercase tracking-tight flex items-center gap-2 mb-6">
-                        <TrendingUp className="text-primary" size={20} /> Selling
-                    </h3>
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between p-4 bg-[var(--bg-card)] rounded-xl border border-[var(--border-default)] group hover:border-primary/30 transition-all">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary border border-primary/20">
-                                    <Tag size={18} />
-                                </div>
-                                <div>
-                                    <p className="font-bold text-sm">Offers Received</p>
-                                    <p className="text-xs text-[var(--text-muted)]">{(data?.seller?.incomingOffers || 0) === 1 ? "1 offer is" : `${data?.seller?.incomingOffers || 0} offers are`} waiting for your reply.</p>
-                                </div>
-                            </div>
-                            <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10" onClick={() => setTab('offers')}>View All</Button>
-                        </div>
-                        <div className="flex items-center justify-between p-4 bg-[var(--bg-card)] rounded-xl border border-[var(--border-default)] group hover:border-emerald-500/30 transition-all">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400 border border-emerald-500/20">
-                                    <DollarSign size={18} />
-                                </div>
-                                <div>
-                                    <p className="font-bold text-sm">Sales & Earnings</p>
-                                    <p className="text-xs text-[var(--text-muted)]">You have earned {formatPrice(data?.seller?.totalRevenue || 0)} from cars you sold.</p>
-                                </div>
-                            </div>
-                            <Button variant="ghost" size="sm" className="text-emerald-400 hover:bg-emerald-500/10" onClick={() => setTab('earnings')}>History</Button>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="glass-card p-6 border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
-                    <h3 className="text-lg font-black font-heading uppercase tracking-tight flex items-center gap-2 mb-6">
-                        <Gavel className="text-blue-400" size={20} /> Buying
-                    </h3>
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between p-4 bg-[var(--bg-card)] rounded-xl border border-[var(--border-default)] group hover:border-blue-500/30 transition-all">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-400 border border-blue-500/20">
-                                    <Tag size={18} />
-                                </div>
-                                <div>
-                                    <p className="font-bold text-sm">My Offers</p>
-                                    <p className="text-xs text-[var(--text-muted)]">Track the offers you've made on cars.</p>
-                                </div>
-                            </div>
-                            <Button variant="ghost" size="sm" className="text-blue-400 hover:bg-blue-500/10" onClick={() => setTab('bids')}>Manage</Button>
-                        </div>
-                        <div className="flex items-center justify-between p-4 bg-[var(--bg-card)] rounded-xl border border-[var(--border-default)] group hover:border-yellow-500/30 transition-all">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-yellow-500/10 rounded-full flex items-center justify-center text-yellow-400 border border-yellow-500/20">
-                                    <Heart size={18} />
-                                </div>
-                                <div>
-                                    <p className="font-bold text-sm">Saved Cars</p>
-                                    <p className="text-xs text-[var(--text-muted)]">You have saved {data?.buyer?.watchlistCount || 0} {(data?.buyer?.watchlistCount || 0) === 1 ? "car" : "cars"}.</p>
-                                </div>
-                            </div>
-                            <Button variant="ghost" size="sm" className="text-yellow-400 hover:bg-yellow-500/10" onClick={() => setTab('watchlist')}>View Saved</Button>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     )
 }
