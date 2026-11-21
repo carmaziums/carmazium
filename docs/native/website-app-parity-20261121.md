@@ -89,3 +89,11 @@ Compared build 111 and signed-in Chrome inside the same BlueStacks display. Mobi
 - Added persistent, permission-filtered dealer destinations to these four stack pages.
 
 Validation: 778 root tests pass; native TypeScript passes; ten new component/contract tests cover zero-sale analytics, all auction rows, date validation, stale responses, filtered CSV, native authenticated receipts, KYC deduplication, approval visibility and failed preference retry. The existing 57 native tests also passed before the final three analytics tests were added. APK 112 is building from PR 947 and **does not include this follow-up**. These changes need a subsequent signed build and actual emulator acceptance. Buyer/seller, admin, remaining dealer/services pages and iOS remain outstanding.
+
+## Same-emulator buying-page follow-up
+
+Build 111's Saved page shows zero auctions while the same dealer in emulator Chrome shows three. The native Saved page filtered the general retail watchlist instead of reading `/watchlist/auctions?view=all`. The dealer page now uses the exact auction feed, includes ended records, and switches to the separate paginated retail feed. Opening an unavailable/ended saved vehicle never removes it; removal is an explicit action.
+
+The Bids & Offers page displayed a cramped horizontal row that hid the vehicle title/status, extra summary blocks and a Create Auction button. The native bid card now follows the mobile website's image, status, title, specification, price, bid-count and action layout. It exposes the existing current-bid cancellation with deadline checks, staff bidding permission and explicit confirmation; cancellation refreshes authoritative positions rather than guessing which earlier bid becomes active. No live bid was cancelled during QA.
+
+Four additional component tests cover real feed selection, three ended saved rows, native detail navigation without removal, explicit cancellation confirmation and permission/deadline restrictions. Native suite: 71 passed. Native TypeScript and source parity checks pass. Updated legacy source assertions follow the extracted bid-card component. On-device validation requires the next signed build; this is not a complete parity claim.

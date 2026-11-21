@@ -182,9 +182,9 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
   // larger system font size. Other sections keep it above their own view.
   const pageHeading = (
     <View style={styles.heading}>
-      <Text style={styles.pageTitle}>{section === 'bids' ? 'Bids & Offers' : section === 'mine' ? 'My Auctions' : 'Live Auctions'}</Text>
-      <Text style={styles.subtitle}>{section === 'bids' ? 'Auction bids and your retail offers.' : 'Cars available to bid on.'}</Text>
-      {canManageInventory && (
+      <Text style={styles.pageTitle}>{section === 'bids' ? 'Bids & offers' : section === 'mine' ? 'My Auctions' : 'Live Auctions'}</Text>
+      <Text style={styles.subtitle}>{section === 'bids' ? 'YOUR LIVE AUCTION BIDS, ONE POSITION PER VEHICLE' : 'Cars available to bid on.'}</Text>
+      {canManageInventory && section === 'mine' && (
         <TouchableOpacity accessibilityRole="button"
           accessibilityLabel="Create Auction"
           onPress={openCreate} style={styles.createButton}>
@@ -219,6 +219,7 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
           {/* Bids & offers: auction bids here; retail offers keep their own
               MANAGE_OFFERS-gated screen. Same two views as the website. */}
           <DealerActiveBidPositions
+            canPlaceBid={canPlaceBid}
             navigation={navigation}
             header={<>
               {pageHeading}

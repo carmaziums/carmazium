@@ -9,6 +9,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { Elevation, Radius } from '../../constants/spacing';
+import { ActiveBidCard, type ActiveBidPosition } from '../../components/dealer/ActiveBidCard';
 import { Button } from '../../components/Button';
 import { FontFamily } from '../../constants/typography';
 
@@ -29,16 +30,7 @@ type SavedAuction = {
     } | null;
   } | null;
 };
-type AuctionPosition = {
-  listingId: string; auctionId: string | null; myBidId: string;
-  myHighestBid: number; currentHighestBid: number;
-  isLeading: boolean; bidCount: number; endTime: string;
-  canCancelCurrentBid: boolean; cancelDeadline: string;
-  listing: {
-    id: string; title: string; images?: string[];
-    make?: string | null; year?: number | null; model?: string | null;
-  };
-};
+type AuctionPosition = ActiveBidPosition;
 
 const money = (v: number | string | null | undefined) => {
   if (v == null || String(v).trim() === '' || !Number.isFinite(Number(v))) return '—';
@@ -206,7 +198,7 @@ export function DealerAuctionShortlist({ navigation, header }: { navigation?: Na
   );
 }
 
-export function DealerActiveBidPositions({ navigation, header }: { navigation?: Nav; header?: React.ReactNode }) {
+export function DealerActiveBidPositions({ navigation, header, canPlaceBid = false }: { navigation?: Nav; header?: React.ReactNode; canPlaceBid?: boolean }) {
   const [positions, setPositions] = useState<AuctionPosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -234,24 +226,13 @@ export function DealerActiveBidPositions({ navigation, header }: { navigation?: 
     const id = setInterval(() => { void fetchBids(true); }, 20000);
     return () => clearInterval(id);
   }, [fetchBids]);
-  const leading = positions.filter(x=>x.isLeading).length;
-  // Title and totals scroll with the bids (list header) so a tall header on
-  // a small phone or large font size never leaves only a sliver for the list.
   const bidsHeader = <View style={styles.bidsHeaderBleed}>
     {header}
-    <Text style={styles.title}>My Auction Bids</Text>
-    <Text style={styles.subtitle}>One live position per vehicle you're currently bidding on</Text>
-    {error && <ErrorText message={error} onRetry={() => void fetchBids(true)} />}
-    {!loading && (!error || positions.length > 0) && <View style={styles.metrics}>
-      {[{label:'Live Auction Positions',count:positions.length},
-        {label:'Currently Leading',count:leading},
-        {label:'Outbid / Action Needed',count:positions.length-leading}].map(x=>(
-        <View key={x.label} style={styles.metric}>
-          <Text style={styles.metricNumber}>{x.count}</Text>
-          <Text style={styles.metricLabel}>{x.label}</Text>
-        </View>
-      ))}
-    </View>}
+    <View style={{paddingHorizontal:20,gap:16,marginBottom:20}}>
+      <Button label="Refresh" variant="outline" loading={refreshing} onPress={() => void fetchBids(true)} />
+      {error && <ErrorText message={error} onRetry={() => void fetchBids(true)} />}
+      {!loading && (!error || positions.length > 0) && <Text style={{fontSize:14,color:Colors.textMuted}}>{positions.length} active auction bid{positions.length===1?'':'s'}.</Text>}
+    </View>
   </View>;
   return <View style={styles.root}>
     <FlatList
@@ -262,32 +243,7 @@ export function DealerActiveBidPositions({ navigation, header }: { navigation?: 
       contentContainerStyle={styles.listContent}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void fetchBids(true)}
         tintColor={Colors.accent}/>}
-      renderItem={({ item }) => (
-        <View style={styles.card}>
-          <View style={styles.bidHeader}>
-            <Thumbnail uri={item.listing?.images?.[0]}/>
-            <View style={styles.cardCopy}>
-              <Text style={styles.cardTitle} numberOfLines={2}>{item.listing?.title || 'Vehicle auction'}</Text>
-              <Text style={[styles.status,
-                { color: item.isLeading ? Colors.success : Colors.warning }]}>
-                {item.isLeading ? 'CURRENTLY LEADING' : 'OUTBID / ACTION NEEDED'}
-              </Text>
-              <TimeLeftText endTime={item.endTime} style={styles.meta} />
-            </View>
-          </View>
-          <View style={styles.bidMetrics}>
-            <Text style={styles.meta}>Your highest bid: {money(item.myHighestBid)}</Text>
-            <Text style={styles.meta}>Current highest: {money(item.currentHighestBid)}</Text>
-          </View>
-          <TouchableOpacity style={styles.mainAction}
-            accessibilityRole="button"
-            disabled={!item.auctionId}
-            onPress={() => item.auctionId &&
-              navigation?.navigate('AuctionDeepLink', { auctionId: item.auctionId })}>
-            <Text style={styles.mainActionText}>{item.isLeading ? 'View Live Auction' : 'Bid Again'}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      renderItem={({ item }) => <ActiveBidCard position={item} canPlaceBid={canPlaceBid} onRefresh={() => fetchBids(true)} onOpen={() => item.auctionId && navigation?.navigate('AuctionDeepLink', {auctionId:item.auctionId})} />}
       ListEmptyComponent={
         loading ? <ActivityIndicator color={Colors.accent} style={{ marginTop: 38 }}/> :
           !error ? <View style={styles.empty}>

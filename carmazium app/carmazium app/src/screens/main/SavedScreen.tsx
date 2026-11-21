@@ -22,6 +22,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
+import { DealerSavedScreen } from './DealerSavedScreen';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { getBottomTabBarHeight } from '../../lib/nativeLayoutParity';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -49,6 +50,11 @@ type ViewMode = 'grid' | 'list';
 // ─── Saved Screen ─────────────────────────────────────────────────────────────
 
 export const SavedScreen: React.FC = () => {
+  const accountRole = useAuthStore(s => s.accountRole);
+  return accountRole === 'dealer' ? <DealerSavedScreen /> : <PersonalSavedScreen />;
+};
+
+const PersonalSavedScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const accountRole = useAuthStore(s => s.accountRole);
   const insets = useSafeAreaInsets();

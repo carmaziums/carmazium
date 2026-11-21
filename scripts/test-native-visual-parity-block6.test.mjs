@@ -30,7 +30,7 @@ test('dealer Buy destinations match approved web and native roles without losing
   assert.ok(tab.includes('<Tab.Screen name="Live" component={LiveScreen} />'));
   assert.ok(hub.includes("initialSection || 'live'"));
   assert.ok(hub.includes('Live Auctions'));
-  assert.ok(hub.includes('Bids & Offers'));
+  assert.match(hub, /Bids & [Oo]ffers/);
   for (const label of ['My Auctions', 'Live Auctions', 'Shortlisted', 'Purchases'])
     assert.ok(hub.includes(label), label);
   // The original own-auction management and bidder actions remain available.
@@ -84,10 +84,13 @@ test('My Bids matches web active-position endpoint, while full history remains r
   const website=read('src/lib/listingApi.ts');
   assert.ok(website.includes("'/bids/my/active'"));
   assert.ok(other.includes("('/bids/my/active')"));
-  assert.ok(other.includes('item.isLeading'));
-  assert.ok(other.includes('item.currentHighestBid'));
-  assert.ok(other.includes('Outbid / Action Needed'));
-  assert.ok(other.includes('Live Auction Positions'));
+  const card = app('components/dealer/ActiveBidCard.tsx');
+  assert.ok(other.includes('<ActiveBidCard position={item}'));
+  assert.ok(card.includes('p.isLeading'));
+  assert.ok(card.includes('p.currentHighestBid'));
+  assert.ok(card.includes('OUTBID'));
+  assert.ok(card.includes('Next minimum bid'));
+  assert.ok(card.includes('Cancel Current Bid'));
   assert.ok(other.includes("navigation?.navigate('BuyerBids')"));
   assert.ok(!other.includes("method: 'POST'"), 'no new bid creation in overview');
   assert.ok(!other.includes("method: 'PATCH'"), 'no new bid cancel/payment contract in overview');
