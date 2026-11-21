@@ -26,9 +26,9 @@ export const RootNavigator: React.FC = () => {
   const accountRole = useAuthStore(s => s.accountRole);
   const actorId = useAuthStore(s => s.user?.id);
   const isPartner = accountRole === 'dealer' || accountRole === 'contractor';
-  const requiresAgreementCheck = isAuthenticated && hasCompletedOnboarding && isPartner;
   const [agreementState, setAgreementState] = useState<'checking' | 'accepted' | 'required'>('checking');
   const hasCompletedOnboarding = useAuthStore((s) => s.hasCompletedOnboarding);
+  const requiresAgreementCheck = isAuthenticated && hasCompletedOnboarding && isPartner;
   const pendingEmailVerification = useAuthStore((s) => s.pendingEmailVerification);
   const postLoginRedirect = useAuthStore((s) => s.postLoginRedirect);
   const consumePostLoginRedirect = useAuthStore((s) => s.consumePostLoginRedirect);
