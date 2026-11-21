@@ -300,7 +300,7 @@ export const SearchScreen: React.FC = () => {
     }
   }, [navigation]);
   const renderListingItem = useCallback(
-    ({ item }: { item: CarListing }) => <HorizontalVehicleCard listing={item} onPress={handleCardPress} onWarranty={()=>navigation.navigate('Warranty')}/>,
+    ({ item }: { item: CarListing }) => <HorizontalVehicleCard listing={item} onPress={handleCardPress} onWarranty={item.status==='ACTIVE'&&item.listingType==='CLASSIFIED'?()=>navigation.navigate('Warranty',{listingId:item.id}):undefined}/>,
     [handleCardPress,navigation],
   );
 
@@ -736,7 +736,7 @@ export const SearchScreen: React.FC = () => {
           <Text style={s.clearBelowText}>Clear {filterCount} {filterCount === 1 ? 'filter' : 'filters'}</Text>
         </TouchableOpacity>
       )}
-      {!!sections.featured.length&&<View style={{paddingHorizontal:24,gap:16,paddingBottom:24}}><Text style={{color:Colors.warning,fontFamily:FontFamily.bold,fontSize:14}}>FEATURED LISTINGS</Text>{sections.featured.map(item=><HorizontalVehicleCard key={item.id} listing={{...item,isFeatured:true}} onPress={handleCardPress} onWarranty={()=>navigation.navigate('Warranty')}/>)}<Text style={{color:Colors.textMuted}}>All listings below</Text></View>}
+      {!!sections.featured.length&&<View style={{paddingHorizontal:24,gap:16,paddingBottom:24}}><Text style={{color:Colors.warning,fontFamily:FontFamily.bold,fontSize:14}}>FEATURED LISTINGS</Text>{sections.featured.map(item=><HorizontalVehicleCard key={item.id} listing={{...item,isFeatured:true}} onPress={handleCardPress} onWarranty={item.status==='ACTIVE'&&item.listingType==='CLASSIFIED'?()=>navigation.navigate('Warranty',{listingId:item.id}):undefined}/>)}<Text style={{color:Colors.textMuted}}>All listings below</Text></View>}
     </>
   );
   const showResults = !(loading && listings.length === 0) && !(searchError && listings.length === 0) && listings.length > 0;
