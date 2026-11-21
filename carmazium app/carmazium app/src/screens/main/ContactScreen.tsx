@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Linking,
+  Alert,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -19,7 +20,9 @@ import { Elevation, Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
-import { HamburgerButton } from '../../components/HamburgerButton';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { FormField, pageStyles } from '../../components/NativePage';
+import { Button } from '../../components/Button';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // Keep the app's public contact information aligned with the website and
@@ -49,6 +52,21 @@ const CONTACT_ROWS = [
 export const ContactScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [attempted, setAttempted] = useState(false);
+  const openDraft = async () => {
+    setError('');
+    if (![name,email,subject,message].every(value=>value.trim())) { setError('Complete your name, email address, subject and message.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError('Enter a valid email address.'); return; }
+    const body = 'Name: '+name.trim()+'\nReply-to email: '+email.trim()+'\n\nMessage:\n'+message.trim();
+    setAttempted(true);
+    try { await Linking.openURL('mailto:info@carmazium.com?subject='+encodeURIComponent('CarMazium enquiry: '+subject.trim())+'&body='+encodeURIComponent(body)); }
+    catch { setError('No email app opened. Contact info@carmazium.com directly. Your enquiry has not been sent.'); }
+  };
 
   return (
     <View style={styles.container}>
@@ -60,27 +78,29 @@ export const ContactScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <View style={{ height: insets.top }} />
-
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.textPrimary} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Contact</Text>
-        <HamburgerButton />
-      </View>
+      <WebsiteTopBar />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[styles.scrollContent,{paddingBottom:insets.bottom+40}]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.heroTitle}>Get in touch</Text>
-        <Text style={styles.heroDesc}>
-          Have a question about buying, selling, or your account? Reach us directly below.
-        </Text>
+        <Text style={[styles.heroTitle,{fontSize:36,textAlign:'center',marginBottom:30}]}>Contact Us</Text>
+        <View style={[pageStyles.panel,{marginBottom:24,padding:28,gap:24}]}>
+          <Text style={[pageStyles.label,{fontSize:24}]}>Send us a message</Text>
+          <FormField label="Full Name" value={name} onChangeText={setName} maxLength={100} autoComplete="name" placeholder="Your name" />
+          <FormField label="Email Address" value={email} onChangeText={setEmail} maxLength={254} autoComplete="email" keyboardType="email-address" autoCapitalize="none" placeholder="you@example.com" />
+          <FormField label="Subject" value={subject} onChangeText={setSubject} maxLength={120} placeholder="Enquiry about..." />
+          <FormField label="Message" value={message} onChangeText={setMessage} maxLength={1800} multiline style={[pageStyles.input,{minHeight:150,textAlignVertical:'top'}]} placeholder="How can we help you? Please do not include passwords or bank details." />
+          {!!error&&<Text accessibilityRole="alert" style={pageStyles.error}>{error}</Text>}
+          <Button label="Open email draft" onPress={()=>void openDraft()} />
+          <Text style={pageStyles.body}>This opens your email application with a prepared enquiry. Review it and press Send in your email app. Nothing is sent from this app automatically.</Text>
+          {attempted&&<Text style={pageStyles.body}>If no email app opened, contact info@carmazium.com directly. Your enquiry has not been sent by this page.</Text>}
+        </View>
 
         {CONTACT_ROWS.map((row) => (
-          <TouchableOpacity key={row.title} style={styles.card} activeOpacity={0.8} onPress={row.action} accessibilityRole="button" accessibilityLabel={row.title + ": " + row.lines.join(", ")}>
+          <TouchableOpacity key={row.title} style={styles.card} activeOpacity={0.8} onPress={()=>{void row.action().catch(()=>Alert.alert(row.title,row.lines.join("\n")));}} accessibilityRole="button" accessibilityLabel={row.title + ": " + row.lines.join(", ")}>
             <View style={styles.cardIconWrap}>
               <Ionicons name={row.icon} size={20} color={Colors.accent} />
             </View>

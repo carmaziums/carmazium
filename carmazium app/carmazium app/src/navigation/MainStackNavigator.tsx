@@ -179,7 +179,7 @@ export type MainStackParamList = {
   Contact: undefined;
   Pricing: undefined;
   Reviews: undefined;
-  Warranty: undefined;
+  Warranty: { listingId?: string } | undefined;
   WarrantyOrder: { id: string };
   GuestEnquiries: undefined;
   WarrantyOrders: undefined;
