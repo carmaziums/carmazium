@@ -10,11 +10,14 @@ import { createHash } from 'crypto';
 describe('Master Business Partner Agreement authenticated signing and gating', () => {
   const previousEnforce = process.env.PARTNER_AGREEMENT_ENFORCE;
   const previousReview = process.env.PARTNER_AGREEMENT_LEGAL_REVIEW_COMPLETE;
+  const previousSigning = process.env.PARTNER_AGREEMENT_ACCEPT_ENABLED;
   afterAll(() => {
     if (previousEnforce === undefined) delete process.env.PARTNER_AGREEMENT_ENFORCE;
     else process.env.PARTNER_AGREEMENT_ENFORCE = previousEnforce;
     if (previousReview === undefined) delete process.env.PARTNER_AGREEMENT_LEGAL_REVIEW_COMPLETE;
     else process.env.PARTNER_AGREEMENT_LEGAL_REVIEW_COMPLETE = previousReview;
+    if (previousSigning === undefined) delete process.env.PARTNER_AGREEMENT_ACCEPT_ENABLED;
+    else process.env.PARTNER_AGREEMENT_ACCEPT_ENABLED = previousSigning;
   });
   let prisma: any;
   let service: PartnerAgreementService;
@@ -39,6 +42,7 @@ describe('Master Business Partner Agreement authenticated signing and gating', (
   beforeEach(() => {
     process.env.PARTNER_AGREEMENT_ENFORCE = 'true';
     process.env.PARTNER_AGREEMENT_LEGAL_REVIEW_COMPLETE = 'true';
+    delete process.env.PARTNER_AGREEMENT_ACCEPT_ENABLED;
     prisma = {
       user: { findUnique: jest.fn().mockResolvedValue(baseUser()) },
       partnerAgreementAcceptance: {
@@ -60,6 +64,26 @@ describe('Master Business Partner Agreement authenticated signing and gating', (
     process.env.PARTNER_AGREEMENT_ENFORCE = 'true';
     delete process.env.PARTNER_AGREEMENT_LEGAL_REVIEW_COMPLETE;
     await expect(service.assertAccepted('owner-1')).resolves.toBeUndefined();
+  });
+
+  it('allows owner signatures before enforcement without locking out old Android clients', async () => {
+    delete process.env.PARTNER_AGREEMENT_ENFORCE;
+    process.env.PARTNER_AGREEMENT_ACCEPT_ENABLED = 'true';
+    expect(service.document()).toMatchObject({signingEnabled: true, requiresLegalReviewBeforeProduction: false});
+    expect(await service.status('owner-1')).toMatchObject({required: true, accepted: false, canSign: true});
+    await expect(service.assertAccepted('owner-1')).resolves.toBeUndefined();
+    expect(await service.accept('owner-1', signature)).toMatchObject({accepted: true});
+    expect(prisma.partnerAgreementAcceptance.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('never permits signatures without confirmed legal review, even in pre-enforcement mode', async () => {
+    delete process.env.PARTNER_AGREEMENT_ENFORCE;
+    process.env.PARTNER_AGREEMENT_ACCEPT_ENABLED = 'true';
+    delete process.env.PARTNER_AGREEMENT_LEGAL_REVIEW_COMPLETE;
+    expect(service.document()).toMatchObject({signingEnabled: false, requiresLegalReviewBeforeProduction: true});
+    expect(await service.status('owner-1')).toMatchObject({required: false, canSign: false});
+    await expect(service.accept('owner-1', signature)).rejects.toThrow('Business agreements are not yet activated.');
+    expect(prisma.partnerAgreementAcceptance.create).not.toHaveBeenCalled();
   });
 
   it('fingerprints the complete immutable source rather than a user-supplied document', () => {
