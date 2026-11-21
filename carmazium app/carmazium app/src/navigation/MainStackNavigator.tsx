@@ -48,7 +48,7 @@ import { PrivacyPolicyScreen } from '../screens/main/PrivacyPolicyScreen';
 import { HowItWorksScreen } from '../screens/main/HowItWorksScreen';
 import { AboutScreen } from '../screens/main/AboutScreen';
 import { ContactScreen } from '../screens/main/ContactScreen';
-import { PricingScreen } from '../screens/main/PricingScreen';
+import { PricingScreen, TraderPricingScreen } from '../screens/main/PricingScreen';
 import { ReviewsScreen } from '../screens/main/ReviewsScreen';
 import { FinanceScreen } from '../screens/main/FinanceScreen';
 import { AuctionCompleteScreen } from '../screens/main/AuctionCompleteScreen';
@@ -178,6 +178,7 @@ export type MainStackParamList = {
   About: undefined;
   Contact: undefined;
   Pricing: undefined;
+  TraderPricing: undefined;
   Reviews: undefined;
   Warranty: { listingId?: string } | undefined;
   WarrantyOrder: { id: string };
@@ -215,8 +216,8 @@ export type MainStackParamList = {
     paymentType?: 'COMMISSION';
     auctionId?: string;
   } | undefined;
-  SellLanding: undefined;
-  SellCarFlow: { listingId?: string; listingType?: 'AUCTION' | 'CLASSIFIED'; prefill?: {
+  SellLanding: { listingType?: 'AUCTION' | 'CLASSIFIED'; badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM' } | undefined;
+  SellCarFlow: { badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM'; listingId?: string; listingType?: 'AUCTION' | 'CLASSIFIED'; prefill?: {
     valuation?: VehicleValuation;
     vrm?: string; make?: string; model?: string; year?: number; mileage?: number;
     transmission?: string; fuelType?: string; variant?: string; bodyType?: string; driveType?: string;
@@ -411,6 +412,7 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="HowItWorks" component={HowItWorksScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="About" component={AboutScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Contact" component={ContactScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="TraderPricing" component={TraderPricingScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Pricing" component={PricingScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Reviews" component={ReviewsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Blog" component={BlogScreen} />

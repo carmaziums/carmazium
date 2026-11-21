@@ -3,7 +3,7 @@ import {
   ActivityIndicator, ScrollView, StatusBar, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@/components/BrandIcon';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
@@ -51,6 +51,8 @@ const SellValuationField = ({ label, value, onChangeText, placeholder, keyboardT
 
 export const SellLandingScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const route=useRoute<any>();
+  const selectedTier=['BASIC','STANDARD','PREMIUM'].includes(route.params?.badgeTier)?route.params.badgeTier:undefined;
   const [vrm, setVrm] = useState('');
   const [mileage, setMileage] = useState('');
   const [make, setMake] = useState('');
@@ -156,6 +158,7 @@ export const SellLandingScreen: React.FC = () => {
   const startListing = (listingType: RouteSellingMode) => {
     navigation.navigate('SellCarFlow', {
       listingType,
+      badgeTier:listingType==='CLASSIFIED'?selectedTier:undefined,
       prefill: {
         // Carry the exact server quote into the listing form. Avoid a second
         // valuation call for the same vehicle during this customer journey.
@@ -190,6 +193,7 @@ export const SellLandingScreen: React.FC = () => {
     <View style={styles.screen}>
       <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent"/>
       <WebsiteTopBar />
+      {!!selectedTier&&<Text style={{color:Colors.textPrimary,padding:16}}>Selected retail package: {selectedTier}. You can change this before publishing.</Text>}
       <ScrollView keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
         <Text style={styles.eyebrow}>SELL MY CAR ONLINE · UK</Text>

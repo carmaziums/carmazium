@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ScrollView,
   StatusBar,
@@ -19,7 +19,10 @@ import { PRICING } from '../../constants/pricing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
-import { HamburgerButton } from '../../components/HamburgerButton';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { NativePage, pageStyles } from '../../components/NativePage';
+import { Button } from '../../components/Button';
+import { useAuthStore } from '../../store/authStore';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── data ──────────────────────────────────
@@ -46,25 +49,18 @@ interface PlanCard {
 const PLANS: PlanCard[] = [
   {
     id: 'auction',
-    title: 'Auction',
-    subtitle: '24-hour live open auction',
+    title: 'Auction seller',
+    subtitle: '£0 seller listing fee',
     price: 'Free',
     period: '',
-    accentColor: Colors.warning,
-    accentBg: Colors.warningAlpha10,
-    accentBorder: Colors.warningAlpha25,
-    features: [
-      { label: 'Live bidding marketplace', included: true },
-      { label: 'Verified Traders can bid', included: true },
-      { label: '24-hour auction duration', included: true },
-      { label: 'Anti-snipe protection', included: true },
-      { label: 'Real-time bid feed', included: true },
-      { label: 'Post-auction seller chat', included: true },
-    ],
+    accentColor: Colors.accent,
+    accentBg: Colors.accentAlpha06,
+    accentBorder: Colors.accentAlpha25,
+    features: ['24-hour live auction','Verified motor traders can bid','Live bidding and anti-snipe protection',`£${PRICING.marketplace.auction.sellerReward} reward after successful approved handover`].map(label=>({label,included:true})),
   },
   {
     id: 'basic',
-    title: 'Basic',
+    title: 'Basic retail',
     subtitle: '£1 one-off · advertised until sold',
     price: `£${PRICING.listing.basic.price}`,
     period: 'one-off',
@@ -82,7 +78,7 @@ const PLANS: PlanCard[] = [
   },
   {
     id: 'standard',
-    title: 'Standard',
+    title: 'Standard retail',
     subtitle: 'Vehicle history report included',
     price: `£${PRICING.listing.standard.price}`,
     period: 'one-off',
@@ -99,14 +95,14 @@ const PLANS: PlanCard[] = [
   },
   {
     id: 'premium',
-    title: 'Premium',
+    title: 'Premium retail',
     subtitle: 'Vehicle history report + 28-day Featured Boost included',
     price: `£${PRICING.listing.premium.price}`,
     period: 'one-off',
-    badge: 'BEST VALUE',
-    accentColor: Colors.accent,
-    accentBg: Colors.accentAlpha10,
-    accentBorder: Colors.accentAlpha25,
+    badge: 'BEST VALUE · REPORT + BOOST',
+    accentColor: Colors.warning,
+    accentBg: Colors.warningAlpha10,
+    accentBorder: Colors.warningAlpha25,
     features: [
       { label: 'Everything in Standard', included: true },
       { label: 'Vehicle history report included', included: true },
@@ -150,11 +146,40 @@ const ADD_ONS: AddOn[] = [
   },
 ];
 
+const FAQS = [
+    {
+        q: "What retail listing packages can I choose?",
+        a: `Basic is £${PRICING.listing.basic.price}, Standard is £${PRICING.listing.standard.price} and includes a vehicle history report, and Premium is £${PRICING.listing.premium.price} and includes the Standard package benefits plus a 28-day Featured Boost.`,
+    },
+    {
+        q: "How much does it cost to put my car into auction?",
+        a: "Nothing. Auction listings are free for sellers and run for 24 hours. Verified motor traders can bid.",
+    },
+    {
+        q: "Is a vehicle history check compulsory?",
+        a: "No. A vehicle history check is optional. Choose Basic without one, purchase a report separately, or choose Standard/Premium with a report included.",
+    },
+    {
+        q: "Does CarMazium charge retail buyers?",
+        a: "No. CarMazium does not charge a buyer fee for retail vehicle purchases.",
+    },
+    {
+        q: "Does CarMazium handle the vehicle purchase money?",
+        a: "No. Buyers pay sellers directly for the vehicle. CarMazium only collects its own applicable platform fees and optional add-on charges.",
+    },
+    {
+        q: "How does the £100 auction seller reward work?",
+        a: `After a successful auction sale, the seller uploads the handover photo. Once the handover is approved, CarMazium releases the £${PRICING.marketplace.auction.sellerReward} seller reward.`,
+    },
+]
+
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const PricingScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
+  const [openFaq,setOpenFaq]=useState<number|null>(null);
+  const signedIn=useAuthStore(state=>state.isAuthenticated);
 
   return (
     <View style={styles.container}>
@@ -166,27 +191,18 @@ export const PricingScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <View style={{ height: insets.top }} />
-
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.textPrimary} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Pricing</Text>
-        <HamburgerButton />
-      </View>
+      <WebsiteTopBar />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent,{paddingBottom:insets.bottom+60}]}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Intro ── */}
         <View style={styles.introSection}>
-          <Text style={styles.introHeading}>Simple, honest pricing</Text>
-          <Text style={styles.introSub}>
-            List your car for free at auction, or choose Basic £1, Standard £10
-            with a vehicle history report included, or Premium £25 with a vehicle history report and a 28-day Featured Boost. Retail buyers pay no CarMazium buyer fee.
-          </Text>
+          <Text style={{fontSize:12,letterSpacing:1.5,color:Colors.accent,fontFamily:FontFamily.bold}}>SIMPLE CUSTOMER PRICING</Text>
+          <Text style={[styles.introHeading,{fontSize:32,lineHeight:40,textAlign:'center'}]}>Simple, transparent pricing for every way you sell.</Text>
+          <Text style={[styles.introSub,{fontSize:16,lineHeight:28,textAlign:'center'}]}>Auction for free, or choose the retail package that fits your car. Retail buyers pay no CarMazium buyer fee.</Text>
         </View>
 
         {/* ── Plan cards ── */}
@@ -199,7 +215,7 @@ export const PricingScreen: React.FC = () => {
             ]}
           >
             {/* Card top accent bar */}
-            <View style={[styles.planTopBar, { backgroundColor: plan.accentColor }]} />
+
 
             {plan.badge && (
               <View style={styles.mostPopularBadge}>
@@ -218,14 +234,13 @@ export const PricingScreen: React.FC = () => {
                 />
               </View>
               <View style={styles.planTitleWrap}>
-                <Text style={styles.planTitle}>{plan.title}</Text>
-                <Text style={styles.planSubtitle}>{plan.subtitle}</Text>
+                <Text style={[styles.planTitle,{fontSize:12,letterSpacing:1.5,color:plan.accentColor}]}>{plan.title.toUpperCase()}</Text>
               </View>
             </View>
 
             {/* Price */}
             <View style={styles.priceRow}>
-              <Text style={[styles.planPrice, { color: plan.accentColor, fontFamily: FontFamily.mono }]}>
+              <Text style={[styles.planPrice, { color: plan.accentColor, fontFamily: FontFamily.bold,fontSize:48,lineHeight:58 }]}>
                 {plan.price}
               </Text>
               {plan.period ? (
@@ -233,6 +248,7 @@ export const PricingScreen: React.FC = () => {
               ) : null}
             </View>
 
+            <Text style={[styles.planSubtitle,{paddingHorizontal:24,fontSize:14,paddingBottom:24}]}>{plan.subtitle}</Text>
             {/* Divider */}
             <View style={styles.planDivider} />
 
@@ -251,13 +267,14 @@ export const PricingScreen: React.FC = () => {
                 </View>
               ))}
             </View>
+            <View style={{padding:24,paddingTop:8}}><Button label={plan.id==='auction'?'Start Free Auction':`Choose ${plan.id[0].toUpperCase()+plan.id.slice(1)}`} onPress={()=>navigation.navigate('SellLanding',plan.id==='auction'?{listingType:'AUCTION'}:{listingType:'CLASSIFIED',badgeTier:plan.id.toUpperCase() as 'BASIC'|'STANDARD'|'PREMIUM'})}/></View>
           </View>
         ))}
 
         {/* ── Add-ons ── */}
         <View style={styles.sectionHeadingWrap}>
           <Text style={styles.sectionHeading}>Optional add-ons</Text>
-          <Text style={styles.sectionSub}>Enhance any listing at any time — buy once, apply instantly.</Text>
+          <Text style={styles.sectionSub}>Optional extras for Auction, Basic and Standard; Premium already includes a vehicle history report and the first 28-day Featured Boost.</Text>
         </View>
 
         {ADD_ONS.map((addon) => (
@@ -282,7 +299,7 @@ export const PricingScreen: React.FC = () => {
         <TouchableOpacity
           style={styles.dealerPrompt}
           activeOpacity={0.8}
-          onPress={() => navigation.navigate('DealerOnboarding')}
+          onPress={() => navigation.navigate(signedIn?'PartnerDashboard':'DealerOnboarding')}
         >
           <View style={styles.dealerPromptIconWrap}>
             <Ionicons name="business-outline" size={20} color={Colors.accent} />
@@ -294,6 +311,10 @@ export const PricingScreen: React.FC = () => {
           <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
         </TouchableOpacity>
 
+        <Button label="View Trader Pricing" onPress={()=>navigation.navigate('TraderPricing')}/>
+        <Button label={signedIn?'Open Partner Account':'Create Partner Account'} onPress={()=>navigation.navigate(signedIn?'PartnerDashboard':'DealerOnboarding')}/>
+        <Text style={styles.sectionHeading}>Frequently Asked Questions</Text>
+        {FAQS.map((faq,index)=><View key={faq.q} style={pageStyles.panel}><TouchableOpacity accessibilityRole="button" accessibilityLabel={faq.q} accessibilityState={{expanded:openFaq===index}} onPress={()=>setOpenFaq(old=>old===index?null:index)}><Text style={pageStyles.label}>{faq.q} {openFaq===index?'−':'+'}</Text></TouchableOpacity>{openFaq===index&&<Text style={pageStyles.body}>{faq.a}</Text>}</View>)}
         {/* ── Footer note ── */}
         <View style={styles.footerNote}>
           <Ionicons name="information-circle-outline" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
@@ -351,14 +372,15 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 8,
-    gap: 16,
+    paddingTop: 40,
+    gap: 24,
   },
 
   // ── Intro ──
   introSection: {
-    gap: 8,
-    paddingBottom: 4,
+    gap: 20,
+    alignItems: 'center',
+    paddingVertical: 40,
   },
   introHeading: {
     fontFamily: FontFamily.bold,
@@ -390,8 +412,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 16,
-    paddingBottom: 12,
+    padding: 24,
+    paddingBottom: 16,
   },
   planIconWrap: {
     width: 42,
@@ -439,8 +461,8 @@ const styles = StyleSheet.create({
   priceRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 24,
+    paddingBottom: 8,
   },
   planPrice: {
     fontSize: FontSize['2xl'],
@@ -454,14 +476,14 @@ const styles = StyleSheet.create({
   // ── Divider ──
   planDivider: {
     height: 1,
-    backgroundColor: Colors.whiteAlpha06,
-    marginHorizontal: 16,
+    backgroundColor: Colors.border,
+    marginHorizontal: 24,
   },
 
   // ── Features ──
   featuresSection: {
-    padding: 16,
-    gap: 10,
+    padding: 24,
+    gap: 14,
   },
   featureRow: {
     flexDirection: 'row',
@@ -470,7 +492,7 @@ const styles = StyleSheet.create({
   },
   featureText: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.sm,
+    fontSize: 16,
     color: Colors.textSecondary,
     flex: 1,
     lineHeight: 20,
@@ -532,8 +554,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   addonPrice: {
-    fontFamily: FontFamily.mono,
-    fontSize: FontSize.base,
+    fontFamily: FontFamily.bold,
+    fontSize: 20,
     color: Colors.textPrimary,
   },
   addonMeta: {
@@ -599,3 +621,16 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+
+export function TraderPricingScreen(){
+ const navigation=useNavigation<NavProp>();const signedIn=useAuthStore(state=>state.isAuthenticated);
+ const card=(title:string,price:string,description:string,features:string[],label:string,action:()=>void)=><View style={pageStyles.panel}><Text style={pageStyles.label}>{title}</Text><Text style={{fontFamily:FontFamily.bold,fontSize:40,color:Colors.textPrimary}}>{price}</Text><Text style={pageStyles.body}>{description}</Text>{features.map(text=><Text key={text} style={pageStyles.body}>✓ {text}</Text>)}<Button label={label} onPress={action}/></View>;
+ return <NativePage title="Trader pricing, kept separate from customer pricing.">
+ <Text style={pageStyles.label}>Motor Trade & Partner Accounts</Text><Text style={pageStyles.body}>This page covers the fees and rules relevant to verified motor traders using CarMazium auctions and retail marketplace features.</Text>
+ {card('Auction purchase',`£${PRICING.marketplace.auction.buyerFee}`,'Paid only by the winning verified Trader, within 72 hours of the win',['No auction buyer fee if you do not win','Seller contact and deal details unlock after the fee is paid','Vehicle purchase price is paid directly to the seller','CarMazium does not hold the vehicle purchase funds'],'Browse Auctions',()=>navigation.navigate('Tabs',{screen:'Live'}))}
+ {card('Retail marketplace purchase','Free','£0 CarMazium retail buyer fee',['Browse retail vehicle listings','Make offers and negotiate with sellers','Pay the seller directly for the vehicle','No CarMazium retail buyer fee'],'Browse Retail Cars',()=>navigation.navigate('Tabs',{screen:'Search'}))}
+ <View style={pageStyles.panel}><Text style={pageStyles.label}>One business account for your CarMazium services.</Text><Text style={pageStyles.body}>Verified Traders use a Partner Account for auction bidding and approved business capabilities. Trader verification is required before auction bidding is enabled.</Text><Button label={signedIn?'Open Partner Account':'Create Partner Account'} onPress={()=>navigation.navigate(signedIn?'PartnerDashboard':'DealerOnboarding')}/></View>
+ <Text style={pageStyles.body}>Vehicle money does not pass through CarMazium. The auction fee above is CarMazium’s platform fee; the agreed vehicle purchase price is paid directly to the seller.</Text>
+ <View style={pageStyles.panel}><Text style={pageStyles.label}>Not a motor trader? See customer pricing instead.</Text><Text style={pageStyles.body}>Customer pricing covers selling by auction, £1 retail listings and retail buying.</Text><Button label="Customer Pricing" variant="outline" onPress={()=>navigation.navigate('Pricing')}/></View>
+ </NativePage>;
+}

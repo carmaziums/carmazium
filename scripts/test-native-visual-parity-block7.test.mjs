@@ -81,9 +81,9 @@ test('registration and manual model validation preserve privacy and stale-respon
 });
 
 test('generic selling opens valuation and homepage channel actions keep the validated wizard',()=>{
-  assert.ok(stack.includes('SellLanding: undefined;'));
+  assert.match(stack, /SellLanding: \{ listingType\?: 'AUCTION' \| 'CLASSIFIED'; badgeTier\?: 'BASIC' \| 'STANDARD' \| 'PREMIUM' \} \| undefined;/);
   assert.ok(stack.includes('name="SellLanding" component={SellLandingScreen}'));
-  assert.ok(stack.includes('SellCarFlow: { listingId?: string; listingType?:'));
+  assert.match(stack, /SellCarFlow: \{[^\n]*listingId\?: string; listingType\?:/);
   const hero = readFileSync(new URL('../carmazium app/carmazium app/src/components/WebsiteHomeHero.tsx', import.meta.url), 'utf8');
   assert.ok(home.includes('<WebsiteHomeHero'));
   assert.ok(hero.includes("navigation.navigate('SellLanding')"));
