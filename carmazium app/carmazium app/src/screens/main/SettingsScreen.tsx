@@ -45,6 +45,11 @@ const isSettingsCategory = (value: unknown): value is SettingsCategory =>
 
 // ─────────────────────────── helpers ──────────────────────────────
 
+type PublicProfileSummary = {
+  badges: { key: string; label: string; verified: boolean }[];
+  rating: { average: number; count: number };
+};
+
 type ReviewItem = {
   id: string;
   rating: number;
@@ -73,6 +78,9 @@ export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { width: viewportWidth, fontScale } = useWindowDimensions();
   const singleColumnSettings = useSingleColumnSettings(viewportWidth, fontScale);
+  // Optional shortcuts have more text than the website's category buttons.
+  // On normal phones, use full-width rows so Notifications never splits mid-word.
+  const stackAccountTools = singleColumnSettings || viewportWidth < 420;
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteProp<MainStackParamList, 'Settings'>>();
   const { user, accountRole, updateUser, initializeAuth, logout } = useAuthStore();
@@ -83,6 +91,18 @@ export const SettingsScreen: React.FC = () => {
   const canManageBusiness = isDealerAccount && !isDealerStaff;
   const setPreviewRole = useAuthStore((st) => st.setRole);
   const [roleSwitching, setRoleSwitching] = useState(false);
+  const [publicSummary, setPublicSummary] = useState<PublicProfileSummary | null>(null);
+  // The website shows reputation and verified service badges above the settings tabs.
+  // Retrieve those from the same public profile endpoint instead of guessing from role.
+  useEffect(() => {
+    if (!user?.id) { setPublicSummary(null); return; }
+    let active = true;
+    setPublicSummary(null);
+    void apiClient<{ success: boolean; data: PublicProfileSummary }>(`/profiles/${user.id}`)
+      .then((response) => { if (active && response?.data) setPublicSummary(response.data); })
+      .catch(() => { /* A failed reputation request must not fabricate verification badges. */ });
+    return () => { active = false; };
+  }, [user?.id]);
 
   // Same as the website's Account Type section (profile/page.tsx
   // handleRoleElevation): POST /users/elevate. Verification/KYC records are
@@ -686,69 +706,77 @@ export const SettingsScreen: React.FC = () => {
         {/* Page title scrolls with the settings; fixed above the scroll view
             it took a large share of a small screen with larger system fonts. */}
         <View style={[styles.settingsPageHeader, styles.settingsPageHeaderBleed]}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to dashboard"
+            onPress={() => navigation.navigate('Tabs', { screen: isDealerAccount ? 'DealerHome' : 'Profile' })}
+            style={styles.settingsBackLink}>
+            <Ionicons name="arrow-back" size={16} color={Colors.accent} />
+            <Text style={styles.settingsBackText}>Back to dashboard</Text>
+          </TouchableOpacity>
           <Text style={styles.settingsPageTitle}>Account Settings</Text>
           <Text style={styles.settingsPageSubtitle}>
-            One place for your profile, business, notifications, payouts and security.
+            {isDealerAccount ? 'One place for your profile, business, notifications, payouts and security.' : 'Manage your personal profile, notifications, payouts and security.'}
           </Text>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to previous screen"
-            onPress={() => navigation.goBack()} style={styles.settingsBackLink}>
-            <Ionicons name="arrow-back" size={16} color={Colors.accent} />
-            <Text style={styles.settingsBackText}>Back</Text>
-          </TouchableOpacity>
-        </View>
-
-        {!!profileLoadError&&<ErrorBanner message={profileLoadError} onRetry={()=>void loadProfile()}/>}
-        {!!user?.id && <TouchableOpacity
-          accessibilityRole="button"
-          accessibilityLabel="Replay App Tour"
-          onPress={() => { if (user?.id) useGuidedTourStore.getState().replay(user.id); }}
-          style={styles.replayTourButton}
-        >
-          <Ionicons name="play-circle-outline" size={23} color={Colors.onAccent} />
-          <Text style={styles.replayTourButtonText}>Replay App Tour</Text>
-        </TouchableOpacity>}
-        {!!user?.id&&<TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('SellerProfile',{sellerId:user.id})}><Text style={styles.avatarChangeText}>View Public Profile</Text></TouchableOpacity>}
-        <View style={styles.accountToolsPanel}>
-          <Text style={styles.accountToolsHeading}>YOUR ACCOUNT TOOLS</Text>
-          <Text style={styles.accountToolsSub}>Quick access to the same conversations and saved vehicles on web and app.</Text>
-          <View style={styles.accountToolsGrid}>
-            {[
-              { id: 'finance', label: 'Listing finance calculator', icon: 'calculator-outline',
-                action: () => navigation.navigate('FinancePreferences') },
-              { id: 'saved', label: 'Saved Cars', icon: 'heart-outline',
-                action: () => navigation.navigate('Tabs', { screen: 'Saved' }) },
-              { id: 'messages', label: 'Messages', icon: 'chatbubbles-outline',
-                action: () => navigation.navigate('Messages') },
-              { id: 'notifications', label: 'Notifications', icon: 'notifications-outline',
-                action: () => navigation.navigate('Notifications') },
-            ].map(tool => (
-              <TouchableOpacity key={tool.id} style={[styles.accountToolButton, singleColumnSettings && styles.fullWidthTool]}
-                accessibilityRole="button" accessibilityLabel={tool.label}
-                onPress={tool.action}>
-                <Ionicons name={tool.icon as any} size={19} color={Colors.accent} />
-                <Text style={styles.accountToolLabel}>{tool.label}</Text>
-                <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity style={[styles.accountToolButton, singleColumnSettings && styles.fullWidthTool]} accessibilityRole="button"
-              accessibilityLabel="Contact Support" disabled={supportLoading}
-              onPress={() => { void handleContactSupport(); }}>
-              <Ionicons name="help-circle-outline" size={19} color={Colors.accent} />
-              <Text style={styles.accountToolLabel}>
-                {supportLoading ? 'Opening support…' : 'Contact Support'}
-              </Text>
-              <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
+          {(isDealerAccount || accountRole === 'contractor') && (
+            <TouchableOpacity accessibilityRole="link" accessibilityLabel="Business Partner Agreement"
+              onPress={() => navigation.navigate('PartnerAgreementInfo')} style={styles.agreementLink}>
+              <Text style={styles.agreementLinkText}>Business Partner Agreement</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.accountToolButton, singleColumnSettings && styles.fullWidthTool]} accessibilityRole="button"
-              accessibilityLabel="Report a problem"
-              onPress={() => navigation.navigate('ReportProblem', { fromScreen: 'Settings' })}>
-              <Ionicons name="bug-outline" size={19} color={Colors.accent} />
-              <Text style={styles.accountToolLabel}>Report a problem</Text>
-              <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
-            </TouchableOpacity>
+          )}
+          <View style={styles.settingsHeaderActions}>
+            {!!user?.id && <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Replay App Tour"
+              onPress={() => { if (user?.id) useGuidedTourStore.getState().replay(user.id); }}
+              style={styles.replayTourButton}
+            >
+              <Ionicons name="play-circle-outline" size={21} color={Colors.onAccent} />
+              <Text style={styles.replayTourButtonText}>Replay App Tour</Text>
+            </TouchableOpacity>}
+            {!!user?.id && <TouchableOpacity accessibilityRole="button"
+              accessibilityLabel="View Public Profile"
+              style={styles.publicProfileButton}
+              onPress={() => navigation.navigate('SellerProfile', { sellerId: user.id })}>
+              <Text style={styles.publicProfileButtonText}>View Public Profile</Text>
+            </TouchableOpacity>}
           </View>
         </View>
 
+        {!!profileLoadError && <ErrorBanner message={profileLoadError} onRetry={() => void loadProfile()}/>}
+        <View style={styles.profileSummaryCard}>
+          <View style={styles.profileSummaryRow}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Change profile photo"
+              disabled={uploadingPhoto} onPress={handlePickProfilePhoto} style={styles.profileSummaryPhoto}>
+              {profileImage
+                ? <PresentedProfileImage uri={profileImage} style={styles.profileSummaryImage} />
+                : <Text style={styles.profileSummaryInitials}>{initials}</Text>}
+            </TouchableOpacity>
+            <View style={styles.profileSummaryInfo}>
+              <Text style={styles.profileSummaryName}>{[firstName, lastName].filter(Boolean).join(' ') || 'Your profile'}</Text>
+              <Text style={styles.profileSummaryEmail} numberOfLines={2}>{user?.email}</Text>
+              <View style={styles.profileBadges}>
+                <View style={styles.profilePartnerBadge}>
+                  <Ionicons name="shield-checkmark-outline" size={14} color={Colors.textPrimary} />
+                  <Text style={styles.profilePartnerBadgeText}>{isDealerAccount || accountRole === 'contractor' ? 'Partner Account' : 'Personal Account'}</Text>
+                </View>
+                {publicSummary?.badges?.map(badge => (
+                  <View key={badge.key} style={styles.profileServiceBadge}>
+                    <Text style={styles.profileServiceBadgeText}>{badge.label}{badge.verified ? '  ✓' : ''}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={styles.profileRatingRow}>
+                {Array.from({ length: 5 }, (_, index) => (
+                  <Ionicons key={index}
+                    name={index < Math.round(publicSummary?.rating?.average ?? 0) ? 'star' : 'star-outline'}
+                    size={14} color={Colors.warning} />
+                ))}
+                <Text style={styles.profileSummaryRating}>
+                  {publicSummary?.rating ? `${Number(publicSummary.rating.average).toFixed(1)} (${publicSummary.rating.count} reviews)` : 'Reviews unavailable'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
         <View style={styles.categoryGrid} accessibilityLabel="Account settings categories">
           {categories.map(category => {
             const selected = activeCategory === category.id;
@@ -1506,6 +1534,49 @@ export const SettingsScreen: React.FC = () => {
           </View>
         )}
 
+        {/* Supplemental shortcuts below the website-matching settings sections. */}
+        <View style={styles.accountToolsPanel}>
+          <Text style={styles.accountToolsHeading}>YOUR ACCOUNT TOOLS</Text>
+          <Text style={styles.accountToolsSub}>Quick access to the same conversations and saved vehicles on web and app.</Text>
+          <View style={styles.accountToolsGrid}>
+            {[
+              { id: 'finance', label: 'Listing finance calculator', icon: 'calculator-outline',
+                action: () => navigation.navigate('FinancePreferences') },
+              { id: 'saved', label: 'Saved Cars', icon: 'heart-outline',
+                action: () => navigation.navigate('Tabs', { screen: 'Saved' }) },
+              { id: 'messages', label: 'Messages', icon: 'chatbubbles-outline',
+                action: () => navigation.navigate('Messages') },
+              { id: 'notifications', label: 'Notifications', icon: 'notifications-outline',
+                action: () => navigation.navigate('Notifications') },
+            ].map(tool => (
+              <TouchableOpacity key={tool.id} style={[styles.accountToolButton, stackAccountTools && styles.fullWidthTool]}
+                accessibilityRole="button" accessibilityLabel={tool.label}
+                onPress={tool.action}>
+                <Ionicons name={tool.icon as any} size={19} color={Colors.accent} />
+                <Text style={styles.accountToolLabel}>{tool.label}</Text>
+                <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={[styles.accountToolButton, stackAccountTools && styles.fullWidthTool]} accessibilityRole="button"
+              accessibilityLabel="Contact Support" disabled={supportLoading}
+              onPress={() => { void handleContactSupport(); }}>
+              <Ionicons name="help-circle-outline" size={19} color={Colors.accent} />
+              <Text style={styles.accountToolLabel}>
+                {supportLoading ? 'Opening support…' : 'Contact Support'}
+              </Text>
+              <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.accountToolButton, stackAccountTools && styles.fullWidthTool]} accessibilityRole="button"
+              accessibilityLabel="Report a problem"
+              onPress={() => navigation.navigate('ReportProblem', { fromScreen: 'Settings' })}>
+              <Ionicons name="bug-outline" size={19} color={Colors.accent} />
+              <Text style={styles.accountToolLabel}>Report a problem</Text>
+              <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+
       </ScrollView>
 
       {/* Delete account — typed confirmation, mirroring web
@@ -1641,6 +1712,26 @@ export const SettingsScreen: React.FC = () => {
 // ══════════════════════════ STYLES ════════════════════════════════
 
 const styles = StyleSheet.create({
+  profileSummaryCard: { marginBottom: 17, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.borderSubtle, borderRadius: 18, padding: 18 },
+  profileSummaryRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  profileSummaryPhoto: { width: 72, height: 72, borderRadius: 36, backgroundColor: Colors.bgElevated, borderWidth: 1, borderColor: Colors.borderSubtle, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  profileSummaryImage: { width: 72, height: 72, borderRadius: 36 },
+  profileSummaryInitials: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: FontSize.xl },
+  profileSummaryInfo: { flex: 1, minWidth: 0, gap: 6 },
+  profileSummaryName: { fontFamily: FontFamily.extraBold, fontSize: FontSize.lg, color: Colors.textPrimary },
+  profileSummaryEmail: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted },
+  profileBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 5 },
+  profilePartnerBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.accentAlpha10, borderRadius: 22, paddingVertical: 6, paddingHorizontal: 9 },
+  profilePartnerBadgeText: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: FontSize.xs },
+  profileServiceBadge: { borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgElevated, borderRadius: 22, paddingVertical: 6, paddingHorizontal: 9 },
+  profileServiceBadgeText: { color: Colors.textPrimary, fontFamily: FontFamily.semiBold, fontSize: FontSize.xs },
+  profileRatingRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 3, marginTop: 5 },
+  profileSummaryRating: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: FontSize.xs, marginLeft: 4 },
+  agreementLink: { minHeight: 38, alignSelf: 'flex-start', justifyContent: 'center', marginTop: 8 },
+  agreementLinkText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent, textDecorationLine: 'underline' },
+  settingsHeaderActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: 8 },
+  publicProfileButton: { minHeight: 50, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, justifyContent: 'center', backgroundColor: Colors.bgCard },
+  publicProfileButtonText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textPrimary },
   replayTourButton: {
     minHeight: 52, marginHorizontal: 20, marginBottom: 14,
     borderRadius: 14, backgroundColor: Colors.accent,

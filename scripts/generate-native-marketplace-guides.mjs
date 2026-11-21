@@ -24,4 +24,11 @@ for(const[key,[file,names]]of Object.entries(sources)){
  visit(source);for(const name of names)if(!(name in values))throw Error('Missing guide data '+name);result[key]=values;
 }
 const destination=path.join(root,'carmazium app/carmazium app/src/data/marketplaceGuides.json'),output=JSON.stringify(result,null,2)+'\n';
-if(process.argv.includes('--check')){if(fs.readFileSync(destination,'utf8')!==output)throw Error('Native marketplace guide content differs from website');console.log('Native marketplace guide content matches website');}else fs.writeFileSync(destination,output);
+const normaliseLines = text => text.replace(/\r\n?/g, '\n');
+if(process.argv.includes('--check')){
+  // Windows Git checkouts may use CRLF even when the canonical generated JSON
+  // is LF. Compare content, not platform-specific line separators.
+  if(normaliseLines(fs.readFileSync(destination,'utf8')) !== normaliseLines(output))
+    throw Error('Native marketplace guide content differs from website');
+  console.log('Native marketplace guide content matches website');
+}else fs.writeFileSync(destination,output);

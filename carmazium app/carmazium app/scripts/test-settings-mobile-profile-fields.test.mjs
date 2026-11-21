@@ -17,3 +17,27 @@ const profile={firstName:'Synthetic',lastName:'User',phone:'01210000000',postcod
 test('personal location fields hydrate and save explicitly; photo removal requires confirmation',async()=>{const writes=[];const {t,alerts}=await mount(async(p,o)=>{if(o){writes.push([p,JSON.parse(o.body)]);return{success:true};}return{success:true,data:profile};});assert.equal(t.root.findByProps({accessibilityLabel:'Postcode'}).props.value,'B1 1AA');await act(async()=>t.root.findByProps({accessibilityLabel:'Location / area'}).props.onChangeText('Coventry'));await act(async()=>press(t,'SAVE PROFILE').props.onPress());assert.equal(writes[0][1].location,'Coventry');assert.equal(writes[0][1].postcode,'B1 1AA');await act(async()=>press(t,'Remove profile photo').props.onPress());assert.equal(writes.length,1);await act(async()=>alerts.at(-1)[2].find(b=>b.text==='Remove image').onPress());assert.equal(writes[1][1].profileImage,'');await act(async()=>t.unmount());});
 test('business hours include all seven days and blank optional VAT does not block save',async()=>{const writes=[];const {t}=await mount(async(p,o)=>{if(o){writes.push(JSON.parse(o.body));return{success:true};}return{success:true,data:profile};},'business');assert.equal(t.root.findAllByType('TextInput').filter(n=>n.props.accessibilityLabel?.endsWith('opening hours')).length,7);assert.equal(t.root.findByProps({accessibilityLabel:'monday opening hours'}).props.value,'09:00–17:00');await act(async()=>t.root.findByProps({accessibilityLabel:'sunday opening hours'}).props.onChangeText('10:00–14:00'));await act(async()=>press(t,'SAVE DEALERSHIP PROFILE').props.onPress());assert.equal(writes.length,1);assert.equal(writes[0].openingHours.sunday,'10:00–14:00');assert.ok(!('vatNumber'in writes[0]));await act(async()=>t.unmount());});
 test('failed profile read cannot overwrite saved location or business fields with defaults',async()=>{let writes=0;const {t}=await mount(async(p,o)=>{if(o)writes++;throw Error('offline');});assert.equal(t.root.findAllByType('ErrorBanner').length,1);assert.equal(press(t,'SAVE PROFILE').props.disabled,true);await act(async()=>press(t,'SAVE PROFILE').props.onPress());assert.equal(writes,0);await act(async()=>t.unmount());});
+
+test('partner settings open with the same website information hierarchy and genuine badges',async()=>{
+  const {t,nav}=await mount(async(path,options)=>{
+    if(options)return{success:true};
+    if(path==='/profiles/synthetic-user')return{success:true,data:{badges:[{key:'dealer',label:'Vehicle Dealer',verified:true},{key:'inspector',label:'Vehicle Inspection',verified:false}],rating:{average:4.5,count:2}}};
+    return{success:true,data:profile};
+  });
+  const content=t.root.findAllByType('Text').map(node=>node.children.filter(child=>typeof child==='string').join(''));
+  const at=(value)=>content.findIndex(item=>item.includes(value));
+  assert.ok(at('Account Settings')>=0);
+  assert.ok(at('Business Partner Agreement')>=0);
+  assert.ok(at('Replay App Tour')>=0);
+  assert.ok(at('View Public Profile')>=0);
+  assert.ok(at('Synthetic User')>=0);
+  assert.ok(at('Vehicle Dealer')>=0);
+  assert.ok(at('4.5 (2 reviews)')>=0);
+  assert.ok(at('Synthetic User')<at('Personal details'),'website profile summary precedes settings categories');
+  assert.ok(at('Personal details')<at('YOUR ACCOUNT TOOLS'),'supplementary app shortcuts must not displace the website settings hierarchy');
+  await act(async()=>t.root.findByProps({accessibilityLabel:'Business Partner Agreement'}).props.onPress());
+  assert.ok(nav.some(([route])=>route==='PartnerAgreementInfo'));
+  await act(async()=>t.root.findByProps({accessibilityLabel:'Back to dashboard'}).props.onPress());
+  assert.ok(nav.some(([route,options])=>route==='Tabs'&&options.screen==='DealerHome'));
+  await act(async()=>t.unmount());
+});
