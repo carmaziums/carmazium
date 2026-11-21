@@ -30,7 +30,7 @@ async function harness(mode = 'personal', permissions = [], dimensions = { width
     '@react-native-async-storage/async-storage': { getItem: async key => saved.get(key) || null, setItem: async (key, value) => { writes.push(key); if (failSave) throw Error('disk'); saved.set(key, value); } },
     '@react-navigation/native': { useNavigation: () => ({ navigate: (...args) => nav.push(args) }) },
     './BrandIcon': { Ionicons: 'Icon', MaterialCommunityIcons: 'Icon' }, './Button': { Button: 'Button' },
-    '../constants/colors': { Colors: {} }, '../constants/typography': { FontFamily: {} },
+    '../constants/colors': { Colors: {} }, '../constants/typography': { FontFamily: {}, FontSize: { '2xl': 24, lg: 18, base: 15, sm: 13, xs: 11 } },
     '../store/authStore': { useAuthStore: select => select({ user: { id: userId } }) },
     '../hooks/useDealerAccess': { useDealerAccess: () => ({ loading: false, hasPermission: key => permissions.includes(key) }) },
     '../lib/dashboardNavigation': menu, '../lib/dashboardPreferences': preferences,

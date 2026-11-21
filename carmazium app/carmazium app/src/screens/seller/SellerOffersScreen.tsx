@@ -16,6 +16,7 @@ import { Image } from 'expo-image';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Button } from '../../components/Button';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
+import { sellerOffersEmptyState } from '../../lib/sellerOffersEmptyState';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -162,6 +163,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
   const [showDelivery, setShowDelivery] = useState(false);
   const [listingImages, setListingImages] = useState<Record<string,string>>({});
   const [offers, setOffers] = useState<Offer[]>([]);
+  const [sellerListingCount, setSellerListingCount] = useState<number | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -183,6 +185,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     setLoadError(null);
+    setSellerListingCount(null);
     try {
       // The dashboard only includes pending/countered offers. Use the same
       // complete history as the website so accepted offers retain sale actions.
@@ -192,7 +195,10 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
         fetchAllMyListings<{id:string;images?:string[]}>(),
       ]);
 
-      if (listingsRes.status === 'fulfilled') setListingImages(Object.fromEntries(listingsRes.value.filter(l=>l.images?.[0]).map(l=>[l.id,l.images![0]])));
+      if (listingsRes.status === 'fulfilled') {
+        setSellerListingCount(listingsRes.value.length);
+        setListingImages(Object.fromEntries(listingsRes.value.filter(l=>l.images?.[0]).map(l=>[l.id,l.images![0]])));
+      }
       if (offersRes.status === 'fulfilled' && offersRes.value?.success && Array.isArray(offersRes.value.data)) {
         // Prisma decimals arrive as strings on this endpoint.
         setOffers(offersRes.value.data.map(offer => ({
@@ -406,13 +412,18 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
       </View>
     ));
 
-  const renderEmptyState = () => (
-    <EmptyState
+  const renderEmptyState = () => {
+    const state = sellerOffersEmptyState(sellerListingCount, offers.length);
+    if (!state) return null;
+    if (state.noListings) {
+      return <Text style={styles.noSellerListings}>{state.title}</Text>;
+    }
+    return <EmptyState
       icon="mail-open-outline"
-      title="No offers received"
-      subtitle="Offers from buyers on your listings will appear here."
-    />
-  );
+      title={state.title}
+      subtitle={state.description}
+    />;
+  };
 
   const renderOfferCard = useCallback(({ item: offer }: { item: Offer }) => {
     const cfg = STATUS_CONFIG[offer.status] ?? STATUS_CONFIG.PENDING;
@@ -632,8 +643,8 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
     map[id].offers.push(offer); return map;
   }, {}));
   const pageHeader = <View style={{gap:12,marginBottom:24}}>
-    <Text accessibilityRole="header" style={{fontSize:24,fontFamily:FontFamily.bold,color:Colors.textPrimary,textTransform:'uppercase'}}>Offers Received</Text>
-    <Text style={{fontSize:14,lineHeight:22,color:Colors.textMuted}}>Offers buyers have made on your cars. Accept, decline or counter each one.</Text>
+    <Text accessibilityRole="header" style={{fontSize:FontSize["2xl"],fontFamily:FontFamily.bold,color:Colors.textPrimary,textTransform:'uppercase'}}>Offers Received</Text>
+    <Text style={{fontSize:FontSize.base - 1,lineHeight:22,color:Colors.textMuted}}>Offers buyers have made on your cars. Accept, decline or counter each one.</Text>
     <Button label="Delivery requests from buyers" variant="outline" onPress={() => setShowDelivery(value=>!value)} />
     {showDelivery && <ReceivedDeliveryRequestsPanel contextLabel="your listing" />}
   </View>;
@@ -711,7 +722,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
           renderItem={({item:group}) => <View style={{borderWidth:1,borderColor:Colors.border,borderRadius:16,backgroundColor:Colors.bgCard,overflow:'hidden',marginBottom:16}}>
             <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Offers for ${group.title}`} accessibilityState={{expanded:expanded.has(group.id)}} onPress={() => setExpanded(previous=>{const next=new Set(previous);if(next.has(group.id))next.delete(group.id);else next.add(group.id);return next;})} style={{flexDirection:'row',alignItems:'center',gap:16,padding:20}}>
               <View style={{width:64,height:48,borderRadius:8,overflow:'hidden',backgroundColor:Colors.bgTertiary}}>{listingImages[group.id] && <Image source={{uri:listingImages[group.id]}} style={StyleSheet.absoluteFillObject} contentFit="cover" />}</View>
-              <View style={{flex:1,gap:4}}><Text style={{fontSize:16,fontFamily:FontFamily.bold,color:Colors.textPrimary,textTransform:'uppercase'}}>{group.title}</Text><Text style={{fontSize:12,color:Colors.textMuted}}>{group.offers.length} TOTAL OFFERS</Text></View>
+              <View style={{flex:1,gap:4}}><Text style={{fontSize:FontSize.md,fontFamily:FontFamily.bold,color:Colors.textPrimary,textTransform:'uppercase'}}>{group.title}</Text><Text style={{fontSize:FontSize.sm - 1,color:Colors.textMuted}}>{group.offers.length} TOTAL OFFERS</Text></View>
               <Ionicons name={expanded.has(group.id)?'chevron-down':'chevron-forward'} size={20} color={Colors.textMuted}/>
             </TouchableOpacity>
             {expanded.has(group.id) && <View style={{padding:16,gap:12,borderTopWidth:1,borderColor:Colors.border}}>{group.offers.map(offer=><React.Fragment key={offer.id}>{renderOfferCard({item:offer})}</React.Fragment>)}</View>}
@@ -836,6 +847,11 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
 // ═══════════════════════════ STYLES ════════════════════════════════
 
 const styles = StyleSheet.create({
+  noSellerListings: {
+    paddingVertical: 80, paddingHorizontal: 24,
+    color: Colors.textMuted, fontFamily: FontFamily.regular,
+    fontSize: FontSize.base, fontStyle: 'italic', textAlign: 'center',
+  },
   soldNoticeBanner: {
     flexDirection: 'row',
     alignItems: 'center',

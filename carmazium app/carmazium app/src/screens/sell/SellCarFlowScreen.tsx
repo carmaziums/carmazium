@@ -2673,16 +2673,24 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }
 
   function renderStepper() {
+    const icons = ['car-outline', 'camera-outline', 'cash-outline', ...(isAuction ? ['hammer-outline'] : []), 'checkmark-circle-outline'];
     return (
       <View style={s.stepperContainer} accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: totalSteps, now: step }}>
         <View style={s.stepperSummary}>
-          <Text style={s.stepperCount}>STEP {step} OF {totalSteps}</Text>
-          <Text style={s.stepperCurrent}>{STEP_LABELS[step - 1]}</Text>
+          <Text style={s.stepperCurrent}>Guided listing · Step {step} of {totalSteps} · {STEP_LABELS[step - 1]}</Text>
         </View>
-        <View style={s.stepperTrack}>
-          {STEP_LABELS.map((label, index) => (
-            <View key={label} style={[s.stepperSegment, index < step && s.stepperSegmentComplete]} />
-          ))}
+        <View style={s.wizardStepRow}>
+          {STEP_LABELS.map((label, index) => {
+            const active = index < step;
+            return (
+              <View key={label} style={s.wizardStep}>
+                <View style={[s.wizardStepCircle, active && s.wizardStepCircleActive]}>
+                  <Ionicons name={icons[index] as any} size={19} color={active ? Colors.onAccent : Colors.textMuted} />
+                </View>
+                <Text style={[s.wizardStepText, active && s.wizardStepTextActive]} numberOfLines={1}>{label}</Text>
+              </View>
+            );
+          })}
         </View>
       </View>
     );
@@ -4077,8 +4085,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               padding: 10,
               borderRadius: 10,
               borderWidth: 1,
-              borderColor: Number(reservePrice) >= askNum ? 'rgba(239,68,68,0.30)' : 'rgba(245,158,11,0.30)',
-              backgroundColor: Number(reservePrice) >= askNum ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',
+              borderColor: Number(reservePrice) >= askNum ? Colors.errorAlpha30 : Colors.warningAlpha30,
+              backgroundColor: Number(reservePrice) >= askNum ? Colors.errorAlpha08 : Colors.warningAlpha08,
             }}>
               <Ionicons name="warning-outline" size={12} color={Number(reservePrice) >= askNum ? Colors.accent : Colors.warning} />
               <Text style={{
@@ -4409,7 +4417,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               onPress={() => scrollToMissingField(validationIssue.field)}
               style={{ marginHorizontal: 16, marginBottom: 4, padding: 12, borderRadius: 10, backgroundColor: Colors.error + '20', borderWidth: 1, borderColor: Colors.error }}
             >
-              <Text style={{ color: Colors.white, fontFamily: FontFamily.bold, fontSize: 12 }}>
+              <Text style={{ color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.sm - 1 }}>
                 {validationIssue.message} · Tap to go to this field
               </Text>
               <Text style={{ color: Colors.textSecondary, fontSize: FontSize.xs, marginTop: 4 }}>
@@ -4567,7 +4575,13 @@ const s = StyleSheet.create({
   freshActionRow: { alignItems: 'flex-end', paddingHorizontal: 16, marginTop: -6, marginBottom: 10 },
   freshActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: Radius.inline, backgroundColor: Colors.bgCard, borderWidth: 1.5, borderBottomWidth: 3, borderColor: Colors.accent, minHeight: 34 },
   freshActionText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.accent, letterSpacing: 0.8 },
-  stepperContainer: { paddingHorizontal: 16, marginBottom: 16 },
+  stepperContainer: { paddingHorizontal: 15, paddingVertical: 15, marginHorizontal: 16, marginBottom: 16, backgroundColor: Colors.bgCard, borderRadius: 18, borderWidth: 1, borderColor: Colors.border },
+  wizardStepRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 5, marginTop: 12 },
+  wizardStep: { flex: 1, alignItems: 'center', gap: 8 },
+  wizardStepCircle: { width: 43, height: 43, borderRadius: 22, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.inputBg, justifyContent: 'center', alignItems: 'center' },
+  wizardStepCircleActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  wizardStepText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textMuted },
+  wizardStepTextActive: { color: Colors.accent },
   stepItem: { alignItems: 'center', width: 56 },
   stepCircle: { width: 26, height: 26, borderRadius: 13, backgroundColor: Colors.whiteAlpha05, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   stepCircleActive: { backgroundColor: Colors.accent },

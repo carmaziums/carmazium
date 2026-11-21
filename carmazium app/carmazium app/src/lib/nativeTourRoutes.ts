@@ -33,6 +33,12 @@ export function nativeTourDestination(href?: string): Destination | null {
     : tab('DealerBuyBid', { initialSection: 'bids' });
   if (path === '/dashboard/service/jobs') return { screen: 'ProviderJobs', params: { initialTab: params.get('tab') === 'mine' ? 'assigned' : 'open' } };
   const routes: Record<string, keyof MainStackParamList> = {
+    '/dashboard/admin': 'AdminDashboard',
+    '/dashboard/admin/listings': 'AdminListingsReview',
+    '/dashboard/admin/dealer-verification': 'AdminDealerKyc',
+    '/dashboard/admin/users': 'AdminAccounts',
+    '/dashboard/admin/transactions': 'AdminTransactions',
+    '/dashboard/admin/handovers': 'AdminHandovers',
     '/search': 'Search', '/sell': 'SellLanding', '/pricing': 'Pricing',
     '/dashboard/dealer/inventory': 'DealerInventory', '/dashboard/dealer/crm': 'DealerLeads',
     '/dashboard/dealer/auctions': 'SellerAuctions', '/dashboard/dealer/offers': 'DealerOffers',

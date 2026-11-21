@@ -69,7 +69,7 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = React.memo(({
 
   const photo = (raw: string) => {
     const display = parseVehicleImagePresentation(raw);
-    return <Image source={{ uri: display.src }}
+    return <Image testID="carousel-image" source={{ uri: display.src }}
       style={{ width, height, transform: [{ scale: display.zoom }], transformOrigin: display.x + '% ' + display.y + '%' }}
       contentFit={display.fit} contentPosition={{ left: (display.x + '%') as any, top: (display.y + '%') as any }}
       transition={150} cachePolicy="memory-disk" recyclingKey={raw}/>;
@@ -80,7 +80,7 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = React.memo(({
       <Pressable onPress={() => onPress?.(0)} accessibilityLabel="Vehicle photo unavailable"
         style={{ width, height, backgroundColor: Colors.bgSecondaryAlt, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
         <Ionicons name="car-outline" size={28} color={Colors.textMuted} />
-        <Text style={{ color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: 12 }}>No photo available</Text>
+        <Text style={{ color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: FontSize.sm - 1 }}>No photo available</Text>
       </Pressable>
     );
   }
@@ -126,13 +126,17 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = React.memo(({
       </ScrollView>
       {showIndicator && (
         data.length <= 5 ? (
-          <View style={styles.dotsRow} pointerEvents="none">
+          <View testID="carousel-dots" style={styles.dotsRow} pointerEvents="none">
             {data.map((_, i) => (
-              <View key={i} style={[styles.dot, i === index && styles.dotActive]} />
+              <View key={i} testID="carousel-dot" accessible accessibilityRole="text"
+                accessibilityLabel={`Photo ${i + 1} of ${data.length}`}
+                accessibilityState={{ selected: i === index }}
+                style={[styles.dot, i === index && styles.dotActive]} />
             ))}
           </View>
         ) : (
-          <View style={styles.counterBadge} pointerEvents="none">
+          <View testID="carousel-counter" style={styles.counterBadge} pointerEvents="none"
+            accessible accessibilityRole="text" accessibilityLabel={`Photo ${index + 1} of ${data.length}`}>
             <Text style={styles.counterText}>{index + 1}/{data.length}</Text>
           </View>
         )

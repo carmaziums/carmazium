@@ -2,6 +2,10 @@ import { GuestEnquiriesScreen } from '../screens/main/GuestEnquiriesScreen';
 import { WarrantyScreen, WarrantyOrderScreen, WarrantyOrdersScreen } from '../screens/main/WarrantyScreens';
 import { BlogScreen, BlogArticleScreen, BusinessSpotlightScreen, CarBodyGuideScreen, PartnerGuideScreen, WarrantyTermsScreen, CookiePolicyScreen } from '../screens/main/NativeInformationScreens';
 import React from 'react';
+import { View } from 'react-native';
+import { AdminBottomNav } from '../components/AdminBottomNav';
+import { PersonalDashboardBottomNav } from '../components/PersonalDashboardBottomNav';
+import { isPersonalDashboardRoute } from '../lib/personalDashboardTabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigatorScreenParams } from '@react-navigation/native';
 import { TabNavigator, TabParamList } from './TabNavigator';
@@ -58,6 +62,7 @@ import { MyListingDashboardScreen } from '../screens/sell/MyListingDashboardScre
 import { PurchaseFlowScreen } from '../screens/main/PurchaseFlowScreen';
 import { SellCarFlowScreen } from '../screens/sell/SellCarFlowScreen';
 import { SellLandingScreen } from '../screens/sell/SellLandingScreen';
+import { DealerListingMethodScreen } from '../screens/sell/DealerListingMethodScreen';
 import { BuyerDashboardScreen } from '../screens/buyer/BuyerDashboardScreen';
 import { SellerDashboardScreen } from '../screens/seller/SellerDashboardScreen';
 import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScreen';
@@ -77,6 +82,8 @@ import { SellerListingsScreen } from '../screens/seller/SellerListingsScreen';
 import { SellerAuctionsScreen } from '../screens/seller/SellerAuctionsScreen';
 import { AcceptInviteScreen } from '../screens/main/AcceptInviteScreen';
 import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
+import { AdminAuctionsScreen } from '../screens/admin/AdminAuctionsScreen';
+import { AdminTransactionsScreen } from '../screens/admin/AdminTransactionsScreen';
 import { AdminListingsReviewScreen } from '../screens/admin/AdminListingsReviewScreen';
 import { AdminDealerKycScreen } from '../screens/admin/AdminDealerKycScreen';
 import { AdminHandoversScreen } from '../screens/admin/AdminHandoversScreen';
@@ -100,6 +107,7 @@ import { GUEST_ROUTES, SignInRequired } from '../components/SignInRequired';
 
 const GatedDealerAnalyticsScreen = withDealerGate(DealerAnalyticsScreen, 'VIEW_ANALYTICS');
 const GatedDealerInventoryScreen = withDealerGate(DealerInventoryScreen, 'VIEW_INVENTORY');
+const GatedDealerListingMethodScreen = withDealerGate(DealerListingMethodScreen, 'MANAGE_INVENTORY');
 const GatedDealerLeadsScreen = withDealerGate(DealerLeadsScreen, 'MANAGE_CRM');
 const GatedDealerKYCScreen = withDealerGate(DealerKYCScreen, 'MANAGE_KYC', true);
 const GatedDealerTeamScreen = withDealerGate(DealerTeamScreen, 'MANAGE_TEAM');
@@ -114,6 +122,8 @@ const GatedDealerFinanceScreen = withDealerGate(DealerFinanceScreen);
 // ADMIN on every /admin route too). Not in GUEST_ROUTES, so signed-out
 // visitors get the sign-in prompt first.
 const GatedAdminDashboardScreen = withAdminGate(AdminDashboardScreen);
+const GatedAdminAuctionsScreen = withAdminGate(AdminAuctionsScreen);
+const GatedAdminTransactionsScreen = withAdminGate(AdminTransactionsScreen);
 const GatedAdminListingsReviewScreen = withAdminGate(AdminListingsReviewScreen);
 const GatedAdminDealerKycScreen = withAdminGate(AdminDealerKycScreen);
 const GatedAdminHandoversScreen = withAdminGate(AdminHandoversScreen);
@@ -136,7 +146,7 @@ export type MainStackParamList = {
   Messages: undefined;
   ChatScreen: { threadId: string };
   Compare: { initialListing?: CarListing } | undefined;
-  Settings: { section?: 'personal' | 'business' | 'verification' | 'notifications' | 'security' | 'payouts' | 'appearance' | 'reviews' | 'account' } | undefined;
+  Settings: { section?: 'personal' | 'business' | 'verification' | 'notifications' | 'payouts' | 'appearance' | 'security' | 'reviews' | 'account' } | undefined;
   DealerAnalytics: undefined;
   DealerInventory: { status?: import('../screens/main/DealerInventoryScreen').FilterTab } | undefined;
   DealerLeads: undefined;
@@ -218,6 +228,7 @@ export type MainStackParamList = {
     auctionId?: string;
   } | undefined;
   SellLanding: { listingType?: 'AUCTION' | 'CLASSIFIED'; badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM' } | undefined;
+  DealerListingMethod: undefined;
   SellCarFlow: { badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM'; listingId?: string; listingType?: 'AUCTION' | 'CLASSIFIED'; prefill?: {
     valuation?: VehicleValuation;
     vrm?: string; make?: string; model?: string; year?: number; mileage?: number;
@@ -252,6 +263,8 @@ export type MainStackParamList = {
   AcceptInvite: { token?: string } | undefined;
   // Native admin phase 1 (ADMIN accounts only; other admin sections open the website).
   AdminDashboard: undefined;
+  AdminAuctions: undefined;
+  AdminTransactions: undefined;
   AdminListingsReview: undefined;
   AdminDealerKyc: undefined;
   AdminHandovers: undefined;
@@ -269,9 +282,24 @@ const Stack = createNativeStackNavigator<MainStackParamList>();
  * whose API calls could only fail. Module scope (not inline) so React
  * Navigation never remounts screens because the layout identity changed.
  */
-const GuestAwareLayout = ({ children, route }: { children: React.ReactNode; route: { name: string; params?: object } }) => (
-  <GuestGate routeName={route.name} routeParams={route.params}>{children}</GuestGate>
-);
+const GuestAwareLayout = ({ children, route }: { children: React.ReactNode; route: { name: string; params?: object } }) => {
+  const accountRole = useAuthStore((s) => s.accountRole);
+  const showAdminNav = accountRole === 'admin' && route.name.startsWith('Admin');
+  const showPersonalNav = (accountRole === 'buyer' || accountRole === 'seller') && isPersonalDashboardRoute(route.name);
+  return <GuestGate routeName={route.name} routeParams={route.params}>
+    {showAdminNav ? (
+      <View style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>{children}</View>
+        <AdminBottomNav routeName={route.name} />
+      </View>
+    ) : showPersonalNav ? (
+      <View style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>{children}</View>
+        <PersonalDashboardBottomNav role={accountRole as 'buyer' | 'seller'} activeRoute={route.name} />
+      </View>
+    ) : children}
+  </GuestGate>;
+};
 
 const GuestGate: React.FC<{ routeName: string; routeParams?: object; children: React.ReactNode }> = ({ routeName, routeParams, children }) => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -454,6 +482,7 @@ export const MainStackNavigator: React.FC = () => {
         component={PurchaseFlowScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
+      <Stack.Screen name="DealerListingMethod" component={GatedDealerListingMethodScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="SellLanding" component={SellLandingScreen}
         options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen
@@ -504,6 +533,8 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="SaleCancellations" component={SaleCancellationsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="AcceptInvite" component={AcceptInviteScreen} options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="AdminDashboard" component={GatedAdminDashboardScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="AdminAuctions" component={GatedAdminAuctionsScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="AdminTransactions" component={GatedAdminTransactionsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="AdminListingsReview" component={GatedAdminListingsReviewScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="AdminDealerKyc" component={GatedAdminDealerKycScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="AdminHandovers" component={GatedAdminHandoversScreen} options={{ animation: 'slide_from_right' }} />

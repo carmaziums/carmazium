@@ -314,7 +314,7 @@ export const SearchScreen: React.FC = () => {
     if (!p?._t) return;
     applySearchParams(p.aiFilters ?? p);
     setAiExplanation(p.aiExplanation ?? null);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Previously exempted hook dependency checks; no exemption needed
   }, [(route.params as any)?._t]);
 
   // ── Build API params ──
@@ -412,7 +412,7 @@ export const SearchScreen: React.FC = () => {
         setLoadingMore(false);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Previously exempted hook dependency checks; no exemption needed
   }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, exteriorGrades, writeOffCategories, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, motValid, taxedOnly, serviceHistories, maxOwners, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
 
   // The instant filter effect already loads the initial catalogue once.
@@ -427,13 +427,13 @@ export const SearchScreen: React.FC = () => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetch(true), 350);
     return () => clearTimeout(debounceRef.current);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Previously exempted hook dependency checks; no exemption needed
   }, [query]);
 
   // Instant re-fetch when any filter/sort state changes (not debounced).
   useEffect(() => {
     fetch(true);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Previously exempted hook dependency checks; no exemption needed
   }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, exteriorGrades, writeOffCategories, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, motValid, taxedOnly, serviceHistories, maxOwners, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
@@ -672,7 +672,7 @@ export const SearchScreen: React.FC = () => {
   const sections=retailResultSections(listings,featured,{page,filterCount,query,sortId,quickFilter,loading,error:!!searchError});
   const listHeader = (
     <>
-      <View style={[s.header,{paddingTop:48,paddingBottom:20}]}><Text style={[s.headerTitle,{fontSize:32,lineHeight:40}]}>Find Your Perfect Car</Text></View>
+      <View style={[s.header,{paddingTop:48,paddingBottom:20}]}><Text style={[s.headerTitle,{fontSize:FontSize['4xl'],lineHeight:40}]}>Find Your Perfect Car</Text></View>
       {/* ── Search bar ── */}
       <View style={s.searchWrap}>
         <View style={s.searchBar}>
@@ -694,7 +694,7 @@ export const SearchScreen: React.FC = () => {
         </View>
       </View>
 
-      <View style={{paddingHorizontal: 20,paddingBottom:24}}><Button label="Search" onPress={()=>void fetch(true)}/></View>
+      <View style={s.searchButtonShell}><Button label="Search" onPress={()=>void fetch(true)}/></View>
       {/* ── AI Explanation banner ── */}
       {aiExplanation && (
         <View style={s.aiExplanationBanner}>
@@ -736,7 +736,7 @@ export const SearchScreen: React.FC = () => {
           <Text style={s.clearBelowText}>Clear {filterCount} {filterCount === 1 ? 'filter' : 'filters'}</Text>
         </TouchableOpacity>
       )}
-      {!!sections.featured.length&&<View style={{paddingHorizontal: 20,gap:16,paddingBottom:24}}><Text style={{color:Colors.warning,fontFamily:FontFamily.bold,fontSize:14}}>FEATURED LISTINGS</Text>{sections.featured.map(item=><HorizontalVehicleCard key={item.id} listing={{...item,isFeatured:true}} onPress={handleCardPress} onWarranty={item.status==='ACTIVE'&&item.listingType==='CLASSIFIED'?()=>navigation.navigate('Warranty',{listingId:item.id}):undefined}/>)}<Text style={{color:Colors.textMuted}}>All listings below</Text></View>}
+      {!!sections.featured.length&&<View style={{paddingHorizontal: 20,gap:16,paddingBottom:24}}><Text style={{color:Colors.warning,fontFamily:FontFamily.bold,fontSize:FontSize.base - 1}}>FEATURED LISTINGS</Text>{sections.featured.map(item=><HorizontalVehicleCard key={item.id} listing={{...item,isFeatured:true}} onPress={handleCardPress} onWarranty={item.status==='ACTIVE'&&item.listingType==='CLASSIFIED'?()=>navigation.navigate('Warranty',{listingId:item.id}):undefined}/>)}<Text style={{color:Colors.textMuted}}>All listings below</Text></View>}
     </>
   );
   const showResults = !(loading && listings.length === 0) && !(searchError && listings.length === 0) && listings.length > 0;
@@ -1161,7 +1161,7 @@ export const SearchScreen: React.FC = () => {
                 <>
               {/* Search the same Grade 1–5 computed from seller's damage map. */}
               <Text style={s.filterLabel}>EXTERIOR GRADE (1–5)</Text>
-              <Text style={{ color: Colors.textSecondary, fontSize: 12, marginBottom: 8 }}>Calculated from reported defects. Grade 1 is best.</Text>
+              <Text style={{ color: Colors.textSecondary, fontSize: FontSize.sm - 1, marginBottom: 8 }}>Calculated from reported defects. Grade 1 is best.</Text>
               <View style={s.chipGrid}>
                 {EXTERIOR_GRADE_OPTIONS.map(g => (
                   <TouchableOpacity key={g.value} style={[s.filterChip, exteriorGrades.includes(g.value) && s.filterChipActive]}
@@ -1190,7 +1190,7 @@ export const SearchScreen: React.FC = () => {
               <View style={s.divider} />
 
               <Text style={s.filterLabel}>INSURANCE WRITE-OFF STATUS</Text>
-              <Text style={{ color: Colors.textSecondary, fontSize: 12, marginBottom: 8 }}>Declared history may not be independently verified by a vehicle history report.</Text>
+              <Text style={{ color: Colors.textSecondary, fontSize: FontSize.sm - 1, marginBottom: 8 }}>Declared history may not be independently verified by a vehicle history report.</Text>
               <View style={s.chipGrid}>
                 {WRITE_OFF_OPTIONS.map(c => (
                   <TouchableOpacity key={c.id} style={[s.filterChip, writeOffCategories.includes(c.id) && s.filterChipActive]}
@@ -1687,18 +1687,19 @@ const s = StyleSheet.create({
 
   header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 16 },
   headerSub: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accent, letterSpacing: 1.5, marginBottom: 4 },
-  headerTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.size22, color: Colors.white },
-  headerResults: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: 12, marginTop: 7 },
+  headerTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.size22, color: Colors.textPrimary },
+  headerResults: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: FontSize.sm - 1, marginTop: 7 },
   auctionBrowseBanner: { marginHorizontal: 20, marginBottom: 13, flexDirection: 'row',
     alignItems: 'center', gap: 11, padding: 12, minHeight: 60, backgroundColor: Colors.bgCard,
     borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.card, ...Elevation.card },
-  auctionBrowseTitle: { fontFamily: FontFamily.bold, color: Colors.textPrimary, fontSize: 13 },
-  auctionBrowseDesc: { fontFamily: FontFamily.medium, color: Colors.textMuted, fontSize: 11 },
+  auctionBrowseTitle: { fontFamily: FontFamily.bold, color: Colors.textPrimary, fontSize: FontSize.sm },
+  auctionBrowseDesc: { fontFamily: FontFamily.medium, color: Colors.textMuted, fontSize: FontSize.xs },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center' },
 
-  searchWrap: { paddingHorizontal: 20, marginBottom: 8 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgCard, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 16, minHeight: 52, gap: 10, ...Elevation.card },
-  searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.white },
+  searchWrap: { marginHorizontal: 20, paddingHorizontal: 12, paddingTop: 12, borderWidth: 1, borderBottomWidth: 0, borderColor: Colors.border, borderTopLeftRadius: 12, borderTopRightRadius: 12, backgroundColor: Colors.bgCard },
+  searchButtonShell: { marginHorizontal: 20, paddingHorizontal: 12, paddingBottom: 12, marginBottom: 100, borderWidth: 1, borderTopWidth: 0, borderColor: Colors.border, borderBottomLeftRadius: 12, borderBottomRightRadius: 12, backgroundColor: Colors.bgCard },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.inputBg, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 16, minHeight: 52, gap: 10 },
+  searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.textPrimary },
 
   // A horizontal ScrollView's cross-axis size is NOT auto-grown by its
   // scrollable content the way a plain View would be — Yoga never measures

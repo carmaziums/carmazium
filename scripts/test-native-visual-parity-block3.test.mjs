@@ -51,7 +51,9 @@ test('one set of permission-gated jobs; no altered auction/KYC/buyer routes', ()
     assert.ok(native.includes(dest));
     assert.ok(overview.includes(dest));
   }
-  for (const route of ["'SellCarFlow'","'DealerLeads'","'PartnerDashboard'","'DealerAnalytics'","'DealerInventory'"]) {
+  // New listings must open the Auction/Retail choice, while existing-listing
+  // edits still use SellCarFlow through the inventory editing action.
+  for (const route of ["'DealerListingMethod'","'DealerLeads'","'PartnerDashboard'","'DealerAnalytics'","'DealerInventory'"]) {
     assert.ok(native.includes(route));
   }
   assert.ok(native.includes("navigation.navigate('Tabs', { screen: 'DealerBuyBid' })"));

@@ -9,7 +9,6 @@ import { Elevation, Radius } from '../constants/spacing';
 import { useAuthStore } from '../store/authStore';
 import { HamburgerButton } from './HamburgerButton';
 import { Logo } from './Logo';
-import { ThemeToggle } from './ThemeToggle';
 import { openSignIn } from './SignInRequired';
 import { useDrawer } from '../context/DrawerContext';
 import { getThemePreference, promptThemeChange, resolveThemeMode } from '../lib/themePreference';
@@ -33,7 +32,7 @@ export const WebsiteTopBar: React.FC = () => {
   // roots don't, like the website's persistent header.
   const navState = navigation.getState?.();
   const showBack = navState?.type !== 'tab' && navigation.canGoBack();
-  const logoWidth = Math.min(160, Math.max(showBack ? 88 : 104, windowWidth - 249 - (showBack ? 48 : 0)));
+  const logoWidth = Math.min(160, Math.max(showBack ? 88 : 104, windowWidth - 205 - (showBack ? 48 : 0)));
   const user = useAuthStore(s => s.user);
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
   const role = useAuthStore(s => s.accountRole);
@@ -96,7 +95,6 @@ export const WebsiteTopBar: React.FC = () => {
       </TouchableOpacity>
       </View>
       <View style={styles.actions}>
-        <ThemeToggle />
         {/* Signed-out visitors see Login, like the website header's
             Sign Up / Login, instead of a bell and an account avatar. */}
         {!isAuthenticated ? (
@@ -247,5 +245,5 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentAlpha14,
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarLetter: { fontFamily: FontFamily.bold, fontSize: 15, color: Colors.accent },
+  avatarLetter: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.accent },
 });

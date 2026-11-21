@@ -11,7 +11,7 @@ import { Colors } from '../../constants/colors';
 import { Elevation, Radius } from '../../constants/spacing';
 import { ActiveBidCard, type ActiveBidPosition } from '../../components/dealer/ActiveBidCard';
 import { Button } from '../../components/Button';
-import { FontFamily } from '../../constants/typography';
+import { FontFamily, FontSize } from '../../constants/typography';
 
 // Canonical sources: src/app/dashboard/dealer/auctions/shortlisted/page.tsx
 // and src/app/dashboard/dealer/bids/page.tsx. Both endpoints return
@@ -198,7 +198,7 @@ export function DealerAuctionShortlist({ navigation, header }: { navigation?: Na
   );
 }
 
-export function DealerActiveBidPositions({ navigation, header, canPlaceBid = false }: { navigation?: Nav; header?: React.ReactNode; canPlaceBid?: boolean }) {
+export function DealerActiveBidPositions({ navigation, header, tabSwitch, onBrowseLive, canPlaceBid = false }: { navigation?: Nav; header?: React.ReactNode; tabSwitch?: React.ReactNode; onBrowseLive?: () => void; canPlaceBid?: boolean }) {
   const [positions, setPositions] = useState<AuctionPosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -229,9 +229,10 @@ export function DealerActiveBidPositions({ navigation, header, canPlaceBid = fal
   const bidsHeader = <View style={styles.bidsHeaderBleed}>
     {header}
     <View style={{paddingHorizontal:20,gap:16,marginBottom:20}}>
-      <Button label="Refresh" variant="outline" loading={refreshing} onPress={() => void fetchBids(true)} />
+      <View style={styles.bidRefreshRow}><Button label="Refresh" variant="outline" size="sm" loading={refreshing} onPress={() => void fetchBids(true)} /></View>
+      {tabSwitch}
       {error && <ErrorText message={error} onRetry={() => void fetchBids(true)} />}
-      {!loading && (!error || positions.length > 0) && <Text style={{fontSize:14,color:Colors.textMuted}}>{positions.length} active auction bid{positions.length===1?'':'s'}.</Text>}
+      {!loading && (!error || positions.length > 0) && <Text style={{fontSize: FontSize.base - 1,color:Colors.textMuted}}>{positions.length} active auction bid{positions.length===1?'':'s'}.</Text>}
     </View>
   </View>;
   return <View style={styles.root}>
@@ -246,9 +247,13 @@ export function DealerActiveBidPositions({ navigation, header, canPlaceBid = fal
       renderItem={({ item }) => <ActiveBidCard position={item} canPlaceBid={canPlaceBid} onRefresh={() => fetchBids(true)} onOpen={() => item.auctionId && navigation?.navigate('AuctionDeepLink', {auctionId:item.auctionId})} />}
       ListEmptyComponent={
         loading ? <ActivityIndicator color={Colors.accent} style={{ marginTop: 38 }}/> :
-          !error ? <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No Current Auction Bids</Text>
-            <Text style={styles.subtitle}>Your live auction positions will appear here after you place a bid.</Text>
+          !error ? <View style={styles.bidEmptyCard}>
+            <View style={styles.bidEmptyIcon}><Ionicons name="hammer-outline" size={32} color={Colors.palePurple_a78bfa} /></View>
+            <Text style={styles.bidEmptyTitle}>No Current Auction Bids</Text>
+            <Text style={styles.bidEmptyDescription}>When you place a bid on a live auction, that vehicle will appear here until the auction ends.</Text>
+            <TouchableOpacity style={styles.bidBrowseButton} onPress={onBrowseLive} disabled={!onBrowseLive} accessibilityRole="button" accessibilityLabel="Browse Live Auctions">
+              <Text style={styles.bidBrowseText}>Browse Live Auctions</Text>
+            </TouchableOpacity>
           </View> : null
       }
       ListFooterComponent={
@@ -263,25 +268,45 @@ export function DealerActiveBidPositions({ navigation, header, canPlaceBid = fal
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bgPrimary, paddingTop: 8 },
-  title: { fontFamily: FontFamily.extraBold, fontSize: 19, color: Colors.textPrimary,
+  title: { fontFamily: FontFamily.extraBold, fontSize: FontSize.lg + 1, color: Colors.textPrimary,
     paddingHorizontal: 20, textTransform:'uppercase' },
-  subtitle: { fontFamily: FontFamily.regular, fontSize: 12, color: Colors.textMuted,
+  subtitle: { fontFamily: FontFamily.regular, fontSize: FontSize.sm - 1, color: Colors.textMuted,
     lineHeight: 18, paddingHorizontal: 20, marginTop: 4, marginBottom: 11 },
   switchRow: { flexDirection:'row', gap: 7, marginHorizontal:20, marginBottom: 9, alignItems:'center' },
   segment: { minHeight: 42, justifyContent:'center', paddingHorizontal: 13,
     backgroundColor:Colors.bgCard, borderColor:Colors.borderSubtle, borderWidth:1, borderRadius:11 },
   segmentOn:{ backgroundColor: Colors.accent, borderColor:Colors.accent },
-  segmentText: {fontFamily: FontFamily.bold,fontSize:12,color:Colors.textMuted},
+  segmentText: {fontFamily: FontFamily.bold,fontSize: FontSize.sm - 1,color:Colors.textMuted},
   segmentTextOn:{color:Colors.onAccent},
-  total:{fontFamily:FontFamily.bold,color:Colors.textMuted,fontSize:11, marginLeft:6},
+  total:{fontFamily:FontFamily.bold,color:Colors.textMuted,fontSize: FontSize.xs, marginLeft:6},
   error: {marginHorizontal:20,marginVertical:7,padding:12,backgroundColor:Colors.bgCard,
     borderWidth:1,borderColor:Colors.warning,borderRadius:12,gap:6},
-  errorText:{color:Colors.warning,fontFamily:FontFamily.medium,fontSize:12},
-  retry:{color:Colors.accent,fontFamily:FontFamily.bold,fontSize:12},
+  errorText:{color:Colors.warning,fontFamily:FontFamily.medium,fontSize: FontSize.sm - 1},
+  retry:{color:Colors.accent,fontFamily:FontFamily.bold,fontSize: FontSize.sm - 1},
   list:{flex:1},
   listContent:{paddingBottom:100,paddingHorizontal:20},
   // Header rows carry their own 20pt gutters inside the padded list.
   bidsHeaderBleed:{marginHorizontal:-20},
+  bidRefreshRow: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' },
+  bidEmptyCard: {
+    marginHorizontal: 0, marginTop: 15, borderWidth: 1,
+    borderColor: Colors.border, borderRadius: 20,
+    backgroundColor: Colors.bgCard, alignItems: 'center',
+    gap: 17, paddingHorizontal: 26, paddingVertical: 52,
+  },
+  bidEmptyIcon: {
+    height: 92, width: 92, borderRadius: 46,
+    backgroundColor: Colors.infoBlueAlpha10,
+    borderWidth: 1, borderColor: Colors.infoBlueAlpha20,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  bidEmptyTitle: { color: Colors.textPrimary, fontFamily: FontFamily.extraBold, fontSize: FontSize.xl, textAlign: 'center' },
+  bidEmptyDescription: { color: Colors.textSecondary, fontFamily: FontFamily.regular, fontSize: FontSize.base, lineHeight: 22, textAlign: 'center' },
+  bidBrowseButton: {
+    marginTop: 8, minHeight: 49, borderRadius: 12, backgroundColor: Colors.accent,
+    paddingHorizontal: 24, alignItems: 'center', justifyContent: 'center',
+  },
+  bidBrowseText: { color: Colors.onAccent, fontFamily: FontFamily.bold, fontSize: FontSize.base },
   thumb:{width:90,height:88,backgroundColor:Colors.bgElevated,
     alignItems:'center',justifyContent:'center',borderRadius:11,overflow:'hidden'},
   image:{width:'100%',height:'100%'},
@@ -289,26 +314,26 @@ const styles = StyleSheet.create({
     borderWidth:1,borderColor:Colors.borderSubtle,marginBottom:11,
     flexDirection:'row',gap:12},
   cardCopy:{flex:1,gap:4},
-  cardTitle:{color:Colors.textPrimary,fontFamily:FontFamily.bold,fontSize:14},
-  meta:{fontFamily:FontFamily.medium,color:Colors.textMuted,fontSize:11},
-  status:{fontFamily:FontFamily.bold,fontSize:11,color:Colors.textMuted},
-  go:{fontFamily:FontFamily.bold,fontSize:12,color:Colors.accent,marginTop:5},
+  cardTitle:{color:Colors.textPrimary,fontFamily:FontFamily.bold,fontSize: FontSize.base - 1},
+  meta:{fontFamily:FontFamily.medium,color:Colors.textMuted,fontSize: FontSize.xs},
+  status:{fontFamily:FontFamily.bold,fontSize: FontSize.xs,color:Colors.textMuted},
+  go:{fontFamily:FontFamily.bold,fontSize: FontSize.sm - 1,color:Colors.accent,marginTop:5},
   empty:{alignItems:'center',gap:8,paddingVertical:42},
-  emptyTitle:{fontFamily:FontFamily.bold,fontSize:15,color:Colors.textPrimary},
+  emptyTitle:{fontFamily:FontFamily.bold,fontSize: FontSize.base,color:Colors.textPrimary},
   pageRow:{flexDirection:'row',justifyContent:'space-between',
     paddingVertical:18,paddingHorizontal:5},
-  pageLink:{fontFamily:FontFamily.bold,fontSize:12,color:Colors.accent},
+  pageLink:{fontFamily:FontFamily.bold,fontSize: FontSize.sm - 1,color:Colors.accent},
   metrics:{flexDirection:'row',flexWrap:'wrap',gap:8,marginHorizontal:20,marginBottom:10},
   metric:{width:'47%',flexGrow:1,backgroundColor:Colors.bgCard,
     borderWidth:1,borderColor:Colors.borderSubtle,borderRadius:12,
     alignItems:'center',padding:11},
-  metricNumber:{fontFamily:FontFamily.extraBold,color:Colors.textPrimary,fontSize:19},
-  metricLabel:{fontFamily:FontFamily.bold,color:Colors.textMuted,fontSize:10,textAlign:'center'},
+  metricNumber:{fontFamily:FontFamily.extraBold,color:Colors.textPrimary,fontSize: FontSize.lg + 1},
+  metricLabel:{fontFamily:FontFamily.bold,color:Colors.textMuted,fontSize: FontSize.xs - 1,textAlign:'center'},
   bidHeader:{flexDirection:'row',gap:11},
   bidMetrics:{gap:6,paddingVertical:8},
   mainAction:{minHeight:44,backgroundColor:Colors.accent,borderRadius:11,
     alignItems:'center',justifyContent:'center',marginTop:6},
-  mainActionText:{fontFamily:FontFamily.bold,color:Colors.onAccent,fontSize:12},
+  mainActionText:{fontFamily:FontFamily.bold,color:Colors.onAccent,fontSize: FontSize.sm - 1},
   // Raised outline buttons (were bare accent text links).
   historyLink:{marginTop:15,marginBottom:15,minHeight:44,paddingHorizontal:14,paddingVertical:10,alignItems:'center',justifyContent:'center',
     borderRadius:Radius.inline,borderWidth:1.5,borderBottomWidth:3,borderColor:Colors.accent,backgroundColor:Colors.bgCard,...Elevation.card},
