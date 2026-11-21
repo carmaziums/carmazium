@@ -130,7 +130,7 @@ export const WebsiteTopBar: React.FC = () => {
         </TouchableOpacity>
         <Modal visible={accountOpen} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setAccountOpen(false)}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setAccountOpen(false)} accessibilityLabel="Close account menu" />
-          <View style={[styles.dropdown, { top: headerBottom + 4 }]}>
+          <View style={[styles.dropdown, { top: headerBottom + 4, width: Math.min(360, windowWidth - 24) }]}>
             {/* ── User card ── */}
             <View style={styles.dropdownHead}>
               <Text style={styles.dropdownEyebrow}>SIGNED IN AS</Text>
