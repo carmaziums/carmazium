@@ -8,6 +8,7 @@ export type CapabilityEvidenceType =
     | 'BUSINESS_IDENTITY'
     | 'DELIVERY_BUSINESS_INSURANCE'
     | 'DELIVERY_GOODS_IN_TRANSIT'
+    | 'PUBLIC_LIABILITY_INSURANCE'
     | 'INSPECTION_BUSINESS_INSURANCE'
     | 'INSPECTION_QUALIFICATION'
     | 'FINANCE_REGULATORY_AUTHORITY'
@@ -72,14 +73,21 @@ const BUSINESS_IDENTITY: CapabilityVerificationRequirement = {
     expiryRequired: false,
 };
 
+const PUBLIC_LIABILITY: CapabilityVerificationRequirement = {
+    type: 'PUBLIC_LIABILITY_INSURANCE',
+    title: 'Public liability insurance',
+    description: 'Current public liability insurance covering the services offered, with a verified limit of indemnity and policy expiry.',
+    expiryRequired: true,
+};
+
 export const CAPABILITY_VERIFICATION_REQUIREMENTS: Record<ServiceType, CapabilityVerificationRequirement[]> = {
-    [ServiceType.DELIVERY]: [{
+    [ServiceType.DELIVERY]: [PUBLIC_LIABILITY, {
         type: 'DELIVERY_BUSINESS_INSURANCE',
         title: 'Trade insurance',
         description: 'Current trade insurance covering your vehicle collection, delivery and recovery work.',
         expiryRequired: true,
     }],
-    [ServiceType.INSPECTION]: [],
+    [ServiceType.INSPECTION]: [PUBLIC_LIABILITY],
     [ServiceType.FINANCE]: [
         BUSINESS_IDENTITY,
         {
@@ -133,6 +141,7 @@ export async function getCapabilityVerificationSummary(
         where: { id: capabilityId },
         select: {
             id: true,
+            contractorId: true,
             serviceType: true,
             providerDeclaration: true,
             status: true,
@@ -146,19 +155,26 @@ export async function getCapabilityVerificationSummary(
     const evidence = await prisma.$queryRaw<any[]>(Prisma.sql`
         SELECT
             e."id", e."evidenceType", e."evidenceStatus", e."evidenceIssuer",
-            e."evidenceReference", e."evidenceValidFrom", e."evidenceExpiresAt",
+            e."evidenceReference", e."evidenceValidFrom", e."evidenceExpiresAt", e."evidenceCoverAmountGbp",
             e."evidenceReviewedAt", e."evidenceReviewedById", e."evidenceReviewNote",
             e."createdAt"
         FROM "service_case_entries" e
         WHERE e."scope" = 'CAPABILITY'
-          AND e."entityId" = ${capabilityId}
+          AND (
+            e."entityId" = ${capabilityId}
+            OR (e."evidenceType" = 'PUBLIC_LIABILITY_INSURANCE' AND e."entityId" IN (
+              SELECT cc."id" FROM "contractor_capabilities" cc WHERE cc."contractorId" = ${capability.contractorId}
+            ))
+          )
           AND e."kind" IN ('DOCUMENT', 'PHOTO')
         ORDER BY e."createdAt" DESC
     `);
 
     const requirements = capabilityRequirements(capability.serviceType).map((requirement) => {
         const rows = evidence.filter((row) => row.evidenceType === requirement.type);
-        const approved = rows.find((row) => validApprovedEvidence(row, requirement, now)) ?? null;
+        const approved = rows.find((row) => validApprovedEvidence(row, requirement, now)
+            && (requirement.type !== 'PUBLIC_LIABILITY_INSURANCE'
+              || (Number.isSafeInteger(row.evidenceCoverAmountGbp) && row.evidenceCoverAmountGbp > 0))) ?? null;
         const pending = rows.find((row) => row.evidenceStatus === 'PENDING') ?? null;
         const rejected = rows.find((row) => row.evidenceStatus === 'REJECTED') ?? null;
         const state = approved
