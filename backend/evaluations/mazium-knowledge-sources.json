@@ -1,5 +1,5 @@
 {
-  "reviewedAt": "2026-11-20",
+  "reviewedAt": "2026-11-21",
   "sources": {
     "backend/prisma/schema.prisma": "1ca5e270b760ce4645cbd0a45a313f3c73b43973a357345adadebfd298643c23",
     "backend/src/admin/admin-user-filters.ts": "0f7afcf5f18e79666b69f346dda04add2024e42fbf71cca4aefb4bd5221118c4",
@@ -21,7 +21,8 @@
     "backend/src/sale-cancellations/sale-cancellations.service.ts": "0c53e375cdedb595a7afc32d0122608b34fd988717bcf1201caa5998714a1b1f",
     "backend/src/services/warranty-retail-tariff.ts": "f61a609b1a5fdaea532e92b4b9f0da0b17fd91f0d5ae1f4153ed39765aedbf10",
     "carmazium app/carmazium app/src/components/DashboardCards.tsx": "b8f375f3ef57fb0c3481d74cbeb295c2e74cf664554fc8fd653ddf10b83e8154",
-    "carmazium app/carmazium app/src/navigation/TabNavigator.tsx": "8511c1dddd737b9929b3495e2feb785dbf8dc315412451860260e265e03c950b",
+    "carmazium app/carmazium app/src/navigation/TabNavigator.tsx": "c474a6b9df73db24ae9553f5ab3df9ca878e382aacc833454e86a8662fdd3cc2",
+    "carmazium app/carmazium app/src/screens/buyer/BuyerDashboardScreen.tsx": "34bfae50691409efb2bf554be99a1668ea11613d04b78ae32bb4365fb674be59",
     "carmazium app/carmazium app/src/screens/main/ChatScreen.tsx": "abe1555221d1bb26b770e76b441750888f3cae2f4480d2c1ae0530ad22bc1a17",
     "docs/privacy/ACCOUNT_DELETION_RETENTION.md": "fc5e72b46344a699116df3575b657d888d8b2dfd5751ec3defd4a2b2bf752077",
     "src/app/auth/forgot-password/page.tsx": "e31d2c8ec55d997152239fb073a48aa4ebeefda8c46229e3b5b3a3dc93d69a9f",
@@ -63,7 +64,7 @@
     "src/components/finance/FinanceReferralForm.tsx": "ff4781f826b719164dd96463d497704277588efe0614f41ac278de4f4933ce13",
     "src/components/listing/ListingWizard.tsx": "61f46d11fb5b66dcc1066808be730d81d208bb580553f286bec0cce30eef3fc7",
     "src/components/services/VehicleServicesPanel.tsx": "b3d258621caef39313d41fc1b74d7adc95061483869b096b38c290dcdc9ef454",
-    "src/data/dashboardCards.json": "03b60eb78365aa63462f4d7fc40406180b1d084c03528b013037eaaca058cacd",
+    "src/data/dashboardCards.json": "9c4c920da87b6fa0054ce75ee898641aa28f6bc71682a51b3403788216b3b6e3",
     "src/lib/pricingConfig.ts": "dc03b2287b1fe7ca9722e71bc3d83ca05052b34b385c44b955fc34cff06b3d5e",
     "src/lib/purchaseDestinations.ts": "53bccb1fcb42d2f49392bf86dddaf8a7d2802da8007319a28b473e6417925b78",
     "src/lib/valuationApi.ts": "3107cfec422f49a946ca00c40d8852dbc764434c2c782dcbf1d9684e294b4732",

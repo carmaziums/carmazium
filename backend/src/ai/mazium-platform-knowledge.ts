@@ -22,12 +22,13 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         triggers: /\b(?:dashboard|customis[ez]|customiz[ez]|hide card|show card|reorder|more tools|more button|dashboard blocks)\b/i,
         facts: [
             'Dealer and buyer/seller dashboards expose their permitted tools as colourful cards on both website and the updated native app. The customer More/More tools menu has been replaced by these cards.',
+            'Personal cards include My Auction Bids and Seller Delivery Requests as well as My Offers and Delivery & Inspections. Buyer-only app accounts use the same personal card controls as sellers.',
             'Open Dashboard, then Customise to show or hide cards, move them Earlier or Later, or Reset layout. Choose Done to leave customisation. Cards are shown by default and hiding a card never deletes the feature or account data.',
             'Layout preferences are remembered separately for each signed-in account and dashboard type in that browser or app device. They are not synchronised between the website and app or across devices.',
             'Dealer staff see only tools their permissions allow. Restoring a hidden card cannot grant missing access. An older installed app may still show its previous navigation until the new app build is installed.',
             'MaziuM can explain these controls but cannot change a customer layout or confirm it was saved. If a save error is shown, use Retry save.'
         ].join(' '),
-        sources: ['src/components/dashboard/DashboardCards.tsx','src/components/dashboard/DashboardSidebar.tsx','src/data/dashboardCards.json','carmazium app/carmazium app/src/components/DashboardCards.tsx','carmazium app/carmazium app/src/navigation/TabNavigator.tsx']
+        sources: ['src/components/dashboard/DashboardCards.tsx','src/components/dashboard/DashboardSidebar.tsx','src/data/dashboardCards.json','carmazium app/carmazium app/src/components/DashboardCards.tsx','carmazium app/carmazium app/src/navigation/TabNavigator.tsx','carmazium app/carmazium app/src/screens/buyer/BuyerDashboardScreen.tsx']
     },
     {
         id: 'accounts-and-roles',

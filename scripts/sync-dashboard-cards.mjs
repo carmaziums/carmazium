@@ -12,6 +12,7 @@ const destinations = {
   'user-performance': '/dashboard/user?tab=stats', 'user-sent-offers': '/dashboard/user?tab=bids',
   'user-watchlist': '/dashboard/user?tab=watchlist', 'user-purchases': '/dashboard/user?tab=purchases',
   'user-service-jobs': '/services/jobs', 'user-warranties': '/dashboard/warranties',
+  'user-auction-bids': '/dashboard/buyer/bids?legacy=1', 'user-deliveries': '/dashboard/buyer/offers?legacy=1',
   'user-cancellations': '/dashboard/cancellations', 'user-messages': '/dashboard/user?tab=messages', 'user-settings': '/profile',
   'dealer-enquiries': '/dashboard/enquiries', 'dealer-stock': '/dashboard/dealer/inventory',
   'dealer-customers': '/dashboard/dealer/crm', 'dealer-auctions': '/dashboard/dealer/auctions',

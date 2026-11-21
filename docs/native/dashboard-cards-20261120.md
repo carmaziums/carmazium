@@ -20,3 +20,11 @@ Native additions include finance referral, warranty quote/order/Stripe payment s
 PR #944 includes the original-app homepage changes from draft #943. Website build and mobile config/typecheck CI passed on 0ae6e075. The backend knowledge-drift check identified the changed dashboard/support sources; guidance and source fingerprints have now been reviewed and updated for the new cards and removed More menu.
 
 The app runtime version becomes 1.0.1 because expo-crypto requires a native rebuild. The production package identity and signing configuration are retained. A signed original-app candidate, installed upgrade testing, live account navigation and native payment acceptance are still needed. No website APK, app-store release or OTA update is published by this change.
+
+## Installed review follow-up, 21 November
+
+PR #944 merged as a4db6e37256d7ddf7a6ee5a71b5c7ae76a3bcd1d and its website deployment is live. Signed candidate 109 passed workflow 44840342344 and upgraded the original emulator package in place. The signing certificate matched build 108, Android UID remained 10064, and firstInstallTime remained 2026-11-20 11:36:34. Its signed-in buyer session survived the upgrade. The public website download was not changed.
+
+Installed review exposed a separate buyer-only dashboard that had not received the shared cards. This follow-up adds the personal cards to that screen and the retained legacy website buyer screen, removes its old dashboard overflow and duplicate quick-action menu, and adds direct My Auction Bids and Seller Delivery Requests cards to both catalogs. A rendered buyer-screen regression test covers this integration. The buyer-specific activity statistics and period toggle remain available beneath the cards. The correction requires the next signed candidate; build 109 alone does not contain it.
+
+Follow-up validation: website/native TypeScript, 779 repository tests, eight dashboard component tests including buyer-screen rendering, 39 knowledge tests, catalog/native-route parity and product-parity checks pass. Dealer-account navigation, payment acceptance and installed testing of the corrected candidate remain outstanding.
