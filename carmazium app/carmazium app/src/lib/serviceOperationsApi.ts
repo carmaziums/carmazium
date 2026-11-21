@@ -4,6 +4,7 @@ export type CapabilityEvidenceType =
   | 'BUSINESS_IDENTITY'
   | 'DELIVERY_BUSINESS_INSURANCE'
   | 'DELIVERY_GOODS_IN_TRANSIT'
+  | 'PUBLIC_LIABILITY_INSURANCE'
   | 'INSPECTION_BUSINESS_INSURANCE'
   | 'INSPECTION_QUALIFICATION'
   | 'FINANCE_REGULATORY_AUTHORITY'
@@ -32,6 +33,7 @@ export interface ServiceCaseEntry {
   evidenceStatus?: CapabilityEvidenceStatus | null;
   evidenceIssuer?: string | null;
   evidenceReference?: string | null;
+  evidenceCoverAmountGbp?: number | null;
   evidenceValidFrom?: string | null;
   evidenceExpiresAt?: string | null;
   evidenceReviewNote?: string | null;
@@ -69,6 +71,7 @@ export interface MobileEvidenceFile {
 
 export interface CapabilityEvidenceUploadInput {
   evidenceType: CapabilityEvidenceType;
+  coverAmountGbp?: number;
   label?: string;
   issuer?: string;
   reference?: string;
@@ -97,6 +100,7 @@ export async function uploadCapabilityAttachment(
     type: file.mimeType || 'application/octet-stream',
   } as any);
   body.append('evidenceType', input.evidenceType);
+  if (input.coverAmountGbp != null) body.append('coverAmountGbp', String(input.coverAmountGbp));
   if (input.label?.trim()) body.append('label', input.label.trim());
   if (input.issuer?.trim()) body.append('issuer', input.issuer.trim());
   if (input.reference?.trim()) body.append('reference', input.reference.trim());
