@@ -142,6 +142,49 @@ describe('Master Business Partner Agreement authenticated signing and gating', (
     await expect(service.accept('staff-1', signature)).rejects.toThrow(ForbiddenException);
   });
 
+  it('rejects a verified company's mismatched registration number and legal form', async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      ...baseUser(), dealerProfile: {
+        userId: 'owner-1', isVerified: true,
+        kyc: {status: 'APPROVED', businessType: 'PRIVATE_LIMITED', companyRegistrationNumber: '98765432'},
+      },
+    });
+    await expect(service.accept('owner-1', signature)).rejects.toThrow('Company registration number does not match');
+    await expect(service.accept('owner-1', {...signature, businessKind: 'SOLE_TRADER'})).rejects.toThrow('must sign as a company');
+    expect(prisma.partnerAgreementAcceptance.create).not.toHaveBeenCalled();
+  });
+
+  it('requires a fresh acceptance when a pre-KYC signed entity does not match later verified KYC', async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      ...baseUser(), dealerProfile: {
+        userId: 'owner-1', isVerified: true,
+        kyc: {status: 'APPROVED', businessType: 'PRIVATE_LIMITED', companyRegistrationNumber: '98765432'},
+      },
+    });
+    prisma.partnerAgreementAcceptance.findFirst.mockResolvedValue({
+      id: 'accept-1', actorUserId: 'owner-1', businessOwnerUserId: 'owner-1',
+      businessKind: 'COMPANY', registrationNumber: '12345678',
+      agreementVersion: PARTNER_AGREEMENT_VERSION,
+      agreementSha256: PARTNER_AGREEMENT_SHA256,
+      explicitAcceptance: true, authorityConfirmed: true,
+      acceptedAt: new Date(),
+    });
+    await expect(service.assertAccepted('owner-1')).rejects.toThrow(ForbiddenException);
+    expect((await service.status('owner-1')).accepted).toBe(false);
+  });
+
+  it('requires a sole-trader signature for verified sole traders', async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      ...baseUser(), dealerProfile: {
+        userId: 'owner-1', isVerified: true,
+        kyc: {status: 'APPROVED', businessType: 'SOLE_PROPRIETORSHIP', companyRegistrationNumber: ''},
+      },
+    });
+    await expect(service.accept('owner-1', signature)).rejects.toThrow('must sign as a sole trader');
+    await expect(service.accept('owner-1', {...signature, businessKind:'SOLE_TRADER', registrationNumber:undefined,
+      legalEntityName:'Test Trading Director', signatoryCapacity:'Sole trader'})).resolves.toMatchObject({accepted:true});
+  });
+
   it('allows existing paid customer operations and normal consumers to bypass the business gate', async () => {
     prisma.user.findUnique.mockResolvedValue(baseUser(UserRole.BUYER));
     await expect(service.assertAccepted('owner-1')).resolves.toBeUndefined();
