@@ -105,7 +105,7 @@ export const MyCarsScreen: React.FC = () => {
           ListFooterComponent={!busy && totalPages > 1 ? <View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',alignItems:'center',gap:12,paddingVertical:20}}><Button label="Prev" variant="outline" disabled={currentPage===1} onPress={() => {setPage(currentPage-1);listRef.current?.scrollToOffset({offset:0,animated:false});}} /><Text style={styles.muted}>Page {currentPage} of {totalPages}</Text><Button label="Next" variant="outline" disabled={currentPage===totalPages} onPress={() => {setPage(currentPage+1);listRef.current?.scrollToOffset({offset:0,animated:false});}} /></View> : null}
           ListEmptyComponent={busy
             ? <View style={styles.loading}><ActivityIndicator color={Colors.accent}/></View>
-            : error ? <Button label="Retry" onPress={() => void load()} /> : <Text style={styles.muted}>No {channel.toLowerCase()} matching this status.</Text>}
+            : error ? <Button label="Retry" onPress={() => void load()} /> : <Text style={styles.muted}>{channel === 'Listings' ? 'No listings found. Start selling today!' : 'No auctions matching this status.'}</Text>}
           renderItem={({ item }) => {
             const vehicle = item.listing || item;
             return (

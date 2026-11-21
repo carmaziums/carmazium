@@ -152,7 +152,7 @@ const PersonalSavedScreen: React.FC = () => {
     <EmptyState
       icon="heart-outline"
       title="No saved cars yet"
-      subtitle="Browse cars and save those you want to revisit."
+      subtitle="Save the vehicles you're interested in by clicking the heart icon on any listing."
       ctaLabel="Browse listings"
       onCtaPress={() => navigation.navigate('Tabs', { screen: 'Search' })}
     />

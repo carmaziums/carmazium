@@ -17,7 +17,7 @@ export function NativeTourVoice({ text }: { text: string }) {
     let active = true;
     setError(false);
     const timeout = setTimeout(() => {
-      if (active && !player.isLoaded) { player.pause(); setError(true); }
+      if (active && !player.isLoaded) { active = false; player.pause(); player.replace(null); setError(true); }
     }, 60000);
     void (async () => {
       const key = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, text);
