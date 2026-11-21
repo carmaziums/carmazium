@@ -2,6 +2,7 @@ import { apiClient } from './apiClient';
 
 export type ServiceType = 'DELIVERY' | 'INSPECTION' | 'FINANCE' | 'WARRANTY';
 export type InspectionScope = 'VEHICLE' | 'COSMETIC' | 'BOTH';
+export interface InspectionPrice { name: string; description?: string; pricePence: number; quoteOnly: boolean; vatIncluded: boolean }
 export type CapabilityStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
 export type ServiceJobStatus =
   | 'OPEN' | 'ACCEPTED' | 'PAID' | 'IN_PROGRESS' | 'COMPLETED' | 'RELEASED'
@@ -176,7 +177,7 @@ export interface ContractorCapability {
 }
 
 export interface MyCapabilities {
-  profile: { id: string; businessName: string | null; phone: string | null; serviceArea: string | null } | null;
+  profile: { id: string; businessName: string | null; phone: string | null; serviceArea: string | null; inspectionPrices?: InspectionPrice[] } | null;
   capabilities: ContractorCapability[];
   stripeConnect: { connected: boolean; complete: boolean };
 }
@@ -608,4 +609,12 @@ export async function checkWarrantyAvailability(input: WarrantyAvailabilityInput
   });
   const r = await apiClient<{ data: { available: boolean; providerCount: number } }>(`/services/warranty/availability?${query}`, { cache: 'no-store' });
   return r.data;
+}
+
+/** Provider prices belong to the signed-in business, never other providers. */
+export async function saveInspectionPrices(prices: InspectionPrice[]): Promise<{prices: InspectionPrice[]}> {
+  const result = await apiClient<{data: { prices: InspectionPrice[] }}>('/services/capabilities/inspection/prices', {
+    method: 'PUT', body: JSON.stringify({prices}),
+  });
+  return result.data;
 }
