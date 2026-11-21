@@ -6,6 +6,7 @@ import { useParams } from "next/navigation"
 import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { Button } from "@/components/ui/Button"
+import { InspectionPricesEditor } from "@/components/services/InspectionPricesEditor"
 import { useAuth } from "@/context/AuthContext"
 import {
     getMyCapabilities,
@@ -264,6 +265,8 @@ export default function LeadMatchingSettingsPage() {
                                 ? "CarMazium sends each enquiry to no more than five matched approved providers. New providers do not automatically receive older enquiries; an administrator must explicitly rematch an open enquiry."
                                 : "Only open jobs inside this coverage are shown in your TradeXchange feed and can be quoted. Changing coverage does not remove jobs already assigned to your business."}
                         </section>
+
+                        {capability.serviceType === "INSPECTION" && <InspectionPricesEditor />}
 
                         <div className="flex justify-end">
                             <Button onClick={save} disabled={busy}>
