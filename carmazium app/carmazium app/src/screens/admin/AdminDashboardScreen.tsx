@@ -36,12 +36,12 @@ const MENU: MenuGroup[] = [
   { section: 'Marketplace', subtitle: 'Listings, auctions, handovers and cancellations', items: [
     { label: 'Create Listing', icon: 'add-circle-outline', screen: 'SellLanding' },
     { label: 'Listings', icon: 'car-outline', screen: 'AdminListingsReview' },
-    { label: 'Auctions', icon: 'hammer-outline', webPath: '/dashboard/admin/auctions' },
+    { label: 'Auctions', icon: 'hammer-outline', screen: 'AdminAuctions' },
     { label: 'Handovers', icon: 'hand-left-outline', screen: 'AdminHandovers' },
     { label: 'Sale Cancellations', icon: 'shield-checkmark-outline', webPath: '/dashboard/admin/cancellations' },
   ] },
   { section: 'Payments & reports', subtitle: 'Review platform charges and documents', items: [
-    { label: 'Transactions', icon: 'receipt-outline', webPath: '/dashboard/admin/transactions' },
+    { label: 'Transactions', icon: 'receipt-outline', screen: 'AdminTransactions' },
     { label: 'Warranty Orders', icon: 'shield-checkmark-outline', webPath: '/dashboard/admin/warranty-orders' },
     { label: 'Vehicle History Reports', icon: 'document-text-outline', webPath: '/dashboard/admin/hpi' },
     { label: 'Free Listing Grants', icon: 'gift-outline', webPath: '/dashboard/admin/free-listings' },
