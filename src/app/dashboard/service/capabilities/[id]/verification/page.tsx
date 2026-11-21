@@ -36,6 +36,7 @@ export default function ProviderVerificationPage() {
     const [evidenceType, setEvidenceType] = React.useState<CapabilityEvidenceType | "">("")
     const [issuer, setIssuer] = React.useState("")
     const [reference, setReference] = React.useState("")
+    const [coverAmountGbp, setCoverAmountGbp] = React.useState("")
     const [validFrom, setValidFrom] = React.useState("")
     const [expiresAt, setExpiresAt] = React.useState("")
     const [file, setFile] = React.useState<File | null>(null)
@@ -79,6 +80,8 @@ export default function ProviderVerificationPage() {
         if (!evidenceType) { setError("Choose the evidence requirement this document supports."); return }
         if (file.size > 10 * 1024 * 1024) { setError("Please keep each document under 10 MB."); return }
         if (selectedRequirement?.expiryRequired && !expiresAt) { setError(selectedRequirement.title + " requires an expiry date."); return }
+        const insuranceType = evidenceType === 'PUBLIC_LIABILITY_INSURANCE' || evidenceType === 'DELIVERY_BUSINESS_INSURANCE'
+        if (insuranceType && (!issuer.trim() || !reference.trim() || !Number.isSafeInteger(Number(coverAmountGbp)) || Number(coverAmountGbp) <= 0)) { setError('Enter insurer, policy number and a valid amount of cover in pounds.'); return }
         setBusy(true); setError(null); setNotice(null)
         try {
             await uploadCapabilityAttachment(id, file, {
@@ -88,8 +91,9 @@ export default function ProviderVerificationPage() {
                 reference: reference.trim() || undefined,
                 validFrom: validFrom || undefined,
                 expiresAt: expiresAt || undefined,
+                ...(insuranceType ? { coverAmountGbp: Number(coverAmountGbp) } : {}),
             })
-            setFile(null); setIssuer(""); setReference(""); setValidFrom(""); setExpiresAt("")
+            setFile(null); setIssuer(""); setReference(""); setValidFrom(""); setExpiresAt(""); setCoverAmountGbp("")
             const input = document.getElementById("verification-file") as HTMLInputElement | null
             if (input) input.value = ""
             setNotice("Evidence uploaded for admin review.")
@@ -163,7 +167,7 @@ export default function ProviderVerificationPage() {
                     <Link href="/dashboard/service/capabilities" className="block text-primary underline">Set up or check business payouts</Link>
                 </section>}
                 <section className="space-y-3">
-                    <div><h2 className="font-heading font-bold text-lg">{capability?.serviceType === "INSPECTION" ? "No inspection documents required" : "Trade insurance"}</h2><p className="text-xs text-[var(--text-muted)] mt-1">{capability?.serviceType === "INSPECTION" ? "Complete your business details, declaration and verified payout setup. No inspection documents need to be uploaded." : "Your trade insurance must be approved alongside your business details, declaration and verified payout setup."}</p></div>
+                    <div><h2 className="font-heading font-bold text-lg">{capability?.serviceType === "INSPECTION" ? "Inspection insurance" : "Delivery & recovery insurance"}</h2><p className="text-xs text-[var(--text-muted)] mt-1">{capability?.serviceType === "INSPECTION" ? "Public liability insurance must be uploaded and approved before inspection jobs can be accepted." : "Both public liability and motor trade insurance must be approved for collection, delivery and recovery."}</p></div>
                     {detail.verification.requirements.filter(req => !req.optional).map(req => <div key={req.type} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                         <div className="flex items-start justify-between gap-4">
                             <div className="flex gap-3">
@@ -180,9 +184,9 @@ export default function ProviderVerificationPage() {
                     <p className="text-xs text-[var(--text-muted)] leading-relaxed">Formal certificates are not required to join as a Vehicle Inspection provider. Experienced businesses and providers using third-party mechanics may apply. You may upload references, sample reports or certificates if available; none are required for onboarding. Your business remains responsible for competent inspections and appropriate insurance, including subcontracted work.</p>
                 </section>}
 
-                {capability?.serviceType === "DELIVERY" && <>
+                {(capability?.serviceType === "DELIVERY" || capability?.serviceType === "INSPECTION") && <>
                 <section className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
-                    <div className="flex gap-3"><ShieldCheck size={20} className="text-amber-500 shrink-0 mt-0.5"/><div><h2 className="font-bold">Business evidence only</h2><p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">Upload only trade insurance covering collection, delivery and recovery. Do not upload passports, driving licences, personal bank statements or unrelated identity documents.</p></div></div>
+                    <div className="flex gap-3"><ShieldCheck size={20} className="text-amber-500 shrink-0 mt-0.5"/><div><h2 className="font-bold">Business evidence only</h2><p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">Upload current public liability insurance and, for vehicle collection/delivery/recovery, motor trade insurance. No professional indemnity certificate is required. Never upload passports or bank statements.</p></div></div>
                 </section>
 
                 <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 space-y-5">
@@ -191,6 +195,7 @@ export default function ProviderVerificationPage() {
                     <div className="grid sm:grid-cols-2 gap-4">
                         <div><label className={labelCls}>Issuer / organisation</label><input className={inputCls} value={issuer} onChange={e => setIssuer(e.target.value)} placeholder="Insurer"/></div>
                         <div><label className={labelCls}>Policy reference</label><input className={inputCls} value={reference} onChange={e => setReference(e.target.value)} placeholder="Reference number"/></div>
+                        {(evidenceType === 'PUBLIC_LIABILITY_INSURANCE' || evidenceType === 'DELIVERY_BUSINESS_INSURANCE') && <div><label className={labelCls}>Limit of indemnity (£) *</label><input className={inputCls} type="number" min="1" step="1" value={coverAmountGbp} onChange={e => setCoverAmountGbp(e.target.value)} placeholder="2000000"/></div>}
                         <div><label className={labelCls}>Valid from</label><input className={inputCls} type="date" value={validFrom} onChange={e => setValidFrom(e.target.value)}/></div>
                         <div><label className={labelCls}>Expiry {selectedRequirement?.expiryRequired ? "(required)" : "(if applicable)"}</label><input className={inputCls} type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)}/></div>
                     </div>
@@ -205,7 +210,7 @@ export default function ProviderVerificationPage() {
                     {detail.attachments.length === 0 && <div className="rounded-2xl border border-dashed border-[var(--border-default)] p-8 text-center text-sm text-[var(--text-muted)]">No verification evidence uploaded yet.</div>}
                     {detail.attachments.map(entry => <div key={entry.id} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4">
                         <div className="flex items-start justify-between gap-4">
-                            <div className="min-w-0 flex gap-3"><div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"><FileText size={18} className="text-primary"/></div><div className="min-w-0"><p className="font-bold text-sm">{entry.label || "Verification evidence"}</p><p className="text-xs text-[var(--text-muted)] mt-1">{entry.evidenceIssuer || "Issuer not supplied"}{entry.evidenceReference ? " · " + entry.evidenceReference : ""}</p><p className="text-xs text-[var(--text-muted)] mt-1">Uploaded {new Date(entry.createdAt).toLocaleDateString("en-GB")}{entry.evidenceExpiresAt ? " · Expires " + new Date(entry.evidenceExpiresAt).toLocaleDateString("en-GB") : ""}</p>{entry.evidenceReviewNote && <p className="text-xs mt-2">{entry.evidenceReviewNote}</p>}</div></div>
+                            <div className="min-w-0 flex gap-3"><div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"><FileText size={18} className="text-primary"/></div><div className="min-w-0"><p className="font-bold text-sm">{entry.label || "Verification evidence"}</p><p className="text-xs text-[var(--text-muted)] mt-1">{entry.evidenceIssuer || "Issuer not supplied"}{entry.evidenceReference ? " · " + entry.evidenceReference : ""}{entry.evidenceCoverAmountGbp ? " · Cover £" + entry.evidenceCoverAmountGbp.toLocaleString('en-GB') : ""}</p><p className="text-xs text-[var(--text-muted)] mt-1">Uploaded {new Date(entry.createdAt).toLocaleDateString("en-GB")}{entry.evidenceExpiresAt ? " · Expires " + new Date(entry.evidenceExpiresAt).toLocaleDateString("en-GB") : ""}</p>{entry.evidenceReviewNote && <p className="text-xs mt-2">{entry.evidenceReviewNote}</p>}</div></div>
                             <div className="flex items-center gap-2 shrink-0"><span className={"rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider " + stateClass(entry.evidenceStatus || "PENDING")}>{entry.evidenceStatus || "PENDING"}</span>{entry.evidenceStatus === "PENDING" && <button type="button" onClick={() => remove(entry)} disabled={busy} className="p-2 rounded-lg border border-[var(--border-default)] hover:border-red-500/40 hover:text-red-500" aria-label="Delete pending evidence"><Trash2 size={14}/></button>}</div>
                         </div>
                         {entry.url && <a href={entry.url} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "outline", size: "sm", className: "mt-3" })}>Open evidence</a>}
