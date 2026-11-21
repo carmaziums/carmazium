@@ -27,6 +27,7 @@ import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { useSingleColumnSettings } from '../../lib/nativeLayoutParity';
 import { getOrCreateSupportRoom } from '../../lib/chatApi';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
+const BUSINESS_DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] as const;
 const THEME_OPTIONS: { id: ThemePreference; label: string; icon: string }[] = [
   { id: 'light', label: 'Light', icon: 'sunny-outline' },
   { id: 'dark', label: 'Dark', icon: 'moon-outline' },
@@ -196,6 +197,11 @@ export const SettingsScreen: React.FC = () => {
   // ── Profile state ──────────────────────────────────────────────
   const [profileEmail] = useState(user?.email ?? '');
   const [profilePhone, setProfilePhone] = useState(user?.phone ?? '');
+  const [profilePostcode,setProfilePostcode]=useState('');
+  const [profileLocation,setProfileLocation]=useState('');
+  const [profileLoaded,setProfileLoaded]=useState(false);
+  const [profileLoadError,setProfileLoadError]=useState<string|null>(null);
+  const [openingHours,setOpeningHours]=useState<Record<string,string>>({});
   const [firstName, setFirstName] = useState(user?.firstName ?? '');
   const [lastName, setLastName] = useState(user?.lastName ?? '');
   const [profileImage, setProfileImage] = useState(user?.profileImage ?? '');
@@ -211,8 +217,8 @@ export const SettingsScreen: React.FC = () => {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // ── Load full profile (fields not carried on the lightweight auth-store User) ──
-  useEffect(() => {
-    (async () => {
+  const loadProfile=useCallback(async()=>{
+      setProfileLoadError(null);
       try {
         const res = await apiClient<{ success: boolean; data: any }>('/users/me');
         if (res?.success && res.data) {
@@ -220,6 +226,7 @@ export const SettingsScreen: React.FC = () => {
           setFirstName(p.firstName ?? '');
           setLastName(p.lastName ?? '');
           setProfileImage(p.profileImage ?? '');
+          setProfilePhone(p.phone??'');setProfilePostcode(p.postcode??'');setProfileLocation(p.location??'');
           if (typeof p.notifyOnSale === 'boolean') setNotifyOnSale(p.notifyOnSale);
           if (typeof p.showPublicProfile === 'boolean') setShowPublicProfile(p.showPublicProfile);
           // /users/me also returns the saved payout fallback. A blank bank
@@ -234,7 +241,8 @@ export const SettingsScreen: React.FC = () => {
           if (p.dealerProfile) {
             const dp = p.dealerProfile;
             setDealerCompanyName(dp.companyName ?? '');
-            setDealerVatNumber(dp.vatNumber ?? '');
+            setDealerVatNumber(/^(PENDING-|SOLE-TRADER-NOT-VAT-)/.test(dp.vatNumber||'')?'':dp.vatNumber??'');
+            setOpeningHours(dp.openingHours && typeof dp.openingHours==='object'?dp.openingHours:{});
             setDealerRegNumber(dp.registrationNumber ?? '');
             setDealerAddress(dp.businessAddress ?? '');
             setDealerPhone(dp.phone ?? '');
@@ -250,18 +258,22 @@ export const SettingsScreen: React.FC = () => {
             setDealerBusinessType(dp.kyc?.businessType === 'SOLE_PROPRIETORSHIP' ? 'SOLE_PROPRIETORSHIP' : 'PRIVATE_LIMITED');
             setDealerKycStatus(dp.kyc?.status ?? null);
           }
-        }
-      } catch { /* keep store-derived defaults */ }
+          setProfileLoaded(true);
+        } else throw new Error('Could not load account details.');
+      } catch { setProfileLoadError('Could not load account details. Retry before editing your profile.');setProfileLoaded(false); }
       finally { setPreferencesFetchComplete(true); }
-    })();
-  }, []);
+  },[]);
+  useEffect(()=>{void loadProfile();},[loadProfile]);
 
   const initials = (firstName ? firstName[0] : profileEmail ? profileEmail[0] : '?').toUpperCase();
 
   const handlePickProfilePhoto = async () => {
+    if(!profileLoaded||uploadingPhoto)return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'images' as any,
       allowsMultipleSelection: false,
+      allowsEditing: true,
+      aspect: [1,1],
       quality: 1.0,
     });
     if (result.canceled || !result.assets?.[0]) return;
@@ -270,10 +282,10 @@ export const SettingsScreen: React.FC = () => {
       const jpegUri = await convertAndCompress(result.assets[0].uri);
       const userId = user?.id ?? 'anon';
       const url = await uploadToStorage(jpegUri, 'listings', `${userId}/profile/${Date.now()}.jpg`, 'image/jpeg');
-      setProfileImage(url);
       // Auto-save immediately, same as web — a photo shouldn't need a
       // separate "Save" tap to stick.
       await apiClient('/users/me', { method: 'PATCH', body: JSON.stringify({ profileImage: url }) });
+      setProfileImage(url);
       updateUser({ profileImage: url });
     } catch (err: any) {
       Alert.alert('Error', err?.message ?? 'Could not upload photo. Please try again.');
@@ -309,9 +321,12 @@ export const SettingsScreen: React.FC = () => {
   const isSoleTraderDealer = dealerBusinessType === 'SOLE_PROPRIETORSHIP';
 
   const handlePickDealerLogo = async () => {
+    if(!profileLoaded||uploadingLogo)return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'images' as any,
       allowsMultipleSelection: false,
+      allowsEditing: true,
+      aspect: [1,1],
       quality: 1.0,
     });
     if (result.canceled || !result.assets?.[0]) return;
@@ -320,6 +335,7 @@ export const SettingsScreen: React.FC = () => {
       const jpegUri = await convertAndCompress(result.assets[0].uri);
       const userId = user?.id ?? 'anon';
       const url = await uploadToStorage(jpegUri, 'listings', `${userId}/dealer-logo/${Date.now()}.jpg`, 'image/jpeg');
+      await apiClient('/users/dealer-profile',{method:'PATCH',body:JSON.stringify({logo:url})});
       setDealerLogo(url);
     } catch (err: any) {
       Alert.alert('Error', err?.message ?? 'Could not upload logo. Please try again.');
@@ -329,11 +345,11 @@ export const SettingsScreen: React.FC = () => {
   };
 
   const handleSaveDealerProfile = async () => {
+    if(!profileLoaded||dealerSaving)return;
     const trimmedCompany = dealerCompanyName.trim();
     const trimmedVat = dealerVatNumber.trim();
     const nextFieldErrors: { companyName?: string; vatNumber?: string } = {};
     if (!trimmedCompany) nextFieldErrors.companyName = isSoleTraderDealer ? 'Trading name is required' : 'Company name is required';
-    if (!isSoleTraderDealer && !trimmedVat) nextFieldErrors.vatNumber = 'VAT number is required';
     setDealerFieldErrors(nextFieldErrors);
     if (Object.keys(nextFieldErrors).length > 0) return;
     setDealerSaving(true);
@@ -343,8 +359,8 @@ export const SettingsScreen: React.FC = () => {
         body: JSON.stringify({
           companyName: trimmedCompany,
           ...(!isSoleTraderDealer ? {
-            vatNumber: trimmedVat,
-            registrationNumber: dealerRegNumber.trim(),
+            ...(trimmedVat?{vatNumber:trimmedVat}:{}),
+            ...(dealerRegNumber.trim()?{registrationNumber:dealerRegNumber.trim()}:{}),
           } : {}),
           businessAddress: dealerAddress.trim(),
           phone: dealerPhone.trim(),
@@ -356,6 +372,7 @@ export const SettingsScreen: React.FC = () => {
           warrantyOffered: dealerWarrantyOffered,
           warrantyDetails: dealerWarrantyOffered ? dealerWarrantyDetails.trim() : null,
           logo: dealerLogo,
+          openingHours:Object.fromEntries(Object.entries(openingHours).map(([day,hours])=>[day,hours.trim()]).filter(([,hours])=>hours)),
         }),
       });
       Alert.alert('Saved', 'Dealership profile updated successfully.');
@@ -364,6 +381,15 @@ export const SettingsScreen: React.FC = () => {
     } finally {
       setDealerSaving(false);
     }
+  };
+
+  const removeImage=(business:boolean)=>{
+    if(!profileLoaded||uploadingPhoto||uploadingLogo)return;
+    Alert.alert(business?'Remove business logo?':'Remove profile photo?','You can upload another image later.',[{text:'Keep image',style:'cancel'},{text:'Remove image',style:'destructive',onPress:async()=>{
+      const setBusy=business?setUploadingLogo:setUploadingPhoto;setBusy(true);
+      try{await apiClient(business?'/users/dealer-profile':'/users/me',{method:'PATCH',body:JSON.stringify(business?{logo:''}:{profileImage:''})});if(business)setDealerLogo('');else{setProfileImage('');updateUser({profileImage:''});}}
+      catch(err){Alert.alert('Could not remove image',err instanceof Error?err.message:'Please try again.');}finally{setBusy(false);}
+    }}]);
   };
 
   // ── Password state ─────────────────────────────────────────────
@@ -477,6 +503,7 @@ export const SettingsScreen: React.FC = () => {
 
   // ── Save profile ──
   const handleSaveProfile = async () => {
+    if(!profileLoaded||profileSaving)return;
     if (!firstName.trim() || !lastName.trim()) {
       Alert.alert('Missing fields', 'First and last name are required.');
       return;
@@ -489,6 +516,8 @@ export const SettingsScreen: React.FC = () => {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           phone: profilePhone,
+          postcode:profilePostcode.trim(),
+          location:profileLocation.trim(),
         }),
       });
       updateUser({ firstName: firstName.trim(), lastName: lastName.trim(), phone: profilePhone });
@@ -667,6 +696,8 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
+        {!!profileLoadError&&<ErrorBanner message={profileLoadError} onRetry={()=>void loadProfile()}/>}
+        {!!user?.id&&<TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('SellerProfile',{sellerId:user.id})}><Text style={styles.avatarChangeText}>View Public Profile</Text></TouchableOpacity>}
         <View style={styles.accountToolsPanel}>
           <Text style={styles.accountToolsHeading}>YOUR ACCOUNT TOOLS</Text>
           <Text style={styles.accountToolsSub}>Quick access to the same conversations and saved vehicles on web and app.</Text>
@@ -760,6 +791,7 @@ export const SettingsScreen: React.FC = () => {
             </View>
           </TouchableOpacity>
 
+          {!!profileImage&&<TouchableOpacity accessibilityRole="button" onPress={()=>removeImage(false)} disabled={!profileLoaded||uploadingPhoto}><Text style={styles.avatarChangeText}>Remove profile photo</Text></TouchableOpacity>}
           <View style={styles.fieldRow}>
             <View style={styles.fieldWrap}>
               <FieldLabel label="FIRST NAME" />
@@ -803,12 +835,13 @@ export const SettingsScreen: React.FC = () => {
             </View>
           </View>
 
+          <View style={{gap:12,paddingVertical:16}}><FieldLabel label="POSTCODE"/><TextInput accessibilityLabel="Postcode" style={styles.fieldInput} value={profilePostcode} onChangeText={setProfilePostcode} autoCapitalize="characters" maxLength={12}/><FieldLabel label="LOCATION / AREA"/><TextInput accessibilityLabel="Location / area" style={styles.fieldInput} value={profileLocation} onChangeText={setProfileLocation} maxLength={200}/></View>
           <View style={styles.cardDivider} />
           <TouchableOpacity
             style={[styles.saveBtn, profileSaving && { opacity: 0.6 }]}
             activeOpacity={0.8}
             onPress={handleSaveProfile}
-            disabled={profileSaving}
+            disabled={profileSaving||!profileLoaded}
           >
             {profileSaving
               ? <ActivityIndicator size="small" color={Colors.onAccent} />
@@ -917,6 +950,7 @@ export const SettingsScreen: React.FC = () => {
                 </View>
               </TouchableOpacity>
 
+              {!!dealerLogo&&<TouchableOpacity accessibilityRole="button" onPress={()=>removeImage(true)} disabled={!profileLoaded||uploadingLogo}><Text style={styles.avatarChangeText}>Remove business logo</Text></TouchableOpacity>}
               <View>
                 <FieldLabel label={isSoleTraderDealer ? "TRADING NAME" : "COMPANY NAME"} />
                 <TextInput
@@ -1019,13 +1053,16 @@ export const SettingsScreen: React.FC = () => {
               </View>)}
               <Text style={styles.payoutDesc}>Paid jobs reuse your approved dealer KYC and one-time £1 account verification. No additional verification payment is required for services. Verified payouts and a declaration are required. Collection/delivery/recovery also requires trade insurance; inspection requires no document uploads.</Text>
               <TouchableOpacity onPress={() => navigation.navigate('ProviderCapabilities')}><Text style={styles.toggleTitle}>Complete service setup</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('FinancePreferences')}><Text style={styles.toggleTitle}>Show finance calculator</Text></TouchableOpacity>
+              <SectionHeader icon="time-outline" label="OPENING HOURS"/>
+              {BUSINESS_DAYS.map(day=><View key={day}><FieldLabel label={day.toUpperCase()}/><TextInput accessibilityLabel={`${day} opening hours`} style={styles.inputField} value={openingHours[day]||''} onChangeText={hours=>setOpeningHours(old=>({...old,[day]:hours}))} placeholder="e.g. 09:00–17:30 or Closed" placeholderTextColor={Colors.iconMuted} maxLength={100}/></View>)}
               <Text style={styles.payoutDesc}>Review generated descriptions before publishing.</Text>
               <View style={styles.cardDivider} />
               <TouchableOpacity
                 style={[styles.saveBtn, dealerSaving && { opacity: 0.6 }]}
                 activeOpacity={0.8}
                 onPress={handleSaveDealerProfile}
-                disabled={dealerSaving}
+                disabled={dealerSaving||!profileLoaded}
               >
                 {dealerSaving
                   ? <ActivityIndicator size="small" color={Colors.onAccent} />
