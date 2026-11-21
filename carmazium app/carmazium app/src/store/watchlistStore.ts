@@ -12,6 +12,7 @@ interface WatchlistState {
   savedIds: Set<string>;
   savedListings: CarListing[];
   isLoading: boolean;
+  loadError: string | null;
 
   // Actions
   hydrateFromApi: () => Promise<void>;
@@ -21,16 +22,21 @@ interface WatchlistState {
   isSaved: (id: string) => boolean;
 }
 
+let hydration = 0;
+
 export const useWatchlistStore = create<WatchlistState>((set, get) => ({
   savedIds: new Set(),
   savedListings: [],
   isLoading: false,
+  loadError: null,
 
   hydrateFromApi: async () => {
     // This store drives every heart icon across Search, Home and VehicleDetail,
     // so it must hydrate the complete watchlist rather than silently stopping
     // at an arbitrary first-page limit.
-    set({ isLoading: true });
+    const request = ++hydration;
+    const userId = useAuthStore.getState().user?.id;
+    set({ isLoading: true, loadError: null });
     try {
       const pageSize = 50;
       let page = 1;
@@ -40,21 +46,27 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
       do {
         const result = await getWatchlist(page, pageSize);
         total = result.total;
+        if (page > 100 || result.items.some(item => allItems.some(previous => previous.id === item.id))) throw Error('Incomplete watchlist');
         allItems.push(...result.items);
 
-        if (result.items.length === 0) break;
+        if (result.items.length === 0) {
+          if (allItems.length < total) throw Error('Incomplete watchlist');
+          break;
+        }
         page += 1;
       } while (allItems.length < total);
 
+      if (request !== hydration || userId !== useAuthStore.getState().user?.id) return;
       const listings: CarListing[] = allItems
         .filter((item) => item.mappedListing != null)
         .map((item) => item.mappedListing!);
       const ids = new Set(listings.map((l) => l.id));
       set({ savedListings: listings, savedIds: ids });
     } catch {
-      // Keep existing state on network failure
+      // Retain existing hearts, but do not claim a failed read is an empty collection.
+      if (request === hydration && userId === useAuthStore.getState().user?.id) set({ loadError: 'Your saved cars could not be loaded. Please retry.' });
     } finally {
-      set({ isLoading: false });
+      if (request === hydration) set({ isLoading: false });
     }
   },
 

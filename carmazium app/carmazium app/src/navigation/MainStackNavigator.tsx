@@ -123,7 +123,7 @@ const GatedAdminAccountDetailScreen = withAdminGate(AdminAccountDetailScreen);
 
 export type MainStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
-  VehicleDetail: { listing: CarListing };
+  VehicleDetail: { listing: CarListing; makeOffer?: boolean };
   VehicleDeepLink: { slug: string };
   AuctionDeepLink: { auctionId: string };
   // `auctionId` is what `AuctionDetailScreen` actually reads to find its auction

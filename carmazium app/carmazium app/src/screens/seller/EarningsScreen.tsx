@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -12,9 +12,9 @@ import {
 } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import * as Linking from 'expo-linking';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { getAccessToken } from '../../lib/supabase';
@@ -25,8 +25,9 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
-import { IconButton } from '../../components/IconButton';
-import { HamburgerButton } from '../../components/HamburgerButton';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { Button } from '../../components/Button';
+import { useFocusEffect } from '@react-navigation/native';
 // ─────────────────────────── interfaces ───────────────────────────
 
 interface SaleRecord {
@@ -34,11 +35,13 @@ interface SaleRecord {
   listing?: {
     title?: string;
     vrm?: string;
+    images?: string[];
   };
   buyer?: {
     firstName?: string;
     lastName?: string;
   } | null;
+  buyerName?: string;
   soldPrice: number;
   createdAt?: string;
 }
@@ -83,7 +86,7 @@ interface EarningsResponse {
 // ─────────────────────────── helpers ──────────────────────────────
 
 const formatPrice = (amount: number): string =>
-  `£${amount.toLocaleString('en-GB')}`;
+  Number(amount).toLocaleString('en-GB', {style: 'currency', currency: 'GBP'});
 
 const formatDate = (iso?: string): string => {
   if (!iso) return '—';
@@ -115,17 +118,18 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  // Stripe Connect
-  const [connectLoading, setConnectLoading] = useState(false);
-  const [connectError, setConnectError] = useState<string | null>(null);
+  const request = useRef(0);
 
   const fetchData = useCallback(async (isRefresh = false) => {
+    const id = ++request.current;
     if (isRefresh) setRefreshing(true);
+    setError(null);
     try {
       const [res] = await Promise.allSettled([
         apiClient<EarningsResponse>('/listings/earnings?scope=personal'),
       ]);
-      if (res.status === 'fulfilled' && res.value?.success) {
+      if (id !== request.current) return;
+      if (res.status === 'fulfilled' && res.value?.success && Array.isArray(res.value.data?.sales) && Number.isFinite(Number(res.value.data.totalRevenue)) && Number.isFinite(res.value.data.totalSales)) {
         const d = res.value.data;
         setSales(Array.isArray(d?.sales) ? d.sales : []);
         setTotalRevenue(d?.totalRevenue ?? 0);
@@ -145,16 +149,16 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
         setError('Could not load your earnings.');
       }
     } catch {
-      setError('Could not load your earnings.');
+      if (id === request.current) setError('Could not load your earnings.');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (id === request.current) { setLoading(false); setRefreshing(false); }
     }
   }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useFocusEffect(useCallback(() => {
+    void fetchData();
+    return () => { request.current++; };
+  }, [fetchData]));
 
   const handleExport = async () => {
     setExporting(true);
@@ -192,19 +196,6 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
     }
   };
 
-  const handleStripeConnect = async () => {
-    setConnectLoading(true);
-    setConnectError(null);
-    try {
-      const res = await apiClient<{ url: string }>('/users/stripe-connect/onboard', { method: 'POST' });
-      await Linking.openURL(res.url);
-    } catch (err: any) {
-      setConnectError(err.message ?? 'Failed to start Stripe Connect');
-    } finally {
-      setConnectLoading(false);
-    }
-  };
-
   // ─────────────── render helpers ─────────────────────
 
   const renderSkeleton = () =>
@@ -231,35 +222,21 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
     />
   );
 
-  const renderSaleRow = (sale: SaleRecord) => {
-    const title = sale.listing?.title ?? 'Vehicle';
-    const buyerName = getBuyerName(sale.buyer);
-
-    return (
-      <View key={sale.id} style={styles.saleRow}>
-        {/* Trophy icon circle */}
-        <View style={styles.trophyCircle}>
-          <Ionicons name="ribbon" size={18} color={Colors.success} />
-        </View>
-
-        {/* Details */}
-        <View style={styles.saleDetails}>
-          <Text style={styles.saleTitle} numberOfLines={1}>{title}</Text>
-          <Text style={styles.saleBuyer} numberOfLines={1}>{buyerName}</Text>
-          <Text style={styles.saleDate}>{formatDate(sale.createdAt)}</Text>
-        </View>
-
-        {/* Revenue — CarMazium doesn't take a cut of classified sales (web's
-            earnings page is explicit: net proceeds are "After 0% Fee"), so
-            what a seller receives is the sold price itself, not a discounted
-            "net" figure. */}
-        <View style={styles.saleRevenue}>
+  const renderSaleRow = (sale: SaleRecord) => (
+    <View key={sale.id} style={styles.saleRow}>
+      <View style={{width: 64, height: 56, borderRadius: 12, overflow: 'hidden', backgroundColor: Colors.bgTertiary, alignItems: 'center', justifyContent: 'center'}}>
+        {sale.listing?.images?.[0] ? <Image source={{uri: sale.listing.images[0]}} style={StyleSheet.absoluteFillObject} contentFit="cover" /> : <Ionicons name="car-outline" size={18} color={Colors.textMuted} />}
+      </View>
+      <View style={{flex: 1, gap: 6}}>
+        <Text style={styles.saleTitle}>{sale.listing?.title || sale.listing?.vrm || 'Vehicle'}</Text>
+        <Text style={styles.saleBuyer}>{sale.buyer ? getBuyerName(sale.buyer) : sale.buyerName || 'Direct buyer'}</Text>
+        <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between'}}>
           <Text style={styles.soldPrice}>{formatPrice(sale.soldPrice)}</Text>
-          <Text style={styles.netAmount}>you received</Text>
+          <Text style={styles.saleDate}>{sale.createdAt ? new Date(sale.createdAt).toLocaleDateString('en-GB') : '—'}</Text>
         </View>
       </View>
-    );
-  };
+    </View>
+  );
 
   // ─────────────── main render ───────────────────────
 
@@ -273,30 +250,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Safe-area top spacer */}
-      <View style={{ height: insets.top }} />
-
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-
-        <Text style={styles.headerTitle}>Earnings</Text>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <TouchableOpacity
-            style={[styles.exportBtn, exporting && { opacity: 0.5 }]}
-            activeOpacity={0.75}
-            onPress={handleExport}
-            disabled={exporting}
-          >
-            <Ionicons name="download-outline" size={15} color={Colors.success} />
-            <Text style={styles.exportBtnText}>
-              {exporting ? 'Exporting…' : 'Export'}
-            </Text>
-          </TouchableOpacity>
-          <HamburgerButton />
-        </View>
-      </View>
+      <WebsiteTopBar />
 
       <ScrollView
         style={styles.scroll}
@@ -311,40 +265,29 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
           />
         }
       >
+        <View style={{gap: 12, marginBottom: 24}}>
+          <Text accessibilityRole="header" style={{fontSize: 24, fontFamily: FontFamily.bold, color: Colors.textPrimary}}>Sales & Earnings</Text>
+          <Text style={{fontSize: 14, lineHeight: 22, color: Colors.textMuted}}>Cars you have sold and what you earned.</Text>
+          <Button label="Payment receipts" variant="outline" onPress={() => navigation?.navigate('PaymentHistory')} />
+          <Button label="Export Ledger" variant="outline" loading={exporting} onPress={handleExport} />
+        </View>
         {error ? (
           <View style={{ marginBottom: 16 }}>
             <ErrorBanner message={error} onRetry={() => fetchData()} />
           </View>
         ) : null}
 
-        {/* ── Summary card ── */}
-        <View style={styles.summaryCard}>
-          {/* Left: total revenue */}
-          <View style={styles.summaryCol}>
-            <Text style={styles.summaryLabel}>TOTAL REVENUE</Text>
-            {loading ? (
-              <Skeleton w={120} h={36} r={6} />
-            ) : (
-              <Text style={styles.summaryRevenue}>
-                {formatPrice(totalRevenue)}
-              </Text>
-            )}
-          </View>
-
-          {/* Divider */}
-          <View style={styles.summaryDivider} />
-
-          {/* Right: total sales */}
-          <View style={[styles.summaryCol, styles.summaryColRight]}>
-            <Text style={styles.summaryLabel}>TOTAL SALES</Text>
-            {loading ? (
-              <Skeleton w={48} h={32} r={6} />
-            ) : (
-              <Text style={styles.summarySalesCount}>{totalSales}</Text>
-            )}
-          </View>
-        </View>
-
+        {!error && <View style={{gap: 16, marginBottom: 24}}>
+          {[
+            ['Total Earnings', formatPrice(totalRevenue), 'Sourced from finalised sales', Colors.success],
+            ['Vehicles Sold', String(totalSales), 'Lifetime', Colors.accent],
+            ['Avg. Sale Price', formatPrice(totalSales > 0 ? totalRevenue / totalSales : 0), 'Mean across all sales', Colors.infoBlue],
+          ].map(([label, value, hint, color]) => <View key={label} style={{padding: 20, gap: 10, borderWidth: 1, borderColor: Colors.border, borderRadius: 16, backgroundColor: Colors.bgCard}}>
+            <Text style={{fontSize: 12, fontFamily: FontFamily.bold, color, textTransform: 'uppercase'}}>{label}</Text>
+            <Text style={{fontSize: 30, fontFamily: FontFamily.bold, color: Colors.textPrimary}}>{loading ? '—' : value}</Text>
+            <Text style={{fontSize: 12, color: Colors.textMuted, textTransform: 'uppercase'}}>{hint}</Text>
+          </View>)}
+        </View>}
 
         {/* ── Auction bonuses (DASH-010) ──
             The £100 seller bonus is the only money CarMazium itself pays out —
@@ -362,7 +305,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
             <Text style={styles.bonusBlurb}>
               {auctionSales.length} auction{auctionSales.length === 1 ? '' : 's'} paid out at £100 each.
             </Text>
-            {auctionSales.slice(0, 5).map((a) => (
+            {auctionSales.map((a) => (
               <View key={a.id} style={styles.bonusRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.bonusRowTitle} numberOfLines={1}>
@@ -376,34 +319,11 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
                 <Text style={styles.bonusRowAmount}>+{formatPrice(a.sellerBonus)}</Text>
               </View>
             ))}
-            {auctionSales.length > 5 && (
-              <Text style={styles.bonusMore}>
-                +{auctionSales.length - 5} more
-              </Text>
-            )}
           </View>
         )}
 
-        {/* ── Payment receipts — PaymentHistoryScreen exists but had no
-            entry point reachable by sellers (only DealerEarningsScreen
-            linked to it). ── */}
-        <TouchableOpacity
-          style={styles.receiptsRow}
-          activeOpacity={0.8}
-          onPress={() => navigation?.navigate('PaymentHistory')}
-        >
-          <View style={styles.receiptsIconWrap}>
-            <Ionicons name="receipt-outline" size={17} color={Colors.accent} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.receiptsTitle}>Payment receipts</Text>
-            <Text style={styles.receiptsSub}>All platform fees, listing charges, and KYC payments</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} />
-        </TouchableOpacity>
-
         {/* ── Sale history ── */}
-        <View style={styles.historySection}>
+        {!error && <View style={styles.historySection}>
           <Text style={styles.sectionHeader}>SALE HISTORY</Text>
 
           {loading ? (
@@ -413,38 +333,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
           ) : (
             sales.map(renderSaleRow)
           )}
-        </View>
-
-        {/* ── Stripe Connect / Payouts ── */}
-        <View style={styles.payoutsSection}>
-          <Text style={styles.sectionHeader}>PAYOUTS</Text>
-          <View style={styles.payoutsCard}>
-            <View style={styles.payoutsCardHeader}>
-              <View style={styles.payoutsIconCircle}>
-                <Ionicons name="card-outline" size={18} color={Colors.success} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.payoutsCardTitle}>Set up bank payouts</Text>
-                <Text style={styles.payoutsCardSub}>Connect your bank account via Stripe to receive your £100 seller bonus after an approved auction handover. Buyers pay vehicle money directly to you.</Text>
-              </View>
-            </View>
-            {connectError ? (
-              <ErrorBanner message={connectError} onRetry={handleStripeConnect} />
-            ) : null}
-            <TouchableOpacity
-              onPress={handleStripeConnect}
-              disabled={connectLoading}
-              style={[styles.connectButton, connectLoading && { opacity: 0.6 }]}
-              activeOpacity={0.85}
-            >
-              {connectLoading ? (
-                <ActivityIndicator color={Colors.onAccent} />
-              ) : (
-                <Text style={styles.connectButtonText}>Set up Payouts with Stripe</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
+        </View>}
 
         <View style={{ height: 40 }} />
       </ScrollView>

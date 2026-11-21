@@ -75,5 +75,7 @@ test('failed watchlist reads cannot clear previously saved vehicles', () => {
   const getWatchlistBody = listApi.split('export async function getWatchlist(')[1]?.split('export async function getSavedAuctionIdForListing')[0];
   assert.ok(getWatchlistBody);
   assert.doesNotMatch(getWatchlistBody, /catch\s*\{/);
-  assert.ok(state.includes('// Keep existing state on network failure'));
+  assert.ok(state.includes("set({ loadError: 'Your saved cars could not be loaded. Please retry.' })"));
+  assert.ok(state.includes('request !== hydration'));
+  assert.ok(!state.slice(state.indexOf('    } catch {'), state.indexOf('  save:')).includes('savedListings: []'));
 });
