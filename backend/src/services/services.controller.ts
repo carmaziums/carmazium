@@ -14,7 +14,7 @@ import { ACCEPTED_PAYMENT_TIMEOUT_MINUTES } from './services-lifecycle.service';
 import { serviceAvailabilitySnapshot } from './service-availability';
 import {
     ServiceJobChangeDto, CreateJobDto, JobFromPurchaseDto, InspectionFromAuctionDto, CompleteJobDto, CancelJobDto, UpsertQuoteDto, ApplyCapabilityDto,
-    UpdateLeadMatchingDto, UpdateJobMatchingDto, ServiceListQueryDto, ServiceJobFeedQueryDto, CreateServiceReviewDto,
+    UpdateLeadMatchingDto, UpdateJobMatchingDto, SetInspectionPricesDto, ServiceListQueryDto, ServiceJobFeedQueryDto, CreateServiceReviewDto,
 } from './dto';
 
 /** The TradeXchange paid-job commercial split is fixed: 9% CarMazium / 91% provider business. */
@@ -62,6 +62,12 @@ export class ServicesController {
     @ApiOperation({ summary: 'My provider profile, applications and Stripe Connect state' })
     async myCapabilities(@CurrentUser() user: any) {
         return new StandardResponse(await this.services.myCapabilities(user.id));
+    }
+
+    @Put('capabilities/inspection/prices')
+    @ApiOperation({ summary: 'Update current provider business inspection prices only; never a platform-wide tariff' })
+    async setInspectionPrices(@CurrentUser() user: any, @Body() dto: SetInspectionPricesDto) {
+        return new StandardResponse(await this.services.setInspectionPrices(user.id, dto));
     }
 
     @Patch('capabilities/:id/lead-matching')
