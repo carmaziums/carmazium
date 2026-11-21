@@ -41,6 +41,7 @@ import { BlogModule } from './blog/blog.module';
 import { SaleCancellationsModule } from './sale-cancellations/sale-cancellations.module';
 import { SimpleDmsModule } from './partner-api/simpledms.module';
 import { WarrantiesModule } from './warranties/warranties.module';
+import { PartnerAgreementModule } from './partner-agreement/partner-agreement.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { WarrantiesModule } from './warranties/warranties.module';
     DashboardModule,
     PrismaModule,
     AuthModule,
+    PartnerAgreementModule,
     UsersModule,
     BidsModule,
     WatchlistModule,
