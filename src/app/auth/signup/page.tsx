@@ -17,6 +17,8 @@ import { hasTrackingConsent } from "@/lib/trackingConsent"
 // compatibility role so existing auctions, KYC and staff rules keep working;
 // TradeXchange provider services are capabilities added after signup, not account roles.
 const VALID_SIGNUP_ROLES = ["BUYER", "SELLER", "DEALER"] as const
+// Roll out with backend signing and legal approval; do not block registration before sign-off.
+const partnerAgreementSignupEnabled = process.env.NEXT_PUBLIC_PARTNER_AGREEMENT_SIGNING_ENABLED === 'true'
 
 type SignupRole = typeof VALID_SIGNUP_ROLES[number]
 
@@ -51,6 +53,7 @@ function SignupForm() {
         password: string
         role: SignupRole | ""
     }>({ firstName: "", lastName: "", email: "", password: "", role: initialRole })
+    const [reviewedBusinessAgreement, setReviewedBusinessAgreement] = React.useState(false)
     const [loading, setLoading] = React.useState(false)
     const [googleLoading, setGoogleLoading] = React.useState(false)
     const [appleLoading, setAppleLoading] = React.useState(false)
@@ -108,6 +111,10 @@ function SignupForm() {
             setError("Please select an account type to continue.")
             return
         }
+        if (partnerAgreementSignupEnabled && formData.role === "DEALER" && !reviewedBusinessAgreement) {
+            setError("Review the Master Business Partner Agreement before creating a Partner Account.")
+            return
+        }
         setLoading(true)
         setError(null)
 
@@ -146,6 +153,10 @@ function SignupForm() {
     }
 
     const handleAppleSignup = async () => {
+        if (partnerAgreementSignupEnabled && formData.role === "DEALER" && !reviewedBusinessAgreement) {
+            setError("Review the Master Business Partner Agreement before continuing with Apple.")
+            return
+        }
         setAppleLoading(true)
         setError(null)
         try {
@@ -260,7 +271,14 @@ function SignupForm() {
                         </div>
                     </div>
 
-                    <Button type="submit" disabled={loading} className="w-full h-12 text-lg shadow-[0_4px_15px_rgba(237,28,36,0.4)]" shape="default">
+                    {partnerAgreementSignupEnabled && formData.role === "DEALER" && <div className="rounded-xl border border-primary/40 bg-primary/10 p-4 text-sm text-white">
+                        <p className="font-bold">Business Partner Agreement</p>
+                        <p className="mt-1 text-slate-200">All Partner Accounts must sign the full Master Business Partner Agreement after authenticated registration, before trading or adding paid services.</p>
+                        <Link href="/business-partner-agreement" target="_blank" className="mt-2 inline-block font-bold underline">Read and download the complete agreement</Link>
+                        <label className="mt-3 flex items-start gap-3"><input type="checkbox" className="mt-1" checked={reviewedBusinessAgreement} onChange={e=>setReviewedBusinessAgreement(e.target.checked)}/><span>I understand that a business owner must review and electronically sign this agreement with their legal name and authority before using Partner services.</span></label>
+                    </div>}
+
+                    <Button type="submit" disabled={loading || (partnerAgreementSignupEnabled && formData.role === "DEALER" && !reviewedBusinessAgreement)} className="w-full h-12 text-lg shadow-[0_4px_15px_rgba(237,28,36,0.4)]" shape="default">
                         {loading ? <Loader2 className="animate-spin" /> : "Create Account"}
                     </Button>
                 </form>
@@ -272,6 +290,11 @@ function SignupForm() {
                         try {
                             if (!formData.role) {
                                 setError("Please select an account type before continuing with Google.")
+                                setGoogleLoading(false)
+                                return
+                            }
+                            if (partnerAgreementSignupEnabled && formData.role === "DEALER" && !reviewedBusinessAgreement) {
+                                setError("Review the Business Partner Agreement before continuing with Google.")
                                 setGoogleLoading(false)
                                 return
                             }

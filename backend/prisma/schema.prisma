@@ -737,6 +737,34 @@ model PartnerProfile {
   @@map("partner_profiles")
 }
 
+
+/// Append-only authenticated Business Partner Agreement signatures.
+/// The business owner is the contracting identity; dealership staff inherit
+/// that business's agreement but are not authorised to sign it for the owner.
+/// This audit record has no cascading FK: deletion/retention must be assessed
+/// under the published Privacy Policy and applicable legal record duties.
+model PartnerAgreementAcceptance {
+  id                 String   @id @default(uuid())
+  actorUserId        String
+  businessOwnerUserId String
+  legalEntityName    String
+  businessKind       String
+  registrationNumber String?
+  signatoryFullName  String
+  signatoryCapacity  String
+  agreementVersion   String
+  agreementSha256    String
+  acceptedAt         DateTime @default(now())
+  channel            String
+  userAgent          String?
+  pseudonymousIpHash String?
+  authorityConfirmed Boolean  @default(true)
+  explicitAcceptance Boolean  @default(true)
+  @@index([businessOwnerUserId, agreementVersion, acceptedAt])
+  @@index([actorUserId, acceptedAt])
+  @@map("partner_agreement_acceptances")
+}
+
 // ============================================================================
 // VEHICLES & INVENTORY
 // ============================================================================

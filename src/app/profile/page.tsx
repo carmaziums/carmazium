@@ -427,6 +427,7 @@ function ProfileContent() {
             <Link href="/dashboard" className="inline-flex min-h-11 items-center text-sm font-semibold text-primary mb-3">Back to dashboard</Link>
             <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
                 <div><h1 className="text-3xl font-bold font-heading">Account Settings</h1><p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>{isPartner ? 'One place for your profile, business, notifications, payouts and security.' : 'Manage your personal profile, notifications, payouts and security.'}</p></div>
+                {isPartner && <Link href="/business-partner-agreement" className="text-sm font-bold text-primary underline">Business Partner Agreement</Link>}
                 {profile?.id && <div className="flex flex-wrap gap-3"><ReplayIntroduction /><Link href={`/profile/${profile.id}`}><Button variant="outline">View Public Profile</Button></Link></div>}
             </div>
 

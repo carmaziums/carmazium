@@ -40,6 +40,7 @@ import { CustomerServiceJobDetailScreen } from '../screens/main/CustomerServiceJ
 import { PartnerDashboardScreen } from '../screens/main/PartnerDashboardScreen';
 import { ProviderCapabilitiesScreen } from '../screens/main/ProviderCapabilitiesScreen';
 import { ProviderVerificationScreen } from '../screens/main/ProviderVerificationScreen';
+import { PartnerAgreementScreen } from '../screens/main/PartnerAgreementScreen';
 import { ProviderMatchingScreen } from '../screens/main/ProviderMatchingScreen';
 import { ProviderOverviewScreen } from '../screens/main/ProviderOverviewScreen';
 import { ProviderJobsScreen } from '../screens/main/ProviderJobsScreen';
@@ -173,6 +174,7 @@ export type MainStackParamList = {
   CustomerServiceJobs: undefined;
   CustomerServiceJobDetail: { jobId: string };
   PartnerDashboard: undefined;
+  PartnerAgreementInfo: undefined;
   ProviderCapabilities: undefined;
   ProviderVerification: { capabilityId: string };
   ProviderMatching: { capabilityId: string };
@@ -427,6 +429,7 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="CustomerServiceJobs" component={CustomerServiceJobsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="CustomerServiceJobDetail" component={CustomerServiceJobDetailScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PartnerDashboard" component={PartnerDashboardScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PartnerAgreementInfo" component={PartnerAgreementScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ProviderCapabilities" component={ProviderCapabilitiesScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ProviderVerification" component={ProviderVerificationScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ProviderMatching" component={ProviderMatchingScreen} options={{ animation: 'slide_from_right' }} />

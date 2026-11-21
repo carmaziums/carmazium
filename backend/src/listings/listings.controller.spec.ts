@@ -3,6 +3,8 @@ import { ListingsController } from './listings.controller';
 import { ListingsService } from './listings.service';
 import { AuthService } from '../auth/auth.service';
 import { TradeListingAccessGuard } from '../auctions/trade-access.guard';
+import { PartnerAgreementGuard } from '../partner-agreement/partner-agreement.guard';
+import { PartnerAgreementService } from '../partner-agreement/partner-agreement.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ThrottlerModule } from '@nestjs/throttler';
 
@@ -32,6 +34,14 @@ describe('ListingsController', () => {
                 {
                     provide: TradeListingAccessGuard,
                     useValue: { canActivate: jest.fn().mockReturnValue(true) },
+                },
+                {
+                    provide: PartnerAgreementGuard,
+                    useValue: { canActivate: jest.fn().mockReturnValue(true) },
+                },
+                {
+                    provide: PartnerAgreementService,
+                    useValue: { assertAccepted: jest.fn().mockResolvedValue(undefined) },
                 },
             ],
         }).compile();

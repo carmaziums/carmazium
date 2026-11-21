@@ -1464,6 +1464,12 @@ export const SettingsScreen: React.FC = () => {
               Partner accounts manage verified trade and business services.
               Changing your dashboard view does not change your verified account permissions.
             </Text>
+            {(isDealerAccount || accountRole === 'contractor') && <TouchableOpacity style={[styles.accountAction, styles.accountActionSecondary]}
+              accessibilityRole="button" accessibilityLabel="Review signed Business Partner Agreement"
+              onPress={() => navigation.navigate('PartnerAgreementInfo')}>
+              <Text style={[styles.accountActionText, styles.accountActionSecondaryText]}>Business Partner Agreement & signature record</Text>
+              <Ionicons name="document-text-outline" size={17} color={Colors.accent}/>
+            </TouchableOpacity>}
             {canManageBusiness ? (
               <>
                 <TouchableOpacity style={styles.accountAction}

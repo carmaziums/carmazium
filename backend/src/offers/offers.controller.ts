@@ -21,6 +21,7 @@ import { CreateOfferDto } from './dto/create-offer.dto';
 import { RespondOfferDto } from './dto/respond-offer.dto';
 import { AmendOfferDto } from './dto/amend-offer.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
+import { PartnerAgreementGuard } from '../partner-agreement/partner-agreement.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse } from '../listings/dto/response.dto';
 
@@ -35,6 +36,7 @@ export class OffersController {
      * Buyer: Submit a price offer on a listing
      */
     @Post()
+    @UseGuards(PartnerAgreementGuard)
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Make an offer', description: 'Submit an offer within the listing\'s price range.' })
     @ApiResponse({ status: 201, description: 'Offer created' })
