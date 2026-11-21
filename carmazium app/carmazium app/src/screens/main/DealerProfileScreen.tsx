@@ -61,7 +61,7 @@ export const DealerProfileScreen: React.FC = () => {
 
   const openMainAction = (destination: DealerHomeDestination) => {
     switch (destination) {
-      case 'add-vehicle': if (canManageInventory) navigation.navigate('SellCarFlow'); break;
+      case 'add-vehicle': if (canManageInventory) navigation.navigate('DealerListingMethod'); break;
       case 'customers': if (canManageCrm) navigation.navigate('DealerLeads'); break;
       case 'buy-and-bid': if (canViewTrade) navigation.navigate('Tabs', { screen: 'DealerBuyBid' }); break;
       case 'partner-services': navigation.navigate('PartnerDashboard'); break;

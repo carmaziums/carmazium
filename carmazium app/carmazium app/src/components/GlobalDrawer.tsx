@@ -56,7 +56,7 @@ const STOCK_SUBMENU: { label: string; status: DealerStockStatus }[] = [
   { label: 'Sold', status: 'Sold' },
 ];
 
-const ADD_VEHICLE: MenuItem = { id: 'add-vehicle', label: 'Add Vehicle', icon: 'add-circle-outline', iconLib: 'ion', stackScreen: 'SellCarFlow' };
+const ADD_VEHICLE: MenuItem = { id: 'add-vehicle', label: 'Add Vehicle', icon: 'add-circle-outline', iconLib: 'ion', stackScreen: 'DealerListingMethod' };
 
 export const GlobalDrawer: React.FC = () => {
   const { isOpen, mode, siteMenuTop, closeDrawer } = useDrawer();

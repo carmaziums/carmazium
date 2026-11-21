@@ -60,6 +60,7 @@ import { MyListingDashboardScreen } from '../screens/sell/MyListingDashboardScre
 import { PurchaseFlowScreen } from '../screens/main/PurchaseFlowScreen';
 import { SellCarFlowScreen } from '../screens/sell/SellCarFlowScreen';
 import { SellLandingScreen } from '../screens/sell/SellLandingScreen';
+import { DealerListingMethodScreen } from '../screens/sell/DealerListingMethodScreen';
 import { BuyerDashboardScreen } from '../screens/buyer/BuyerDashboardScreen';
 import { SellerDashboardScreen } from '../screens/seller/SellerDashboardScreen';
 import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScreen';
@@ -104,6 +105,7 @@ import { GUEST_ROUTES, SignInRequired } from '../components/SignInRequired';
 
 const GatedDealerAnalyticsScreen = withDealerGate(DealerAnalyticsScreen, 'VIEW_ANALYTICS');
 const GatedDealerInventoryScreen = withDealerGate(DealerInventoryScreen, 'VIEW_INVENTORY');
+const GatedDealerListingMethodScreen = withDealerGate(DealerListingMethodScreen, 'MANAGE_INVENTORY');
 const GatedDealerLeadsScreen = withDealerGate(DealerLeadsScreen, 'MANAGE_CRM');
 const GatedDealerKYCScreen = withDealerGate(DealerKYCScreen, 'MANAGE_KYC', true);
 const GatedDealerTeamScreen = withDealerGate(DealerTeamScreen, 'MANAGE_TEAM');
@@ -224,6 +226,7 @@ export type MainStackParamList = {
     auctionId?: string;
   } | undefined;
   SellLanding: { listingType?: 'AUCTION' | 'CLASSIFIED'; badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM' } | undefined;
+  DealerListingMethod: undefined;
   SellCarFlow: { badgeTier?: 'BASIC' | 'STANDARD' | 'PREMIUM'; listingId?: string; listingType?: 'AUCTION' | 'CLASSIFIED'; prefill?: {
     valuation?: VehicleValuation;
     vrm?: string; make?: string; model?: string; year?: number; mileage?: number;
@@ -471,6 +474,7 @@ export const MainStackNavigator: React.FC = () => {
         component={PurchaseFlowScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
+      <Stack.Screen name="DealerListingMethod" component={GatedDealerListingMethodScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="SellLanding" component={SellLandingScreen}
         options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen
