@@ -1063,8 +1063,8 @@ export const SettingsScreen: React.FC = () => {
               ] as const).map(([label, value, setValue]) => <View key={label} style={styles.toggleRow}>
                 <Text style={styles.toggleTitle}>{label}</Text><Switch accessibilityLabel={label} value={value} onValueChange={setValue} />
               </View>)}
-              <Text style={styles.payoutDesc}>Paid jobs reuse your approved dealer KYC and one-time £1 account verification. No additional verification payment is required for services. Verified payouts and a declaration are required. Collection/delivery/recovery also requires trade insurance; inspection requires no document uploads.</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('ProviderCapabilities')}><Text style={styles.toggleTitle}>Complete service setup</Text></TouchableOpacity>
+              <Text style={styles.payoutDesc}>Paid jobs reuse your approved dealer KYC and one-time £1 account verification. No additional verification payment is required for services. Verified payouts and a declaration are required. Collection, delivery and recovery also need Motor Trade and Public Liability Insurance; inspections need Public Liability Insurance.</Text>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Manage service provider insurance documents" onPress={() => navigation.navigate('ProviderCapabilities')}><Text style={styles.toggleTitle}>Manage service-provider insurance documents & verification</Text></TouchableOpacity>
               <TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('FinancePreferences')}><Text style={styles.toggleTitle}>Show finance calculator</Text></TouchableOpacity>
               <SectionHeader icon="time-outline" label="OPENING HOURS"/>
               {BUSINESS_DAYS.map(day=><View key={day}><FieldLabel label={day.toUpperCase()}/><TextInput accessibilityLabel={`${day} opening hours`} style={styles.inputField} value={openingHours[day]||''} onChangeText={hours=>setOpeningHours(old=>({...old,[day]:hours}))} placeholder="e.g. 09:00–17:30 or Closed" placeholderTextColor={Colors.iconMuted} maxLength={100}/></View>)}

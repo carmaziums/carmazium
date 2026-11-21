@@ -22,7 +22,7 @@ export function DealerServicesNotice() {
     }
     return <aside className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4">
         <h2 className="font-bold">Manage your dealership services in Settings</h2>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">Set your listing badges and complete collection, delivery or inspection setup in Account Settings → Business.</p>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">Set your listing badges and find collection, delivery and inspection insurance uploads in Account Settings → Business, then choose Manage service-provider insurance documents.</p>
         <div className="mt-2 flex flex-wrap items-center gap-x-5">
             <Link href="/profile?section=business" className="inline-flex min-h-11 items-center font-semibold text-primary underline">Open Settings</Link>
             <button type="button" onClick={() => void dismiss()} disabled={busy} className="min-h-11 font-semibold disabled:opacity-50">{busy ? "Saving…" : "Dismiss"}</button>

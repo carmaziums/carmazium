@@ -8,8 +8,8 @@ import { saveIntroduction } from "@/components/onboarding/WebsiteIntroduction"
 const options = [
     ["financeOffered", "Finance badge", "Show that you can arrange finance on your own listings."],
     ["warrantyOffered", "Warranty badge", "Show that you offer warranties on your own listings."],
-    ["deliveryServicesEnabled", "Collection, delivery and recovery", "Complete business verification, payout setup and trade insurance before quoting for jobs."],
-    ["inspectionServicesEnabled", "Vehicle inspection", "Complete business verification, payout setup and the declaration. No inspection documents are required."],
+    ["deliveryServicesEnabled", "Collection, delivery and recovery", "Complete business verification, payout setup, Motor Trade Insurance and Public Liability Insurance before quoting for jobs."],
+    ["inspectionServicesEnabled", "Vehicle inspection", "Complete business verification, payout setup, the declaration and upload Public Liability Insurance for inspections."],
 ] as const
 
 export function DealerServicePreferences() {
@@ -47,12 +47,12 @@ export function DealerServicePreferences() {
                 <input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={enabled} disabled={busy} onChange={e => toggle(key, e.target.checked)} />
                 <span><span className="block font-semibold">{title}</span><span className="block mt-1 text-sm text-[var(--text-muted)]">{description}</span></span>
             </label>
-                {(key === 'deliveryServicesEnabled' || key === 'inspectionServicesEnabled') && <Link href={`/dashboard/service/capabilities#service-${key === 'deliveryServicesEnabled' ? 'delivery' : 'inspection'}`} className="mt-2 inline-flex min-h-11 items-center font-semibold text-primary underline">{key === 'deliveryServicesEnabled' ? 'Set up collection, delivery and recovery' : 'Set up vehicle inspection'}</Link>}
+                {(key === 'deliveryServicesEnabled' || key === 'inspectionServicesEnabled') && <Link href={`/dashboard/service/capabilities#service-${key === 'deliveryServicesEnabled' ? 'delivery' : 'inspection'}`} className="mt-2 inline-flex min-h-11 items-center font-semibold text-primary underline">{key === 'deliveryServicesEnabled' ? 'Upload Motor Trade & Public Liability Insurance' : 'Upload inspection Public Liability Insurance'}</Link>}
                 {(key === 'financeOffered' || key === 'warrantyOffered') && <p className="mt-2 text-xs text-[var(--text-muted)]">{enabled ? 'Badge on — buyers contact you for details.' : 'Badge off — hidden from your listings.'} No provider application is needed for this badge.</p>}
             </div>
         })}</div>
         <p className="text-sm text-[var(--text-muted)]">Paid jobs reuse your approved dealer KYC and one-time £1 account verification. No additional verification payment is required for services. A verified business payout account is required. Turning a service on does not approve your application.</p>
-        <Link className="inline-block font-semibold text-primary underline" href="/dashboard/service/capabilities">Complete service setup</Link>
+        <Link className="inline-block font-semibold text-primary underline" href="/dashboard/service/capabilities">Manage service-provider insurance documents & verification</Link>
         {message && <p role="status" className="text-sm">{message}</p>}
     </section>
 }
