@@ -106,6 +106,6 @@ test('valuation quote is handed from the registration screen directly to both na
   assert.match(wizard, /valuationBaseKeyRef\.current !== currentKey/);
   assert.match(wizard, /const canReplace = !priceAsking\.trim\(\)/);
   assert.match(wizard, /setPriceAsking\(suggestedPrice\)/);
-  assert.match(wizard, /landingListingType === 'AUCTION' \? 'FREE' : 'BASIC'/);
+  assert.match(wizard, /landingListingType === 'AUCTION' \? 'FREE' : !editListingId/);
   assert.match(wizard, /setBadgeTier\(method === 'AUCTION' \? 'FREE' : 'BASIC'\)/);
 });

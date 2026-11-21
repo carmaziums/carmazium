@@ -824,7 +824,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [deliveryAvailable, setDeliveryAvailable] = useState(false);
   const [deliveryMaxMiles, setDeliveryMaxMiles] = useState('');
   const [deliveryPricePerMile, setDeliveryPricePerMile] = useState('');
-  const [badgeTier, setBadgeTier] = useState<BadgeTier>(landingListingType === 'AUCTION' ? 'FREE' : 'BASIC');
+  const [badgeTier, setBadgeTier] = useState<BadgeTier>(landingListingType === 'AUCTION' ? 'FREE' : !editListingId && ['BASIC','STANDARD','PREMIUM'].includes(route?.params?.badgeTier || '') ? route.params.badgeTier as BadgeTier : 'BASIC');
   const [listingType, setListingType] = useState<'CLASSIFIED' | 'AUCTION'>(
     landingListingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED',
   );
