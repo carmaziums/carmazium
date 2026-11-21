@@ -277,6 +277,8 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
     // Raw enums kept alongside the display buckets above — mapCategory and
     // mapCondition are lossy and the detail screen wants the real value.
     bodyTypeRaw:  l.bodyType     ?? null,
+    fuelTypeRaw: l.fuelType ?? null,
+    transmissionRaw: l.transmission ?? null,
     conditionRaw: l.condition    ?? null,
     vrm:          (l as any).vrm ?? null,
     ulezCompliant: l.ulezCompliant ?? null,
