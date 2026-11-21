@@ -147,6 +147,8 @@ export interface CarListing {
    * detail a buyer needs and mobile was throwing away.
    */
   bodyTypeRaw?: string | null;
+  fuelTypeRaw?: string | null;
+  transmissionRaw?: string | null;
   conditionRaw?: string | null;
   /** True when the vehicle itself is an import (separate from a listing imported from another marketplace). */
   isImported?: boolean | null;

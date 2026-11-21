@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { parseVehicleImagePresentation } from '../lib/vehicleImagePresentation';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
@@ -22,7 +23,7 @@ interface ImageCarouselProps {
    * callers that don't care which photo was tapped (e.g. "navigate to
    * detail regardless") can just ignore the argument. */
   onPress?: (index: number) => void;
-  /** Max images to page through — web parity caps this at 8 (4 interior + 4 exterior). */
+  /** Max images to page through; the website supports up to 100 supplied photos. */
   maxImages?: number;
   showIndicator?: boolean;
   /** Controlled page (e.g. synced with a thumbnail strip). */
@@ -31,7 +32,7 @@ interface ImageCarouselProps {
   onIndexChange?: (index: number) => void;
 }
 
-// Native FlatList paging carousel — deliberately not a JS pointer-drag
+// Native ScrollView paging carousel — deliberately not a JS pointer-drag
 // reimplementation (that was tried and rewritten once already on web; see
 // the Prompt 2 handover notes). Dots for <=5 images, "N/M" counter above
 // that, matching web. Caller's own image-container View supplies
@@ -41,12 +42,12 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = React.memo(({
   width,
   height,
   onPress,
-  maxImages = 8,
+  maxImages = 100,
   showIndicator = true,
   activeIndex,
   onIndexChange,
 }) => {
-  const data = images.slice(0, maxImages);
+  const data = useMemo(() => images.filter(Boolean).slice(0, maxImages), [images, maxImages]);
   const [index, setIndex] = useState(activeIndex ?? 0);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -59,14 +60,20 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = React.memo(({
     [width, data.length, onIndexChange],
   );
 
-  // Follow an externally chosen page (thumbnail tap).
+  // Re-align the photo after rotation, density changes or thumbnail selection.
   useEffect(() => {
-    if (activeIndex == null || activeIndex === index || activeIndex >= data.length) return;
-    setIndex(activeIndex);
-    scrollRef.current?.scrollTo({ x: activeIndex * width, animated: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeIndex]);
+    const next = Math.max(0, Math.min(activeIndex ?? index, Math.max(0, data.length - 1)));
+    if (next !== index) setIndex(next);
+    scrollRef.current?.scrollTo({ x: next * width, animated: false });
+  }, [activeIndex, width, data.length, data[0], index]);
 
+  const photo = (raw: string) => {
+    const display = parseVehicleImagePresentation(raw);
+    return <Image source={{ uri: display.src }}
+      style={{ width, height, transform: [{ scale: display.zoom }], transformOrigin: display.x + '% ' + display.y + '%' }}
+      contentFit={display.fit} contentPosition={{ left: (display.x + '%') as any, top: (display.y + '%') as any }}
+      transition={150} cachePolicy="memory-disk" recyclingKey={raw}/>;
+  };
   if (data.length === 0) {
     // Empty media must never be replaced with a stock photo of a different car.
     return (
@@ -80,14 +87,8 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = React.memo(({
 
   if (data.length <= 1) {
     return (
-      <Pressable onPress={() => onPress?.(0)} style={{ width, height }}>
-        <Image
-          source={{ uri: data[0] }}
-          style={{ width, height }}
-          contentFit="cover"
-          transition={200}
-          cachePolicy="memory-disk"
-        />
+      <Pressable onPress={() => onPress?.(0)} style={{ width, height, overflow: 'hidden' }}>
+        {photo(data[0])}
       </Pressable>
     );
   }
@@ -97,8 +98,8 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = React.memo(({
       {/* A plain paging ScrollView, not a FlatList: this carousel sits inside
           horizontal FlatList rails (Home), and a nested same-orientation
           VirtualizedList laid its pages out wrongly on Android — the second
-          photo rendered underneath the first, over the card's details. With at
-          most `maxImages` (8) pages there is nothing to virtualise. */}
+          photo rendered underneath the first, over the card's details. Pages are lightweight frames;
+          only the visible photo and its neighbours decode image data. */}
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -111,19 +112,12 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = React.memo(({
         contentContainerStyle={styles.pages}
       >
         {data.map((item, i) => (
-          <Pressable key={`${item}-${i}`} onPress={() => onPress?.(i)} style={{ width, height }}>
+          <Pressable key={`${item}-${i}`} onPress={() => onPress?.(i)} style={{ width, height, overflow: 'hidden' }}>
             {/* Only the visible photo and its neighbours are decoded. Mounting
-                every page (up to 8 per card × every card on Home/Live) made
+                every photo (up to 100 per card) would make
                 scrolling those screens judder. */}
             {Math.abs(i - index) <= 1 ? (
-              <Image
-                source={{ uri: item }}
-                style={{ width, height }}
-                contentFit="cover"
-                transition={150}
-                cachePolicy="memory-disk"
-                recyclingKey={item}
-              />
+              photo(item)
             ) : (
               <View style={{ width, height, backgroundColor: Colors.bgSecondary }} />
             )}
@@ -172,7 +166,7 @@ const styles = StyleSheet.create({
   counterBadge: {
     position: 'absolute',
     bottom: 8,
-    right: 8,
+    alignSelf: 'center',
     backgroundColor: Colors.blackAlpha75,
     paddingHorizontal: 7,
     paddingVertical: 2,

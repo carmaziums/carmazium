@@ -216,3 +216,14 @@ After the cloud execution workspace disconnected, the latest edits were recovere
 - Follow-up corrects those observed pricing differences using website page structure, exact package facts, Inter 700/900 and Poppins 900, independent FAQ disclosures, and native tier navigation. Shared light-mode primary red and muted text now match globals.css; dark colours and logo assets retained.
 - Automated pricing navigation/tier/FAQ checks pass; added rendered-package and website theme-token regression checks. Full native suite: 119 passed initially plus one test fixture path error; corrected test passes. Product parity check passes. Android export and CI pending at this checkpoint.
 - Full native account-screen acceptance and customer APK publication remain pending. Public download has not been changed in this session.
+
+
+## Marketplace gallery and automatic cover follow-up — 21 November 2026
+
+On the same 600dp BlueStacks device, native build 117 showed only eight of the ten BMW 7 SERIES photos shown by mobile Chrome. Native result cards also lacked the website's offers label, specification chips, delivery badge and full-width details action. The original package remains installed; these changes are not yet a public release.
+
+- Native galleries now retain up to 100 supplied photos, decode only nearby images, show the full counter and honor stored fit/position/zoom. Result cards retain native details, wishlist, warranty and gallery actions while matching the website's facts and layout.
+- The native seller uploader now calls the same authenticated /listings/photo-cover-recommendation endpoint as the website after exterior uploads. It sends at most the first 30 source URLs without crop fragments and applies the same confidence threshold of 0.6. Service failure or an unclear recommendation leaves the order intact. Manual cover selection remains available.
+- The exact photo order is retained across category tabs, edits and account-scoped saved drafts. Create and update requests submit that order, so the shared listing's first photo is the cover used by both clients. Partial upload failures retain successfully uploaded photos.
+- Native automated suite: 128 passed, including gallery/crop/action tests and five cover-selection tests for successful recommendations, bounds, confidence, failures, metadata and draft/edit order. TypeScript and Android bundle checks are recorded separately.
+- Live uploads/publication were not performed with the dealer's real vehicles. Final candidate emulator validation and public artifact publication remain pending.

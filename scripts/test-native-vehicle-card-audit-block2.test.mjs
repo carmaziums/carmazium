@@ -40,7 +40,9 @@ test('gearbox is visible without opening auction or compact retail cards', () =>
 
 test('buy/search and saved cars show gearbox even when not disclosed', () => {
   const horizontal = native('src/components/HorizontalVehicleCard.tsx');
-  assert.match(horizontal, /Gearbox: \$\{listing\.transmission \|\| 'Not specified'\}/);
+  assert.ok(horizontal.includes("TRANSMISSION_LABELS[listing.transmissionRaw]"));
+  assert.ok(horizontal.includes("||listing.transmission||'Not specified'"));
+  assert.ok(horizontal.includes("{icon:'settings-outline',label:gearbox}"));
   const saved = native('src/screens/main/SavedScreen.tsx');
   assert.match(saved, /Gearbox: \{listing\.transmission \|\| 'Not specified'\}/);
   assert.match(saved, /Gearbox: \$\{listing\.transmission \|\| 'Not specified'\}/);

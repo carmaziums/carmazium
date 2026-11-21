@@ -1,3 +1,4 @@
+import { orderedVehicleImages, selectAutomaticVehicleCover } from '../../lib/vehicleCoverSelection';
 import { faultDeclarationError, isNoKnownFaults, isUndeclaredFaults, NO_KNOWN_FAULTS } from '../../lib/sellerFaultDeclaration';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useScrollLocked } from '../../lib/scrollLock';
@@ -808,6 +809,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [hiddenZoneIds, setHiddenZoneIds] = useState<string[]>([]);
   const [zonePhotos, setZonePhotos] = useState<Record<string, string>>({});
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoOrder, setPhotoOrder] = useState<string[]>([]);
+  const [coverSelectionMessage, setCoverSelectionMessage] = useState('');
   const [videoUrls, setVideoUrls] = useState<string[]>([]);
   const [videoInput, setVideoInput] = useState('');
 
@@ -1140,6 +1143,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             setDepartedRelOther(store.departedRelOther);
             setDeclAcknowledged(store.declAcknowledged);
             setExteriorImages(store.exteriorImages ?? []);
+            setPhotoOrder(store.photoOrder ?? []);
             setInteriorImages(store.interiorImages ?? []);
             setDamageImages(store.damageImages ?? []);
             setAuctionStartMode(store.auctionStartMode || 'NOW');
@@ -1278,6 +1282,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             else nextExterior.push(imageUrl); // legacy/UNASSIGNED defaults safely to Exterior
           });
 
+          setPhotoOrder(l.images);
           setExteriorImages(nextExterior);
           setInteriorImages(nextInterior);
           setDamageImages(nextDamage);
@@ -1429,11 +1434,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     return fieldError(key) ? Colors.error : Colors.success;
   };
 
-  const allImages = [
+  const allImages = orderedVehicleImages([
     ...exteriorImages.map(url => encodeVehicleImageCategory(url, 'EXTERIOR')),
     ...interiorImages.map(url => encodeVehicleImageCategory(url, 'INTERIOR')),
     ...damageImages.map(url => encodeVehicleImageCategory(url, 'DAMAGE')),
-  ];
+  ], photoOrder);
 
   const sellerAiConsentKey = () => {
     const userId = useAuthStore.getState().user?.id;
@@ -1752,6 +1757,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }
 
   async function handlePickPhoto() {
+    if (uploadingPhoto) return;
     const currentCount = exteriorImages.length + interiorImages.length + damageImages.length;
     const remainingSlots = MAX_PHOTOS - currentCount;
     if (remainingSlots <= 0) {
@@ -1775,31 +1781,40 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     }
 
     setUploadingPhoto(true);
+    setCoverSelectionMessage('');
+    const uploadTab = photoTab;
+    const urls: string[] = [];
+    let failedCount = 0;
     try {
-      const category = photoTab.toLowerCase();
-      // Determine starting index for unique progress IDs
-      const startIndex = (
-        photoTab === 'Exterior' ? exteriorImages :
-        photoTab === 'Interior' ? interiorImages :
-        damageImages
-      ).length;
-
-      const urls: string[] = [];
+      const category = uploadTab.toLowerCase();
+      const startIndex = (uploadTab === 'Exterior' ? exteriorImages : uploadTab === 'Interior' ? interiorImages : damageImages).length;
       for (let i = 0; i < selectedAssets.length; i++) {
-        const url = await uploadImage(selectedAssets[i].uri, category, startIndex + i);
-        urls.push(url);
+        try {
+          urls.push(await uploadImage(selectedAssets[i].uri, category, startIndex + i));
+        } catch { failedCount++; }
       }
-      if (photoTab === 'Exterior') setExteriorImages(p => [...p, ...urls]);
-      else if (photoTab === 'Interior') setInteriorImages(p => [...p, ...urls]);
-      else setDamageImages(p => [...p, ...urls]);
-    } catch {
-      Alert.alert('Upload failed', 'Could not upload one or more photos. Please try again.');
+      if (urls.length) {
+        let combined = [...allImages, ...urls];
+        if (uploadTab === 'Exterior' && combined.length > 1) {
+          setCoverSelectionMessage('Checking for the best front photo...');
+          const selected = await selectAutomaticVehicleCover(combined);
+          combined = selected.images;
+          setCoverSelectionMessage(selected.message);
+        }
+        setPhotoOrder(combined);
+        if (uploadTab === 'Exterior') setExteriorImages(p => [...p, ...urls]);
+        else if (uploadTab === 'Interior') setInteriorImages(p => [...p, ...urls]);
+        else setDamageImages(p => [...p, ...urls]);
+      }
+      if (failedCount) Alert.alert('Some photos could not upload', urls.length + ' uploaded, ' + failedCount + ' failed. Please try the failed photos again.');
     } finally {
       setUploadingPhoto(false);
     }
   }
 
   async function removePhoto(tab: string, uri: string) {
+    if (uploadingPhoto) return;
+    setCoverSelectionMessage('');
     const source = parseVehicleImageMetadata(uri).src;
 
     // A photo already referenced by an existing/HPI draft listing must not be
@@ -1820,25 +1835,30 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       }
     }
 
-    if (tab === 'Exterior') setExteriorImages(p => p.filter(x => x !== uri));
-    else if (tab === 'Interior') setInteriorImages(p => p.filter(x => x !== uri));
-    else setDamageImages(p => p.filter(x => x !== uri));
+    if (tab === 'Exterior') setExteriorImages(p => p.filter(x => parseVehicleImageMetadata(x).src !== source));
+    else if (tab === 'Interior') setInteriorImages(p => p.filter(x => parseVehicleImageMetadata(x).src !== source));
+    else setDamageImages(p => p.filter(x => parseVehicleImageMetadata(x).src !== source));
+  }
+
+  function makeCoverPhoto(uri: string) {
+    if (uploadingPhoto) return;
+    const next = allImages.filter(url => url !== uri);
+    setPhotoOrder([uri, ...next]);
+    setCoverSelectionMessage('Cover photo selected.');
   }
 
   function movePhoto(tab: string, from: number, to: number) {
-    if (from === to || from < 0 || to < 0) return;
-
-    const move = (items: string[]) => {
-      if (from >= items.length || to >= items.length) return items;
-      const next = [...items];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return next;
-    };
-
-    if (tab === 'Exterior') setExteriorImages(move);
-    else if (tab === 'Interior') setInteriorImages(move);
-    else setDamageImages(move);
+    if (uploadingPhoto || from === to || from < 0 || to < 0) return;
+    const category = tab.toUpperCase();
+    const items = allImages.filter(url => parseVehicleImageMetadata(url).category === category);
+    if (from >= items.length || to >= items.length) return;
+    const next = [...allImages];
+    const fromIndex = next.indexOf(items[from]);
+    const toIndex = next.indexOf(items[to]);
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setPhotoOrder(next);
+    setCoverSelectionMessage('');
   }
 
   function handleAddVideoUrl() {
@@ -2556,6 +2576,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // ─── Navigation ───────────────────────────────────────────────────────────────
 
   function handleNext() {
+    if (uploadingPhoto) return;
     // Touch pricing fields on step 3 so errors become visible before validateStep runs
     if (step === 3) {
       setTouched(prev => ({ ...prev, priceAsking: true, priceMin: priceMin.trim() ? true : prev.priceMin }));
@@ -2573,7 +2594,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       stolenRecovered, outstandingFinance, isLegalKeeper,
       notOwnerRelationship, notOwnerRelSelect, notOwnerRelOther,
       isDepartedSale, departedRelationship, departedRelSelect, departedRelOther, declAcknowledged,
-      exteriorImages, interiorImages, damageImages,
+      exteriorImages, interiorImages, damageImages, photoOrder: allImages,
       auctionStartMode, auctionStartDate, reservePrice, startingBid, minIncrement, buyItNowPrice,
       lastStep: nextStep,
     });
@@ -2581,6 +2602,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }
 
   function handleBack() {
+    if (uploadingPhoto) return;
     setValidationIssue(null);
     validationSectionYRef.current = {};
     if (step > 1) setStep((step - 1) as Step);
@@ -2611,6 +2633,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // resume-draft prompt above); this just surfaces an explicit exit point on
   // any step beyond the first instead of only auto-saving on Next (SE8).
   function handleSaveDraftExit() {
+    if (uploadingPhoto) return;
     if (editMode) { navigation?.goBack(); return; }
     updateDraft({
       vrm, vehicleType, make, model, year, mileage, title, fuelType, transmission, bodyType, colour, doors, seats,
@@ -2620,7 +2643,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       stolenRecovered, outstandingFinance, isLegalKeeper,
       notOwnerRelationship, notOwnerRelSelect, notOwnerRelOther,
       isDepartedSale, departedRelationship, departedRelSelect, departedRelOther, declAcknowledged,
-      exteriorImages, interiorImages, damageImages,
+      exteriorImages, interiorImages, damageImages, photoOrder: allImages,
       auctionStartMode, auctionStartDate, reservePrice, startingBid, minIncrement, buyItNowPrice,
       lastStep: step,
     });
@@ -3426,7 +3449,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // ─── Step 2 — Media ──────────────────────────────────────────────────────────
 
   function renderStep2() {
-    const tabImages = photoTab === 'Exterior' ? exteriorImages : photoTab === 'Interior' ? interiorImages : damageImages;
+    const tabImages = allImages.filter(url => parseVehicleImageMetadata(url).category === photoTab.toUpperCase());
     const totalCount = allImages.length;
     const minPhotos = isCaravan ? 1 : MIN_PHOTOS;
     const belowMinimum = totalCount < minPhotos;
@@ -3466,6 +3489,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             <TouchableOpacity
               key={tab}
               style={[s.photoTab, photoTab === tab && s.photoTabActive]}
+              disabled={uploadingPhoto}
               onPress={() => setPhotoTab(tab)}
               activeOpacity={0.7}
             >
@@ -3473,6 +3497,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             </TouchableOpacity>
           ))}
         </View>
+
+        {!!coverSelectionMessage && <Text accessibilityLiveRegion="polite" style={[s.fieldHint, { marginVertical: 12 }]}>{coverSelectionMessage}</Text>}
 
         {/* Pro Tip */}
         {photoTab === 'Exterior' && (
@@ -3538,16 +3564,17 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                         )}
                         <View style={{ position: 'absolute', left: 4, bottom: 4, flexDirection: 'row', gap: 3 }}>
                           <TouchableOpacity
-                            disabled={i === 0}
+                            disabled={uploadingPhoto || i === 0}
                             onPress={() => movePhoto(photoTab, i, i - 1)}
                             style={{ backgroundColor: 'rgba(0,0,0,0.72)', borderRadius: 6, padding: 4, opacity: i === 0 ? 0.35 : 1 }}
                             accessibilityLabel="Move photo earlier"
                           >
                             <Ionicons name="chevron-back" size={12} color={Colors.onAccent} />
                           </TouchableOpacity>
-                          {photoTab === 'Exterior' && i > 0 && (
+                          {uri !== allImages[0] && (
                             <TouchableOpacity
-                              onPress={() => movePhoto(photoTab, i, 0)}
+                              disabled={uploadingPhoto}
+                              onPress={() => makeCoverPhoto(uri)}
                               style={{ backgroundColor: 'rgba(0,0,0,0.72)', borderRadius: 6, padding: 4 }}
                               accessibilityLabel="Make cover photo"
                             >
@@ -3555,7 +3582,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                             </TouchableOpacity>
                           )}
                           <TouchableOpacity
-                            disabled={i === tabImages.length - 1}
+                            disabled={uploadingPhoto || i === tabImages.length - 1}
                             onPress={() => movePhoto(photoTab, i, i + 1)}
                             style={{ backgroundColor: 'rgba(0,0,0,0.72)', borderRadius: 6, padding: 4, opacity: i === tabImages.length - 1 ? 0.35 : 1 }}
                             accessibilityLabel="Move photo later"
@@ -4400,7 +4427,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             )}
             {step < totalSteps ? (
               <TouchableOpacity
-                style={s.nextBtn}
+                style={[s.nextBtn, uploadingPhoto && { opacity: 0.5 }]}
+                disabled={uploadingPhoto}
                 onPress={handleNext}
                 activeOpacity={0.8}
               >
