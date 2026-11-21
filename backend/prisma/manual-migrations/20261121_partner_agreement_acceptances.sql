@@ -27,6 +27,15 @@ CREATE INDEX IF NOT EXISTS partner_agreement_owner_version_idx
 CREATE INDEX IF NOT EXISTS partner_agreement_actor_idx
  ON public.partner_agreement_acceptances ("actorUserId","acceptedAt" DESC);
 ALTER TABLE public.partner_agreement_acceptances ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.partner_agreement_acceptances FROM anon, authenticated;
+DO $
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    EXECUTE 'REVOKE ALL ON public.partner_agreement_acceptances FROM anon';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'REVOKE ALL ON public.partner_agreement_acceptances FROM authenticated';
+  END IF;
+END
+$;
 -- The server's privileged database role alone reads/writes acceptance events.
 -- Do not grant browser clients direct INSERT, UPDATE or DELETE privileges.
