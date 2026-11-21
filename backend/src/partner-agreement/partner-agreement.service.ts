@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { createHash } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -26,6 +26,13 @@ export type PartnerAgreementAcceptanceInput = {
 
 const SIGNABLE_ROLES = new Set<UserRole>([UserRole.DEALER, UserRole.CONTRACTOR]);
 
+/** Requires two deliberate production controls after solicitor sign-off and DB migration.
+ * Default is OFF: deploying unsigned code must never lock existing traders out. */
+export function businessAgreementIsLive(): boolean {
+  return process.env.PARTNER_AGREEMENT_ENFORCE === 'true'
+    && process.env.PARTNER_AGREEMENT_LEGAL_REVIEW_COMPLETE === 'true';
+}
+
 /**
  * The authenticated business owner signs once for the legal business.
  * Dealer employees inherit their employer's signed agreement. They cannot
@@ -41,7 +48,8 @@ export class PartnerAgreementService {
       version: PARTNER_AGREEMENT_VERSION,
       sha256: PARTNER_AGREEMENT_SHA256,
       text: PARTNER_AGREEMENT_TEXT,
-      requiresLegalReviewBeforeProduction: true,
+      requiresLegalReviewBeforeProduction: process.env.PARTNER_AGREEMENT_LEGAL_REVIEW_COMPLETE !== 'true',
+      signingEnabled: businessAgreementIsLive(),
     };
   }
 
@@ -83,6 +91,13 @@ export class PartnerAgreementService {
   }
 
   async status(actorUserId: string) {
+    // Do not query the optional ledger until the migration and legal review
+    // are complete, even when some old users have a Partner role.
+    if (!businessAgreementIsLive()) {
+      return { required: false, accepted: true, canSign: false,
+        version: PARTNER_AGREEMENT_VERSION, sha256: PARTNER_AGREEMENT_SHA256,
+        signingEnabled: false, acceptance: null };
+    }
     const identity = await this.identity(actorUserId);
     if (!identity.required) {
       return {
@@ -135,6 +150,7 @@ export class PartnerAgreementService {
     input: PartnerAgreementAcceptanceInput,
     requestMeta: { userAgent?: string | null; ipAddress?: string | null } = {},
   ) {
+    if (!businessAgreementIsLive()) throw new ServiceUnavailableException('Business agreements are not yet activated.');
     const identity = await this.identity(actorUserId);
     if (!identity.required || !identity.canSign) {
       throw new ForbiddenException('Only an authorised Partner Account owner may sign this agreement.');
