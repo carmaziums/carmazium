@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
   card: { borderRadius: 16, borderWidth: 1, padding: 24, gap: 16, backgroundColor: Colors.bgCard, borderColor: Colors.border },
   cardTitle: { fontFamily: FontFamily.bold, color: Colors.textPrimary, fontSize: 20 },
   cardText: { color: Colors.textSecondary, fontSize: 14, lineHeight: 22 },
-  input: { borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgInput, borderRadius: 12, padding: 14, color: Colors.textPrimary, fontSize: 16 },
+  input: { borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgTertiary, borderRadius: 12, padding: 14, color: Colors.textPrimary, fontSize: 16 },
   rowBetween: { gap: 16 }, label: { fontSize: 12, fontFamily: FontFamily.bold, color: Colors.textMuted },
   sectionHeader: { gap: 8 }, sectionTitle: { fontSize: 24, fontFamily: FontFamily.bold, color: Colors.textPrimary },
   sectionSub: { fontSize: 14, lineHeight: 22, color: Colors.textSecondary },

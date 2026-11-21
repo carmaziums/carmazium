@@ -1041,7 +1041,7 @@ if (
   !mobileDealerCustomers.includes('>Customers</Text>') ||
   !mobileDealerOffers.includes('>Offers received</Text>') ||
   !mobilePartnerDashboard.includes('label="Open jobs"') ||
-  !mobileProviderJobs.includes('>Service Jobs</Text>')
+  !mobileProviderJobs.includes("'My Work' : 'Available Jobs'")
 ) {
   fail('Shared dealer/Partner terminology drifted between web and native clients');
 } else {

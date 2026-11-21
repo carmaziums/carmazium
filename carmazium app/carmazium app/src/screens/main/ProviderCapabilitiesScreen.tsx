@@ -106,6 +106,6 @@ const s = StyleSheet.create({
   label: { fontSize: 14, fontFamily: FontFamily.bold, color: Colors.textPrimary },
   body: { fontSize: 14, lineHeight: 22, color: Colors.textSecondary },
   card: { padding: 20, gap: 16, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard },
-  input: { minHeight: 48, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgInput, color: Colors.textPrimary, fontSize: 14 },
+  input: { minHeight: 48, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgTertiary, color: Colors.textPrimary, fontSize: 14 },
   success: { fontSize: 14, fontFamily: FontFamily.bold, color: Colors.success }, error: { fontSize: 14, color: Colors.error },
 });

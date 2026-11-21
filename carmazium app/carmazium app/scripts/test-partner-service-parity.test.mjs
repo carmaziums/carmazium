@@ -13,7 +13,9 @@ const cap=(serviceType,status='APPROVED')=>({id:serviceType+'-test',serviceType,
 async function render(name,overrides={}){
  const nav=[],calls=[];
  const services={SERVICE_LABELS:{DELIVERY:'Delivery & Recovery',INSPECTION:'Vehicle Inspections'},getPartnerProfile:async()=>profile,getPartnerTeam:async()=>({capabilities:[cap('DELIVERY'),cap('INSPECTION')],stripeConnect:{complete:true}}),getMyCapabilities:async()=>({profile:null,capabilities:[cap('DELIVERY'),cap('INSPECTION')],stripeConnect:{complete:true}}),applyPartnerCapability:async type=>{calls.push(type);return cap(type,'PENDING');},...overrides};
- const modules={react:React,'react-native':{...Object.fromEntries(['View','Text','ScrollView','TextInput','StatusBar','ActivityIndicator'].map(n=>[n,n])),StyleSheet:{create:x=>x},Alert:{alert(){}},Linking:{openURL:async()=>{}},AppState:{addEventListener:()=>({remove(){}})}},'@react-navigation/native':{useFocusEffect:cb=>React.useEffect(cb,[cb])},'@/components/BrandIcon':{Ionicons:'Icon'},'../../components/WebsiteTopBar':{WebsiteTopBar:'WebsiteTopBar'},'../../components/Button':{Button:'Button'},'../../components/dealer/DealerPageTabs':{DealerPageTabs:'DealerPageTabs'},'../../constants/colors':{Colors:{}},'../../constants/typography':{FontFamily:{}},'../../store/authStore':{useAuthStore:cb=>cb({accountRole:'dealer',initializeAuth:async()=>{}})},'../../lib/servicesApi':services,'../../lib/apiClient':{apiClient:async()=>{throw Error('Unexpected write');}}};
+ const modules={react:React,'react-native':{...Object.fromEntries(['View','Text','ScrollView','TextInput','StatusBar','ActivityIndicator'].map(n=>[n,n])),StyleSheet:{create:x=>x},Alert:{alert(){}},Linking:{openURL:async()=>{}},AppState:{addEventListener:()=>({remove(){}})}},'@react-navigation/native':{useFocusEffect:cb=>React.useEffect(cb,[cb])},'@/components/BrandIcon':{Ionicons:'Icon'},'../../components/WebsiteTopBar':{WebsiteTopBar:'WebsiteTopBar'},'../../components/Button':{Button:'Button'},'../../components/dealer/DealerPageTabs':{DealerPageTabs:'DealerPageTabs'},'../../constants/colors':{Colors:{}},'../../constants/typography':{FontFamily:{},FontSize:{}},'../../store/authStore':{useAuthStore:cb=>cb({accountRole:'dealer',initializeAuth:async()=>{}})},'../../lib/servicesApi':services,'../../lib/apiClient':{apiClient:async()=>{throw Error('Unexpected write');}}};
+ const rules={};runInNewContext(ts.transpileModule(readFileSync(new URL('../src/lib/tradeXchangeProviderJobLoad.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:rules,Error});
+ modules['../../lib/tradeXchangeProviderJobLoad']=rules;modules['../../constants/spacing']={Elevation:{},Radius:{}};modules['react-native'].TouchableOpacity='Press';modules['react-native'].RefreshControl='Refresh';modules['react-native'].FlatList=({ListHeaderComponent,ListEmptyComponent,data,renderItem,onEndReached})=>React.createElement('List',{onEndReached},ListHeaderComponent,data.length?data.map((item)=>React.createElement(React.Fragment,{key:item.id},renderItem({item}))):ListEmptyComponent);
  const exports={};const source=readFileSync(new URL('../src/screens/main/'+name+'.tsx',import.meta.url),'utf8');runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:n=>{assert.ok(n in modules,n);return modules[n];}});
  let tree;await act(async()=>{tree=create(React.createElement(exports[name],{navigation:{navigate:(...a)=>nav.push(a)}}));});return{tree,nav,calls};
 }
@@ -32,4 +34,23 @@ test('Services shows read-only business and correct declaration, matching and jo
 });
 test('Wrong-service application response cannot navigate to a substituted capability',async()=>{
  const h=await render('ProviderCapabilitiesScreen',{getMyCapabilities:async()=>({profile:null,capabilities:[],stripeConnect:{complete:false}}),applyPartnerCapability:async()=>cap('INSPECTION','PENDING')});await click(h.tree,'Add service');assert.equal(h.nav.length,0);assert.match(text(h.tree),/Service setup is unavailable/);await act(async()=>h.tree.unmount());
+});
+
+const job=id=>({id,title:'Synthetic work '+id,status:'PAID',serviceType:'DELIVERY',pickupPostcode:'B1 1AA',deliveryPostcode:'B2 2BB',vehicles:[],quotes:[],_count:{quotes:0}});
+test('Unavailable new-job approval cannot conceal accepted work and tabs show both counts',async()=>{
+ const h=await render('ProviderJobsScreen',{getJobFeedPage:async()=>{throw Error('verification expired');},getAssignedJobsPage:async()=>({items:[job('existing')],nextCursor:null}),formatPence:p=>'£'+p/100});
+ assert.match(text(h.tree),/Verification required for new jobs/);
+ const tab=h.tree.root.findAllByType('Press').find(n=>n.props.accessibilityLabel==='My assigned service work');await act(async()=>tab.props.onPress());
+ assert.match(text(h.tree),/Synthetic work existing/);assert.doesNotMatch(text(h.tree),/Verification required for new jobs/);assert.match(text(h.tree),/My Work \(1\)/);
+ await act(async()=>h.tree.unmount());
+});
+test('Late pagination after refresh cannot reinsert stale provider jobs',async()=>{
+ let finishMore;let reads=0;
+ const h=await render('ProviderJobsScreen',{getJobFeedPage:async(_type,cursor)=>cursor?new Promise(resolve=>{finishMore=resolve;}):({items:[job(++reads===1?'old':'fresh')],nextCursor:reads===1?'next':null}),getAssignedJobsPage:async()=>({items:[],nextCursor:null}),formatPence:p=>'£'+p/100});
+ // The real list's end callback is retained on the test host below.
+ const list=h.tree.root.findByType('List');
+ await act(async()=>list.props.onEndReached?.());
+ await click(h.tree,'Refresh jobs');assert.match(text(h.tree),/Synthetic work fresh/);
+ assert.ok(finishMore);{await act(async()=>finishMore({items:[job('stale')],nextCursor:null}));assert.doesNotMatch(text(h.tree),/Synthetic work stale/);}
+ await act(async()=>h.tree.unmount());
 });
