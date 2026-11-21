@@ -1,9 +1,8 @@
 import { DashboardCards } from '../../components/DashboardCards';
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { ScreenBackBar } from '../../components/ScreenBackBar';
 import {
   Alert,
-  Animated,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -15,7 +14,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { Logo } from '../../components/Logo';
-import { HamburgerButton } from '../../components/HamburgerButton';
 import { apiClient } from '../../lib/apiClient';
 import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
 import { getSellerAuctionStage, type SellerAuctionProgressInput } from '../../lib/auctionSellerStage';
@@ -51,21 +49,6 @@ function getInitials(firstName: string | null, lastName: string | null, email: s
   if (firstName || lastName) return `${(firstName || '').charAt(0)}${(lastName || '').charAt(0)}`.toUpperCase();
   return email.charAt(0).toUpperCase();
 }
-
-// ─────────────────────── skeleton ──────────────────────────────
-
-const Skeleton: React.FC<{ w?: number | string; h: number; r?: number }> = ({ w = '100%', h, r = 6 }) => {
-  const opacity = useRef(new Animated.Value(0.4)).current;
-  useEffect(() => {
-    const p = Animated.loop(Animated.sequence([
-      Animated.timing(opacity, { toValue: 0.8, duration: 700, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 0.4, duration: 700, useNativeDriver: true }),
-    ]));
-    p.start();
-    return () => p.stop();
-  }, [opacity]);
-  return <Animated.View style={{ width: w as any, height: h, borderRadius: r, backgroundColor: Colors.whiteAlpha05, opacity }} />;
-};
 
 // ══════════════════════════ COMPONENT ════════════════════════════
 
@@ -132,8 +115,6 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
   // changing what the account actually is) — used only where routing
   // depends on the real account, not the buyer/seller/dealer preview
   // currently being shown (mobile-production-readiness-plan.md F38).
-  const isDealerAccount = accountRole === 'dealer';
-  const isSellerAccount = accountRole === 'seller' || isDealerAccount;
 
   const handleSignOut = () => {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
@@ -143,7 +124,6 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
   };
 
   const nav = (screen: string) => navigation?.navigate(screen);
-  const navTab = (tab: string) => navigation?.navigate('Tabs', { screen: tab });
   // Use the verified auction list and seller stage rules for auction follow-ups.
   // Never present a successful all-clear when the auction request failed.
   const pendingProvisional = sellerAuctions.filter(a => a.status === 'ENDED' && !a.winnerId && !!a.provisionalOfferBidId && !!a.provisionalOfferedAt && Number.isFinite(Date.parse(a.provisionalOfferedAt)) && Date.now() < Date.parse(a.provisionalOfferedAt) + 72 * 60 * 60 * 1000);
@@ -175,7 +155,6 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
             {unreadMessages > 0 && <View style={styles.bellDot} />}
             <Ionicons name="notifications-outline" size={18} color={Colors.textPrimary} />
           </TouchableOpacity>
-          <HamburgerButton />
         </View>
       </View>
 
@@ -219,56 +198,6 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
             </TouchableOpacity>
           )) : <Text style={{ color: Colors.textSecondary }}>{auctionCheckError ? 'Auction status unavailable. Open My Auctions to check outstanding steps.' : 'No outstanding offers, messages or auction steps found.'}</Text>}
           {auctionCheckError && attentionActions.length > 0 ? <Text style={{ color: Colors.textSecondary, marginTop: 8 }}>Auction status could not be checked. Open My Auctions for updates.</Text> : null}
-        </View>
-
-        {/* Primary tasks should be visible before the crowded metrics grid. */}
-        <View style={styles.accountQuickActions}>
-          <TouchableOpacity
-            style={styles.accountQuickBuy}
-            onPress={() => navTab('Search')}
-            accessibilityRole="button"
-            accessibilityLabel="Browse cars for sale"
-            activeOpacity={0.8}
-          >
-            <Ionicons name="car-outline" size={19} color={Colors.onAccent} />
-            <Text style={[styles.accountQuickText, styles.onAccentText]}>Buy Cars</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.accountQuickManage}
-            onPress={() => isDealerAccount ? nav('DealerInventory') : isSellerAccount ? nav('SellerListings') : nav('SellCarFlow')}
-            accessibilityRole="button"
-            accessibilityLabel={isSellerAccount ? 'Manage your vehicle listings' : 'Start selling a car'}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="pricetag-outline" size={19} color={Colors.white} />
-            <Text style={styles.accountQuickText}>{isSellerAccount ? 'My Listings' : 'Sell a Car'}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Overview stats strip ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionLabel}>OVERVIEW</Text>
-        </View>
-        <View style={styles.statsRow}>
-          <View style={styles.statCell}>
-            {loading ? <Skeleton w={32} h={22} /> : <Text style={styles.statValue}>{seller.activeListings}</Text>}
-            <Text style={styles.statName}>Live listings</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCell}>
-            {loading ? <Skeleton w={32} h={22} /> : <Text style={styles.statValue}>{buyer.watchlistCount}</Text>}
-            <Text style={styles.statName}>Saved</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCell}>
-            {loading ? <Skeleton w={40} h={22} /> : <Text style={styles.statValue}>{seller.totalViews >= 1000 ? `${(seller.totalViews / 1000).toFixed(1)}k` : seller.totalViews}</Text>}
-            <Text style={styles.statName}>Views</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCell}>
-            {loading ? <Skeleton w={32} h={22} /> : <Text style={[styles.statValue, unreadMessages > 0 && { color: Colors.accent }]}>{unreadMessages}</Text>}
-            <Text style={styles.statName}>Unread</Text>
-          </View>
         </View>
 
         <DashboardCards mode="personal" />

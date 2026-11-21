@@ -46,6 +46,9 @@ test('customisation persists hide/order, restores after account switch, and navi
   const h = await harness();
   await act(async () => h.press('Purchases').props.onPress());
   assert.equal(h.nav[0][0], 'BuyerPurchaseHistory');
+  await act(async () => h.press('Buy Cars').props.onPress());
+  assert.equal(h.nav[1][0], 'Tabs');
+  assert.equal(h.nav[1][1].screen, 'Search');
   await act(async () => h.button('Customise').props.onPress());
   await act(async () => h.press('Show My Cars').props.onPress());
   await act(async () => h.press('Move Messages earlier').props.onPress());
@@ -96,12 +99,14 @@ test('buyer-only dashboard renders the complete personal card menu without the o
     '../../constants/typography': { FontFamily: {}, FontSize: {} },
     '../../constants/spacing': { Elevation: {}, Radius: {} },
     '../../hooks/useTabBarClearance': { useTabBarClearance: () => 100 },
-    ...Object.fromEntries(['ScreenBackBar', 'Logo', 'IconButton', 'Button', 'DashboardCards'].map(name => ['../../components/' + name, { [name]: name }])),
+    ...Object.fromEntries(['ScreenBackBar', 'Logo', 'IconButton', 'Button', 'DashboardCards', 'WebsiteTopBar'].map(name => ['../../components/' + name, { [name]: name }])),
     '../../components/ui/ErrorBanner': { ErrorBanner: 'Error' },
     '../../components/ui/Skeleton': { Skeleton: 'Skeleton' },
   });
   let tree; await act(async () => { tree = create(React.createElement(BuyerDashboardScreen)); });
   assert.equal(tree.root.findByType('DashboardCards').props.mode, 'personal');
+  const text = tree.root.findAllByType('Text').flatMap(node => node.children).filter(value => typeof value === 'string').join(' ');
+  assert.doesNotMatch(text, /ACTIVE OFFERS|TOTAL SPENT|RECENT ACTIVITY|7D|30D/);
   assert.ok(menu.USER_ITEMS.some(item => item.stackScreen === 'BuyerBids'));
   assert.ok(menu.USER_ITEMS.some(item => item.stackScreen === 'BuyerDeliveryRequests'));
   await act(async () => tree.unmount());

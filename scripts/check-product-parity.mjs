@@ -523,10 +523,13 @@ const drawerStackTargets = [
 ].map((match) => match[1]);
 const missingDrawerTargets = [...new Set(drawerStackTargets)]
   .filter((target) => !registeredMainScreens.includes(target));
+const mobileDashboardCards = read('carmazium app/carmazium app/src/components/DashboardCards.tsx');
 
 if (
   missingDrawerTargets.length > 0 ||
-  !mobileBuyerDashboard.includes("navigation?.navigate('Tabs', { screen: 'Search' })") ||
+  !mobileBuyerDashboard.includes('<DashboardCards mode="personal"') ||
+  !mobileDashboardCards.includes("tabName: 'Search'") ||
+  !mobileDashboardCards.includes("navigation.navigate('Tabs', { screen: item.tabName") ||
   mobileBuyerDashboard.includes("navigation?.navigate('Search')") ||
   !mobileLinkingConfig.includes("initialRouteName: 'Tabs'")
 ) {

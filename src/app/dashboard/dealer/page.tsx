@@ -5,7 +5,7 @@ import { DashboardCards } from "@/components/dashboard/DashboardCards"
 import { DealerServicesNotice } from "@/components/dealer/DealerServicesNotice"
 import * as React from "react"
 import Link from "next/link"
-import { useSearchParams, useRouter, usePathname } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import {
     Car, Eye, TrendingUp, Kanban, Gavel,
@@ -13,72 +13,25 @@ import {
     Mail, ShieldCheck, BarChart3, ChevronRight, X, ShoppingBag
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
-import { FlexiblePeriodControl, type DashboardRangeSelection, type DashboardRangeUnit } from "@/components/dashboard/FlexiblePeriodControl"
 import { useAuth } from "@/context/AuthContext"
 import { supabase } from "@/lib/supabase"
 import { apiClient } from "@/lib/apiClient"
 import { getDealerRoute } from "@/config/dealerRouteConfig"
-import { MetricCard } from "@/components/dashboard/MetricCard"
 import { useDealerAccess } from "@/context/DealerAccessContext"
 import { getNotifications, markNotificationRead, type AppNotification } from "@/lib/notificationsApi"
 import { DealerAttentionPanel } from "@/components/dealer/DealerAttentionPanel"
 
 export default function DealerDashboard() {
     const { user, profile, loading: authLoading } = useAuth()
-    const searchParams = useSearchParams()
     const router = useRouter()
-    const pathname = usePathname()
-
-    const rangeAllTime = searchParams.get('range') === 'all'
-    const rangeUnitParam = searchParams.get('rangeUnit')
-    const rangeUnit: DashboardRangeUnit =
-        rangeUnitParam === 'months' || rangeUnitParam === 'years' ? rangeUnitParam : 'days'
-    const rawRangeValue = Number(searchParams.get('rangeValue') || 30)
-    const rangeValue = Number.isFinite(rawRangeValue) && rawRangeValue > 0
-        ? Math.min(Math.floor(rawRangeValue), 10000)
-        : 30
-    const compareRange = searchParams.get('compare') === '1'
-
-    const rangeSelection: DashboardRangeSelection = {
-        allTime: rangeAllTime,
-        value: rangeValue,
-        unit: rangeUnit,
-        compare: compareRange,
-    }
-
-    function setRange(next: DashboardRangeSelection) {
-        const params = new URLSearchParams(searchParams.toString())
-        params.delete('period')
-        if (next.allTime) {
-            params.set('range', 'all')
-            params.delete('rangeValue')
-            params.delete('rangeUnit')
-        } else {
-            params.delete('range')
-            params.set('rangeValue', String(next.value))
-            params.set('rangeUnit', next.unit)
-        }
-        if (next.compare) params.set('compare', '1')
-        else params.delete('compare')
-        router.replace(`${pathname}?${params.toString()}`)
-    }
-
-    const fallbackRangeLabel = rangeAllTime
-        ? 'All time'
-        : `Last ${rangeValue} ${rangeUnit === 'days' ? 'day' : rangeUnit === 'months' ? 'month' : 'year'}${rangeValue === 1 ? '' : 's'}`
 
     const [stats, setStats] = React.useState<any>(null)
-    const [loading, setLoading] = React.useState(true)
-    const [statsError, setStatsError] = React.useState(false)
     const [resending, setResending] = React.useState(false)
     const [resendSuccess, setResendSuccess] = React.useState(false)
     const [unsoldAuctionNotice, setUnsoldAuctionNotice] = React.useState<AppNotification | null>(null)
     const { loading: accessLoading, hasPermission } = useDealerAccess()
 
     const canManageInventory = hasPermission('MANAGE_INVENTORY')
-    const canManageCrm = hasPermission('MANAGE_CRM')
-    const canViewTrade = hasPermission('VIEW_TRADE')
-    const canViewAnalytics = hasPermission('VIEW_ANALYTICS')
 
     const isEmailVerified = !!user?.email_confirmed_at
 
@@ -86,7 +39,7 @@ export default function DealerDashboard() {
         if (!authLoading && !accessLoading && user) {
             fetchDashboardData()
         }
-    }, [user, authLoading, accessLoading, rangeAllTime, rangeValue, rangeUnit, compareRange, canManageCrm])
+    }, [user, authLoading, accessLoading])
 
     React.useEffect(() => {
         if (!user) return
@@ -108,54 +61,18 @@ export default function DealerDashboard() {
     }, [user])
 
     async function fetchDashboardData() {
-        setLoading(true)
-        setStatsError(false)
         try {
-            const rangeQuery = new URLSearchParams()
-            if (rangeAllTime) {
-                rangeQuery.set('range', 'all')
-            } else {
-                rangeQuery.set('rangeValue', String(rangeValue))
-                rangeQuery.set('rangeUnit', rangeUnit)
-            }
-            if (compareRange) rangeQuery.set('compare', '1')
-
-            const [statsRes, leadsRes, recentNotifications] = await Promise.all([
-                apiClient<{ data: any }>(`/dashboard/dealer?${rangeQuery.toString()}`),
-                canManageCrm
-                    ? apiClient<{ data: any[]; meta?: any }>('/dealers/leads?limit=5').catch(() => ({ data: [] }))
-                    : Promise.resolve({ data: [] }),
+            const [statsRes, recentNotifications] = await Promise.all([
+                apiClient<{ data: { isVerified?: boolean } }>('/dashboard/dealer'),
                 getNotifications(20),
             ])
-
-            const s = statsRes?.data || {}
-            setStats({
-                companyName: s.companyName ?? (profile?.firstName ? `${profile.firstName}'s Dealership` : "Your Dealership"),
-                isVerified: s.isVerified ?? false,
-                activeListings: s.activeListings ?? 0,
-                totalViews: s.totalViews ?? 0,
-                soldListings: s.soldListings ?? 0,
-                activeLeads: s.activeLeads ?? 0,
-                totalRevenue: s.totalRevenue ?? 0,
-                staffCount: s.staffCount ?? 1,
-                accountCreatedAt: s.accountCreatedAt ?? null,
-                range: s.range ?? null,
-                comparison: s.comparison ?? null,
-                leadsCreated: s.leadsCreated ?? 0,
-                recentLeads: leadsRes?.data ?? [],
-            })
-            setUnsoldAuctionNotice(
-                recentNotifications.find(
-                    notification => notification.type === 'AUCTION_ENDED_NO_SALE' && !notification.isRead,
-                ) ?? null,
-            )
+            setStats(statsRes?.data ?? null)
+            setUnsoldAuctionNotice(recentNotifications.find(
+                notification => notification.type === 'AUCTION_ENDED_NO_SALE' && !notification.isRead,
+            ) ?? null)
         } catch (err) {
-            console.error('Failed to load dashboard data:', err)
-            // Do not turn an API failure into convincing-looking zeroes.
+            console.error('Failed to load dashboard identity:', err)
             setStats(null)
-            setStatsError(true)
-        } finally {
-            setLoading(false)
         }
     }
 
@@ -220,19 +137,6 @@ export default function DealerDashboard() {
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`
         : (user?.email?.split('@')[0] || "Dealer")
-
-    const selectedRangeLabel = stats?.range?.label ?? fallbackRangeLabel
-
-    const comparisonText = (metric: 'totalViews' | 'soldListings' | 'totalRevenue') => {
-        const item = stats?.comparison?.available ? stats.comparison?.[metric] : null
-        if (!compareRange) return undefined
-        if (!item) return 'No earlier account data available'
-        if (item.percentChange === null) {
-            return `${item.previous.toLocaleString()} in previous period`
-        }
-        const sign = item.percentChange > 0 ? '+' : ''
-        return `${sign}${item.percentChange}% vs previous period`
-    }
 
     return (
         <div className="min-h-screen pt-20 pb-12">
@@ -325,87 +229,6 @@ export default function DealerDashboard() {
                     {/* ── What needs doing today, most urgent first ── */}
                     {isEmailVerified && <DealerAttentionPanel />}
                     <DashboardCards mode="dealer" />
-
-                    {/* ── Flexible reporting range ── */}
-                    <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4">
-                        <div className="max-w-xl">
-                            <h2 className="text-2xl font-black font-heading uppercase tracking-tighter">Overview</h2>
-                            <p className="text-xs text-[var(--text-muted)] mt-1">
-                                Your figures for the period you choose.
-                            </p>
-                        </div>
-                        <FlexiblePeriodControl
-                            value={rangeSelection}
-                            accountCreatedAt={stats?.accountCreatedAt}
-                            onChange={setRange}
-                        />
-                    </div>
-
-                    {statsError && (
-                        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-500 font-semibold">
-                            Live dashboard statistics are temporarily unavailable. Values are hidden rather than replaced with zeroes.
-                        </div>
-                    )}
-
-                    {/* ── KPI Stats Row ── */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <MetricCard
-                            label="Active Stock"
-                            value={statsError ? "—" : (stats?.activeListings ?? 0)}
-                            icon={Car}
-                            color="text-primary"
-                            bg="bg-primary/10"
-                            border="border-primary/20"
-                            statusLabel="Current"
-                            loading={loading}
-                            href="/dashboard/dealer/inventory?status=ACTIVE"
-                            subLabel="Live stock now"
-                            showSparkline={false}
-                        />
-                        <MetricCard
-                            label="Vehicle Views"
-                            value={statsError ? "—" : (stats?.totalViews?.toLocaleString() ?? 0)}
-                            icon={Eye}
-                            color="text-blue-400"
-                            bg="bg-blue-500/10"
-                            border="border-blue-500/20"
-                            loading={loading}
-                            statusLabel="Tracked"
-                            subLabel={selectedRangeLabel}
-                            showSparkline={false}
-                            comparisonLabel={comparisonText('totalViews')}
-                        />
-                        {canManageCrm && (
-                            <MetricCard
-                                label="Active Leads"
-                                value={statsError ? "—" : (stats?.activeLeads ?? 0)}
-                                icon={Kanban}
-                                color="text-amber-400"
-                                bg="bg-amber-500/10"
-                                border="border-amber-500/20"
-                                loading={loading}
-                                statusLabel="Current"
-                                subLabel="Open pipeline"
-                                showSparkline={false}
-                            />
-                        )}
-                        <MetricCard
-                            label="Vehicles Sold"
-                            value={statsError ? "—" : (stats?.soldListings ?? 0)}
-                            icon={TrendingUp}
-                            color="text-emerald-400"
-                            bg="bg-emerald-500/10"
-                            border="border-emerald-500/20"
-                            statusLabel="Period"
-                            loading={loading}
-                            href="/dashboard/dealer/inventory?status=SOLD"
-                            subLabel={selectedRangeLabel}
-                            showSparkline={false}
-                            comparisonLabel={comparisonText('soldListings')}
-                        />
-                    </div>
-
-
 
                 </div>
             </div>

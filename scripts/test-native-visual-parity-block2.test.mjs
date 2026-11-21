@@ -80,9 +80,9 @@ test('dealer route remains named and gated, including Block 6 website-canonical 
   for (const route of ['Home','Search','Live','Saved','Profile']) {
     assert.ok(tabs.includes('<Tab.Screen name="' + route + '"'));
   }
-  // Buyer preview lives on the dealer dashboard (as on web); the menu keeps
-  // the one-tap way back into dealer mode.
-  assert.ok(dealerHome.includes("setRole('buyer')") && drawer.includes("setRole('dealer')"));
+  // Buyer preview remains available from the account menu; the drawer keeps
+  // the way back into dealer mode.
+  assert.ok(top.includes("Switch to personal view") && drawer.includes("setRole('dealer')"));
   assert.ok(drawer.includes("navigation.navigate('Main'"));
   assert.ok(!drawer.includes("const isActualDealer = role === 'dealer'"));
 });
