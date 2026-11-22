@@ -38,6 +38,9 @@ test('one original Android application and native TradeXchange detail flows rema
 test('iPhone and Android share one native TradeXchange app and preserve separate signed-release gates', () => {
   const app = JSON.parse(read(originalApp + 'app.json')).expo;
   const eas = JSON.parse(read(originalApp + 'eas.json'));
+  assert.equal(app.owner, 'carmazium');
+  assert.equal(app.extra?.eas?.projectId, '9c77bb81-205c-42f8-913e-b69a0953ec10');
+  assert.equal(app.updates?.url, 'https://u.expo.dev/' + app.extra.eas.projectId);
   assert.equal(app.ios.bundleIdentifier, 'uk.carmazium.app');
   assert.equal(app.ios.bundleIdentifier, app.android.package);
   assert.ok(app.ios.associatedDomains.includes('applinks:carmazium.com'));
