@@ -44,3 +44,23 @@ jobs:
           scripts/test-tradexchange-block2-stage3.test.mjs
           scripts/test-tradexchange-block2-stage4.test.mjs
           scripts/test-tradexchange-block2-stage5.test.mjs
+
+  quote-acceptance-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend test dependencies
+        working-directory: backend
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Generate Prisma client without connecting to a database
+        working-directory: backend
+        run: npx prisma generate
+      - name: Verify quote lifecycle, competitive acceptance and customer privacy
+        working-directory: backend
+        run: npx jest src/services/services.service.spec.ts --runInBand
