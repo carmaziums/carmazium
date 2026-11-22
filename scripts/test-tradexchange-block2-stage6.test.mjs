@@ -72,7 +72,7 @@ test('only consistent saved 9%-91% payment allocation is displayed', () => {
   ];
   for (const source of [webApi, nativeApi]) {
     const evidence = paymentRules(source).servicePaymentEvidence;
-    assert.deepEqual({ ...evidence(good, 17000) }, good);
+    assert.deepEqual({ ...evidence(good, 17000) }, { ...good, refundPence: 0, netServicePence: 17000 });
     for (const [payment, agreed] of wrong) assert.equal(evidence(payment, agreed), null);
   }
 });
