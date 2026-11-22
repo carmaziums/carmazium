@@ -140,16 +140,13 @@ jobs:
               echo '::error::Expo authentication check failed due to a dependency/network error rather than verified token rejection.'
             else
               # Diagnostic excerpt with all secret-value occurrences and opaque identifiers redacted.
-              EXPO_AUTH_LOG="$RUNNER_TEMP/carmazium-expo-auth.log" node <<'NODE'
-              const fs = require('node:fs');
-              const path = process.env.EXPO_AUTH_LOG;
-              let log = fs.readFileSync(path, 'utf8');
-              if (process.env.EXPO_TOKEN) log = log.split(process.env.EXPO_TOKEN).join('[REDACTED]');
-              log = log.replace(/[A-Za-z0-9_+\/=.-]{18,}/g, '[REDACTED]');
-              for (const line of log.split(/\r?\n/).slice(-9)) {
-                if (line.trim()) console.log('Expo diagnostic (redacted): ' + line.slice(0, 220));
-              }
-              NODE
+              EXPO_AUTH_LOG="$RUNNER_TEMP/carmazium-expo-auth.log" node -e '
+                const fs = require("node:fs");
+                let log = fs.readFileSync(process.env.EXPO_AUTH_LOG, "utf8");
+                if (process.env.EXPO_TOKEN) log = log.split(process.env.EXPO_TOKEN).join("[REDACTED]");
+                log = log.replace(/[A-Za-z0-9_+\/=.-]{18,}/g, "[REDACTED]");
+                for (const line of log.split(/\r?\n/).slice(-9)) if (line.trim()) console.log("Expo diagnostic (redacted): " + line.slice(0, 220));
+              '
               echo '::error::Expo EAS CLI authentication failed; inspect sanitized error category above.'
             fi
             exit 1
