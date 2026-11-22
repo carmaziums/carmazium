@@ -180,3 +180,93 @@ jobs:
           }
           console.log('Verified Expo project ownership and robot project access: @carmazium/carmazium.');
           NODE
+
+ios-store-candidate:
+    name: Signed original CarMazium iOS App Store candidate
+    # Manually dispatched from the reviewed internal source branch.
+    # Never merges, deploys the website, publishes OTA, or submits to App Review.
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/feature/tradexchange-block2-jobs-20261122'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 110
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: 'carmazium app/carmazium app'
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      APP_ENV: production
+      EXPO_NO_TELEMETRY: '1'
+      SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
+      - name: Ensure original app and owner-controlled EAS identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const app=JSON.parse(fs.readFileSync('app.json','utf8')).expo;
+          const eas=JSON.parse(fs.readFileSync('eas.json','utf8'));
+          if(app.owner!=='carmazium'||
+            app.slug!=='carmazium'||
+            app.extra?.eas?.projectId!=='9c77bb81-205c-42f8-913e-b69a0953ec10'||
+            app.updates?.url!=='https://u.expo.dev/9c77bb81-205c-42f8-913e-b69a0953ec10'||
+            app.ios?.bundleIdentifier!=='uk.carmazium.app'||
+            app.android?.package!=='uk.carmazium.app'||
+            eas.build.production.channel!=='production'||
+            eas.build.production.env.APP_ENV!=='production') {
+            throw new Error('Original app identity or company-owned EAS project mismatch');
+          }
+          console.log('Original app and owner-controlled Expo project validated.');
+          NODE
+      - name: Install exact native dependencies and check TypeScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run typescript
+      - name: Validate company Expo robot credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${EXPO_TOKEN:-}"
+          npx --yes eas-cli@16.18.0 whoami --non-interactive >/dev/null
+          echo 'CarMazium-owned Expo credential authenticated.'
+      - name: Request signed iOS production build (no store submission)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes eas-cli@16.18.0 build \
+            --platform ios \
+            --profile production \
+            --non-interactive \
+            --wait \
+            --json > "$RUNNER_TEMP/carmazium-ios-candidate.json"
+          EAS_BUILD_RESULT="$RUNNER_TEMP/carmazium-ios-candidate.json" node - <<'NODE'
+          const fs=require('node:fs');
+          const result=JSON.parse(fs.readFileSync(process.env.EAS_BUILD_RESULT,'utf8'));
+          const b=Array.isArray(result)?result[0]:result;
+          if(!b || b.status!=='FINISHED' || !b.id || !b.artifacts?.buildUrl) {
+            throw new Error('Signed iOS App Store candidate was not returned by EAS');
+          }
+          console.log('Signed owner-controlled iOS candidate created: '+b.id);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,[
+            '## Original CarMazium iOS candidate — not submitted',
+            '- EAS build ID: '+b.id,
+            '- Source commit: '+process.env.GITHUB_SHA,
+            '- Original bundle ID: uk.carmazium.app',
+            '- EAS owner: @carmazium',
+            '- Submission still requires IPA verification, TestFlight and owner review.',
+          ].join('\n')+'\n');
+          NODE
