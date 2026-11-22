@@ -127,8 +127,20 @@ jobs:
             echo '::error::EXPO_TOKEN is not configured for this repository.'
             exit 1
           fi
+          # Expo's token inventory also displays a 40-character identifier.
+          # That identifier is NOT the one-time access token value.
+          if [[ "${#EXPO_TOKEN}" -eq 40 && "$EXPO_TOKEN" =~ ^[A-Za-z0-9]{40}$ ]]; then
+            echo '::error::EXPO_TOKEN resembles the 40-character token ID shown in Expo, not the access token generated in its one-time dialog. Regenerate and copy the access token value.'
+            exit 1
+          fi
           if ! npx --yes eas-cli@16.18.0 whoami --non-interactive > "$RUNNER_TEMP/carmazium-expo-auth.log" 2>&1; then
-            echo '::error::Expo EAS rejected the repository credential; check the CarMazium-owned robot token.'
+            if grep -Eqi 'Not logged in|Invalid token|Authentication.*fail|Unauthorized|401|invalid credentials' "$RUNNER_TEMP/carmazium-expo-auth.log"; then
+              echo '::error::Expo could not authenticate with EXPO_TOKEN. Copy the access token VALUE, not the token ID.'
+            elif grep -Eqi 'npm (ERR|error)|ENOTFOUND|ECONNRESET|EAI_AGAIN|ETIMEDOUT|network' "$RUNNER_TEMP/carmazium-expo-auth.log"; then
+              echo '::error::Expo authentication check failed due to a dependency/network error rather than verified token rejection.'
+            else
+              echo '::error::Expo EAS CLI authentication failed (non-secret details withheld).'
+            fi
             exit 1
           fi
           echo 'Expo EAS authentication succeeded using the repository-managed token.'
