@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Dimensions,
   FlatList,
   RefreshControl,
@@ -21,6 +22,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
 import { haptics } from '../../lib/haptics';
 import { getDealerOfferMetrics } from '../../lib/dealerOfferSummary';
+import { decodeReceivedDealerOffers, requireCurrentRespondableOffer } from '../../lib/dealerOfferIntegrity';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -170,17 +172,24 @@ export const DealerOffersScreen: React.FC = () => {
   const [saleSoldPrice, setSaleSoldPrice] = useState('');
   const [buyerPostcode, setBuyerPostcode] = useState('');
   const offersRequest = useRef(0);
+  const offersVisible = useRef(false);
+  const actionInFlight = useRef(new Set<string>());
   const [saleSubmitting, setSaleSubmitting] = useState(false);
   const [saleError, setSaleError] = useState<string | null>(null);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     const request = ++offersRequest.current;
     if (isRefresh) setRefreshing(true);
+    // Hide the previous status while validating the server snapshot; do not
+    // display a stale PENDING offer as actionable during a focus refresh.
+    setLoading(true);
     setFetchError(false);
     try {
-      const res = await apiClient<ReceivedOffersResponse>('/offers/received');
-      if (!res?.success || !Array.isArray(res.data)) throw Error('Offers unavailable');
-      if (request === offersRequest.current) setOffers(res.data);
+      const res = await apiClient<ReceivedOffersResponse>('/offers/received', {
+        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+      });
+      const fresh = decodeReceivedDealerOffers<Offer>(res);
+      if (request === offersRequest.current) setOffers(fresh);
     } catch {
       if (request === offersRequest.current) setFetchError(true);
     } finally {
@@ -194,14 +203,24 @@ export const DealerOffersScreen: React.FC = () => {
   const isFirstOffersFocus = useRef(true);
   useFocusEffect(
     useCallback(() => {
+      offersVisible.current = true;
       if (isFirstOffersFocus.current) {
-        fetchData();
+        void fetchData();
         isFirstOffersFocus.current = false;
       } else {
-        fetchData(true);
+        void fetchData(true);
       }
+      return () => { offersVisible.current = false; offersRequest.current++; };
     }, [fetchData]),
   );
+  // A buyer can withdraw while the dealer is in Chrome or another app.
+  // Refresh on resume; never keep a stale PENDING card indefinitely.
+  React.useEffect(() => {
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active' && offersVisible.current) void fetchData(true);
+    });
+    return () => subscription.remove();
+  }, [fetchData]);
 
   const handleRetry = () => fetchData();
 
@@ -215,8 +234,18 @@ export const DealerOffersScreen: React.FC = () => {
     status: 'ACCEPTED' | 'REJECTED' | 'COUNTERED',
     counterAmt?: number,
   ) => {
+    if (actionInFlight.current.has(offer.id)) return;
+    actionInFlight.current.add(offer.id);
     setActionLoading(offer.id);
     try {
+      // Compare with an uncached server snapshot before sending any write.
+      // If the buyer withdrew, fail closed and render the authoritative state.
+      const response = await apiClient<ReceivedOffersResponse>('/offers/received', {
+        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+      });
+      const current = decodeReceivedDealerOffers<Offer>(response);
+      setOffers(current);
+      requireCurrentRespondableOffer(offer, current);
       await apiClient(`/offers/${offer.id}/respond`, {
         method: 'PATCH',
         body: JSON.stringify({
@@ -229,6 +258,7 @@ export const DealerOffersScreen: React.FC = () => {
       const message = err instanceof Error ? err.message : 'Something went wrong.';
       Alert.alert('Action Failed', message);
     } finally {
+      actionInFlight.current.delete(offer.id);
       setActionLoading(null);
     }
   };

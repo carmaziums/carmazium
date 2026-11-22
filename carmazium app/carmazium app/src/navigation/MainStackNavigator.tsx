@@ -24,6 +24,7 @@ import { withDealerGate } from '../components/DealerGate';
 import { DealerTeamScreen } from '../screens/main/DealerTeamScreen';
 import { DealerOnboardingScreen } from '../screens/main/DealerOnboardingScreen';
 import { DealerOffersScreen } from '../screens/main/DealerOffersScreen';
+import { DealerSavedScreen } from '../screens/main/DealerSavedScreen';
 import { DealerMyOffersScreen } from '../screens/main/DealerMyOffersScreen';
 import { DealerPurchasesScreen } from '../screens/main/DealerPurchasesScreen';
 import { DealerPurchaseDetailScreen } from '../screens/main/DealerPurchaseDetailScreen';
@@ -154,6 +155,9 @@ export type MainStackParamList = {
   DealerTeam: undefined;
   DealerOnboarding: undefined;
   DealerOffers: undefined;
+  // An explicit first-party route avoids navigating a hidden marketplace tab
+  // from the dealer's four-tab workspace (and never opens Chrome).
+  DealerSaved: undefined;
   /** fromBidsOffers: opened from the Buy & Bid hub's "Bids & offers" switch. */
   DealerMyOffers: { fromBidsOffers?: boolean } | undefined;
   /** view: All Purchases (default), Retail Purchases or Purchase History. */
@@ -381,6 +385,11 @@ export const MainStackNavigator: React.FC = () => {
         name="DealerOffers"
         component={GatedDealerOffersScreen}
         options={{ animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen
+        name="DealerSaved"
+        component={DealerSavedScreen}
+        options={{ animation: 'slide_from_right' }}
       />
       <Stack.Screen
         name="DealerMyOffers"

@@ -82,6 +82,8 @@ export const linking: LinkingOptions<RootStackParamList> = {
           Messages: 'messages',
           Settings: 'settings',
           PartnerDashboard: 'dashboard/partner',
+          DealerSaved: 'dashboard/dealer/wishlist',
+          DealerOffers: 'dashboard/dealer/offers',
           CustomerServiceJobs: 'services/jobs',
           CustomerServiceJobDetail: {
             path: 'services/jobs/:jobId',

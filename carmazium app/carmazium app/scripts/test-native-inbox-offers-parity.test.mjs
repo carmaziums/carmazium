@@ -8,14 +8,16 @@ import ts from 'typescript';
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 function compile(path,modules={}){
   const code=ts.transpileModule(readFileSync(new URL('../src/'+path,import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText;
-  const exports={};runInNewContext(code,{exports,require:n=>{assert.ok(n in modules,n);return modules[n];},Date,URLSearchParams,setInterval:()=>1,clearInterval:()=>{},setTimeout:()=>1,process:{env:{}}});return exports;
+  const exports={};runInNewContext(code,{exports,require:n=>{assert.ok(n in modules,n);return modules[n];},Date,Error,URLSearchParams,setInterval:()=>1,clearInterval:()=>{},setTimeout:()=>1,process:{env:{}}});return exports;
 }
 const { getDealerOfferMetrics } = compile('lib/dealerOfferSummary.ts');
-const rn={...Object.fromEntries(['View','Text','FlatList','ActivityIndicator','RefreshControl','TextInput','ScrollView','StatusBar','TouchableOpacity'].map(n=>[n,n])),Dimensions:{get:()=>({width:600})},StyleSheet:{create:x=>x,absoluteFillObject:{}},Alert:{alert(){}}};
+const { decodeReceivedDealerOffers, requireCurrentRespondableOffer } = compile('lib/dealerOfferIntegrity.ts');
+const rn={...Object.fromEntries(['View','Text','FlatList','ActivityIndicator','RefreshControl','TextInput','ScrollView','StatusBar','TouchableOpacity'].map(n=>[n,n])),Dimensions:{get:()=>({width:600})},StyleSheet:{create:x=>x,absoluteFillObject:{}},Alert:{alert(){}},AppState:{addEventListener:()=>({remove(){}})}};
 const base={react:React,'expo-image':{Image:'Image'},'../../components/Logo':{Logo:'Logo'},'react-native':rn,'@/components/BrandIcon':{Ionicons:'Icon'},'react-native-safe-area-context':{useSafeAreaInsets:()=>({top:0,bottom:0})},'expo-linear-gradient':{LinearGradient:'LinearGradient'},'../../constants/colors':{Colors:{}},'../../constants/typography':{FontFamily:{},FontSize:{}},'../../constants/spacing':{Radius:{},Elevation:{}},'../../lib/haptics':{haptics:{success(){}}}};
 for(const name of ['WebsiteTopBar','IconButton','BottomSheet','SaleCancellationSheet'])base['../../components/'+name]={[name]:name};
 for(const name of ['Skeleton','EmptyState','ErrorBanner'])base['../../components/ui/'+name]={[name]:name};
 base['../../components/dealer/DealerPageTabs']={DealerPageTabs:'DealerPageTabs'};
+base['../../lib/dealerOfferIntegrity']={decodeReceivedDealerOffers,requireCurrentRespondableOffer};
 const texts=tree=>tree.root.findAllByType('Text').map(n=>n.children.join('')).join('|');
 const pressText=async(tree,label)=>act(async()=>tree.root.findAllByType('TouchableOpacity').find(n=>n.findAllByType('Text').some(t=>t.children.join('').includes(label))).props.onPress());
 test('inbox exposes unread and support filters without marking or sending messages',async()=>{
@@ -25,10 +27,10 @@ test('inbox exposes unread and support filters without marking or sending messag
  let tree,header;await act(async()=>{tree=create(React.createElement(MessagesScreen));});await act(async()=>{header=create(tree.root.findByType('FlatList').props.ListHeaderComponent);});await pressText(header,'Unread');assert.equal(tree.root.findByType('FlatList').props.data[0].id,'unread');assert.equal(tree.root.findByType('FlatList').props.data.length,1);
  await pressText(header,'CarMazium support');assert.equal(tree.root.findByType('FlatList').props.data[0].id,'support');assert.equal(marked,0);await act(async()=>{tree.unmount();header.unmount();});
 });
-async function offers(status='WITHDRAWN',fail=false){
- const calls=[];const record={id:'offer',status,amount:7900,finalAmount:8000,listingId:'listing',listing:{id:'listing',title:'Toyota Aygo',price:11000,status:'ACTIVE'},buyer:{id:'buyer',firstName:'Buyer',email:'buyer@example.test'}};
- const {DealerOffersScreen}=compile('screens/main/DealerOffersScreen.tsx',{...base,'@react-navigation/native':{useNavigation:()=>({navigate(){}}),useFocusEffect:fn=>React.useEffect(fn,[fn])},'../../components/offers/CounterLedger':{CounterLedger:'CounterLedger'},'../../components/delivery/ReceivedDeliveryRequestsPanel':{ReceivedDeliveryRequestsPanel:'ReceivedDeliveryRequestsPanel'},'../../lib/dealerOfferSummary':{getDealerOfferMetrics},'../../lib/apiClient':{apiClient:async(path,options)=>{calls.push([path,options]);if(fail)throw Error('offline');return{success:true,data:[record]};}}});
- let tree,card;await act(async()=>{tree=create(React.createElement(DealerOffersScreen));});if(!fail)await act(async()=>{card=create(tree.root.findByType('FlatList').props.renderItem({item:record}));});return{tree,card,calls};
+async function offers(status='WITHDRAWN',fail=false,preflightStatus=null){
+ const calls=[],alerts=[];let received=0;const record={id:'offer',status,amount:7900,finalAmount:8000,listingId:'listing',listing:{id:'listing',title:'Toyota Aygo',price:11000,status:'ACTIVE'},buyer:{id:'buyer',firstName:'Buyer',email:'buyer@example.test'}};
+ const {DealerOffersScreen}=compile('screens/main/DealerOffersScreen.tsx',{...base,'react-native':{...rn,Alert:{alert:(...args)=>alerts.push(args)}},'@react-navigation/native':{useNavigation:()=>({navigate(){}}),useFocusEffect:fn=>React.useEffect(fn,[fn])},'../../components/offers/CounterLedger':{CounterLedger:'CounterLedger'},'../../components/delivery/ReceivedDeliveryRequestsPanel':{ReceivedDeliveryRequestsPanel:'ReceivedDeliveryRequestsPanel'},'../../lib/dealerOfferSummary':{getDealerOfferMetrics},'../../lib/apiClient':{apiClient:async(path,options)=>{calls.push([path,options]);if(fail)throw Error('offline');if(path==='/offers/received'){received++;return{success:true,data:[{...record,status:received>1&&preflightStatus?preflightStatus:status}]};}return{success:true,data:[record]};}}});
+ let tree,card;await act(async()=>{tree=create(React.createElement(DealerOffersScreen));});if(!fail)await act(async()=>{card=create(tree.root.findByType('FlatList').props.renderItem({item:record}));});return{tree,card,calls,alerts};
 }
 test('withdrawn offers retain the authoritative status and offer no pending actions',async()=>{
  const h=await offers();assert.match(texts(h.card),/WITHDRAWN/);assert.doesNotMatch(texts(h.card),/PENDING|Accept|Reject|Mark as Sold/);await act(async()=>{h.tree.unmount();h.card.unmount();});
@@ -40,4 +42,16 @@ test('recording an accepted offer uses final amount and validates optional buyer
  const h=await offers('ACCEPTED');await pressText(h.card,'Mark as Sold');const inputs=h.tree.root.findAllByType('TextInput');const price=inputs.find(n=>n.props.placeholder==='Enter sale price');assert.equal(price.props.value,'8000');
  let postcode=h.tree.root.findAllByType('TextInput').find(n=>n.props.accessibilityLabel==='Buyer postcode (optional)');await act(async()=>postcode.props.onChangeText('invalid'));await pressText(h.tree,'Confirm Sold');assert.equal(h.calls.filter(([,options])=>options?.method==='PATCH').length,0);
  postcode=h.tree.root.findAllByType('TextInput').find(n=>n.props.accessibilityLabel==='Buyer postcode (optional)');await act(async()=>postcode.props.onChangeText('B19 1ES'));await pressText(h.tree,'Confirm Sold');const write=h.calls.find(([,options])=>options?.method==='PATCH');assert.equal(write[0],'/listings/listing/sold');assert.equal(JSON.parse(write[1].body).buyerPostcode,'B19 1ES');assert.equal(JSON.parse(write[1].body).soldPrice,8000);await act(async()=>{h.tree.unmount();h.card.unmount();});
+});
+
+test('withdrawal between rendering Pending and confirmation prevents a stale dealer write',async()=>{
+  const h=await offers('PENDING',false,'WITHDRAWN');
+  await pressText(h.card,'Accept');
+  const confirm=h.alerts.at(-1)?.[2]?.find(button=>button.text==='Accept');
+  assert.ok(confirm,'dealer must explicitly confirm an offer');
+  await act(async()=>confirm.onPress());
+  assert.equal(h.calls.filter(([,options])=>options?.method==='PATCH').length,0);
+  assert.equal(h.tree.root.findByType('FlatList').props.data[0].status,'WITHDRAWN');
+  assert.match(h.alerts.at(-1)?.[1]||'',/changed to withdrawn/i);
+  await act(async()=>{h.tree.unmount();h.card.unmount();});
 });
