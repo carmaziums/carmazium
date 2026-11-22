@@ -1452,7 +1452,7 @@ export class ServicesService {
         // a change request: that would discard completion evidence and bypass
         // payout/dispute review. Only unfinished paid work can be rescheduled.
         if (dto.kind === 'RESCHEDULE' && (!requestedFor
-            || ![ServiceJobStatus.PAID, ServiceJobStatus.IN_PROGRESS].includes(job.status))) {
+            || (job.status !== ServiceJobStatus.PAID && job.status !== ServiceJobStatus.IN_PROGRESS))) {
             throw new BadRequestException('Only unfinished paid work can be rescheduled. Choose a future date.');
         }
         const change = { kind: dto.kind, reason, requestedFor: requestedFor?.toISOString() ?? null,
