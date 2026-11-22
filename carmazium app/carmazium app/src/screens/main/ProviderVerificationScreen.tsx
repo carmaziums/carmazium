@@ -1,8 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Linking,
   ScrollView,
   StatusBar,
   Switch,
@@ -12,7 +11,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import * as DocumentPicker from 'expo-document-picker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,14 +20,9 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
 import { SERVICE_LABELS, getMyCapabilities } from '../../lib/servicesApi';
 import {
-  CapabilityEvidenceType,
   CapabilityVerificationDetail,
-  MobileEvidenceFile,
-  ServiceCaseEntry,
-  deleteCapabilityAttachment,
   getCapabilityVerification,
   submitProviderDeclaration,
-  uploadCapabilityAttachment,
 } from '../../lib/serviceOperationsApi';
 import { IconButton } from '../../components/IconButton';
 
@@ -47,12 +40,6 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
   const insets = useSafeAreaInsets();
   const [detail, setDetail] = useState<CapabilityVerificationDetail | null>(null);
   const [serviceType, setServiceType] = useState<'DELIVERY' | 'INSPECTION' | 'FINANCE' | 'WARRANTY' | null>(null);
-  const [evidenceType, setEvidenceType] = useState<CapabilityEvidenceType | null>(null);
-  const [file, setFile] = useState<MobileEvidenceFile | null>(null);
-  const [issuer, setIssuer] = useState('');
-  const [reference, setReference] = useState('');
-  const [expiresAt, setExpiresAt] = useState('');
-  const [label, setLabel] = useState('');
   const [loading, setLoading] = useState(true);
   const [business, setBusiness] = useState({ businessName: '', businessAddress: '', phone: '', registeredBusiness: false });
   const [accepted, setAccepted] = useState(false);
@@ -72,12 +59,6 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
       setDetail(verification);
       const declaration = verification.verification.declaration;
       setBusiness({ businessName: declaration?.businessName ?? mine.profile?.businessName ?? '', businessAddress: declaration?.businessAddress ?? '', phone: declaration?.phone ?? mine.profile?.phone ?? '', registeredBusiness: declaration?.registeredBusiness ?? false });
-      setEvidenceType((current) => {
-        if (current && verification.verification.requirements.some((r) => r.type === current)) return current;
-        return verification.verification.requirements.find((r) => r.state !== 'SATISFIED')?.type
-          ?? verification.verification.requirements[0]?.type
-          ?? null;
-      });
     } catch (err: any) {
       setError(err?.message || 'Could not load provider verification.');
     } finally {
@@ -87,65 +68,6 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
 
   useEffect(() => { void load(); }, [load]);
 
-  const selectedRequirement = useMemo(
-    () => detail?.verification.requirements.find((r) => r.type === evidenceType) ?? null,
-    [detail, evidenceType],
-  );
-
-  const pickFile = async () => {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
-      multiple: false,
-      copyToCacheDirectory: true,
-    });
-    if (result.canceled || !result.assets?.[0]) return;
-    const asset = result.assets[0];
-    if (asset.size && asset.size > 10 * 1024 * 1024) {
-      Alert.alert('File too large', 'Verification files must be 10 MB or smaller.');
-      return;
-    }
-    setFile({
-      uri: asset.uri,
-      name: asset.name || 'verification-evidence',
-      mimeType: asset.mimeType,
-      size: asset.size,
-    });
-  };
-
-  const upload = async () => {
-    if (!file || !evidenceType) {
-      Alert.alert('Evidence required', 'Choose a requirement and a PDF or image file.');
-      return;
-    }
-    if (selectedRequirement?.expiryRequired && !/^\d{4}-\d{2}-\d{2}$/.test(expiresAt.trim())) {
-      Alert.alert('Expiry date required', 'Enter the evidence expiry date as YYYY-MM-DD.');
-      return;
-    }
-
-    setBusy(true);
-    setError(null);
-    try {
-      await uploadCapabilityAttachment(capabilityId, file, {
-        evidenceType,
-        label: label.trim() || undefined,
-        issuer: issuer.trim() || undefined,
-        reference: reference.trim() || undefined,
-        expiresAt: expiresAt.trim() || undefined,
-      });
-      setFile(null);
-      setIssuer('');
-      setReference('');
-      setExpiresAt('');
-      setLabel('');
-      await load();
-      Alert.alert('Uploaded', 'Evidence has been uploaded securely for CarMazium review.');
-    } catch (err: any) {
-      setError(err?.message || 'Could not upload this document.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const saveDeclaration = async () => {
     setBusy(true); setError(null);
     try {
@@ -154,32 +76,6 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
       Alert.alert('Declaration saved', 'Complete business verification and secure payout setup before taking jobs.');
     } catch (e: any) { setError(e?.message || 'Could not save declaration.'); }
     finally { setBusy(false); }
-  };
-
-  const remove = (entry: ServiceCaseEntry) => {
-    if (entry.evidenceStatus !== 'PENDING') return;
-    Alert.alert(
-      'Delete pending evidence?',
-      'Reviewed evidence is retained for audit. Only pending evidence can be deleted.',
-      [
-        { text: 'Keep', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            setBusy(true);
-            try {
-              await deleteCapabilityAttachment(capabilityId, entry.id);
-              await load();
-            } catch (err: any) {
-              Alert.alert('Could not delete', err?.message || 'Please try again.');
-            } finally {
-              setBusy(false);
-            }
-          },
-        },
-      ],
-    );
   };
 
   return (
@@ -227,96 +123,14 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
                 <Text style={styles.cardText}>Your approved dealer KYC and one-time £1 account verification are reused. No additional verification payment is required for services. Verified business payouts are required. Enter bank details through secure payout setup.</Text>
                 <TouchableOpacity onPress={() => navigation.navigate('ProviderCapabilities')}><Text style={styles.cardText}>Check payout setup and service status</Text></TouchableOpacity>
               </View>}
-              <Text style={styles.sectionTitle}>Requirements</Text>
-              {detail.verification.requirements.map((req) => (
-                <TouchableOpacity
-                  key={req.type}
-                  style={[styles.requirement, evidenceType === req.type && styles.requirementSelected]}
-                  onPress={() => setEvidenceType(req.type)}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name={req.state === 'SATISFIED' ? 'checkmark-circle' : req.state === 'REJECTED' ? 'close-circle' : 'document-text-outline'}
-                    size={20}
-                    color={stateColor(req.state)}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>{req.title}</Text>
-                    <Text style={styles.cardText}>{req.description}</Text>
-                    <Text style={[styles.stateText, { color: stateColor(req.state) }]}>{req.state}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-
-              {serviceType === 'DELIVERY' && <>
-              <View style={styles.warningCard}>
-                <Ionicons name="business-outline" size={18} color={Colors.warning} />
-                <Text style={styles.warningText}>
-                  Upload only trade insurance covering collection, delivery and recovery. Do not upload passports, driving licences, personal bank statements or unrelated identity documents.
-                </Text>
-              </View>
-
               <View style={styles.card}>
-                <Text style={styles.sectionTitle}>Upload evidence</Text>
-                <Text style={styles.cardText}>PDF, JPG, PNG or WEBP. Maximum 10 MB.</Text>
-
-                <TouchableOpacity style={styles.fileButton} onPress={pickFile}>
-                  <Ionicons name="attach-outline" size={17} color={Colors.white} />
-                  <Text style={styles.fileButtonText}>{file?.name || 'CHOOSE FILE'}</Text>
-                </TouchableOpacity>
-
-                <TextInput style={styles.input} value={label} onChangeText={setLabel} placeholder="Label (optional)" placeholderTextColor={Colors.textMuted} />
-                <TextInput style={styles.input} value={issuer} onChangeText={setIssuer} placeholder="Issuer (optional)" placeholderTextColor={Colors.textMuted} />
-                <TextInput style={styles.input} value={reference} onChangeText={setReference} placeholder="Policy / authority reference (optional)" placeholderTextColor={Colors.textMuted} />
-                <TextInput
-                  style={styles.input}
-                  value={expiresAt}
-                  onChangeText={setExpiresAt}
-                  placeholder={selectedRequirement?.expiryRequired ? 'Expiry YYYY-MM-DD (required)' : 'Expiry YYYY-MM-DD (optional)'}
-                  placeholderTextColor={Colors.textMuted}
-                  autoCapitalize="none"
-                />
-                <TouchableOpacity style={[styles.primaryButton, busy && { opacity: 0.6 }]} onPress={upload} disabled={busy || !file || !evidenceType}>
-                  {busy ? <ActivityIndicator color={Colors.onAccent} /> : <><Ionicons name="cloud-upload-outline" size={17} color={Colors.onAccent} /><Text style={styles.primaryText}>UPLOAD FOR REVIEW</Text></>}
+                <Text style={styles.sectionTitle}>Documents & Insurance</Text>
+                <Text style={styles.cardText}>Upload trade insurance, check current requirements and view your existing evidence history from TradeXchange. Your business declaration remains on this page until the full consolidation.</Text>
+                {serviceType === "INSPECTION" && <Text style={styles.cardText}>No inspection documents are required.</Text>}
+                <TouchableOpacity accessibilityRole="button" style={styles.fileButton} onPress={() => navigation.navigate("PartnerDashboard")}>
+                  <Text style={styles.fileButtonText}>OPEN DOCUMENTS & INSURANCE</Text>
                 </TouchableOpacity>
               </View>
-
-              </>}
-              <Text style={styles.sectionTitle}>Evidence history ({detail.attachments.length})</Text>
-              {detail.attachments.length === 0 ? (
-                <View style={styles.empty}><Text style={styles.cardText}>No verification evidence uploaded yet.</Text></View>
-              ) : detail.attachments.map((entry) => (
-                <View key={entry.id} style={styles.card}>
-                  <View style={styles.row}>
-                    <Ionicons name="document-text-outline" size={20} color={Colors.accent} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>{entry.label || 'Verification evidence'}</Text>
-                      <Text style={styles.cardText}>
-                        {entry.evidenceIssuer || 'Issuer not supplied'}
-                        {entry.evidenceReference ? ` · ${entry.evidenceReference}` : ''}
-                      </Text>
-                      <Text style={styles.cardText}>
-                        Uploaded {new Date(entry.createdAt).toLocaleDateString('en-GB')}
-                        {entry.evidenceExpiresAt ? ` · Expires ${new Date(entry.evidenceExpiresAt).toLocaleDateString('en-GB')}` : ''}
-                      </Text>
-                    </View>
-                    <Text style={[styles.stateText, { color: stateColor(entry.evidenceStatus ?? undefined) }]}>{entry.evidenceStatus || 'PENDING'}</Text>
-                  </View>
-                  {entry.evidenceReviewNote ? <Text style={styles.cardText}>{entry.evidenceReviewNote}</Text> : null}
-                  <View style={styles.actions}>
-                    {entry.url ? (
-                      <TouchableOpacity style={styles.actionButton} onPress={() => Linking.openURL(entry.url!)}>
-                        <Text style={styles.actionText}>OPEN EVIDENCE</Text>
-                      </TouchableOpacity>
-                    ) : null}
-                    {entry.evidenceStatus === 'PENDING' ? (
-                      <TouchableOpacity style={[styles.actionButton, { borderColor: Colors.accentAlpha25 }]} onPress={() => remove(entry)} disabled={busy}>
-                        <Text style={[styles.actionText, { color: Colors.paleRed_fca5a5 }]}>DELETE</Text>
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-                </View>
-              ))}
             </>
           ) : null}
           <View style={{ height: 44 }} />

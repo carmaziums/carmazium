@@ -303,6 +303,8 @@ const mobileAuctionComplete = read('carmazium app/carmazium app/src/screens/main
 const mobilePartnerDashboard = read('carmazium app/carmazium app/src/screens/main/PartnerDashboardScreen.tsx');
 const mobileProviderCapabilities = read('carmazium app/carmazium app/src/screens/main/ProviderCapabilitiesScreen.tsx');
 const mobileProviderVerification = read('carmazium app/carmazium app/src/screens/main/ProviderVerificationScreen.tsx');
+const mobileProviderDocuments = read('carmazium app/carmazium app/src/components/tradexchange/ProviderDocumentsSection.tsx');
+const webProviderDocuments = read('src/components/tradexchange/ProviderDocumentsSection.tsx');
 const mobileProviderMatching = read('carmazium app/carmazium app/src/screens/main/ProviderMatchingScreen.tsx');
 const mobileProviderJobs = read('carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx');
 const mobileProviderJobDetail = read('carmazium app/carmazium app/src/screens/main/ProviderJobDetailScreen.tsx');
@@ -1107,8 +1109,12 @@ if (
   !mobileProviderCapabilities.includes("navigation.navigate('ProviderVerification'") ||
   !mobileProviderCapabilities.includes("navigation.navigate('ProviderMatching'") ||
   !mobileProviderVerification.includes('getCapabilityVerification') ||
-  !mobileProviderVerification.includes('uploadCapabilityAttachment') ||
-  !mobileProviderVerification.includes('deleteCapabilityAttachment') ||
+  !mobileProviderDocuments.includes('uploadCapabilityAttachment') ||
+  !mobileProviderDocuments.includes('deleteCapabilityAttachment') ||
+  !webProviderDocuments.includes('uploadCapabilityAttachment') ||
+  !webProviderDocuments.includes('deleteCapabilityAttachment') ||
+  !mobilePartnerDashboard.includes('ProviderDocumentsSection') ||
+  !mobileProviderVerification.includes('submitProviderDeclaration') ||
   !mobileProviderMatching.includes('updateJobMatching') ||
   !mobileProviderMatching.includes('updateLeadMatching') ||
   !mobileMainNavigator.includes('PartnerDashboard') ||

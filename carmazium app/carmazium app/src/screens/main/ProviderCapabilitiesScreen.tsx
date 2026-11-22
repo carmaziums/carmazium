@@ -87,7 +87,7 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
             {!data.stripeConnect.complete && <Text style={s.body}>Stripe Connect must be completed before admin can approve this paid-job service.</Text>}
             {cap?.reviewNote && (cap.status === 'REJECTED' || cap.status === 'SUSPENDED') && <Text style={s.error}>{cap.reviewNote}</Text>}
             {cap && <>
-              <Button label={cap.status === 'PENDING' ? 'Continue setup' : type === 'INSPECTION' ? 'Service declaration' : 'Service declaration and trade insurance'} variant="outline" onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} />
+              <Button label={cap.status === 'PENDING' ? 'Continue setup' : 'Business declaration'} variant="outline" onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} />
               <Button label="Matching settings" variant="outline" onPress={() => navigation.navigate('ProviderMatching', { capabilityId: cap.id })} />
               {!cap.jobNationwide && cap.jobPostcodeAreas.length === 0 && <Text style={s.body}>Configure job coverage before this service can see or quote open work.</Text>}
             </>}

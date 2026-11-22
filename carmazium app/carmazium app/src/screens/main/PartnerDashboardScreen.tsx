@@ -30,10 +30,13 @@ import {
   elevateToPartner,
   getPartnerProfile,
   getPartnerTeam,
+  getMyCapabilities,
   savePartnerBusiness,
   updatePartnerServicePreference,
 } from '../../lib/servicesApi';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { ProviderDocumentsSection } from '../../components/tradexchange/ProviderDocumentsSection';
+import type { ContractorCapability } from '../../lib/servicesApi';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PartnerDashboard'>;
 
@@ -43,6 +46,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const initializeAuth = useAuthStore((s) => s.initializeAuth);
   const [profile, setProfile] = useState<PartnerProfile | null>(null);
   const [team, setTeam] = useState<PartnerTeam | null>(null);
+  const [legacyCapabilities, setLegacyCapabilities] = useState<ContractorCapability[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +61,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
     setLoading(true);
     setError(null);
     setTeam(null);
+    setLegacyCapabilities([]);
     try {
       const nextProfile = await getPartnerProfile();
       if (request !== generation.current) return;
@@ -75,6 +80,10 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
           setError(err?.message || 'Could not load Partner services.');
         }
       } else {
+        if (nextProfile.role === 'CONTRACTOR') {
+          const mine = await getMyCapabilities();
+          if (request === generation.current) setLegacyCapabilities(mine.capabilities);
+        }
         setTeam(null);
       }
     } catch (err: any) {
@@ -210,6 +219,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
               <Button label="My services" onPress={() => navigation.navigate('ProviderCapabilities')} />
               <Button label="Find jobs" variant="outline" onPress={() => navigation.navigate('ProviderJobs', { initialTab: 'open' })} />
               <Button label="My work" variant="outline" onPress={() => navigation.navigate('ProviderJobs', { initialTab: 'assigned' })} />
+              <ProviderDocumentsSection capabilities={legacyCapabilities} />
             </View>
           ) : !isPartnerRole ? (
             <View style={styles.card}>
@@ -299,6 +309,8 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 })}
                 {servicesExpanded && <Text style={styles.cardText}>Turning a service on does not approve it. CarMazium still checks verification, working areas, payout setup and account eligibility before new work.</Text>}
               </View>
+
+              <ProviderDocumentsSection capabilities={team?.capabilities ?? []} />
 
               <View style={styles.card}>
                   <Text style={styles.cardTitle}>TradeXchange payouts</Text>

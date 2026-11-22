@@ -16,6 +16,8 @@ import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
 import { Button } from "@/components/ui/Button"
 import { serviceVerificationPath, type JobService } from "@/lib/serviceSetupRouting"
+import { ProviderDocumentsSection } from "@/components/tradexchange/ProviderDocumentsSection"
+import { getMyCapabilities, type ContractorCapability } from "@/lib/servicesApi"
 
 type CapabilityStatus = "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED"
 type PartnerCapability = {
@@ -47,6 +49,7 @@ export default function PartnerDashboardPage() {
     const [phone, setPhone] = React.useState("")
     const [businessAddress, setBusinessAddress] = React.useState("")
     const [servicesExpanded, setServicesExpanded] = React.useState(true)
+    const [legacyCapabilities, setLegacyCapabilities] = React.useState<ContractorCapability[]>([])
 
     const role = profile?.role || ""
     const isPartnerRole = role === "DEALER"
@@ -60,6 +63,15 @@ export default function PartnerDashboardPage() {
         setPhone(partnerBusiness.phone || "")
         setBusinessAddress(partnerBusiness.businessAddress || "")
     }, [partnerBusiness])
+
+    React.useEffect(() => {
+        if (!isLegacyProvider || !user) return
+        let cancelled = false
+        getMyCapabilities().then(result => {
+            if (!cancelled) setLegacyCapabilities(result.capabilities)
+        }).catch(() => { if (!cancelled) setError("Could not load service documents. Refresh to retry.") })
+        return () => { cancelled = true }
+    }, [isLegacyProvider, user])
 
     const loadTeam = React.useCallback(async () => {
         if (!partnerBusiness || (!isPartnerRole && !isAdmin)) return
@@ -214,6 +226,7 @@ export default function PartnerDashboardPage() {
                         <Link href="/dashboard/service/jobs"><Button variant="outline">Find jobs</Button></Link>
                         <Link href="/dashboard/service/jobs?tab=mine"><Button variant="outline">My work</Button></Link>
                     </div>
+                    <div className="mt-5"><ProviderDocumentsSection capabilities={legacyCapabilities} /></div>
                 </div>
             </div>
         )
@@ -332,6 +345,8 @@ export default function PartnerDashboardPage() {
                             <p className="text-xs text-[var(--text-muted)]">Switching a service on does not approve it. Job eligibility is checked by CarMazium using your verification, working areas and payout setup.</p>
                         </div>}
                     </section>
+
+                    <ProviderDocumentsSection capabilities={team?.capabilities ?? []} />
 
                     <section className="grid lg:grid-cols-2 gap-5">
                         <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
