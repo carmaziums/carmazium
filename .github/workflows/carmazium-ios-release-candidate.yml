@@ -82,7 +82,12 @@ jobs:
               !String(eas.build.production.env.EXPO_PUBLIC_API_URL || '').startsWith('https://')) {
             throw new Error('Production API endpoint is not configured');
           }
-          console.log('Reviewed source, EAS project and production iOS build profile verified');
+          const cameraPurpose = app.ios?.infoPlist?.NSCameraUsageDescription;
+          const imagePicker = app.plugins?.find(p => Array.isArray(p) && p[0] === 'expo-image-picker');
+          if (!cameraPurpose || imagePicker?.[1]?.cameraPermission !== cameraPurpose) {
+            throw new Error('Apple ITMS-90683: Expo Image Picker camera permission must match iOS Info.plist');
+          }
+          console.log('Reviewed source, EAS project, camera permission and production iOS build profile verified');
           NODE
       - name: Require previously connected Expo signing account
         shell: bash
@@ -146,7 +151,20 @@ jobs:
           # Install dependencies inside the isolated staging root; .easignore
           # still prevents node_modules from being included in the cloud archive.
           npm ci --prefix "$STAGE" --no-audit --no-fund
-          (cd "$STAGE" && npx --no-install expo config --json > /dev/null)
+          # Evaluate native config plugins, not only the static app.json fields.
+          # Expo Image Picker's cameraPermission:false used to delete the key,
+          # causing Apple's ITMS-90683 rejection for build 1.0.1 (4).
+          (cd "$STAGE" && npx --no-install expo config --type introspect --json > "$RUNNER_TEMP/carmazium-ios-introspected.json")
+          node - "$RUNNER_TEMP/carmazium-ios-introspected.json" <<'NODE'
+          const fs = require('fs');
+          const config = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const value = config?._internal?.modResults?.ios?.infoPlist?.NSCameraUsageDescription;
+          if (typeof value !== 'string' || value.trim().length < 35 ||
+              !/camera/i.test(value) || !/photo/i.test(value)) {
+            throw new Error('Apple ITMS-90683 protection: generated native Info.plist must include a specific NSCameraUsageDescription.');
+          }
+          console.log('Native iOS Info.plist permission purpose verified after all Expo config plugins');
+          NODE
           export EAS_NO_VCS=1
           export EAS_PROJECT_ROOT="$STAGE"
           cd "$STAGE"
