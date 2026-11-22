@@ -9,7 +9,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/Button"
 import {
-    getJob, getServiceSettings, upsertQuote, withdrawQuote, startJob, completeJob, formatPence, parseServiceQuotePence,
+    getJob, getServiceSettings, upsertQuote, withdrawQuote, startJob, completeJob, formatPence, parseServiceQuotePence, servicePaymentEvidence, servicePaymentStatusText,
     type ServiceJob, type ServiceMarketplaceSettings,
 } from "@/lib/servicesApi"
 import { JobStatusBadge, RecoveryBadge, JobRoute, JobTiming, JobVehicles } from "@/components/services/JobBits"
@@ -83,6 +83,7 @@ export default function ContractorJobPage() {
     const canWithdrawQuote = job?.status === "OPEN" && job.canWithdrawQuote === true && hasOpenQuote
     const platformFeePence = settings ? Math.round(amountPence * settings.platformFeeRate) : null
     const providerPence = platformFeePence == null ? null : amountPence - platformFeePence
+    const paymentEvidence = servicePaymentEvidence(job?.payment, job?.agreedAmountPence)
     const canMessageCustomer = isMine && ["PAID", "IN_PROGRESS", "COMPLETED", "RELEASED", "DISPUTED"].includes(job?.status || "")
 
     return (
@@ -187,10 +188,17 @@ export default function ContractorJobPage() {
                                 {isMine && job.agreedAmountPence != null && (
                                     <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-3">Your payout</p>
-                                        <p className="text-3xl font-black font-heading">{formatPence(job.contractorAmountPence ?? 0)}</p>
-                                        <p className="text-xs text-[var(--text-muted)] mt-1">
-                                            of {formatPence(job.agreedAmountPence)} quoted · {job.payment?.status === "RELEASED" ? "transferred to your Stripe account" : job.payment?.status === "PAID" ? "held by CarMazium until the customer confirms" : "awaiting customer payment"}
-                                        </p>
+                                        {paymentEvidence ? (
+                                            <div className="space-y-2">
+                                                <p className="text-3xl font-black font-heading">{formatPence(paymentEvidence.contractorPence)}</p>
+                                                <dl className="text-xs border-t border-[var(--border-default)] pt-3 space-y-2">
+                                                    <div className="flex justify-between gap-2"><dt>Customer total</dt><dd>{formatPence(paymentEvidence.grossPence)}</dd></div>
+                                                    <div className="flex justify-between gap-2"><dt>CarMazium fee (9%)</dt><dd>{formatPence(paymentEvidence.platformFeePence)}</dd></div>
+                                                    <div className="flex justify-between gap-2"><dt>Provider allocation (91%)</dt><dd>{formatPence(paymentEvidence.contractorPence)}</dd></div>
+                                                </dl>
+                                            </div>
+                                        ) : <p role="status" className="text-sm text-amber-600 dark:text-amber-300">Payment breakdown needs verification. Refresh or contact support before relying on this payout amount.</p>}
+                                        <p className="text-xs text-[var(--text-muted)] mt-3">{servicePaymentStatusText(job.payment?.status)}</p>
                                     </div>
                                 )}
 
