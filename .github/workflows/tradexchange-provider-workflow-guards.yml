@@ -181,7 +181,7 @@ jobs:
           console.log('Verified Expo project ownership and robot project access: @carmazium/carmazium.');
           NODE
 
-ios-store-candidate:
+  ios-store-candidate:
     name: Signed original CarMazium iOS App Store candidate
     # Manually dispatched from the reviewed internal source branch.
     # Never merges, deploys the website, publishes OTA, or submits to App Review.
