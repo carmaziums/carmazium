@@ -107,6 +107,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
   const isMine = job?.viewerRole === 'contractor';
   const canQuote = job?.status === 'OPEN' && job.canQuote === true;
   const hasOpenQuote = myQuote?.status === 'ACTIVE';
+  const canWithdrawQuote = job?.status === 'OPEN' && job.canWithdrawQuote === true && hasOpenQuote;
   const nextStep = job?.status === 'OPEN'
     ? 'Review the vehicle and location, then send a quote. You cannot start work until the customer accepts and pays.'
     : job?.status === 'ACCEPTED'
@@ -178,7 +179,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
   };
 
   const withdraw = () => {
-    if (!job || !hasOpenQuote || !canQuote || busy) return;
+    if (!job || !canWithdrawQuote || busy) return;
     Alert.alert(
       'Withdraw quote?',
       'The customer will no longer be able to accept this quote.',
@@ -451,7 +452,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
                   </Text>}
             </TouchableOpacity>
 
-            {hasOpenQuote ? (
+            {canWithdrawQuote ? (
               <TouchableOpacity
                 style={styles.dangerButton}
                 disabled={busy !== null}
@@ -472,6 +473,13 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
               Check service approval, insurance, payouts and team permissions in My services.
               Previously accepted work remains in My Work.
             </Text>
+            {canWithdrawQuote ? (
+              <TouchableOpacity style={styles.dangerButton} disabled={busy !== null}
+                accessibilityRole="button" accessibilityLabel="Withdraw existing service quote"
+                onPress={withdraw}>
+                <Text style={styles.dangerText}>WITHDRAW YOUR EXISTING QUOTE</Text>
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity style={styles.secondaryButton}
               onPress={() => navigation.navigate('PartnerDashboard')}
               accessibilityRole="button" accessibilityLabel="Review provider verification">
