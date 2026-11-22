@@ -9,7 +9,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/Button"
 import {
-    getJob, getServiceSettings, upsertQuote, withdrawQuote, startJob, completeJob, formatPence,
+    getJob, getServiceSettings, upsertQuote, withdrawQuote, startJob, completeJob, formatPence, parseServiceQuotePence,
     type ServiceJob, type ServiceMarketplaceSettings,
 } from "@/lib/servicesApi"
 import { JobStatusBadge, RecoveryBadge, JobRoute, JobTiming, JobVehicles } from "@/components/services/JobBits"
@@ -41,7 +41,9 @@ export default function ContractorJobPage() {
         getJob(id).then(j => {
             setJob(j)
             const mine = j.quotes?.[0]
-            if (mine && mine.status === "ACTIVE") { setAmount((mine.amountPence / 100).toFixed(2)); setMessage(mine.message ?? "") }
+            if (mine?.status === "ACTIVE") {
+                setAmount((mine.amountPence / 100).toFixed(2)); setMessage(mine.message ?? "")
+            } else { setAmount(""); setMessage("") }
             if (j.serviceType === "INSPECTION") {
                 setInspectionOutcome(j.inspectionOutcome ?? "")
                 setInspectionSummary(j.inspectionSummary ?? "")
@@ -73,9 +75,11 @@ export default function ContractorJobPage() {
 
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}`.trim() : user?.email || "Provider"
     const myQuote = job?.quotes?.[0]
-    const amountPence = Math.round(Number(amount || 0) * 100)
+    const quotePence = parseServiceQuotePence(amount)
+    const amountPence = quotePence ?? 0
     const isMine = job?.viewerRole === "contractor"
-    const canQuote = job?.status === "OPEN"
+    const canQuote = job?.status === "OPEN" && job.canQuote === true
+    const hasOpenQuote = myQuote?.status === "ACTIVE"
     const platformFeePence = settings ? Math.round(amountPence * settings.platformFeeRate) : null
     const providerPence = platformFeePence == null ? null : amountPence - platformFeePence
     const canMessageCustomer = isMine && ["PAID", "IN_PROGRESS", "COMPLETED", "RELEASED", "DISPUTED"].includes(job?.status || "")
@@ -126,10 +130,18 @@ export default function ContractorJobPage() {
                                 {canQuote && (
                                     <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-3">{myQuote?.status === "ACTIVE" ? "Your quote" : "Quote this job"}</p>
-                                        <div className="relative mb-3">
+                                        <label htmlFor="service-quote-price" className="block text-xs font-bold mb-2">Fixed price for the whole job (GBP)</label>
+                                        <div className="relative mb-2">
                                             <PoundSterling size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                                            <input className={`${inputCls} pl-9 text-lg font-bold`} type="number" min={1} step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" aria-label="Quote amount" />
+                                            <input id="service-quote-price" className={`${inputCls} pl-9 text-lg font-bold`}
+                                                type="text" inputMode="decimal" maxLength={8} value={amount}
+                                                onChange={e => setAmount(e.target.value)} placeholder="0.00"
+                                                aria-invalid={amount.trim().length > 0 && quotePence === null}
+                                                aria-describedby="service-quote-price-hint" />
                                         </div>
+                                        <p id="service-quote-price-hint" className="text-[11px] text-[var(--text-muted)] mb-3">
+                                            Quote £1 to £50,000 for the complete job. Include VAT if your business charges it. Up to two decimal places.
+                                        </p>
                                         <textarea className={`${inputCls} resize-none mb-3`} rows={3} value={message} onChange={e => setMessage(e.target.value)} maxLength={1000} placeholder="Collection window, vehicle type, anything that helps the customer pick you" />
                                         {amountPence >= 100 && platformFeePence != null && providerPence != null && (
                                             <p className="text-[11px] text-[var(--text-muted)] mb-3">
@@ -139,15 +151,26 @@ export default function ContractorJobPage() {
                                         {amountPence >= 100 && platformFeePence == null && (
                                             <p className="text-[11px] text-[var(--text-muted)] mb-3">The current platform fee and provider payout will be confirmed from TradeXchange when the quote is accepted.</p>
                                         )}
-                                        <Button className="w-full" disabled={busy === "quote" || amountPence < 100}
-                                            onClick={() => run("quote", () => upsertQuote(job.id, { amountPence, message: message.trim() || undefined }), myQuote ? "Quote updated." : "Quote sent. The customer has been notified.")}>
-                                            {busy === "quote" ? <Loader2 className="animate-spin" size={16} /> : myQuote?.status === "ACTIVE" ? "Update quote" : "Send quote"}
+                                        <Button className="w-full" disabled={busy !== null || quotePence === null}
+                                            onClick={() => run("quote", () => upsertQuote(job.id, { amountPence, message: message.trim() || undefined }), hasOpenQuote ? "Quote updated." : "Quote sent. The customer has been notified.")}>
+                                            {busy === "quote" ? <Loader2 className="animate-spin" size={16} /> : hasOpenQuote ? "Update quote" : "Send quote"}
                                         </Button>
-                                        {myQuote?.status === "ACTIVE" && (
-                                            <button type="button" disabled={busy === "withdraw"} onClick={() => run("withdraw", () => withdrawQuote(job.id), "Quote withdrawn.")}
+                                        {hasOpenQuote && (
+                                            <button type="button" disabled={busy !== null} onClick={() => {
+                                                if (!window.confirm("Withdraw this quote? The customer will no longer be able to accept it.")) return
+                                                void run("withdraw", () => withdrawQuote(job.id), "Quote withdrawn.")
+                                            }}
                                                 className="w-full mt-3 inline-flex items-center justify-center gap-1.5 text-xs font-bold text-[var(--text-muted)] hover:text-red-500"><Trash2 size={13} /> Withdraw quote</button>
                                         )}
                                     </div>
+                                )}
+
+                                {job.status === "OPEN" && !canQuote && (
+                                    <p role="status" className="rounded-xl border border-[var(--border-default)] p-4 text-sm text-[var(--text-muted)]">
+                                        New quotations are unavailable for this account. Review your service approval, insurance,
+                                        payout setup and team permissions in <Link className="underline text-primary" href="/dashboard/partner">My services</Link>.
+                                        Existing accepted work remains in My Work.
+                                    </p>
                                 )}
 
                                 {isMine && job.agreedAmountPence != null && (
@@ -258,7 +281,7 @@ export default function ContractorJobPage() {
 
                                 {isMine && job.status === "ACCEPTED" && <p className="text-sm text-[var(--text-muted)] text-center">Your quote was accepted. Waiting for the customer to pay{settings ? ` within ${settings.acceptedPaymentTimeoutMinutes} minutes` : ""}. If payment is not completed, the job reopens safely.</p>}
                                 {isMine && job.status === "COMPLETED" && <p className="text-sm text-[var(--text-muted)] text-center">Waiting for the customer to confirm. Auto-releases 48h after completion.</p>}
-                                {!isMine && !canQuote && <p className="text-sm text-[var(--text-muted)] text-center">This job is no longer open.</p>}
+                                {job.status !== "OPEN" && !isMine && <p className="text-sm text-[var(--text-muted)] text-center">This job is no longer open for quotes.</p>}
                             </aside>
                         </div>
                     )}
