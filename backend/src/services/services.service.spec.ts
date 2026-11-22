@@ -438,6 +438,17 @@ describe('Delivery & Recovery — end to end', () => {
         await expect(svc.upsertQuote(kentProfileId, ['INSPECTION'] as any, TRUCKER.id, jobId, { amountPence: 10000 } as any)).rejects.toThrow(ForbiddenException);
     });
 
+    it('refuses invalid direct-service quote amounts before any mutation or notification', async () => {
+        const before = db.many('serviceQuote', { jobId }).length;
+        const notifications = notificationsTo(CUSTOMER.id).length;
+        for (const amountPence of [0, 99, -100, 100.5, Number.NaN, Number.POSITIVE_INFINITY, 5_000_001]) {
+            await expect(svc.upsertQuote(kentProfileId, ['DELIVERY'] as any,
+                TRUCKER.id, jobId, { amountPence } as any)).rejects.toThrow(/between £1 and £50,000/);
+        }
+        expect(db.many('serviceQuote', { jobId })).toHaveLength(before);
+        expect(notificationsTo(CUSTOMER.id)).toHaveLength(notifications);
+    });
+
     it('Kent quotes £180, rival quotes £150, and the customer hears about both', async () => {
         const q1 = await svc.upsertQuote(kentProfileId, ['DELIVERY'] as any, TRUCKER.id, jobId, { amountPence: 18000, message: 'Flatbed, tomorrow AM' } as any);
         const q2 = await svc.upsertQuote(rivalProfileId, ['DELIVERY'] as any, RIVAL.id, jobId, { amountPence: 15000 } as any);
@@ -452,6 +463,26 @@ describe('Delivery & Recovery — end to end', () => {
         expect(db.many('serviceQuote', { jobId })).toHaveLength(2);
     });
 
+    it('withdrawal cannot create a second quote and reactivation announces a new offer', async () => {
+        const separate = await svc.createJob(CUSTOMER.id, {
+            serviceType: 'DELIVERY', title: 'Optional quote lifecycle',
+            pickupPostcode: 'LS1 4AP', deliveryPostcode: 'BS1 4DJ',
+            vehicles: [{ registration: 'AB12CDE' }],
+        } as any);
+        const initial = await svc.upsertQuote(kentProfileId, ['DELIVERY'] as any,
+            TRUCKER.id, separate.id, { amountPence: 20000 } as any);
+        await svc.withdrawQuote(kentProfileId, separate.id);
+        expect(db.one('serviceQuote', { id: initial.id })?.status).toBe('WITHDRAWN');
+        await expect(svc.withdrawQuote(kentProfileId, separate.id)).rejects.toThrow(/active quote/);
+        const before = sendBrandedEmail.mock.calls.length;
+        const resumed = await svc.upsertQuote(kentProfileId, ['DELIVERY'] as any,
+            TRUCKER.id, separate.id, { amountPence: 19000 } as any);
+        expect(resumed.id).toBe(initial.id);
+        expect(db.many('serviceQuote', { jobId: separate.id })).toHaveLength(1);
+        expect(sendBrandedEmail.mock.calls.length).toBe(before + 1);
+        expect(db.one('serviceQuote', { id: initial.id })?.status).toBe('ACTIVE');
+    });
+
     it('the customer sees both quotes cheapest-first; a bidder sees only their own', async () => {
         const asCustomer = await svc.getJob({ userId: CUSTOMER.id, role: 'BUYER' as any }, jobId);
         expect(asCustomer.viewerRole).toBe('customer');
@@ -460,9 +491,19 @@ describe('Delivery & Recovery — end to end', () => {
 
         const asKent = await svc.getJob({ userId: TRUCKER.id, role: 'CONTRACTOR' as any, contractorProfileId: kentProfileId }, jobId);
         expect(asKent.viewerRole).toBe('bidder');
+        expect(asKent.canQuote).toBe(true);
         expect(asKent.quotes!.map((q: any) => q.id)).toEqual([kentQuoteId]);
         expect(asKent.pickupAddress).toBeNull();
         expect((asKent as any).customer.phone).toBeUndefined();
+
+        const staffReadOnly = await svc.getJob({
+            userId: TRUCKER.id, role: 'CONTRACTOR' as any,
+            contractorProfileId: kentProfileId, quoteAllowedByActor: false,
+        }, jobId);
+        expect(staffReadOnly.canQuote).toBe(false);
+        expect(staffReadOnly.quotes!.map((q: any) => q.id)).toEqual([kentQuoteId]);
+        expect(staffReadOnly.pickupAddress).toBeNull();
+        expect((staffReadOnly as any).customer.email).toBeUndefined();
     });
 
     it('a stranger with no quote and no capability cannot open the job', async () => {
