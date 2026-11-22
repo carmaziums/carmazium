@@ -8,6 +8,8 @@ on:
       - 'scripts/test-tradexchange-provider-continuity.test.mjs'
       - 'scripts/test-tradexchange-block2-*.test.mjs'
       - 'carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx'
+      - 'carmazium app/carmazium app/src/screens/main/ProviderJobDetailScreen.tsx'
+      - 'backend/src/services/services.service.spec.ts'
       - 'carmazium app/carmazium app/src/lib/servicesApi.ts'
       - 'backend/src/services/services.service.ts'
       - 'backend/src/services/services.controller.ts'
@@ -40,3 +42,4 @@ jobs:
           scripts/test-tradexchange-block2-post-job.test.mjs
           scripts/test-tradexchange-block2-stage2.test.mjs
           scripts/test-tradexchange-block2-stage3.test.mjs
+          scripts/test-tradexchange-block2-stage4.test.mjs
