@@ -29,6 +29,9 @@ import {
   confirmCustomerServiceJob,
   disputeCustomerServiceJob,
   formatPence,
+  classifyServiceCheckoutTarget,
+  servicePaymentEvidence,
+  servicePaymentStatusText,
   comparableServiceQuotes,
   isServiceQuoteSelectable,
   getCustomerServiceJob,
@@ -127,7 +130,15 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
     setError(null);
     try {
       const checkoutUrl = await acceptCustomerQuote(jobId, quote.id);
-      if (!checkoutUrl.startsWith('https://checkout.stripe.com/')) {
+      const target = classifyServiceCheckoutTarget(checkoutUrl, jobId);
+      if (target === 'JOB_RETURN') {
+        // The existing Stripe session was already paid. Stay on this native
+        // page, do not open a website, and rely on the updated backend record.
+        setFlash('Earlier checkout completed. Refreshing the confirmed service payment status.');
+        await load();
+        return;
+      }
+      if (target !== 'STRIPE_CHECKOUT') {
         throw new Error('Secure checkout could not be verified. Please refresh and try again.');
       }
       const supported = await Linking.canOpenURL(checkoutUrl);
@@ -292,6 +303,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
     );
   }
 
+  const paymentEvidence = servicePaymentEvidence(job.payment, job.agreedAmountPence);
   const vehicle = job.vehicles?.[0];
   const isInspection = job.serviceType === 'INSPECTION';
   const paidState = ['PAID', 'IN_PROGRESS', 'COMPLETED', 'RELEASED', 'DISPUTED'].includes(job.status);
@@ -515,14 +527,19 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
             <Text style={styles.sectionLabel}>SERVICE PAYMENT</Text>
             <Text style={styles.bigPrice}>{formatPence(job.agreedAmountPence)}</Text>
             <Text style={styles.bodyText}>
-              {job.payment?.status === 'RELEASED'
-                ? 'Provider payment released.'
-                : job.payment?.status === 'PAID'
-                  ? 'Payment is held by CarMazium until you confirm completion or the auto-release period ends.'
-                  : job.payment?.status === 'REFUNDED'
-                    ? 'This service payment has been refunded.'
-                    : 'Waiting for secure payment confirmation.'}
+              {servicePaymentStatusText(job.payment?.status)}
             </Text>
+            {paymentEvidence ? (
+              <View style={{ gap: 8, marginTop: 12 }}>
+                <Info label="Recorded customer amount" value={formatPence(paymentEvidence.grossPence)} />
+                <Info label="CarMazium service fee (9%)" value={formatPence(paymentEvidence.platformFeePence)} />
+                <Info label="Provider allocation (91%)" value={formatPence(paymentEvidence.contractorPence)} />
+              </View>
+            ) : (
+              <Text accessibilityRole="alert" style={styles.muted}>
+                Payment breakdown is not yet verified. Refresh or contact support before relying on these amounts.
+              </Text>
+            )}
           </View>
         ) : null}
 
