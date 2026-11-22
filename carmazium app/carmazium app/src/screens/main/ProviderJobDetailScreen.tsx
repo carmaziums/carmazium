@@ -501,6 +501,10 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
               <>
                 <Text style={styles.payoutAmount}>{formatPence(paymentEvidence.contractorPence)}</Text>
                 <Info label="Customer total" value={formatPence(paymentEvidence.grossPence)} />
+                {paymentEvidence.refundPence > 0 ? <>
+                  <Info label="Recorded customer refund" value={formatPence(paymentEvidence.refundPence)} />
+                  <Info label="Remaining service amount" value={formatPence(paymentEvidence.netServicePence)} />
+                </> : null}
                 <Info label="CarMazium fee (9%)" value={formatPence(paymentEvidence.platformFeePence)} />
                 <Info label="Provider allocation (91%)" value={formatPence(paymentEvidence.contractorPence)} />
               </>
