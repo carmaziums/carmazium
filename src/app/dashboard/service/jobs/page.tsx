@@ -168,7 +168,7 @@ function ProviderJobs() {
                     {tab === "open" && (
                         <p className="text-xs text-[var(--text-muted)]">
                             Only jobs matching your currently verified service capabilities and chosen postcode coverage appear here.
-                            Manage approvals and job areas in <Link className="underline" href="/dashboard/partner">My services</Link>.
+                            Manage opt-in, approvals and job areas in <Link className="underline" href="/dashboard/partner">My services</Link>. Email alerts also depend on your notification preferences.
                         </p>
                     )}
 
@@ -190,7 +190,7 @@ function ProviderJobs() {
                             icon={tab === "open" ? Inbox : Briefcase}
                             title={tab === "open" ? "No matching jobs right now" : "No won jobs yet"}
                             description={tab === "open"
-                                ? "Refresh to check for jobs matching your approved services. Eligible providers also receive account and email notifications for new matching jobs."
+                                ? "Refresh for jobs matching your approved services. Account alerts require an active verified service and postcode match; email delivery depends on your notification settings."
                                 : "Accepted and completed jobs for this service appear here even when new-job verification needs renewal."}
                         />
                     )}
