@@ -13,13 +13,14 @@ import { Button } from "@/components/ui/Button"
 import {
     getJob, acceptQuote, confirmCompletion, disputeJob, cancelJob, createServiceReview, formatPence,
     comparableServiceQuotes, isServiceQuoteSelectable, classifyServiceCheckoutTarget,
-    servicePaymentEvidence, servicePaymentStatusText,
+    servicePaymentEvidence, servicePaymentStatusText, serviceCompletionReview,
     type ServiceJob, type ServiceQuote,
 } from "@/lib/servicesApi"
 import { JobStatusBadge, RecoveryBadge, JobRoute, JobTiming, JobVehicles } from "@/components/services/JobBits"
 import { getOrCreateServiceJobRoom } from "@/lib/chatApi"
 import { refuseAuctionAfterInspection } from "@/lib/auctionApi"
 import { checkoutPaymentNotice } from "@/lib/tradeXchangeCheckoutNotice"
+import { formatUkServiceDateTime } from "@/lib/ukServiceDateTime"
 
 /**
  * The customer's view of one TradeXchange service job. Quotes can be compared
@@ -36,6 +37,7 @@ function JobDetail() {
     const [error, setError] = React.useState<string | null>(null)
     const [busy, setBusy] = React.useState<string | null>(null)
     const checkoutPending = React.useRef(false)
+    const actionPending = React.useRef(false)
     const [reviewRating, setReviewRating] = React.useState(0)
     const [reviewComment, setReviewComment] = React.useState("")
     const [flash, setFlash] = React.useState<string | null>(
@@ -79,10 +81,12 @@ function JobDetail() {
     }
 
     const run = async (key: string, fn: () => Promise<void>, after?: string) => {
+        if (actionPending.current || checkoutPending.current) return
+        actionPending.current = true
         setBusy(key); setError(null)
         try { await fn(); if (after) setFlash(after); load() }
-        catch (e: any) { setError(e?.message || "Something went wrong") }
-        finally { setBusy(null) }
+        catch (e: any) { setError(e?.message || "Something went wrong"); load() }
+        finally { actionPending.current = false; setBusy(null) }
     }
 
     // A synchronous latch prevents a second tap choosing a different provider
@@ -161,6 +165,7 @@ function JobDetail() {
 
     const checkoutNotice = checkoutPaymentNotice(params.get("paid"), job.payment?.status)
     const paymentEvidence = servicePaymentEvidence(job.payment, job.agreedAmountPence)
+    const completionReview = serviceCompletionReview(job)
     const activeQuotes = comparableServiceQuotes(job.quotes)
     const accepted = (job.quotes ?? []).find(q => q.id === job.acceptedQuoteId)
     const isPaidState = ["PAID", "IN_PROGRESS", "COMPLETED"].includes(job.status)
@@ -327,6 +332,10 @@ function JobDetail() {
                             {paymentEvidence ? (
                                 <dl className="mt-4 border-t border-[var(--border-default)] pt-3 space-y-2 text-xs">
                                     <div className="flex justify-between gap-3"><dt>Recorded customer amount</dt><dd className="font-semibold">{formatPence(paymentEvidence.grossPence)}</dd></div>
+                                    {paymentEvidence.refundPence > 0 && <>
+                                        <div className="flex justify-between gap-3"><dt>Recorded customer refund</dt><dd className="font-semibold">{formatPence(paymentEvidence.refundPence)}</dd></div>
+                                        <div className="flex justify-between gap-3"><dt>Remaining service amount</dt><dd className="font-semibold">{formatPence(paymentEvidence.netServicePence)}</dd></div>
+                                    </>}
                                     <div className="flex justify-between gap-3"><dt>CarMazium service fee (9%)</dt><dd className="font-semibold">{formatPence(paymentEvidence.platformFeePence)}</dd></div>
                                     <div className="flex justify-between gap-3"><dt>Provider allocation (91%)</dt><dd className="font-semibold">{formatPence(paymentEvidence.contractorPence)}</dd></div>
                                 </dl>
@@ -373,15 +382,24 @@ function JobDetail() {
 
                         {job.status === "COMPLETED" && (
                             <>
-                                <Button className="w-full" disabled={busy === "confirm"}
-                                    onClick={() => run("confirm", () => confirmCompletion(job.id), `Confirmed. Your ${providerLabel} has been paid.`)}>
+                                <Button className="w-full" disabled={busy !== null}
+                                    onClick={() => {
+                                        if (!window.confirm(`Confirm this ${completionLabel} is complete and release the recorded provider payment? Only confirm after reviewing the work. If something is wrong, raise a dispute instead.`)) return
+                                        void run("confirm", () => confirmCompletion(job.id), `Completion confirmed. Provider payout recorded.`)
+                                    }}>
                                     {busy === "confirm" ? <Loader2 className="animate-spin" size={16} /> : <><CheckCircle size={16} className="mr-2" /> Confirm {completionLabel}</>}
                                 </Button>
-                                <p className="text-[11px] text-[var(--text-muted)] text-center">Releases {job.contractorAmountPence != null ? formatPence(job.contractorAmountPence) : "payment"} to the {providerLabel}. Auto-confirms 48h after they marked it complete.</p>
+                                <p className="text-[11px] text-[var(--text-muted)] text-center">
+                                    {completionReview
+                                        ? completionReview.elapsed
+                                            ? "The 48-hour review period has elapsed. Automatic confirmation may still be processing; check the recorded payment status."
+                                            : `Automatic confirmation becomes eligible after ${formatUkServiceDateTime(completionReview.dueAt)} if no dispute blocks release.`
+                                        : "Completion is awaiting verification. Do not rely on an automatic payout deadline until the payment state is confirmed."}
+                                </p>
                             </>
                         )}
                         {isPaidState && (
-                            <button type="button" disabled={busy === "dispute"}
+                            <button type="button" disabled={busy !== null}
                                 onClick={() => { const r = prompt("What went wrong? This freezes the job for CarMazium to review."); if (r !== null) run("dispute", () => disputeJob(job.id, r || undefined), "Dispute raised. CarMazium will be in touch.") }}
                                 className={buttonVariants({ variant: "outline", size: "sm", className: "w-full" })}>
                                 Something is wrong — raise a dispute
