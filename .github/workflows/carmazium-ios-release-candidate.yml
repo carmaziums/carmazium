@@ -1,8 +1,9 @@
 name: CarMazium iOS production release candidate (internal review only)
 
-# Produces a signed App Store candidate via the owner's preconfigured EAS
-# credentials. Does not submit to App Store Connect, TestFlight or customers.
-# Manual-only to avoid surprise EAS/Apple charges or signing side effects.
+# Manual, source-locked iOS release review. Default mode builds a signed IPA;
+# explicit UPLOAD_EXISTING_IPA_ONLY mode uploads the exact previously signed IPA
+# to App Store Connect for processing. Neither mode submits for App Review,
+# invites external testers, or publishes to customers.
 on:
   workflow_dispatch:
     inputs:
