@@ -587,6 +587,8 @@ export function MaziumWidget() {
                 )}
             </div>
 
+            {/* On mobile /sell pages, keep the chat launcher but hide the automatic
+                greeting so it cannot cover the valuation CTA. */}
             {/* Greeting Pop-up */}
             <AnimatePresence>
                 {!isOpen && showGreeting === true && (
@@ -598,7 +600,7 @@ export function MaziumWidget() {
                             scale: 0.9,
                             transition: { duration: 0.2 },
                         }}
-                        className={cn("absolute bottom-20 right-0 px-5 py-3 rounded-2xl shadow-xl border items-center gap-3 z-40 mb-2 origin-bottom-right w-max max-w-[min(260px,calc(100vw_-_2rem))]", pathname === "/" ? "hidden md:flex" : "flex")}
+                        className={cn("absolute bottom-20 right-0 px-5 py-3 rounded-2xl shadow-xl border items-center gap-3 z-40 mb-2 origin-bottom-right w-max max-w-[min(260px,calc(100vw_-_2rem))]", (pathname === "/" || pathname === "/sell" || pathname.startsWith("/sell/")) ? "hidden md:flex" : "flex")}
                         style={{
                             background: "var(--bg-dropdown)",
                             borderColor: "var(--border-default)",
