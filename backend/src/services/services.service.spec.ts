@@ -912,6 +912,31 @@ describe('Vehicle Inspection — end to end', () => {
         expect(payment.status).toBe('RELEASED');
     });
 
+    it('never reopens a completed or released inspection through a reschedule request', async () => {
+        const finished = db.one('serviceJob', { id: inspectionJobId })!;
+        const oldStatus = finished.status;
+        const oldCompletedAt = finished.completedAt;
+        const oldRequestedFor = finished.requestedFor;
+        const proposal = new Date(Date.now() + 86_400_000).toISOString();
+        try {
+            for (const status of ['COMPLETED', 'RELEASED']) {
+                finished.status = status;
+                await expect(svc.requestJobChange(CUSTOMER.id, null, inspectionJobId, {
+                    kind: 'RESCHEDULE',
+                    reason: 'Try to reset already finished work',
+                    requestedFor: proposal,
+                } as any)).rejects.toThrow(/Only unfinished paid work can be rescheduled/);
+                expect(finished.status).toBe(status);
+                expect(finished.completedAt).toEqual(oldCompletedAt);
+                expect(finished.requestedFor).toEqual(oldRequestedFor);
+            }
+        } finally {
+            finished.status = oldStatus;
+            finished.completedAt = oldCompletedAt;
+            finished.requestedFor = oldRequestedFor;
+        }
+    });
+
     it('keeps authorised inspection work visible after verification expiry and filters it server-side', async () => {
         const capability = db.one('contractorCapability', {
             contractorId: providerProfileId, serviceType: 'INSPECTION',
