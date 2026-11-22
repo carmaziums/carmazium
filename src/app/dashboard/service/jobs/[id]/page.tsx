@@ -193,6 +193,10 @@ export default function ContractorJobPage() {
                                                 <p className="text-3xl font-black font-heading">{formatPence(paymentEvidence.contractorPence)}</p>
                                                 <dl className="text-xs border-t border-[var(--border-default)] pt-3 space-y-2">
                                                     <div className="flex justify-between gap-2"><dt>Customer total</dt><dd>{formatPence(paymentEvidence.grossPence)}</dd></div>
+                                                    {paymentEvidence.refundPence > 0 && <>
+                                                        <div className="flex justify-between gap-2"><dt>Recorded customer refund</dt><dd>{formatPence(paymentEvidence.refundPence)}</dd></div>
+                                                        <div className="flex justify-between gap-2"><dt>Remaining service amount</dt><dd>{formatPence(paymentEvidence.netServicePence)}</dd></div>
+                                                    </>}
                                                     <div className="flex justify-between gap-2"><dt>CarMazium fee (9%)</dt><dd>{formatPence(paymentEvidence.platformFeePence)}</dd></div>
                                                     <div className="flex justify-between gap-2"><dt>Provider allocation (91%)</dt><dd>{formatPence(paymentEvidence.contractorPence)}</dd></div>
                                                 </dl>
