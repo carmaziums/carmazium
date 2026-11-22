@@ -1157,9 +1157,11 @@ export class ServicesService {
         if (quote.validUntil && quote.validUntil <= now) {
             throw new BadRequestException('That quote has expired. Ask the provider to re-quote.');
         }
-        if (!(await this.currentNewWorkCapability(quote.contractorId, job.serviceType))) {
+        // Recheck service approval AND current postcode matching at acceptance.
+        // A provider may have changed their service area since first quoting.
+        if (!(await this.capabilityAllowsJob(quote.contractorId, job.serviceType, this.jobArea(job)))) {
             throw new BadRequestException(
-                'That provider is no longer verified to take new TradeXchange work. Choose another active quote.',
+                'That provider is no longer verified or eligible for this job area. Choose another active quote.',
             );
         }
         await this.assertProviderPayoutReadyForNewWork(quote.contractorId);
