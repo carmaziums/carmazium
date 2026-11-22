@@ -53,7 +53,9 @@ jobs:
           node - <<'NODE'
           const app = require('./app.json').expo;
           const eas = require('./eas.json');
-          if (app.extra?.eas?.projectId !== 'f0ab914b-3433-4816-80a2-0a94e6c6a066' ||
+          if (app.owner !== 'carmazium' ||
+              app.extra?.eas?.projectId !== '9c77bb81-205c-42f8-913e-b69a0953ec10' ||
+              app.updates?.url !== 'https://u.expo.dev/9c77bb81-205c-42f8-913e-b69a0953ec10' ||
               eas.build?.preview?.distribution !== 'internal' ||
               eas.build?.preview?.android?.buildType !== 'apk' ||
               eas.build?.preview?.channel !== 'preview' ||
