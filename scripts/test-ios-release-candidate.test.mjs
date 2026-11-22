@@ -46,3 +46,21 @@ test("iOS candidate uses production app identity, locked dependencies and the ow
   assert.match(flow, /Signed iOS release candidate created for internal review/);
   assert.doesNotMatch(flow, /curl\s+.*upload/);
 });
+
+test('iOS candidate validates the same photo-picker permission policy as app.json after Expo plugins run', () => {
+  const picker = app.plugins.find(p => Array.isArray(p) && p[0] === 'expo-image-picker');
+  assert.ok(picker, 'expo-image-picker must remain explicitly configured');
+  assert.equal(picker[1].cameraPermission, false);
+  assert.equal(picker[1].microphonePermission, false);
+  assert.equal(app.ios.infoPlist.NSCameraUsageDescription, undefined);
+
+  // Old signed-IPA reupload is a separately source-locked job. The new
+  // candidate must follow the CURRENT source rather than that older binary.
+  const candidateFlow = flow.split('  upload:\\n')[0];
+  assert.match(candidateFlow, /imagePicker\\?\\.\\[1\\]\\?\\.cameraPermission !== false/);
+  assert.match(candidateFlow, /imagePicker\\?\\.\\[1\\]\\?\\.microphonePermission !== false/);
+  assert.match(candidateFlow, /info\\.NSCameraUsageDescription !== undefined/);
+  assert.match(candidateFlow, /info\\.NSMicrophoneUsageDescription !== undefined/);
+  assert.match(candidateFlow, /expo config --type introspect --json/);
+  assert.doesNotMatch(candidateFlow, /!cameraPurpose \\|\\| imagePicker/);
+});
