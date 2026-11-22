@@ -6,6 +6,12 @@ on:
     paths:
       - '.github/workflows/tradexchange-provider-workflow-guards.yml'
       - 'scripts/test-tradexchange-provider-continuity.test.mjs'
+      - 'scripts/test-tradexchange-block2-*.test.mjs'
+      - 'carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx'
+      - 'carmazium app/carmazium app/src/lib/servicesApi.ts'
+      - 'backend/src/services/services.service.ts'
+      - 'backend/src/services/services.controller.ts'
+      - 'src/lib/servicesApi.ts'
       - 'src/lib/tradeXchangeProviderJobLoad.ts'
       - 'src/lib/tradeXchangeCheckoutNotice.ts'
       - 'src/app/dashboard/service/jobs/**'
@@ -28,4 +34,9 @@ jobs:
       - name: Install source-test dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Check provider job access and honest Stripe checkout state
-        run: node --test scripts/test-tradexchange-provider-continuity.test.mjs
+        run: >-
+          node --test
+          scripts/test-tradexchange-provider-continuity.test.mjs
+          scripts/test-tradexchange-block2-post-job.test.mjs
+          scripts/test-tradexchange-block2-stage2.test.mjs
+          scripts/test-tradexchange-block2-stage3.test.mjs
