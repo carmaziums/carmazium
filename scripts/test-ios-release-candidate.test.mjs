@@ -50,16 +50,18 @@ test("iOS candidate uses production app identity, locked dependencies and the ow
 test('iOS candidate validates the same photo-picker permission policy as app.json after Expo plugins run', () => {
   const picker = app.plugins.find(p => Array.isArray(p) && p[0] === 'expo-image-picker');
   assert.ok(picker, 'expo-image-picker must remain explicitly configured');
-  assert.equal(picker[1].cameraPermission, false);
+  assert.equal(picker[1].cameraPermission, app.ios.infoPlist.NSCameraUsageDescription);
+  assert.ok(app.android.blockedPermissions.includes('android.permission.CAMERA'));
   assert.equal(picker[1].microphonePermission, false);
-  assert.equal(app.ios.infoPlist.NSCameraUsageDescription, undefined);
+  assert.ok(/camera/i.test(app.ios.infoPlist.NSCameraUsageDescription));
 
   // The old source-locked IPA upload remains separate from the new candidate.
   const candidateFlow = flow.slice(0, flow.indexOf('  upload:'));
-  assert.ok(candidateFlow.includes('imagePicker?.[1]?.cameraPermission !== false'));
+  assert.ok(candidateFlow.includes('imagePicker?.[1]?.cameraPermission !== cameraPurpose'));
   assert.ok(candidateFlow.includes('imagePicker?.[1]?.microphonePermission !== false'));
-  assert.ok(candidateFlow.includes('info.NSCameraUsageDescription !== undefined'));
+  assert.ok(candidateFlow.includes('info.NSCameraUsageDescription !== cameraPurpose'));
   assert.ok(candidateFlow.includes('info.NSMicrophoneUsageDescription !== undefined'));
   assert.ok(candidateFlow.includes('expo config --type introspect --json'));
-  assert.ok(!candidateFlow.includes('!cameraPurpose || imagePicker'));
+  assert.ok(candidateFlow.includes("throw new Error('Apple ITMS-90683:"));
+  assert.ok(candidateFlow.includes('info.NSMicrophoneUsageDescription !== undefined'));
 });
