@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { jobVehicleIdentified, jobDateIssue, focusJobFormIssue } from "@/lib/serviceJobFormValidation"
+import { jobVehicleIdentified, jobDateIssue, jobPostcodeValid, jobYearValid, focusJobFormIssue } from "@/lib/serviceJobFormValidation"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react"
@@ -59,8 +59,9 @@ function InspectionForm() {
         }
         setError(null); setInvalidField(null)
         const fail = (field: string, message: string) => { setInvalidField(field); setError(message); focusJobFormIssue(field) }
-        if (!form.postcode.trim()) return fail("inspection-postcode", "Enter the postcode where the vehicle can be inspected.")
+        if (!jobPostcodeValid(form.postcode)) return fail("inspection-postcode", "Enter a valid UK postcode where the vehicle can be inspected.")
         if (!jobVehicleIdentified(form)) return fail("inspection-registration", "Enter the registration or both the vehicle make and model.")
+        if (!jobYearValid(form.year)) return fail("inspection-year", "Enter a valid vehicle year between 1900 and 2100.")
         const dateIssue = jobDateIssue(form.requestedFor, false)
         if (dateIssue) return fail(dateIssue.field, dateIssue.message)
         setBusy(true); setError(null)
