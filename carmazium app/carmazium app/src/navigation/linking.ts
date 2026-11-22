@@ -89,6 +89,13 @@ export const linking: LinkingOptions<RootStackParamList> = {
             path: 'services/jobs/:jobId',
             parse: { jobId: (jobId: string) => jobId },
           },
+          // Account and email service-job alerts should open the original
+          // native provider view, never a website fallback or hidden page.
+          ProviderJobs: 'dashboard/service/jobs',
+          ProviderJobDetail: {
+            path: 'dashboard/service/jobs/:jobId',
+            parse: { jobId: (jobId: string) => jobId },
+          },
           SellerListings: 'dashboard/listings',
           SellerAuctions: 'dashboard/auctions',
           BuyerOffers: 'dashboard/offers',
