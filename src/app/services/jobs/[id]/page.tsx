@@ -12,6 +12,7 @@ import { RequireAuth } from "@/components/auth/RequireAuth"
 import { Button } from "@/components/ui/Button"
 import {
     getJob, acceptQuote, confirmCompletion, disputeJob, cancelJob, createServiceReview, formatPence,
+    comparableServiceQuotes, isServiceQuoteSelectable,
     type ServiceJob, type ServiceQuote,
 } from "@/lib/servicesApi"
 import { JobStatusBadge, RecoveryBadge, JobRoute, JobTiming, JobVehicles } from "@/components/services/JobBits"
@@ -33,6 +34,7 @@ function JobDetail() {
     const [job, setJob] = React.useState<ServiceJob | null>(null)
     const [error, setError] = React.useState<string | null>(null)
     const [busy, setBusy] = React.useState<string | null>(null)
+    const checkoutPending = React.useRef(false)
     const [reviewRating, setReviewRating] = React.useState(0)
     const [reviewComment, setReviewComment] = React.useState("")
     const [flash, setFlash] = React.useState<string | null>(
@@ -82,6 +84,47 @@ function JobDetail() {
         finally { setBusy(null) }
     }
 
+    // A synchronous latch prevents a second tap choosing a different provider
+    // while the first acceptance/Checkout request is still in flight.
+    const startCheckout = async (quote: ServiceQuote, resume = false) => {
+        if (!job || checkoutPending.current || busy !== null) return
+        if (resume) {
+            if (job.status !== "ACCEPTED" || job.acceptedQuoteId !== quote.id || job.payment?.status !== "PENDING") {
+                setError("This job is no longer awaiting checkout. Refresh the job for its current payment status.")
+                load()
+                return
+            }
+        } else {
+            if (job.status !== "OPEN" || !isServiceQuoteSelectable(quote)) {
+                setError("This quote is no longer available. Refresh the job to compare current offers.")
+                load()
+                return
+            }
+            const provider = quote.contractor?.businessName || quote.contractor?.user.firstName || "this provider"
+            if (!window.confirm(`Choose ${provider} for ${formatPence(quote.amountPence)}?\n\nOnly this quote will be accepted. Secure checkout opens next; the provider must not start until payment is confirmed.`)) return
+        }
+        checkoutPending.current = true
+        setBusy(quote.id)
+        setError(null)
+        try {
+            const url = await acceptQuote(job.id, quote.id)
+            // Only navigate to a secure Stripe Checkout URL returned by the server.
+            const checkout = new URL(url)
+            if (checkout.protocol !== "https:" || checkout.hostname !== "checkout.stripe.com") {
+                throw new Error("Secure checkout could not be verified. Please refresh and try again.")
+            }
+            window.location.assign(url)
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : "Could not open secure checkout.")
+            // Accept may have committed before Stripe became unavailable. Never
+            // leave stale OPEN quotes on screen or imply that payment succeeded.
+            load()
+        } finally {
+            checkoutPending.current = false
+            setBusy(null)
+        }
+    }
+
     const submitReview = async () => {
         if (!job) return
         if (reviewRating < 1 || reviewRating > 5) {
@@ -110,7 +153,7 @@ function JobDetail() {
     if (!job) return <div className="flex justify-center py-32"><Loader2 className="animate-spin text-primary" /></div>
 
     const checkoutNotice = checkoutPaymentNotice(params.get("paid"), job.payment?.status)
-    const activeQuotes = (job.quotes ?? []).filter(q => q.status === "ACTIVE")
+    const activeQuotes = comparableServiceQuotes(job.quotes)
     const accepted = (job.quotes ?? []).find(q => q.id === job.acceptedQuoteId)
     const isPaidState = ["PAID", "IN_PROGRESS", "COMPLETED"].includes(job.status)
     const isInspection = job.serviceType === "INSPECTION"
@@ -218,8 +261,9 @@ function JobDetail() {
                             ) : (
                                 <div className="space-y-3">
                                     {activeQuotes.map((q, i) => (
-                                        <QuoteCard key={q.id} quote={q} cheapest={i === 0} busy={busy === q.id}
-                                            onAccept={() => run(q.id, async () => { window.location.href = await acceptQuote(job.id, q.id) })} />
+                                        <QuoteCard key={q.id} quote={q} cheapest={i === 0}
+                                            busy={busy === q.id} disabled={busy !== null}
+                                            onAccept={() => void startCheckout(q)} />
                                     ))}
                                 </div>
                             )}
@@ -280,9 +324,9 @@ function JobDetail() {
 
                     <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 space-y-3">
                         {job.status === "ACCEPTED" && accepted && (
-                            <Button className="w-full" disabled={busy === "pay"}
-                                onClick={() => run("pay", async () => { window.location.href = await acceptQuote(job.id, accepted.id) })}>
-                                {busy === "pay" ? <Loader2 className="animate-spin" size={16} /> : <><Banknote size={16} className="mr-2" /> Pay {formatPence(accepted.amountPence)}</>}
+                            <Button className="w-full" disabled={busy !== null || job.payment?.status !== "PENDING"}
+                                onClick={() => void startCheckout(accepted, true)}>
+                                {busy === accepted.id ? <Loader2 className="animate-spin" size={16} /> : <><Banknote size={16} className="mr-2" /> Continue to payment · {formatPence(accepted.amountPence)}</>}
                             </Button>
                         )}
                         {isInspection && job.inspectionOutcome === "FAULTS_FOUND" && job.sourceAuctionId && ["COMPLETED", "RELEASED"].includes(job.status) && (
@@ -390,7 +434,7 @@ function Rating({ c }: { c: { rating: number; totalReviews: number } }) {
     )
 }
 
-function QuoteCard({ quote, cheapest, busy, onAccept }: { quote: ServiceQuote; cheapest: boolean; busy: boolean; onAccept: () => void }) {
+function QuoteCard({ quote, cheapest, busy, disabled, onAccept }: { quote: ServiceQuote; cheapest: boolean; busy: boolean; disabled: boolean; onAccept: () => void }) {
     const c = quote.contractor
     return (
         <div className={`rounded-2xl border p-5 ${cheapest ? "border-primary/40 bg-primary/5" : "border-[var(--border-default)] bg-[var(--bg-card)]"}`}>
@@ -407,8 +451,8 @@ function QuoteCard({ quote, cheapest, busy, onAccept }: { quote: ServiceQuote; c
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-2xl font-black font-heading">{formatPence(quote.amountPence)}</p>
-                    <Button size="sm" className="mt-2" disabled={busy} onClick={onAccept}>
-                        {busy ? <Loader2 className="animate-spin" size={14} /> : "Accept & pay"}
+                    <Button size="sm" className="mt-2" disabled={disabled} onClick={onAccept}>
+                        {busy ? <Loader2 className="animate-spin" size={14} /> : "Choose & continue to payment"}
                     </Button>
                 </div>
             </div>
