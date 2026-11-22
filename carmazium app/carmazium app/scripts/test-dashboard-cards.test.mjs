@@ -26,7 +26,7 @@ async function harness(mode = 'personal', permissions = [], dimensions = { width
   const saved = new Map(), nav = [], writes = [];
   let userId = 'account-a', failSave = false;
   const modules = {
-    react: React, 'react-native': { ActivityIndicator: 'Loading', Text: 'Text', View: 'View', TouchableOpacity: 'Press', StyleSheet: { create: x => x }, useWindowDimensions: () => dimensions },
+    react: React, 'react-native': { ActivityIndicator: 'Loading', Text: 'Text', View: 'View', TouchableOpacity: 'Press', Platform: { OS: 'android' }, StyleSheet: { create: x => x }, useWindowDimensions: () => dimensions },
     '@react-native-async-storage/async-storage': { getItem: async key => saved.get(key) || null, setItem: async (key, value) => { writes.push(key); if (failSave) throw Error('disk'); saved.set(key, value); } },
     '@react-navigation/native': { useNavigation: () => ({ navigate: (...args) => nav.push(args) }) },
     './BrandIcon': { Ionicons: 'Icon', MaterialCommunityIcons: 'Icon' }, './Button': { Button: 'Button' },
