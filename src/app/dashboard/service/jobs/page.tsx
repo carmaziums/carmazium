@@ -30,7 +30,19 @@ function ProviderJobs() {
     const search = useSearchParams()
     const router = useRouter()
     const tab = search.get("tab") === "mine" ? "mine" : "open"
-    const setTab = (value: "open" | "mine") => router.replace(`/dashboard/service/jobs?tab=${value}`, { scroll: false })
+    const filter = search.get("service") === "DELIVERY" ? "DELIVERY"
+        : search.get("service") === "INSPECTION" ? "INSPECTION" : "ALL"
+    const serviceType = filter === "ALL" ? undefined : filter
+    // Keep the filter in the route so the same provider view is preserved on
+    // refresh and switching tabs; no duplicate matching/settings page.
+    const setTab = (value: "open" | "mine") => router.replace(
+        `/dashboard/service/jobs?tab=${value}${serviceType ? `&service=${serviceType}` : ""}`,
+        { scroll: false },
+    )
+    const setFilter = (value: "ALL" | "DELIVERY" | "INSPECTION") => router.replace(
+        `/dashboard/service/jobs?tab=${tab}${value === "ALL" ? "" : `&service=${value}`}`,
+        { scroll: false },
+    )
     const sequence = React.useRef(0)
     const morePending = React.useRef(false)
     const [feed, setFeed] = React.useState<ServiceJob[] | null>(null)
@@ -57,7 +69,10 @@ function ProviderJobs() {
 
         // Approval gates new quotations, not the right to finish an existing
         // paid job. A 403 on Available must never empty the My Work tab.
-        const result = await loadProviderJobLists(getJobFeedPage, getAssignedJobsPage)
+        const result = await loadProviderJobLists(
+            () => getJobFeedPage(serviceType),
+            () => getAssignedJobsPage(undefined, 20, serviceType),
+        )
         if (request !== sequence.current) return
         setFeed(result.available?.items ?? [])
         setFeedCursor(result.available?.nextCursor ?? null)
@@ -66,7 +81,7 @@ function ProviderJobs() {
         setNotApproved(result.approvalRequired)
         setAvailableError(result.availableError)
         setAssignedError(result.assignedError)
-    }, [authLoading, user])
+    }, [authLoading, user, serviceType])
 
     React.useEffect(() => {
         void loadJobs()
@@ -83,12 +98,12 @@ function ProviderJobs() {
         setLoadingMore(true)
         try {
             if (tab === "open") {
-                const page = await getJobFeedPage(undefined, cursor)
+                const page = await getJobFeedPage(serviceType, cursor)
                 if (request !== sequence.current) return
                 setFeed(current => [...new Map([...(current ?? []), ...page.items].map(job => [job.id, job])).values()])
                 setFeedCursor(page.nextCursor)
             } else {
-                const page = await getAssignedJobsPage(cursor)
+                const page = await getAssignedJobsPage(cursor, 20, serviceType)
                 if (request !== sequence.current) return
                 setMine(current => [...new Map([...(current ?? []), ...page.items].map(job => [job.id, job])).values()])
                 setMineCursor(page.nextCursor)
@@ -137,6 +152,26 @@ function ProviderJobs() {
                         ))}
                     </div>
 
+                    <div role="group" aria-label="Filter service jobs" className="flex gap-2 flex-wrap">
+                        {([
+                            ["ALL", "All services"], ["DELIVERY", "Delivery & recovery"], ["INSPECTION", "Inspections"],
+                        ] as const).map(([value, label]) => (
+                            <button key={value} type="button" onClick={() => setFilter(value)}
+                                aria-pressed={filter === value}
+                                className={`px-3 py-2 rounded-xl border text-sm font-semibold transition-colors ${filter === value
+                                    ? "border-primary bg-primary text-white"
+                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-primary)] hover:border-primary/50"}`}>
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                    {tab === "open" && (
+                        <p className="text-xs text-[var(--text-muted)]">
+                            Only jobs matching your currently verified service capabilities and chosen postcode coverage appear here.
+                            Manage approvals and job areas in <Link className="underline" href="/dashboard/partner">My services</Link>.
+                        </p>
+                    )}
+
                     {tab === "open" && notApproved && (
                         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6 flex flex-col sm:flex-row sm:items-center gap-4">
                             <AlertCircle size={22} className="text-amber-500 shrink-0" />
@@ -156,7 +191,7 @@ function ProviderJobs() {
                             title={tab === "open" ? "No matching jobs right now" : "No won jobs yet"}
                             description={tab === "open"
                                 ? "Refresh to check for jobs matching your approved services. Eligible providers also receive account and email notifications for new matching jobs."
-                                : "Quote on Available Jobs to start building your completed work history."}
+                                : "Accepted and completed jobs for this service appear here even when new-job verification needs renewal."}
                         />
                     )}
 
