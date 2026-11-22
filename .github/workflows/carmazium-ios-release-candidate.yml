@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       source_sha:
-        description: Exact reviewed 40-character main commit SHA to build
+        description: Exact reviewed 40-character checked-out commit SHA to build
         type: string
         required: true
       approval:
@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   candidate:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/tradexchange-block2-jobs-20261122')
     runs-on: ubuntu-latest
     timeout-minutes: 110
     defaults:
@@ -48,12 +48,12 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
-      - name: Validate exact main commit, owner choice and production build settings
+      - name: Validate exact reviewed commit, owner choice and production build settings
         shell: bash
         run: |
           set -euo pipefail
           if [[ ! "$REVIEW_SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]] || [[ "$REVIEW_SOURCE_SHA" != "$GITHUB_SHA" ]] || [[ "$REVIEW_APPROVAL" != 'INTERNAL_REVIEW_ONLY' ]]; then
-            echo '::error::Internal candidate requires the exact checked-out main SHA and INTERNAL_REVIEW_ONLY approval.'
+            echo '::error::Internal candidate requires the exact checked-out SHA and INTERNAL_REVIEW_ONLY approval.'
             exit 1
           fi
           node - <<'NODE'
@@ -109,7 +109,7 @@ jobs:
           }
           const summary = [
             '### CarMazium iOS signed release candidate — INTERNAL REVIEW ONLY',
-            '- Reviewed main source SHA: ' + process.env.GITHUB_SHA,
+            '- Reviewed source SHA: ' + process.env.GITHUB_SHA,
             '- EAS build ID: ' + id,
             '- EAS build status: ' + status,
             '- iOS bundle ID: uk.carmazium.app',
