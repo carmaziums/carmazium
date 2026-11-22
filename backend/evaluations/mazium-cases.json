@@ -326,7 +326,7 @@
     ],
     "must": [
       "£1",
-      "one.off",
+      "one.off|(?:£1.{0,32}once)|(?:once.{0,32}£1)",
       "until.*(?:sold|sell)",
       "no.*monthly"
     ]
