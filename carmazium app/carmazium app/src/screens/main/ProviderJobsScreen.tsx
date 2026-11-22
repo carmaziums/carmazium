@@ -65,25 +65,33 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
   const [loadingMore, setLoadingMore] = useState(false);
   const generation = useRef(0), morePending = useRef(false);
   const selected = tab === 'open' ? lists?.available : lists?.assigned;
+  // The backend filters BEFORE cursor pagination; retaining a local check is
+  // defensive for an older backend during rollout, not a substitute for matching.
   const jobs = useMemo(() => (selected?.items ?? []).filter(job => filter === 'ALL' || job.serviceType === filter), [selected, filter]);
+  const serviceType = filter === 'ALL' ? undefined : filter;
   const nextCursor = selected?.nextCursor;
   const error = tab === 'open' ? lists?.availableError : lists?.assignedError;
   const notApproved = tab === 'open' && lists?.approvalRequired;
   const load = useCallback(async () => {
     const request = ++generation.current;
     morePending.current = false; setLoadingMore(false); setLoading(true); setLists(null);
-    const result = await loadProviderJobLists(() => getJobFeedPage(), () => getAssignedJobsPage());
+    const result = await loadProviderJobLists(
+      () => getJobFeedPage(serviceType),
+      () => getAssignedJobsPage(undefined, 20, serviceType),
+    );
     if (request !== generation.current) return;
     setLists(result); setLoading(false);
-  }, []);
+  }, [serviceType]);
   useFocusEffect(useCallback(() => { void load(); return () => { generation.current++; }; }, [load]));
   const refresh = () => { void load(); };
   const loadMore = async () => {
     if (!nextCursor || morePending.current || loading) return;
-    const request = generation.current, target = tab;
+    const request = generation.current, target = tab, requestedService = serviceType;
     morePending.current = true; setLoadingMore(true);
     try {
-      const page = target === 'open' ? await getJobFeedPage(undefined, nextCursor) : await getAssignedJobsPage(nextCursor);
+      const page = target === 'open'
+        ? await getJobFeedPage(requestedService, nextCursor)
+        : await getAssignedJobsPage(nextCursor, 20, requestedService);
       if (request !== generation.current) return;
       setLists(previous => {
         if (!previous) return previous;
@@ -210,12 +218,18 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
             accessibilityState={{ selected: filter === item }}
           >
             <Text style={[styles.filterText, filter === item && styles.filterTextActive]}>
-              {item === 'ALL' ? 'All' : item === 'DELIVERY' ? 'Delivery' : 'Inspection'}
+              {item === 'ALL' ? 'All services' : item === 'DELIVERY' ? 'Delivery & recovery' : 'Inspections'}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
+      {tab === 'open' && (
+        <Text style={styles.pageDescription}>
+          Jobs here match your approved service capabilities and postcode coverage.
+          If a service is missing, review its documents and matching area in My services.
+        </Text>
+      )}
       <TouchableOpacity
         style={styles.manageCoverage}
         onPress={() => navigation.navigate('PartnerDashboard')}
@@ -286,7 +300,7 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
               <Text style={styles.emptyText}>
                 {tab === 'open'
                   ? 'Refresh to check for jobs matching your approved services. Eligible providers also receive account and email notifications for new matching jobs.'
-                  : 'Quote on Available Jobs to start building your completed work history.'}
+                  : 'Your accepted and completed jobs remain here even if verification for new work needs renewal.'}
               </Text>
             </View>
           )}
