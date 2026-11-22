@@ -338,7 +338,7 @@ export interface CursorPage<T> {
  */
 export function parseServiceQuotePence(input: string): number | null {
   const value = input.trim();
-  if (!/^\\d{1,5}(?:\\.\\d{1,2})?$/.test(value)) return null;
+  if (!/^\d{1,5}(?:\.\d{1,2})?$/.test(value)) return null;
   const [pounds, fractional = ''] = value.split('.');
   const pence = Number(pounds) * 100 + Number(fractional.padEnd(2, '0'));
   return Number.isSafeInteger(pence) && pence >= 100 && pence <= 5_000_000 ? pence : null;
