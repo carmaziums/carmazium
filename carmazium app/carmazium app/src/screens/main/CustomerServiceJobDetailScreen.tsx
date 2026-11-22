@@ -32,6 +32,7 @@ import {
   classifyServiceCheckoutTarget,
   servicePaymentEvidence,
   servicePaymentStatusText,
+  serviceCompletionReview,
   comparableServiceQuotes,
   isServiceQuoteSelectable,
   getCustomerServiceJob,
@@ -39,6 +40,7 @@ import {
 import { refuseAuctionAfterInspection } from '../../lib/auctionApi';
 import { getOrCreateServiceJobRoom } from '../../lib/chatApi';
 import { IconButton } from '../../components/IconButton';
+import { formatUkServiceDateTime } from '../../lib/ukServiceDateTime';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CustomerServiceJobDetail'>;
 
@@ -56,6 +58,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const checkoutPending = useRef(false);
+  const actionPending = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
 
@@ -95,6 +98,8 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
   );
 
   const run = async (key: string, action: () => Promise<unknown>, success: string) => {
+    if (actionPending.current || checkoutPending.current) return;
+    actionPending.current = true;
     setBusy(key);
     setError(null);
     setFlash(null);
@@ -105,6 +110,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
     } catch (err: any) {
       setError(err?.message || 'Something went wrong.');
     } finally {
+      actionPending.current = false;
       setBusy(null);
     }
   };
@@ -212,10 +218,10 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
   };
 
   const confirmJob = () => {
-    if (!job || job.status !== 'COMPLETED') return;
+    if (!job || job.status !== 'COMPLETED' || actionPending.current || checkoutPending.current) return;
     Alert.alert(
       'Confirm service completion?',
-      'Only confirm after checking the completed work. This authorises the provider payout. If something is wrong, raise a dispute instead.',
+      'Only confirm after checking the completed work. This releases the provider payout through the existing payment process. If something is wrong, raise a dispute instead.',
       [
         { text: 'Review again', style: 'cancel' },
         {
@@ -223,7 +229,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
           onPress: () => void run(
             'confirm',
             () => confirmCustomerServiceJob(job.id),
-            'Service completion confirmed. Provider payout can now be released.',
+            'Service completion confirmed. Provider payout recorded.',
           ),
         },
       ],
@@ -304,6 +310,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
   }
 
   const paymentEvidence = servicePaymentEvidence(job.payment, job.agreedAmountPence);
+  const completionReview = serviceCompletionReview(job);
   const vehicle = job.vehicles?.[0];
   const isInspection = job.serviceType === 'INSPECTION';
   const paidState = ['PAID', 'IN_PROGRESS', 'COMPLETED', 'RELEASED', 'DISPUTED'].includes(job.status);
@@ -532,6 +539,10 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
             {paymentEvidence ? (
               <View style={{ gap: 8, marginTop: 12 }}>
                 <Info icon="cash-outline" label="Recorded customer amount" value={formatPence(paymentEvidence.grossPence)} />
+                {paymentEvidence.refundPence > 0 ? <>
+                  <Info icon="cash-outline" label="Recorded customer refund" value={formatPence(paymentEvidence.refundPence)} />
+                  <Info icon="cash-outline" label="Remaining service amount" value={formatPence(paymentEvidence.netServicePence)} />
+                </> : null}
                 <Info icon="cash-outline" label="CarMazium service fee (9%)" value={formatPence(paymentEvidence.platformFeePence)} />
                 <Info icon="cash-outline" label="Provider allocation (91%)" value={formatPence(paymentEvidence.contractorPence)} />
               </View>
@@ -587,9 +598,16 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
               The provider marked this {isInspection ? 'inspection' : 'delivery'} complete.
               Confirm only when you are satisfied. Confirming authorises provider payout; raise a dispute if the work is incomplete or incorrect.
             </Text>
+            <Text style={styles.muted}>
+              {completionReview
+                ? completionReview.elapsed
+                  ? 'The 48-hour review period has elapsed. Automatic confirmation may still be processing; check payment status.'
+                  : `Automatic confirmation becomes eligible after ${formatUkServiceDateTime(completionReview.dueAt)}, unless a dispute blocks release.`
+                : 'Completion is awaiting verification. Do not rely on an automatic payout date yet.'}
+            </Text>
             <TouchableOpacity
               style={[styles.primaryButton, busy === 'confirm' && styles.disabled]}
-              disabled={busy === 'confirm'}
+              disabled={busy !== null}
               onPress={confirmJob}
             >
               {busy === 'confirm'
