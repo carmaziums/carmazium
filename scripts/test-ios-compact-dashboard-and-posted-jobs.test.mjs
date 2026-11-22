@@ -44,6 +44,9 @@ test('no second app or separate dealer/provider route was introduced', () => {
   const app = JSON.parse(read('carmazium app/carmazium app/app.json')).expo;
   assert.equal(app.android.package, 'uk.carmazium.app');
   assert.equal(app.ios.bundleIdentifier, 'uk.carmazium.app');
-  assert.ok(app.ios.infoPlist.NSCameraUsageDescription.includes('camera'));
+  assert.equal(app.ios.infoPlist.NSCameraUsageDescription, undefined);
+  const picker = app.plugins.find((plugin) => Array.isArray(plugin) && plugin[0] === 'expo-image-picker');
+  assert.equal(picker?.[1]?.cameraPermission, false);
+  assert.equal(picker?.[1]?.microphonePermission, false);
   assert.match(posted, /navigation\.navigate\('Services'\)/);
 });
