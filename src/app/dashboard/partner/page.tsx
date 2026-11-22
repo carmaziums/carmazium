@@ -242,7 +242,7 @@ export default function PartnerDashboardPage() {
                     </div>
                     <h1 className="text-4xl font-black font-heading tracking-tight">TradeXchange</h1>
                     <p className="text-[var(--text-muted)] mt-2 max-w-2xl">
-                        One CarMazium business account. Add only the services your business provides and keep them all under the same login.
+                        One CarMazium business account. Choose one or multiple services—collection, delivery & recovery and/or vehicle inspections—under the same login. Each application has its own insurance checks.
                     </p>
                     <Link href="/business-partner-agreement" className="mt-3 inline-flex text-sm font-bold text-primary underline">View signed Business Partner Agreement and legal record</Link>
                 </div>

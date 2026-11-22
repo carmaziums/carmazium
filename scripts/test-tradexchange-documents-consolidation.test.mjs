@@ -2,58 +2,73 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 const read = relative => readFileSync(new URL('../'+relative,import.meta.url),'utf8');
+const native = 'carmazium app/carmazium app/src/';
 
-test('single TradeXchange document section is available to dealer and existing contractor on both clients',()=>{
+test('one TradeXchange document manager serves dealers and legacy contractors on web and app', () => {
  const web=read('src/app/dashboard/partner/page.tsx');
- const native=read('carmazium app/carmazium app/src/screens/main/PartnerDashboardScreen.tsx');
- assert.match(web,/import \{ ProviderDocumentsSection \}/);
+ const app=read(native+'screens/main/PartnerDashboardScreen.tsx');
  assert.equal((web.match(/<ProviderDocumentsSection /g)||[]).length,2);
- assert.equal((native.match(/<ProviderDocumentsSection /g)||[]).length,2);
- assert.match(web,/legacyCapabilities/);
- assert.match(native,/legacyCapabilities/);
+ assert.equal((app.match(/<ProviderDocumentsSection /g)||[]).length,2);
+ for(const code of [web,app])assert.match(code,/legacyCapabilities/);
 });
-test('web document manager requires only current trade insurance, not past inspection paperwork',()=>{
- const code=read('src/components/tradexchange/ProviderDocumentsSection.tsx');
- assert.match(code,/getCapabilityVerification\(id\)/);
- assert.match(code,/uploadCapabilityAttachment\(cap.id, file/);
- assert.match(code,/deleteCapabilityAttachment\(cap.id, entry.id\)/);
- assert.match(code,/r\.type === "DELIVERY_BUSINESS_INSURANCE"/);
- assert.match(code,/No inspection documents required/);
- assert.match(code,/No current insurance requirement was returned/);
- assert.match(code,/historyOpen &&/);
- assert.match(code,/entry.evidenceStatus === "PENDING"/);
- assert.match(code,/10 \* 1024 \* 1024/);
- assert.doesNotMatch(code,/INSPECTION_BUSINESS_INSURANCE/);
+
+test('delivery, collection and recovery require two insurance certificates; inspection requires liability only',()=>{
+ const backend=read('backend/src/services/capability-verification.ts');
+ assert.match(backend,/DELIVERY_BUSINESS_INSURANCE/);
+ assert.match(backend,/DELIVERY_PUBLIC_LIABILITY/);
+ assert.match(backend,/INSPECTION_PUBLIC_LIABILITY/);
+ assert.match(backend,/\[ServiceType\.INSPECTION\]: \[\{/);
+ assert.doesNotMatch(backend,/\[ServiceType\.INSPECTION\]: \[\]/);
+ assert.match(backend,/expiryRequired: true/);
 });
-test('native manager keeps the same policy, signs historical links through existing API and never deletes reviewed files',()=>{
- const code=read('carmazium app/carmazium app/src/components/tradexchange/ProviderDocumentsSection.tsx');
- assert.match(code,/getCapabilityVerification\(capabilityId\)/);
- assert.match(code,/uploadCapabilityAttachment\(cap.id, file/);
- assert.match(code,/deleteCapabilityAttachment\(cap.id, entry.id\)/);
- assert.match(code,/req\.type === 'DELIVERY_BUSINESS_INSURANCE'/);
- assert.match(code,/No inspection documents required/);
- assert.match(code,/evidenceStatus === 'PENDING'/);
- assert.match(code,/historyOpen &&/);
- assert.match(code,/Linking.openURL\(entry.url/);
- assert.doesNotMatch(code,/INSPECTION_BUSINESS_INSURANCE/);
+
+test('web and native upload each required certificate against its own capability and preserve history',()=>{
+ for(const file of ['src/components/tradexchange/ProviderDocumentsSection.tsx',native+'components/tradexchange/ProviderDocumentsSection.tsx']){
+  const code=read(file);
+  assert.match(code,/getCapabilityVerification\(/,file);
+  assert.match(code,/uploadCapabilityAttachment\(cap.id, file/,file);
+  assert.match(code,/deleteCapabilityAttachment\(cap.id, entry.id\)/,file);
+  assert.match(code,/requirements\.map\(req =>/,file);
+  assert.match(code,/(?:req|r)\.type === uploadType/,file);
+  assert.match(code,/req\.title/,file);
+  assert.match(code,/entry\.evidenceStatus === ['"]PENDING['"]/,file);
+  assert.match(code,/historyOpen &&/,file);
+  assert.doesNotMatch(code,/No inspection documents required|Trade insurance only|INSPECTION_BUSINESS_INSURANCE/,file);
+ }
+ assert.match(read('src/components/tradexchange/ProviderDocumentsSection.tsx'),/10 \* 1024 \* 1024/);
+ assert.match(read(native+'components/tradexchange/ProviderDocumentsSection.tsx'),/Linking\.openURL\(entry.url/);
 });
-test('old verification pages redirect to inline business settings and have no upload forms',()=>{
+
+test('multi-service selection is independent, without new accounts or losing accepted jobs',()=>{
+ const dealerWeb=read('src/app/dashboard/partner/page.tsx');
+ const dealerApp=read(native+'screens/main/PartnerDashboardScreen.tsx');
+ const contractorWeb=read('src/components/tradexchange/ContractorServicesInline.tsx');
+ const contractorApp=read(native+'components/tradexchange/ContractorServicesInline.tsx');
+ for(const code of [dealerWeb,dealerApp,contractorWeb,contractorApp]){
+  assert.match(code,/DELIVERY/);
+  assert.match(code,/INSPECTION/);
+ }
+ assert.match(dealerWeb,/serviceType === "DELIVERY"/);
+ assert.match(dealerApp,/type === 'DELIVERY'/);
+ assert.match(contractorWeb,/ORDER\.map\(type =>/);
+ assert.match(contractorApp,/ORDER\.map\(type\s*=>/);
+ assert.match(dealerWeb,/Preference changes never replace capability approvals or documents/);
+ assert.match(dealerApp,/getPartnerTeam\(/);
+});
+
+test('backend retains private uploads, admin review and previously accepted jobs',()=>{
+ const ops=read('backend/src/services/service-operations.service.ts');
+ const jobs=read(native+'screens/main/ProviderJobsScreen.tsx');
+ assert.match(ops,/TRADEXCHANGE_DOCUMENT_BUCKET/);
+ assert.match(ops,/createSignedUrl\(path, 10 \* 60\)/);
+ assert.match(ops,/Reviewed verification evidence is retained for audit and cannot be deleted/);
+ assert.match(jobs,/assigned/);
+});
+
+test('old verification URLs remain redirects, not duplicate document managers',()=>{
  const web=read('src/app/dashboard/service/capabilities/[id]/verification/page.tsx');
- const native=read('carmazium app/carmazium app/src/screens/main/LegacyProviderRouteRedirectScreen.tsx');
- const webSettings=read('src/components/tradexchange/ProviderSettingsSections.tsx');
- const nativeSettings=read('carmazium app/carmazium app/src/components/tradexchange/ProviderSettingsSections.tsx');
+ const app=read(native+'screens/main/LegacyProviderRouteRedirectScreen.tsx');
  assert.match(web,/redirect\(/);
- assert.match(web,/provider-business/);
- assert.match(native,/navigation.replace\('PartnerDashboard'/);
- for (const source of [webSettings,nativeSettings]) assert.match(source,/submitProviderDeclaration/);
- assert.doesNotMatch(web,/uploadCapabilityAttachment|deleteCapabilityAttachment/);
-});
-test('existing backend preserves private evidence and service-specific requirements',()=>{
- const rules=read('backend/src/services/capability-verification.ts');
- const service=read('backend/src/services/service-operations.service.ts');
- assert.match(rules,/\[ServiceType\.INSPECTION\]: \[\]/);
- assert.match(rules,/DELIVERY_BUSINESS_INSURANCE/);
- assert.match(service,/TRADEXCHANGE_DOCUMENT_BUCKET/);
- assert.match(service,/createSignedUrl\(path, 10 \* 60\)/);
- assert.match(service,/Reviewed verification evidence is retained for audit and cannot be deleted/);
+ assert.match(app,/navigation.replace\('PartnerDashboard'/);
+ assert.doesNotMatch(web,/uploadCapabilityAttachment/);
 });

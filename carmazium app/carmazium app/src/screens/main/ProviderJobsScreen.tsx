@@ -237,7 +237,7 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
       <Ionicons name="shield-outline" size={34} color={Colors.warning} />
       <Text style={styles.emptyTitle}>Verification required for new jobs</Text>
       <Text style={styles.emptyText}>
-        Complete business verification, verified payouts and the declaration. Delivery and recovery require trade insurance; inspections need no inspection documents. Your original £1 dealer verification is reused. Previously accepted jobs remain under My Work.
+        Complete business verification, verified payouts and the declaration. Delivery, collection and recovery require Motor Trade and Public Liability Insurance; inspection requires Public Liability Insurance only. Your original £1 dealer verification is reused. Previously accepted jobs remain under My Work.
       </Text>
       <TouchableOpacity
         style={styles.primaryButton}

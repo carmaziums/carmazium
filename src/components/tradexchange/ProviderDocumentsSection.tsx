@@ -21,7 +21,7 @@ export function ProviderDocumentsSection({ capabilities }: { capabilities: Capab
     const [error, setError] = React.useState<string | null>(null)
     const [notice, setNotice] = React.useState<string | null>(null)
     const [historyOpen, setHistoryOpen] = React.useState(false)
-    const [uploadOpen, setUploadOpen] = React.useState(false)
+    const [uploadType, setUploadType] = React.useState<string | null>(null)
     const [issuer, setIssuer] = React.useState("")
     const [reference, setReference] = React.useState("")
     const [validFrom, setValidFrom] = React.useState("")
@@ -55,23 +55,23 @@ export function ProviderDocumentsSection({ capabilities }: { capabilities: Capab
     }, [service])
 
     React.useEffect(() => {
-        setDetail(null); setFile(null); setUploadOpen(false); setHistoryOpen(false); setNotice(null)
+        setDetail(null); setFile(null); setUploadType(null); setHistoryOpen(false); setNotice(null)
         if (expanded && cap?.id) void reload(cap.id)
         else generation.current++
         return () => { generation.current++ }
     }, [expanded, cap?.id, reload])
 
     const requirements = detail?.verification.requirements.filter(r => !r.optional) ?? []
-    const requirement: CapabilityVerificationRequirement | undefined =
-        service === "DELIVERY" ? requirements.find(r => r.type === "DELIVERY_BUSINESS_INSURANCE") : undefined
-
     const upload = async () => {
-        if (!cap || !requirement || !file) return
+        const requirement: CapabilityVerificationRequirement | undefined = requirements.find(r => r.type === uploadType)
+        if (!cap || !requirement || !file || busy) return
         if (file.size > 10 * 1024 * 1024) { setError("Maximum file size is 10 MB."); return }
         if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(file.type)) {
             setError("Choose a PDF, JPG, PNG or WEBP file."); return
         }
-        if (requirement.expiryRequired && !expiresAt) { setError("Enter the trade-insurance expiry date."); return }
+        if (requirement.expiryRequired && (!expiresAt || Number.isNaN(Date.parse(expiresAt)) || Date.parse(expiresAt) <= Date.now())) {
+            setError("Enter a valid future insurance expiry date."); return
+        }
         setBusy(true); setError(null); setNotice(null)
         try {
             await uploadCapabilityAttachment(cap.id, file, {
@@ -84,8 +84,8 @@ export function ProviderDocumentsSection({ capabilities }: { capabilities: Capab
             })
             setIssuer(""); setReference(""); setValidFrom(""); setExpiresAt(""); setFile(null)
             if (inputRef.current) inputRef.current.value = ""
-            setUploadOpen(false)
-            setNotice("Trade insurance submitted for review. Existing approved evidence remains on record.")
+            setUploadType(null)
+            setNotice("Insurance certificate submitted for review. Existing approved evidence remains on record.")
             await reload(cap.id)
         } catch (e) {
             setError(e instanceof Error ? e.message : "Could not upload this file.")
@@ -108,49 +108,49 @@ export function ProviderDocumentsSection({ capabilities }: { capabilities: Capab
         <button type="button" className="flex w-full items-center justify-between gap-3 text-left" aria-expanded={expanded} aria-controls="provider-document-options" onClick={() => setExpanded(value => !value)}>
             <span>
                 <span className="block text-xl font-black font-heading">Documents & Insurance</span>
-                <span className="block text-sm text-[var(--text-muted)] mt-1">Only documents required for your service, plus your saved evidence history.</span>
+                <span className="block text-sm text-[var(--text-muted)] mt-1">Required insurance documents and saved evidence history for every service you offer.</span>
             </span>
             <span aria-hidden="true" className="text-2xl text-[var(--text-muted)]">{expanded ? "−" : "+"}</span>
         </button>
         {expanded && <div id="provider-document-options" className="space-y-4 mt-5">
+            <p className={captionCls}>Select either service to upload its documents. You can offer both collection, delivery & recovery and vehicle inspection through the same account.</p>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Document service">
                 {(["DELIVERY", "INSPECTION"] as const).map(type =>
                     <Button key={type} type="button" variant={service === type ? "default" : "outline"} onClick={() => setService(type)}>
-                        {type === "DELIVERY" ? "Collection & delivery" : "Inspection"}
+                        {type === "DELIVERY" ? "Collection, delivery & recovery" : "Inspection"}
                     </Button>)}
             </div>
-            {!cap ? <p className={captionCls}>No {service === "DELIVERY" ? "collection/delivery" : "inspection"} application yet. Enable and apply for the service in My Services above.</p>
+            {!cap ? <p className={captionCls}>No {service === "DELIVERY" ? "collection/delivery/recovery" : "inspection"} application yet. Apply for this service in My Services above; existing other services remain unchanged.</p>
             : loading ? <p role="status" className={captionCls}>Loading current document status…</p>
             : !detail ? <div><p role="alert" className="text-sm text-red-600 dark:text-red-300">{error || "Verification documents are unavailable."}</p><Button variant="outline" onClick={() => void reload(cap.id)}>Retry</Button></div>
             : <>
                 {error && <p role="alert" className="text-sm text-red-600 dark:text-red-300">{error}</p>}
                 {notice && <p role="status" className="text-sm text-emerald-600 dark:text-emerald-300">{notice}</p>}
-                {service === "INSPECTION" ? <div className="rounded-xl border border-[var(--border-default)] p-4 space-y-2">
-                    <h3 className="font-semibold">No inspection documents required</h3>
-                    <p className={captionCls}>Inspection requires the business declaration, applicable account verification and payout setup—not insurance uploads. Historical documents remain available below.</p>
-                </div> : requirement ? <div className="rounded-xl border border-[var(--border-default)] p-4 space-y-3">
+                {requirements.length > 0 ? requirements.map(req => <div key={req.type} className="rounded-xl border border-[var(--border-default)] p-4 space-y-3">
                     <div className="flex flex-wrap justify-between gap-2">
-                        <div><h3 className="font-semibold">{requirement.title}</h3><p className={captionCls}>{requirement.description}</p></div>
-                        <span className="text-sm font-semibold">{requirement.state === "SATISFIED" ? "Approved and current" : requirement.state === "PENDING" ? "Under review" : requirement.state === "REJECTED" ? "Rejected — replace" : "Missing or expired"}</span>
+                        <div><h3 className="font-semibold">{req.title}</h3><p className={captionCls}>{req.description}</p></div>
+                        <span className="text-sm font-semibold">{req.state === "SATISFIED" ? "Approved and current" : req.state === "PENDING" ? "Under review" : req.state === "REJECTED" ? "Rejected — replace" : "Missing or expired"}</span>
                     </div>
-                    {requirement.state === "SATISFIED" && <p className={captionCls}>Approved evidence expires {dateText(requirement.evidenceExpiresAt)}.</p>}
-                    <p className={captionCls}>Upload trade-insurance evidence for collection, delivery and recovery only. Do not upload personal identity documents or bank statements here.</p>
-                    <Button type="button" variant="outline" onClick={() => setUploadOpen(open => !open)}>{uploadOpen ? "Close upload" : requirement.state === "SATISFIED" ? "Replace trade insurance" : requirement.state === "PENDING" ? "Submit updated insurance" : "Upload trade insurance"}</Button>
-                    {uploadOpen && <div className="grid gap-3 sm:grid-cols-2">
+                    {req.state === "SATISFIED" && <p className={captionCls}>Approved evidence expires {dateText(req.evidenceExpiresAt)}.</p>}
+                    <p className={captionCls}>The certificate must cover this selected service. If you offer both services, each application is reviewed separately. Do not upload personal identity documents or bank statements here.</p>
+                    <Button type="button" variant="outline" disabled={busy} onClick={() => { setUploadType(current => current === req.type ? null : req.type); setFile(null); setIssuer(""); setReference(""); setValidFrom(""); setExpiresAt(""); }}>
+                        {uploadType === req.type ? "Close upload" : req.state === "SATISFIED" ? "Replace " + req.title : req.state === "PENDING" ? "Submit updated " + req.title : "Upload " + req.title}
+                    </Button>
+                    {uploadType === req.type && <div className="grid gap-3 sm:grid-cols-2">
                         <label className="text-sm">Insurer / organisation<input className={inputCls} value={issuer} onChange={e => setIssuer(e.target.value)} maxLength={160} /></label>
                         <label className="text-sm">Policy reference<input className={inputCls} value={reference} onChange={e => setReference(e.target.value)} maxLength={160} /></label>
                         <label className="text-sm">Valid from<input className={inputCls} type="date" value={validFrom} onChange={e => setValidFrom(e.target.value)} /></label>
                         <label className="text-sm">Expiry date (required)<input className={inputCls} type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} /></label>
-                        <label className="text-sm sm:col-span-2">Trade-insurance file (PDF/JPG/PNG/WEBP, up to 10 MB)<input ref={inputRef} className={inputCls} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={e => setFile(e.target.files?.[0] ?? null)} /></label>
+                        <label className="text-sm sm:col-span-2">{req.title} file (PDF/JPG/PNG/WEBP, up to 10 MB)<input ref={inputRef} className={inputCls} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={e => setFile(e.target.files?.[0] ?? null)} /></label>
                         <div className="sm:col-span-2"><Button onClick={() => void upload()} disabled={busy || !file || !expiresAt}>{busy ? "Uploading…" : "Upload for review"}</Button></div>
                     </div>}
-                </div> : <p role="status" className={captionCls}>No current insurance requirement was returned for this service. No upload is requested.</p>}
+                </div>) : <p role="status" className={captionCls}>No insurance requirement was returned for this service. Refresh or contact support before accepting new work.</p>}
                 <div className="border-t border-[var(--border-default)] pt-4">
                     <button type="button" className="text-sm font-semibold text-primary underline" aria-expanded={historyOpen} onClick={() => setHistoryOpen(open => !open)}>
                         {historyOpen ? "Hide document history" : "Show document history"} ({detail.attachments.length})
                     </button>
                     {historyOpen && <div className="space-y-2 mt-3">
-                        <p className={captionCls}>Older approved, superseded or unrelated documents are retained for audit, not required again.</p>
+                        <p className={captionCls}>Existing approved, superseded and unrelated documents remain retained for audit.</p>
                         {detail.attachments.length === 0 && <p className={captionCls}>No previously uploaded documents.</p>}
                         {detail.attachments.map(entry => <div key={entry.id} className="rounded-lg border border-[var(--border-default)] p-3">
                             <div className="flex justify-between gap-3"><strong className="text-sm break-words">{entry.label || entry.evidenceType || "Evidence"}</strong><span className="text-xs font-semibold">{entry.evidenceStatus || "PENDING"}</span></div>

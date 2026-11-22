@@ -543,9 +543,9 @@ export class TradeTeamService {
             type: 'SERVICE_CAPABILITY_APPLIED',
             title: `Complete your ${label} setup`,
             message: serviceType === ServiceType.INSPECTION
-                ? "Complete your business declaration and business payout setup. Your existing dealer verification is reused; there is no additional £1 verification payment. No inspection documents are required."
-                : "Complete your business declaration and business payout setup, and upload trade insurance for collection, delivery and recovery. Your existing dealer verification is reused; there is no additional £1 verification payment.",
-            link: `/dashboard/service/capabilities/${capabilityId}/verification`,
+                ? "Complete your business declaration and payout setup, and upload current Public Liability Insurance for inspections. Motor Trade Insurance is not required for inspection-only work. Your existing dealer verification is reused with no additional £1 verification charge."
+                : "Complete your business declaration and payout setup, and upload current Motor Trade Insurance AND Public Liability Insurance for collection, delivery and recovery. Your original dealer verification is reused with no additional £1 charge.",
+            link: '/dashboard/partner#provider-documents',
             entityType: 'SERVICE_CAPABILITY',
             entityId: capabilityId,
         });

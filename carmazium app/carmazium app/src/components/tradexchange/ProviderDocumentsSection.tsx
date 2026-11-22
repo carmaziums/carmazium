@@ -26,7 +26,7 @@ export function ProviderDocumentsSection({ capabilities }: { capabilities: Capab
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadType, setUploadType] = useState<string | null>(null);
   const [file, setFile] = useState<MobileEvidenceFile | null>(null);
   const [issuer, setIssuer] = useState('');
   const [reference, setReference] = useState('');
@@ -36,14 +36,12 @@ export function ProviderDocumentsSection({ capabilities }: { capabilities: Capab
 
   const reload = useCallback(async (capabilityId: string) => {
     const request = ++generation.current;
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
       const next = await getCapabilityVerification(capabilityId);
       if (request !== generation.current) return;
-      if (next.capabilityId !== capabilityId || next.serviceType !== service) {
+      if (next.capabilityId !== capabilityId || next.serviceType !== service)
         throw Error('Verification data did not match this service.');
-      }
       setDetail(next);
     } catch (e: any) {
       if (request === generation.current) {
@@ -56,15 +54,14 @@ export function ProviderDocumentsSection({ capabilities }: { capabilities: Capab
   }, [service]);
 
   useEffect(() => {
-    setDetail(null); setFile(null); setUploadOpen(false); setHistoryOpen(false); setNotice(null);
+    setDetail(null); setFile(null); setUploadType(null); setHistoryOpen(false); setNotice(null);
     if (expanded && cap?.id) void reload(cap.id);
     else generation.current++;
     return () => { generation.current++; };
   }, [cap?.id, expanded, reload]);
 
-  const requirement = service === 'DELIVERY'
-    ? detail?.verification.requirements.find(req => !req.optional && req.type === 'DELIVERY_BUSINESS_INSURANCE')
-    : undefined;
+  const requirements = detail?.verification.requirements.filter(req => !req.optional) ?? [];
+  const requirement = requirements.find(req => req.type === uploadType);
 
   const pickFile = async () => {
     try {
@@ -78,14 +75,14 @@ export function ProviderDocumentsSection({ capabilities }: { capabilities: Capab
         Alert.alert('File too large', 'Choose a file up to 10 MB.');
         return;
       }
-      setFile({ uri: asset.uri, name: asset.name || 'trade-insurance', mimeType: asset.mimeType, size: asset.size });
+      setFile({ uri: asset.uri, name: asset.name || 'insurance-certificate', mimeType: asset.mimeType, size: asset.size });
     } catch (e: any) { setError(e?.message || 'Could not choose a document.'); }
   };
 
   const upload = async () => {
     if (!cap || !requirement || !file || busy) return;
-    if (!DATE.test(expiresAt) || Number.isNaN(Date.parse(expiresAt))) {
-      setError('Enter the trade-insurance expiry date as YYYY-MM-DD.');
+    if (requirement.expiryRequired && (!DATE.test(expiresAt) || Number.isNaN(Date.parse(expiresAt)) || Date.parse(expiresAt) <= Date.now())) {
+      setError('Enter a future insurance expiry date as YYYY-MM-DD.');
       return;
     }
     setBusy(true); setError(null); setNotice(null);
@@ -96,10 +93,10 @@ export function ProviderDocumentsSection({ capabilities }: { capabilities: Capab
         validFrom: validFrom || undefined, expiresAt,
       });
       setFile(null); setIssuer(''); setReference(''); setValidFrom(''); setExpiresAt('');
-      setUploadOpen(false);
-      setNotice('Trade insurance uploaded for review. Previously approved evidence stays on record.');
+      setUploadType(null);
+      setNotice('Insurance certificate uploaded for review. Previously approved evidence stays on record.');
       await reload(cap.id);
-    } catch (e: any) { setError(e?.message || 'Could not upload trade insurance.'); }
+    } catch (e: any) { setError(e?.message || 'Could not upload insurance certificate.'); }
     finally { setBusy(false); }
   };
 
@@ -124,46 +121,44 @@ export function ProviderDocumentsSection({ capabilities }: { capabilities: Capab
       accessibilityState={{ expanded }} onPress={() => setExpanded(value => !value)} style={styles.headingButton}>
       <View style={{ flex: 1 }}>
         <Text style={styles.title}>Documents & Insurance</Text>
-        <Text style={styles.desc}>Required uploads and saved evidence history in one place.</Text>
+        <Text style={styles.desc}>Required insurance documents and saved evidence history for each service.</Text>
       </View>
       <Text style={styles.arrow}>{expanded ? '−' : '+'}</Text>
     </TouchableOpacity>
     {expanded && <View style={styles.stack}>
+      <Text style={styles.desc}>One account can provide collection, delivery & recovery and inspections. Select either service to manage its separate insurance requirements.</Text>
       <View style={styles.row}>
-        <Button label="Collection & delivery" variant={service === 'DELIVERY' ? 'primary' : 'outline'} onPress={() => setService('DELIVERY')} />
+        <Button label="Collection, delivery & recovery" variant={service === 'DELIVERY' ? 'primary' : 'outline'} onPress={() => setService('DELIVERY')} />
         <Button label="Inspection" variant={service === 'INSPECTION' ? 'primary' : 'outline'} onPress={() => setService('INSPECTION')} />
       </View>
-      {!cap ? <Text style={styles.desc}>No {service === 'DELIVERY' ? 'collection/delivery' : 'inspection'} application yet. Apply in My Services above.</Text>
+      {!cap ? <Text style={styles.desc}>No {service === 'DELIVERY' ? 'collection/delivery/recovery' : 'inspection'} application yet. Apply in My Services above. Your other services stay saved.</Text>
         : loading ? <ActivityIndicator color={Colors.accent} accessibilityLabel="Loading documents" />
         : !detail ? <View style={styles.stack}><Text style={styles.error}>{error || 'Verification documents unavailable.'}</Text><Button label="Retry documents" variant="outline" onPress={() => void reload(cap.id)} /></View>
         : <>
           {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
           {notice && <Text accessibilityRole="alert" style={styles.success}>{notice}</Text>}
-          {service === 'INSPECTION' ? <View style={styles.subCard}>
-            <Text style={styles.subtitle}>No inspection documents required</Text>
-            <Text style={styles.desc}>Business declaration, account verification and payout setup still apply. Previous inspection evidence is retained below, not requested again.</Text>
-          </View> : requirement ? <View style={styles.subCard}>
-            <Text style={styles.subtitle}>{requirement.title}</Text>
-            <Text style={styles.status}>{requirement.state === 'SATISFIED' ? 'Approved and current'
-              : requirement.state === 'PENDING' ? 'Under review'
-              : requirement.state === 'REJECTED' ? 'Rejected — replace'
+          {requirements.length > 0 ? requirements.map(req => <View key={req.type} style={styles.subCard}>
+            <Text style={styles.subtitle}>{req.title}</Text>
+            <Text style={styles.status}>{req.state === 'SATISFIED' ? 'Approved and current'
+              : req.state === 'PENDING' ? 'Under review'
+              : req.state === 'REJECTED' ? 'Rejected — replace'
               : 'Missing or expired'}</Text>
-            <Text style={styles.desc}>{requirement.description}</Text>
-            {requirement.state === 'SATISFIED' && <Text style={styles.desc}>Approved evidence expires {dateLabel(requirement.evidenceExpiresAt)}.</Text>}
-            <Text style={styles.desc}>Trade insurance only. Do not upload personal identity documents or bank statements.</Text>
-            <Button label={uploadOpen ? 'Close upload'
-              : requirement.state === 'SATISFIED' ? 'Replace trade insurance'
-              : requirement.state === 'PENDING' ? 'Submit updated insurance' : 'Upload trade insurance'}
-              variant="outline" onPress={() => setUploadOpen(value => !value)} />
-            {uploadOpen && <View style={styles.stack}>
-              <TextInput accessibilityLabel="Insurer" style={styles.input} placeholder="Insurer / organisation" placeholderTextColor={Colors.textMuted} value={issuer} maxLength={160} onChangeText={setIssuer} />
-              <TextInput accessibilityLabel="Policy reference" style={styles.input} placeholder="Policy reference" placeholderTextColor={Colors.textMuted} value={reference} maxLength={160} onChangeText={setReference} />
+            <Text style={styles.desc}>{req.description}</Text>
+            {req.state === 'SATISFIED' && <Text style={styles.desc}>Approved evidence expires {dateLabel(req.evidenceExpiresAt)}.</Text>}
+            <Text style={styles.desc}>This certificate must cover the selected service. Each service is reviewed separately. Do not upload personal identity documents or bank statements.</Text>
+            <Button label={uploadType === req.type ? 'Close upload'
+              : req.state === 'SATISFIED' ? 'Replace ' + req.title
+              : req.state === 'PENDING' ? 'Submit updated ' + req.title : 'Upload ' + req.title}
+              variant="outline" disabled={busy} onPress={() => { setUploadType(current => current === req.type ? null : req.type); setFile(null); setIssuer(''); setReference(''); setValidFrom(''); setExpiresAt(''); }} />
+            {uploadType === req.type && <View style={styles.stack}>
+              <TextInput accessibilityLabel="Insurer" style={styles.input} placeholder="Insurer / organisation" placeholderTextColor={Colors.textMuted} value={issuer} onChangeText={setIssuer} />
+              <TextInput accessibilityLabel="Policy reference" style={styles.input} placeholder="Policy reference" placeholderTextColor={Colors.textMuted} value={reference} onChangeText={setReference} />
               <TextInput accessibilityLabel="Valid from" style={styles.input} placeholder="Valid from YYYY-MM-DD (optional)" placeholderTextColor={Colors.textMuted} value={validFrom} onChangeText={setValidFrom} autoCapitalize="none" />
               <TextInput accessibilityLabel="Expiry date" style={styles.input} placeholder="Expiry YYYY-MM-DD (required)" placeholderTextColor={Colors.textMuted} value={expiresAt} onChangeText={setExpiresAt} autoCapitalize="none" />
               <Button label={file?.name || 'Choose PDF or image (max 10 MB)'} variant="outline" onPress={() => void pickFile()} />
               <Button label={busy ? 'Uploading…' : 'Upload for review'} disabled={busy || !file || !expiresAt} loading={busy} onPress={() => void upload()} />
             </View>}
-          </View> : <Text style={styles.desc}>No current insurance requirement was returned. No document upload is requested.</Text>}
+          </View>) : <Text style={styles.desc}>No insurance requirement was returned for this service. Refresh or contact support before taking new jobs.</Text>}
           <Button label={historyOpen ? 'Hide document history' : 'Show document history (' + detail.attachments.length + ')'} variant="outline" onPress={() => setHistoryOpen(value => !value)} />
           {historyOpen && <View style={styles.stack}>
             <Text style={styles.desc}>Older documents remain for audit. They are not additional requirements.</Text>

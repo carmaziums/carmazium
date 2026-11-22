@@ -43,17 +43,21 @@ describe('TradeXchange provider verification standard', () => {
         createdAt: now,
     });
 
-    it('requires only trade insurance for delivery and no inspection uploads while preserving partnership checks', () => {
-        expect(capabilityRequirements(ServiceType.DELIVERY).map(r => r.type)).toEqual(['DELIVERY_BUSINESS_INSURANCE']);
-        expect(capabilityRequirements(ServiceType.INSPECTION)).toEqual([]);
+    it('requires Motor Trade and Public Liability certificates for delivery, and liability cover for inspections', () => {
+        expect(capabilityRequirements(ServiceType.DELIVERY).map(r => r.type)).toEqual(['DELIVERY_BUSINESS_INSURANCE', 'DELIVERY_PUBLIC_LIABILITY']);
+        expect(capabilityRequirements(ServiceType.INSPECTION).map(r => r.type)).toEqual(['INSPECTION_PUBLIC_LIABILITY']);
         expect(capabilityRequirements(ServiceType.FINANCE).map(r => r.type)).toEqual(['BUSINESS_IDENTITY', 'FINANCE_REGULATORY_AUTHORITY']);
         expect(capabilityRequirements(ServiceType.WARRANTY).map(r => r.type)).toEqual(['BUSINESS_IDENTITY', 'WARRANTY_REGULATORY_AUTHORITY', 'WARRANTY_PRODUCT_AUTHORITY']);
     });
 
-    it('allows inspection review with a current registered-business declaration and no documents', async () => {
-        const summary = await assertCapabilityVerificationReady(prismaFor(ServiceType.INSPECTION, []), 'cap-1', ServiceType.INSPECTION);
+    it('blocks inspection approval until Public Liability Insurance is reviewed and current', async () => {
+        await expect(assertCapabilityVerificationReady(prismaFor(ServiceType.INSPECTION, []), 'cap-1', ServiceType.INSPECTION))
+            .rejects.toThrow(/Public Liability Insurance/);
+        const summary = await assertCapabilityVerificationReady(prismaFor(ServiceType.INSPECTION, [
+            approved('INSPECTION_PUBLIC_LIABILITY', new Date('2027-02-01')),
+        ]), 'cap-1', ServiceType.INSPECTION);
         expect(summary.ready).toBe(true);
-        expect(summary.requirements).toEqual([]);
+        expect(summary.requirements[0].state).toBe('SATISFIED');
     });
 
     it.each([null, { version: 1, registeredBusiness: false, acceptedAt: now.toISOString() }, { version: 1, registeredBusiness: true, acceptedAt: '2025-01-01' }])('blocks missing, unregistered or expired declarations (%j)', async providerDeclaration => {
@@ -78,6 +82,23 @@ describe('TradeXchange provider verification standard', () => {
         expect(summary.requirements.find(r => r.type === 'DELIVERY_BUSINESS_INSURANCE')?.state).toBe('MISSING');
     });
 
+    it('blocks a delivery provider if public liability is absent even with approved Motor Trade Insurance', async () => {
+        const summary = await getCapabilityVerificationSummary(prismaFor(ServiceType.DELIVERY, [
+            approved('DELIVERY_BUSINESS_INSURANCE', new Date('2027-06-01T00:00:00Z')),
+        ]), 'cap-1', now);
+        expect(summary.ready).toBe(false);
+        expect(summary.requirements.find(r => r.type === 'DELIVERY_PUBLIC_LIABILITY')?.state).toBe('MISSING');
+    });
+
+    it('blocks expired Public Liability Insurance even when Motor Trade Insurance remains valid', async () => {
+        const summary = await getCapabilityVerificationSummary(prismaFor(ServiceType.DELIVERY, [
+            approved('DELIVERY_BUSINESS_INSURANCE', new Date('2027-06-01T00:00:00Z')),
+            approved('DELIVERY_PUBLIC_LIABILITY', new Date('2026-09-18T00:00:00Z')),
+        ]), 'cap-1', now);
+        expect(summary.ready).toBe(false);
+        expect(summary.requirements.find(r => r.type === 'DELIVERY_PUBLIC_LIABILITY')?.state).toBe('MISSING');
+    });
+
     it('treats expired evidence as missing even when an admin previously approved it', async () => {
         const prisma = prismaFor(ServiceType.DELIVERY, [
             approved('BUSINESS_IDENTITY'),
@@ -96,7 +117,7 @@ describe('TradeXchange provider verification standard', () => {
         const prisma = prismaFor(ServiceType.DELIVERY, [
             approved('BUSINESS_IDENTITY'),
             approved('DELIVERY_BUSINESS_INSURANCE', earliest),
-            approved('DELIVERY_GOODS_IN_TRANSIT', new Date('2027-05-01T00:00:00Z')),
+            approved('DELIVERY_PUBLIC_LIABILITY', new Date('2027-05-01T00:00:00Z')),
         ]);
 
         const summary = await getCapabilityVerificationSummary(prisma, 'cap-1', now);
