@@ -359,6 +359,13 @@ export async function savePartnerBusiness(input: {
   });
 }
 
+/** One authoritative provider opt-in, used by TradeXchange (not generic account settings). */
+export async function updatePartnerServicePreference(
+  key: 'deliveryServicesEnabled' | 'inspectionServicesEnabled', enabled: boolean,
+): Promise<void> {
+  await apiClient('/users/dealer-profile', { method: 'PATCH', body: JSON.stringify({ [key]: enabled }) });
+}
+
 export async function getPartnerTeam(): Promise<PartnerTeam> {
   const r = await apiClient<{ data: PartnerTeam }>('/services/team');
   return r.data;

@@ -1,6 +1,5 @@
 "use client"
 
-import { DealerServicesNotice } from "@/components/dealer/DealerServicesNotice"
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -8,14 +7,10 @@ import {
     ArrowRight,
     Building2,
     CheckCircle2,
-    Clock3,
     CreditCard,
-    FileText,
     Loader2,
     ShieldCheck,
-    Truck,
     Users,
-    Wrench,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
@@ -27,6 +22,10 @@ type PartnerCapability = {
     id: string
     serviceType: "DELIVERY" | "INSPECTION" | "FINANCE" | "WARRANTY"
     status: CapabilityStatus
+    verificationStatus?: string | null
+    verificationExpiresAt?: string | null
+    jobNationwide?: boolean
+    jobPostcodeAreas?: string[]
     reviewNote?: string | null
 }
 type PartnerTeam = {
@@ -35,13 +34,6 @@ type PartnerTeam = {
     stripeConnect: { connected: boolean; complete: boolean }
     capabilities: PartnerCapability[]
     payoutPolicy: string
-}
-
-const statusLabel: Record<CapabilityStatus, string> = {
-    PENDING: "Awaiting approval",
-    APPROVED: "Active",
-    REJECTED: "Needs attention",
-    SUSPENDED: "Suspended",
 }
 
 export default function PartnerDashboardPage() {
@@ -54,6 +46,7 @@ export default function PartnerDashboardPage() {
     const [companyName, setCompanyName] = React.useState("")
     const [phone, setPhone] = React.useState("")
     const [businessAddress, setBusinessAddress] = React.useState("")
+    const [servicesExpanded, setServicesExpanded] = React.useState(true)
 
     const role = profile?.role || ""
     const isPartnerRole = role === "DEALER"
@@ -139,6 +132,24 @@ export default function PartnerDashboardPage() {
         }
     }
 
+    const toggleService = async (serviceType: JobService, enabled: boolean) => {
+        const key = serviceType === "DELIVERY" ? "deliveryServicesEnabled" : "inspectionServicesEnabled"
+        setBusy(key)
+        setError(null)
+        try {
+            await apiClient("/users/dealer-profile", {
+                method: "PATCH",
+                body: JSON.stringify({ [key]: enabled }),
+            })
+            await refreshProfile()
+            // Preference changes never replace capability approvals or documents.
+        } catch (e: any) {
+            setError(e?.message || "Could not update your service preference")
+        } finally {
+            setBusy(null)
+        }
+    }
+
     const connectStripe = async () => {
         setBusy("stripe")
         setError(null)
@@ -171,7 +182,6 @@ export default function PartnerDashboardPage() {
 
     const delivery = team?.capabilities?.find(c => c.serviceType === "DELIVERY")
     const inspection = team?.capabilities?.find(c => c.serviceType === "INSPECTION")
-    const dealerActive = !!partnerBusiness?.isVerified
 
     if (!isPartnerRole && !isLegacyProvider && !isAdmin) {
         return (
@@ -260,54 +270,67 @@ export default function PartnerDashboardPage() {
                             <p className="text-xs uppercase tracking-widest text-[var(--text-muted)] font-bold">Partner business</p>
                             <h2 className="text-xl font-black font-heading mt-1">{partnerBusiness.companyName}</h2>
                         </div>
-                        <Link href="/profile?section=business"><Button variant="outline">Edit business details</Button></Link>
+                        <div className="flex flex-wrap gap-2">
+                            <Link href="/profile?section=business"><Button variant="outline">Edit business details</Button></Link>
+                            {!partnerBusiness.isVerified && <Link href="/profile?section=verification"><Button>Continue dealer verification</Button></Link>}
+                        </div>
                     </section>
 
-                    <DealerServicesNotice />
-                    <section>
-                        <div className="flex items-end justify-between gap-4 mb-5">
-                            <div><h2 className="text-2xl font-black font-heading">Your add-ons</h2><p className="text-sm text-[var(--text-muted)]">Activate one service or several. Adding one never removes another.</p></div>
-                        </div>
-                        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
-                            <AddonCard
-                                icon={Building2}
-                                title="Vehicle Dealer"
-                                description="List retail stock, bid in auctions, manage inventory, CRM and dealer tools. Business KYC and the £1 verification payment are required before taking paid jobs."
-                                status={dealerActive ? "Active" : partnerBusiness?.kyc?.status === "PENDING" ? "Awaiting verification" : "Not activated"}
-                                active={dealerActive}
-                                action={<Link href={dealerActive ? "/dashboard/dealer" : "/profile?section=verification"}><Button size="sm" variant={dealerActive ? "outline" : "default"}>{dealerActive ? "Open dealer tools" : "Continue verification"}</Button></Link>}
-                            />
-                            <AddonCard
-                                icon={Truck}
-                                title="Delivery & Recovery"
-                                description="Quote on transport and recovery jobs on behalf of your Partner business."
-                                status={loadingTeam ? "Checking status…" : !team ? "Status unavailable" : delivery ? statusLabel[delivery.status] : "Not activated"}
-                                active={delivery?.status === "APPROVED"}
-                                action={delivery?.status === "APPROVED"
-                                    ? <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">Open jobs</Button></Link>
-                                    : delivery?.status === "PENDING"
-                                        ? <Link href={`/dashboard/service/capabilities/${delivery.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Continue setup</Button></Link>
-                                        : delivery?.status === "SUSPENDED"
-                                            ? <span className="text-xs text-[var(--text-muted)]">Contact CarMazium to reactivate this service</span>
-                                        : <Button size="sm" onClick={() => applyService("DELIVERY")} disabled={loadingTeam || !team || busy === "DELIVERY"}>{busy === "DELIVERY" ? <Loader2 className="animate-spin" size={14} /> : "Complete setup"}</Button>}
-                            />
-                            <AddonCard
-                                icon={Wrench}
-                                title="Vehicle Inspection"
-                                description="Quote on vehicle inspection jobs using the same Partner account and business payout details."
-                                status={loadingTeam ? "Checking status…" : !team ? "Status unavailable" : inspection ? statusLabel[inspection.status] : "Not activated"}
-                                active={inspection?.status === "APPROVED"}
-                                action={inspection?.status === "APPROVED"
-                                    ? <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">Open jobs</Button></Link>
-                                    : inspection?.status === "PENDING"
-                                        ? <Link href={`/dashboard/service/capabilities/${inspection.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Continue setup</Button></Link>
-                                        : inspection?.status === "SUSPENDED"
-                                            ? <span className="text-xs text-[var(--text-muted)]">Contact CarMazium to reactivate this service</span>
-                                        : <Button size="sm" onClick={() => applyService("INSPECTION")} disabled={loadingTeam || !team || busy === "INSPECTION"}>{busy === "INSPECTION" ? <Loader2 className="animate-spin" size={14} /> : "Complete setup"}</Button>}
-                            />
 
-
-                        </div>
+                    <section id="provider-services" className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 md:p-7">
+                        <button type="button" className="flex w-full items-center justify-between gap-3 text-left" aria-expanded={servicesExpanded} aria-controls="provider-service-options" onClick={() => setServicesExpanded(current => !current)}>
+                            <span>
+                                <span className="block text-xl font-black font-heading">My Services</span>
+                                <span className="block text-sm text-[var(--text-muted)] mt-1">Choose the work you offer. Approval and documents are kept when a service is paused.</span>
+                            </span>
+                            <span className="text-2xl text-[var(--text-muted)]" aria-hidden="true">{servicesExpanded ? "−" : "+"}</span>
+                        </button>
+                        {servicesExpanded && <div id="provider-service-options" className="mt-5 space-y-3">
+                            {(["DELIVERY", "INSPECTION"] as const).map(serviceType => {
+                                const cap = serviceType === "DELIVERY" ? delivery : inspection
+                                const key = serviceType === "DELIVERY" ? "deliveryServicesEnabled" : "inspectionServicesEnabled"
+                                const enabled = partnerBusiness[key] !== false
+                                const expires = cap?.verificationExpiresAt ? new Date(cap.verificationExpiresAt).getTime() : 0
+                                const verified = cap?.verificationStatus === "VERIFIED" && expires > Date.now()
+                                const coverage = cap?.jobNationwide || (cap?.jobPostcodeAreas?.length ?? 0) > 0
+                                const status = !team ? "Status unavailable" : !enabled ? "Paused" : !cap ? "Not set up"
+                                    : cap.status === "SUSPENDED" ? "Suspended"
+                                    : cap.status === "REJECTED" ? "Needs attention"
+                                    : cap.status === "PENDING" ? "Awaiting approval"
+                                    : !verified ? "Verification required"
+                                    : !partnerBusiness.isVerified ? "Dealer verification required"
+                                    : !team.stripeConnect.complete ? "Payout setup required"
+                                    : !coverage ? "Set working areas"
+                                    : "Approved"
+                                return <div key={serviceType} className="rounded-xl border border-[var(--border-default)] p-4 space-y-3">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div>
+                                            <h3 className="font-bold text-base">{serviceType === "DELIVERY" ? "Collection, delivery & recovery" : "Vehicle inspection"}</h3>
+                                            <p className="text-sm text-[var(--text-muted)] mt-1">{serviceType === "DELIVERY" ? "Vehicle movements and recovery work." : "Vehicle and pre-purchase inspections."}</p>
+                                        </div>
+                                        <label className="flex shrink-0 items-center gap-2 text-sm font-semibold">
+                                            <input type="checkbox" className="h-5 w-5" aria-label={serviceType === "DELIVERY" ? "Offer collection, delivery and recovery" : "Offer vehicle inspection"} checked={enabled} disabled={!!busy || loadingTeam || !team} onChange={event => void toggleService(serviceType, event.target.checked)} />
+                                            {enabled ? "On" : "Off"}
+                                        </label>
+                                    </div>
+                                    <p className="text-sm font-semibold" role="status">{status}</p>
+                                    {cap?.reviewNote && (cap.status === "REJECTED" || cap.status === "SUSPENDED") && <p className="text-sm text-red-600 dark:text-red-300">{cap.reviewNote}</p>}
+                                    {!enabled && <div className="flex flex-wrap items-center gap-2"><p className="text-xs text-[var(--text-muted)]">No new jobs while paused. Existing work, evidence and approval history are preserved.</p><Link className="text-sm font-semibold text-primary underline" href="/dashboard/service/jobs?tab=mine">View existing work</Link></div>}
+                                    {enabled && team && <div className="flex flex-wrap gap-2">
+                                        {!cap || cap.status === "REJECTED"
+                                            ? <Button size="sm" disabled={!!busy} onClick={() => void applyService(serviceType)}>{cap ? "Reapply" : "Apply for service"}</Button>
+                                            : cap.status === "PENDING" || (cap.status === "APPROVED" && !verified)
+                                                ? <Link href={'/dashboard/service/capabilities/' + cap.id + '/verification'}><Button size="sm">{cap.status === "PENDING" ? "Continue setup" : "Review verification"}</Button></Link>
+                                                : cap.status === "SUSPENDED"
+                                                    ? <p className="text-xs text-[var(--text-muted)]">Contact CarMazium to reactivate this service.</p>
+                                                    : <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">View jobs</Button></Link>}
+                                        {cap?.status === "APPROVED" && verified && !coverage &&
+                                            <Link href={'/dashboard/service/capabilities/' + cap.id + '/matching'}><Button size="sm" variant="outline">Set working areas</Button></Link>}
+                                    </div>}
+                                </div>
+                            })}
+                            <p className="text-xs text-[var(--text-muted)]">Switching a service on does not approve it. Job eligibility is checked by CarMazium using your verification, working areas and payout setup.</p>
+                        </div>}
                     </section>
 
                     <section className="grid lg:grid-cols-2 gap-5">
@@ -326,36 +349,6 @@ export default function PartnerDashboardPage() {
                     </section>
                 </>
             )}
-        </div>
-    )
-}
-
-function AddonCard({
-    icon: Icon,
-    title,
-    description,
-    status,
-    active,
-    action,
-}: {
-    icon: React.ComponentType<{ size?: number; className?: string }>
-    title: string
-    description: string
-    status: string
-    active: boolean
-    action: React.ReactNode
-}) {
-    return (
-        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 flex flex-col min-h-[280px]">
-            <div className="flex items-start justify-between gap-4 mb-5">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center"><Icon size={22} className="text-primary" /></div>
-                <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider rounded-full border px-2.5 py-1 ${active ? "text-emerald-500 border-emerald-500/30 bg-emerald-500/10" : "text-[var(--text-muted)] border-[var(--border-default)] bg-[var(--bg-input)]"}`}>
-                    {active ? <CheckCircle2 size={12} /> : <Clock3 size={12} />} {status}
-                </span>
-            </div>
-            <h3 className="text-xl font-black font-heading">{title}</h3>
-            <p className="text-sm text-[var(--text-muted)] mt-2 mb-6 leading-relaxed flex-1">{description}</p>
-            <div>{action}</div>
         </div>
     )
 }

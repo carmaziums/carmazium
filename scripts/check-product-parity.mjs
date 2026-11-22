@@ -1040,7 +1040,8 @@ if (
   !mobileDealerDrawer.includes("label: 'Finance Calculator'") ||
   !mobileDealerCustomers.includes('>Customers</Text>') ||
   !mobileDealerOffers.includes('>Offers received</Text>') ||
-  !mobilePartnerDashboard.includes('label="Open jobs"') ||
+  !mobilePartnerDashboard.includes('label="View jobs"') ||
+  !read('src/app/dashboard/partner/page.tsx').includes('>View jobs</Button>') ||
   !mobileProviderJobs.includes("'My Work' : 'Available Jobs'")
 ) {
   fail('Shared dealer/Partner terminology drifted between web and native clients');

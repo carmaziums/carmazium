@@ -6,6 +6,8 @@ import {
   Linking,
   ScrollView,
   StatusBar,
+  Switch,
+  TouchableOpacity,
   StyleSheet,
   Text,
   TextInput,
@@ -29,22 +31,13 @@ import {
   getPartnerProfile,
   getPartnerTeam,
   savePartnerBusiness,
+  updatePartnerServicePreference,
 } from '../../lib/servicesApi';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PartnerDashboard'>;
 
 const SERVICE_ORDER: ServiceType[] = ['DELIVERY', 'INSPECTION'];
-
-const statusText = (status?: string) => {
-  switch (status) {
-    case 'APPROVED': return 'Active';
-    case 'PENDING': return 'Awaiting approval';
-    case 'REJECTED': return 'Needs attention';
-    case 'SUSPENDED': return 'Suspended';
-    default: return 'Not activated';
-  }
-};
 
 export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const initializeAuth = useAuthStore((s) => s.initializeAuth);
@@ -56,6 +49,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const [companyName, setCompanyName] = useState('');
   const [phone, setPhone] = useState('');
   const [businessAddress, setBusinessAddress] = useState('');
+  const [servicesExpanded, setServicesExpanded] = useState(true);
 
   const generation = useRef(0);
   const load = useCallback(async () => {
@@ -154,6 +148,20 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const toggleService = async (type: ServiceType, enabled: boolean) => {
+    const key = type === 'DELIVERY' ? 'deliveryServicesEnabled' : 'inspectionServicesEnabled';
+    setBusy(key);
+    setError(null);
+    try {
+      await updatePartnerServicePreference(key, enabled);
+      await load();
+    } catch (err: any) {
+      setError(err?.message || 'Could not update your service preference.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const startStripe = async () => {
     setBusy('stripe');
     setError(null);
@@ -230,36 +238,67 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
 
                   </View>
                   <Button label="Edit business details" variant="outline" onPress={() => navigation.navigate('Settings', { section: 'business' })} />
+                  {!profile.dealerProfile.isVerified && <Button label="Continue dealer verification" onPress={() => navigation.navigate('DealerKYC')} />}
                 </View>
               </View>
 
-              <View style={styles.sectionHeader}>
-                <View><Text style={styles.sectionTitle}>Your add-ons</Text><Text style={styles.sectionSub}>Activate one service or several. Adding one never removes another.</Text></View>
-              </View>
+
               <View style={styles.card}>
-                <Text style={styles.serviceStatus}>{profile.dealerProfile.isVerified ? 'Active' : profile.dealerProfile.kyc?.status === 'PENDING' ? 'Awaiting verification' : 'Not activated'}</Text>
-                <Text style={styles.cardTitle}>Vehicle Dealer</Text>
-                <Text style={styles.cardText}>List retail stock, bid in auctions, manage inventory, CRM and dealer tools. Business KYC and the £1 verification payment are required before taking paid jobs.</Text>
-                <Button label={profile.dealerProfile.isVerified ? 'Open dealer tools' : 'Continue verification'} variant="outline" onPress={() => profile.dealerProfile?.isVerified ? navigation.navigate('Tabs', { screen: 'DealerHome' }) : navigation.navigate('DealerKYC')} />
-              </View>
-              {SERVICE_ORDER.map((type) => {
-
-
-                const cap = byType.get(type);
-                const approved = cap?.status === 'APPROVED';
-                return (
-                  <View key={type} style={styles.card}>
-                    <Text style={[styles.serviceStatus, approved && { color: Colors.success }]}>{!team ? 'Status unavailable' : statusText(cap?.status)}</Text>
-                    <Text style={styles.cardTitle}>{type === 'DELIVERY' ? 'Delivery & Recovery' : 'Vehicle Inspection'}</Text>
-                    <Text style={styles.cardText}>{type === 'DELIVERY' ? 'Quote on transport and recovery jobs on behalf of your Partner business.' : 'Quote on vehicle inspection jobs using the same Partner account and business payout details.'}</Text>
-                    {cap?.reviewNote && <Text style={styles.reviewNote}>{cap.reviewNote}</Text>}
-                    {approved ? <Button label="Open jobs" variant="outline" onPress={() => navigation.navigate('ProviderJobs')} />
-                      : cap?.status === 'PENDING' ? <Button label="Continue setup" onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} />
-                      : cap?.status === 'SUSPENDED' ? <Text style={styles.cardText}>Contact CarMazium to reactivate this service.</Text>
-                      : <Button label="Complete setup" disabled={!team || !!busy} loading={busy === type} onPress={() => void applyService(type)} />}
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel="My Services" accessibilityState={{ expanded: servicesExpanded }} onPress={() => setServicesExpanded(value => !value)}>
+                  <View style={[styles.rowBetween, { flexDirection: 'row', alignItems: 'center' }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cardTitle}>My Services</Text>
+                      <Text style={styles.cardText}>Switch services on or off here. Your approval and documents stay saved.</Text>
+                    </View>
+                    <Ionicons name={servicesExpanded ? 'chevron-up' : 'chevron-down'} size={21} color={Colors.textSecondary} />
                   </View>
-                );
-              })}
+                </TouchableOpacity>
+                {servicesExpanded && SERVICE_ORDER.map(type => {
+                  const cap = byType.get(type);
+                  const key = type === 'DELIVERY' ? 'deliveryServicesEnabled' : 'inspectionServicesEnabled';
+                  const enabled = profile.dealerProfile?.[key] !== false;
+                  const expires = cap?.verificationExpiresAt ? new Date(cap.verificationExpiresAt).getTime() : 0;
+                  const verified = cap?.verificationStatus === 'VERIFIED' && expires > Date.now();
+                  const coverage = !!cap?.jobNationwide || (cap?.jobPostcodeAreas?.length ?? 0) > 0;
+                  const status = !team ? 'Status unavailable' : !enabled ? 'Paused' : !cap ? 'Not set up'
+                    : cap.status === 'SUSPENDED' ? 'Suspended'
+                    : cap.status === 'REJECTED' ? 'Needs attention'
+                    : cap.status === 'PENDING' ? 'Awaiting approval'
+                    : !verified ? 'Verification required'
+                    : !profile.dealerProfile?.isVerified ? 'Dealer verification required'
+                    : !team.stripeConnect.complete ? 'Payout setup required'
+                    : !coverage ? 'Set working areas'
+                    : 'Approved';
+                  return <View key={type} style={styles.serviceRow}>
+                    <View style={[styles.rowBetween, { flexDirection: 'row', alignItems: 'center' }]}>
+                      <View style={{ flex: 1, gap: 5 }}>
+                        <Text style={styles.cardTitle}>{type === 'DELIVERY' ? 'Collection, delivery & recovery' : 'Vehicle inspection'}</Text>
+                        <Text style={styles.cardText}>{type === 'DELIVERY' ? 'Vehicle movements and recovery work.' : 'Vehicle and pre-purchase inspections.'}</Text>
+                      </View>
+                      <View style={{ alignItems: 'center', gap: 3 }}>
+                        <Switch accessibilityLabel={type === 'DELIVERY' ? 'Offer collection, delivery and recovery' : 'Offer vehicle inspection'} value={enabled} disabled={!!busy || loading || !team} onValueChange={value => { void toggleService(type, value); }} />
+                        <Text style={styles.serviceStatus}>{enabled ? 'On' : 'Off'}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.serviceStatus}>{status}</Text>
+                    {cap?.reviewNote && (cap.status === 'REJECTED' || cap.status === 'SUSPENDED') && <Text style={styles.reviewNote}>{cap.reviewNote}</Text>}
+                    {!enabled && <View style={{ gap: 8 }}><Text style={styles.cardText}>No new jobs while paused. Existing jobs, approvals and documents remain saved.</Text><Button label="View existing work" variant="outline" onPress={() => navigation.navigate('ProviderJobs', { initialTab: 'assigned' })} /></View>}
+                    {enabled && team && (
+                      !cap || cap.status === 'REJECTED'
+                        ? <Button label={cap ? 'Reapply' : 'Apply for service'} loading={busy === type} disabled={!!busy} onPress={() => void applyService(type)} />
+                        : cap.status === 'PENDING' || (cap.status === 'APPROVED' && !verified)
+                          ? <Button label={cap.status === 'PENDING' ? 'Continue setup' : 'Review verification'} onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} />
+                          : cap.status === 'SUSPENDED'
+                            ? <Text style={styles.cardText}>Contact CarMazium to reactivate this service.</Text>
+                            : <View style={{ gap: 8 }}>
+                                <Button label="View jobs" variant="outline" onPress={() => navigation.navigate('ProviderJobs')} />
+                                {!coverage && <Button label="Set working areas" variant="outline" onPress={() => navigation.navigate('ProviderMatching', { capabilityId: cap.id })} />}
+                              </View>
+                    )}
+                  </View>;
+                })}
+                {servicesExpanded && <Text style={styles.cardText}>Turning a service on does not approve it. CarMazium still checks verification, working areas, payout setup and account eligibility before new work.</Text>}
+              </View>
 
               <View style={styles.card}>
                   <Text style={styles.cardTitle}>TradeXchange payouts</Text>
@@ -300,6 +339,7 @@ const styles = StyleSheet.create({
   title: { fontFamily: FontFamily.bold, color: Colors.textPrimary, fontSize: 36 },
   sub: { color: Colors.textSecondary, fontSize: 16, lineHeight: 24 },
   card: { borderRadius: 16, borderWidth: 1, padding: 24, gap: 16, backgroundColor: Colors.bgCard, borderColor: Colors.border },
+  serviceRow: { borderRadius: 12, borderWidth: 1, borderColor: Colors.border, padding: 14, gap: 12 },
   cardTitle: { fontFamily: FontFamily.bold, color: Colors.textPrimary, fontSize: 20 },
   cardText: { color: Colors.textSecondary, fontSize: 14, lineHeight: 22 },
   input: { borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgTertiary, borderRadius: 12, padding: 14, color: Colors.textPrimary, fontSize: 16 },
