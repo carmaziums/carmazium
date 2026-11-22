@@ -136,6 +136,8 @@ export interface ServiceJob {
   /** Current verified paid-job providers matching this service/area. */
   eligibleProviderCount?: number | null;
   viewerRole?: 'customer' | 'contractor' | 'admin' | 'bidder';
+  /** Server-computed permission; viewable accepted work does not imply new quote eligibility. */
+  canQuote?: boolean;
 }
 
 export interface ContractorCapability {
@@ -241,6 +243,18 @@ export interface ServiceLead {
 export interface CursorPage<T> {
   items: T[];
   nextCursor: string | null;
+}
+
+/** Parse GBP entered by a provider exactly into integer pence.
+ * Whole-job quotes must be £1–£50,000. No exponent, negative, sub-penny,
+ * empty or locale-ambiguous values are accepted.
+ */
+export function parseServiceQuotePence(input: string): number | null {
+  const value = input.trim();
+  if (!/^\\d{1,5}(?:\\.\\d{1,2})?$/.test(value)) return null;
+  const [pounds, fractional = ''] = value.split('.');
+  const pence = Number(pounds) * 100 + Number(fractional.padEnd(2, '0'));
+  return Number.isSafeInteger(pence) && pence >= 100 && pence <= 5_000_000 ? pence : null;
 }
 
 export const formatPence = (p: number) =>
