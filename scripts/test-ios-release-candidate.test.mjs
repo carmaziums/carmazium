@@ -33,6 +33,14 @@ test("iOS candidate uses production app identity, locked dependencies and the ow
   assert.match(flow, /npm ci/);
   assert.match(flow, /npm audit --omit=dev --audit-level=critical/);
   assert.match(flow, /npm run typescript/);
+  // Preserve the original app and reviewed SHA, but avoid CocoaPods scripts
+  // breaking on the repository's space-containing parent directories.
+  assert.match(flow, /STAGE="\$RUNNER_TEMP\/carmazium-ios-stage"/);
+  assert.match(flow, /rsync -a/);
+  assert.match(flow, /EAS_NO_VCS=1/);
+  assert.match(flow, /EAS_PROJECT_ROOT="\$STAGE"/);
+  assert.match(flow, /Missing native app source in staged archive/);
+  assert.match(flow, /package-lock\.json/);
   assert.match(flow, /secrets\.EXPO_TOKEN \|\| secrets\.EAS_TOKEN/);
   assert.match(flow, /eas-cli@16\.18\.0 build --platform ios --profile production --non-interactive --wait --json/);
   assert.match(flow, /Signed iOS release candidate created for internal review/);
