@@ -142,7 +142,7 @@ export class ServicesController {
     @Get('jobs/assigned')
     @UseGuards(ContractorGuard)
     @ApiOperation({ summary: 'Jobs assigned to the provider business and visible to the caller’s role' })
-    async assigned(@Req() req: any, @Query() page: ServiceListQueryDto) {
+    async assigned(@Req() req: any, @Query() page: ServiceJobFeedQueryDto) {
         return new StandardResponse(
             await this.services.assignedPage(
                 req.contractorProfileId,
