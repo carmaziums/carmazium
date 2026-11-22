@@ -109,3 +109,19 @@ test('valuation quote is handed from the registration screen directly to both na
   assert.match(wizard, /landingListingType === 'AUCTION' \? 'FREE' : !editListingId/);
   assert.match(wizard, /setBadgeTier\(method === 'AUCTION' \? 'FREE' : 'BASIC'\)/);
 });
+
+test('fullscreen native gallery handles Android touch streams as well as gesture callbacks', () => {
+  const detail = source('screens/vehicle/VehicleDetailScreen.tsx');
+  assert.match(detail, /Gesture\\.Simultaneous\\(pinchGesture, fullscreenPanGesture\\)/);
+  assert.match(detail, /onTouchStart=\\{beginFullscreenTouch\\}/);
+  assert.match(detail, /onTouchEnd=\\{finishFullscreenTouch\\}/);
+  assert.match(detail, /onTouchCancel=\\{\\(\\) => \\{ fullscreenTouchStart\\.current = null;/);
+  assert.match(detail, /pointerEvents="none"\\s+source=\\{\\{ uri: images\\[fullscreenIndex\\] \\}\\}/);
+  assert.match(detail, /pinchScale\\.value > 1\\.05/);
+  assert.match(detail, /Math\\.abs\\(translationX\\) < Math\\.abs\\(translationY\\) \\* 1\\.4/);
+  assert.match(detail, /lastFullscreenSwipeAt\\.current < 260/);
+  assert.match(detail, /runOnJS\\(advanceFullscreenFromSwipe\\)/);
+  assert.match(detail, /fullscreenPhotoCounter\\(fullscreenIndex, totalImages\\)/);
+  assert.match(detail, /onPress=\\{\\(\\) => moveFullscreenBy\\(-1\\)\\}/);
+  assert.match(detail, /onPress=\\{\\(\\) => moveFullscreenBy\\(1\\)\\}/);
+});
