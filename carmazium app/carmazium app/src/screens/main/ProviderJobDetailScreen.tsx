@@ -27,6 +27,8 @@ import {
   completeProviderJob,
   formatPence,
   parseServiceQuotePence,
+  servicePaymentEvidence,
+  servicePaymentStatusText,
   getProviderJob,
   getServiceSettings,
   startProviderJob,
@@ -104,6 +106,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
   const myQuote = job?.quotes?.[0];
+  const paymentEvidence = servicePaymentEvidence(job?.payment, job?.agreedAmountPence);
   const isMine = job?.viewerRole === 'contractor';
   const canQuote = job?.status === 'OPEN' && job.canQuote === true;
   const hasOpenQuote = myQuote?.status === 'ACTIVE';
@@ -494,18 +497,19 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
         {isMine && job.agreedAmountPence != null ? (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Your payout</Text>
-            <Text style={styles.payoutAmount}>
-              {formatPence(job.contractorAmountPence ?? 0)}
-            </Text>
-            <Text style={styles.bodyText}>
-              From {formatPence(job.agreedAmountPence)} customer price. {
-                job.payment?.status === 'RELEASED'
-                  ? 'Transferred to your Stripe business account.'
-                  : job.payment?.status === 'PAID'
-                    ? 'Held by CarMazium until customer confirmation or auto-release.'
-                    : 'Waiting for customer payment.'
-              }
-            </Text>
+            {paymentEvidence ? (
+              <>
+                <Text style={styles.payoutAmount}>{formatPence(paymentEvidence.contractorPence)}</Text>
+                <Info label="Customer total" value={formatPence(paymentEvidence.grossPence)} />
+                <Info label="CarMazium fee (9%)" value={formatPence(paymentEvidence.platformFeePence)} />
+                <Info label="Provider allocation (91%)" value={formatPence(paymentEvidence.contractorPence)} />
+              </>
+            ) : (
+              <Text accessibilityRole="alert" style={styles.warningText}>
+                Payment breakdown needs verification. Refresh or contact support before relying on this payout amount.
+              </Text>
+            )}
+            <Text style={styles.bodyText}>{servicePaymentStatusText(job.payment?.status)}</Text>
           </View>
         ) : null}
 
