@@ -337,6 +337,27 @@ export interface CursorPage<T> {
  * Whole-job quotes must be £1–£50,000. No exponent, negative, sub-penny,
  * empty or locale-ambiguous values are accepted.
  */
+/** Compare only unexpired ACTIVE service quotes. Invalid expiry dates fail closed.
+ * The accepted quote remains separately visible while payment is pending.
+ */
+export function isServiceQuoteSelectable(
+  quote: Pick<ServiceQuote, 'status' | 'validUntil'>,
+  now = Date.now(),
+): boolean {
+  if (quote.status !== 'ACTIVE') return false;
+  if (!quote.validUntil) return true;
+  const expiry = Date.parse(quote.validUntil);
+  return Number.isFinite(expiry) && expiry > now;
+}
+
+export function comparableServiceQuotes(
+  quotes: readonly ServiceQuote[] | null | undefined,
+  now = Date.now(),
+): ServiceQuote[] {
+  return (quotes ?? []).filter(quote => isServiceQuoteSelectable(quote, now))
+    .sort((a, b) => a.amountPence - b.amountPence || a.id.localeCompare(b.id));
+}
+
 export function parseServiceQuotePence(input: string): number | null {
   const value = input.trim();
   if (!/^\d{1,5}(?:\.\d{1,2})?$/.test(value)) return null;
