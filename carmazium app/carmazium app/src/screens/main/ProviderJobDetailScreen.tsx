@@ -26,6 +26,7 @@ import {
   ServiceMarketplaceSettings,
   completeProviderJob,
   formatPence,
+  parseServiceQuotePence,
   getProviderJob,
   getServiceSettings,
   startProviderJob,
@@ -85,6 +86,9 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
       if (mine?.status === 'ACTIVE') {
         setAmount((mine.amountPence / 100).toFixed(2));
         setQuoteMessage(mine.message || '');
+      } else {
+        setAmount('');
+        setQuoteMessage('');
       }
       setInspectionOutcome(nextJob.inspectionOutcome || '');
       setInspectionSummary(nextJob.inspectionSummary || '');
@@ -101,7 +105,8 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
 
   const myQuote = job?.quotes?.[0];
   const isMine = job?.viewerRole === 'contractor';
-  const canQuote = job?.status === 'OPEN';
+  const canQuote = job?.status === 'OPEN' && job.canQuote === true;
+  const hasOpenQuote = myQuote?.status === 'ACTIVE';
   const nextStep = job?.status === 'OPEN'
     ? 'Review the vehicle and location, then send a quote. You cannot start work until the customer accepts and pays.'
     : job?.status === 'ACCEPTED'
@@ -121,10 +126,8 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
     isMine && job && ACTIVE_JOB_STATUSES.includes(job.status),
   );
 
-  const amountPence = useMemo(() => {
-    const parsed = Number(amount);
-    return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
-  }, [amount]);
+  const quotePence = useMemo(() => parseServiceQuotePence(amount), [amount]);
+  const amountPence = quotePence ?? 0;
 
   const providerPence = useMemo(() => {
     if (amountPence < 1) return null;
@@ -138,6 +141,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
     action: () => Promise<unknown>,
     success: string,
   ) => {
+    if (busy) return;
     setBusy(key);
     setError(null);
     setFlash(null);
@@ -153,8 +157,12 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
   };
 
   const sendQuote = async () => {
-    if (!job || amountPence < 100) {
-      setError('Enter a quote of at least £1.00.');
+    if (!job || !canQuote || busy) {
+      setError('This job is not available for a new quote from your account.');
+      return;
+    }
+    if (quotePence === null) {
+      setError('Enter a fixed whole-job price between £1 and £50,000 with up to two decimal places.');
       return;
     }
     await run(
@@ -163,14 +171,14 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
         amountPence,
         message: quoteMessage.trim() || undefined,
       }),
-      myQuote?.status === 'ACTIVE'
+      hasOpenQuote
         ? 'Quote updated.'
         : 'Quote sent. The customer has been notified.',
     );
   };
 
   const withdraw = () => {
-    if (!job) return;
+    if (!job || !hasOpenQuote || !canQuote || busy) return;
     Alert.alert(
       'Withdraw quote?',
       'The customer will no longer be able to accept this quote.',
@@ -393,7 +401,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
         {canQuote ? (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>
-              {myQuote?.status === 'ACTIVE' ? 'Your quote' : 'Quote this job'}
+              {hasOpenQuote ? 'Your quote' : 'Quote this job'}
             </Text>
 
             <Text style={styles.label}>Customer price</Text>
@@ -406,8 +414,13 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
                 placeholder="0.00"
                 placeholderTextColor={Colors.textMuted}
                 keyboardType="decimal-pad"
+                maxLength={8}
+                accessibilityLabel="Fixed price for whole service job in GBP"
               />
             </View>
+            <Text style={styles.smallText}>
+              £1 to £50,000 for the entire job. Include VAT if your business charges it.
+            </Text>
 
             {providerPence != null ? (
               <Text style={styles.payoutHint}>
@@ -427,21 +440,21 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
             />
 
             <TouchableOpacity
-              style={[styles.primaryButton, (busy === 'quote' || amountPence < 100) && styles.disabled]}
-              disabled={busy === 'quote' || amountPence < 100}
+              style={[styles.primaryButton, (busy !== null || quotePence === null) && styles.disabled]}
+              disabled={busy !== null || quotePence === null}
               onPress={() => void sendQuote()}
             >
               {busy === 'quote'
                 ? <ActivityIndicator color={Colors.onAccent} />
                 : <Text style={styles.primaryText}>
-                    {myQuote?.status === 'ACTIVE' ? 'UPDATE QUOTE' : 'SEND QUOTE'}
+                    {hasOpenQuote ? 'UPDATE QUOTE' : 'SEND QUOTE'}
                   </Text>}
             </TouchableOpacity>
 
-            {myQuote?.status === 'ACTIVE' ? (
+            {hasOpenQuote ? (
               <TouchableOpacity
                 style={styles.dangerButton}
-                disabled={busy === 'withdraw'}
+                disabled={busy !== null}
                 onPress={withdraw}
               >
                 {busy === 'withdraw'
@@ -449,6 +462,21 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
                   : <Text style={styles.dangerText}>WITHDRAW QUOTE</Text>}
               </TouchableOpacity>
             ) : null}
+          </View>
+        ) : null}
+
+        {job.status === 'OPEN' && !canQuote ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>New quotes unavailable</Text>
+            <Text style={styles.bodyText}>
+              Check service approval, insurance, payouts and team permissions in My services.
+              Previously accepted work remains in My Work.
+            </Text>
+            <TouchableOpacity style={styles.secondaryButton}
+              onPress={() => navigation.navigate('PartnerDashboard')}
+              accessibilityRole="button" accessibilityLabel="Review provider verification">
+              <Text style={styles.secondaryText}>MY SERVICES</Text>
+            </TouchableOpacity>
           </View>
         ) : null}
 
