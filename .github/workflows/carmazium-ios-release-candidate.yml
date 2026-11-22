@@ -96,6 +96,48 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # The source app lives under folders with spaces. CocoaPods-generated
+          # Xcode scripts are not reliably quoted there. Stage the SAME app in
+          # a space-free path; EAS No-VCS uploads only this app directory.
+          STAGE="$RUNNER_TEMP/carmazium-ios-stage"
+          mkdir -p "$STAGE"
+          rsync -a \
+            --exclude='node_modules/' --exclude='.expo/' --exclude='.git/' \
+            --exclude='ios/' --exclude='android/' --exclude='.easignore' \
+            --exclude='.env*' --exclude='*.pem' --exclude='*.p12' \
+            --exclude='*.p8' --exclude='*.mobileprovision' \
+            ./ "$STAGE/"
+          # The source .easignore excludes package manifests for a Git-root
+          # archive. A standalone app archive MUST retain its own manifests.
+          printf '%s\n' \
+            '**/node_modules/' '**/.git/' '**/.expo/' \
+            '**/ios/' '**/android/' '.env*' '**/coverage/' \
+            '**/__tests__/' '**/*.test.ts' '**/*.test.tsx' \
+            '**/*.spec.ts' '**/*.spec.tsx' '*.pem' '*.p12' '*.p8' \
+            '*.mobileprovision' > "$STAGE/.easignore"
+          node - "$STAGE" <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const root = process.argv[2];
+          if (root.includes(' ')) throw new Error('iOS staging path contains spaces');
+          for (const required of ['index.js', 'app.json', 'eas.json', 'package.json', 'package-lock.json', 'src']) {
+            if (!fs.existsSync(path.join(root, required))) throw new Error('Missing native app source in staged archive: ' + required);
+          }
+          if (fs.existsSync(path.join(root, 'node_modules'))) throw new Error('Native dependencies must be installed on EAS, not uploaded');
+          const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8')).expo;
+          const eas = JSON.parse(fs.readFileSync(path.join(root, 'eas.json'), 'utf8'));
+          if (app.owner !== 'carmazium' ||
+              app.extra?.eas?.projectId !== '9c77bb81-205c-42f8-913e-b69a0953ec10' ||
+              app.ios?.bundleIdentifier !== 'uk.carmazium.app' ||
+              eas.build?.production?.channel !== 'production' ||
+              eas.build?.production?.env?.APP_ENV !== 'production') {
+            throw new Error('Staged project does not match the reviewed production CarMazium app');
+          }
+          console.log('Space-free EAS staging checked: original CarMazium project, bundle and production profile');
+          NODE
+          export EAS_NO_VCS=1
+          export EAS_PROJECT_ROOT="$STAGE"
+          cd "$STAGE"
           npx --yes eas-cli@16.18.0 build --platform ios --profile production --non-interactive --wait --json > "$RUNNER_TEMP/carmazium-ios-candidate.json"
           node - "$RUNNER_TEMP/carmazium-ios-candidate.json" <<'NODE'
           const fs = require('fs');
