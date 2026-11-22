@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs'
 const gtm = readFileSync(new URL('../src/components/analytics/GoogleTagManager.tsx', import.meta.url), 'utf8')
 const consent = readFileSync(new URL('../src/components/analytics/GoogleConsentMode.tsx', import.meta.url), 'utf8')
 const ads = readFileSync(new URL('../src/lib/googleAds.ts', import.meta.url), 'utf8')
+const pageViews = readFileSync(new URL('../src/components/analytics/PageViewTracker.tsx', import.meta.url), 'utf8')
 
 test('Google Ads destination is explicitly configured once in the existing GTM queue', () => {
     assert.match(gtm, /NEXT_PUBLIC_GOOGLE_ADS_ID/)
@@ -28,4 +29,10 @@ test('Google Ads conversions still require the genuine qualified listing event',
     assert.match(ads, /params\.qualification === 'auction_review'/)
     assert.match(ads, /params\.payment_status === 'paid'/)
     assert.match(ads, /window\.gtag\('event', 'conversion', payload\)/)
+})
+
+test('first-touch page view records only after consent, including same-page acceptance', () => {
+    assert.match(pageViews, /const \{ granted \} = useConsent\(\)/)
+    assert.match(pageViews, /if \(!granted \|\| pathname === lastPath\.current\) return/)
+    assert.match(pageViews, /\[pathname, granted, trackEvent\]/)
 })
