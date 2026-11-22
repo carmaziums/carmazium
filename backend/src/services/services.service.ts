@@ -1683,6 +1683,11 @@ export class ServicesService {
     }
 
     async upsertQuote(contractorProfileId: string, approved: ServiceType[], userId: string, jobId: string, dto: UpsertQuoteDto) {
+        // Mirror the validated DTO even for internal callers: no fractional
+        // pence, negative, non-finite, or over-cap amount reaches a quote write.
+        if (!Number.isSafeInteger(dto.amountPence) || dto.amountPence < 100 || dto.amountPence > 5_000_000) {
+            throw new BadRequestException('Quote must be a whole-pence amount between £1 and £50,000.');
+        }
         const job = await this.prisma.serviceJob.findUnique({ where: { id: jobId }, include: { customer: true } });
         if (!job) throw new NotFoundException('Job not found');
         if (job.status !== ServiceJobStatus.OPEN || job.expiresAt < new Date()) {
