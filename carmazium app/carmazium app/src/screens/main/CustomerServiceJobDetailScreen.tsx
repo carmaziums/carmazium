@@ -260,7 +260,9 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
     if (!job) return;
     Alert.alert(
       'Raise a dispute?',
-      'This freezes the paid service job for CarMazium to review.',
+      job.status === 'RELEASED'
+        ? 'This opens a post-payout review. The provider transfer is not automatically reversed.'
+        : 'This pauses the usual provider payout while CarMazium reviews the service.',
       [
         { text: 'Not now', style: 'cancel' },
         {
@@ -615,6 +617,14 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
                 : <Text style={styles.primaryText}>CONFIRM COMPLETION</Text>}
             </TouchableOpacity>
           </View>
+        ) : null}
+
+        {['PAID', 'IN_PROGRESS', 'COMPLETED', 'RELEASED'].includes(job.status) ? (
+          <TouchableOpacity style={styles.dangerButton} accessibilityRole="button"
+            accessibilityLabel="Raise a service dispute"
+            disabled={busy !== null} onPress={disputeJob}>
+            <Text style={styles.dangerText}>SOMETHING WRONG? RAISE A DISPUTE</Text>
+          </TouchableOpacity>
         ) : null}
 
         {job.status === 'OPEN' ? (
