@@ -95,6 +95,19 @@ test('must reject nonproduction package, missing signing plugin and modified EAS
   assert.equal(check({},sha,app,changed).ok,false);
 });
 
+test('original signed APK migration refuses former developer Expo account or wrong new OTA endpoint',()=>{
+  const previousOwner=structuredClone(app);
+  previousOwner.expo.owner='pizn-01s-team';
+  assert.equal(check({},sha,previousOwner).ok,false);
+  const previousId=structuredClone(app);
+  previousId.expo.extra.eas.projectId='f0ab914b-3433-4816-80a2-0a94e6c6a066';
+  assert.equal(check({},sha,previousId).ok,false);
+  const previousUpdate=structuredClone(app);
+  previousUpdate.expo.updates.url='https://u.expo.dev/f0ab914b-3433-4816-80a2-0a94e6c6a066';
+  assert.equal(check({},sha,previousUpdate).ok,false);
+  assert.equal(check().ok,true);
+});
+
 test('production customer APK must never inherit read-only QA marker',()=>{
   assert.equal(check({EXPO_PUBLIC_QA_READ_ONLY:'1'}).ok,false);
   const flow=read('.github/workflows/carmazium-android-release-candidate.yml');
