@@ -69,7 +69,14 @@ const ACTIVE_CUSTOMER_JOB_STATUSES: ServiceJobStatus[] = [
  * street addresses are private until the accepted job is paid. Postcodes are
  * NOT private: an approved provider cannot quote a route without them.
  */
-type Viewer = { userId: string; role: UserRole; contractorProfileId?: string | null };
+type Viewer = {
+    userId: string;
+    role: UserRole;
+    contractorProfileId?: string | null;
+    /** TradeTeam's per-user quote permission, distinct from viewing or finishing accepted work. */
+    quoteAllowedByActor?: boolean;
+    businessOwnerUserId?: string | null;
+};
 
 const CUSTOMER_PUBLIC = { id: true, firstName: true } as const;
 const CUSTOMER_PRIVATE = { id: true, firstName: true, lastName: true, email: true, phone: true } as const;
@@ -1702,7 +1709,9 @@ export class ServicesService {
         const existing = await this.prisma.serviceQuote.findUnique({
             where: { jobId_contractorId: { jobId, contractorId: contractorProfileId } },
         });
-        const isNew = !existing || existing.status === ServiceQuoteStatus.WITHDRAWN;
+        // Reactivating a withdrawn, declined or expired quote is a new offer,
+        // not an edit to a quote the customer can still accept.
+        const isNew = existing?.status !== ServiceQuoteStatus.ACTIVE;
 
         const quote = await this.prisma.$transaction(async (tx) => {
             const locked = await tx.serviceJob.updateMany({
@@ -1922,9 +1931,20 @@ export class ServicesService {
         const eligibleProviderCount = job.status === ServiceJobStatus.OPEN
             ? await this.eligibleProviderCountForJob(job.serviceType, this.jobArea(job))
             : null;
+        // Presentation may only offer a quote when the business capability is
+        // current AND this user can quote. The mutation still re-checks all
+        // eligibility, payment readiness and race conditions authoritatively.
+        const canQuote = !!viewer.contractorProfileId
+            && !!isEligible
+            && viewer.quoteAllowedByActor !== false
+            && job.status === ServiceJobStatus.OPEN
+            && job.expiresAt > new Date()
+            && !isCustomer && !isAdmin
+            && job.customerId !== viewer.businessOwnerUserId;
 
         return {
             ...shaped,
+            canQuote,
             review,
             eligibleProviderCount,
             canReview: isCustomer && job.status === ServiceJobStatus.RELEASED && !review,
