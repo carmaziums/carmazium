@@ -12,7 +12,7 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/f0ab914b-3433-4816-80a2-0a94e6c6a066",
+      "url": "https://u.expo.dev/9c77bb81-205c-42f8-913e-b69a0953ec10",
       "enabled": true,
       "fallbackToCacheTimeout": 0,
       "checkAutomatically": "ON_LOAD"
@@ -247,7 +247,7 @@
     "web": {},
     "extra": {
       "eas": {
-        "projectId": "f0ab914b-3433-4816-80a2-0a94e6c6a066"
+        "projectId": "9c77bb81-205c-42f8-913e-b69a0953ec10"
       }
     },
     "plugins": [
@@ -320,6 +320,6 @@
         }
       ]
     ],
-    "owner": "pizn-01s-team"
+    "owner": "carmazium"
   }
 }
