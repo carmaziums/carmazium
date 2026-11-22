@@ -131,6 +131,16 @@ test('TradeXchange transactional email is not duplicated, while quote updates re
   assert.match(service, /isNew \? \{ dedicatedServiceEmail: true \} : undefined/);
 });
 
+test('TradeXchange keeps a single hub and matching website/native jobs controls', () => {
+  const webHub = read('src/app/dashboard/partner/page.tsx');
+  assert.doesNotMatch(webHub, /<Link\s+href="[^"]+"\s*>\s*<Button/);
+  assert.match(webHub, /buttonVariants\(\{ variant: "outline" \}\)/);
+  assert.match(webHub, /buttonVariants\(\{ size: "sm", variant: "outline" \}\)/);
+  assert.doesNotMatch(providerNative, /label="Job messages"/);
+  assert.match(providerNative, /label="Provider overview"/);
+  assert.match(providerNative, /label="Refresh jobs"/);
+});
+
 test('customer and provider job lists communicate opt-in and opt-out honestly', () => {
   for (const page of [providerWeb, providerNative]) {
     assert.match(page, /notification settings/i);
