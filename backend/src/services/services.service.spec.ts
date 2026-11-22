@@ -576,6 +576,24 @@ describe('Delivery & Recovery — end to end', () => {
         expect(session.metadata).toMatchObject({ type: 'SERVICE_JOB', jobId, paymentId: pay.id });
     });
 
+    it('keeps both parties private after acceptance until service payment is confirmed', async () => {
+        const customer = await svc.getJob({ userId: CUSTOMER.id, role: 'BUYER' as any }, jobId);
+        expect(customer.viewerRole).toBe('customer');
+        expect((customer as any).contractor.phone).toBeUndefined();
+        expect((customer as any).contractor.user.email).toBeUndefined();
+
+        const provider = await svc.getJob({
+            userId: TRUCKER.id,
+            role: 'CONTRACTOR' as any,
+            contractorProfileId: kentProfileId,
+        }, jobId);
+        expect(provider.viewerRole).toBe('contractor');
+        expect((provider as any).customer.phone).toBeUndefined();
+        expect((provider as any).customer.email).toBeUndefined();
+        expect(provider.pickupAddress).toBeNull();
+        expect(provider.deliveryAddress).toBeNull();
+    });
+
     it('a competing quote cannot be accepted after the first quote wins', async () => {
         const paymentsBefore = db.many('servicePayment', { jobId }).length;
         await expect(svc.acceptQuote(CUSTOMER.id, jobId, rivalQuoteId))
