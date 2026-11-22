@@ -567,13 +567,10 @@ export class ServiceOperationsService {
             await this.prisma.contractorCapability.update({
                 where: { id: capabilityId },
                 data: {
-                    status: CapabilityStatus.PENDING,
-                    appliedAt: now,
-                    reviewedAt: now,
-                    reviewedById: adminId,
+                    // Retain the previously approved business status and audit dates.
+                    // Incomplete or expired insurance blocks NEW jobs via verificationStatus,
+                    // but a second certificate must not erase the original approval.
                     verificationStatus: 'REVERIFICATION_REQUIRED',
-                    verificationCompletedAt: null,
-                    verificationExpiresAt: null,
                     verificationReminder30SentAt: null,
                     verificationReminder7SentAt: null,
                     reviewNote: 'Verification evidence changed and must be reviewed again before taking new work.',
@@ -934,13 +931,10 @@ export class ServiceOperationsService {
                 }
                 : capability.status === CapabilityStatus.APPROVED
                     ? {
-                        status: CapabilityStatus.PENDING,
-                        appliedAt: now,
-                        reviewedAt: now,
-                        reviewedById: adminId,
+                        // Preserve the business approval when one of several required
+                        // insurance certificates is still missing. New work is blocked
+                        // by verificationStatus, not by erasing the audit record.
                         verificationStatus: 'REVERIFICATION_REQUIRED',
-                        verificationCompletedAt: null,
-                        verificationExpiresAt: null,
                         verificationReminder30SentAt: null,
                         verificationReminder7SentAt: null,
                         reviewNote: 'Verification evidence is no longer sufficient. Re-verification is required before taking new work.',
