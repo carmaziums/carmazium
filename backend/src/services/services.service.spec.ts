@@ -454,6 +454,11 @@ describe('Delivery & Recovery — end to end', () => {
         const q2 = await svc.upsertQuote(rivalProfileId, ['DELIVERY'] as any, RIVAL.id, jobId, { amountPence: 15000 } as any);
         kentQuoteId = q1.id; rivalQuoteId = q2.id;
         expect(notificationsTo(CUSTOMER.id).filter((t) => t === 'SERVICE_QUOTE_RECEIVED')).toHaveLength(2);
+        const received = notify.mock.calls
+            .map(call => call[0])
+            .filter(message => message.userId === CUSTOMER.id && message.type === 'SERVICE_QUOTE_RECEIVED');
+        expect(received).toHaveLength(2);
+        expect(received.every(message => message.data?.dedicatedServiceEmail === true)).toBe(true);
         expect(sendBrandedEmail).toHaveBeenCalledWith(expect.objectContaining({ to: CUSTOMER.email, subject: expect.stringContaining('£180.00') }));
     });
 
@@ -461,6 +466,12 @@ describe('Delivery & Recovery — end to end', () => {
         const q = await svc.upsertQuote(kentProfileId, ['DELIVERY'] as any, TRUCKER.id, jobId, { amountPence: 17000 } as any);
         expect(q.id).toBe(kentQuoteId);
         expect(db.many('serviceQuote', { jobId })).toHaveLength(2);
+        const changed = notify.mock.calls
+            .map(call => call[0])
+            .filter(message => message.userId === CUSTOMER.id && message.type === 'SERVICE_QUOTE_RECEIVED')
+            .at(-1);
+        expect(changed.title).toBe('Quote updated');
+        expect(changed.data?.dedicatedServiceEmail).toBeUndefined();
     });
 
     it('withdrawal cannot create a second quote and reactivation announces a new offer', async () => {
