@@ -821,4 +821,30 @@ describe('Vehicle Inspection — end to end', () => {
         expect(db.one('serviceJob', { id: inspectionJobId })!.status).toBe('RELEASED');
         expect(payment.status).toBe('RELEASED');
     });
+
+    it('keeps authorised inspection work visible after verification expiry and filters it server-side', async () => {
+        const capability = db.one('contractorCapability', {
+            contractorId: providerProfileId, serviceType: 'INSPECTION',
+        })!;
+        capability.verificationExpiresAt = new Date(Date.now() - 60_000);
+
+        const inspectionWork = await svc.assignedPage(providerProfileId,
+            ['DELIVERY', 'INSPECTION'] as any, { serviceType: 'INSPECTION' as any, limit: 50 });
+        expect(inspectionWork.items.some((job) => job.id === inspectionJobId)).toBe(true);
+        expect(inspectionWork.items.every((job) => job.serviceType === 'INSPECTION')).toBe(true);
+
+        // A caller with delivery permission is never granted the inspection
+        // history merely by supplying ?serviceType=INSPECTION.
+        const denied = await svc.assignedPage(providerProfileId,
+            ['DELIVERY'] as any, { serviceType: 'INSPECTION' as any });
+        expect(denied.items).toEqual([]);
+        expect(denied.nextCursor).toBeNull();
+
+        // In the opposite direction, a selected delivery filter cannot leak
+        // other service types into this inspected-only work list.
+        const otherService = await svc.assignedPage(providerProfileId,
+            ['INSPECTION'] as any, { serviceType: 'DELIVERY' as any });
+        expect(otherService.items).toEqual([]);
+        expect(otherService.nextCursor).toBeNull();
+    });
 });
