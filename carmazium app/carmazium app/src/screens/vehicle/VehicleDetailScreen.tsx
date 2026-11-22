@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
   Linking,
   LayoutAnimation,
+  type GestureResponderEvent,
 } from 'react-native';
 // expo-image: caching/recycling for the swipeable photo gallery + thumbnail
 // strip — users flick through many high-res car photos per listing here.
@@ -781,12 +782,44 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       }
     });
 
+  // On some Android fullscreen modals GestureDetector receives a pan update
+  // but never sends its onEnd callback. The native touch stream below provides
+  // a second route to the SAME bounded photo-index logic. Deduplicate both
+  // routes so a correctly recognised gesture never skips two photos.
+  const fullscreenTouchStart = useRef<{ x: number; y: number } | null>(null);
+  const lastFullscreenSwipeAt = useRef(0);
   const advanceFullscreenFromSwipe = useCallback((translationX: number, velocityX: number) => {
+    const threshold = Math.max(55, SCREEN_WIDTH * 0.18);
+    const validSwipe = Math.abs(translationX) >= threshold ||
+      (Math.abs(translationX) > 24 && Math.abs(velocityX) >= 650);
+    if (!validSwipe) return;
+    const now = Date.now();
+    if (now - lastFullscreenSwipeAt.current < 260) return;
+    lastFullscreenSwipeAt.current = now;
     setFullscreenIndex(currentIndex => getNextFullscreenPhotoIndex({
       currentIndex, photoCount: totalImages, translationX, velocityX,
       zoomScale: 1, viewportWidth: SCREEN_WIDTH,
     }));
   }, [totalImages]);
+
+  const beginFullscreenTouch = useCallback((event: GestureResponderEvent) => {
+    const { touches, pageX, pageY } = event.nativeEvent;
+    fullscreenTouchStart.current = touches?.length === 1
+      ? { x: pageX, y: pageY } : null;
+  }, []);
+
+  const finishFullscreenTouch = useCallback((event: GestureResponderEvent) => {
+    const start = fullscreenTouchStart.current;
+    fullscreenTouchStart.current = null;
+    if (!start || !fullscreenVisible || pinchScale.value > 1.05) return;
+    const point = event.nativeEvent.changedTouches?.[0] ?? event.nativeEvent;
+    const translationX = point.pageX - start.x;
+    const translationY = point.pageY - start.y;
+    // Ignore vertical drags and short taps; these must not change photographs.
+    if (Math.abs(translationX) < Math.max(55, SCREEN_WIDTH * 0.18) ||
+        Math.abs(translationX) < Math.abs(translationY) * 1.4) return;
+    advanceFullscreenFromSwipe(translationX, 0);
+  }, [advanceFullscreenFromSwipe, fullscreenVisible, pinchScale]);
 
   const moveFullscreenBy = useCallback((delta: number) => {
     setFullscreenIndex(current => clampPhotoIndex(current + delta, totalImages));
@@ -2499,8 +2532,14 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Zoomable image */}
           <GestureDetector gesture={combinedFullscreenGesture}>
-            <Animated.View style={[styles.fullscreenImageWrap, fullscreenAnimatedStyle]}>
+            <Animated.View
+              style={[styles.fullscreenImageWrap, fullscreenAnimatedStyle]}
+              onTouchStart={beginFullscreenTouch}
+              onTouchEnd={finishFullscreenTouch}
+              onTouchCancel={() => { fullscreenTouchStart.current = null; }}
+            >
               <Image
+                pointerEvents="none"
                 source={{ uri: images[fullscreenIndex] }}
                 style={styles.fullscreenImage}
                 contentFit="contain"
