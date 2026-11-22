@@ -518,9 +518,11 @@ export async function getJobFeedPage(
 export async function getAssignedJobsPage(
   cursor?: string,
   limit = 20,
+  serviceType?: ServiceType,
 ): Promise<CursorPage<ServiceJob>> {
   const query = [
     `limit=${encodeURIComponent(String(limit))}`,
+    serviceType ? `serviceType=${encodeURIComponent(serviceType)}` : null,
     cursor ? `cursor=${encodeURIComponent(cursor)}` : null,
   ].filter(Boolean).join('&');
   const r = await apiClient<{ data: CursorPage<ServiceJob> }>(`/services/jobs/assigned?${query}`);
