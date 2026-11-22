@@ -21,7 +21,7 @@
     "backend/src/payments/payments.service.ts": "ddf3f1d4246f516df82da5e3e2f21e09e255623288b7d86f8a02b84573428dd3",
     "backend/src/sale-cancellations/sale-cancellations.service.ts": "0c53e375cdedb595a7afc32d0122608b34fd988717bcf1201caa5998714a1b1f",
     "backend/src/services/warranty-retail-tariff.ts": "f61a609b1a5fdaea532e92b4b9f0da0b17fd91f0d5ae1f4153ed39765aedbf10",
-    "carmazium app/carmazium app/src/components/DashboardCards.tsx": "933d1f5f209273df367c7f2b3479187bf773cef122151f476696ea35504a6067",
+    "carmazium app/carmazium app/src/components/DashboardCards.tsx": "bd61ea13f10cb628fba966b5ff05d42cb968209bc0edf7d7f7c5bcdbdb5f7e72",
     "carmazium app/carmazium app/src/navigation/TabNavigator.tsx": "4f6cfd07c4daff1ed7921eba6c9c259391b340aad93380a5332b0171ac01e40e",
     "carmazium app/carmazium app/src/screens/account/UnifiedDashboardScreen.tsx": "09dfe812a8a0c246318bd61c92e4acd1b992972fad385e34cf8a1f456f784f4b",
     "carmazium app/carmazium app/src/screens/buyer/BuyerDashboardScreen.tsx": "18ca69747ccbe1fa176feba5d358d05a9bf61a95d651bc68d1ef9fd981b6b130",
