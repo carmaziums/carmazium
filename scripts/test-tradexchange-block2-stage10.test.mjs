@@ -35,6 +35,39 @@ test('one original Android application and native TradeXchange detail flows rema
   assert.match(read(originalApp+'src/screens/main/ProviderOverviewScreen.tsx'), /navigation\.navigate\('ProviderMessages'\)/);
 });
 
+test('iPhone and Android share one native TradeXchange app and preserve separate signed-release gates', () => {
+  const app = JSON.parse(read(originalApp + 'app.json')).expo;
+  const eas = JSON.parse(read(originalApp + 'eas.json'));
+  assert.equal(app.ios.bundleIdentifier, 'uk.carmazium.app');
+  assert.equal(app.ios.bundleIdentifier, app.android.package);
+  assert.ok(app.ios.associatedDomains.includes('applinks:carmazium.com'));
+  assert.ok(app.ios.associatedDomains.includes('applinks:www.carmazium.com'));
+  assert.equal(eas.build.production.channel, 'production');
+  assert.equal(eas.build.production.env.APP_ENV, 'production');
+  assert.equal(eas.build.production.android.buildType, 'app-bundle');
+  assert.ok(eas.build.production.ios);
+  assert.ok(app.extra?.eas?.projectId);
+  const login = read(originalApp + 'src/screens/auth/LoginScreen.tsx');
+  const signup = read(originalApp + 'src/screens/auth/SignupScreen.tsx');
+  assert.match(login, /'google' \| 'apple'/);
+  assert.match(login, /supabase\.auth\.signInWithOAuth/);
+  assert.match(login, /carmazium:\/\/auth\/callback/);
+  assert.match(signup, /provider: 'apple'/);
+  const linking = read(originalApp + 'src/navigation/linking.ts');
+  assert.match(linking, /CustomerServiceJobDetail/);
+  assert.match(linking, /ProviderJobDetail/);
+  const iosWorkflow = read('.github/workflows/carmazium-ios-release-candidate.yml');
+  assert.match(iosWorkflow, /refs\/heads\/main/);
+  assert.match(iosWorkflow, /secrets\.EXPO_TOKEN \|\| secrets\.EAS_TOKEN/);
+  assert.match(iosWorkflow, /eas-cli@16\.18\.0 build --platform ios --profile production/);
+  const report = assessCustomerAppRelease({});
+  assert.equal(report.ios.status, 'NO_GO');
+  assert.equal(report.public_download_approved, false);
+  const iosReasons = new Set(report.ios.blockers.map(item => item.id));
+  assert.ok(iosReasons.has('IOS_TESTFLIGHT'));
+  assert.ok(iosReasons.has('OWNER_IOS_SIGNOFF'));
+});
+
 test('backend enforces authenticated customer, provider and staff-specific access on one job API', () => {
   const controller = read('backend/src/services/services.controller.ts');
   const team = read('backend/src/services/trade-team.service.ts');
