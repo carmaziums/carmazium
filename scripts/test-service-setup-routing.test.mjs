@@ -16,7 +16,7 @@ for (const type of ['DELIVERY', 'INSPECTION']) test(`${type} opens its own newly
 });
 test('wrong service, invalid response and unsafe path never route the user to another application', () => {
     for (const response of [null, {}, { id: 'x', serviceType: 'WARRANTY' }, { id: '../x', serviceType: 'DELIVERY' }, { id: 'x/y', serviceType: 'DELIVERY' }, { id: 'x', serviceType: 'INSPECTION' }]) {
-        assert.throws(() => serviceVerificationPath(response, 'DELIVERY'), /could not be opened/);
+        assert.throws(() => serviceVerificationPath(response, 'DELIVERY'), /could not be verified/);
     }
 });
 test('partnership topics prepare only the matching public enquiry subject', () => {

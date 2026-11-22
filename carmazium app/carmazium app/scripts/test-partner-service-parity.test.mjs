@@ -13,19 +13,24 @@ const cap=(serviceType,status='APPROVED')=>({id:serviceType+'-test',serviceType,
 async function render(name,overrides={}){
  const nav=[],calls=[];
  const services={SERVICE_LABELS:{DELIVERY:'Delivery & Recovery',INSPECTION:'Vehicle Inspections'},getPartnerProfile:async()=>profile,getPartnerTeam:async()=>({capabilities:[cap('DELIVERY'),cap('INSPECTION')],stripeConnect:{complete:true}}),getMyCapabilities:async()=>({profile:null,capabilities:[cap('DELIVERY'),cap('INSPECTION')],stripeConnect:{complete:true}}),applyPartnerCapability:async type=>{calls.push(type);return cap(type,'PENDING');},updatePartnerServicePreference:async(key,enabled)=>{calls.push({key,enabled});},...overrides};
- const modules={react:React,'react-native':{...Object.fromEntries(['View','Text','ScrollView','TextInput','StatusBar','ActivityIndicator','Switch'].map(n=>[n,n])),StyleSheet:{create:x=>x},useWindowDimensions:()=>({width:600,fontScale:1}),Alert:{alert(){}},Linking:{openURL:async()=>{}},AppState:{addEventListener:()=>({remove(){}})}},'@react-navigation/native':{useFocusEffect:cb=>React.useEffect(cb,[cb])},'@/components/BrandIcon':{Ionicons:'Icon'},'../../components/WebsiteTopBar':{WebsiteTopBar:'WebsiteTopBar'},'../../components/tradexchange/ProviderDocumentsSection':{ProviderDocumentsSection:'ProviderDocumentsSection'},'../../components/Button':{Button:'Button'},'../../components/dealer/DealerPageTabs':{DealerPageTabs:'DealerPageTabs'},'../../constants/colors':{Colors:{}},'../../constants/typography':{FontFamily:{},FontSize:{}},'../../store/authStore':{useAuthStore:cb=>cb({accountRole:overrides.__accountRole??'dealer',initializeAuth:async()=>{}})},'../../lib/servicesApi':services,'../../lib/apiClient':{apiClient:async()=>{throw Error('Unexpected write');}}};
+ const modules={react:React,'react-native':{...Object.fromEntries(['View','Text','ScrollView','TextInput','StatusBar','ActivityIndicator','Switch'].map(n=>[n,n])),StyleSheet:{create:x=>x},useWindowDimensions:()=>({width:600,fontScale:1}),Alert:{alert(){}},Linking:{openURL:async()=>{}},AppState:{addEventListener:()=>({remove(){}})}},'@react-navigation/native':{useFocusEffect:cb=>React.useEffect(cb,[cb])},'@/components/BrandIcon':{Ionicons:'Icon'},'../../components/WebsiteTopBar':{WebsiteTopBar:'WebsiteTopBar'},'../../components/tradexchange/ProviderDocumentsSection':{ProviderDocumentsSection:'ProviderDocumentsSection'},'../../components/tradexchange/ProviderSettingsSections':{ProviderBusinessPaymentsSection:'ProviderBusinessPaymentsSection',ProviderJobPreferencesSection:'ProviderJobPreferencesSection'},'../../components/Button':{Button:'Button'},'../../components/dealer/DealerPageTabs':{DealerPageTabs:'DealerPageTabs'},'../../constants/colors':{Colors:{}},'../../constants/typography':{FontFamily:{},FontSize:{}},'../../store/authStore':{useAuthStore:cb=>cb({accountRole:overrides.__accountRole??'dealer',initializeAuth:async()=>{}})},'../../lib/servicesApi':services,'../../lib/apiClient':{apiClient:async()=>{throw Error('Unexpected write');}}};
  const rules={};runInNewContext(ts.transpileModule(readFileSync(new URL('../src/lib/tradeXchangeProviderJobLoad.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:rules,Error});
  modules['../../lib/tradeXchangeProviderJobLoad']=rules;modules['../../constants/spacing']={Elevation:{},Radius:{}};modules['react-native'].TouchableOpacity='Press';modules['react-native'].RefreshControl='Refresh';modules['react-native'].FlatList=({ListHeaderComponent,ListEmptyComponent,data,renderItem,onEndReached})=>React.createElement('List',{onEndReached},ListHeaderComponent,data.length?data.map((item)=>React.createElement(React.Fragment,{key:item.id},renderItem({item}))):ListEmptyComponent);
  const exports={};const source=readFileSync(new URL('../src/screens/main/'+name+'.tsx',import.meta.url),'utf8');runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:n=>{assert.ok(n in modules,n);return modules[n];}});
  let tree;await act(async()=>{tree=create(React.createElement(exports[name],{navigation:{navigate:(...a)=>nav.push(a)}}));});return{tree,nav,calls};
 }
-test('Partner home has one My Services section and keeps payouts and team tools',async()=>{
- const h=await render('PartnerDashboardScreen');assert.match(text(h.tree),/My Services/);assert.match(text(h.tree),/Business payouts enabled/);assert.match(text(h.tree),/One team, service permissions/);assert.doesNotMatch(text(h.tree),/Your add-ons|My dealership services/);assert.equal(h.tree.root.findAllByType('Switch').length,2);assert.equal(h.calls.length,0);
- await click(h.tree,'Edit business details');assert.equal(h.nav[0][1].section,'business');await click(h.tree,'View jobs');assert.equal(h.nav[1][0],'ProviderJobs');await act(async()=>h.tree.unmount());
+test('Partner home has one My Services section and inline business, documents and preferences',async()=>{
+ const h=await render('PartnerDashboardScreen');assert.match(text(h.tree),/My Services/);assert.doesNotMatch(text(h.tree),/Your add-ons|My dealership services|One team, service permissions/);
+ assert.equal(h.tree.root.findAllByType('Switch').length,2);assert.equal(h.tree.root.findAllByType('ProviderBusinessPaymentsSection').length,1);
+ assert.equal(h.tree.root.findAllByType('ProviderDocumentsSection').length,1);
+ assert.equal(h.tree.root.findAllByType('ProviderJobPreferencesSection').length,1);
+ assert.equal(h.tree.root.findByType('ProviderBusinessPaymentsSection').props.stripeComplete,true);
+ assert.equal(h.calls.length,0);
+ await click(h.tree,'View jobs');assert.equal(h.nav[0][0],'ProviderJobs');await act(async()=>h.tree.unmount());
 });
 test('Pending setup opens existing declaration without reapplying and failed status blocks applications',async()=>{
  const h=await render('PartnerDashboardScreen',{getPartnerTeam:async()=>({capabilities:[cap('DELIVERY','PENDING')],stripeConnect:{complete:false}})});
- await click(h.tree,'Continue setup');assert.equal(h.nav[0][1].capabilityId,'DELIVERY-test');assert.equal(h.calls.length,0);await click(h.tree,'Apply for service');assert.equal(h.calls[0],'INSPECTION');assert.equal(h.nav[1][1].capabilityId,'INSPECTION-test');await act(async()=>h.tree.unmount());
+ await click(h.tree,'Continue setup');assert.equal(h.tree.root.findByType('ProviderBusinessPaymentsSection').props.openRequest,1);assert.equal(h.calls.length,0);await click(h.tree,'Apply for service');assert.equal(h.calls[0],'INSPECTION');assert.equal(h.tree.root.findByType('ProviderBusinessPaymentsSection').props.openRequest,2);assert.equal(h.nav.length,0);await act(async()=>h.tree.unmount());
  const f=await render('PartnerDashboardScreen',{getPartnerTeam:async()=>{throw Error('offline');}});assert.match(text(f.tree),/Status unavailable/);assert.equal(f.tree.root.findAllByType('Switch').filter(n=>!n.props.disabled).length,0);await act(async()=>f.tree.unmount());
 });
 test('Services shows read-only business and correct declaration, matching and job destinations',async()=>{
@@ -100,7 +105,7 @@ test('Unverified existing dealer goes to saved KYC rather than creating another 
    getPartnerProfile:async()=>({role:'DEALER',dealerProfile:{companyName:'Saved dealer',isVerified:false,kyc:{status:'PENDING'}}}),
    getPartnerTeam:async()=>({capabilities:[],stripeConnect:{complete:false}}),
  });
- await click(h.tree,'Continue dealer verification');
+ await act(async()=>h.tree.root.findByType('ProviderBusinessPaymentsSection').props.onVerifyDealer());
  assert.equal(h.nav.at(-1)[0],'DealerKYC');
  assert.equal(h.calls.length,0);
  await act(async()=>h.tree.unmount());
@@ -132,7 +137,7 @@ test('Approved but expired provider is not incorrectly advertised as ready for n
  });
  assert.match(text(h.tree),/Verification required/);
  await click(h.tree,'Review verification');
- assert.equal(h.nav.at(-1)[0],'ProviderVerification');
- assert.equal(h.nav.at(-1)[1].capabilityId,'DELIVERY-test');
+ assert.equal(h.tree.root.findByType('ProviderBusinessPaymentsSection').props.openRequest,1);
+ assert.equal(h.nav.length,0);
  await act(async()=>h.tree.unmount());
 });

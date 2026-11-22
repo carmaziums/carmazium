@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   AppState,
-  Linking,
   ScrollView,
   StatusBar,
   Switch,
@@ -26,7 +25,6 @@ import {
   PartnerProfile,
   PartnerTeam,
   applyPartnerCapability,
-  createStripeConnectOnboarding,
   elevateToPartner,
   getPartnerProfile,
   getPartnerTeam,
@@ -36,6 +34,7 @@ import {
 } from '../../lib/servicesApi';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { ProviderDocumentsSection } from '../../components/tradexchange/ProviderDocumentsSection';
+import { ProviderBusinessPaymentsSection, ProviderJobPreferencesSection } from '../../components/tradexchange/ProviderSettingsSections';
 import type { ContractorCapability } from '../../lib/servicesApi';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PartnerDashboard'>;
@@ -54,6 +53,20 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const [phone, setPhone] = useState('');
   const [businessAddress, setBusinessAddress] = useState('');
   const [servicesExpanded, setServicesExpanded] = useState(true);
+  const [businessOpenRequest, setBusinessOpenRequest] = useState(0);
+  const [preferencesOpenRequest, setPreferencesOpenRequest] = useState(0);
+  const [legacyPayoutComplete, setLegacyPayoutComplete] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const businessY = useRef(0);
+  const preferencesY = useRef(0);
+  const openBusiness = () => setBusinessOpenRequest(v => v + 1);
+  const openPreferences = () => setPreferencesOpenRequest(v => v + 1);
+  useEffect(() => {
+    if (!loading && businessOpenRequest > 0) scrollRef.current?.scrollTo({ y: Math.max(0, businessY.current - 20), animated: true });
+  }, [loading, businessOpenRequest]);
+  useEffect(() => {
+    if (!loading && preferencesOpenRequest > 0) scrollRef.current?.scrollTo({ y: Math.max(0, preferencesY.current - 20), animated: true });
+  }, [loading, preferencesOpenRequest]);
 
   const generation = useRef(0);
   const load = useCallback(async () => {
@@ -82,7 +95,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
       } else {
         if (nextProfile.role === 'CONTRACTOR') {
           const mine = await getMyCapabilities();
-          if (request === generation.current) setLegacyCapabilities(mine.capabilities);
+          if (request === generation.current) { setLegacyCapabilities(mine.capabilities); setLegacyPayoutComplete(mine.stripeConnect.complete); }
         }
         setTeam(null);
       }
@@ -149,7 +162,8 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const capability = await applyPartnerCapability(serviceType);
       if (!capability?.id || !/^[a-zA-Z0-9_-]+$/.test(capability.id) || capability.serviceType !== serviceType) throw Error('Service setup is unavailable. Refresh and try again.');
-      navigation.navigate('ProviderVerification', { capabilityId: capability.id });
+      await load();
+      openBusiness();
     } catch (err: any) {
       setError(err?.message || 'Could not add this service.');
     } finally {
@@ -171,19 +185,6 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const startStripe = async () => {
-    setBusy('stripe');
-    setError(null);
-    try {
-      const url = await createStripeConnectOnboarding();
-      await Linking.openURL(url);
-    } catch (err: any) {
-      setError(err?.message || 'Could not start Stripe payout setup.');
-    } finally {
-      setBusy(null);
-    }
-  };
-
   const isPartnerRole = profile?.role === 'DEALER';
   const byType = new Map((team?.capabilities ?? []).map((cap) => [cap.serviceType, cap]));
 
@@ -195,14 +196,13 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
       {loading ? (
         <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.hero}>
-            <Text style={styles.eyebrow}>PARTNER ACCOUNT</Text>
-            <Text style={styles.title}>Partner Dashboard</Text>
+            <Text style={styles.eyebrow}>TRADEXCHANGE</Text>
+            <Text style={styles.title}>TradeXchange</Text>
             <Text style={styles.sub}>
               One CarMazium business account. Add only the services your business provides and keep them all under the same login.
             </Text>
-            {profile?.dealerProfile && <Button label="Manage Team" variant="outline" onPress={() => navigation.navigate('DealerTeam')} />}
           </View>
 
           {error ? (
@@ -219,7 +219,9 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
               <Button label="My services" onPress={() => navigation.navigate('ProviderCapabilities')} />
               <Button label="Find jobs" variant="outline" onPress={() => navigation.navigate('ProviderJobs', { initialTab: 'open' })} />
               <Button label="My work" variant="outline" onPress={() => navigation.navigate('ProviderJobs', { initialTab: 'assigned' })} />
+              <ProviderBusinessPaymentsSection capabilities={legacyCapabilities} stripeComplete={legacyPayoutComplete} openRequest={businessOpenRequest} />
               <ProviderDocumentsSection capabilities={legacyCapabilities} />
+              <ProviderJobPreferencesSection capabilities={legacyCapabilities} openRequest={preferencesOpenRequest} />
             </View>
           ) : !isPartnerRole ? (
             <View style={styles.card}>
@@ -235,24 +237,11 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.cardText}>Add these details once. CarMazium reuses them across every service you activate.</Text>
               <TextInput style={styles.input} value={companyName} onChangeText={setCompanyName} placeholder="Business or trading name" placeholderTextColor={Colors.textMuted} />
               <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Business phone" placeholderTextColor={Colors.textMuted} keyboardType="phone-pad" />
-              <TextInput style={styles.input} value={businessAddress} onChangeText={setBusinessAddress} placeholder="Business address / service area" placeholderTextColor={Colors.textMuted} multiline />
+              <TextInput style={styles.input} value={businessAddress} onChangeText={setBusinessAddress} placeholder="Registered business address" placeholderTextColor={Colors.textMuted} multiline />
               <Button label="Save Partner business" loading={busy === 'business'} disabled={!!busy} onPress={() => void saveBusiness()} />
             </View>
           ) : (
             <>
-              <View style={styles.card}>
-                <View style={styles.rowBetween}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.label}>PARTNER BUSINESS</Text>
-                    <Text style={styles.cardTitle}>{profile.dealerProfile.companyName || team?.companyName || 'Partner business'}</Text>
-
-                  </View>
-                  <Button label="Edit business details" variant="outline" onPress={() => navigation.navigate('Settings', { section: 'business' })} />
-                  {!profile.dealerProfile.isVerified && <Button label="Continue dealer verification" onPress={() => navigation.navigate('DealerKYC')} />}
-                </View>
-              </View>
-
-
               <View style={styles.card}>
                 <TouchableOpacity accessibilityRole="button" accessibilityLabel="My Services" accessibilityState={{ expanded: servicesExpanded }} onPress={() => setServicesExpanded(value => !value)}>
                   <View style={[styles.rowBetween, { flexDirection: 'row', alignItems: 'center' }]}>
@@ -297,12 +286,12 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                       !cap || cap.status === 'REJECTED'
                         ? <Button label={cap ? 'Reapply' : 'Apply for service'} loading={busy === type} disabled={!!busy} onPress={() => void applyService(type)} />
                         : cap.status === 'PENDING' || (cap.status === 'APPROVED' && !verified)
-                          ? <Button label={cap.status === 'PENDING' ? 'Continue setup' : 'Review verification'} onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} />
+                          ? <Button label={cap.status === 'PENDING' ? 'Continue setup' : 'Review verification'} onPress={openBusiness} />
                           : cap.status === 'SUSPENDED'
                             ? <Text style={styles.cardText}>Contact CarMazium to reactivate this service.</Text>
                             : <View style={{ gap: 8 }}>
                                 <Button label="View jobs" variant="outline" onPress={() => navigation.navigate('ProviderJobs')} />
-                                {!coverage && <Button label="Set working areas" variant="outline" onPress={() => navigation.navigate('ProviderMatching', { capabilityId: cap.id })} />}
+                                {!coverage && <Button label="Set working areas" variant="outline" onPress={openPreferences} />}
                               </View>
                     )}
                   </View>;
@@ -310,27 +299,13 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 {servicesExpanded && <Text style={styles.cardText}>Turning a service on does not approve it. CarMazium still checks verification, working areas, payout setup and account eligibility before new work.</Text>}
               </View>
 
+              <View onLayout={event => { businessY.current = event.nativeEvent.layout.y; }}>
+                <ProviderBusinessPaymentsSection capabilities={team?.capabilities ?? []} dealer={profile.dealerProfile} stripeComplete={team?.stripeConnect.complete}
+                  onSaved={load} openRequest={businessOpenRequest} onVerifyDealer={() => navigation.navigate("DealerKYC")} />
+              </View>
               <ProviderDocumentsSection capabilities={team?.capabilities ?? []} />
-
-              <View style={styles.card}>
-                  <Text style={styles.cardTitle}>TradeXchange payouts</Text>
-                  <Text style={styles.cardText}>
-                    For Delivery and Inspection, the job poster always pays through CarMazium. CarMazium deducts 9% and the remaining 91% is paid to the Partner business Stripe Connect account.
-                  </Text>
-                  {team?.stripeConnect.complete ? (
-                    <View style={styles.successRow}>
-                      <Ionicons name="checkmark-circle" size={18} color={Colors.accentGreen} />
-                      <Text style={styles.successText}>Business payouts enabled</Text>
-                    </View>
-                  ) : (
-                    <Button label="Set up business payouts" variant="outline" loading={busy === 'stripe'} disabled={!team || !!busy} onPress={() => void startStripe()} />
-                  )}
-                </View>
-
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>One team, service permissions</Text>
-                <Text style={styles.cardText}>Invite staff once, then decide who can quote, manage or complete Delivery and Inspection jobs on behalf of this business. Staff never receive the CarMazium payout personally.</Text>
-                <Button label="Manage Partner team" variant="outline" onPress={() => navigation.navigate('DealerTeam')} />
+              <View onLayout={event => { preferencesY.current = event.nativeEvent.layout.y; }}>
+                <ProviderJobPreferencesSection capabilities={team?.capabilities ?? []} openRequest={preferencesOpenRequest} />
               </View>
 
             </>

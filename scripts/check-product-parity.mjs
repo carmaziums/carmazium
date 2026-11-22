@@ -303,6 +303,8 @@ const mobileAuctionComplete = read('carmazium app/carmazium app/src/screens/main
 const mobilePartnerDashboard = read('carmazium app/carmazium app/src/screens/main/PartnerDashboardScreen.tsx');
 const mobileProviderCapabilities = read('carmazium app/carmazium app/src/screens/main/ProviderCapabilitiesScreen.tsx');
 const mobileProviderVerification = read('carmazium app/carmazium app/src/screens/main/ProviderVerificationScreen.tsx');
+const mobileProviderSettings = read('carmazium app/carmazium app/src/components/tradexchange/ProviderSettingsSections.tsx');
+const webProviderSettings = read('src/components/tradexchange/ProviderSettingsSections.tsx');
 const mobileProviderDocuments = read('carmazium app/carmazium app/src/components/tradexchange/ProviderDocumentsSection.tsx');
 const webProviderDocuments = read('src/components/tradexchange/ProviderDocumentsSection.tsx');
 const mobileProviderMatching = read('carmazium app/carmazium app/src/screens/main/ProviderMatchingScreen.tsx');
@@ -1105,7 +1107,11 @@ if (
 if (
   !mobilePartnerDashboard.includes('getPartnerTeam') ||
   !mobilePartnerDashboard.includes('applyPartnerCapability') ||
-  !mobilePartnerDashboard.includes('createStripeConnectOnboarding') ||
+  !mobileProviderSettings.includes('createStripeConnectOnboarding') ||
+  !mobileProviderSettings.includes('submitProviderDeclaration') ||
+  !mobileProviderSettings.includes('updateJobMatching') ||
+  !webProviderSettings.includes('submitProviderDeclaration') ||
+  !webProviderSettings.includes('updateJobMatching') ||
   !mobileProviderCapabilities.includes("navigation.navigate('ProviderVerification'") ||
   !mobileProviderCapabilities.includes("navigation.navigate('ProviderMatching'") ||
   !mobileProviderVerification.includes('getCapabilityVerification') ||

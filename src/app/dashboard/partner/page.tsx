@@ -6,17 +6,14 @@ import { useRouter } from "next/navigation"
 import {
     ArrowRight,
     Building2,
-    CheckCircle2,
-    CreditCard,
     Loader2,
-    ShieldCheck,
-    Users,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
 import { Button } from "@/components/ui/Button"
-import { serviceVerificationPath, type JobService } from "@/lib/serviceSetupRouting"
+import { validatedServiceCapability, type JobService } from "@/lib/serviceSetupRouting"
 import { ProviderDocumentsSection } from "@/components/tradexchange/ProviderDocumentsSection"
+import { ProviderBusinessPaymentsSection, ProviderJobPreferencesSection } from "@/components/tradexchange/ProviderSettingsSections"
 import { getMyCapabilities, type ContractorCapability } from "@/lib/servicesApi"
 
 type CapabilityStatus = "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED"
@@ -50,6 +47,7 @@ export default function PartnerDashboardPage() {
     const [businessAddress, setBusinessAddress] = React.useState("")
     const [servicesExpanded, setServicesExpanded] = React.useState(true)
     const [legacyCapabilities, setLegacyCapabilities] = React.useState<ContractorCapability[]>([])
+    const [legacyPayoutComplete, setLegacyPayoutComplete] = React.useState(false)
 
     const role = profile?.role || ""
     const isPartnerRole = role === "DEALER"
@@ -68,7 +66,7 @@ export default function PartnerDashboardPage() {
         if (!isLegacyProvider || !user) return
         let cancelled = false
         getMyCapabilities().then(result => {
-            if (!cancelled) setLegacyCapabilities(result.capabilities)
+            if (!cancelled) { setLegacyCapabilities(result.capabilities); setLegacyPayoutComplete(result.stripeConnect.complete) }
         }).catch(() => { if (!cancelled) setError("Could not load service documents. Refresh to retry.") })
         return () => { cancelled = true }
     }, [isLegacyProvider, user])
@@ -136,7 +134,10 @@ export default function PartnerDashboardPage() {
         setError(null)
         try {
             const response = await apiClient(`/services/team/capabilities/${serviceType}`, { method: "POST" })
-            router.push(serviceVerificationPath(response, serviceType))
+            validatedServiceCapability(response, serviceType)
+            await loadTeam()
+            window.location.hash = "provider-business"
+            window.dispatchEvent(new HashChangeEvent("hashchange"))
         } catch (e: any) {
             setError(e?.message || "Could not add this service")
         } finally {
@@ -158,27 +159,6 @@ export default function PartnerDashboardPage() {
         } catch (e: any) {
             setError(e?.message || "Could not update your service preference")
         } finally {
-            setBusy(null)
-        }
-    }
-
-    const connectStripe = async () => {
-        setBusy("stripe")
-        setError(null)
-        try {
-            const origin = window.location.origin
-            const response = await apiClient<{ data?: { url: string }; url?: string }>("/users/stripe-connect/onboard", {
-                method: "POST",
-                body: JSON.stringify({
-                    returnUrl: `${origin}/dashboard/partner?stripe=done`,
-                    refreshUrl: `${origin}/dashboard/partner`,
-                }),
-            })
-            const url = response.data?.url ?? response.url
-            if (!url) throw new Error("Stripe did not return an onboarding link")
-            window.location.href = url
-        } catch (e: any) {
-            setError(e?.message || "Could not start Stripe onboarding")
             setBusy(null)
         }
     }
@@ -226,7 +206,11 @@ export default function PartnerDashboardPage() {
                         <Link href="/dashboard/service/jobs"><Button variant="outline">Find jobs</Button></Link>
                         <Link href="/dashboard/service/jobs?tab=mine"><Button variant="outline">My work</Button></Link>
                     </div>
-                    <div className="mt-5"><ProviderDocumentsSection capabilities={legacyCapabilities} /></div>
+                    <div className="mt-5 space-y-4">
+                        <ProviderBusinessPaymentsSection capabilities={legacyCapabilities} stripeComplete={legacyPayoutComplete} />
+                        <ProviderDocumentsSection capabilities={legacyCapabilities} />
+                        <ProviderJobPreferencesSection capabilities={legacyCapabilities} />
+                    </div>
                 </div>
             </div>
         )
@@ -237,19 +221,14 @@ export default function PartnerDashboardPage() {
             <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-5">
                 <div>
                     <div className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-primary mb-3">
-                        <Building2 size={15} /> Partner Account
+                        <Building2 size={15} /> TradeXchange
                     </div>
-                    <h1 className="text-4xl font-black font-heading tracking-tight">Partner Dashboard</h1>
+                    <h1 className="text-4xl font-black font-heading tracking-tight">TradeXchange</h1>
                     <p className="text-[var(--text-muted)] mt-2 max-w-2xl">
                         One CarMazium business account. Add only the services your business provides and keep them all under the same login.
                     </p>
                     <Link href="/business-partner-agreement" className="mt-3 inline-flex text-sm font-bold text-primary underline">View signed Business Partner Agreement and legal record</Link>
                 </div>
-                {partnerBusiness && (
-                    <Link href="/dashboard/dealer/team">
-                        <Button variant="outline"><Users size={16} className="mr-2" /> Manage Team</Button>
-                    </Link>
-                )}
             </header>
 
             {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 text-red-500 p-4 text-sm">{error}</div>}
@@ -268,8 +247,8 @@ export default function PartnerDashboardPage() {
                             <input value={phone} onChange={e => setPhone(e.target.value)} className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3" placeholder="01234 567890" />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">Business address / service area</label>
-                            <input value={businessAddress} onChange={e => setBusinessAddress(e.target.value)} className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3" placeholder="Birmingham / Nationwide" />
+                            <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">Registered business address</label>
+                            <input value={businessAddress} onChange={e => setBusinessAddress(e.target.value)} className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3" placeholder="Registered business address" />
                         </div>
                     </div>
                     <Button onClick={saveBusiness} disabled={busy === "business"} className="mt-6">
@@ -278,18 +257,6 @@ export default function PartnerDashboardPage() {
                 </section>
             ) : (
                 <>
-                    <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <p className="text-xs uppercase tracking-widest text-[var(--text-muted)] font-bold">Partner business</p>
-                            <h2 className="text-xl font-black font-heading mt-1">{partnerBusiness.companyName}</h2>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            <Link href="/profile?section=business"><Button variant="outline">Edit business details</Button></Link>
-                            {!partnerBusiness.isVerified && <Link href="/profile?section=verification"><Button>Continue dealer verification</Button></Link>}
-                        </div>
-                    </section>
-
-
                     <section id="provider-services" className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 md:p-7">
                         <button type="button" className="flex w-full items-center justify-between gap-3 text-left" aria-expanded={servicesExpanded} aria-controls="provider-service-options" onClick={() => setServicesExpanded(current => !current)}>
                             <span>
@@ -333,12 +300,12 @@ export default function PartnerDashboardPage() {
                                         {!cap || cap.status === "REJECTED"
                                             ? <Button size="sm" disabled={!!busy} onClick={() => void applyService(serviceType)}>{cap ? "Reapply" : "Apply for service"}</Button>
                                             : cap.status === "PENDING" || (cap.status === "APPROVED" && !verified)
-                                                ? <Link href={'/dashboard/service/capabilities/' + cap.id + '/verification'}><Button size="sm">{cap.status === "PENDING" ? "Continue setup" : "Review verification"}</Button></Link>
+                                                ? <Link href="#provider-business"><Button size="sm">{cap.status === "PENDING" ? "Continue setup" : "Review verification"}</Button></Link>
                                                 : cap.status === "SUSPENDED"
                                                     ? <p className="text-xs text-[var(--text-muted)]">Contact CarMazium to reactivate this service.</p>
                                                     : <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">View jobs</Button></Link>}
                                         {cap?.status === "APPROVED" && verified && !coverage &&
-                                            <Link href={'/dashboard/service/capabilities/' + cap.id + '/matching'}><Button size="sm" variant="outline">Set working areas</Button></Link>}
+                                            <Link href="#provider-preferences"><Button size="sm" variant="outline">Set working areas</Button></Link>}
                                     </div>}
                                 </div>
                             })}
@@ -346,22 +313,10 @@ export default function PartnerDashboardPage() {
                         </div>}
                     </section>
 
+                    <ProviderBusinessPaymentsSection capabilities={team?.capabilities ?? []} dealer={partnerBusiness} stripeComplete={team?.stripeConnect.complete} onSaved={refreshProfile} />
                     <ProviderDocumentsSection capabilities={team?.capabilities ?? []} />
+                    <ProviderJobPreferencesSection capabilities={team?.capabilities ?? []} />
 
-                    <section className="grid lg:grid-cols-2 gap-5">
-                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
-                            <div className="flex items-center gap-3 mb-3"><CreditCard className="text-primary" size={22} /><h3 className="font-black font-heading">TradeXchange payouts</h3></div>
-                            <p className="text-sm text-[var(--text-muted)] mb-5">For Delivery and Inspection, the job poster always pays through CarMazium. CarMazium deducts 9% and the remaining 91% is paid to the Partner business Stripe Connect account.</p>
-                            {loadingTeam ? <Loader2 className="animate-spin text-primary" size={18} /> : team?.stripeConnect.complete
-                                ? <div className="inline-flex items-center gap-2 text-emerald-500 font-bold text-sm"><CheckCircle2 size={17} /> Business payouts enabled</div>
-                                : <Button onClick={connectStripe} disabled={!team || busy === "stripe"} variant="outline">{busy === "stripe" ? <Loader2 className="animate-spin" size={15} /> : "Set up business payouts"}</Button>}
-                        </div>
-                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
-                            <div className="flex items-center gap-3 mb-3"><ShieldCheck className="text-primary" size={22} /><h3 className="font-black font-heading">One team, service permissions</h3></div>
-                            <p className="text-sm text-[var(--text-muted)] mb-5">Invite staff once, then decide who can quote, manage or complete Delivery and Inspection jobs on behalf of this business. Staff never receive the CarMazium payout personally.</p>
-                            <Link href="/dashboard/dealer/team"><Button variant="outline">Manage Partner team <ArrowRight size={15} className="ml-2" /></Button></Link>
-                        </div>
-                    </section>
                 </>
             )}
         </div>
