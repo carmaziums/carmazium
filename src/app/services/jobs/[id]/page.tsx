@@ -12,7 +12,8 @@ import { RequireAuth } from "@/components/auth/RequireAuth"
 import { Button } from "@/components/ui/Button"
 import {
     getJob, acceptQuote, confirmCompletion, disputeJob, cancelJob, createServiceReview, formatPence,
-    comparableServiceQuotes, isServiceQuoteSelectable,
+    comparableServiceQuotes, isServiceQuoteSelectable, classifyServiceCheckoutTarget,
+    servicePaymentEvidence, servicePaymentStatusText,
     type ServiceJob, type ServiceQuote,
 } from "@/lib/servicesApi"
 import { JobStatusBadge, RecoveryBadge, JobRoute, JobTiming, JobVehicles } from "@/components/services/JobBits"
@@ -108,9 +109,15 @@ function JobDetail() {
         setError(null)
         try {
             const url = await acceptQuote(job.id, quote.id)
-            // Only navigate to a secure Stripe Checkout URL returned by the server.
-            const checkout = new URL(url)
-            if (checkout.protocol !== "https:" || checkout.hostname !== "checkout.stripe.com") {
+            const target = classifyServiceCheckoutTarget(url, job.id)
+            if (target === "JOB_RETURN") {
+                // Stripe already reported this existing session as paid. Never
+                // open a second Checkout; re-read server-recorded payment state.
+                setFlash("The previous checkout was completed. Refreshing the confirmed payment status.")
+                load()
+                return
+            }
+            if (target !== "STRIPE_CHECKOUT") {
                 throw new Error("Secure checkout could not be verified. Please refresh and try again.")
             }
             window.location.assign(url)
@@ -153,6 +160,7 @@ function JobDetail() {
     if (!job) return <div className="flex justify-center py-32"><Loader2 className="animate-spin text-primary" /></div>
 
     const checkoutNotice = checkoutPaymentNotice(params.get("paid"), job.payment?.status)
+    const paymentEvidence = servicePaymentEvidence(job.payment, job.agreedAmountPence)
     const activeQuotes = comparableServiceQuotes(job.quotes)
     const accepted = (job.quotes ?? []).find(q => q.id === job.acceptedQuoteId)
     const isPaidState = ["PAID", "IN_PROGRESS", "COMPLETED"].includes(job.status)
@@ -314,11 +322,19 @@ function JobDetail() {
                             <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-3">Price</p>
                             <p className="text-3xl font-black font-heading">{formatPence(job.agreedAmountPence)}</p>
                             <p className="text-xs text-[var(--text-muted)] mt-1">
-                                {job.payment?.status === "RELEASED" ? `Paid to your ${providerLabel}.`
-                                    : job.payment?.status === "PAID" ? `Held by CarMazium until you confirm ${completionLabel}.`
-                                        : job.payment?.status === "REFUNDED" ? "Refunded to you."
-                                            : "Not yet paid."}
+                                {servicePaymentStatusText(job.payment?.status)}
                             </p>
+                            {paymentEvidence ? (
+                                <dl className="mt-4 border-t border-[var(--border-default)] pt-3 space-y-2 text-xs">
+                                    <div className="flex justify-between gap-3"><dt>Recorded customer amount</dt><dd className="font-semibold">{formatPence(paymentEvidence.grossPence)}</dd></div>
+                                    <div className="flex justify-between gap-3"><dt>CarMazium service fee (9%)</dt><dd className="font-semibold">{formatPence(paymentEvidence.platformFeePence)}</dd></div>
+                                    <div className="flex justify-between gap-3"><dt>Provider allocation (91%)</dt><dd className="font-semibold">{formatPence(paymentEvidence.contractorPence)}</dd></div>
+                                </dl>
+                            ) : (
+                                <p role="status" className="text-xs text-amber-600 dark:text-amber-300 mt-3">
+                                    Payment breakdown is not yet verified. Refresh or contact support before relying on these amounts.
+                                </p>
+                            )}
                         </div>
                     )}
 
