@@ -234,7 +234,7 @@
       "label": "Saved",
       "icon": "heart-outline",
       "iconLib": "ion",
-      "tabName": "Saved",
+      "stackScreen": "DealerSaved",
       "href": "/dashboard/dealer/wishlist"
     },
     {
@@ -333,8 +333,8 @@
     {
       "id": "dealer-partner",
       "section": "Services",
-      "label": "Partner Account",
-      "icon": "grid-outline",
+      "label": "TradeXchange",
+      "icon": "briefcase-outline",
       "iconLib": "ion",
       "stackScreen": "PartnerDashboard",
       "href": "/dashboard/partner"
@@ -347,24 +347,6 @@
       "iconLib": "ion",
       "stackScreen": "WarrantyOrders",
       "href": "/dashboard/warranties"
-    },
-    {
-      "id": "dealer-service-addons",
-      "section": "Services",
-      "label": "Service Add-ons",
-      "icon": "construct-outline",
-      "iconLib": "ion",
-      "stackScreen": "ProviderCapabilities",
-      "href": "/dashboard/service/capabilities"
-    },
-    {
-      "id": "dealer-service-jobs",
-      "section": "Services",
-      "label": "Service Jobs",
-      "icon": "briefcase-outline",
-      "iconLib": "ion",
-      "stackScreen": "ProviderJobs",
-      "href": "/dashboard/service/jobs"
     }
   ]
 }

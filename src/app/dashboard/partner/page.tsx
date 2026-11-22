@@ -195,14 +195,15 @@ export default function PartnerDashboardPage() {
         return (
             <div className="max-w-3xl mx-auto pt-28 pb-16 px-5">
                 <div className="rounded-3xl border border-primary/30 bg-primary/5 p-8 md:p-12">
-                    <h1 className="text-3xl font-black font-heading mb-3">Move to the new Partner Account</h1>
+                    <h1 className="text-3xl font-black font-heading mb-3">TradeXchange</h1>
                     <p className="text-[var(--text-muted)] mb-5">
-                        Your existing service-provider profile and approvals are kept. This only changes the account shell so you can add Vehicle Dealer and other Partner services without replacing your current services.
+                        Continue using your existing service-provider account. Your applications, approvals and documents remain unchanged; no dealer registration is needed.
                     </p>
-                    {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
-                    <Button onClick={becomePartner} disabled={busy === "partner"}>
-                        {busy === "partner" ? <Loader2 className="animate-spin" size={16} /> : <>Continue as Partner <ArrowRight size={16} className="ml-2" /></>}
-                    </Button>
+                    <div className="flex flex-wrap gap-3">
+                        <Link href="/dashboard/service/capabilities"><Button>My services</Button></Link>
+                        <Link href="/dashboard/service/jobs"><Button variant="outline">Find jobs</Button></Link>
+                        <Link href="/dashboard/service/jobs?tab=mine"><Button variant="outline">My work</Button></Link>
+                    </div>
                 </div>
             </div>
         )

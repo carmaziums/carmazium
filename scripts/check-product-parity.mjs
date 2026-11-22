@@ -1028,8 +1028,8 @@ if (
   !webDealerRoutes.includes('label: "Stock"') ||
   !webDealerRoutes.includes('label: "Customers"') ||
   !webDealerRoutes.includes('label: "Offers received"') ||
-  !webDealerRoutes.includes('label: "Partner Account"') ||
-  !webDealerRoutes.includes('label: "Service Jobs"') ||
+  !webDealerRoutes.includes('label: "TradeXchange"') ||
+  !mobileDealerDrawer.includes("label: 'TradeXchange'") ||
   !mobileDealerDrawer.includes("label: 'Stock'") ||
   !mobileDealerDrawer.includes("label: 'Customers'") ||
   !mobileDealerDrawer.includes("label: 'Offers received'") ||

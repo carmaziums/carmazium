@@ -26,7 +26,6 @@ import {
   getJobFeedPage,
 } from '../../lib/servicesApi';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
-import { ProviderPageTabs } from '../../components/ProviderPageTabs';
 import { loadProviderJobLists, type ProviderJobLists } from '../../lib/tradeXchangeProviderJobLoad';
 import { Button } from '../../components/Button';
 
@@ -299,7 +298,6 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
             loadingMore ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 18 }} /> : null
           }
         />
-        <ProviderPageTabs />
     </View>
   );
 };

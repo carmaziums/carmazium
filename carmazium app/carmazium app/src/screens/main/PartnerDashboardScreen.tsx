@@ -196,7 +196,15 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           ) : null}
 
-          {!isPartnerRole ? (
+          {!isPartnerRole && profile?.role === 'CONTRACTOR' ? (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>TradeXchange</Text>
+              <Text style={styles.cardText}>Use your existing service-provider account. Your services, approvals and documents are retained. You do not need to become a dealer.</Text>
+              <Button label="My services" onPress={() => navigation.navigate('ProviderCapabilities')} />
+              <Button label="Find jobs" variant="outline" onPress={() => navigation.navigate('ProviderJobs', { initialTab: 'open' })} />
+              <Button label="My work" variant="outline" onPress={() => navigation.navigate('ProviderJobs', { initialTab: 'assigned' })} />
+            </View>
+          ) : !isPartnerRole ? (
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Create a Partner Account</Text>
               <Text style={styles.cardText}>

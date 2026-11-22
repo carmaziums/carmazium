@@ -13,7 +13,7 @@ const cap=(serviceType,status='APPROVED')=>({id:serviceType+'-test',serviceType,
 async function render(name,overrides={}){
  const nav=[],calls=[];
  const services={SERVICE_LABELS:{DELIVERY:'Delivery & Recovery',INSPECTION:'Vehicle Inspections'},getPartnerProfile:async()=>profile,getPartnerTeam:async()=>({capabilities:[cap('DELIVERY'),cap('INSPECTION')],stripeConnect:{complete:true}}),getMyCapabilities:async()=>({profile:null,capabilities:[cap('DELIVERY'),cap('INSPECTION')],stripeConnect:{complete:true}}),applyPartnerCapability:async type=>{calls.push(type);return cap(type,'PENDING');},...overrides};
- const modules={react:React,'react-native':{...Object.fromEntries(['View','Text','ScrollView','TextInput','StatusBar','ActivityIndicator'].map(n=>[n,n])),StyleSheet:{create:x=>x},useWindowDimensions:()=>({width:600,fontScale:1}),Alert:{alert(){}},Linking:{openURL:async()=>{}},AppState:{addEventListener:()=>({remove(){}})}},'@react-navigation/native':{useFocusEffect:cb=>React.useEffect(cb,[cb])},'@/components/BrandIcon':{Ionicons:'Icon'},'../../components/WebsiteTopBar':{WebsiteTopBar:'WebsiteTopBar'},'../../components/Button':{Button:'Button'},'../../components/dealer/DealerPageTabs':{DealerPageTabs:'DealerPageTabs'},'../../components/ProviderPageTabs':{ProviderPageTabs:'ProviderPageTabs'},'../../constants/colors':{Colors:{}},'../../constants/typography':{FontFamily:{},FontSize:{}},'../../store/authStore':{useAuthStore:cb=>cb({accountRole:'dealer',initializeAuth:async()=>{}})},'../../lib/servicesApi':services,'../../lib/apiClient':{apiClient:async()=>{throw Error('Unexpected write');}}};
+ const modules={react:React,'react-native':{...Object.fromEntries(['View','Text','ScrollView','TextInput','StatusBar','ActivityIndicator'].map(n=>[n,n])),StyleSheet:{create:x=>x},useWindowDimensions:()=>({width:600,fontScale:1}),Alert:{alert(){}},Linking:{openURL:async()=>{}},AppState:{addEventListener:()=>({remove(){}})}},'@react-navigation/native':{useFocusEffect:cb=>React.useEffect(cb,[cb])},'@/components/BrandIcon':{Ionicons:'Icon'},'../../components/WebsiteTopBar':{WebsiteTopBar:'WebsiteTopBar'},'../../components/Button':{Button:'Button'},'../../components/dealer/DealerPageTabs':{DealerPageTabs:'DealerPageTabs'},'../../constants/colors':{Colors:{}},'../../constants/typography':{FontFamily:{},FontSize:{}},'../../store/authStore':{useAuthStore:cb=>cb({accountRole:overrides.__accountRole??'dealer',initializeAuth:async()=>{}})},'../../lib/servicesApi':services,'../../lib/apiClient':{apiClient:async()=>{throw Error('Unexpected write');}}};
  const rules={};runInNewContext(ts.transpileModule(readFileSync(new URL('../src/lib/tradeXchangeProviderJobLoad.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:rules,Error});
  modules['../../lib/tradeXchangeProviderJobLoad']=rules;modules['../../constants/spacing']={Elevation:{},Radius:{}};modules['react-native'].TouchableOpacity='Press';modules['react-native'].RefreshControl='Refresh';modules['react-native'].FlatList=({ListHeaderComponent,ListEmptyComponent,data,renderItem,onEndReached})=>React.createElement('List',{onEndReached},ListHeaderComponent,data.length?data.map((item)=>React.createElement(React.Fragment,{key:item.id},renderItem({item}))):ListEmptyComponent);
  const exports={};const source=readFileSync(new URL('../src/screens/main/'+name+'.tsx',import.meta.url),'utf8');runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:n=>{assert.ok(n in modules,n);return modules[n];}});
@@ -65,4 +65,22 @@ test('Provider overview aggregates every page for released earnings and preserve
  });
  assert.equal(calls.length,2);assert.match(text(h.tree),/£300.75/);assert.match(text(h.tree),/Setup needed/);assert.match(text(h.tree),/Unavailable/);assert.match(text(h.tree),/Synthetic work live/);
  await click(h.tree,'My Work');assert.equal(h.nav[0][0],'ProviderJobs');assert.equal(h.nav[0][1].initialTab,'assigned');await act(async()=>h.tree.unmount());
+});
+
+test('Existing contractor can use TradeXchange without converting to a dealer account',async()=>{
+ const h=await render('PartnerDashboardScreen',{
+   __accountRole:'provider',
+   getPartnerProfile:async()=>({id:'legacy-provider',role:'CONTRACTOR',dealerProfile:null}),
+ });
+ assert.match(text(h.tree),/Use your existing service-provider account/);
+ assert.doesNotMatch(text(h.tree),/Create a Partner Account/);
+ await click(h.tree,'My services');
+ assert.equal(h.nav[0][0],'ProviderCapabilities');
+ await click(h.tree,'Find jobs');
+ assert.equal(h.nav[1][0],'ProviderJobs');
+ assert.equal(h.nav[1][1].initialTab,'open');
+ await click(h.tree,'My work');
+ assert.equal(h.nav[2][0],'ProviderJobs');
+ assert.equal(h.nav[2][1].initialTab,'assigned');
+ await act(async()=>h.tree.unmount());
 });
