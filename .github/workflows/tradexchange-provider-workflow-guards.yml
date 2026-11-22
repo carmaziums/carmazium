@@ -152,3 +152,31 @@ jobs:
             exit 1
           fi
           echo 'Expo EAS authentication succeeded using the repository-managed token.'
+      - name: Verify Expo robot can access the CarMazium-owned project
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const expectedId='9c77bb81-205c-42f8-913e-b69a0953ec10';
+          const fullName='@carmazium/carmazium';
+          const response=await fetch('https://api.expo.dev/graphql',{
+            method:'POST',
+            headers:{
+              'Content-Type':'application/json',
+              Authorization:'Bearer '+process.env.EXPO_TOKEN,
+            },
+            body:JSON.stringify({
+              query:'query($fullName: String!) { app { byFullName(fullName: $fullName) { id fullName } } }',
+              variables:{fullName},
+            }),
+          });
+          const body=await response.json().catch(()=>null);
+          const project=body?.data?.app?.byFullName;
+          if(!response.ok || body?.errors?.length || project?.id!==expectedId || project?.fullName!==fullName){
+            console.error('Expo robot cannot access the expected owner-controlled EAS project; refusing build authorisation.');
+            process.exit(1);
+          }
+          console.log('Verified Expo project ownership and robot project access: @carmazium/carmazium.');
+          NODE
