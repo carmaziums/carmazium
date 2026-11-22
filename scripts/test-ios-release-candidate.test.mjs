@@ -54,13 +54,12 @@ test('iOS candidate validates the same photo-picker permission policy as app.jso
   assert.equal(picker[1].microphonePermission, false);
   assert.equal(app.ios.infoPlist.NSCameraUsageDescription, undefined);
 
-  // Old signed-IPA reupload is a separately source-locked job. The new
-  // candidate must follow the CURRENT source rather than that older binary.
-  const candidateFlow = flow.split('  upload:\\n')[0];
-  assert.match(candidateFlow, /imagePicker\\?\\.\\[1\\]\\?\\.cameraPermission !== false/);
-  assert.match(candidateFlow, /imagePicker\\?\\.\\[1\\]\\?\\.microphonePermission !== false/);
-  assert.match(candidateFlow, /info\\.NSCameraUsageDescription !== undefined/);
-  assert.match(candidateFlow, /info\\.NSMicrophoneUsageDescription !== undefined/);
-  assert.match(candidateFlow, /expo config --type introspect --json/);
-  assert.doesNotMatch(candidateFlow, /!cameraPurpose \\|\\| imagePicker/);
+  // The old source-locked IPA upload remains separate from the new candidate.
+  const candidateFlow = flow.slice(0, flow.indexOf('  upload:'));
+  assert.ok(candidateFlow.includes('imagePicker?.[1]?.cameraPermission !== false'));
+  assert.ok(candidateFlow.includes('imagePicker?.[1]?.microphonePermission !== false'));
+  assert.ok(candidateFlow.includes('info.NSCameraUsageDescription !== undefined'));
+  assert.ok(candidateFlow.includes('info.NSMicrophoneUsageDescription !== undefined'));
+  assert.ok(candidateFlow.includes('expo config --type introspect --json'));
+  assert.ok(!candidateFlow.includes('!cameraPurpose || imagePicker'));
 });
