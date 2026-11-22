@@ -38,6 +38,12 @@ describe('notificationEmailPolicy', () => {
         'HPI_REPORT_READY',
         'TEAM_INVITE',
         'LISTING_APPROVED',
+        'SERVICE_CAPABILITY_APPROVED',
+        'SERVICE_CAPABILITY_REJECTED',
+        'SERVICE_QUOTE_RECEIVED',
+        'SERVICE_JOB_PAID',
+        'SERVICE_JOB_COMPLETED',
+        'SERVICE_PAYOUT_RELEASED',
     ])('skips %s because a dedicated email already exists', (type) => {
         expect(notificationEmailPolicy({ type })).toEqual({
             eligible: false,
