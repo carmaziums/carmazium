@@ -80,6 +80,7 @@ export default function ContractorJobPage() {
     const isMine = job?.viewerRole === "contractor"
     const canQuote = job?.status === "OPEN" && job.canQuote === true
     const hasOpenQuote = myQuote?.status === "ACTIVE"
+    const canWithdrawQuote = job?.status === "OPEN" && job.canWithdrawQuote === true && hasOpenQuote
     const platformFeePence = settings ? Math.round(amountPence * settings.platformFeeRate) : null
     const providerPence = platformFeePence == null ? null : amountPence - platformFeePence
     const canMessageCustomer = isMine && ["PAID", "IN_PROGRESS", "COMPLETED", "RELEASED", "DISPUTED"].includes(job?.status || "")
@@ -155,7 +156,7 @@ export default function ContractorJobPage() {
                                             onClick={() => run("quote", () => upsertQuote(job.id, { amountPence, message: message.trim() || undefined }), hasOpenQuote ? "Quote updated." : "Quote sent. The customer has been notified.")}>
                                             {busy === "quote" ? <Loader2 className="animate-spin" size={16} /> : hasOpenQuote ? "Update quote" : "Send quote"}
                                         </Button>
-                                        {hasOpenQuote && (
+                                        {canWithdrawQuote && (
                                             <button type="button" disabled={busy !== null} onClick={() => {
                                                 if (!window.confirm("Withdraw this quote? The customer will no longer be able to accept it.")) return
                                                 void run("withdraw", () => withdrawQuote(job.id), "Quote withdrawn.")
@@ -170,6 +171,16 @@ export default function ContractorJobPage() {
                                         New quotations are unavailable for this account. Review your service approval, insurance,
                                         payout setup and team permissions in <Link className="underline text-primary" href="/dashboard/partner">My services</Link>.
                                         Existing accepted work remains in My Work.
+                                        {canWithdrawQuote && (
+                                            <button type="button" disabled={busy !== null}
+                                                onClick={() => {
+                                                    if (!window.confirm("Withdraw this quote? The customer will no longer be able to accept it.")) return
+                                                    void run("withdraw", () => withdrawQuote(job.id), "Quote withdrawn.")
+                                                }}
+                                                className="block font-bold text-red-600 mt-3 disabled:opacity-50">
+                                                Withdraw your existing quote
+                                            </button>
+                                        )}
                                     </p>
                                 )}
 
