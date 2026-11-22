@@ -135,6 +135,11 @@ jobs:
           }
           console.log('Space-free EAS staging checked: original CarMazium project, bundle and production profile');
           NODE
+          # EAS evaluates the local Expo config before creating the upload.
+          # Install dependencies inside the isolated staging root; .easignore
+          # still prevents node_modules from being included in the cloud archive.
+          npm ci --prefix "$STAGE" --no-audit --no-fund
+          (cd "$STAGE" && npx --no-install expo config --json > /dev/null)
           export EAS_NO_VCS=1
           export EAS_PROJECT_ROOT="$STAGE"
           cd "$STAGE"
