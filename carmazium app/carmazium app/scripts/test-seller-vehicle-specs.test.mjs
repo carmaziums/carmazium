@@ -281,8 +281,11 @@ test('dealer settings preserve saved warranty terms, own-listing badges and sepa
   assert.match(settings, /navigation\.navigate\('FinancePreferences'\)/);
   assert.match(settings, /'Warranty badge', dealerWarrantyOffered/);
   assert.match(settings, /'Finance badge', dealerFinanceOffered/);
-  assert.match(settings, /deliveryServicesEnabled: deliveryEnabled/);
-  assert.match(settings, /inspectionServicesEnabled: inspectionEnabled/);
+  const partner = readFileSync(new URL('../src/screens/main/PartnerDashboardScreen.tsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(settings, /deliveryServicesEnabled: deliveryEnabled/);
+  assert.doesNotMatch(settings, /inspectionServicesEnabled: inspectionEnabled/);
+  assert.match(partner, /type === 'DELIVERY' \? 'deliveryServicesEnabled' : 'inspectionServicesEnabled'/);
+  assert.match(partner, /updatePartnerServicePreference\(key, enabled\)/);
   assert.doesNotMatch(settings, /accessibilityLabel="Finance offered"/);
   assert.match(flow, /mazium_ai_consent_v2/);
   assert.match(flow, /CarMazium separately adds the saved dealership introduction/);

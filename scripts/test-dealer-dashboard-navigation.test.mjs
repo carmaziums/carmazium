@@ -37,12 +37,12 @@ const EVERY_DEALER_ROUTE = [
     "/dashboard/dealer", "/dashboard/dealer/inventory", "/dashboard/dealer/crm", "/dashboard/dealer/offers",
     "/dashboard/dealer/auctions", "/dashboard/dealer/auctions/won", "/dashboard/cancellations",
     "/dashboard/dealer/messages", "/dashboard/dealer/team", "/profile?section=business", "/dashboard/partner",
-    "/dashboard/service/capabilities", "/dashboard/service/jobs",
+    // Provider setup and job links are now consolidated into TradeXchange, not duplicated in the dealer menu.
     "/dashboard/dealer/my-offers", "/dashboard/dealer/bids", "/dashboard/dealer/wishlist",
     "/dashboard/dealer/finance", "/dashboard/dealer/analytics", "/dashboard/dealer/earnings",
 ]
 
-test("no dealer menu destination was removed", () => {
+test("dealer destinations stay reachable, with legacy TradeXchange setup consolidated", () => {
     const hrefs = DEALER_ROUTE_CONFIG.map(r => r.href)
     // The simplified owner-approved Buy menu keeps a distinct canonical href
     // for each destination. Some historical pages remain directly accessible
@@ -55,6 +55,12 @@ test("no dealer menu destination was removed", () => {
         }
         assert.ok(hrefs.includes(href), "missing original destination " + href)
     }
+    const providerSetup = read("src/app/dashboard/service/capabilities/page.tsx")
+    assert.match(providerSetup, /redirect\(/)
+    assert.match(providerSetup, /dashboard\/partner/)
+    const partnerHub = read("src/app/dashboard/partner/page.tsx")
+    assert.match(partnerHub, /href="\/dashboard\/service\/jobs"/)
+    assert.ok(hrefs.includes("/dashboard/partner"), "TradeXchange hub remains a canonical dealer destination")
     for (const href of ["/auctions/browse", "/dashboard/dealer/wishlist",
         "/dashboard/dealer/bids", "/dashboard/dealer/purchases"]) {
         assert.ok(hrefs.includes(href), "missing new canonical Buy destination " + href)
@@ -64,9 +70,12 @@ test("no dealer menu destination was removed", () => {
 test("secondary tools are dashboard cards instead of a More menu", () => {
     assert.doesNotMatch(sidebar, /More tools|dealerMoreLinks/)
     const cards = JSON.parse(read('src/data/dashboardCards.json')).dealer
-    for (const href of ['/dashboard/enquiries', '/dashboard/dealer/offers', '/dashboard/partner', '/dashboard/service/jobs', '/dashboard/dealer/analytics']) {
+    for (const href of ['/dashboard/enquiries', '/dashboard/dealer/offers', '/dashboard/partner', '/dashboard/dealer/analytics']) {
         assert.ok(cards.some(card => card.href === href), href)
     }
+    assert.equal(cards.filter(card => card.href === '/dashboard/partner').length, 1, 'one TradeXchange dashboard card')
+    assert.ok(!cards.some(card => card.href === '/dashboard/service/jobs' || card.href === '/dashboard/service/capabilities'), 'job and setup pages must not duplicate the TradeXchange card')
+    assert.match(read('src/app/dashboard/partner/page.tsx'), /href="\/dashboard\/service\/jobs"/, 'job feed remains accessible within TradeXchange')
 })
 
 test("simplified Buy destinations highlight the correct related pages", () => {
