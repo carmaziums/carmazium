@@ -16,6 +16,12 @@ on:
         required: true
         options: [NOT_APPROVED, INTERNAL_REVIEW_ONLY]
 
+      submission:
+        description: Keep as build-only, or upload the already signed IPA for Apple processing without public release
+        type: choice
+        required: true
+        options: [NO_UPLOAD, UPLOAD_EXISTING_IPA_ONLY]
+
 permissions:
   contents: read
 
@@ -25,7 +31,7 @@ concurrency:
 
 jobs:
   candidate:
-    if: github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/tradexchange-block2-jobs-20261122')
+    if: github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/tradexchange-block2-jobs-20261122') && inputs.submission != 'UPLOAD_EXISTING_IPA_ONLY'
     runs-on: ubuntu-latest
     timeout-minutes: 110
     defaults:
@@ -170,3 +176,84 @@ jobs:
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary.join('\n') + '\n');
           console.log('Signed iOS release candidate created for internal review; EAS ID: ' + id);
           NODE
+  upload:
+    if: github.ref == 'refs/heads/feature/tradexchange-block2-jobs-20261122' && inputs.submission == 'UPLOAD_EXISTING_IPA_ONLY' && inputs.approval == 'INTERNAL_REVIEW_ONLY' && inputs.source_sha == '876ee3be026db98f1fa387ad9af830c1ad281191'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      CI: '1'
+      EXPO_NO_TELEMETRY: 'true'
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || secrets.EAS_TOKEN }}
+      APP_ENV: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate reviewed unchanged app source and exact already-signed build
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${EXPO_TOKEN}" || { echo '::error::Missing Expo credential'; exit 1; }
+          # A follow-up workflow-only commit must not alter the original signed app.
+          git diff --quiet 876ee3be026db98f1fa387ad9af830c1ad281191 HEAD -- 'carmazium app/carmazium app' || {
+            echo '::error::App source changed after iOS binary signing; refuse to upload'; exit 1;
+          }
+          node - <<'NODE'
+          const fs = require('fs');
+          const root = 'carmazium app/carmazium app/';
+          const app = JSON.parse(fs.readFileSync(root + 'app.json','utf8')).expo;
+          if (app.owner !== 'carmazium' ||
+              app.ios?.bundleIdentifier !== 'uk.carmazium.app' ||
+              app.extra?.eas?.projectId !== '9c77bb81-205c-42f8-913e-b69a0953ec10' ||
+              app.version !== '1.0.1') {
+            throw new Error('CarMazium original iOS identity/version mismatch');
+          }
+          console.log('Original 1.0.1 production iOS source matches the reviewed IPA build');
+          NODE
+      - name: Stage source-identical project and supply App Store app record to submit profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAGE="$RUNNER_TEMP/carmazium-ios-upload"
+          mkdir -p "$STAGE"
+          rsync -a --exclude='node_modules/' --exclude='.expo/' --exclude='.git/' \
+            --exclude='ios/' --exclude='android/' --exclude='.env*' \
+            "carmazium app/carmazium app/" "$STAGE/"
+          node - "$STAGE" <<'NODE'
+          const fs = require('fs'), path = require('path');
+          const root = process.argv[2];
+          const f = path.join(root, 'eas.json');
+          const eas = JSON.parse(fs.readFileSync(f, 'utf8'));
+          if (eas.build?.production?.channel !== 'production' ||
+              eas.build?.production?.env?.APP_ENV !== 'production') {
+            throw new Error('Production settings mismatch');
+          }
+          eas.submit ||= {};
+          eas.submit.production ||= {};
+          eas.submit.production.ios = { ...(eas.submit.production.ios || {}), ascAppId: '6837996479' };
+          fs.writeFileSync(f, JSON.stringify(eas, null, 2) + '\n');
+          console.log('Staged only submit metadata: App Store Connect app 6837996479');
+          NODE
+          npm ci --prefix "$STAGE" --no-audit --no-fund
+          echo "STAGED_PROJECT=$STAGE" >> "$GITHUB_ENV"
+      - name: Verify owner-controlled Expo authentication
+        run: npx --yes eas-cli@16.18.0 whoami --non-interactive
+      - name: Upload prebuilt signed iOS IPA to App Store Connect processing only
+        shell: bash
+        run: |
+          set -euo pipefail
+          export EAS_NO_VCS=1
+          cd "$STAGED_PROJECT"
+          npx --yes eas-cli@16.18.0 submit --platform ios \
+            --id c3a2b2e4-7309-402a-947e-e72e55cbf2d1 \
+            --profile production --non-interactive --wait
+          printf '%s\n' \
+            '### CarMazium iOS — build-upload result' \
+            '- Signed EAS build: c3a2b2e4-7309-402a-947e-e72e55cbf2d1' \
+            '- Original reviewed app source: 876ee3be026db98f1fa387ad9af830c1ad281191' \
+            '- App Store Connect app: 6837996479' \
+            '- This command uploads a binary for processing, but does not submit for App Review, publish to the App Store or invite external testers.' \
+            >> "$GITHUB_STEP_SUMMARY"
