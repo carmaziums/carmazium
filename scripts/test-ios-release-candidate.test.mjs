@@ -17,7 +17,7 @@ test('iOS customer-store candidate is a manual build, never an automatic distrib
   assert.doesNotMatch(flow, /\beas submit\b/);
   assert.doesNotMatch(flow, /\bautoSubmit\s*:\s*true/);
   assert.match(flow, /INTERNAL_REVIEW_ONLY/);
-  assert.match(flow, /if: github\.ref == 'refs\/heads\/main' && github\.event_name == 'workflow_dispatch'/);
+  assert.match(flow, /if: github\.event_name == 'workflow_dispatch' && \(github\.ref == 'refs\/heads\/main' \|\| github\.ref == 'refs\/heads\/feature\/tradexchange-block2-jobs-20261122'\)/);
   assert.match(flow, /REVIEW_SOURCE_SHA.*GITHUB_SHA/);
   assert.match(flow, /\^\[a-f0-9\]\{40\}\$/);
   assert.match(flow, /Build signed iOS App Store candidate without uploading or submitting/);
