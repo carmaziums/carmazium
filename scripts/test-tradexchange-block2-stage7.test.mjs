@@ -50,7 +50,7 @@ test('web and native resolve UK appointments identically across GMT/BST and DST 
 test('reschedules are limited to unfinished paid work and the original active state is restored', () => {
   const request = backend.slice(backend.indexOf('async requestJobChange('), backend.indexOf('async acceptReschedule('));
   const accept = backend.slice(backend.indexOf('async acceptReschedule('), backend.indexOf('private async cancelUnpaidAcceptance('));
-  assert.match(request, /ServiceJobStatus\.PAID, ServiceJobStatus\.IN_PROGRESS/);
+  assert.match(request, /job\.status !== ServiceJobStatus\.PAID && job\.status !== ServiceJobStatus\.IN_PROGRESS/);
   assert.match(request, /Only unfinished paid work can be rescheduled/);
   assert.match(accept, /request\.previousStatus/);
   assert.match(accept, /job\.completedAt \|\| job\.confirmedAt/);
