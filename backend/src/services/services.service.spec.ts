@@ -492,6 +492,7 @@ describe('Delivery & Recovery — end to end', () => {
         const asKent = await svc.getJob({ userId: TRUCKER.id, role: 'CONTRACTOR' as any, contractorProfileId: kentProfileId }, jobId);
         expect(asKent.viewerRole).toBe('bidder');
         expect(asKent.canQuote).toBe(true);
+        expect(asKent.canWithdrawQuote).toBe(true);
         expect(asKent.quotes!.map((q: any) => q.id)).toEqual([kentQuoteId]);
         expect(asKent.pickupAddress).toBeNull();
         expect((asKent as any).customer.phone).toBeUndefined();
@@ -501,9 +502,27 @@ describe('Delivery & Recovery — end to end', () => {
             contractorProfileId: kentProfileId, quoteAllowedByActor: false,
         }, jobId);
         expect(staffReadOnly.canQuote).toBe(false);
+        expect(staffReadOnly.canWithdrawQuote).toBe(false);
         expect(staffReadOnly.quotes!.map((q: any) => q.id)).toEqual([kentQuoteId]);
         expect(staffReadOnly.pickupAddress).toBeNull();
         expect((staffReadOnly as any).customer.email).toBeUndefined();
+    });
+
+    it('permits withdrawal of an old active quote even when insurance verification has expired', async () => {
+        const cap = db.one('contractorCapability', { contractorId: kentProfileId, serviceType: 'DELIVERY' })!;
+        const expiry = cap.verificationExpiresAt;
+        try {
+            cap.verificationExpiresAt = new Date(Date.now() - 60_000);
+            const restricted = await svc.getJob({
+                userId: TRUCKER.id, role: 'CONTRACTOR' as any, contractorProfileId: kentProfileId,
+            }, jobId);
+            expect(restricted.canQuote).toBe(false);
+            expect(restricted.canWithdrawQuote).toBe(true);
+            expect(restricted.quotes!.map((q: any) => q.id)).toEqual([kentQuoteId]);
+            expect(restricted.pickupAddress).toBeNull();
+        } finally {
+            cap.verificationExpiresAt = expiry;
+        }
     });
 
     it('a stranger with no quote and no capability cannot open the job', async () => {
