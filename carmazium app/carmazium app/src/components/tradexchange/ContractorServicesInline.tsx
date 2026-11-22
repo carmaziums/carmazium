@@ -57,7 +57,8 @@ export function ContractorServicesInline({
    {ORDER.map(type=>{
     const c=capabilities.find(cap=>cap.serviceType===type);
     const label=type==='DELIVERY'?'Collection, delivery & recovery':'Vehicle inspection';
-    const status=c?.status==='APPROVED'?'Approved':c?.status==='PENDING'?'Awaiting approval':c?.status==='SUSPENDED'?'Suspended':c?.status==='REJECTED'?'Needs attention':'Not applied';
+    const verified=c?.verificationStatus==='VERIFIED'&&!!c.verificationExpiresAt&&Date.parse(c.verificationExpiresAt)>Date.now();
+    const status=c?.status==='APPROVED'?(verified?'Approved':'Verification required'):c?.status==='PENDING'?'Awaiting approval':c?.status==='SUSPENDED'?'Suspended':c?.status==='REJECTED'?'Needs attention':'Not applied';
     return <View key={type} style={styles.service}>
      <Text style={styles.subtitle}>{label}</Text>
      <Text style={styles.desc}>{status}</Text>

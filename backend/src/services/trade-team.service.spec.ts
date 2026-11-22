@@ -574,7 +574,7 @@ describe('Partner "Add service" application notices (GDN-style onboarding)', () 
         await service.applyBusinessCapability('owner-1', ServiceType.INSPECTION);
         const calls = notifications.create.mock.calls.map((c: any[]) => c[0]);
         expect(calls).toEqual(expect.arrayContaining([
-            expect.objectContaining({ userId: 'owner-1', link: '/dashboard/service/capabilities/cap-1/verification' }),
+            expect.objectContaining({ userId: 'owner-1', link: '/dashboard/partner#provider-documents' }),
             expect.objectContaining({ userId: 'admin-1', type: 'SERVICE_CAPABILITY_APPLIED', link: '/dashboard/admin/services' }),
             expect.objectContaining({ userId: 'admin-2', type: 'SERVICE_CAPABILITY_APPLIED' }),
         ]));

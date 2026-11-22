@@ -70,7 +70,8 @@ export function ContractorServicesInline({
       {ORDER.map(type => {
         const cap = capabilities.find(c => c.serviceType === type)
         const label = type === "DELIVERY" ? "Collection, delivery & recovery" : "Vehicle inspection"
-        const status = cap?.status === "APPROVED" ? "Approved" : cap?.status === "PENDING" ? "Awaiting approval"
+        const verified = cap?.verificationStatus === "VERIFIED" && !!cap.verificationExpiresAt && Date.parse(cap.verificationExpiresAt) > Date.now()
+        const status = cap?.status === "APPROVED" ? (verified ? "Approved" : "Verification required") : cap?.status === "PENDING" ? "Awaiting approval"
           : cap?.status === "SUSPENDED" ? "Suspended" : cap?.status === "REJECTED" ? "Needs attention" : "Not applied"
         return <div className="rounded-xl border border-[var(--border-default)] p-4 space-y-2" key={type}>
           <div className="flex items-center justify-between gap-3"><strong>{label}</strong><span className="text-sm font-semibold">{status}</span></div>

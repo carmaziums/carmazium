@@ -52,6 +52,9 @@ test('multi-service selection is independent, without new accounts or losing acc
  assert.match(dealerApp,/type === 'DELIVERY'/);
  assert.match(contractorWeb,/ORDER\.map\(type =>/);
  assert.match(contractorApp,/ORDER\.map\(type\s*=>/);
+ assert.match(contractorWeb,/verificationStatus === "VERIFIED"/);
+ assert.match(contractorApp,/verificationStatus==='VERIFIED'/);
+ for(const code of [contractorWeb,contractorApp]) assert.match(code,/Verification required/);
  assert.match(dealerWeb,/Preference changes never replace capability approvals or documents/);
  assert.match(dealerApp,/getPartnerTeam\(/);
 });
