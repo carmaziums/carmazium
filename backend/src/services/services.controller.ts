@@ -215,7 +215,13 @@ export class ServicesController {
         const contractorProfileId = user.role === 'ADMIN'
             ? null
             : await this.tradeTeam.contractorProfileForJob(user.id, id);
-        const result = await this.services.getJob({ userId: user.id, role: user.role, contractorProfileId }, id);
+        const result = await this.services.getJob({
+            userId: user.id,
+            role: user.role,
+            contractorProfileId,
+            quoteAllowedByActor: actor ? (!actor.isStaff || actor.canQuote) : false,
+            businessOwnerUserId: actor?.businessOwnerUserId ?? null,
+        }, id);
         if (actor?.isStaff && contractorProfileId) {
             await this.tradeTeam.logAction(actor, id, 'JOB_VIEWED');
         }
