@@ -227,8 +227,8 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
 
       {tab === 'open' && (
         <Text style={styles.pageDescription}>
-          Jobs here match your approved service capabilities and postcode coverage.
-          If a service is missing, review its documents and matching area in My services.
+          Jobs here require your service opt-in, verified insurance, payout readiness and postcode coverage.
+          Manage matching areas in My services. Email alerts depend on notification settings.
         </Text>
       )}
       <TouchableOpacity
@@ -300,7 +300,7 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
               </Text>
               <Text style={styles.emptyText}>
                 {tab === 'open'
-                  ? 'Refresh to check for jobs matching your approved services. Eligible providers also receive account and email notifications for new matching jobs.'
+                  ? 'Refresh for jobs matching your approved services. Account alerts require an active verified service and postcode match; email depends on notification settings.'
                   : 'Your accepted and completed jobs remain here even if verification for new work needs renewal.'}
               </Text>
             </View>
