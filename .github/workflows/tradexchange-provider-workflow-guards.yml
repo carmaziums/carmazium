@@ -54,6 +54,7 @@ jobs:
           scripts/test-tradexchange-block2-stage5.test.mjs
           scripts/test-tradexchange-block2-stage6.test.mjs
           scripts/test-tradexchange-block2-stage7.test.mjs
+          scripts/test-tradexchange-block2-stage8.test.mjs
 
   quote-acceptance-integration:
     runs-on: ubuntu-24.04
