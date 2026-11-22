@@ -215,6 +215,7 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
             style={[styles.filter, filter === item && styles.filterActive]}
             onPress={() => setFilter(item)}
             accessibilityRole="button"
+            accessibilityLabel={`Filter ${item === 'ALL' ? 'all services' : item === 'DELIVERY' ? 'delivery' : 'inspection'} jobs`}
             accessibilityState={{ selected: filter === item }}
           >
             <Text style={[styles.filterText, filter === item && styles.filterTextActive]}>
