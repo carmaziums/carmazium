@@ -22,6 +22,16 @@ on:
       - 'backend/src/services/services.service.ts'
       - 'backend/src/services/services.controller.ts'
       - 'src/lib/servicesApi.ts'
+      - 'src/lib/notificationNavigation.ts'
+      - 'carmazium app/carmazium app/src/lib/notificationRouting.ts'
+      - 'carmazium app/carmazium app/src/navigation/linking.ts'
+      - 'carmazium app/carmazium app/src/lib/nativeTourRoutes.ts'
+      - 'backend/src/services/service-job-alerts.service.ts'
+      - 'backend/src/services/service-job-alert-eligibility.ts'
+      - 'backend/src/services/service-job-alerts.service.spec.ts'
+      - 'backend/src/notifications/notification-email-policy.ts'
+      - 'backend/src/notifications/notification-email-policy.spec.ts'
+      - 'backend/src/notifications/service-job-notification.spec.ts'
       - 'src/lib/tradeXchangeProviderJobLoad.ts'
       - 'src/lib/tradeXchangeCheckoutNotice.ts'
       - 'src/app/dashboard/service/jobs/**'
@@ -55,6 +65,7 @@ jobs:
           scripts/test-tradexchange-block2-stage6.test.mjs
           scripts/test-tradexchange-block2-stage7.test.mjs
           scripts/test-tradexchange-block2-stage8.test.mjs
+          scripts/test-tradexchange-block2-stage9.test.mjs
 
   quote-acceptance-integration:
     runs-on: ubuntu-24.04
@@ -72,10 +83,13 @@ jobs:
       - name: Generate Prisma client without connecting to a database
         working-directory: backend
         run: npx prisma generate
-      - name: Verify quote lifecycle, Stripe payment hardening and payout idempotency
+      - name: Verify quote and payment lifecycle, provider alerts and email preferences
         working-directory: backend
         run: >-
           npx jest --runInBand
           src/services/services.service.spec.ts
           src/services/services.payment-hardening.spec.ts
           src/services/services.lifecycle-hardening.spec.ts
+          src/services/service-job-alerts.service.spec.ts
+          src/notifications/notification-email-policy.spec.ts
+          src/notifications/service-job-notification.spec.ts
