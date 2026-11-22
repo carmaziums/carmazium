@@ -196,7 +196,7 @@ jobs:
           console.log('Signed iOS release candidate created for internal review; EAS ID: ' + id);
           NODE
   upload:
-    if: github.ref == 'refs/heads/feature/tradexchange-block2-jobs-20261122' && inputs.submission == 'UPLOAD_EXISTING_IPA_ONLY' && inputs.approval == 'INTERNAL_REVIEW_ONLY' && inputs.source_sha == '876ee3be026db98f1fa387ad9af830c1ad281191'
+    if: github.ref == 'refs/heads/feature/tradexchange-block2-jobs-20261122' && inputs.submission == 'UPLOAD_EXISTING_IPA_ONLY' && inputs.approval == 'INTERNAL_REVIEW_ONLY' && inputs.source_sha == '7e8758c03ea004c42fc09203249f892f9aa11ffd'
     runs-on: ubuntu-latest
     timeout-minutes: 75
     env:
@@ -218,7 +218,7 @@ jobs:
           set -euo pipefail
           test -n "${EXPO_TOKEN}" || { echo '::error::Missing Expo credential'; exit 1; }
           # A follow-up workflow-only commit must not alter the original signed app.
-          git diff --quiet 876ee3be026db98f1fa387ad9af830c1ad281191 HEAD -- 'carmazium app/carmazium app' || {
+          git diff --quiet 7e8758c03ea004c42fc09203249f892f9aa11ffd HEAD -- 'carmazium app/carmazium app' || {
             echo '::error::App source changed after iOS binary signing; refuse to upload'; exit 1;
           }
           node - <<'NODE'
@@ -228,7 +228,9 @@ jobs:
           if (app.owner !== 'carmazium' ||
               app.ios?.bundleIdentifier !== 'uk.carmazium.app' ||
               app.extra?.eas?.projectId !== '9c77bb81-205c-42f8-913e-b69a0953ec10' ||
-              app.version !== '1.0.1') {
+              app.version !== '1.0.1' ||
+              !app.ios?.infoPlist?.NSCameraUsageDescription ||
+              app.plugins?.find(p => Array.isArray(p) && p[0] === 'expo-image-picker')?.[1]?.cameraPermission !== app.ios.infoPlist.NSCameraUsageDescription) {
             throw new Error('CarMazium original iOS identity/version mismatch');
           }
           console.log('Original 1.0.1 production iOS source matches the reviewed IPA build');
@@ -268,12 +270,12 @@ jobs:
           export EAS_NO_VCS=1
           cd "$STAGED_PROJECT"
           npx --yes eas-cli@16.18.0 submit --platform ios \
-            --id c3a2b2e4-7309-402a-947e-e72e55cbf2d1 \
+            --id b2a6e3d5-2a85-4ecd-9c9e-75c698d77693 \
             --profile production --non-interactive --wait
           printf '%s\n' \
             '### CarMazium iOS — build-upload result' \
-            '- Signed EAS build: c3a2b2e4-7309-402a-947e-e72e55cbf2d1' \
-            '- Original reviewed app source: 876ee3be026db98f1fa387ad9af830c1ad281191' \
+            '- Signed EAS build: b2a6e3d5-2a85-4ecd-9c9e-75c698d77693' \
+            '- Original reviewed app source: 7e8758c03ea004c42fc09203249f892f9aa11ffd' \
             '- App Store Connect app: 6837996479' \
             '- This command uploads a binary for processing, but does not submit for App Review, publish to the App Store or invite external testers.' \
             >> "$GITHUB_STEP_SUMMARY"
