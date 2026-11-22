@@ -15,7 +15,9 @@ Follow it in order. Every step says **who** does it (👤 owner / 💻 developer
 | App name / version | `CarMazium` / `1.0.0` (`app.json`) |
 | Android package | `uk.carmazium.app` |
 | iOS bundle ID | `uk.carmazium.app` |
-| Expo (EAS) project | owner `pizn-01s-team`, project ID `f0ab914b-3433-4816-80a2-0a94e6c6a066` |
+| Expo (EAS) project | company owner `carmazium`, project ID `9c77bb81-205c-42f8-913e-b69a0953ec10` |
+
+**Owner-account transition (22 Nov 2026):** the original installable `uk.carmazium.app` remains the same customer Android/iPhone app. Previously distributed build 111 embeds the former EAS project `f0ab914b-3433-4816-80a2-0a94e6c6a066`. The new CarMazium-owned Expo project is for future releases; an original-signed, incremented APK must be installed in place to switch existing Android users to its OTA update endpoint. Do not deploy a new customer binary until verified signing, login/tour/gallery/device QA, Apple account setup, push notification project ID revalidation and owner release approval. The previous Expo project is not claimed as transferred.
 | Build profiles | `development`, `preview`, `production` (`eas.json`) |
 | Backend API | `https://carmazium-hjoh9w.fly.dev` (same for web and app) |
 | Website | `https://www.carmazium.com` (Next.js, hosted on Vercel) |
@@ -52,7 +54,7 @@ Do these first — they can take days to approve.
 | Google Play | https://play.google.com/console/signup — choose **Organisation** | $25 one-off | Invite developer as **Admin** (Users & permissions) |
 | Apple | https://developer.apple.com/programs/enroll — choose **Organisation** | $99 / year | Needs a free **D-U-N-S number** for Pulse Cars Limited (Apple links to it). Then invite developer in App Store Connect → Users and Access as **Admin** |
 | Microsoft | https://partner.microsoft.com/dashboard/registration — **Company** account | one-off fee for company accounts | Invite developer to Partner Center |
-| Expo | https://expo.dev — organisation `pizn-01s-team` | free tier works; paid plan builds faster | Invite developer to the organisation |
+| Expo | https://expo.dev — CarMazium-owned organisation `carmazium` | free tier works; paid plan builds faster | Keep `carmazium-owner` as owner; no third-party developer invitations by default |
 
 Use the same legal company name, address and support email on all three stores.
 
