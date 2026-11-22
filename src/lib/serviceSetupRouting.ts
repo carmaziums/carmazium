@@ -9,9 +9,3 @@ export function validatedServiceCapability(response: unknown, requested: JobServ
     }
     return { id: capability.id, serviceType: requested }
 }
-
-/** Compatibility for older deep links; the canonical workflow stays inline. */
-export function serviceVerificationPath(response: unknown, requested: JobService): string {
-    const capability = validatedServiceCapability(response, requested)
-    return `/dashboard/service/capabilities/${capability.id}/verification`
-}
