@@ -83,12 +83,15 @@ jobs:
             throw new Error('Production API endpoint is not configured');
           }
           const imagePicker = app.plugins?.find(p => Array.isArray(p) && p[0] === 'expo-image-picker');
-          if (app.ios?.infoPlist?.NSCameraUsageDescription !== undefined ||
-              imagePicker?.[1]?.cameraPermission !== false ||
-              imagePicker?.[1]?.microphonePermission !== false) {
-            throw new Error('Current iOS release must not declare camera or microphone access without a native capture flow');
+          const cameraPurpose = app.ios?.infoPlist?.NSCameraUsageDescription;
+          if (typeof cameraPurpose !== 'string' || !/camera/i.test(cameraPurpose) ||
+              !/photo/i.test(cameraPurpose) ||
+              imagePicker?.[1]?.cameraPermission !== cameraPurpose ||
+              imagePicker?.[1]?.microphonePermission !== false ||
+              !(app.android?.blockedPermissions ?? []).includes('android.permission.CAMERA')) {
+            throw new Error('Apple ITMS-90683: static image-picker camera purpose must match Info.plist; microphone and Android camera remain disabled');
           }
-          console.log('Reviewed source, EAS project, photo picker permissions and production iOS build profile verified');
+          console.log('Reviewed source, EAS project, Apple static purpose string and production iOS build profile verified');
           NODE
       - name: Require previously connected Expo signing account
         shell: bash
@@ -153,19 +156,24 @@ jobs:
           # still prevents node_modules from being included in the cloud archive.
           npm ci --prefix "$STAGE" --no-audit --no-fund
           # Evaluate native config plugins, not only the static app.json fields.
-          # iOS permission policy currently disables camera/microphone for photo-library-only flows.
-          # Apple's previous ITMS-90683 rejection still requires an independent App Store build review.
+          # Apple previously rejected the image-picker binary for a missing
+          # camera purpose string. Static purpose metadata alone does NOT prompt
+          # the user; current UI remains library-picker-only. Check the generated
+          # native Info.plist without enabling microphone or Android camera.
           (cd "$STAGE" && npx --no-install expo config --type introspect --json > "$RUNNER_TEMP/carmazium-ios-introspected.json")
           node - "$RUNNER_TEMP/carmazium-ios-introspected.json" <<'NODE'
           const fs = require('fs');
           const config = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
           const info = config?._internal?.modResults?.ios?.infoPlist;
-          if (!info || info.NSCameraUsageDescription !== undefined ||
+          const app = JSON.parse(fs.readFileSync('app.json', 'utf8')).expo;
+          const cameraPurpose = app.ios?.infoPlist?.NSCameraUsageDescription;
+          if (!info || typeof cameraPurpose !== 'string' ||
+              info.NSCameraUsageDescription !== cameraPurpose ||
               info.NSMicrophoneUsageDescription !== undefined ||
               !String(info.NSPhotoLibraryUsageDescription || '').includes('photos')) {
-            throw new Error('Generated iOS Info.plist does not match the reviewed photo-library-only permission policy.');
+            throw new Error('Generated iOS Info.plist is missing Apple's reviewed image-picker purpose description or added unwanted microphone access.');
           }
-          console.log('Native iOS Info.plist matches source permission policy after Expo plugins');
+          console.log('Native iOS Info.plist contains Apple-required static purpose string, no microphone purpose, and the reviewed photo picker text');
           NODE
           export EAS_NO_VCS=1
           export EAS_PROJECT_ROOT="$STAGE"
