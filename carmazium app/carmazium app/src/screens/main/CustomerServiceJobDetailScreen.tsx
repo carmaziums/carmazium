@@ -531,9 +531,9 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
             </Text>
             {paymentEvidence ? (
               <View style={{ gap: 8, marginTop: 12 }}>
-                <Info label="Recorded customer amount" value={formatPence(paymentEvidence.grossPence)} />
-                <Info label="CarMazium service fee (9%)" value={formatPence(paymentEvidence.platformFeePence)} />
-                <Info label="Provider allocation (91%)" value={formatPence(paymentEvidence.contractorPence)} />
+                <Info icon="cash-outline" label="Recorded customer amount" value={formatPence(paymentEvidence.grossPence)} />
+                <Info icon="cash-outline" label="CarMazium service fee (9%)" value={formatPence(paymentEvidence.platformFeePence)} />
+                <Info icon="cash-outline" label="Provider allocation (91%)" value={formatPence(paymentEvidence.contractorPence)} />
               </View>
             ) : (
               <Text accessibilityRole="alert" style={styles.muted}>
