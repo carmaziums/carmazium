@@ -49,6 +49,16 @@ const DEDICATED_EMAIL_TYPES = new Set([
 
     'LISTING_APPROVED',
     'LISTING_REJECTED',
+
+    // TradeXchange's own transactional messages are sent by ServicesService.
+    // Keep the durable account/push notification, but do not email the
+    // customer/provider twice when generic notification email is enabled.
+    'SERVICE_CAPABILITY_APPROVED',
+    'SERVICE_CAPABILITY_REJECTED',
+    'SERVICE_QUOTE_RECEIVED',
+    'SERVICE_JOB_PAID',
+    'SERVICE_JOB_COMPLETED',
+    'SERVICE_PAYOUT_RELEASED',
 ]);
 
 export const CHAT_NOTIFICATION_EMAIL_DELAY_MS = 5 * 60 * 1000;
