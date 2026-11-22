@@ -67,11 +67,15 @@ test('withdrawal is a confirmed explicit action and backend refuses accepted/clo
 
 test('quote actions use the server permission flag rather than open status alone', () => {
   assert.match(server, /viewer\.quoteAllowedByActor !== false/);
+  assert.match(server, /const canWithdrawQuote =/);
+  assert.match(server, /q\.status === ServiceQuoteStatus\.ACTIVE/);
   assert.match(server, /job\.customerId !== viewer\.businessOwnerUserId/);
   assert.match(controller, /quoteAllowedByActor: actor \? \(!actor\.isStaff \|\| actor\.canQuote\) : false/);
   assert.match(webJob, /const canQuote = job\?\.status === "OPEN" && job\.canQuote === true/);
   assert.match(nativeJob, /const canQuote = job\?\.status === 'OPEN' && job\.canQuote === true/);
   assert.match(webJob, /quotePence === null/);
+  assert.match(webJob, /job\.canWithdrawQuote === true/);
+  assert.match(nativeJob, /job\.canWithdrawQuote === true/);
   assert.match(nativeJob, /quotePence === null/);
   assert.match(webJob, /New quotations are unavailable for this account/);
   assert.match(nativeJob, /New quotes unavailable/);
@@ -92,6 +96,7 @@ test('both apps submit and withdraw quotes through the same authenticated TradeX
     assert.match(api, /method: 'PUT'/);
     assert.match(api, /method: 'DELETE'/);
     assert.match(api, /canQuote\?: boolean/);
+    assert.match(api, /canWithdrawQuote\?: boolean/);
   }
   assert.match(webJob, /upsertQuote\(job\.id/);
   assert.match(nativeJob, /upsertProviderQuote\(job\.id/);
