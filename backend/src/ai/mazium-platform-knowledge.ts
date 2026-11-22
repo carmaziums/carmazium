@@ -152,10 +152,10 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'Dealer identity/business verification is required for trade auction access; there is a one-time £1 dealer account verification charge in the normal onboarding workflow.',
             'Partner service preferences do not automatically approve service-provider capability. Approval can require business verification, a signed Master Business Partner Agreement and payout setup.',
             'Collection, delivery and recovery capability also requires valid trade insurance; inspection capability follows its own declaration process.',
-            'Dealers manage profile verification in /profile?section=verification; approved partner service capabilities use /dashboard/service/capabilities.',
+            'Dealers manage initial dealer KYC at /profile?section=verification; TradeXchange provider services, approval status, insurance documents and preferences use the single /dashboard/partner hub. The original £1 dealer account verification is not repeated when opting into services.',
             'Never claim verification has passed, failed or been charged without authenticated account records.'
         ].join(' '),
-        sources: ['backend/src/dealers/dealers.service.ts','src/components/dealer/DealerServicePreferences.tsx','src/app/profile/page.tsx']
+        sources: ['backend/src/dealers/dealers.service.ts','src/components/dealer/DealerServicePreferences.tsx','src/app/profile/page.tsx','src/app/dashboard/partner/page.tsx']
     },
     {
         id: 'warranty',
@@ -189,7 +189,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         facts: [
             'TradeXchange is the CarMazium marketplace for delivery, recovery and independent inspection jobs.',
             'Any signed-in customer can post an eligible service job at /services/jobs/new; see posted jobs at /services/jobs.',
-            'Approved and eligible provider businesses see matching available jobs at /dashboard/service/jobs and can quote. Service capability setup is /dashboard/service/capabilities.',
+            'Approved and eligible provider businesses see matching available jobs at /dashboard/service/jobs and can quote. Business setup, service applications, trade insurance evidence, payout verification and job preferences are managed together at /dashboard/partner (TradeXchange); old capability links redirect there.',
             'Customers compare quotes, accept one, complete the required checkout and can track or confirm service completion in the job detail.',
             'Paid TradeXchange service jobs use a 9% platform and 91% provider split, rounded in pence. Service-job payment is separate from the vehicle sale price paid directly to the vehicle seller. Service funds follow job completion, confirmation, dispute and release rules; never promise immediate payout.',
             'Completed, unconfirmed service jobs are eligible for automatic release after 48 hours from provider completion, subject to settlement checks. Leaving a job unconfirmed or merely sending a chat message does not freeze that process. If work was not completed correctly, open the job in /services/jobs and promptly use Something is wrong — raise a dispute before that window ends. If settlement is already in progress or released, ask staff to review; never promise a refund or that a chat message halted release.',
@@ -207,10 +207,10 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'Dealer accounts have opt-in service preferences for Finance badge, Warranty badge, Delivery/Recovery and Inspection. New accounts default the choices on, and a dealer can turn off unwanted services.',
             'Badges on a dealer listing describe that dealer’s services; they do not enrol the dealer as CarMazium’s central warranty or finance provider.',
             'Delivery/recovery and inspection require service capability verification; enabling a preference does not confer approval.',
-            'Manage dealership services through the dealer profile/settings, and complete /dashboard/service/capabilities for provider jobs.',
+            'Manage own-listing Finance and Warranty badges in Account Settings /profile?section=business. Manage Delivery/Recovery and Inspection service applications, approved evidence, payout setup and job-area preferences together from the TradeXchange hub /dashboard/partner, not a separate capability settings page. New provider job feed and accepted work remain at /dashboard/service/jobs. Existing providers keep their accounts and existing jobs.',
             'Finance, warranty and insurance companies wanting central platform partnerships must contact the CarMazium team.'
         ].join(' '),
-        sources: ['src/components/dealer/DealerServicePreferences.tsx','src/app/services/page.tsx','src/app/dashboard/partner/page.tsx']
+        sources: ['src/components/dealer/DealerServicePreferences.tsx','src/app/services/page.tsx','src/app/dashboard/partner/page.tsx','backend/src/ai/mazium-site-navigation.ts','carmazium app/carmazium app/src/screens/main/PartnerDashboardScreen.tsx']
     },
     {
         id: 'search-buying',

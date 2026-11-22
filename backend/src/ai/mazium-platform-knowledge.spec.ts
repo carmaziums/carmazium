@@ -31,6 +31,17 @@ describe('MaziuM source-verified public platform knowledge', () => {
         }
     });
 
+    it('uses the single TradeXchange provider hub for setup while keeping the job feed separate', () => {
+        for (const id of ['verification-and-kyc', 'tradexchange-jobs', 'dealer-services-and-partners']) {
+            const topic = PLATFORM_KNOWLEDGE.find(t => t.id === id);
+            expect(topic?.facts).toContain('/dashboard/partner');
+        }
+        expect(VERIFIED_SITE_NAVIGATION).toContain('For TradeXchange service applications');
+        expect(VERIFIED_SITE_NAVIGATION).toContain('/dashboard/partner');
+        expect(hasUnverifiedNavigationPath('Manage services at /dashboard/partner')).toBe(false);
+        expect(VERIFIED_SITE_NAVIGATION).toContain('/dashboard/service/jobs');
+    });
+
     it.each([
         ['How do I reorder dashboard blocks and find the More button?', 'dashboard-customisation'],
         ['how can i update existing listing?', 'edit-existing-listing'],

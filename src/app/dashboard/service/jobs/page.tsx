@@ -144,7 +144,7 @@ function ProviderJobs() {
                                 <p className="font-bold text-sm">Verification required for new jobs</p>
                                 <p className="text-xs text-[var(--text-muted)] mt-0.5">Complete business verification, verified payouts and the declaration. Delivery and recovery require trade insurance; inspections need no inspection documents. Your original £1 dealer verification is reused. Previously accepted jobs remain under My Work.</p>
                             </div>
-                            <Link href="/dashboard/service/capabilities" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>Review verification →</Link>
+                            <Link href="/dashboard/partner#provider-business" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>Review verification →</Link>
                         </div>
                     )}
                     {error && <ErrorState message={error} onRetry={loadJobs} />}

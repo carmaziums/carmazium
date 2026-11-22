@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 
-/** Legacy settings URL: all account editors now live in one location. */
-export default function LegacyAccountSettingsRedirect() {
-    redirect("/profile?section=personal")
+/** Legacy provider settings now live in TradeXchange. */
+export default function LegacyProviderSettingsRedirect() {
+  redirect("/dashboard/partner#provider-business")
 }

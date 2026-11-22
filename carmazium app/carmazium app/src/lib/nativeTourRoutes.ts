@@ -47,7 +47,7 @@ export function nativeTourDestination(href?: string): Destination | null {
     '/dashboard/dealer/analytics': 'DealerAnalytics', '/dashboard/dealer/earnings': 'DealerEarnings',
     '/dashboard/warranties': 'WarrantyOrders', '/services/jobs': 'CustomerServiceJobs',
     '/dashboard/cancellations': 'SaleCancellations', '/dashboard/service': 'ProviderOverview',
-    '/dashboard/service/capabilities': 'ProviderCapabilities', '/dashboard/partner': 'PartnerDashboard',
+    '/dashboard/service/capabilities': 'PartnerDashboard', '/dashboard/partner': 'PartnerDashboard',
   };
   return routes[path] ? page(routes[path]) : null;
 }

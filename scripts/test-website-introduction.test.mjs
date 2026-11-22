@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import ts from 'typescript';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 const source = readFileSync(new URL('../src/lib/welcomeTour.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
 const exports = {};
@@ -15,7 +16,7 @@ const { getGuidedWebsiteSteps } = guided;
 const account = { id: 'new-user', role: 'BUYER', createdAt: '2026-11-16T00:00:00Z' };
 
 test('natural narration catalog matches every role and current tour wording', () => {
-    execFileSync(process.execPath, [new URL('./generate-tour-narration.mjs', import.meta.url).pathname, '--check']);
+    execFileSync(process.execPath, [fileURLToPath(new URL('./generate-tour-narration.mjs', import.meta.url)), '--check']);
 });
 
 test('new users are introduced on a safe first authenticated landing page', () => {
@@ -42,7 +43,7 @@ test('guided pages match account roles without treating a stale dealer profile a
     const contractor = getGuidedWebsiteSteps({ ...account, role: 'CONTRACTOR' });
     assert.ok(dealer.some(step => step.href === '/dashboard/dealer/team'));
     assert.ok(dealer.some(step => step.title === 'My dealership services'));
-    assert.ok(contractor.some(step => step.title === 'Service setup and approval'));
+    assert.ok(contractor.some(step => step.title === 'TradeXchange services and approvals' && step.href === '/dashboard/partner'));
     assert.ok(!buyer.some(step => step.href?.startsWith('/dashboard/dealer')));
     assert.deepEqual(getGuidedWebsiteSteps({ ...account, dealerProfile: {} }), buyer);
     for (const role of ['FINANCE_PARTNER', 'INSURANCE_PARTNER']) {
@@ -74,7 +75,8 @@ test('settings destination exists and dashboards no longer render duplicated ser
     for (const role of ['dealer', 'partner']) {
         const page = readFileSync(new URL(`../src/app/dashboard/${role}/page.tsx`, import.meta.url), 'utf8');
         assert.doesNotMatch(page, /DealerServicePreferences/);
-        assert.match(page, /<DealerServicesNotice/);
+        if (role === 'dealer') assert.match(page, /<DealerServicesNotice/);
+        else assert.match(page, /<ContractorServicesInline/);
     }
 });
 

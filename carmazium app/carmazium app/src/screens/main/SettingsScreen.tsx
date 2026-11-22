@@ -274,8 +274,6 @@ export const SettingsScreen: React.FC = () => {
             setDealerWarrantyOffered(dp.warrantyOffered !== false);
             setDealerWarrantyDetails(dp.warrantyDetails ?? '');
             setDealerFinanceOffered(dp.financeOffered !== false);
-            setDeliveryEnabled(dp.deliveryServicesEnabled !== false);
-            setInspectionEnabled(dp.inspectionServicesEnabled !== false);
             setDealerFinanceDetails(dp.financeDetails ?? '');
             setDealerLogo(dp.logo ?? '');
             setDealerBusinessType(dp.kyc?.businessType === 'SOLE_PROPRIETORSHIP' ? 'SOLE_PROPRIETORSHIP' : 'PRIVATE_LIMITED');
@@ -329,8 +327,6 @@ export const SettingsScreen: React.FC = () => {
   const [dealerWebsite, setDealerWebsite] = useState('');
   const [dealerDescription, setDealerDescription] = useState('');
   const [dealerWarrantyOffered, setDealerWarrantyOffered] = useState(true);
-  const [deliveryEnabled, setDeliveryEnabled] = useState(true);
-  const [inspectionEnabled, setInspectionEnabled] = useState(true);
   const [dealerWarrantyDetails, setDealerWarrantyDetails] = useState('');
   const [dealerFinanceOffered, setDealerFinanceOffered] = useState(true);
   const [dealerFinanceDetails, setDealerFinanceDetails] = useState('');
@@ -388,8 +384,6 @@ export const SettingsScreen: React.FC = () => {
           website: dealerWebsite.trim(),
           description: dealerDescription.trim(),
           financeOffered: dealerFinanceOffered,
-          deliveryServicesEnabled: deliveryEnabled,
-          inspectionServicesEnabled: inspectionEnabled,
           warrantyOffered: dealerWarrantyOffered,
           warrantyDetails: dealerWarrantyOffered ? dealerWarrantyDetails.trim() : null,
           logo: dealerLogo,
@@ -1086,13 +1080,10 @@ export const SettingsScreen: React.FC = () => {
               {([
                 ['Finance badge', dealerFinanceOffered, setDealerFinanceOffered],
                 ['Warranty badge', dealerWarrantyOffered, setDealerWarrantyOffered],
-                ['Collection, delivery and recovery', deliveryEnabled, setDeliveryEnabled],
-                ['Vehicle inspection', inspectionEnabled, setInspectionEnabled],
               ] as const).map(([label, value, setValue]) => <View key={label} style={styles.toggleRow}>
                 <Text style={styles.toggleTitle}>{label}</Text><Switch accessibilityLabel={label} value={value} onValueChange={setValue} />
               </View>)}
-              <Text style={styles.payoutDesc}>Paid jobs reuse your approved dealer KYC and one-time £1 account verification. No additional verification payment is required for services. Verified payouts and a declaration are required. Collection/delivery/recovery also requires trade insurance; inspection requires no document uploads.</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('ProviderCapabilities')}><Text style={styles.toggleTitle}>Complete service setup</Text></TouchableOpacity>
+              <Text style={styles.payoutDesc}>Collection, delivery, recovery and inspection are managed in TradeXchange. Saving business details here will not change your service choices.</Text>
               <TouchableOpacity accessibilityRole="button" onPress={()=>navigation.navigate('FinancePreferences')}><Text style={styles.toggleTitle}>Show finance calculator</Text></TouchableOpacity>
               <SectionHeader icon="time-outline" label="OPENING HOURS"/>
               {BUSINESS_DAYS.map(day=><View key={day}><FieldLabel label={day.toUpperCase()}/><TextInput accessibilityLabel={`${day} opening hours`} style={styles.inputField} value={openingHours[day]||''} onChangeText={hours=>setOpeningHours(old=>({...old,[day]:hours}))} placeholder="e.g. 09:00–17:30 or Closed" placeholderTextColor={Colors.iconMuted} maxLength={100}/></View>)}

@@ -80,7 +80,9 @@ test('mobile CRM, Buy & Bid and settings do not clip controls at large fonts',()
   assert.ok(layout.includes('fontScale >= 1.6 ? 82 : fontScale >= 1.3 ? 68 : 54'));
   assert.ok(profile.includes('useSingleColumnSettings(viewportWidth, fontScale)'));
   assert.ok(profile.includes('singleColumnSettings && styles.fullWidthCategory'));
-  assert.ok(profile.includes('singleColumnSettings && styles.fullWidthTool'));
+  assert.ok(profile.includes('const stackAccountTools = singleColumnSettings || viewportWidth < 420'));
+  assert.ok(profile.includes('stackAccountTools && styles.fullWidthTool'));
+  assert.ok(profile.includes("fullWidthTool: { width: '100%', flexBasis: '100%' }"));
   assert.ok(layout.includes('width < 360 || fontScale >= 1.5'));
 });
 

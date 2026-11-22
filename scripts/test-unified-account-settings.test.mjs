@@ -27,11 +27,15 @@ test('website account settings has one navigable hub with role-specific editable
 });
 
 test('previous role settings URLs point to the same central destination', () => {
-  for (const [role,section] of [['dealer','business'],['buyer','personal'],['seller','payouts'],['service','personal']]) {
+  for (const [role,section] of [['dealer','business'],['buyer','personal'],['seller','payouts']]) {
     const s = read('src/app/dashboard/'+role+'/settings/page.tsx');
     assert.match(s, new RegExp('redirect\\("/profile\\?section='+section+'"\\)'));
     assert.doesNotMatch(s, /defaultChecked/);
   }
+  // Service-provider settings were intentionally consolidated into the existing TradeXchange hub.
+  const service = read('src/app/dashboard/service/settings/page.tsx');
+  assert.match(service, /redirect\("\/dashboard\/partner#provider-business"\)/);
+  assert.doesNotMatch(service, /defaultChecked/);
 });
 
 test('header, dashboard and dealer menus point to canonical Account Settings', () => {

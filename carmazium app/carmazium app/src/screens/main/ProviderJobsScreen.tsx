@@ -26,7 +26,6 @@ import {
   getJobFeedPage,
 } from '../../lib/servicesApi';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
-import { ProviderPageTabs } from '../../components/ProviderPageTabs';
 import { loadProviderJobLists, type ProviderJobLists } from '../../lib/tradeXchangeProviderJobLoad';
 import { Button } from '../../components/Button';
 
@@ -219,7 +218,7 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
 
       <TouchableOpacity
         style={styles.manageCoverage}
-        onPress={() => navigation.navigate('ProviderCapabilities')}
+        onPress={() => navigation.navigate('PartnerDashboard')}
         accessibilityRole="button"
         accessibilityLabel="Manage approved services and job-matching coverage"
         activeOpacity={0.8}
@@ -242,7 +241,7 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
       </Text>
       <TouchableOpacity
         style={styles.primaryButton}
-        onPress={() => navigation.navigate('ProviderCapabilities')}
+        onPress={() => navigation.navigate('PartnerDashboard')}
       >
         <Text style={styles.primaryText}>MANAGE SERVICES</Text>
       </TouchableOpacity>
@@ -299,7 +298,6 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
             loadingMore ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 18 }} /> : null
           }
         />
-        <ProviderPageTabs />
     </View>
   );
 };

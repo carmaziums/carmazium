@@ -9,7 +9,7 @@ for (const name of ['dealerAttention', 'userAttention']) {
     + source.replaceAll('"@/lib/', '"./');
   const target = new URL(`carmazium app/carmazium app/src/lib/${name}.ts`, root);
   if (process.argv.includes('--check')) {
-    if (readFileSync(target, 'utf8') !== output) throw Error(`Dashboard attention rules drifted: ${name}`);
+    if (readFileSync(target, 'utf8').replace(/\r\n/g, '\n') !== output.replace(/\r\n/g, '\n')) throw Error(`Dashboard attention rules drifted: ${name}`);
   } else writeFileSync(target, output);
 }
 console.log('Website and native dashboard attention rules match.');

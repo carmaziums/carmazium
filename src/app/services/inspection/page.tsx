@@ -30,7 +30,7 @@ export default function InspectionLandingPage() {
     if (!inspectionServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Vehicle Inspection" />
 
     const providerHref = user
-        ? "/dashboard/service/capabilities#service-inspection"
+        ? "/dashboard/partner#provider-services"
         : "/auth/signup?role=DEALER"
 
     return (

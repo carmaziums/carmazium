@@ -17,6 +17,7 @@ export interface CapabilityVerificationRequirement {
   title: string;
   description: string;
   expiryRequired: boolean;
+  optional?: boolean;
   state: 'SATISFIED' | 'PENDING' | 'REJECTED' | 'MISSING';
   currentEvidenceId: string | null;
   approvedEvidenceId: string | null;

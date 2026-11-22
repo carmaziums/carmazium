@@ -405,14 +405,17 @@
     {
       "id": "service_provider.capabilities",
       "web": [
-        "src/app/dashboard/service/capabilities/page.tsx",
-        "src/app/dashboard/service/capabilities/[id]/verification/page.tsx",
-        "src/app/dashboard/service/capabilities/[id]/matching/page.tsx"
+        "src/app/dashboard/partner/page.tsx",
+        "src/components/tradexchange/ContractorServicesInline.tsx",
+        "src/components/tradexchange/ProviderSettingsSections.tsx",
+        "src/components/tradexchange/ProviderDocumentsSection.tsx"
       ],
       "mobile": [
-        "carmazium app/carmazium app/src/screens/main/ProviderCapabilitiesScreen.tsx",
-        "carmazium app/carmazium app/src/screens/main/ProviderVerificationScreen.tsx",
-        "carmazium app/carmazium app/src/screens/main/ProviderMatchingScreen.tsx"
+        "carmazium app/carmazium app/src/screens/main/PartnerDashboardScreen.tsx",
+        "carmazium app/carmazium app/src/components/tradexchange/ContractorServicesInline.tsx",
+        "carmazium app/carmazium app/src/components/tradexchange/ProviderSettingsSections.tsx",
+        "carmazium app/carmazium app/src/components/tradexchange/ProviderDocumentsSection.tsx",
+        "carmazium app/carmazium app/src/screens/main/LegacyProviderRouteRedirectScreen.tsx"
       ],
       "status": "required"
     },

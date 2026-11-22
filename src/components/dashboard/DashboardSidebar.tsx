@@ -170,7 +170,6 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
         }
     }
     const displayType = formatRole(initialUserType || profile?.role)
-    const isPartnerOwner = profile?.role === 'DEALER' || profile?.role === 'CONTRACTOR'
 
     type LinkObj = {
         href: string
@@ -228,11 +227,8 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
         buyer: unifiedLinks,
         seller: sellerLinks,
         provider: [
-            ...(isPartnerOwner ? [{ href: "/dashboard/partner", label: "Partner Home", icon: Building2, section: "Business" }] : []),
-            { href: "/dashboard/service", label: "Service Overview", icon: LayoutDashboard, section: "Services" },
-            { href: "/dashboard/service/jobs", label: "Available Jobs", icon: Briefcase, section: "Services" },
-            { href: "/dashboard/service/jobs?tab=mine", label: "My Work", icon: Briefcase, section: "Services" },
-            { href: "/dashboard/service/capabilities", label: "My services", icon: ShieldCheck, section: "Services" },
+            // One provider entry point. The job and setup actions stay available on this existing hub.
+            { href: "/dashboard/partner", label: "TradeXchange", icon: Briefcase, section: "Services", activePrefixes: ["/dashboard/service"] },
             { href: "/dashboard/service/messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account" },
             { href: "/profile", label: "Account Settings", icon: Settings, section: "Account" },
         ],

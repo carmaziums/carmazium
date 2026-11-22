@@ -4,7 +4,6 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
-import { ProviderPageTabs } from '../../components/ProviderPageTabs';
 import { Button } from '../../components/Button';
 import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
@@ -45,7 +44,7 @@ export function ProviderOverviewScreen({ navigation }: Props) {
   return <View style={s.screen}><WebsiteTopBar /><ScrollView contentContainerStyle={s.content}>
     <Text style={s.eyebrow}>TradeXchange Services</Text><Text accessibilityRole="header" style={s.title}>Provider overview</Text>
     <Text style={s.body}>Delivery and Inspection jobs, approvals and earnings in one place. Contact our team about finance and warranty partnerships.</Text>
-    <View style={s.actions}><Button label="My services" variant="outline" onPress={() => navigation.navigate('ProviderCapabilities')} /><Button label="Find jobs" onPress={() => openJobs()} /></View>
+    <View style={s.actions}><Button label="My services" variant="outline" onPress={() => navigation.navigate('PartnerDashboard')} /><Button label="Find jobs" onPress={() => openJobs()} /></View>
     <Button label={loading ? 'Refreshing…' : 'Refresh dashboard'} variant="outline" disabled={loading} onPress={() => void load()} />
     {error && <Text accessibilityRole="alert" style={s.error}>{error}</Text>}
     <View style={s.metrics}>{metrics.map(([label, value]) => <View key={label} style={[s.metric, { width: fontScale >= 1.3 ? '100%' : '48%' }]}><Text style={s.body}>{label}</Text><Text style={s.value}>{loading ? '…' : value}</Text></View>)}</View>
@@ -54,8 +53,8 @@ export function ProviderOverviewScreen({ navigation }: Props) {
     <View style={s.card}><Text style={s.heading}>My recent assigned jobs</Text><Text style={s.body}>Delivery and Inspection jobs assigned to your business.</Text><Button label="View all" variant="outline" onPress={() => openJobs('assigned')} />
       {loading ? <ActivityIndicator color={Colors.accent} /> : !assigned ? <Text style={s.body}>Assigned jobs are unavailable. Refresh the dashboard to try again.</Text> : recent.length === 0 ? <><Text style={s.body}>No assigned jobs yet. Approved Delivery or Inspection providers can quote on open jobs.</Text><Button label="Browse open jobs" variant="outline" onPress={() => openJobs()} /></> : recent.map(job => <View key={job.id} style={s.card}><Text style={s.heading}>{job.title}</Text><Text style={s.body}>{job.serviceType === 'DELIVERY' ? `${job.pickupPostcode} → ${job.deliveryPostcode}` : job.servicePostcode}</Text>{job.contractorAmountPence != null && <Text style={s.body}>{formatPence(job.contractorAmountPence)} to you</Text>}<Button label="View job" variant="outline" onPress={() => navigation.navigate('ProviderJobDetail', { jobId: job.id })} /></View>)}
     </View>
-    <View style={s.card}><Text style={s.heading}>What you need before taking jobs</Text><Text style={s.body}>Complete business verification, verified payouts and the declaration. Collection, delivery and recovery require trade insurance. Inspections need no inspection documents. Your original £1 dealer verification is reused; no further £1 service verification is required. CarMazium retains 9% of the agreed job price and your business receives 91% after release. Finance, warranty and insurance providers should contact CarMazium directly about partnerships.</Text><Button label="Complete service setup" variant="outline" onPress={() => navigation.navigate('ProviderCapabilities')} /></View>
-  </ScrollView><ProviderPageTabs /></View>;
+    <View style={s.card}><Text style={s.heading}>What you need before taking jobs</Text><Text style={s.body}>Complete business verification, verified payouts and the declaration. Collection, delivery and recovery require trade insurance. Inspections need no inspection documents. Your original £1 dealer verification is reused; no further £1 service verification is required. CarMazium retains 9% of the agreed job price and your business receives 91% after release. Finance, warranty and insurance providers should contact CarMazium directly about partnerships.</Text><Button label="Complete service setup" variant="outline" onPress={() => navigation.navigate('PartnerDashboard')} /></View>
+  </ScrollView></View>;
 }
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.bgPrimary }, content: { padding: 20, gap: 20, paddingBottom: 32 },

@@ -12,9 +12,7 @@ import {
     Settings,
     Heart,
     Trophy,
-    Briefcase,
     Receipt,
-    Wrench,
     ShieldCheck,
     ShoppingBag,
     History,
@@ -198,28 +196,10 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
 
     {
         href: "/dashboard/partner",
-        label: "Partner Account",
-        title: "Partner Account",
+        label: "TradeXchange",
+        title: "TradeXchange",
         subHeader: "Business details, payouts and service status",
         icon: LayoutDashboard,
-        hidden: true,
-        section: "Services"
-    },
-    {
-        href: "/dashboard/service/capabilities",
-        label: "Service Add-ons",
-        title: "Service Add-ons",
-        subHeader: "Delivery and inspection services; finance and warranty partnerships by contact",
-        icon: Wrench,
-        hidden: true,
-        section: "Services"
-    },
-    {
-        href: "/dashboard/service/jobs",
-        label: "Service Jobs",
-        title: "Service Jobs",
-        subHeader: "TradeXchange delivery and inspection work",
-        icon: Briefcase,
         hidden: true,
         section: "Services"
     },

@@ -164,7 +164,7 @@ export default function ServicesPage() {
                             <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">Approved Partner businesses see open work matching their Delivery or Inspection capabilities. Staff can act for the business where permission is granted.</p>
                             <div className="mt-5 flex flex-wrap gap-2">
                                 <Button asChild><Link href="/dashboard/service/jobs">Available Jobs</Link></Button>
-                                <Button asChild variant="outline"><Link href="/dashboard/service/capabilities">My services</Link></Button>
+                                <Button asChild variant="outline"><Link href="/dashboard/partner#provider-services">My services</Link></Button>
                             </div>
                         </div>
                     </div>
@@ -312,7 +312,7 @@ export default function ServicesPage() {
                             <Link href={partnerHref}>{partnerLabel}</Link>
                         </Button>
                         <Button asChild variant="outline" size="lg" className="border-white/25 text-white hover:border-white/50 hover:bg-white/10 hover:text-white">
-                            <Link href="/dashboard/service/capabilities">My services</Link>
+                            <Link href="/dashboard/partner#provider-services">My services</Link>
                         </Button>
                     </div>
                 </div>

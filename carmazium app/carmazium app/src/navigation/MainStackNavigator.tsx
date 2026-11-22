@@ -35,10 +35,8 @@ import { CreateServiceJobScreen } from '../screens/main/CreateServiceJobScreen';
 import { CustomerServiceJobsScreen } from '../screens/main/CustomerServiceJobsScreen';
 import { CustomerServiceJobDetailScreen } from '../screens/main/CustomerServiceJobDetailScreen';
 import { PartnerDashboardScreen } from '../screens/main/PartnerDashboardScreen';
-import { ProviderCapabilitiesScreen } from '../screens/main/ProviderCapabilitiesScreen';
-import { ProviderVerificationScreen } from '../screens/main/ProviderVerificationScreen';
+import { LegacyProviderRouteRedirectScreen } from '../screens/main/LegacyProviderRouteRedirectScreen';
 import { PartnerAgreementScreen } from '../screens/main/PartnerAgreementScreen';
-import { ProviderMatchingScreen } from '../screens/main/ProviderMatchingScreen';
 import { ProviderOverviewScreen } from '../screens/main/ProviderOverviewScreen';
 import { ProviderJobsScreen } from '../screens/main/ProviderJobsScreen';
 import { ProviderJobDetailScreen } from '../screens/main/ProviderJobDetailScreen';
@@ -173,7 +171,7 @@ export type MainStackParamList = {
   } };
   CustomerServiceJobs: undefined;
   CustomerServiceJobDetail: { jobId: string };
-  PartnerDashboard: undefined;
+  PartnerDashboard: { openSection?: 'services' | 'business' | 'preferences'; capabilityId?: string } | undefined;
   PartnerAgreementInfo: undefined;
   ProviderCapabilities: undefined;
   ProviderVerification: { capabilityId: string };
@@ -426,9 +424,9 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen name="CustomerServiceJobDetail" component={CustomerServiceJobDetailScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PartnerDashboard" component={PartnerDashboardScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PartnerAgreementInfo" component={PartnerAgreementScreen} options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="ProviderCapabilities" component={ProviderCapabilitiesScreen} options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="ProviderVerification" component={ProviderVerificationScreen} options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="ProviderMatching" component={ProviderMatchingScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="ProviderCapabilities" component={LegacyProviderRouteRedirectScreen} options={{ animation: 'none' }} />
+      <Stack.Screen name="ProviderVerification" component={LegacyProviderRouteRedirectScreen} options={{ animation: 'none' }} />
+      <Stack.Screen name="ProviderMatching" component={LegacyProviderRouteRedirectScreen} options={{ animation: 'none' }} />
       <Stack.Screen name="ProviderOverview" component={ProviderOverviewScreen} />
       <Stack.Screen name="ProviderJobs" component={ProviderJobsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ProviderJobDetail" component={ProviderJobDetailScreen} options={{ animation: 'slide_from_right' }} />

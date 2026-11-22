@@ -1,32 +1,31 @@
 "use client"
 
-import { DealerServicesNotice } from "@/components/dealer/DealerServicesNotice"
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
     ArrowRight,
     Building2,
-    CheckCircle2,
-    Clock3,
-    CreditCard,
-    FileText,
     Loader2,
-    ShieldCheck,
-    Truck,
-    Users,
-    Wrench,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
 import { Button } from "@/components/ui/Button"
-import { serviceVerificationPath, type JobService } from "@/lib/serviceSetupRouting"
+import { validatedServiceCapability, type JobService } from "@/lib/serviceSetupRouting"
+import { ProviderDocumentsSection } from "@/components/tradexchange/ProviderDocumentsSection"
+import { ContractorServicesInline } from "@/components/tradexchange/ContractorServicesInline"
+import { ProviderBusinessPaymentsSection, ProviderJobPreferencesSection } from "@/components/tradexchange/ProviderSettingsSections"
+import { getMyCapabilities, type ContractorCapability, type MyCapabilities } from "@/lib/servicesApi"
 
 type CapabilityStatus = "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED"
 type PartnerCapability = {
     id: string
     serviceType: "DELIVERY" | "INSPECTION" | "FINANCE" | "WARRANTY"
     status: CapabilityStatus
+    verificationStatus?: string | null
+    verificationExpiresAt?: string | null
+    jobNationwide?: boolean
+    jobPostcodeAreas?: string[]
     reviewNote?: string | null
 }
 type PartnerTeam = {
@@ -35,13 +34,6 @@ type PartnerTeam = {
     stripeConnect: { connected: boolean; complete: boolean }
     capabilities: PartnerCapability[]
     payoutPolicy: string
-}
-
-const statusLabel: Record<CapabilityStatus, string> = {
-    PENDING: "Awaiting approval",
-    APPROVED: "Active",
-    REJECTED: "Needs attention",
-    SUSPENDED: "Suspended",
 }
 
 export default function PartnerDashboardPage() {
@@ -54,6 +46,10 @@ export default function PartnerDashboardPage() {
     const [companyName, setCompanyName] = React.useState("")
     const [phone, setPhone] = React.useState("")
     const [businessAddress, setBusinessAddress] = React.useState("")
+    const [servicesExpanded, setServicesExpanded] = React.useState(true)
+    const [legacyCapabilities, setLegacyCapabilities] = React.useState<ContractorCapability[]>([])
+    const [legacyProviderProfile, setLegacyProviderProfile] = React.useState<MyCapabilities["profile"]>(null)
+    const [legacyPayoutComplete, setLegacyPayoutComplete] = React.useState(false)
 
     const role = profile?.role || ""
     const isPartnerRole = role === "DEALER"
@@ -67,6 +63,15 @@ export default function PartnerDashboardPage() {
         setPhone(partnerBusiness.phone || "")
         setBusinessAddress(partnerBusiness.businessAddress || "")
     }, [partnerBusiness])
+
+    React.useEffect(() => {
+        if (!isLegacyProvider || !user) return
+        let cancelled = false
+        getMyCapabilities().then(result => {
+            if (!cancelled) { setLegacyCapabilities(result.capabilities); setLegacyProviderProfile(result.profile); setLegacyPayoutComplete(result.stripeConnect.complete) }
+        }).catch(() => { if (!cancelled) setError("Could not load service documents. Refresh to retry.") })
+        return () => { cancelled = true }
+    }, [isLegacyProvider, user])
 
     const loadTeam = React.useCallback(async () => {
         if (!partnerBusiness || (!isPartnerRole && !isAdmin)) return
@@ -131,7 +136,10 @@ export default function PartnerDashboardPage() {
         setError(null)
         try {
             const response = await apiClient(`/services/team/capabilities/${serviceType}`, { method: "POST" })
-            router.push(serviceVerificationPath(response, serviceType))
+            validatedServiceCapability(response, serviceType)
+            await loadTeam()
+            window.location.hash = "provider-business"
+            window.dispatchEvent(new HashChangeEvent("hashchange"))
         } catch (e: any) {
             setError(e?.message || "Could not add this service")
         } finally {
@@ -139,23 +147,29 @@ export default function PartnerDashboardPage() {
         }
     }
 
-    const connectStripe = async () => {
-        setBusy("stripe")
+    const openInlineSection = (section: 'business' | 'preferences', capabilityId: string) => {
+        const url = new URL(window.location.href)
+        url.searchParams.set('capability', capabilityId)
+        url.hash = `provider-${section}`
+        window.history.replaceState(null, '', url)
+        window.dispatchEvent(new HashChangeEvent('hashchange'))
+        document.getElementById(`provider-${section}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+
+    const toggleService = async (serviceType: JobService, enabled: boolean) => {
+        const key = serviceType === "DELIVERY" ? "deliveryServicesEnabled" : "inspectionServicesEnabled"
+        setBusy(key)
         setError(null)
         try {
-            const origin = window.location.origin
-            const response = await apiClient<{ data?: { url: string }; url?: string }>("/users/stripe-connect/onboard", {
-                method: "POST",
-                body: JSON.stringify({
-                    returnUrl: `${origin}/dashboard/partner?stripe=done`,
-                    refreshUrl: `${origin}/dashboard/partner`,
-                }),
+            await apiClient("/users/dealer-profile", {
+                method: "PATCH",
+                body: JSON.stringify({ [key]: enabled }),
             })
-            const url = response.data?.url ?? response.url
-            if (!url) throw new Error("Stripe did not return an onboarding link")
-            window.location.href = url
+            await refreshProfile()
+            // Preference changes never replace capability approvals or documents.
         } catch (e: any) {
-            setError(e?.message || "Could not start Stripe onboarding")
+            setError(e?.message || "Could not update your service preference")
+        } finally {
             setBusy(null)
         }
     }
@@ -171,20 +185,19 @@ export default function PartnerDashboardPage() {
 
     const delivery = team?.capabilities?.find(c => c.serviceType === "DELIVERY")
     const inspection = team?.capabilities?.find(c => c.serviceType === "INSPECTION")
-    const dealerActive = !!partnerBusiness?.isVerified
 
     if (!isPartnerRole && !isLegacyProvider && !isAdmin) {
         return (
             <div className="max-w-3xl mx-auto pt-28 pb-16 px-5">
                 <div className="rounded-3xl border border-[var(--border-default)] bg-[var(--bg-card)] p-8 md:p-12 text-center">
                     <Building2 className="mx-auto text-primary mb-5" size={46} />
-                    <h1 className="text-3xl font-black font-heading mb-3">Create a Partner Account</h1>
+                    <h1 className="text-3xl font-black font-heading mb-3">{partnerBusiness ? "Continue your existing business setup" : "Create a Partner Account"}</h1>
                     <p className="text-[var(--text-muted)] max-w-xl mx-auto mb-7">
-                        One business account lets you add Vehicle Dealer, Delivery & Recovery and Vehicle Inspection services. Finance and warranty providers should contact our team directly.
+                        {partnerBusiness ? "Your saved business details are already on this account. Continue verification without creating another business profile or repeating onboarding." : "One business account lets you add Vehicle Dealer, Delivery & Recovery and Vehicle Inspection services. Finance and warranty providers should contact our team directly."}
                     </p>
                     {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
                     <Button onClick={becomePartner} disabled={busy === "partner"}>
-                        {busy === "partner" ? <Loader2 className="animate-spin" size={16} /> : <>Create Partner Account <ArrowRight size={16} className="ml-2" /></>}
+                        {busy === "partner" ? <Loader2 className="animate-spin" size={16} /> : <>{partnerBusiness ? "Continue setup" : "Create Partner Account"} <ArrowRight size={16} className="ml-2" /></>}
                     </Button>
                 </div>
             </div>
@@ -195,14 +208,26 @@ export default function PartnerDashboardPage() {
         return (
             <div className="max-w-3xl mx-auto pt-28 pb-16 px-5">
                 <div className="rounded-3xl border border-primary/30 bg-primary/5 p-8 md:p-12">
-                    <h1 className="text-3xl font-black font-heading mb-3">Move to the new Partner Account</h1>
+                    <h1 className="text-3xl font-black font-heading mb-3">TradeXchange</h1>
                     <p className="text-[var(--text-muted)] mb-5">
-                        Your existing service-provider profile and approvals are kept. This only changes the account shell so you can add Vehicle Dealer and other Partner services without replacing your current services.
+                        Continue using your existing service-provider account. Your applications, approvals and documents remain unchanged; no dealer registration is needed.
                     </p>
-                    {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
-                    <Button onClick={becomePartner} disabled={busy === "partner"}>
-                        {busy === "partner" ? <Loader2 className="animate-spin" size={16} /> : <>Continue as Partner <ArrowRight size={16} className="ml-2" /></>}
-                    </Button>
+                    <div className="flex flex-wrap gap-3">
+                        <Link href="#provider-services"><Button>My services</Button></Link>
+                        <Link href="/dashboard/service/jobs"><Button variant="outline">Find jobs</Button></Link>
+                        <Link href="/dashboard/service/jobs?tab=mine"><Button variant="outline">My work</Button></Link>
+                    </div>
+                    <div className="mt-5 space-y-4">
+                        <ContractorServicesInline capabilities={legacyCapabilities} profile={legacyProviderProfile} onUpdated={async () => {
+                            const result = await getMyCapabilities()
+                            setLegacyCapabilities(result.capabilities)
+                            setLegacyProviderProfile(result.profile)
+                            setLegacyPayoutComplete(result.stripeConnect.complete)
+                        }} />
+                        <ProviderBusinessPaymentsSection capabilities={legacyCapabilities} stripeComplete={legacyPayoutComplete} />
+                        <ProviderDocumentsSection capabilities={legacyCapabilities} />
+                        <ProviderJobPreferencesSection capabilities={legacyCapabilities} />
+                    </div>
                 </div>
             </div>
         )
@@ -213,19 +238,14 @@ export default function PartnerDashboardPage() {
             <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-5">
                 <div>
                     <div className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-primary mb-3">
-                        <Building2 size={15} /> Partner Account
+                        <Building2 size={15} /> TradeXchange
                     </div>
-                    <h1 className="text-4xl font-black font-heading tracking-tight">Partner Dashboard</h1>
+                    <h1 className="text-4xl font-black font-heading tracking-tight">TradeXchange</h1>
                     <p className="text-[var(--text-muted)] mt-2 max-w-2xl">
                         One CarMazium business account. Add only the services your business provides and keep them all under the same login.
                     </p>
                     <Link href="/business-partner-agreement" className="mt-3 inline-flex text-sm font-bold text-primary underline">View signed Business Partner Agreement and legal record</Link>
                 </div>
-                {partnerBusiness && (
-                    <Link href="/dashboard/dealer/team">
-                        <Button variant="outline"><Users size={16} className="mr-2" /> Manage Team</Button>
-                    </Link>
-                )}
             </header>
 
             {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 text-red-500 p-4 text-sm">{error}</div>}
@@ -244,8 +264,8 @@ export default function PartnerDashboardPage() {
                             <input value={phone} onChange={e => setPhone(e.target.value)} className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3" placeholder="01234 567890" />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">Business address / service area</label>
-                            <input value={businessAddress} onChange={e => setBusinessAddress(e.target.value)} className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3" placeholder="Birmingham / Nationwide" />
+                            <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">Registered business address</label>
+                            <input value={businessAddress} onChange={e => setBusinessAddress(e.target.value)} className="w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3" placeholder="Registered business address" />
                         </div>
                     </div>
                     <Button onClick={saveBusiness} disabled={busy === "business"} className="mt-6">
@@ -254,103 +274,68 @@ export default function PartnerDashboardPage() {
                 </section>
             ) : (
                 <>
-                    <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <p className="text-xs uppercase tracking-widest text-[var(--text-muted)] font-bold">Partner business</p>
-                            <h2 className="text-xl font-black font-heading mt-1">{partnerBusiness.companyName}</h2>
-                        </div>
-                        <Link href="/profile?section=business"><Button variant="outline">Edit business details</Button></Link>
+                    <section id="provider-services" className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 md:p-7">
+                        <button type="button" className="flex w-full items-center justify-between gap-3 text-left" aria-expanded={servicesExpanded} aria-controls="provider-service-options" onClick={() => setServicesExpanded(current => !current)}>
+                            <span>
+                                <span className="block text-xl font-black font-heading">My Services</span>
+                                <span className="block text-sm text-[var(--text-muted)] mt-1">Choose the work you offer. Approval and documents are kept when a service is paused.</span>
+                            </span>
+                            <span className="text-2xl text-[var(--text-muted)]" aria-hidden="true">{servicesExpanded ? "−" : "+"}</span>
+                        </button>
+                        {servicesExpanded && <div id="provider-service-options" className="mt-5 space-y-3">
+                            {(["DELIVERY", "INSPECTION"] as const).map(serviceType => {
+                                const cap = serviceType === "DELIVERY" ? delivery : inspection
+                                const key = serviceType === "DELIVERY" ? "deliveryServicesEnabled" : "inspectionServicesEnabled"
+                                const enabled = partnerBusiness[key] !== false
+                                const expires = cap?.verificationExpiresAt ? new Date(cap.verificationExpiresAt).getTime() : 0
+                                const verified = cap?.verificationStatus === "VERIFIED" && expires > Date.now()
+                                const coverage = cap?.jobNationwide || (cap?.jobPostcodeAreas?.length ?? 0) > 0
+                                const status = !team ? "Status unavailable" : !enabled ? "Paused" : !cap ? "Not set up"
+                                    : cap.status === "SUSPENDED" ? "Suspended"
+                                    : cap.status === "REJECTED" ? "Needs attention"
+                                    : cap.status === "PENDING" ? "Awaiting approval"
+                                    : !verified ? "Verification required"
+                                    : !partnerBusiness.isVerified ? "Dealer verification required"
+                                    : !team.stripeConnect.complete ? "Payout setup required"
+                                    : !coverage ? "Set working areas"
+                                    : "Approved"
+                                return <div key={serviceType} className="rounded-xl border border-[var(--border-default)] p-4 space-y-3">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div>
+                                            <h3 className="font-bold text-base">{serviceType === "DELIVERY" ? "Collection, delivery & recovery" : "Vehicle inspection"}</h3>
+                                            <p className="text-sm text-[var(--text-muted)] mt-1">{serviceType === "DELIVERY" ? "Vehicle movements and recovery work." : "Vehicle and pre-purchase inspections."}</p>
+                                        </div>
+                                        <label className="flex shrink-0 items-center gap-2 text-sm font-semibold">
+                                            <input type="checkbox" className="h-5 w-5" aria-label={serviceType === "DELIVERY" ? "Offer collection, delivery and recovery" : "Offer vehicle inspection"} checked={enabled} disabled={!!busy || loadingTeam || !team} onChange={event => void toggleService(serviceType, event.target.checked)} />
+                                            {enabled ? "On" : "Off"}
+                                        </label>
+                                    </div>
+                                    <p className="text-sm font-semibold" role="status">{status}</p>
+                                    {cap?.reviewNote && (cap.status === "REJECTED" || cap.status === "SUSPENDED") && <p className="text-sm text-red-600 dark:text-red-300">{cap.reviewNote}</p>}
+                                    {!enabled && <div className="flex flex-wrap items-center gap-2"><p className="text-xs text-[var(--text-muted)]">No new jobs while paused. Existing work, evidence and approval history are preserved.</p><Link className="text-sm font-semibold text-primary underline" href="/dashboard/service/jobs?tab=mine">View existing work</Link></div>}
+                                    {enabled && team && <div className="flex flex-wrap gap-2">
+                                        {!cap || cap.status === "REJECTED"
+                                            ? <Button size="sm" disabled={!!busy} onClick={() => void applyService(serviceType)}>{cap ? "Reapply" : "Apply for service"}</Button>
+                                            : cap.status === "PENDING" || (cap.status === "APPROVED" && !verified)
+                                                ? <Button size="sm" onClick={() => openInlineSection("business", cap.id)}>{cap.status === "PENDING" ? "Continue setup" : "Review verification"}</Button>
+                                                : cap.status === "SUSPENDED"
+                                                    ? <p className="text-xs text-[var(--text-muted)]">Contact CarMazium to reactivate this service.</p>
+                                                    : <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">View jobs</Button></Link>}
+                                        {cap?.status === "APPROVED" && verified && !coverage &&
+                                            <Button size="sm" variant="outline" onClick={() => openInlineSection('preferences', cap.id)}>Set working areas</Button>}
+                                    </div>}
+                                </div>
+                            })}
+                            <p className="text-xs text-[var(--text-muted)]">Switching a service on does not approve it. Job eligibility is checked by CarMazium using your verification, working areas and payout setup.</p>
+                        </div>}
                     </section>
 
-                    <DealerServicesNotice />
-                    <section>
-                        <div className="flex items-end justify-between gap-4 mb-5">
-                            <div><h2 className="text-2xl font-black font-heading">Your add-ons</h2><p className="text-sm text-[var(--text-muted)]">Activate one service or several. Adding one never removes another.</p></div>
-                        </div>
-                        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
-                            <AddonCard
-                                icon={Building2}
-                                title="Vehicle Dealer"
-                                description="List retail stock, bid in auctions, manage inventory, CRM and dealer tools. Business KYC and the £1 verification payment are required before taking paid jobs."
-                                status={dealerActive ? "Active" : partnerBusiness?.kyc?.status === "PENDING" ? "Awaiting verification" : "Not activated"}
-                                active={dealerActive}
-                                action={<Link href="/dashboard/dealer"><Button size="sm" variant={dealerActive ? "outline" : "default"}>{dealerActive ? "Open dealer tools" : "Add Vehicle Dealer"}</Button></Link>}
-                            />
-                            <AddonCard
-                                icon={Truck}
-                                title="Delivery & Recovery"
-                                description="Quote on transport and recovery jobs on behalf of your Partner business."
-                                status={loadingTeam ? "Checking status…" : !team ? "Status unavailable" : delivery ? statusLabel[delivery.status] : "Not activated"}
-                                active={delivery?.status === "APPROVED"}
-                                action={delivery?.status === "APPROVED"
-                                    ? <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">Open jobs</Button></Link>
-                                    : delivery?.status === "PENDING"
-                                        ? <Link href={`/dashboard/service/capabilities/${delivery.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Complete service setup</Button></Link>
-                                        : <Button size="sm" onClick={() => applyService("DELIVERY")} disabled={loadingTeam || !team || busy === "DELIVERY"}>{busy === "DELIVERY" ? <Loader2 className="animate-spin" size={14} /> : "Complete setup"}</Button>}
-                            />
-                            <AddonCard
-                                icon={Wrench}
-                                title="Vehicle Inspection"
-                                description="Quote on vehicle inspection jobs using the same Partner account and business payout details."
-                                status={loadingTeam ? "Checking status…" : !team ? "Status unavailable" : inspection ? statusLabel[inspection.status] : "Not activated"}
-                                active={inspection?.status === "APPROVED"}
-                                action={inspection?.status === "APPROVED"
-                                    ? <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">Open jobs</Button></Link>
-                                    : inspection?.status === "PENDING"
-                                        ? <Link href={`/dashboard/service/capabilities/${inspection.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Complete service setup</Button></Link>
-                                        : <Button size="sm" onClick={() => applyService("INSPECTION")} disabled={loadingTeam || !team || busy === "INSPECTION"}>{busy === "INSPECTION" ? <Loader2 className="animate-spin" size={14} /> : "Complete setup"}</Button>}
-                            />
+                    <ProviderBusinessPaymentsSection capabilities={team?.capabilities ?? []} dealer={partnerBusiness} stripeComplete={team?.stripeConnect.complete} onSaved={refreshProfile} />
+                    <ProviderDocumentsSection capabilities={team?.capabilities ?? []} />
+                    <ProviderJobPreferencesSection capabilities={team?.capabilities ?? []} />
 
-
-                        </div>
-                    </section>
-
-                    <section className="grid lg:grid-cols-2 gap-5">
-                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
-                            <div className="flex items-center gap-3 mb-3"><CreditCard className="text-primary" size={22} /><h3 className="font-black font-heading">TradeXchange payouts</h3></div>
-                            <p className="text-sm text-[var(--text-muted)] mb-5">For Delivery and Inspection, the job poster always pays through CarMazium. CarMazium deducts 9% and the remaining 91% is paid to the Partner business Stripe Connect account.</p>
-                            {loadingTeam ? <Loader2 className="animate-spin text-primary" size={18} /> : team?.stripeConnect.complete
-                                ? <div className="inline-flex items-center gap-2 text-emerald-500 font-bold text-sm"><CheckCircle2 size={17} /> Business payouts enabled</div>
-                                : <Button onClick={connectStripe} disabled={!team || busy === "stripe"} variant="outline">{busy === "stripe" ? <Loader2 className="animate-spin" size={15} /> : "Set up business payouts"}</Button>}
-                        </div>
-                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6">
-                            <div className="flex items-center gap-3 mb-3"><ShieldCheck className="text-primary" size={22} /><h3 className="font-black font-heading">One team, service permissions</h3></div>
-                            <p className="text-sm text-[var(--text-muted)] mb-5">Invite staff once, then decide who can quote, manage or complete Delivery and Inspection jobs on behalf of this business. Staff never receive the CarMazium payout personally.</p>
-                            <Link href="/dashboard/dealer/team"><Button variant="outline">Manage Partner team <ArrowRight size={15} className="ml-2" /></Button></Link>
-                        </div>
-                    </section>
                 </>
             )}
-        </div>
-    )
-}
-
-function AddonCard({
-    icon: Icon,
-    title,
-    description,
-    status,
-    active,
-    action,
-}: {
-    icon: React.ComponentType<{ size?: number; className?: string }>
-    title: string
-    description: string
-    status: string
-    active: boolean
-    action: React.ReactNode
-}) {
-    return (
-        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 flex flex-col min-h-[280px]">
-            <div className="flex items-start justify-between gap-4 mb-5">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center"><Icon size={22} className="text-primary" /></div>
-                <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider rounded-full border px-2.5 py-1 ${active ? "text-emerald-500 border-emerald-500/30 bg-emerald-500/10" : "text-[var(--text-muted)] border-[var(--border-default)] bg-[var(--bg-input)]"}`}>
-                    {active ? <CheckCircle2 size={12} /> : <Clock3 size={12} />} {status}
-                </span>
-            </div>
-            <h3 className="text-xl font-black font-heading">{title}</h3>
-            <p className="text-sm text-[var(--text-muted)] mt-2 mb-6 leading-relaxed flex-1">{description}</p>
-            <div>{action}</div>
         </div>
     )
 }

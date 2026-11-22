@@ -8,15 +8,15 @@ function load(name) {
     new Function('exports', ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText)(exports);
     return exports;
 }
-const { serviceVerificationPath } = load('serviceSetupRouting');
+const { validatedServiceCapability } = load('serviceSetupRouting');
 const { partnershipSubject } = load('partnershipContact');
-for (const type of ['DELIVERY', 'INSPECTION']) test(`${type} opens its own newly created or existing capability for dealer and contractor responses`, () => {
+for (const type of ['DELIVERY', 'INSPECTION']) test(`${type} validates the selected service capability without navigating to obsolete verification pages`, () => {
     const cap = { id: `cap-${type}`, serviceType: type };
-    for (const response of [cap, { data: cap }]) assert.equal(serviceVerificationPath(response, type), `/dashboard/service/capabilities/cap-${type}/verification`);
+    for (const response of [cap, { data: cap }]) assert.deepEqual(validatedServiceCapability(response, type), cap);
 });
-test('wrong service, invalid response and unsafe path never route the user to another application', () => {
+test('wrong service, invalid response and unsafe IDs are rejected before opening inline setup', () => {
     for (const response of [null, {}, { id: 'x', serviceType: 'WARRANTY' }, { id: '../x', serviceType: 'DELIVERY' }, { id: 'x/y', serviceType: 'DELIVERY' }, { id: 'x', serviceType: 'INSPECTION' }]) {
-        assert.throws(() => serviceVerificationPath(response, 'DELIVERY'), /could not be opened/);
+        assert.throws(() => validatedServiceCapability(response, 'DELIVERY'), /could not be verified/);
     }
 });
 test('partnership topics prepare only the matching public enquiry subject', () => {
