@@ -317,16 +317,36 @@ export function servicePaymentStatusText(
  * Never derive a fresh price or display an inconsistent payment breakdown.
  */
 export function servicePaymentEvidence(
-  payment: Pick<ServicePayment, 'grossPence' | 'platformFeePence' | 'contractorPence'> | null | undefined,
+  payment: Pick<ServicePayment, 'grossPence' | 'platformFeePence' | 'contractorPence' | 'refundAmountPence'> | null | undefined,
   agreedAmountPence: number | null | undefined,
-): { grossPence: number; platformFeePence: number; contractorPence: number } | null {
+): { grossPence: number; refundPence: number; netServicePence: number; platformFeePence: number; contractorPence: number } | null {
   if (!payment || typeof agreedAmountPence !== 'number' || !Number.isSafeInteger(agreedAmountPence)) return null;
   const { grossPence, platformFeePence, contractorPence } = payment;
-  if (![grossPence, platformFeePence, contractorPence].every(Number.isSafeInteger)) return null;
-  if (grossPence < 0 || grossPence !== agreedAmountPence) return null;
-  if (platformFeePence !== Math.round(grossPence * 0.09)) return null;
-  if (contractorPence !== grossPence - platformFeePence) return null;
-  return { grossPence, platformFeePence, contractorPence };
+  const refundPence = payment.refundAmountPence ?? 0;
+  if (![grossPence, platformFeePence, contractorPence, refundPence].every(Number.isSafeInteger)) return null;
+  if (grossPence < 0 || grossPence !== agreedAmountPence || refundPence < 0 || refundPence > grossPence) return null;
+  // Admin-confirmed partial refunds recompute the 9%/91% split on the
+  // remaining service amount, while grossPence stays the original card charge.
+  const netServicePence = grossPence - refundPence;
+  if (platformFeePence !== Math.round(netServicePence * 0.09)) return null;
+  if (contractorPence !== netServicePence - platformFeePence) return null;
+  return { grossPence, refundPence, netServicePence, platformFeePence, contractorPence };
+}
+
+/** Read-only review deadline: the hourly backend task may settle after this
+ * instant. A DISPUTED, invalid or already paid-out job has no active timer. */
+export function serviceCompletionReview(
+  job: Pick<ServiceJob, 'status' | 'startedAt' | 'completedAt' | 'confirmedAt' | 'payment'>,
+  now = Date.now(),
+): { dueAt: string; elapsed: boolean } | null {
+  if (job.status !== 'COMPLETED' || job.confirmedAt || job.payment?.status !== 'PAID'
+    || !job.startedAt || !job.completedAt) return null;
+  const start = Date.parse(job.startedAt);
+  const completed = Date.parse(job.completedAt);
+  if (!Number.isFinite(start) || !Number.isFinite(completed) || completed < start) return null;
+  const due = completed + 48 * 3_600_000;
+  if (!Number.isFinite(due)) return null;
+  return { dueAt: new Date(due).toISOString(), elapsed: now >= due };
 }
 
 export const formatPence = (p: number) =>
