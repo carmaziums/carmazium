@@ -34,6 +34,7 @@ test('every dealer, personal and contractor tour destination has a native route'
 test('tour navigation keeps personal offers, retail offers and provider tabs distinct', () => {
   assert.equal(routes.nativeTourDestination('/dashboard/user?tab=bids').screen, 'BuyerOffers');
   assert.equal(routes.nativeTourDestination('/dashboard/dealer/bids?tab=retail').screen, 'DealerMyOffers');
+assert.equal(routes.nativeTourDestination('/dashboard/dealer/wishlist').screen, 'DealerSaved');
   assert.equal(routes.nativeTourDestination('/dashboard/service/jobs?tab=mine').params.initialTab, 'assigned');
   assert.equal(routes.nativeTourDestination('/profile?section=appearance').params.section, 'appearance');
   assert.equal(routes.nativeTourDestination('https://example.test'), null);

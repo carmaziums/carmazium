@@ -90,3 +90,11 @@ test('Android rounded 140 percent text uses a full-width dashboard card', async 
   assert.equal(card.props.style[1].width, 560);
   await act(async () => h.tree.unmount());
 });
+
+test('dealer Saved card opens an explicit native screen, not a hidden tab or website', async () => {
+  const h = await harness('dealer', ['VIEW_TRADE', 'VIEW_INVENTORY', 'MANAGE_OFFERS']);
+  assert.ok(h.cards().includes('Saved'));
+  await act(async () => h.press('Saved').props.onPress());
+  assert.deepEqual(h.nav.at(-1), ['DealerSaved', undefined]);
+  await act(async () => h.tree.unmount());
+});

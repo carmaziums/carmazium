@@ -27,7 +27,7 @@ export function nativeTourDestination(href?: string): Destination | null {
   }
   if (path === '/dashboard/dealer') return tab('DealerHome');
   if (path === '/auctions/browse') return tab('Live');
-  if (path === '/dashboard/dealer/wishlist') return tab('Saved');
+  if (path === '/dashboard/dealer/wishlist') return page('DealerSaved');
   if (path === '/dashboard/dealer/bids') return params.get('tab') === 'retail'
     ? { screen: 'DealerMyOffers', params: { fromBidsOffers: true } }
     : tab('DealerBuyBid', { initialSection: 'bids' });
