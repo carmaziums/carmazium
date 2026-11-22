@@ -130,12 +130,11 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
   const quotePence = useMemo(() => parseServiceQuotePence(amount), [amount]);
   const amountPence = quotePence ?? 0;
 
-  const providerPence = useMemo(() => {
-    if (amountPence < 1) return null;
-    const feeRate = settings?.platformFeeRate;
-    if (feeRate == null) return null;
-    return amountPence - Math.round(amountPence * feeRate);
-  }, [amountPence, settings?.platformFeeRate]);
+  const platformFeePence = useMemo(() => {
+    if (quotePence === null || settings?.platformFeeRate == null) return null;
+    return Math.round(amountPence * settings.platformFeeRate);
+  }, [quotePence, amountPence, settings?.platformFeeRate]);
+  const providerPence = platformFeePence === null ? null : amountPence - platformFeePence;
 
   const run = async (
     key: string,
@@ -423,9 +422,13 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
               £1 to £50,000 for the entire job. Include VAT if your business charges it.
             </Text>
 
-            {providerPence != null ? (
+            {providerPence !== null && platformFeePence !== null ? (
               <Text style={styles.payoutHint}>
-                Customer pays {formatPence(amountPence)}. Your business receives approximately {formatPence(providerPence)} after the current CarMazium platform fee.
+                Customer pays {formatPence(amountPence)}. CarMazium fee {formatPence(platformFeePence)}. Your business receives {formatPence(providerPence)}.
+              </Text>
+            ) : quotePence !== null ? (
+              <Text style={styles.payoutHint}>
+                The current platform fee and provider payout will be confirmed when your quote is accepted.
               </Text>
             ) : null}
 
