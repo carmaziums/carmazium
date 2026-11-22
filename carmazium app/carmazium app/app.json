@@ -30,8 +30,7 @@
       "bundleIdentifier": "uk.carmazium.app",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "CarMazium lets you choose photos to upload for vehicle listings, chat, profile, verification and evidence.",
-        "NSLocationWhenInUseUsageDescription": "CarMazium uses your location only when you tap Locate Me, to find a nearby postcode.",
-        "NSCameraUsageDescription": "CarMazium uses your camera only when you choose to take photos for a vehicle listing, your profile, or supporting documents and evidence."
+        "NSLocationWhenInUseUsageDescription": "CarMazium uses your location only when you tap Locate Me, to find a nearby postcode."
       },
       "associatedDomains": [
         "applinks:carmazium.com",
@@ -266,7 +265,7 @@
         "expo-image-picker",
         {
           "photosPermission": "CarMazium lets you choose photos to upload for vehicle listings, chat, profile, verification and evidence.",
-          "cameraPermission": "CarMazium uses your camera only when you choose to take photos for a vehicle listing, your profile, or supporting documents and evidence.",
+          "cameraPermission": false,
           "microphonePermission": false
         }
       ],
