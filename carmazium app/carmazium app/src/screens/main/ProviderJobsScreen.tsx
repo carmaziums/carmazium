@@ -182,7 +182,6 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
       <View style={styles.pageActions}>
         <Button label="Refresh jobs" variant="outline" disabled={loading} onPress={refresh} />
         <Button label="Provider overview" variant="outline" onPress={() => navigation.navigate('ProviderOverview')} />
-        <Button label="Job messages" variant="outline" onPress={() => navigation.navigate('ProviderMessages')} />
       </View>
       <View style={styles.postJobCard}><Text style={styles.pageDescription}>Looking for the customer side instead? Any signed-in CarMazium user can post a job and approved providers will see matching work in this marketplace.</Text><Button label="Post a job" variant="outline" onPress={() => Alert.alert('Post a job', 'Choose the service you need.', [{ text: 'Delivery & Recovery', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'DELIVERY' }) }, { text: 'Vehicle Inspection', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'INSPECTION' }) }, { text: 'Cancel', style: 'cancel' }])} /></View>
 
