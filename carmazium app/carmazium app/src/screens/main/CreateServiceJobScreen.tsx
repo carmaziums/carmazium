@@ -57,6 +57,14 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
   useEffect(() => {
     let cancelled = false;
     setDraftOwner(null);
+    // Do not retain a previous account's or service's values while restoring.
+    setTitle(purchase ? `${purchase.title} delivery` : delivery ? '' : 'Pre-purchase vehicle inspection');
+    setDescription('');
+    setVehicles([{ ...emptyVehicle(), registration: purchase?.registration || '',
+      make: purchase?.make || '', model: purchase?.model || '' }]);
+    setPickup(''); setPickupAddress(''); setDestination('');
+    setDeliveryAddress(''); setAddress(''); setRecovery(false);
+    setAsap(true); setRequestedFor(null);
     if (!draftKey) return;
     if (purchase) { setDraftOwner(draftKey); return; }
     void AsyncStorage.getItem(draftKey).then(raw => {
@@ -231,15 +239,15 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
       )}
       {delivery ? (
         <>
-          {field('Collection postcode *', pickup, setPickup, 'B19 1ES')}
+          {field('Collection postcode *', pickup, setPickup, 'B19 1ES', false, 10)}
           {field('Collection address (optional)', pickupAddress, setPickupAddress, 'Shared with the chosen provider')}
-          {field('Delivery postcode *', destination, setDestination, 'SW1A 1AA')}
+          {field('Delivery postcode *', destination, setDestination, 'SW1A 1AA', false, 10)}
           {field('Delivery address (optional)', deliveryAddress, setDeliveryAddress, 'Shared with the chosen provider')}
           <View style={styles.toggle}><Text style={styles.label}>Vehicle requires recovery</Text><Switch value={recovery} onValueChange={setRecovery} /></View>
         </>
       ) : (
         <>
-          {field('Inspection postcode *', destination, setDestination, 'B19 1ES')}
+          {field('Inspection postcode *', destination, setDestination, 'B19 1ES', false, 10)}
           {field('Inspection address', address, setAddress, 'Optional location details')}
         </>
       )}
