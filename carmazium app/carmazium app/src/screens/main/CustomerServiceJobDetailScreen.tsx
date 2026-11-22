@@ -1,5 +1,5 @@
 import { ServiceJobChanges } from '../../components/ServiceJobChanges';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -29,6 +29,8 @@ import {
   confirmCustomerServiceJob,
   disputeCustomerServiceJob,
   formatPence,
+  comparableServiceQuotes,
+  isServiceQuoteSelectable,
   getCustomerServiceJob,
 } from '../../lib/servicesApi';
 import { refuseAuctionAfterInspection } from '../../lib/auctionApi';
@@ -50,6 +52,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
   const [job, setJob] = useState<ServiceJob | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const checkoutPending = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
 
@@ -80,9 +83,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
   }, [load]);
 
   const activeQuotes = useMemo(
-    () => (job?.quotes ?? [])
-      .filter((quote) => quote.status === 'ACTIVE')
-      .sort((a, b) => a.amountPence - b.amountPence),
+    () => comparableServiceQuotes(job?.quotes),
     [job?.quotes],
   );
   const accepted = useMemo(
@@ -105,20 +106,61 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
     }
   };
 
-  const openCheckout = async (quote: ServiceQuote) => {
+  // A synchronous guard protects against two different quotes being tapped
+  // before React has rendered the first busy state. The backend also claims
+  // exactly one quote atomically; the client never assumes payment succeeded.
+  const openCheckout = async (quote: ServiceQuote, resume = false) => {
+    if (!job || checkoutPending.current || busy !== null) return;
+    if (resume) {
+      if (job.status !== 'ACCEPTED' || job.acceptedQuoteId !== quote.id || job.payment?.status !== 'PENDING') {
+        setError('This job is no longer awaiting checkout. Refresh for the current payment status.');
+        await load();
+        return;
+      }
+    } else if (job.status !== 'OPEN' || !isServiceQuoteSelectable(quote)) {
+      setError('This quote is no longer available. Refresh to compare current offers.');
+      await load();
+      return;
+    }
+    checkoutPending.current = true;
     setBusy(quote.id);
     setError(null);
     try {
       const checkoutUrl = await acceptCustomerQuote(jobId, quote.id);
+      if (!checkoutUrl.startsWith('https://checkout.stripe.com/')) {
+        throw new Error('Secure checkout could not be verified. Please refresh and try again.');
+      }
       const supported = await Linking.canOpenURL(checkoutUrl);
       if (!supported) throw new Error('Could not open secure checkout.');
       await Linking.openURL(checkoutUrl);
-      setFlash('Checkout opened. Return here after payment and refresh the job status.');
+      setFlash('Secure checkout opened. Payment is not confirmed until the job status updates.');
+      await load();
     } catch (err: any) {
       setError(err?.message || 'Could not open secure checkout.');
+      // Acceptance may have committed before Stripe returned an error: reload
+      // rather than continuing to display multiple selectable OPEN quotes.
+      await load();
     } finally {
+      checkoutPending.current = false;
       setBusy(null);
     }
+  };
+
+  const chooseProvider = (quote: ServiceQuote) => {
+    if (!job || busy !== null || checkoutPending.current) return;
+    if (job.status !== 'OPEN' || !isServiceQuoteSelectable(quote)) {
+      setError('That quote has expired or the job has changed. Refresh and compare current offers.');
+      void load();
+      return;
+    }
+    Alert.alert(
+      'Choose this provider?',
+      `${providerName(quote)} quoted ${formatPence(quote.amountPence)} for the whole job. Only this quote will be accepted. Secure payment comes next; work starts after payment is confirmed.`,
+      [
+        { text: 'Keep comparing', style: 'cancel' },
+        { text: 'Continue to payment', onPress: () => { void openCheckout(quote); } },
+      ],
+    );
   };
 
   const openChat = async () => {
@@ -425,18 +467,22 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
                       ? `${quote.contractor.rating.toFixed(1)} rating · ${quote.contractor.totalReviews} reviews`
                       : index === 0 ? 'Lowest current quote' : 'Service provider'}
                   </Text>
+                  {index === 0 ? <Text style={styles.muted}>Lowest available quote</Text> : null}
                   {quote.message ? <Text style={styles.quoteMessage}>{quote.message}</Text> : null}
+                  {quote.validUntil ? (
+                    <Text style={styles.muted}>Valid until {new Date(quote.validUntil).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</Text>
+                  ) : null}
                 </View>
                 <View style={styles.quoteRight}>
                   <Text style={styles.quotePrice}>{formatPence(quote.amountPence)}</Text>
                   <TouchableOpacity
-                    style={[styles.primaryButton, busy === quote.id && styles.disabled]}
-                    onPress={() => void openCheckout(quote)}
-                    disabled={busy === quote.id}
+                    style={[styles.primaryButton, busy !== null && styles.disabled]}
+                    onPress={() => chooseProvider(quote)}
+                    disabled={busy !== null}
                   >
                     {busy === quote.id
                       ? <ActivityIndicator size="small" color={Colors.onAccent} />
-                      : <Text style={styles.primaryText}>ACCEPT & PAY</Text>}
+                      : <Text style={styles.primaryText}>CHOOSE & PAY</Text>}
                   </TouchableOpacity>
                 </View>
               </View>
@@ -453,9 +499,9 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
               Your provider is reserved. Complete secure checkout to confirm the job.
             </Text>
             <TouchableOpacity
-              style={[styles.primaryButton, busy === accepted.id && styles.disabled]}
-              onPress={() => void openCheckout(accepted)}
-              disabled={busy === accepted.id}
+              style={[styles.primaryButton, busy !== null && styles.disabled]}
+              onPress={() => { void openCheckout(accepted, true); }}
+              disabled={busy !== null || job.payment?.status !== 'PENDING'}
             >
               {busy === accepted.id
                 ? <ActivityIndicator size="small" color={Colors.onAccent} />
