@@ -751,6 +751,32 @@ describe('Delivery & Recovery — end to end', () => {
         expect(notificationsTo(TRUCKER.id).slice(before)).toContain('SERVICE_JOB_CANCELLED');
     });
 
+    it('never auto-releases a disputed completion even after the 48-hour review window', async () => {
+        const j = await svc.createJob(CUSTOMER.id, {
+            serviceType: 'DELIVERY', title: 'Disputed 48-hour review',
+            pickupPostcode: 'A1 1AA', deliveryPostcode: 'B2 2BB',
+            vehicles: [{ make: 'Synthetic', model: 'Car' }],
+        } as any);
+        const q = await svc.upsertQuote(kentProfileId, ['DELIVERY'] as any, TRUCKER.id,
+            j.id, { amountPence: 9000 } as any);
+        sessionsCreate.mockResolvedValueOnce({ id: 'cs_dispute_48h', url: 'https://checkout.stripe.com/cs_dispute_48h' });
+        await svc.acceptQuote(CUSTOMER.id, j.id, q.id);
+        const payment = db.one('servicePayment', { jobId: j.id })!;
+        await svc.markPaid(j.id, payment.id, 'pi_dispute_48h');
+        await svc.startJob(kentProfileId, j.id);
+        await svc.completeJob(kentProfileId, j.id);
+        const row = db.one('serviceJob', { id: j.id })!;
+        row.startedAt = new Date(Date.now() - 51 * 3_600_000);
+        row.completedAt = new Date(Date.now() - 49 * 3_600_000);
+        const before = transfersCreate.mock.calls.length;
+        await svc.openDispute(CUSTOMER.id, j.id, 'Service not performed correctly');
+        expect(row.status).toBe('DISPUTED');
+        await svc.autoConfirmCompleted();
+        expect(row.status).toBe('DISPUTED');
+        expect(db.one('servicePayment', { id: payment.id })!.status).toBe('PAID');
+        expect(transfersCreate).toHaveBeenCalledTimes(before);
+    });
+
     it('the cron expires stale open jobs and auto-confirms stale completions', async () => {
         const stale = await svc.createJob(CUSTOMER.id, { serviceType: 'DELIVERY', title: 'stale', pickupPostcode: 'A1 1AA', deliveryPostcode: 'B2 2BB', vehicles: [{ make: 'x', model: 'y' }] } as any);
         db.one('serviceJob', { id: stale.id })!.expiresAt = new Date(Date.now() - 1000);
