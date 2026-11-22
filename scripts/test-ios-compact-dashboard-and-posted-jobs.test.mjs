@@ -44,9 +44,10 @@ test('no second app or separate dealer/provider route was introduced', () => {
   const app = JSON.parse(read('carmazium app/carmazium app/app.json')).expo;
   assert.equal(app.android.package, 'uk.carmazium.app');
   assert.equal(app.ios.bundleIdentifier, 'uk.carmazium.app');
-  assert.equal(app.ios.infoPlist.NSCameraUsageDescription, undefined);
+  assert.ok(/camera/i.test(app.ios.infoPlist.NSCameraUsageDescription));
   const picker = app.plugins.find((plugin) => Array.isArray(plugin) && plugin[0] === 'expo-image-picker');
-  assert.equal(picker?.[1]?.cameraPermission, false);
+  assert.equal(picker?.[1]?.cameraPermission, app.ios.infoPlist.NSCameraUsageDescription);
+  assert.ok(app.android.blockedPermissions.includes('android.permission.CAMERA'));
   assert.equal(picker?.[1]?.microphonePermission, false);
   assert.match(posted, /navigation\.navigate\('Services'\)/);
 });
