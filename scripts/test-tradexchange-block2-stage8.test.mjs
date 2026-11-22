@@ -124,6 +124,19 @@ test('four existing customer/provider screens show recorded refunds without crea
   assert.doesNotMatch(assigned, /status:\s*\{\s*in:/);
 });
 
+test('the same customer dispute pathway is visible before and after payout on web and native', () => {
+  assert.match(webCustomer, /const isPaidState = \["PAID", "IN_PROGRESS", "COMPLETED", "RELEASED"\]/);
+  assert.match(webCustomer, /"dispute", \(\) => disputeJob\(job\.id/);
+  assert.match(webCustomer, /does not automatically reverse the provider's transfer/);
+  assert.match(nativeCustomer, /accessibilityLabel="Raise a service dispute"/);
+  assert.match(nativeCustomer, /onPress=\{disputeJob\}/);
+  assert.match(nativeCustomer, /'PAID', 'IN_PROGRESS', 'COMPLETED', 'RELEASED'/);
+  assert.match(nativeCustomer, /provider transfer is not automatically reversed/);
+  const dispute = server.slice(server.indexOf('async openDispute('), server.indexOf('async requestJobChange('));
+  assert.match(dispute, /ServiceJobStatus\.RELEASED/);
+  assert.match(dispute, /stripeTransferId\?\.startsWith\('claim:'\)/);
+});
+
 test('admin refund paths use claimed settlement and Stripe idempotency rather than direct UI writes', () => {
   const decision = server.slice(server.indexOf('async adminResolveDispute('), server.indexOf('private assertSettlementRetryWindow('));
   assert.match(decision, /status !== ServiceJobStatus\.DISPUTED/);
