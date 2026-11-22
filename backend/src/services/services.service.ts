@@ -1448,8 +1448,12 @@ export class ServicesService {
             throw new BadRequestException('This job already has a case open or is not eligible. Add evidence to an open case instead.');
         }
         const requestedFor = dto.kind === 'RESCHEDULE' ? parseFutureRequestedFor(dto.requestedFor) : null;
-        if (dto.kind === 'RESCHEDULE' && (!requestedFor || job.status === ServiceJobStatus.RELEASED)) {
-            throw new BadRequestException('Choose a future date for work that has not been paid out.');
+        // A completed job must not be rolled back to PAID/IN_PROGRESS through
+        // a change request: that would discard completion evidence and bypass
+        // payout/dispute review. Only unfinished paid work can be rescheduled.
+        if (dto.kind === 'RESCHEDULE' && (!requestedFor
+            || ![ServiceJobStatus.PAID, ServiceJobStatus.IN_PROGRESS].includes(job.status))) {
+            throw new BadRequestException('Only unfinished paid work can be rescheduled. Choose a future date.');
         }
         const change = { kind: dto.kind, reason, requestedFor: requestedFor?.toISOString() ?? null,
             requestedById: userId, requestedByRole: customer ? 'customer' : 'provider', previousStatus: job.status,
@@ -1478,10 +1482,14 @@ export class ServicesService {
             if (!job || (job.customerId !== userId && (!contractorId || contractorId !== job.contractorId))) throw new ForbiddenException('Not your job.');
             const role = job.customerId === userId ? 'customer' : 'provider';
             if (!request || request.kind !== 'RESCHEDULE' || request.resolved || request.requestedByRole === role) throw new BadRequestException('Only the other party can accept this reschedule.');
+            if (![ServiceJobStatus.PAID, ServiceJobStatus.IN_PROGRESS].includes(request.previousStatus)
+                || job.completedAt || job.confirmedAt) {
+                throw new ConflictException('Completed or settled work cannot be rescheduled. Contact support.');
+            }
             if (job.payment?.status !== ServicePaymentStatus.PAID || job.payment.stripeTransferId || job.payment.externalDisputeId) throw new ConflictException('Payment requires review before rescheduling.');
             const date = parseFutureRequestedFor(request.requestedFor);
             await tx.serviceJob.update({ where: { id: jobId }, data: {
-                status: job.startedAt ? ServiceJobStatus.IN_PROGRESS : ServiceJobStatus.PAID,
+                status: request.previousStatus,
                 completedAt: null, confirmedAt: null, requestedFor: date,
                 changeRequest: { ...request, resolved: true, acceptedById: userId, acceptedAt: new Date().toISOString() },
             } });
