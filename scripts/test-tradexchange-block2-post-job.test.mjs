@@ -18,7 +18,7 @@ test('Android delivery form accepts and validates every vehicle before one job P
   assert.match(app, /vehicles\.findIndex\(vehicle =>/);
   assert.match(app, /!vehicle\.registration\.trim\(\) && !\(vehicle\.make\.trim\(\) && vehicle\.model\.trim\(\)\)/);
   assert.match(app, /vehicles: vehicles\.map\(\(vehicle, index\) => \(\{/);
-  assert.match(app, /delivery && \(\s*<TouchableOpacity[^>]*onPress=\{addVehicle\}/);
+  assert.match(app, /delivery && vehicles\.length < MAX_VEHICLES && \(\s*<TouchableOpacity[^>]*onPress=\{addVehicle\}/);
   assert.match(app, /vehicles\.length > 1/);
   assert.match(webDelivery, /vehicles\.map\(v => \(\{/);
 });
