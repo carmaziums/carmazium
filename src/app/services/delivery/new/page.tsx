@@ -6,6 +6,8 @@ import { buttonVariants } from "@/components/ui/buttonVariants"
 import { useRouter } from "next/navigation"
 import { Truck, Plus, Trash2, Loader2, AlertCircle, ArrowRight, CheckCircle } from "lucide-react"
 import { RequireAuth } from "@/components/auth/RequireAuth"
+import { useAuth } from "@/context/AuthContext"
+import { useSessionDraft } from "@/hooks/useSessionDraft"
 import { deliveryServiceEnabled } from "@/lib/featureFlags"
 import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
 import { Button } from "@/components/ui/Button"
@@ -20,6 +22,29 @@ import { createJob, type JobVehicle } from "@/lib/servicesApi"
  */
 
 const EMPTY_VEHICLE: JobVehicle = { registration: "", make: "", model: "", year: undefined, notes: "" }
+const EMPTY_DELIVERY_DRAFT = {
+    isRecovery: "false", title: "", description: "", pickupPostcode: "", pickupAddress: "",
+    deliveryPostcode: "", deliveryAddress: "", asap: "true", requestedFor: "",
+    vehiclesJson: JSON.stringify([{ ...EMPTY_VEHICLE }]),
+}
+function decodeVehicles(value: string): JobVehicle[] {
+    try {
+        const items = JSON.parse(value)
+        if (!Array.isArray(items) || !items.length) return [{ ...EMPTY_VEHICLE }]
+        return items.slice(0, 12).map((v: unknown) => {
+            const item = v && typeof v === "object" ? v as Record<string, unknown> : {}
+            const safe = (name: string, length: number) =>
+                typeof item[name] === "string" ? (item[name] as string).slice(0, length) : ""
+            const year = Number(item.year)
+            return {
+                listingId: safe("listingId", 36) || undefined,
+                registration: safe("registration", 10), make: safe("make", 60),
+                model: safe("model", 60), notes: safe("notes", 300),
+                year: Number.isInteger(year) && year >= 1900 && year <= 2100 ? year : undefined,
+            }
+        })
+    } catch { return [{ ...EMPTY_VEHICLE }] }
+}
 
 const inputCls = "aria-[invalid=true]:border-red-500 aria-[invalid=true]:ring-1 aria-[invalid=true]:ring-red-500 w-full rounded-xl border px-4 py-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-primary)]"
 const labelCls = "block text-[11px] font-extrabold uppercase tracking-widest text-[var(--text-muted)] mb-2"
@@ -32,19 +57,38 @@ function NewDeliveryJobForm() {
     const [linkedListingTitle, setLinkedListingTitle] = React.useState<string | null>(null)
     const prefillApplied = React.useRef(false)
 
-    const [isRecovery, setIsRecovery] = React.useState(false)
-    const [title, setTitle] = React.useState("")
-    const [description, setDescription] = React.useState("")
-    const [pickupPostcode, setPickupPostcode] = React.useState("")
-    const [pickupAddress, setPickupAddress] = React.useState("")
-    const [deliveryPostcode, setDeliveryPostcode] = React.useState("")
-    const [deliveryAddress, setDeliveryAddress] = React.useState("")
-    const [asap, setAsap] = React.useState(true)
-    const [requestedFor, setRequestedFor] = React.useState("")
-    const [vehicles, setVehicles] = React.useState<JobVehicle[]>([{ ...EMPTY_VEHICLE }])
+    const { user, loading: authLoading } = useAuth()
+    // Reuse existing session draft storage, isolated by signed-in account.
+    const { value: draft, setValue: setDraft, clearDraft, hydrated } = useSessionDraft(
+        "tradexchange:delivery:new", EMPTY_DELIVERY_DRAFT, user?.id ?? null, authLoading,
+    )
+    const isRecovery = draft.isRecovery === "true"
+    const title = draft.title, description = draft.description
+    const pickupPostcode = draft.pickupPostcode, pickupAddress = draft.pickupAddress
+    const deliveryPostcode = draft.deliveryPostcode, deliveryAddress = draft.deliveryAddress
+    const asap = draft.asap === "true", requestedFor = draft.requestedFor
+    const vehicles = React.useMemo(() => decodeVehicles(draft.vehiclesJson), [draft.vehiclesJson])
+    const update = (key: keyof typeof EMPTY_DELIVERY_DRAFT, value: string) =>
+        setDraft(current => ({ ...current, [key]: value }))
+    const setIsRecovery = (value: boolean) => update("isRecovery", String(value))
+    const setTitle = (value: string) => update("title", value)
+    const setDescription = (value: string) => update("description", value)
+    const setPickupPostcode = (value: string) => update("pickupPostcode", value)
+    const setPickupAddress = (value: string) => update("pickupAddress", value)
+    const setDeliveryPostcode = (value: string) => update("deliveryPostcode", value)
+    const setDeliveryAddress = (value: string) => update("deliveryAddress", value)
+    const setAsap = (value: boolean) => update("asap", String(value))
+    const setRequestedFor = (value: string) => update("requestedFor", value)
+    const setVehicles = (next: React.SetStateAction<JobVehicle[]>) => {
+        setDraft(current => {
+            const existing = decodeVehicles(current.vehiclesJson)
+            const updated = typeof next === "function" ? next(existing) : next
+            return { ...current, vehiclesJson: JSON.stringify(updated.slice(0, 12)) }
+        })
+    }
 
     React.useEffect(() => {
-        if (prefillApplied.current || typeof window === "undefined") return
+        if (!hydrated || prefillApplied.current || typeof window === "undefined") return
         prefillApplied.current = true
 
         const params = new URLSearchParams(window.location.search)
@@ -72,13 +116,14 @@ function NewDeliveryJobForm() {
             setLinkedListingTitle(sourceTitle)
             setTitle(`${sourceTitle} delivery`)
         }
-    }, [])
+    }, [hydrated])
 
     const setVehicle = (i: number, patch: Partial<JobVehicle>) =>
         setVehicles(vs => vs.map((v, idx) => (idx === i ? { ...v, ...patch } : v)))
 
     const submit = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (!hydrated || submitting) return
         setError(null)
         setInvalidField(null)
         const fail = (field: string, message: string) => {
@@ -113,6 +158,7 @@ function NewDeliveryJobForm() {
                     notes: v.notes || undefined,
                 })),
             })
+            clearDraft()
             router.push(`/services/jobs/${job.id}?posted=1`)
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : "Could not post the job. Please try again.")
@@ -250,7 +296,7 @@ function NewDeliveryJobForm() {
                 <p className="text-xs text-[var(--text-muted)] max-w-sm">
                     Each vehicle needs its registration or both make and model. Your job stays open for 7 days. Approved providers see the route and vehicles and compete with quotes — not your name, phone or full address.
                 </p>
-                <Button type="submit" size="lg" disabled={submitting} className="w-full sm:w-auto">
+                <Button type="submit" size="lg" disabled={submitting || !hydrated} className="w-full sm:w-auto">
                     {submitting ? <Loader2 className="animate-spin" size={18} /> : <>Post job <ArrowRight size={16} className="ml-2" /></>}
                 </Button>
             </div>
