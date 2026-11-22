@@ -320,7 +320,7 @@ export function servicePaymentEvidence(
   payment: Pick<ServicePayment, 'grossPence' | 'platformFeePence' | 'contractorPence'> | null | undefined,
   agreedAmountPence: number | null | undefined,
 ): { grossPence: number; platformFeePence: number; contractorPence: number } | null {
-  if (!payment || !Number.isSafeInteger(agreedAmountPence)) return null;
+  if (!payment || typeof agreedAmountPence !== 'number' || !Number.isSafeInteger(agreedAmountPence)) return null;
   const { grossPence, platformFeePence, contractorPence } = payment;
   if (![grossPence, platformFeePence, contractorPence].every(Number.isSafeInteger)) return null;
   if (grossPence < 0 || grossPence !== agreedAmountPence) return null;
