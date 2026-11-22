@@ -1630,15 +1630,25 @@ export class ServicesService {
     async assignedPage(
         contractorProfileId: string,
         approved: ServiceType[],
-        options: { limit?: number; cursor?: string } = {},
+        options: { limit?: number; cursor?: string; serviceType?: ServiceType } = {},
     ) {
+        // Only service types already authorised for this business/team member.
+        // Approved here is the actor's accessible history, NOT a fresh/new-quote gate:
+        // an expired insurance verification must not hide previously accepted jobs.
+        if (options.serviceType && !JOB_SERVICE_AREAS.includes(options.serviceType)) {
+            throw new BadRequestException('Unknown job service type.');
+        }
+        const types = options.serviceType
+            ? approved.filter(type => type === options.serviceType)
+            : approved.filter(type => JOB_SERVICE_AREAS.includes(type));
+        if (!types.length) return { items: [], nextCursor: null };
         const limit = boundedServiceLimit(options.limit);
         const cursor = decodeServiceCursor(options.cursor);
         const cursorDate = cursor ? new Date(cursor.at) : null;
         const jobs = await this.prisma.serviceJob.findMany({
             where: {
                 contractorId: contractorProfileId,
-                serviceType: { in: approved },
+                serviceType: { in: types },
                 ...(cursorDate ? {
                     OR: [
                         { updatedAt: { lt: cursorDate } },
