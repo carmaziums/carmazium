@@ -168,7 +168,7 @@ function JobDetail() {
     const completionReview = serviceCompletionReview(job)
     const activeQuotes = comparableServiceQuotes(job.quotes)
     const accepted = (job.quotes ?? []).find(q => q.id === job.acceptedQuoteId)
-    const isPaidState = ["PAID", "IN_PROGRESS", "COMPLETED"].includes(job.status)
+    const isPaidState = ["PAID", "IN_PROGRESS", "COMPLETED", "RELEASED"].includes(job.status)
     const isInspection = job.serviceType === "INSPECTION"
     const providerLabel = isInspection ? "inspector" : "transporter"
     const completionLabel = isInspection ? "inspection" : "delivery"
@@ -400,7 +400,13 @@ function JobDetail() {
                         )}
                         {isPaidState && (
                             <button type="button" disabled={busy !== null}
-                                onClick={() => { const r = prompt("What went wrong? This freezes the job for CarMazium to review."); if (r !== null) run("dispute", () => disputeJob(job.id, r || undefined), "Dispute raised. CarMazium will be in touch.") }}
+                                onClick={() => {
+                                    const warning = job.status === "RELEASED"
+                                        ? "What went wrong? This opens a post-payout review. It does not automatically reverse the provider's transfer."
+                                        : "What went wrong? A dispute pauses the normal provider payout while CarMazium reviews."
+                                    const reason = window.prompt(warning)
+                                    if (reason !== null) void run("dispute", () => disputeJob(job.id, reason.trim() || undefined), "Dispute raised. CarMazium will review the job.")
+                                }}
                                 className={buttonVariants({ variant: "outline", size: "sm", className: "w-full" })}>
                                 Something is wrong — raise a dispute
                             </button>
