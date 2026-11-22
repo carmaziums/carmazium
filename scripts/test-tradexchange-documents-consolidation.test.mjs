@@ -37,16 +37,16 @@ test('native manager keeps the same policy, signs historical links through exist
  assert.match(code,/Linking.openURL\(entry.url/);
  assert.doesNotMatch(code,/INSPECTION_BUSINESS_INSURANCE/);
 });
-test('old verification screens keep declarations but not their duplicate document upload forms',()=>{
+test('old verification pages redirect to inline business settings and have no upload forms',()=>{
  const web=read('src/app/dashboard/service/capabilities/[id]/verification/page.tsx');
- const native=read('carmazium app/carmazium app/src/screens/main/ProviderVerificationScreen.tsx');
- for(const source of [web,native]){
-   assert.match(source,/submitProviderDeclaration/);
-   assert.match(source,/Documents & Insurance/);
-   assert.doesNotMatch(source,/uploadCapabilityAttachment|deleteCapabilityAttachment/);
- }
- assert.match(web,/\/dashboard\/partner#provider-documents/);
- assert.match(native,/navigation.navigate\("PartnerDashboard"\)/);
+ const native=read('carmazium app/carmazium app/src/screens/main/LegacyProviderRouteRedirectScreen.tsx');
+ const webSettings=read('src/components/tradexchange/ProviderSettingsSections.tsx');
+ const nativeSettings=read('carmazium app/carmazium app/src/components/tradexchange/ProviderSettingsSections.tsx');
+ assert.match(web,/redirect\(/);
+ assert.match(web,/provider-business/);
+ assert.match(native,/navigation.replace\('PartnerDashboard'/);
+ for (const source of [webSettings,nativeSettings]) assert.match(source,/submitProviderDeclaration/);
+ assert.doesNotMatch(web,/uploadCapabilityAttachment|deleteCapabilityAttachment/);
 });
 test('existing backend preserves private evidence and service-specific requirements',()=>{
  const rules=read('backend/src/services/capability-verification.ts');

@@ -13,7 +13,7 @@ const cap=(serviceType,status='APPROVED')=>({id:serviceType+'-test',serviceType,
 async function render(name,overrides={}){
  const nav=[],calls=[];
  const services={SERVICE_LABELS:{DELIVERY:'Delivery & Recovery',INSPECTION:'Vehicle Inspections'},getPartnerProfile:async()=>profile,getPartnerTeam:async()=>({capabilities:[cap('DELIVERY'),cap('INSPECTION')],stripeConnect:{complete:true}}),getMyCapabilities:async()=>({profile:null,capabilities:[cap('DELIVERY'),cap('INSPECTION')],stripeConnect:{complete:true}}),applyPartnerCapability:async type=>{calls.push(type);return cap(type,'PENDING');},updatePartnerServicePreference:async(key,enabled)=>{calls.push({key,enabled});},...overrides};
- const modules={react:React,'react-native':{...Object.fromEntries(['View','Text','ScrollView','TextInput','StatusBar','ActivityIndicator','Switch'].map(n=>[n,n])),StyleSheet:{create:x=>x},useWindowDimensions:()=>({width:600,fontScale:1}),Alert:{alert(){}},Linking:{openURL:async()=>{}},AppState:{addEventListener:()=>({remove(){}})}},'@react-navigation/native':{useFocusEffect:cb=>React.useEffect(cb,[cb])},'@/components/BrandIcon':{Ionicons:'Icon'},'../../components/WebsiteTopBar':{WebsiteTopBar:'WebsiteTopBar'},'../../components/tradexchange/ProviderDocumentsSection':{ProviderDocumentsSection:'ProviderDocumentsSection'},'../../components/tradexchange/ProviderSettingsSections':{ProviderBusinessPaymentsSection:'ProviderBusinessPaymentsSection',ProviderJobPreferencesSection:'ProviderJobPreferencesSection'},'../../components/Button':{Button:'Button'},'../../components/dealer/DealerPageTabs':{DealerPageTabs:'DealerPageTabs'},'../../constants/colors':{Colors:{}},'../../constants/typography':{FontFamily:{},FontSize:{}},'../../store/authStore':{useAuthStore:cb=>cb({accountRole:overrides.__accountRole??'dealer',initializeAuth:async()=>{}})},'../../lib/servicesApi':services,'../../lib/apiClient':{apiClient:async()=>{throw Error('Unexpected write');}}};
+ const modules={react:React,'react-native':{...Object.fromEntries(['View','Text','ScrollView','TextInput','StatusBar','ActivityIndicator','Switch'].map(n=>[n,n])),StyleSheet:{create:x=>x},useWindowDimensions:()=>({width:600,fontScale:1}),Alert:{alert(){}},Linking:{openURL:async()=>{}},AppState:{addEventListener:()=>({remove(){}})}},'@react-navigation/native':{useFocusEffect:cb=>React.useEffect(cb,[cb])},'@/components/BrandIcon':{Ionicons:'Icon'},'../../components/WebsiteTopBar':{WebsiteTopBar:'WebsiteTopBar'},'../../components/tradexchange/ProviderDocumentsSection':{ProviderDocumentsSection:'ProviderDocumentsSection'},'../../components/tradexchange/ContractorServicesInline':{ContractorServicesInline:'ContractorServicesInline'},'../../components/tradexchange/ProviderSettingsSections':{ProviderBusinessPaymentsSection:'ProviderBusinessPaymentsSection',ProviderJobPreferencesSection:'ProviderJobPreferencesSection'},'../../components/Button':{Button:'Button'},'../../components/dealer/DealerPageTabs':{DealerPageTabs:'DealerPageTabs'},'../../constants/colors':{Colors:{}},'../../constants/typography':{FontFamily:{},FontSize:{}},'../../store/authStore':{useAuthStore:cb=>cb({accountRole:overrides.__accountRole??'dealer',initializeAuth:async()=>{}})},'../../lib/servicesApi':services,'../../lib/apiClient':{apiClient:async()=>{throw Error('Unexpected write');}}};
  const rules={};runInNewContext(ts.transpileModule(readFileSync(new URL('../src/lib/tradeXchangeProviderJobLoad.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:rules,Error});
  modules['../../lib/tradeXchangeProviderJobLoad']=rules;modules['../../constants/spacing']={Elevation:{},Radius:{}};modules['react-native'].TouchableOpacity='Press';modules['react-native'].RefreshControl='Refresh';modules['react-native'].FlatList=({ListHeaderComponent,ListEmptyComponent,data,renderItem,onEndReached})=>React.createElement('List',{onEndReached},ListHeaderComponent,data.length?data.map((item)=>React.createElement(React.Fragment,{key:item.id},renderItem({item}))):ListEmptyComponent);
  const exports={};const source=readFileSync(new URL('../src/screens/main/'+name+'.tsx',import.meta.url),'utf8');runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:n=>{assert.ok(n in modules,n);return modules[n];}});
@@ -33,12 +33,16 @@ test('Pending setup opens existing declaration without reapplying and failed sta
  await click(h.tree,'Continue setup');assert.equal(h.tree.root.findByType('ProviderBusinessPaymentsSection').props.openRequest,1);assert.equal(h.calls.length,0);await click(h.tree,'Apply for service');assert.equal(h.calls[0],'INSPECTION');assert.equal(h.tree.root.findByType('ProviderBusinessPaymentsSection').props.openRequest,2);assert.equal(h.nav.length,0);await act(async()=>h.tree.unmount());
  const f=await render('PartnerDashboardScreen',{getPartnerTeam:async()=>{throw Error('offline');}});assert.match(text(f.tree),/Status unavailable/);assert.equal(f.tree.root.findAllByType('Switch').filter(n=>!n.props.disabled).length,0);await act(async()=>f.tree.unmount());
 });
-test('Services shows read-only business and correct declaration, matching and job destinations',async()=>{
- const h=await render('ProviderCapabilitiesScreen');const inputs=h.tree.root.findAllByType('TextInput');assert.equal(inputs.length,3);assert.ok(inputs.every(n=>n.props.editable===false));assert.equal(inputs[0].props.value,'Synthetic dealer');
- await click(h.tree,'Business declaration');assert.equal(h.nav[0][1].capabilityId,'DELIVERY-test');await click(h.tree,'Matching settings');assert.equal(h.nav[1][0],'ProviderMatching');await click(h.tree,'See jobs');assert.equal(h.nav[2][0],'ProviderJobs');assert.equal(h.calls.length,0);await act(async()=>h.tree.unmount());
-});
-test('Wrong-service application response cannot navigate to a substituted capability',async()=>{
- const h=await render('ProviderCapabilitiesScreen',{getMyCapabilities:async()=>({profile:null,capabilities:[],stripeConnect:{complete:false}}),applyPartnerCapability:async()=>cap('INSPECTION','PENDING')});await click(h.tree,'Add service');assert.equal(h.nav.length,0);assert.match(text(h.tree),/Service setup is unavailable/);await act(async()=>h.tree.unmount());
+test('Existing contractor keeps one inline provider service manager, not the old setup page',async()=>{
+ const h=await render('PartnerDashboardScreen',{
+   getPartnerProfile:async()=>({role:'CONTRACTOR',dealerProfile:null}),
+   getMyCapabilities:async()=>({profile:{businessName:'Saved contractor',phone:'07700900000',serviceArea:'B'},capabilities:[cap('DELIVERY','PENDING')],stripeConnect:{complete:true}})
+ });
+ assert.equal(h.tree.root.findAllByType('ContractorServicesInline').length,1);
+ assert.equal(h.tree.root.findByType('ContractorServicesInline').props.profile.businessName,'Saved contractor');
+ assert.equal(h.tree.root.findAllByType('ProviderDocumentsSection').length,1);
+ assert.equal(h.nav.length,0);
+ await act(async()=>h.tree.unmount());
 });
 
 const job=id=>({id,title:'Synthetic work '+id,status:'PAID',serviceType:'DELIVERY',pickupPostcode:'B1 1AA',deliveryPostcode:'B2 2BB',vehicles:[],quotes:[],_count:{quotes:0}});
@@ -72,21 +76,16 @@ test('Provider overview aggregates every page for released earnings and preserve
  await click(h.tree,'My Work');assert.equal(h.nav[0][0],'ProviderJobs');assert.equal(h.nav[0][1].initialTab,'assigned');await act(async()=>h.tree.unmount());
 });
 
-test('Existing contractor can use TradeXchange without converting to a dealer account',async()=>{
+test('Existing contractor uses inline My Services and jobs without forced dealer conversion',async()=>{
  const h=await render('PartnerDashboardScreen',{
    __accountRole:'provider',
    getPartnerProfile:async()=>({id:'legacy-provider',role:'CONTRACTOR',dealerProfile:null}),
  });
  assert.match(text(h.tree),/Use your existing service-provider account/);
  assert.doesNotMatch(text(h.tree),/Create a Partner Account/);
- await click(h.tree,'My services');
- assert.equal(h.nav[0][0],'ProviderCapabilities');
- await click(h.tree,'Find jobs');
- assert.equal(h.nav[1][0],'ProviderJobs');
- assert.equal(h.nav[1][1].initialTab,'open');
- await click(h.tree,'My work');
- assert.equal(h.nav[2][0],'ProviderJobs');
- assert.equal(h.nav[2][1].initialTab,'assigned');
+ assert.equal(h.tree.root.findAllByType('ContractorServicesInline').length,1);
+ await click(h.tree,'Find jobs');assert.equal(h.nav[0][0],'ProviderJobs');assert.equal(h.nav[0][1].initialTab,'open');
+ await click(h.tree,'My work');assert.equal(h.nav[1][0],'ProviderJobs');assert.equal(h.nav[1][1].initialTab,'assigned');
  await act(async()=>h.tree.unmount());
 });
 

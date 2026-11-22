@@ -56,11 +56,16 @@ test('legacy provider is preserved, and dealer KYC remains in its own secure ver
  assert.equal(existsSync(new URL('../src/app/dashboard/dealer/team/page.tsx',import.meta.url)),true);
  assert.match(read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx'),/DealerTeam/);
 });
-test('historical verification and matching routes stay temporarily reachable for the Stage 8 redirect migration',()=>{
+test('obsolete verification and matching UIs are deleted; historical routes only redirect',()=>{
  for(const rel of [
   'src/app/dashboard/service/capabilities/[id]/verification/page.tsx',
   'src/app/dashboard/service/capabilities/[id]/matching/page.tsx',
-  'carmazium app/carmazium app/src/screens/main/ProviderVerificationScreen.tsx',
-  'carmazium app/carmazium app/src/screens/main/ProviderMatchingScreen.tsx',
+  'carmazium app/carmazium app/src/screens/main/LegacyProviderRouteRedirectScreen.tsx',
  ])assert.equal(existsSync(new URL('../'+rel,import.meta.url)),true,rel);
+ for(const file of ['ProviderCapabilitiesScreen.tsx','ProviderVerificationScreen.tsx','ProviderMatchingScreen.tsx']){
+  assert.equal(existsSync(new URL('../carmazium app/carmazium app/src/screens/main/'+file,import.meta.url)),false,file);
+ }
+ const web=read('src/app/dashboard/service/capabilities/[id]/matching/page.tsx');
+ assert.match(web,/redirect\(/);
+ assert.match(web,/provider-preferences/);
 });

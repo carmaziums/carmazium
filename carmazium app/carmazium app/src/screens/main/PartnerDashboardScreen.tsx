@@ -34,6 +34,7 @@ import {
 } from '../../lib/servicesApi';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { ProviderDocumentsSection } from '../../components/tradexchange/ProviderDocumentsSection';
+import { ContractorServicesInline } from '../../components/tradexchange/ContractorServicesInline';
 import { ProviderBusinessPaymentsSection, ProviderJobPreferencesSection } from '../../components/tradexchange/ProviderSettingsSections';
 import type { ContractorCapability } from '../../lib/servicesApi';
 
@@ -41,11 +42,12 @@ type Props = NativeStackScreenProps<MainStackParamList, 'PartnerDashboard'>;
 
 const SERVICE_ORDER: ServiceType[] = ['DELIVERY', 'INSPECTION'];
 
-export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
+export const PartnerDashboardScreen: React.FC<Props> = ({ navigation, route }) => {
   const initializeAuth = useAuthStore((s) => s.initializeAuth);
   const [profile, setProfile] = useState<PartnerProfile | null>(null);
   const [team, setTeam] = useState<PartnerTeam | null>(null);
   const [legacyCapabilities, setLegacyCapabilities] = useState<ContractorCapability[]>([]);
+  const [legacyProfile, setLegacyProfile] = useState<{ businessName: string|null; phone: string|null; serviceArea: string|null }|null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -54,13 +56,20 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const [businessAddress, setBusinessAddress] = useState('');
   const [servicesExpanded, setServicesExpanded] = useState(true);
   const [businessOpenRequest, setBusinessOpenRequest] = useState(0);
+  const [selectedCapabilityId, setSelectedCapabilityId] = useState<string | undefined>(route?.params?.capabilityId);
   const [preferencesOpenRequest, setPreferencesOpenRequest] = useState(0);
   const [legacyPayoutComplete, setLegacyPayoutComplete] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const businessY = useRef(0);
   const preferencesY = useRef(0);
-  const openBusiness = () => setBusinessOpenRequest(v => v + 1);
-  const openPreferences = () => setPreferencesOpenRequest(v => v + 1);
+  const openBusiness = (capabilityId?: string) => { setSelectedCapabilityId(capabilityId); setBusinessOpenRequest(v => v + 1); };
+  const openPreferences = (capabilityId?: string) => { setSelectedCapabilityId(capabilityId); setPreferencesOpenRequest(v => v + 1); };
+  useEffect(() => {
+    const section=route?.params?.openSection;
+    if (section === 'business') openBusiness(route?.params?.capabilityId);
+    else if (section === 'preferences') openPreferences(route?.params?.capabilityId);
+    else if (section === 'services') setServicesExpanded(true);
+  }, [route?.params?.openSection, route?.params?.capabilityId]);
   useEffect(() => {
     if (!loading && businessOpenRequest > 0) scrollRef.current?.scrollTo({ y: Math.max(0, businessY.current - 20), animated: true });
   }, [loading, businessOpenRequest]);
@@ -75,6 +84,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
     setError(null);
     setTeam(null);
     setLegacyCapabilities([]);
+    setLegacyProfile(null);
     try {
       const nextProfile = await getPartnerProfile();
       if (request !== generation.current) return;
@@ -95,7 +105,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
       } else {
         if (nextProfile.role === 'CONTRACTOR') {
           const mine = await getMyCapabilities();
-          if (request === generation.current) { setLegacyCapabilities(mine.capabilities); setLegacyPayoutComplete(mine.stripeConnect.complete); }
+          if (request === generation.current) { setLegacyCapabilities(mine.capabilities); setLegacyProfile(mine.profile); setLegacyPayoutComplete(mine.stripeConnect.complete); }
         }
         setTeam(null);
       }
@@ -163,7 +173,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
       const capability = await applyPartnerCapability(serviceType);
       if (!capability?.id || !/^[a-zA-Z0-9_-]+$/.test(capability.id) || capability.serviceType !== serviceType) throw Error('Service setup is unavailable. Refresh and try again.');
       await load();
-      openBusiness();
+      openBusiness(capability.id);
     } catch (err: any) {
       setError(err?.message || 'Could not add this service.');
     } finally {
@@ -216,12 +226,12 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.card}>
               <Text style={styles.cardTitle}>TradeXchange</Text>
               <Text style={styles.cardText}>Use your existing service-provider account. Your services, approvals and documents are retained. You do not need to become a dealer.</Text>
-              <Button label="My services" onPress={() => navigation.navigate('ProviderCapabilities')} />
+              <ContractorServicesInline capabilities={legacyCapabilities} profile={legacyProfile} onUpdated={async () => { await load(); openBusiness(); }} openRequest={route?.params?.openSection === 'services' ? 1 : 0} />
               <Button label="Find jobs" variant="outline" onPress={() => navigation.navigate('ProviderJobs', { initialTab: 'open' })} />
               <Button label="My work" variant="outline" onPress={() => navigation.navigate('ProviderJobs', { initialTab: 'assigned' })} />
-              <ProviderBusinessPaymentsSection capabilities={legacyCapabilities} stripeComplete={legacyPayoutComplete} openRequest={businessOpenRequest} />
+              <ProviderBusinessPaymentsSection capabilities={legacyCapabilities} stripeComplete={legacyPayoutComplete} openRequest={businessOpenRequest} selectedCapabilityId={selectedCapabilityId} />
               <ProviderDocumentsSection capabilities={legacyCapabilities} />
-              <ProviderJobPreferencesSection capabilities={legacyCapabilities} openRequest={preferencesOpenRequest} />
+              <ProviderJobPreferencesSection capabilities={legacyCapabilities} openRequest={preferencesOpenRequest} selectedCapabilityId={selectedCapabilityId} />
             </View>
           ) : !isPartnerRole ? (
             <View style={styles.card}>
@@ -286,12 +296,12 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                       !cap || cap.status === 'REJECTED'
                         ? <Button label={cap ? 'Reapply' : 'Apply for service'} loading={busy === type} disabled={!!busy} onPress={() => void applyService(type)} />
                         : cap.status === 'PENDING' || (cap.status === 'APPROVED' && !verified)
-                          ? <Button label={cap.status === 'PENDING' ? 'Continue setup' : 'Review verification'} onPress={openBusiness} />
+                          ? <Button label={cap.status === 'PENDING' ? 'Continue setup' : 'Review verification'} onPress={() => openBusiness(cap.id)} />
                           : cap.status === 'SUSPENDED'
                             ? <Text style={styles.cardText}>Contact CarMazium to reactivate this service.</Text>
                             : <View style={{ gap: 8 }}>
                                 <Button label="View jobs" variant="outline" onPress={() => navigation.navigate('ProviderJobs')} />
-                                {!coverage && <Button label="Set working areas" variant="outline" onPress={openPreferences} />}
+                                {!coverage && <Button label="Set working areas" variant="outline" onPress={() => openPreferences(cap.id)} />}
                               </View>
                     )}
                   </View>;
@@ -301,11 +311,11 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
 
               <View onLayout={event => { businessY.current = event.nativeEvent.layout.y; }}>
                 <ProviderBusinessPaymentsSection capabilities={team?.capabilities ?? []} dealer={profile.dealerProfile} stripeComplete={team?.stripeConnect.complete}
-                  onSaved={load} openRequest={businessOpenRequest} onVerifyDealer={() => navigation.navigate("DealerKYC")} />
+                  onSaved={load} openRequest={businessOpenRequest} selectedCapabilityId={selectedCapabilityId} onVerifyDealer={() => navigation.navigate("DealerKYC")} />
               </View>
               <ProviderDocumentsSection capabilities={team?.capabilities ?? []} />
               <View onLayout={event => { preferencesY.current = event.nativeEvent.layout.y; }}>
-                <ProviderJobPreferencesSection capabilities={team?.capabilities ?? []} openRequest={preferencesOpenRequest} />
+                <ProviderJobPreferencesSection capabilities={team?.capabilities ?? []} openRequest={preferencesOpenRequest} selectedCapabilityId={selectedCapabilityId} />
               </View>
 
             </>

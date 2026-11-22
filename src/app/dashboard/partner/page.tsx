@@ -13,8 +13,9 @@ import { apiClient } from "@/lib/apiClient"
 import { Button } from "@/components/ui/Button"
 import { validatedServiceCapability, type JobService } from "@/lib/serviceSetupRouting"
 import { ProviderDocumentsSection } from "@/components/tradexchange/ProviderDocumentsSection"
+import { ContractorServicesInline } from "@/components/tradexchange/ContractorServicesInline"
 import { ProviderBusinessPaymentsSection, ProviderJobPreferencesSection } from "@/components/tradexchange/ProviderSettingsSections"
-import { getMyCapabilities, type ContractorCapability } from "@/lib/servicesApi"
+import { getMyCapabilities, type ContractorCapability, type MyCapabilities } from "@/lib/servicesApi"
 
 type CapabilityStatus = "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED"
 type PartnerCapability = {
@@ -47,6 +48,7 @@ export default function PartnerDashboardPage() {
     const [businessAddress, setBusinessAddress] = React.useState("")
     const [servicesExpanded, setServicesExpanded] = React.useState(true)
     const [legacyCapabilities, setLegacyCapabilities] = React.useState<ContractorCapability[]>([])
+    const [legacyProviderProfile, setLegacyProviderProfile] = React.useState<MyCapabilities["profile"]>(null)
     const [legacyPayoutComplete, setLegacyPayoutComplete] = React.useState(false)
 
     const role = profile?.role || ""
@@ -66,7 +68,7 @@ export default function PartnerDashboardPage() {
         if (!isLegacyProvider || !user) return
         let cancelled = false
         getMyCapabilities().then(result => {
-            if (!cancelled) { setLegacyCapabilities(result.capabilities); setLegacyPayoutComplete(result.stripeConnect.complete) }
+            if (!cancelled) { setLegacyCapabilities(result.capabilities); setLegacyProviderProfile(result.profile); setLegacyPayoutComplete(result.stripeConnect.complete) }
         }).catch(() => { if (!cancelled) setError("Could not load service documents. Refresh to retry.") })
         return () => { cancelled = true }
     }, [isLegacyProvider, user])
@@ -145,6 +147,15 @@ export default function PartnerDashboardPage() {
         }
     }
 
+    const openInlineSection = (section: 'business' | 'preferences', capabilityId: string) => {
+        const url = new URL(window.location.href)
+        url.searchParams.set('capability', capabilityId)
+        url.hash = `provider-${section}`
+        window.history.replaceState(null, '', url)
+        window.dispatchEvent(new HashChangeEvent('hashchange'))
+        document.getElementById(`provider-${section}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+
     const toggleService = async (serviceType: JobService, enabled: boolean) => {
         const key = serviceType === "DELIVERY" ? "deliveryServicesEnabled" : "inspectionServicesEnabled"
         setBusy(key)
@@ -202,11 +213,17 @@ export default function PartnerDashboardPage() {
                         Continue using your existing service-provider account. Your applications, approvals and documents remain unchanged; no dealer registration is needed.
                     </p>
                     <div className="flex flex-wrap gap-3">
-                        <Link href="/dashboard/service/capabilities"><Button>My services</Button></Link>
+                        <Link href="#provider-services"><Button>My services</Button></Link>
                         <Link href="/dashboard/service/jobs"><Button variant="outline">Find jobs</Button></Link>
                         <Link href="/dashboard/service/jobs?tab=mine"><Button variant="outline">My work</Button></Link>
                     </div>
                     <div className="mt-5 space-y-4">
+                        <ContractorServicesInline capabilities={legacyCapabilities} profile={legacyProviderProfile} onUpdated={async () => {
+                            const result = await getMyCapabilities()
+                            setLegacyCapabilities(result.capabilities)
+                            setLegacyProviderProfile(result.profile)
+                            setLegacyPayoutComplete(result.stripeConnect.complete)
+                        }} />
                         <ProviderBusinessPaymentsSection capabilities={legacyCapabilities} stripeComplete={legacyPayoutComplete} />
                         <ProviderDocumentsSection capabilities={legacyCapabilities} />
                         <ProviderJobPreferencesSection capabilities={legacyCapabilities} />
@@ -300,12 +317,12 @@ export default function PartnerDashboardPage() {
                                         {!cap || cap.status === "REJECTED"
                                             ? <Button size="sm" disabled={!!busy} onClick={() => void applyService(serviceType)}>{cap ? "Reapply" : "Apply for service"}</Button>
                                             : cap.status === "PENDING" || (cap.status === "APPROVED" && !verified)
-                                                ? <Link href="#provider-business"><Button size="sm">{cap.status === "PENDING" ? "Continue setup" : "Review verification"}</Button></Link>
+                                                ? <Button size="sm" onClick={() => openInlineSection("business", cap.id)}>{cap.status === "PENDING" ? "Continue setup" : "Review verification"}</Button>
                                                 : cap.status === "SUSPENDED"
                                                     ? <p className="text-xs text-[var(--text-muted)]">Contact CarMazium to reactivate this service.</p>
                                                     : <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">View jobs</Button></Link>}
                                         {cap?.status === "APPROVED" && verified && !coverage &&
-                                            <Link href="#provider-preferences"><Button size="sm" variant="outline">Set working areas</Button></Link>}
+                                            <Button size="sm" variant="outline" onClick={() => openInlineSection('preferences', cap.id)}>Set working areas</Button>}
                                     </div>}
                                 </div>
                             })}

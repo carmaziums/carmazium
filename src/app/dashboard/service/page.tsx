@@ -124,7 +124,7 @@ function ProviderOverview() {
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            <Link href="/dashboard/service/capabilities" className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-default)] px-4 py-2.5 text-xs font-black uppercase tracking-widest hover:border-primary/40 transition-colors">
+                            <Link href="/dashboard/partner#provider-services" className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-default)] px-4 py-2.5 text-xs font-black uppercase tracking-widest hover:border-primary/40 transition-colors">
                                 <ShieldCheck size={15} /> My services
                             </Link>
                             <Link href="/dashboard/service/jobs" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-black uppercase tracking-widest text-white hover:bg-primary/90 transition-colors">
@@ -212,7 +212,7 @@ function ProviderOverview() {
                                     </p>
                                 </div>
                             </div>
-                            <Link href="/dashboard/service/capabilities" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>Complete service setup</Link>
+                            <Link href="/dashboard/partner#provider-services" className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>Complete service setup</Link>
                         </div>
                     </section>
                 </div>

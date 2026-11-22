@@ -301,13 +301,13 @@ const mobilePaymentsApi = read('carmazium app/carmazium app/src/lib/paymentsApi.
 const mobilePurchaseFlow = read('carmazium app/carmazium app/src/screens/main/PurchaseFlowScreen.tsx');
 const mobileAuctionComplete = read('carmazium app/carmazium app/src/screens/main/AuctionCompleteScreen.tsx');
 const mobilePartnerDashboard = read('carmazium app/carmazium app/src/screens/main/PartnerDashboardScreen.tsx');
-const mobileProviderCapabilities = read('carmazium app/carmazium app/src/screens/main/ProviderCapabilitiesScreen.tsx');
-const mobileProviderVerification = read('carmazium app/carmazium app/src/screens/main/ProviderVerificationScreen.tsx');
+const mobileContractorServices = read('carmazium app/carmazium app/src/components/tradexchange/ContractorServicesInline.tsx');
+const mobileLegacyProviderRedirect = read('carmazium app/carmazium app/src/screens/main/LegacyProviderRouteRedirectScreen.tsx');
 const mobileProviderSettings = read('carmazium app/carmazium app/src/components/tradexchange/ProviderSettingsSections.tsx');
 const webProviderSettings = read('src/components/tradexchange/ProviderSettingsSections.tsx');
 const mobileProviderDocuments = read('carmazium app/carmazium app/src/components/tradexchange/ProviderDocumentsSection.tsx');
 const webProviderDocuments = read('src/components/tradexchange/ProviderDocumentsSection.tsx');
-const mobileProviderMatching = read('carmazium app/carmazium app/src/screens/main/ProviderMatchingScreen.tsx');
+
 const mobileProviderJobs = read('carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx');
 const mobileProviderJobDetail = read('carmazium app/carmazium app/src/screens/main/ProviderJobDetailScreen.tsx');
 const mobileProviderLeads = read('carmazium app/carmazium app/src/screens/main/ProviderLeadsScreen.tsx');
@@ -1112,17 +1112,15 @@ if (
   !mobileProviderSettings.includes('updateJobMatching') ||
   !webProviderSettings.includes('submitProviderDeclaration') ||
   !webProviderSettings.includes('updateJobMatching') ||
-  !mobileProviderCapabilities.includes("navigation.navigate('ProviderVerification'") ||
-  !mobileProviderCapabilities.includes("navigation.navigate('ProviderMatching'") ||
-  !mobileProviderVerification.includes('getCapabilityVerification') ||
+  !mobileContractorServices.includes("'/services/capabilities'") ||
+  !mobileLegacyProviderRedirect.includes("navigation.replace('PartnerDashboard'") ||
   !mobileProviderDocuments.includes('uploadCapabilityAttachment') ||
   !mobileProviderDocuments.includes('deleteCapabilityAttachment') ||
   !webProviderDocuments.includes('uploadCapabilityAttachment') ||
   !webProviderDocuments.includes('deleteCapabilityAttachment') ||
   !mobilePartnerDashboard.includes('ProviderDocumentsSection') ||
-  !mobileProviderVerification.includes('submitProviderDeclaration') ||
-  !mobileProviderMatching.includes('updateJobMatching') ||
-  !mobileProviderMatching.includes('updateLeadMatching') ||
+  !mobileProviderSettings.includes('submitProviderDeclaration') ||
+  !mobileProviderSettings.includes('updateJobMatching') ||
   !mobileMainNavigator.includes('PartnerDashboard') ||
   !mobileMainNavigator.includes('ProviderCapabilities') ||
   !mobileMainNavigator.includes('ProviderVerification') ||

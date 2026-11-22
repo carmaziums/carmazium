@@ -92,10 +92,15 @@ export function ProviderBusinessPaymentsSection({
   }catch(e){setError(e instanceof Error?e.message:"Could not start payout setup");setBusy(false)}
  }
  React.useEffect(()=>{
-  const sync=()=>{if(window.location.hash==="#provider-business")setExpanded(true)}
+  const sync=()=>{
+   const id=new URLSearchParams(window.location.search).get("capability")
+   const target=capabilities.find(c=>c.id===id)
+   if(target?.serviceType==="INSPECTION"||target?.serviceType==="DELIVERY")setService(target.serviceType)
+   if(window.location.hash==="#provider-business")setExpanded(true)
+  }
   sync();window.addEventListener("hashchange",sync)
   return()=>window.removeEventListener("hashchange",sync)
- },[])
+ },[capabilities])
  return <section id="provider-business" className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 md:p-7">
   <SectionHeading title="Business & Payments" subtitle="Business details, declarations and payout verification — without another setup page." expanded={expanded} id="business-payment-options" onToggle={()=>setExpanded(v=>!v)} />
   {expanded&&<div id="business-payment-options" className="space-y-5 mt-5">
@@ -163,10 +168,15 @@ export function ProviderJobPreferencesSection({capabilities}:{capabilities:Minim
   return()=>{active=false;generation.current++}
  },[expanded,available?.id,service])
  React.useEffect(()=>{
-  const sync=()=>{if(window.location.hash==="#provider-preferences")setExpanded(true)}
+  const sync=()=>{
+   const id=new URLSearchParams(window.location.search).get("capability")
+   const target=capabilities.find(c=>c.id===id)
+   if(target?.serviceType==="INSPECTION"||target?.serviceType==="DELIVERY")setService(target.serviceType)
+   if(window.location.hash==="#provider-preferences")setExpanded(true)
+  }
   sync();window.addEventListener("hashchange",sync)
   return()=>window.removeEventListener("hashchange",sync)
- },[])
+ },[capabilities])
  const save=async()=>{
   if(!cap)return
   const parsed=nationwide?[]:parseAreas(areas)

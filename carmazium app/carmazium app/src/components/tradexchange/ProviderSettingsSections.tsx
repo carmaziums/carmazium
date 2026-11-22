@@ -29,8 +29,8 @@ function Entry({label,value,onChange}:{label:string;value:string;onChange:(v:str
 }
 
 export function ProviderBusinessPaymentsSection({
- capabilities,dealer,stripeComplete,onSaved,openRequest=0,onVerifyDealer,
-}:{capabilities:Capability[];dealer?:DealerBusiness|null;stripeComplete?:boolean;onSaved?:()=>Promise<void>;openRequest?:number;onVerifyDealer?:()=>void}) {
+ capabilities,dealer,stripeComplete,onSaved,openRequest=0,onVerifyDealer,selectedCapabilityId,
+}:{capabilities:Capability[];dealer?:DealerBusiness|null;stripeComplete?:boolean;onSaved?:()=>Promise<void>;openRequest?:number;onVerifyDealer?:()=>void;selectedCapabilityId?:string}) {
  const [expanded,setExpanded]=useState(false);
  const [service,setService]=useState<Service>('DELIVERY');
  const cap=capabilities.find(c=>c.serviceType===service);
@@ -46,6 +46,7 @@ export function ProviderBusinessPaymentsSection({
  const [notice,setNotice]=useState('');
  const generation=useRef(0);
  useEffect(()=>{if(openRequest>0)setExpanded(true);},[openRequest]);
+ useEffect(()=>{const chosen=capabilities.find(c=>c.id===selectedCapabilityId);if(chosen?.serviceType==='DELIVERY'||chosen?.serviceType==='INSPECTION')setService(chosen.serviceType);},[selectedCapabilityId,capabilities]);
  useEffect(()=>{
    setBusinessName(dealer?.companyName??'');setBusinessPhone(dealer?.phone??'');setBusinessAddress(dealer?.businessAddress??'');
  },[dealer?.companyName,dealer?.phone,dealer?.businessAddress]);
@@ -132,7 +133,7 @@ export function ProviderBusinessPaymentsSection({
  </View>;
 }
 
-export function ProviderJobPreferencesSection({capabilities,openRequest=0}:{capabilities:Capability[];openRequest?:number}) {
+export function ProviderJobPreferencesSection({capabilities,openRequest=0,selectedCapabilityId}:{capabilities:Capability[];openRequest?:number;selectedCapabilityId?:string}) {
  const [expanded,setExpanded]=useState(false);
  const [service,setService]=useState<Service>('DELIVERY');
  const available=capabilities.find(c=>c.serviceType===service);
@@ -145,6 +146,7 @@ export function ProviderJobPreferencesSection({capabilities,openRequest=0}:{capa
  const [notice,setNotice]=useState('');
  const generation=useRef(0);
  useEffect(()=>{if(openRequest>0)setExpanded(true);},[openRequest]);
+ useEffect(()=>{const chosen=capabilities.find(c=>c.id===selectedCapabilityId);if(chosen?.serviceType==='DELIVERY'||chosen?.serviceType==='INSPECTION')setService(chosen.serviceType);},[selectedCapabilityId,capabilities]);
  useEffect(()=>{
    setCap(null);setError('');setNotice('');
    if(!expanded||!available){generation.current++;return;}

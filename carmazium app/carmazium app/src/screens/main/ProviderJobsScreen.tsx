@@ -218,7 +218,7 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
 
       <TouchableOpacity
         style={styles.manageCoverage}
-        onPress={() => navigation.navigate('ProviderCapabilities')}
+        onPress={() => navigation.navigate('PartnerDashboard')}
         accessibilityRole="button"
         accessibilityLabel="Manage approved services and job-matching coverage"
         activeOpacity={0.8}
@@ -241,7 +241,7 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
       </Text>
       <TouchableOpacity
         style={styles.primaryButton}
-        onPress={() => navigation.navigate('ProviderCapabilities')}
+        onPress={() => navigation.navigate('PartnerDashboard')}
       >
         <Text style={styles.primaryText}>MANAGE SERVICES</Text>
       </TouchableOpacity>

@@ -677,7 +677,7 @@ function ProfileContent() {
                     <div className="glass-card p-5 mb-6">
                         <p className="font-bold mb-2">Partner integration and service configuration</p>
                         <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>Your partner-specific integrations retain their existing verification and access checks. Open your service workspace to manage them.</p>
-                        <Link href={currentRole.includes("FINANCE") ? "/dashboard/finance/settings" : currentRole.includes("INSURANCE") ? "/dashboard/insurance/settings" : "/dashboard/service/capabilities"}><Button variant="outline">Manage partner integration <ExternalLink size={15} className="ml-2" /></Button></Link>
+                        <Link href={currentRole.includes("FINANCE") ? "/dashboard/finance/settings" : currentRole.includes("INSURANCE") ? "/dashboard/insurance/settings" : "/dashboard/partner#provider-business"}><Button variant="outline">Manage partner integration <ExternalLink size={15} className="ml-2" /></Button></Link>
                     </div>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
