@@ -384,8 +384,9 @@ export async function getJobFeedPage(
 export async function getJobFeed(serviceType?: ServiceType): Promise<ServiceJob[]> {
   return (await getJobFeedPage(serviceType)).items;
 }
-export async function getAssignedJobsPage(cursor?: string, limit = 20): Promise<CursorPage<ServiceJob>> {
+export async function getAssignedJobsPage(cursor?: string, limit = 20, serviceType?: ServiceType): Promise<CursorPage<ServiceJob>> {
   const q = new URLSearchParams({ limit: String(limit) });
+  if (serviceType) q.set('serviceType', serviceType);
   if (cursor) q.set('cursor', cursor);
   const r = await apiClient<{ data: CursorPage<ServiceJob> }>(`/services/jobs/assigned?${q.toString()}`);
   return r.data;
