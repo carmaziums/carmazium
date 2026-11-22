@@ -529,6 +529,27 @@ describe('Delivery & Recovery — end to end', () => {
         await expect(svc.getJob({ userId: 'u_nobody', role: 'BUYER' as any }, jobId)).rejects.toThrow(ForbiddenException);
     });
 
+    it('a provider moving outside the pickup area cannot have their quote accepted', async () => {
+        const cap = db.one('contractorCapability', { contractorId: kentProfileId, serviceType: 'DELIVERY' })!;
+        const oldNationwide = cap.jobNationwide;
+        const oldAreas = cap.jobPostcodeAreas;
+        const previousStatus = db.one('serviceJob', { id: jobId })!.status;
+        const previousQuotes = db.many('serviceQuote', { jobId }).map(q => [q.id, q.status]);
+        const previousPayments = db.many('servicePayment', { jobId }).length;
+        try {
+            cap.jobNationwide = false;
+            cap.jobPostcodeAreas = ['B'];
+            await expect(svc.acceptQuote(CUSTOMER.id, jobId, kentQuoteId))
+                .rejects.toThrow(/no longer verified or eligible for this job area/);
+            expect(db.one('serviceJob', { id: jobId })!.status).toBe(previousStatus);
+            expect(db.many('serviceQuote', { jobId }).map(q => [q.id, q.status])).toEqual(previousQuotes);
+            expect(db.many('servicePayment', { jobId })).toHaveLength(previousPayments);
+        } finally {
+            cap.jobNationwide = oldNationwide;
+            cap.jobPostcodeAreas = oldAreas;
+        }
+    });
+
     // 4. Acceptance and money ────────────────────────────────────────────
 
     it('accepting Kent freezes the 9% split, declines the rival, and returns checkout', async () => {
@@ -553,6 +574,15 @@ describe('Delivery & Recovery — end to end', () => {
         const session = sessionsCreate.mock.calls[0][0];
         expect(session.line_items[0].price_data.unit_amount).toBe(17000);
         expect(session.metadata).toMatchObject({ type: 'SERVICE_JOB', jobId, paymentId: pay.id });
+    });
+
+    it('a competing quote cannot be accepted after the first quote wins', async () => {
+        const paymentsBefore = db.many('servicePayment', { jobId }).length;
+        await expect(svc.acceptQuote(CUSTOMER.id, jobId, rivalQuoteId))
+            .rejects.toThrow(/no longer open for acceptance/);
+        expect(db.many('servicePayment', { jobId })).toHaveLength(paymentsBefore);
+        expect(db.one('serviceJob', { id: jobId })!.contractorId).toBe(kentProfileId);
+        expect(db.one('serviceQuote', { id: rivalQuoteId })!.status).toBe('DECLINED');
     });
 
     it('the rival quoting again after acceptance is refused', async () => {
