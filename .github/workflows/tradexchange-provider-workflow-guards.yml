@@ -10,6 +10,10 @@ on:
       - 'carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx'
       - 'carmazium app/carmazium app/src/screens/main/ProviderJobDetailScreen.tsx'
       - 'backend/src/services/services.service.spec.ts'
+      - 'carmazium app/carmazium app/src/screens/main/ProviderOverviewScreen.tsx'
+      - 'scripts/check-product-parity.mjs'
+      - 'scripts/check-customer-app-release-acceptance.mjs'
+      - 'backend/evaluations/mazium-knowledge-sources.json'
       - 'backend/src/services/services.audit.integration.spec.ts'
       - 'src/lib/ukServiceDateTime.ts'
       - 'carmazium app/carmazium app/src/lib/ukServiceDateTime.ts'
@@ -66,6 +70,10 @@ jobs:
           scripts/test-tradexchange-block2-stage7.test.mjs
           scripts/test-tradexchange-block2-stage8.test.mjs
           scripts/test-tradexchange-block2-stage9.test.mjs
+          scripts/test-tradexchange-block2-stage10.test.mjs
+          scripts/test-tradexchange-block1-navigation.test.mjs
+          scripts/test-tradexchange-legacy-retirement.test.mjs
+          scripts/test-tradexchange-stage9-qa.test.mjs
 
   quote-acceptance-integration:
     runs-on: ubuntu-24.04
