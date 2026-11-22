@@ -558,10 +558,19 @@ const iosInfoPlist = app.ios?.infoPlist ?? {};
 const privacyManifest = app.ios?.privacyManifests ?? {};
 const androidBlockedPermissions = new Set(app.android?.blockedPermissions ?? []);
 
-if ('NSCameraUsageDescription' in iosInfoPlist) {
-  fail('iOS camera usage description must not be present while CarMazium has no camera-capture flow');
+// Expo Image Picker links camera-capable native APIs. Apple previously flagged
+// a missing purpose string even though our current UI only selects library
+// photos. A purpose string does not request permission: runtime camera calls
+// must still remain absent and Android camera access stays explicitly blocked.
+if (
+  typeof iosInfoPlist.NSCameraUsageDescription !== 'string' ||
+  !/camera/i.test(iosInfoPlist.NSCameraUsageDescription) ||
+  !/photo/i.test(iosInfoPlist.NSCameraUsageDescription) ||
+  !/choose/i.test(iosInfoPlist.NSCameraUsageDescription)
+) {
+  fail('iOS image picker must retain an accurate camera purpose string for Apple native-library analysis');
 } else {
-  ok('iOS does not advertise unused camera access');
+  ok('iOS image picker declares an appropriately scoped camera purpose without requesting camera access');
 }
 
 if (
@@ -622,12 +631,12 @@ const imagePickerPlugin = (app.plugins ?? []).find(
 );
 if (
   !Array.isArray(imagePickerPlugin) ||
-  imagePickerPlugin[1]?.cameraPermission !== false ||
+  imagePickerPlugin[1]?.cameraPermission !== iosInfoPlist.NSCameraUsageDescription ||
   imagePickerPlugin[1]?.microphonePermission !== false
 ) {
-  fail('expo-image-picker must explicitly disable unused camera and microphone permissions');
+  fail('expo-image-picker must preserve Apple's scoped camera purpose string and disable microphone permissions');
 } else {
-  ok('expo-image-picker disables unused camera and microphone permissions');
+  ok('expo-image-picker iOS camera purpose matches Info.plist; microphone disabled and Android camera separately blocked');
 }
 
 for (const permission of [
