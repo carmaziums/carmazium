@@ -262,10 +262,11 @@ The anon Supabase key is safe to embed in the client (that's what it's for). The
 
 ### 4.3. EAS / Expo project identity
 
-- Owner: `pizn-01s-team`
+- Owner: `carmazium` (business-controlled Expo Organisation)
 - Slug: `carmazium`
-- EAS project ID: `f0ab914b-3433-4816-80a2-0a94e6c6a066`
-- OTA update URL: `https://u.expo.dev/f0ab914b-3433-4816-80a2-0a94e6c6a066`
+- EAS project ID: `9c77bb81-205c-42f8-913e-b69a0953ec10`
+- OTA update URL: `https://u.expo.dev/9c77bb81-205c-42f8-913e-b69a0953ec10`
+- Migration warning (22 Nov 2026): Android versionCode 111 and previously signed APKs were built with the former Expo project `f0ab914b-3433-4816-80a2-0a94e6c6a066`. Changing the EAS project only affects **new native builds**; existing installs cannot fetch an update from the new EAS URL until a higher-version original-signed `uk.carmazium.app` APK is installed in place. Preserve all user data and complete Android/iOS signing, account, push and OTA regression checks before production distribution. Never mistake this company-owned EAS project for a second customer app.
 - `runtimeVersion.policy: sdkVersion` — every Expo SDK bump invalidates the OTA channel and requires a fresh binary rollout
 - Channel currently used: `production`
 
