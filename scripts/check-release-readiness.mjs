@@ -360,6 +360,18 @@ if (
   ok(`Expo EAS projectId is configured (${easProjectId})`);
 }
 
+const expectedExpoProjectId = '9c77bb81-205c-42f8-913e-b69a0953ec10';
+if (app.owner !== 'carmazium' || easProjectId !== expectedExpoProjectId) {
+  fail('Production EAS builds must use CarMazium-owned @carmazium project rather than the previous developer account');
+} else {
+  ok('Expo EAS project owner is the CarMazium organisation');
+}
+if (app.updates?.url !== `https://u.expo.dev/${easProjectId}`) {
+  fail('Expo Update URL must match the company-controlled EAS project ID');
+} else {
+  ok('Native OTA Update URL matches the company-controlled EAS project');
+}
+
 // EAS Build sets expo-channel-name from the selected preview/production
 // profile. A fixed app.json request header can silently point preview testers
 // at production over-the-air updates, bypassing preview isolation.
