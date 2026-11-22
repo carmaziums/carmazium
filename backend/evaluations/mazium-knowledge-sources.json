@@ -66,7 +66,7 @@
     "src/components/dashboard/DashboardSidebar.tsx": "d3748074351f692c47501ca2f58c55fc58ba3490835c5e3a7c7cdb0fe73e56b3",
     "src/components/dealer/DealerPurchasesView.tsx": "f410865f9dd25f9200c15d6f83def2278f3ee75ac17a2768c77c0c1ed821c917",
     "src/components/dealer/DealerServicePreferences.tsx": "eef945ba6e87d887f267679a6f07438b1811265846ced3fca79bc07e419e9784",
-    "src/components/features/MaziumWidget.tsx": "e42339ddb7481a9c136d96abf9856789bc4bc6b78114cd10456ee85c306d123c",
+    "src/components/features/MaziumWidget.tsx": "91d930bfd789a7a2c8c754511dc4c0a44d51b1331cbc4296cd6959d5dc99add5",
     "src/components/finance/FinanceReferralForm.tsx": "ff4781f826b719164dd96463d497704277588efe0614f41ac278de4f4933ce13",
     "src/components/listing/ListingWizard.tsx": "61f46d11fb5b66dcc1066808be730d81d208bb580553f286bec0cce30eef3fc7",
     "src/components/services/VehicleServicesPanel.tsx": "b3d258621caef39313d41fc1b74d7adc95061483869b096b38c290dcdc9ef454",
