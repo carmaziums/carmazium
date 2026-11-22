@@ -62,7 +62,7 @@ test('website confirms provider choice and blocks simultaneous checkout requests
   for (const snippet of [
     'const checkoutPending = React.useRef(false)', 'checkoutPending.current || busy !== null',
     'window.confirm(', 'comparableServiceQuotes(job.quotes)', 'isServiceQuoteSelectable(quote)',
-    'checkout.hostname !== "checkout.stripe.com"', 'startCheckout(accepted, true)',
+    'classifyServiceCheckoutTarget(url, job.id)', 'startCheckout(accepted, true)',
   ]) assert.ok(web.includes(snippet), snippet);
   assert.match(web, /catch \(e: unknown\) \{[\s\S]*?load\(\)[\s\S]*?\} finally/);
 });
@@ -72,7 +72,7 @@ test('Android confirms provider choice and rechecks paid/accepted state after ch
     'const checkoutPending = useRef(false)', 'const chooseProvider = (quote: ServiceQuote)',
     "'Choose this provider?'", 'comparableServiceQuotes(job?.quotes)',
     'isServiceQuoteSelectable(quote)', 'checkoutPending.current = true',
-    "checkoutUrl.startsWith('https://checkout.stripe.com/')",
+    "classifyServiceCheckoutTarget(checkoutUrl, jobId)",
     'await Linking.openURL(checkoutUrl)', 'openCheckout(accepted, true)',
   ]) assert.ok(native.includes(snippet), snippet);
   assert.match(native, /catch \(err: any\) \{[\s\S]*?await load\(\)[\s\S]*?\} finally/);
