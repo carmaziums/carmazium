@@ -309,6 +309,7 @@ const mobileProviderDocuments = read('carmazium app/carmazium app/src/components
 const webProviderDocuments = read('src/components/tradexchange/ProviderDocumentsSection.tsx');
 
 const mobileProviderJobs = read('carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx');
+const mobileProviderOverview = read('carmazium app/carmazium app/src/screens/main/ProviderOverviewScreen.tsx');
 const mobileProviderJobDetail = read('carmazium app/carmazium app/src/screens/main/ProviderJobDetailScreen.tsx');
 const mobileProviderLeads = read('carmazium app/carmazium app/src/screens/main/ProviderLeadsScreen.tsx');
 const mobileProviderLeadDetail = read('carmazium app/carmazium app/src/screens/main/ProviderLeadDetailScreen.tsx');
@@ -675,9 +676,10 @@ if (
   ok('Native Partner Jobs preserve provider lifecycle and service-job chat parity');
 }
 
-// Partner/provider Messages parity: native reuses the shared chat system, but
-// must understand SERVICE_JOB room metadata and expose a provider-focused
-// service-job conversation workspace that opens the normal ChatScreen.
+// Partner/provider Messages parity: native reuses the shared chat system.
+// Keep a direct Messages entry in the overview (matching the website's
+// provider navigation), without adding a duplicate shortcut on the jobs list.
+// Service-job detail also retains its contextual ChatScreen action.
 if (
   !mobileChatApi.includes("context?: 'SUPPORT' | 'RETAIL' | 'AUCTION' | 'DISPUTE' | 'SERVICE_JOB' | 'LEGACY'") ||
   !mobileChatApi.includes('serviceJob?: ChatServiceJob | null') ||
@@ -685,7 +687,8 @@ if (
   !mobileProviderMessages.includes("navigation.navigate('ChatScreen'") ||
   !mobileProviderMessages.includes('room.serviceJob?.title') ||
   !mobileMainNavigator.includes('ProviderMessages') ||
-  !mobileProviderJobs.includes("navigation.navigate('ProviderMessages')")
+  !mobileProviderOverview.includes("navigation.navigate('ProviderMessages')") ||
+  mobileProviderJobs.includes('label="Job messages"')
 ) {
   fail('Native provider Messages can drift from shared SERVICE_JOB chat context');
 } else {
@@ -1045,7 +1048,7 @@ if (
   !mobileDealerCustomers.includes('>Customers</Text>') ||
   !mobileDealerOffers.includes('>Offers received</Text>') ||
   !mobilePartnerDashboard.includes('label="View jobs"') ||
-  !read('src/app/dashboard/partner/page.tsx').includes('>View jobs</Button>') ||
+  !read('src/app/dashboard/partner/page.tsx').includes('>View jobs</Link>') ||
   !mobileProviderJobs.includes("'My Work' : 'Available Jobs'")
 ) {
   fail('Shared dealer/Partner terminology drifted between web and native clients');
