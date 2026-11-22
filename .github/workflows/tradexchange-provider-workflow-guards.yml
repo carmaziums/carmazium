@@ -101,3 +101,34 @@ jobs:
           src/services/service-job-alerts.service.spec.ts
           src/notifications/notification-email-policy.spec.ts
           src/notifications/service-job-notification.spec.ts
+
+  expo-credential-check:
+    name: Verify CarMazium-owned Expo robot (read-only)
+    # Internal branch only; never expose organization credentials to fork PRs.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == 'carmaziums/carmazium' &&
+      github.event.pull_request.head.ref == 'feature/tradexchange-block2-jobs-20261122'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check owner-managed Expo token without printing credentials
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${EXPO_TOKEN:-}" ]; then
+            echo '::error::EXPO_TOKEN is not configured for this repository.'
+            exit 1
+          fi
+          if ! npx --yes eas-cli@16.18.0 whoami --non-interactive > "$RUNNER_TEMP/carmazium-expo-auth.log" 2>&1; then
+            echo '::error::Expo EAS rejected the repository credential; check the CarMazium-owned robot token.'
+            exit 1
+          fi
+          echo 'Expo EAS authentication succeeded using the repository-managed token.'
