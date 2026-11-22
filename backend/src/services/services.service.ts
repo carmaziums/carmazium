@@ -1946,10 +1946,19 @@ export class ServicesService {
             && job.expiresAt > new Date()
             && !isCustomer && !isAdmin
             && job.customerId !== viewer.businessOwnerUserId;
+        // A verified capability can expire while an ACTIVE quote still
+        // exists. Allow an authorised provider to withdraw that existing offer
+        // without giving them permission to submit new quotes.
+        const canWithdrawQuote = !!viewer.contractorProfileId
+            && viewer.quoteAllowedByActor !== false
+            && job.status === ServiceJobStatus.OPEN
+            && job.quotes.some(q => q.contractorId === viewer.contractorProfileId
+                && q.status === ServiceQuoteStatus.ACTIVE);
 
         return {
             ...shaped,
             canQuote,
+            canWithdrawQuote,
             review,
             eligibleProviderCount,
             canReview: isCustomer && job.status === ServiceJobStatus.RELEASED && !review,
