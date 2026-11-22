@@ -59,7 +59,10 @@ jobs:
           node - <<'NODE'
           const app = require('./app.json').expo;
           const eas = require('./eas.json');
-          if (app.ios?.bundleIdentifier !== 'uk.carmazium.app' ||
+          if (app.owner !== 'carmazium' ||
+              app.extra?.eas?.projectId !== '9c77bb81-205c-42f8-913e-b69a0953ec10' ||
+              app.updates?.url !== 'https://u.expo.dev/9c77bb81-205c-42f8-913e-b69a0953ec10' ||
+              app.ios?.bundleIdentifier !== 'uk.carmazium.app' ||
               eas.build?.production?.channel !== 'production' ||
               eas.build?.production?.distribution === 'internal' ||
               eas.build?.production?.android?.buildType !== 'app-bundle' ||
