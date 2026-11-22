@@ -137,6 +137,11 @@ test('TradeXchange keeps a single hub and matching website/native jobs controls'
   assert.match(webHub, /buttonVariants\(\{ variant: "outline" \}\)/);
   assert.match(webHub, /buttonVariants\(\{ size: "sm", variant: "outline" \}\)/);
   assert.doesNotMatch(providerNative, /label="Job messages"/);
+  // The dedicated messages workspace remains reachable from the overview
+  // rather than reintroducing a duplicated nested action on Find Jobs.
+  const nativeOverview = read('carmazium app/carmazium app/src/screens/main/ProviderOverviewScreen.tsx');
+  assert.match(nativeOverview, /label="Job messages"/);
+  assert.match(nativeOverview, /navigation.navigate\('ProviderMessages'\)/);
   assert.match(providerNative, /label="Provider overview"/);
   assert.match(providerNative, /label="Refresh jobs"/);
 });
