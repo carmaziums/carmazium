@@ -366,6 +366,56 @@ export function parseServiceQuotePence(input: string): number | null {
   return Number.isSafeInteger(pence) && pence >= 100 && pence <= 5_000_000 ? pence : null;
 }
 
+/**
+ * Checkout may return either a real Stripe payment URL or the current job URL
+ * after Stripe has already reported an earlier session as paid. This route
+ * classifier does NOT prove payment: callers must re-fetch backend status.
+ */
+export function classifyServiceCheckoutTarget(
+  value: string,
+  jobId: string,
+): 'STRIPE_CHECKOUT' | 'JOB_RETURN' | null {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password || url.port) return null;
+    if (url.hostname === 'checkout.stripe.com') return 'STRIPE_CHECKOUT';
+    if ((url.hostname === 'www.carmazium.com' || url.hostname === 'carmazium.com')
+      && url.pathname === `/services/jobs/${encodeURIComponent(jobId)}`
+      && url.searchParams.get('paid') === '1') return 'JOB_RETURN';
+  } catch { /* An untrusted or malformed URL must never be opened. */ }
+  return null;
+}
+
+/** Human-readable server payment state. A browser return URL is not evidence. */
+export function servicePaymentStatusText(
+  status: ServicePayment['status'] | null | undefined,
+): string {
+  switch (status) {
+    case 'PENDING': return 'Payment is not yet confirmed. If you just paid, allow Stripe confirmation to arrive before trying another payment.';
+    case 'PAID': return 'Customer payment is confirmed by CarMazium. Provider payout remains pending completion confirmation or the applicable release process.';
+    case 'RELEASED': return 'CarMazium has recorded the provider payout as released. Bank settlement may take additional time.';
+    case 'REFUNDED': return 'This service payment has been recorded as refunded. Check your original payment method for receipt.';
+    case 'FAILED': return 'Payment could not be confirmed. Check the latest job status or contact CarMazium before retrying.';
+    default: return 'Payment status is unavailable. Refresh the job or contact CarMazium before relying on payment confirmation.';
+  }
+}
+
+/** Read-only financial evidence from the saved service payment row.
+ * Never derive a fresh price or display an inconsistent payment breakdown.
+ */
+export function servicePaymentEvidence(
+  payment: Pick<ServicePayment, 'grossPence' | 'platformFeePence' | 'contractorPence'> | null | undefined,
+  agreedAmountPence: number | null | undefined,
+): { grossPence: number; platformFeePence: number; contractorPence: number } | null {
+  if (!payment || !Number.isSafeInteger(agreedAmountPence)) return null;
+  const { grossPence, platformFeePence, contractorPence } = payment;
+  if (![grossPence, platformFeePence, contractorPence].every(Number.isSafeInteger)) return null;
+  if (grossPence < 0 || grossPence !== agreedAmountPence) return null;
+  if (platformFeePence !== Math.round(grossPence * 0.09)) return null;
+  if (contractorPence !== grossPence - platformFeePence) return null;
+  return { grossPence, platformFeePence, contractorPence };
+}
+
 export const formatPence = (p: number) =>
   `£${(p / 100).toLocaleString('en-GB', {
     minimumFractionDigits: 2,
