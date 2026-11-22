@@ -105,6 +105,7 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
     const snapshot = JSON.stringify({ title, description, vehicles, pickup, pickupAddress, destination,
       deliveryAddress, address, recovery, asap, requestedFor: requestedFor?.toISOString() ?? null });
     const timer = setTimeout(() => {
+      if (posted.current) return;
       pendingWrites.current = pendingWrites.current.catch(() => {}).then(() => AsyncStorage.setItem(draftKey, snapshot));
     }, 350);
     return () => clearTimeout(timer);
