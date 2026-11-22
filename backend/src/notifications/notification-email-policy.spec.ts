@@ -11,6 +11,14 @@ describe('notificationEmailPolicy', () => {
         });
     });
 
+    it('sends updated quote notifications but does not duplicate the new-quote email', () => {
+        expect(notificationEmailPolicy({
+            type: 'SERVICE_QUOTE_RECEIVED', data: { dedicatedServiceEmail: true },
+        })).toEqual({ eligible: false, delayMs: 0, reason: 'dedicated-email-exists' });
+        expect(notificationEmailPolicy({ type: 'SERVICE_QUOTE_RECEIVED' }))
+            .toEqual({ eligible: true, delayMs: 0 });
+    });
+
     it('delays chat notifications for five minutes', () => {
         expect(notificationEmailPolicy({ type: 'MESSAGE_RECEIVED' })).toEqual({
             eligible: true,
@@ -40,7 +48,6 @@ describe('notificationEmailPolicy', () => {
         'LISTING_APPROVED',
         'SERVICE_CAPABILITY_APPROVED',
         'SERVICE_CAPABILITY_REJECTED',
-        'SERVICE_QUOTE_RECEIVED',
         'SERVICE_JOB_PAID',
         'SERVICE_JOB_COMPLETED',
         'SERVICE_PAYOUT_RELEASED',
