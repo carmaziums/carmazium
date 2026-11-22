@@ -10,6 +10,9 @@ on:
       - 'carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx'
       - 'carmazium app/carmazium app/src/screens/main/ProviderJobDetailScreen.tsx'
       - 'backend/src/services/services.service.spec.ts'
+      - 'backend/src/services/services.payment-hardening.spec.ts'
+      - 'backend/src/services/services.lifecycle-hardening.spec.ts'
+      - 'carmazium app/carmazium app/src/screens/main/CustomerServiceJobDetailScreen.tsx'
       - 'carmazium app/carmazium app/src/lib/servicesApi.ts'
       - 'backend/src/services/services.service.ts'
       - 'backend/src/services/services.controller.ts'
@@ -44,6 +47,7 @@ jobs:
           scripts/test-tradexchange-block2-stage3.test.mjs
           scripts/test-tradexchange-block2-stage4.test.mjs
           scripts/test-tradexchange-block2-stage5.test.mjs
+          scripts/test-tradexchange-block2-stage6.test.mjs
 
   quote-acceptance-integration:
     runs-on: ubuntu-24.04
@@ -61,6 +65,10 @@ jobs:
       - name: Generate Prisma client without connecting to a database
         working-directory: backend
         run: npx prisma generate
-      - name: Verify quote lifecycle, competitive acceptance and customer privacy
+      - name: Verify quote lifecycle, Stripe payment hardening and payout idempotency
         working-directory: backend
-        run: npx jest src/services/services.service.spec.ts --runInBand
+        run: >-
+          npx jest --runInBand
+          src/services/services.service.spec.ts
+          src/services/services.payment-hardening.spec.ts
+          src/services/services.lifecycle-hardening.spec.ts
