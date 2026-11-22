@@ -67,7 +67,7 @@ test('payment proof, claim tokens, fee split and dispute/48h safeguards cannot b
   assert.match(service, /const AUTO_CONFIRM_HOURS = 48/);
   assert.match(service, /status: ServiceJobStatus\.COMPLETED/);
   assert.match(service, /job\.payment\.externalDisputeId/);
-  assert.match(service, /const rate = 0\.09/);
+  assert.match(service, /private feeRate\(\): number \{\s*return 0\.09;/);
   for (const p of [
     'src/app/services/jobs/[id]/page.tsx',
     originalApp + 'src/screens/main/CustomerServiceJobDetailScreen.tsx',
