@@ -88,7 +88,10 @@ test("a Stripe redirect never proves that payment was received", () => {
 test("customer and provider pages use independent access and payment status checks", () => {
     const providerPage = readFileSync(new URL("../src/app/dashboard/service/jobs/page.tsx", import.meta.url), "utf8")
     const customerPage = readFileSync(new URL("../src/app/services/jobs/[id]/page.tsx", import.meta.url), "utf8")
-    assert.match(providerPage, /loadProviderJobLists\(getJobFeedPage, getAssignedJobsPage\)/)
+    assert.match(providerPage, /loadProviderJobLists\(/)
+    assert.match(providerPage, /getJobFeedPage\(serviceType\)/)
+    assert.match(providerPage, /getAssignedJobsPage\(undefined, 20, serviceType\)/)
+    assert.match(providerPage, /getAssignedJobsPage\(cursor, 20, serviceType\)/)
     assert.match(providerPage, /tab === "open" && notApproved/)
     assert.match(providerPage, /const error = tab === "open" \? availableError : assignedError/)
     assert.match(customerPage, /checkoutPaymentNotice\(params\.get\("paid"\), job\.payment\?\.status\)/)
