@@ -634,7 +634,7 @@ if (
   imagePickerPlugin[1]?.cameraPermission !== iosInfoPlist.NSCameraUsageDescription ||
   imagePickerPlugin[1]?.microphonePermission !== false
 ) {
-  fail('expo-image-picker must preserve Apple's scoped camera purpose string and disable microphone permissions');
+  fail('expo-image-picker must preserve the Apple-required camera purpose string and disable microphone permissions');
 } else {
   ok('expo-image-picker iOS camera purpose matches Info.plist; microphone disabled and Android camera separately blocked');
 }
