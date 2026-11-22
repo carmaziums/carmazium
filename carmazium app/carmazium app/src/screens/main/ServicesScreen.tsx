@@ -127,7 +127,11 @@ export const ServicesScreen: React.FC = () => {
         <TouchableOpacity
           style={styles.postJobButton}
           activeOpacity={0.8}
-          onPress={() => navigation.navigate('CreateServiceJob', { serviceType: 'DELIVERY' })}
+          onPress={() => Alert.alert('Post a job', 'Choose the service you need.', [
+            { text: 'Delivery, collection or recovery', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'DELIVERY' }) },
+            { text: 'Vehicle inspection', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'INSPECTION' }) },
+            { text: 'Cancel', style: 'cancel' },
+          ])}
           accessibilityRole="button"
           accessibilityLabel="Post a delivery or inspection job"
           accessibilityHint="Opens the job form to request quotes from approved providers"
