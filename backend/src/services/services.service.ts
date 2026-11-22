@@ -1752,7 +1752,8 @@ export class ServicesService {
         const profile = await this.prisma.contractorProfile.findUnique({ where: { id: contractorProfileId }, select: { businessName: true } });
         const who = profile?.businessName || 'A provider';
         await this.notify(job.customerId, 'SERVICE_QUOTE_RECEIVED', isNew ? 'New quote' : 'Quote updated',
-            `${who} quoted ${gbp(dto.amountPence)} for "${job.title}".`, `/services/jobs/${jobId}`);
+            `${who} quoted ${gbp(dto.amountPence)} for "${job.title}".`, `/services/jobs/${jobId}`,
+            isNew ? { dedicatedServiceEmail: true } : undefined);
         if (isNew) {
             this.sendEmail(job.customer.email, job.customer.firstName, `New quote: ${gbp(dto.amountPence)} for ${job.title}`,
                 `<p><strong>${escapeHtml(who)}</strong> has quoted <strong>${gbp(dto.amountPence)}</strong>.</p>${dto.message ? `<p style="color:#94a3b8">"${escapeHtml(dto.message)}"</p>` : ''}`,
@@ -2548,9 +2549,11 @@ export class ServicesService {
         return { DELIVERY: 'Delivery & Recovery', INSPECTION: 'Vehicle Inspections', FINANCE: 'Vehicle Finance', WARRANTY: 'Warranty' }[t];
     }
 
-    private async notify(userId: string, type: string, title: string, message: string, link: string) {
+    private async notify(userId: string, type: string, title: string, message: string, link: string,
+        data?: Record<string, unknown>) {
         try {
-            await this.notifications.create({ userId, type, title, message, link, entityType: 'SERVICE_JOB' } as any);
+            await this.notifications.create({ userId, type, title, message, link,
+                entityType: 'SERVICE_JOB', ...(data ? { data } : {}) } as any);
         } catch (e: any) {
             this.logger.warn(`Notification ${type} to ${userId} failed: ${e?.message}`);
         }
