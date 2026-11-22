@@ -69,6 +69,7 @@ test('quote actions use the server permission flag rather than open status alone
   assert.match(server, /viewer\.quoteAllowedByActor !== false/);
   assert.match(server, /const canWithdrawQuote =/);
   assert.match(server, /q\.status === ServiceQuoteStatus\.ACTIVE/);
+  assert.match(server, /viewer\.quoteAllowedByActor !== false/);
   assert.match(server, /job\.customerId !== viewer\.businessOwnerUserId/);
   assert.match(controller, /quoteAllowedByActor: actor \? \(!actor\.isStaff \|\| actor\.canQuote\) : false/);
   assert.match(webJob, /const canQuote = job\?\.status === "OPEN" && job\.canQuote === true/);
@@ -79,6 +80,9 @@ test('quote actions use the server permission flag rather than open status alone
   assert.match(nativeJob, /quotePence === null/);
   assert.match(webJob, /New quotations are unavailable for this account/);
   assert.match(nativeJob, /New quotes unavailable/);
+  assert.match(webJob, /CarMazium fee \{formatPence\(platformFeePence\)\}/);
+  assert.match(nativeJob, /CarMazium fee \{formatPence\(platformFeePence\)\}/);
+  assert.match(nativeJob, /quotePence === null/);
 });
 
 test('bidder privacy is enforced on server before clients receive the job', () => {
