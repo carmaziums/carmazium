@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { jobVehicleIdentified, jobDateIssue, focusJobFormIssue } from "@/lib/serviceJobFormValidation"
+import { jobVehicleIdentified, jobDateIssue, jobPostcodeValid, jobYearValid, focusJobFormIssue } from "@/lib/serviceJobFormValidation"
 import { buttonVariants } from "@/components/ui/buttonVariants"
 import { useRouter } from "next/navigation"
 import { Truck, Plus, Trash2, Loader2, AlertCircle, ArrowRight, CheckCircle } from "lucide-react"
@@ -130,10 +130,12 @@ function NewDeliveryJobForm() {
             setInvalidField(field); setError(message); focusJobFormIssue(field)
         }
         if (!title.trim()) return fail("title", 'Give the job a short title, e.g. "BMW 3 Series, Leeds to Bristol".')
-        if (!pickupPostcode.trim()) return fail("pp", "Enter the pickup postcode so providers can quote the route.")
-        if (!deliveryPostcode.trim()) return fail("dp", "Enter the delivery postcode so providers can quote the route.")
+        if (!jobPostcodeValid(pickupPostcode)) return fail("pp", "Enter a valid UK pickup postcode so providers can quote the route.")
+        if (!jobPostcodeValid(deliveryPostcode)) return fail("dp", "Enter a valid UK delivery postcode so providers can quote the route.")
         const missingVehicle = vehicles.findIndex(v => !jobVehicleIdentified(v))
         if (missingVehicle >= 0) return fail(`vehicle-${missingVehicle}-registration`, "Each vehicle needs either its registration or both its make and model.")
+        const badYear = vehicles.findIndex(v => !jobYearValid(v.year))
+        if (badYear >= 0) return fail(`vehicle-${badYear}-registration`, "Enter a valid vehicle year between 1900 and 2100.")
         const dateIssue = jobDateIssue(requestedFor, !asap)
         if (!asap && dateIssue) return fail(dateIssue.field, dateIssue.message)
 
