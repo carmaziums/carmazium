@@ -138,6 +138,7 @@ export interface ServiceJob {
   viewerRole?: 'customer' | 'contractor' | 'admin' | 'bidder';
   /** Server-computed permission; viewable accepted work does not imply new quote eligibility. */
   canQuote?: boolean;
+  canWithdrawQuote?: boolean;
 }
 
 export interface ContractorCapability {
