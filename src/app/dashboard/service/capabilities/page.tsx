@@ -164,7 +164,7 @@ export default function CapabilitiesPage() {
                                 {visibleServices.map(({ type, icon: Icon, blurb, payout }) => {
                                     const cap = byType.get(type)
                                     const st = cap ? STATUS_UI[cap.status] : null
-                                    const canApply = !cap || cap.status === "REJECTED" || cap.status === "SUSPENDED"
+                                    const canApply = !cap || cap.status === "REJECTED"
                                     return <div key={type} id={`service-${type.toLowerCase()}`} className="scroll-mt-28 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 flex flex-col sm:flex-row sm:items-center gap-4">
                                         <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0"><Icon size={20} className="text-primary" /></div>
                                         <div className="flex-1 min-w-0">
@@ -173,14 +173,15 @@ export default function CapabilitiesPage() {
                                             {payout && !data.stripeConnect.complete && <p className="text-[11px] text-amber-500 mt-2">Stripe Connect must be completed before admin can approve this paid-job service.</p>}
                                             {cap?.reviewNote && (cap.status === "REJECTED" || cap.status === "SUSPENDED") && <p className="text-xs text-red-500 mt-2">{cap.reviewNote}</p>}
                                             {cap && <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2">
-                                                <Link href={`/dashboard/service/capabilities/${cap.id}/verification`} className={buttonVariants({ variant: "outline", size: "sm" })}><FileText size={13} /> {type === "INSPECTION" ? "Service declaration" : "Service declaration and trade insurance"}</Link>
+                                                <Link href={`/dashboard/service/capabilities/${cap.id}/verification`} className={buttonVariants({ variant: "outline", size: "sm" })}><FileText size={13} /> {cap.status === "PENDING" ? "Continue setup" : type === "INSPECTION" ? "Service declaration" : "Service declaration and trade insurance"}</Link>
                                                 <Link href={`/dashboard/service/capabilities/${cap.id}/matching`} className={buttonVariants({ variant: "outline", size: "sm" })}>Matching settings</Link>
                                             </div>}
                                             {cap && (type === "DELIVERY" || type === "INSPECTION") && !cap.jobNationwide && cap.jobPostcodeAreas.length === 0 && <p className="text-[11px] text-amber-500 mt-2">Configure job coverage before this service can see or quote open work.</p>}
                                         </div>
                                         {canApply
                                             ? <Button size="sm" variant="outline" disabled={busy === type} onClick={() => apply(type)} className="shrink-0">{busy === type ? <Loader2 className="animate-spin" size={14} /> : <>{cap ? "Apply again" : "Add service"} <ArrowRight size={14} className="ml-1" /></>}</Button>
-                                            : cap?.status === "APPROVED" ? <Link href={payout ? "/dashboard/service/jobs" : "/dashboard/service/leads"} className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>{payout ? "See jobs" : "Open inbox"} →</Link> : null}
+                                            : cap?.status === "APPROVED" ? <Link href={payout ? "/dashboard/service/jobs" : "/dashboard/service/leads"} className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}>{payout ? "See jobs" : "Open inbox"} →</Link>
+                                            : cap?.status === "SUSPENDED" ? <span className="text-xs text-[var(--text-muted)]">Contact CarMazium to reactivate this service</span> : null}
                                     </div>
                                 })}
                             </div>

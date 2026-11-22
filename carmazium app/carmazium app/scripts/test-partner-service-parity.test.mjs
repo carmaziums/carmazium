@@ -25,7 +25,7 @@ test('Partner home has three native add-ons and settings link without duplicate 
 });
 test('Pending setup opens existing declaration without reapplying and failed status blocks applications',async()=>{
  const h=await render('PartnerDashboardScreen',{getPartnerTeam:async()=>({capabilities:[cap('DELIVERY','PENDING')],stripeConnect:{complete:false}})});
- await click(h.tree,'Complete service setup');assert.equal(h.nav[0][1].capabilityId,'DELIVERY-test');assert.equal(h.calls.length,0);await click(h.tree,'Complete setup');assert.equal(h.calls[0],'INSPECTION');assert.equal(h.nav[1][1].capabilityId,'INSPECTION-test');await act(async()=>h.tree.unmount());
+ await click(h.tree,'Continue setup');assert.equal(h.nav[0][1].capabilityId,'DELIVERY-test');assert.equal(h.calls.length,0);await click(h.tree,'Complete setup');assert.equal(h.calls[0],'INSPECTION');assert.equal(h.nav[1][1].capabilityId,'INSPECTION-test');await act(async()=>h.tree.unmount());
  const f=await render('PartnerDashboardScreen',{getPartnerTeam:async()=>{throw Error('offline');}});assert.match(text(f.tree),/Status unavailable/);assert.ok(f.tree.root.findAllByType('Button').filter(n=>n.props.label==='Complete setup').every(n=>n.props.disabled));await act(async()=>f.tree.unmount());
 });
 test('Services shows read-only business and correct declaration, matching and job destinations',async()=>{
@@ -82,5 +82,26 @@ test('Existing contractor can use TradeXchange without converting to a dealer ac
  await click(h.tree,'My work');
  assert.equal(h.nav[2][0],'ProviderJobs');
  assert.equal(h.nav[2][1].initialTab,'assigned');
+ await act(async()=>h.tree.unmount());
+});
+
+test('Suspended services are not re-applied through another onboarding path',async()=>{
+ const h=await render('PartnerDashboardScreen',{
+   getPartnerTeam:async()=>({capabilities:[cap('DELIVERY','SUSPENDED'),cap('INSPECTION','APPROVED')],stripeConnect:{complete:true}}),
+ });
+ assert.match(text(h.tree),/Contact CarMazium to reactivate this service/);
+ assert.equal(h.calls.length,0);
+ assert.equal(h.tree.root.findAllByType('Button').filter(x=>x.props.label==='Complete setup').length,0);
+ await act(async()=>h.tree.unmount());
+});
+
+test('Unverified existing dealer goes to saved KYC rather than creating another dealer profile',async()=>{
+ const h=await render('PartnerDashboardScreen',{
+   getPartnerProfile:async()=>({role:'DEALER',dealerProfile:{companyName:'Saved dealer',isVerified:false,kyc:{status:'PENDING'}}}),
+   getPartnerTeam:async()=>({capabilities:[],stripeConnect:{complete:false}}),
+ });
+ await click(h.tree,'Continue verification');
+ assert.equal(h.nav.at(-1)[0],'DealerKYC');
+ assert.equal(h.calls.length,0);
  await act(async()=>h.tree.unmount());
 });

@@ -178,13 +178,13 @@ export default function PartnerDashboardPage() {
             <div className="max-w-3xl mx-auto pt-28 pb-16 px-5">
                 <div className="rounded-3xl border border-[var(--border-default)] bg-[var(--bg-card)] p-8 md:p-12 text-center">
                     <Building2 className="mx-auto text-primary mb-5" size={46} />
-                    <h1 className="text-3xl font-black font-heading mb-3">Create a Partner Account</h1>
+                    <h1 className="text-3xl font-black font-heading mb-3">{partnerBusiness ? "Continue your existing business setup" : "Create a Partner Account"}</h1>
                     <p className="text-[var(--text-muted)] max-w-xl mx-auto mb-7">
-                        One business account lets you add Vehicle Dealer, Delivery & Recovery and Vehicle Inspection services. Finance and warranty providers should contact our team directly.
+                        {partnerBusiness ? "Your saved business details are already on this account. Continue verification without creating another business profile or repeating onboarding." : "One business account lets you add Vehicle Dealer, Delivery & Recovery and Vehicle Inspection services. Finance and warranty providers should contact our team directly."}
                     </p>
                     {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
                     <Button onClick={becomePartner} disabled={busy === "partner"}>
-                        {busy === "partner" ? <Loader2 className="animate-spin" size={16} /> : <>Create Partner Account <ArrowRight size={16} className="ml-2" /></>}
+                        {busy === "partner" ? <Loader2 className="animate-spin" size={16} /> : <>{partnerBusiness ? "Continue setup" : "Create Partner Account"} <ArrowRight size={16} className="ml-2" /></>}
                     </Button>
                 </div>
             </div>
@@ -275,7 +275,7 @@ export default function PartnerDashboardPage() {
                                 description="List retail stock, bid in auctions, manage inventory, CRM and dealer tools. Business KYC and the £1 verification payment are required before taking paid jobs."
                                 status={dealerActive ? "Active" : partnerBusiness?.kyc?.status === "PENDING" ? "Awaiting verification" : "Not activated"}
                                 active={dealerActive}
-                                action={<Link href="/dashboard/dealer"><Button size="sm" variant={dealerActive ? "outline" : "default"}>{dealerActive ? "Open dealer tools" : "Add Vehicle Dealer"}</Button></Link>}
+                                action={<Link href={dealerActive ? "/dashboard/dealer" : "/profile?section=verification"}><Button size="sm" variant={dealerActive ? "outline" : "default"}>{dealerActive ? "Open dealer tools" : "Continue verification"}</Button></Link>}
                             />
                             <AddonCard
                                 icon={Truck}
@@ -286,7 +286,9 @@ export default function PartnerDashboardPage() {
                                 action={delivery?.status === "APPROVED"
                                     ? <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">Open jobs</Button></Link>
                                     : delivery?.status === "PENDING"
-                                        ? <Link href={`/dashboard/service/capabilities/${delivery.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Complete service setup</Button></Link>
+                                        ? <Link href={`/dashboard/service/capabilities/${delivery.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Continue setup</Button></Link>
+                                        : delivery?.status === "SUSPENDED"
+                                            ? <span className="text-xs text-[var(--text-muted)]">Contact CarMazium to reactivate this service</span>
                                         : <Button size="sm" onClick={() => applyService("DELIVERY")} disabled={loadingTeam || !team || busy === "DELIVERY"}>{busy === "DELIVERY" ? <Loader2 className="animate-spin" size={14} /> : "Complete setup"}</Button>}
                             />
                             <AddonCard
@@ -298,7 +300,9 @@ export default function PartnerDashboardPage() {
                                 action={inspection?.status === "APPROVED"
                                     ? <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">Open jobs</Button></Link>
                                     : inspection?.status === "PENDING"
-                                        ? <Link href={`/dashboard/service/capabilities/${inspection.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Complete service setup</Button></Link>
+                                        ? <Link href={`/dashboard/service/capabilities/${inspection.id}/verification`}><Button size="sm"><FileText size={14} className="mr-1.5" /> Continue setup</Button></Link>
+                                        : inspection?.status === "SUSPENDED"
+                                            ? <span className="text-xs text-[var(--text-muted)]">Contact CarMazium to reactivate this service</span>
                                         : <Button size="sm" onClick={() => applyService("INSPECTION")} disabled={loadingTeam || !team || busy === "INSPECTION"}>{busy === "INSPECTION" ? <Loader2 className="animate-spin" size={14} /> : "Complete setup"}</Button>}
                             />
 

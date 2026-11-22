@@ -79,7 +79,7 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={s.label}>Add services</Text>
         {TYPES.map(type => {
           const cap = byType.get(type);
-          const canApply = !cap || cap.status === 'REJECTED' || cap.status === 'SUSPENDED';
+          const canApply = !cap || cap.status === 'REJECTED';
           return <View key={type} style={s.card}>
             <Text style={s.heading}>{SERVICE_LABELS[type]}</Text>
             {cap && <Text style={cap.status === 'APPROVED' ? s.success : s.body}>{statusLabel[cap.status] ?? cap.status}</Text>}
@@ -87,11 +87,11 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
             {!data.stripeConnect.complete && <Text style={s.body}>Stripe Connect must be completed before admin can approve this paid-job service.</Text>}
             {cap?.reviewNote && (cap.status === 'REJECTED' || cap.status === 'SUSPENDED') && <Text style={s.error}>{cap.reviewNote}</Text>}
             {cap && <>
-              <Button label={type === 'INSPECTION' ? 'Service declaration' : 'Service declaration and trade insurance'} variant="outline" onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} />
+              <Button label={cap.status === 'PENDING' ? 'Continue setup' : type === 'INSPECTION' ? 'Service declaration' : 'Service declaration and trade insurance'} variant="outline" onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} />
               <Button label="Matching settings" variant="outline" onPress={() => navigation.navigate('ProviderMatching', { capabilityId: cap.id })} />
               {!cap.jobNationwide && cap.jobPostcodeAreas.length === 0 && <Text style={s.body}>Configure job coverage before this service can see or quote open work.</Text>}
             </>}
-            {canApply ? <Button label={cap ? 'Apply again' : 'Add service'} variant="outline" loading={busy === type} disabled={!!busy || !!error} onPress={() => void apply(type)} /> : cap?.status === 'APPROVED' ? <Button label="See jobs" variant="outline" onPress={() => navigation.navigate('ProviderJobs')} /> : null}
+            {canApply ? <Button label={cap ? 'Apply again' : 'Add service'} variant="outline" loading={busy === type} disabled={!!busy || !!error} onPress={() => void apply(type)} /> : cap?.status === 'APPROVED' ? <Button label="See jobs" variant="outline" onPress={() => navigation.navigate('ProviderJobs')} /> : cap?.status === 'SUSPENDED' ? <Text style={s.body}>Contact CarMazium to reactivate this service.</Text> : null}
           </View>;
         })}
       </>}

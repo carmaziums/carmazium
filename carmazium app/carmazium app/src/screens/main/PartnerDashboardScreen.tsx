@@ -47,7 +47,6 @@ const statusText = (status?: string) => {
 };
 
 export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
-  const accountRole = useAuthStore((s) => s.accountRole);
   const initializeAuth = useAuthStore((s) => s.initializeAuth);
   const [profile, setProfile] = useState<PartnerProfile | null>(null);
   const [team, setTeam] = useState<PartnerTeam | null>(null);
@@ -168,7 +167,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const isPartnerRole = profile?.role === 'DEALER' || accountRole === 'dealer';
+  const isPartnerRole = profile?.role === 'DEALER';
   const byType = new Map((team?.capabilities ?? []).map((cap) => [cap.serviceType, cap]));
 
   return (
@@ -206,11 +205,11 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           ) : !isPartnerRole ? (
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Create a Partner Account</Text>
+              <Text style={styles.cardTitle}>{profile?.dealerProfile ? 'Continue your existing business setup' : 'Create a Partner Account'}</Text>
               <Text style={styles.cardText}>
                 One business account lets you add Vehicle Dealer, Delivery & Recovery and Vehicle Inspection services. Finance and warranty partnerships are managed by the CarMazium team.
               </Text>
-              <Button label="Create Partner Account" loading={busy === 'partner'} disabled={!!busy} onPress={() => void createPartner()} />
+              <Button label={profile?.dealerProfile ? 'Continue setup' : 'Create Partner Account'} loading={busy === 'partner'} disabled={!!busy} onPress={() => void createPartner()} />
             </View>
           ) : !profile?.dealerProfile ? (
             <View style={styles.card}>
@@ -241,7 +240,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.serviceStatus}>{profile.dealerProfile.isVerified ? 'Active' : profile.dealerProfile.kyc?.status === 'PENDING' ? 'Awaiting verification' : 'Not activated'}</Text>
                 <Text style={styles.cardTitle}>Vehicle Dealer</Text>
                 <Text style={styles.cardText}>List retail stock, bid in auctions, manage inventory, CRM and dealer tools. Business KYC and the £1 verification payment are required before taking paid jobs.</Text>
-                <Button label={profile.dealerProfile.isVerified ? 'Open dealer tools' : 'Add Vehicle Dealer'} variant="outline" onPress={() => navigation.navigate('Tabs', { screen: 'DealerHome' })} />
+                <Button label={profile.dealerProfile.isVerified ? 'Open dealer tools' : 'Continue verification'} variant="outline" onPress={() => profile.dealerProfile?.isVerified ? navigation.navigate('Tabs', { screen: 'DealerHome' }) : navigation.navigate('DealerKYC')} />
               </View>
               {SERVICE_ORDER.map((type) => {
 
@@ -255,7 +254,8 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                     <Text style={styles.cardText}>{type === 'DELIVERY' ? 'Quote on transport and recovery jobs on behalf of your Partner business.' : 'Quote on vehicle inspection jobs using the same Partner account and business payout details.'}</Text>
                     {cap?.reviewNote && <Text style={styles.reviewNote}>{cap.reviewNote}</Text>}
                     {approved ? <Button label="Open jobs" variant="outline" onPress={() => navigation.navigate('ProviderJobs')} />
-                      : cap?.status === 'PENDING' ? <Button label="Complete service setup" onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} />
+                      : cap?.status === 'PENDING' ? <Button label="Continue setup" onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} />
+                      : cap?.status === 'SUSPENDED' ? <Text style={styles.cardText}>Contact CarMazium to reactivate this service.</Text>
                       : <Button label="Complete setup" disabled={!team || !!busy} loading={busy === type} onPress={() => void applyService(type)} />}
                   </View>
                 );

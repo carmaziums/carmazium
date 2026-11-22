@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
+import { getPartnerProfile, getMyCapabilities } from '../../lib/servicesApi';
 import { useAuthStore } from '../../store/authStore';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
 import { Button } from '../../components/Button';
@@ -29,7 +30,7 @@ type BusinessType = 'PRIVATE_LIMITED' | 'SOLE_PROPRIETORSHIP';
 
 export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { role, user, accountRole, initializeAuth, setRole } = useAuthStore();
+  const { user, accountRole, initializeAuth, setRole } = useAuthStore();
   const { showToast } = useContext(GlobalToastContext);
 
   // Form states — start EMPTY. These previously shipped pre-filled with fake
@@ -61,6 +62,9 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
   // dashboard/dealer/layout.tsx gate, which checks isVerified alone) and
   // jump straight past both onboarding and KYC.
   const [reactivating, setReactivating] = useState(!!user?.isVerified);
+  const [checkingSavedBusiness, setCheckingSavedBusiness] = useState(!user?.isVerified);
+  const [resumeError, setResumeError] = useState<string | null>(null);
+  const [retryResume, setRetryResume] = useState(0);
   useEffect(() => {
     if (!user?.isVerified) return;
     let cancelled = false;
@@ -87,6 +91,60 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Resume the existing account rather than creating a second dealer profile.
+  // Dealer KYC already reloads saved applications and documents by user ID.
+  useEffect(() => {
+    if (user?.isVerified || !user?.id) return;
+    let cancelled = false;
+    let redirecting = false;
+    const resume = async () => {
+      setCheckingSavedBusiness(true);
+      setResumeError(null);
+      try {
+        const account = await getPartnerProfile();
+        if (cancelled) return;
+
+        if (account.dealerProfile) {
+          // Incomplete dealer onboarding resumes at KYC. Never overwrite the
+          // business record with an empty copy of the original form.
+          if (account.role !== 'DEALER') {
+            await apiClient('/users/elevate', {
+              method: 'POST',
+              body: JSON.stringify({ newRole: 'DEALER' }),
+            });
+            await initializeAuth();
+          }
+          if (cancelled) return;
+          setRole('dealer');
+          redirecting = true;
+          if (typeof navigation?.replace === 'function') {
+            navigation.replace('DealerKYC');
+          } else {
+            navigation?.navigate('DealerKYC');
+          }
+          return;
+        }
+
+        if (account.role === 'CONTRACTOR') {
+          // Reuse actual saved provider details; never invent registration or
+          // VAT numbers. The user still confirms any dealer-only fields.
+          const previous = await getMyCapabilities();
+          if (cancelled) return;
+          setTradingName(previous.profile?.businessName ?? '');
+          setPhone(previous.profile?.phone ?? '');
+          // A provider's coverage area is not a registered business address.
+          // Leave the dealer address for the user to confirm explicitly.
+        }
+      } catch (err: any) {
+        if (!cancelled) setResumeError(err?.message || 'Could not check your saved business registration.');
+      } finally {
+        if (!cancelled && !redirecting) setCheckingSavedBusiness(false);
+      }
+    };
+    void resume();
+    return () => { cancelled = true; };
+  }, [user?.id, user?.isVerified, initializeAuth, setRole, retryResume]);
+
   // Submits the business details to the backend and advances the user into
   // verification (DealerKYCScreen). Two real backend calls:
   //   1. POST /users/elevate    — grants the DEALER role (only needed once)
@@ -106,7 +164,7 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
     setSubmitting(true);
     try {
       // Step 1: elevate to DEALER if this account isn't one yet.
-      if (role !== 'dealer') {
+      if (accountRole !== 'dealer') {
         await apiClient('/users/elevate', {
           method: 'POST',
           body: JSON.stringify({ newRole: 'DEALER' }),
@@ -146,6 +204,21 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
         <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
         <ActivityIndicator size="large" color={Colors.accent} />
         <Text style={styles.reactivatingText}>Your dealer account is already verified — switching you over…</Text>
+      </View>
+    );
+  }
+
+  if (checkingSavedBusiness || resumeError) {
+    return (
+      <View style={[styles.container, styles.reactivatingWrap]}>
+        <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
+        {checkingSavedBusiness ? <ActivityIndicator size="large" color={Colors.accent} /> : null}
+        <Text accessibilityRole={resumeError ? 'alert' : undefined} style={styles.reactivatingText}>
+          {resumeError || 'Checking your existing business registration...'}
+        </Text>
+        {resumeError ? (
+          <Button label="Retry account check" onPress={() => setRetryResume(value => value + 1)} />
+        ) : null}
       </View>
     );
   }
