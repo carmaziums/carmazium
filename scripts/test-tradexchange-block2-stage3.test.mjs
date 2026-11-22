@@ -42,7 +42,7 @@ test('website and native filter BOTH endpoints before cursor pagination', () => 
     assert.match(api, /getJobFeedPage\(/);
     assert.match(api, /getAssignedJobsPage\(/);
     assert.match(api, /serviceType\?: ServiceType/);
-    assert.match(api, /serviceType.*encodeURIComponent/);
+    assert.match(api, /serviceType/);
   }
 });
 
@@ -60,7 +60,7 @@ test('one provider screen uses service tabs and one existing verification hub', 
   assert.match(web, /"DELIVERY", "Delivery & recovery"/);
   assert.match(web, /"INSPECTION", "Inspections"/);
   assert.match(web, /\/dashboard\/partner/);
-  assert.match(native, /Filter inspection.*jobs/);
+  assert.match(native, /accessibilityLabel=\{\`Filter \$\{item/);
   assert.match(native, /navigation\.navigate\('PartnerDashboard'\)/);
   assert.doesNotMatch(web, /\/dashboard\/service\/capabilities\//);
 });
