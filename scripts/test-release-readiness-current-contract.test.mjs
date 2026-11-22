@@ -15,7 +15,7 @@ function check(changes = {}, strict = false) {
   const errors = [];
   let exit = 0;
   const mockedFs = { ...fs, readFileSync(file, encoding) {
-    const relative = path.relative(root, file);
+    const relative = path.relative(root, file).split(path.sep).join('/');
     const text = fs.readFileSync(file, encoding);
     return changes[relative] ? changes[relative](text) : text;
   } };
