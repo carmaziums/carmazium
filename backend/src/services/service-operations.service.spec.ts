@@ -42,9 +42,29 @@ describe('ServiceOperationsService', () => {
         prisma.$queryRaw.mockResolvedValue([]);
         jest.spyOn(service, 'providerCapabilityVerification').mockResolvedValue({} as any);
         await service.declareProviderBusiness('owner-1', 'cap-1', { accepted: true, registeredBusiness: true, businessName: 'Test', businessAddress: 'Test address', phone: '07000000000', acceptedAt: '2000-01-01', status: 'APPROVED' });
-        expect(cap).toMatchObject({ status: 'PENDING', verificationStatus: 'READY', providerDeclaration: { acceptedBy: 'owner-1', registeredBusiness: true, version: 1 } });
+        expect(cap).toMatchObject({ status: 'PENDING', verificationStatus: 'IN_REVIEW', providerDeclaration: { acceptedBy: 'owner-1', registeredBusiness: true, version: 1 } });
         expect((cap.providerDeclaration as any).acceptedAt).not.toBe('2000-01-01');
         expect(prisma.$queryRaw.mock.calls.some(([sql]: any) => sql.sql.includes('INSERT INTO "service_case_entries"'))).toBe(true);
+    });
+
+    it('keeps an existing approved business and audit history while extra insurance is awaiting approval', async () => {
+        prisma.contractorCapability.findUnique.mockResolvedValue({
+            id: 'cap-1',
+            serviceType: 'DELIVERY',
+            status: 'APPROVED',
+            verificationStatus: 'VERIFIED',
+            verificationCompletedAt: new Date('2026-10-01'),
+            verificationExpiresAt: new Date('2027-01-01'),
+            providerDeclaration: { version: 1, registeredBusiness: true, acceptedAt: new Date().toISOString() },
+        });
+        prisma.$queryRaw.mockResolvedValue([]);
+        await (service as any).refreshCapabilityVerificationAfterMutation('cap-1', 'APPROVED', 'admin-1');
+        const data = prisma.contractorCapability.update.mock.calls[0][0].data;
+        expect(data.verificationStatus).toBe('REVERIFICATION_REQUIRED');
+        expect(data.status).toBeUndefined();
+        expect(data.verificationCompletedAt).toBeUndefined();
+        expect(data.verificationExpiresAt).toBeUndefined();
+        expect(data.reviewNote).toMatch(/reviewed again before taking new work/);
     });
 
     const pdf = {

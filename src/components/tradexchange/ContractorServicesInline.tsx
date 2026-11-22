@@ -66,11 +66,12 @@ export function ContractorServicesInline({
         <label className="text-sm">Business phone<input aria-label="Provider phone" className="w-full rounded-lg p-3 border border-[var(--border-default)] bg-[var(--bg-input)]" value={phone} maxLength={30} onChange={e => setPhone(e.target.value)}/></label>
         <label className="text-sm">Existing coverage description<input aria-label="Provider coverage description" className="w-full rounded-lg p-3 border border-[var(--border-default)] bg-[var(--bg-input)]" value={area} maxLength={200} onChange={e => setArea(e.target.value)} placeholder="Optional"/></label>
       </div>
-      <p className="text-xs text-[var(--text-muted)]">Existing service records stay attached to this account. To change working postcodes, use Job Preferences below.</p>
+      <p className="text-xs text-[var(--text-muted)]">You may apply for both service types on the same account. Delivery, collection and recovery require Motor Trade and Public Liability Insurance; inspection requires Public Liability Insurance only. Existing applications remain attached to your account. Change working postcodes under Job Preferences.</p>
       {ORDER.map(type => {
         const cap = capabilities.find(c => c.serviceType === type)
         const label = type === "DELIVERY" ? "Collection, delivery & recovery" : "Vehicle inspection"
-        const status = cap?.status === "APPROVED" ? "Approved" : cap?.status === "PENDING" ? "Awaiting approval"
+        const verified = cap?.verificationStatus === "VERIFIED" && !!cap.verificationExpiresAt && Date.parse(cap.verificationExpiresAt) > Date.now()
+        const status = cap?.status === "APPROVED" ? (verified ? "Approved" : "Verification required") : cap?.status === "PENDING" ? "Awaiting approval"
           : cap?.status === "SUSPENDED" ? "Suspended" : cap?.status === "REJECTED" ? "Needs attention" : "Not applied"
         return <div className="rounded-xl border border-[var(--border-default)] p-4 space-y-2" key={type}>
           <div className="flex items-center justify-between gap-3"><strong>{label}</strong><span className="text-sm font-semibold">{status}</span></div>

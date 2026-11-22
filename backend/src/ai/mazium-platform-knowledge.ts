@@ -151,7 +151,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         facts: [
             'Dealer identity/business verification is required for trade auction access; there is a one-time £1 dealer account verification charge in the normal onboarding workflow.',
             'Partner service preferences do not automatically approve service-provider capability. Approval can require business verification, a signed Master Business Partner Agreement and payout setup.',
-            'Collection, delivery and recovery capability also requires valid trade insurance; inspection capability follows its own declaration process.',
+            'Collection, delivery and recovery service approval requires current Motor Trade Insurance and Public Liability Insurance. Vehicle inspection requires current Public Liability Insurance only, plus the business declaration. Providers can apply for both independently on one account.',
             'Dealers manage initial dealer KYC at /profile?section=verification; TradeXchange provider services, approval status, insurance documents and preferences use the single /dashboard/partner hub. The original £1 dealer account verification is not repeated when opting into services.',
             'Never claim verification has passed, failed or been charged without authenticated account records.'
         ].join(' '),
@@ -206,7 +206,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         facts: [
             'Dealer accounts have opt-in service preferences for Finance badge, Warranty badge, Delivery/Recovery and Inspection. New accounts default the choices on, and a dealer can turn off unwanted services.',
             'Badges on a dealer listing describe that dealer’s services; they do not enrol the dealer as CarMazium’s central warranty or finance provider.',
-            'Delivery/recovery and inspection require service capability verification; enabling a preference does not confer approval.',
+            'Delivery/collection/recovery require approved current Motor Trade and Public Liability Insurance. Inspection requires approved current Public Liability Insurance only. The same account can apply for both services independently; turning a preference on does not confer approval.',
             'Manage own-listing Finance and Warranty badges in Account Settings /profile?section=business. Manage Delivery/Recovery and Inspection service applications, approved evidence, payout setup and job-area preferences together from the TradeXchange hub /dashboard/partner, not a separate capability settings page. New provider job feed and accepted work remain at /dashboard/service/jobs. Existing providers keep their accounts and existing jobs.',
             'Finance, warranty and insurance companies wanting central platform partnerships must contact the CarMazium team.'
         ].join(' '),

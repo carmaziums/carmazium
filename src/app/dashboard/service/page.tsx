@@ -208,7 +208,7 @@ function ProviderOverview() {
                                 <div>
                                     <h2 className="font-bold">What you need before taking jobs</h2>
                                     <p className="text-sm text-[var(--text-muted)] mt-1 leading-relaxed">
-                                        Complete business verification, verified payouts and the declaration. Collection, delivery and recovery require trade insurance. Inspections need no inspection documents. Your original £1 dealer verification is reused; no further £1 service verification is required. CarMazium retains 9% of the agreed job price and your business receives 91% after release. Finance, warranty and insurance providers should contact CarMazium directly about partnerships.
+                                        Complete business verification, verified payouts and the declaration. Collection, delivery and recovery require Motor Trade and Public Liability Insurance. Inspections require Public Liability Insurance only. Your original £1 dealer verification is reused; no further £1 service verification is required. CarMazium retains 9% of the agreed job price and your business receives 91% after release. Finance, warranty and insurance providers should contact CarMazium directly about partnerships.
                                     </p>
                                 </div>
                             </div>

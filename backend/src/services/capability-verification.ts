@@ -7,8 +7,10 @@ export const CAPABILITY_VERIFICATION_MAX_DAYS = 365;
 export type CapabilityEvidenceType =
     | 'BUSINESS_IDENTITY'
     | 'DELIVERY_BUSINESS_INSURANCE'
+    | 'DELIVERY_PUBLIC_LIABILITY'
     | 'DELIVERY_GOODS_IN_TRANSIT'
     | 'INSPECTION_BUSINESS_INSURANCE'
+    | 'INSPECTION_PUBLIC_LIABILITY'
     | 'INSPECTION_QUALIFICATION'
     | 'FINANCE_REGULATORY_AUTHORITY'
     | 'WARRANTY_REGULATORY_AUTHORITY'
@@ -73,13 +75,26 @@ const BUSINESS_IDENTITY: CapabilityVerificationRequirement = {
 };
 
 export const CAPABILITY_VERIFICATION_REQUIREMENTS: Record<ServiceType, CapabilityVerificationRequirement[]> = {
-    [ServiceType.DELIVERY]: [{
-        type: 'DELIVERY_BUSINESS_INSURANCE',
-        title: 'Trade insurance',
-        description: 'Current trade insurance covering your vehicle collection, delivery and recovery work.',
+    [ServiceType.DELIVERY]: [
+        {
+            type: 'DELIVERY_BUSINESS_INSURANCE',
+            title: 'Motor Trade Insurance',
+            description: 'Upload a current Motor Trade Insurance certificate covering collection, delivery and recovery, including custody or movement of customer vehicles and authorised drivers. The certificate must show the insurer, policy number, covered activities and policy dates.',
+            expiryRequired: true,
+        },
+        {
+            type: 'DELIVERY_PUBLIC_LIABILITY',
+            title: 'Public Liability Insurance',
+            description: 'Upload a current Public Liability Insurance certificate covering your collection, delivery and recovery business. The certificate must show the insurer, policy number, limit of indemnity, covered activities and policy dates.',
+            expiryRequired: true,
+        },
+    ],
+    [ServiceType.INSPECTION]: [{
+        type: 'INSPECTION_PUBLIC_LIABILITY',
+        title: 'Public Liability Insurance',
+        description: 'Upload a current Public Liability Insurance certificate covering vehicle or cosmetic inspection work, including your staff and subcontracted work where applicable. The certificate must show the insurer, policy number, limit of indemnity and policy dates. Motor Trade Insurance is not required for inspection-only applications.',
         expiryRequired: true,
     }],
-    [ServiceType.INSPECTION]: [],
     [ServiceType.FINANCE]: [
         BUSINESS_IDENTITY,
         {

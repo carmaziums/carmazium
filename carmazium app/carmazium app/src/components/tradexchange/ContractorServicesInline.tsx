@@ -43,7 +43,7 @@ export function ContractorServicesInline({
  return <View style={styles.card}>
   <TouchableOpacity accessibilityRole="button" accessibilityLabel="My Services" accessibilityState={{expanded}}
    onPress={()=>setExpanded(v=>!v)} style={styles.heading}>
-   <View style={{flex:1}}><Text style={styles.title}>My Services</Text><Text style={styles.desc}>Existing applications remain on your account. No second registration.</Text></View>
+   <View style={{flex:1}}><Text style={styles.title}>My Services</Text><Text style={styles.desc}>Choose delivery, collection & recovery, inspection, or both under one account. Insurance for each chosen service is verified separately; no second registration.</Text></View>
    <Text style={styles.arrow}>{expanded?'−':'+'}</Text>
   </TouchableOpacity>
   {expanded&&<View style={styles.stack}>
@@ -53,11 +53,12 @@ export function ContractorServicesInline({
    <TextInput accessibilityLabel="Provider phone" value={phone} onChangeText={setPhone} maxLength={30} style={styles.input} placeholder="Business phone" placeholderTextColor={Colors.textMuted}/>
    <Text style={styles.label}>Coverage description (optional)</Text>
    <TextInput accessibilityLabel="Provider coverage description" value={area} onChangeText={setArea} maxLength={200} style={styles.input} placeholder="Service area" placeholderTextColor={Colors.textMuted}/>
-   <Text style={styles.desc}>Use Job Preferences below to change the postcodes for new work.</Text>
+   <Text style={styles.desc}>Delivery, collection & recovery need Motor Trade and Public Liability Insurance; inspections need Public Liability Insurance only. Use Job Preferences below to change your work areas.</Text>
    {ORDER.map(type=>{
     const c=capabilities.find(cap=>cap.serviceType===type);
     const label=type==='DELIVERY'?'Collection, delivery & recovery':'Vehicle inspection';
-    const status=c?.status==='APPROVED'?'Approved':c?.status==='PENDING'?'Awaiting approval':c?.status==='SUSPENDED'?'Suspended':c?.status==='REJECTED'?'Needs attention':'Not applied';
+    const verified=c?.verificationStatus==='VERIFIED'&&!!c.verificationExpiresAt&&Date.parse(c.verificationExpiresAt)>Date.now();
+    const status=c?.status==='APPROVED'?(verified?'Approved':'Verification required'):c?.status==='PENDING'?'Awaiting approval':c?.status==='SUSPENDED'?'Suspended':c?.status==='REJECTED'?'Needs attention':'Not applied';
     return <View key={type} style={styles.service}>
      <Text style={styles.subtitle}>{label}</Text>
      <Text style={styles.desc}>{status}</Text>

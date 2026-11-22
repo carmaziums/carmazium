@@ -274,14 +274,14 @@ const notificationsTo = (userId: string) => notify.mock.calls.filter((c) => c[0]
 const addVerifiedEvidence = (capabilityId: string, serviceType: 'DELIVERY' | 'INSPECTION') => {
     const expiry = new Date(Date.now() + 180 * 86_400_000);
     db.one('contractorCapability', { id: capabilityId })!.providerDeclaration = { version: 1, registeredBusiness: true, acceptedAt: new Date().toISOString() };
-    const evidenceTypes = serviceType === 'DELIVERY' ? ['DELIVERY_BUSINESS_INSURANCE'] : [];
+    const evidenceTypes = serviceType === 'DELIVERY' ? ['DELIVERY_BUSINESS_INSURANCE', 'DELIVERY_PUBLIC_LIABILITY'] : ['INSPECTION_PUBLIC_LIABILITY'];
     for (const evidenceType of evidenceTypes) {
         db.tables.serviceCaseEntry.push({
             id: uid('evidence'),
             ...DEFAULTS.serviceCaseEntry(),
             entityId: capabilityId,
             evidenceType,
-            evidenceExpiresAt: evidenceType.includes('INSURANCE') || evidenceType === 'DELIVERY_GOODS_IN_TRANSIT' ? expiry : null,
+            evidenceExpiresAt: expiry, // All required delivery and inspection insurance certificates are current.
             createdAt: new Date(),
             updatedAt: new Date(),
         });

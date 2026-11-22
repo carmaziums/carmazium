@@ -211,7 +211,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation, route }) =
             <Text style={styles.eyebrow}>TRADEXCHANGE</Text>
             <Text style={styles.title}>TradeXchange</Text>
             <Text style={styles.sub}>
-              One CarMazium business account. Add only the services your business provides and keep them all under the same login.
+              One CarMazium business account. Choose one or multiple services, including collection, delivery & recovery and vehicle inspections, under the same login. Each has its own insurance checks.
             </Text>
           </View>
 

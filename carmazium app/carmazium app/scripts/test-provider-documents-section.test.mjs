@@ -9,14 +9,14 @@ import ts from 'typescript';
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const source = readFileSync(new URL('../src/components/tradexchange/ProviderDocumentsSection.tsx', import.meta.url), 'utf8');
 const code = ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText;
-const requirement=(state='MISSING')=>({
- type:'DELIVERY_BUSINESS_INSURANCE',title:'Trade insurance',description:'Collection and delivery cover',
- expiryRequired:true,optional:false,state,currentEvidenceId:null,approvedEvidenceId:null,evidenceExpiresAt:null,
+const requirement=(type,state='MISSING')=>({
+ type,title:type==='DELIVERY_BUSINESS_INSURANCE'?'Motor Trade Insurance':'Public Liability Insurance',
+ description:'Current cover',expiryRequired:true,optional:false,state,currentEvidenceId:null,approvedEvidenceId:null,evidenceExpiresAt:null,
 });
 const cap=type=>({id:'cap-'+type,serviceType:type,status:'PENDING'});
 const detail=(type='DELIVERY',state='MISSING',attachments=[])=>({
  capabilityId:'cap-'+type,serviceType:type,verification:{
-  verificationStatus:'IN_REVIEW',requirements:type==='DELIVERY'?[requirement(state)]:[],
+  verificationStatus:'IN_REVIEW',requirements:type==='DELIVERY'?[requirement('DELIVERY_BUSINESS_INSURANCE',state),requirement('DELIVERY_PUBLIC_LIABILITY',state)]:[requirement('INSPECTION_PUBLIC_LIABILITY',state)],
   declarationRequired:true,declarationCurrent:true,
  },attachments
 });
@@ -78,24 +78,29 @@ test('document section is collapsed by default and never downloads private evide
  await h.unmount();
 });
 
-test('inspection does not request uploads even if historical inspection documents exist',async()=>{
+test('inspection independently requires Public Liability Insurance and preserves old evidence',async()=>{
  const old={id:'old-inspection',evidenceStatus:'APPROVED',label:'Historical inspection liability',createdAt:'2026-09-01',url:'https://example.invalid/limited-signed-url'};
- const h=await render({details:{DELIVERY:detail('DELIVERY'),INSPECTION:detail('INSPECTION','SATISFIED',[old])}});
+ const h=await render({details:{DELIVERY:detail('DELIVERY'),INSPECTION:detail('INSPECTION','MISSING',[old])}});
  await h.press('Documents & Insurance');
  await h.click('Inspection');
- assert.match(text(h.tree),/No inspection documents required/);
- assert.ok(!h.tree.root.findAllByType('Button').some(n=>/Upload for review|Upload trade insurance/.test(n.props.label||'')));
+ assert.match(text(h.tree),/Public Liability Insurance/);
+ await h.click('Upload Public Liability Insurance');
+ await h.click('Choose PDF or image (max 10 MB)');
+ await h.input('Expiry date','2030-11-22');
+ await h.click('Upload for review');
+ const upload=h.calls.find(c=>c[0]==='upload');
+ assert.equal(upload[1],'cap-INSPECTION');
+ assert.equal(upload[3].evidenceType,'INSPECTION_PUBLIC_LIABILITY');
  await h.click('Show document history (1)');
  assert.match(text(h.tree),/Historical inspection liability/);
- assert.equal(h.calls.filter(c=>c[0]==='upload').length,0);
  await h.unmount();
 });
 
-test('delivery uploads only current trade insurance via the existing API with expiry and review',async()=>{
+test('delivery uploads Motor Trade Insurance using the existing evidence API',async()=>{
  const h=await render();
  await h.press('Documents & Insurance');
  assert.match(text(h.tree),/Missing or expired/);
- await h.click('Upload trade insurance');
+ await h.click('Upload Motor Trade Insurance');
  await h.click('Choose PDF or image (max 10 MB)');
  await h.input('Expiry date','2030-11-22');
  await h.click('Upload for review');
@@ -108,10 +113,23 @@ test('delivery uploads only current trade insurance via the existing API with ex
  await h.unmount();
 });
 
+test('delivery provider uploads Public Liability independently of Motor Trade Insurance',async()=>{
+ const h=await render();
+ await h.press('Documents & Insurance');
+ await h.click('Upload Public Liability Insurance');
+ await h.click('Choose PDF or image (max 10 MB)');
+ await h.input('Expiry date','2030-11-22');
+ await h.click('Upload for review');
+ const upload=h.calls.find(c=>c[0]==='upload');
+ assert.equal(upload[1],'cap-DELIVERY');
+ assert.equal(upload[3].evidenceType,'DELIVERY_PUBLIC_LIABILITY');
+ await h.unmount();
+});
+
 test('upload failures display errors, without clearing existing documents or approvals',async()=>{
  const h=await render({uploadError:'storage offline'});
  await h.press('Documents & Insurance');
- await h.click('Upload trade insurance');
+ await h.click('Upload Motor Trade Insurance');
  await h.click('Choose PDF or image (max 10 MB)');
  await h.input('Expiry date','2030-11-22');
  await h.click('Upload for review');
@@ -123,7 +141,7 @@ test('upload failures display errors, without clearing existing documents or app
 test('no application means no provider upload request',async()=>{
  const h=await render({capabilities:[]});
  await h.press('Documents & Insurance');
- assert.match(text(h.tree),/No collection\/delivery application yet/);
+ assert.match(text(h.tree),/No collection\/delivery\/recovery application yet/);
  assert.equal(h.calls.length,0);
  await h.unmount();
 });
