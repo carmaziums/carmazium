@@ -56,10 +56,6 @@ function MyJobsList() {
                 </div>
             </div>
 
-            <div className="mb-7 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5 text-sm leading-6 text-[var(--text-muted)]">
-                This is the customer side of TradeXchange. If you run an approved service-provider business and want to compete for open work, use <Link href="/dashboard/service/jobs" className="font-bold text-primary hover:underline">Available Jobs in the provider dashboard</Link>.
-            </div>
-
             {error && <p className="text-red-500 text-sm mb-6">{error}</p>}
             {!jobs && !error && <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" /></div>}
 
