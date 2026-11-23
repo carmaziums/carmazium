@@ -26,6 +26,8 @@ on:
       - "carmazium app/carmazium app/src/components/VehicleCard.tsx"
       - "carmazium app/carmazium app/src/components/HorizontalVehicleCard.tsx"
       - "carmazium app/carmazium app/src/screens/main/SearchScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx"
+      - "scripts/test-ios-compact-dashboard-and-posted-jobs.test.mjs"
       - "carmazium app/carmazium app/src/lib/paymentsApi.ts"
       - "carmazium app/carmazium app/src/lib/storageHelper.ts"
       - "carmazium app/carmazium app/src/lib/vehicleImageMetadata.ts"
@@ -69,6 +71,9 @@ jobs:
 
       - name: Original Android update and TradeXchange menu navigation
         run: node --test scripts/test-app-updater.test.mjs scripts/test-site-menu-auction.test.mjs
+
+      - name: Mobile dealer CRM and iPhone responsive layouts
+        run: node ../../scripts/test-ios-compact-dashboard-and-posted-jobs.test.mjs
 
       - name: Native DVLA, 3D and dual-price parity regressions
         run: node ../../scripts/test-native-web-vehicle-parity-20261015.test.mjs
