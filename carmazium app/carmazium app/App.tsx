@@ -51,7 +51,10 @@ export default function App() {
   // ── OTA Updates ────────────────────────────────────────────────
   useEffect(() => {
     const checkUpdates = async () => {
-      if (__DEV__) return; // Skip in development
+      // APK build 126 has native OTA disabled, so checking Expo Update cannot
+      // work there. New company-signed 1.0.2 builds may check their production
+      // channel; the SDK's own runtime compatibility protection still applies.
+      if (__DEV__ || !Updates.isEnabled) return;
       try {
         const update = await Updates.checkForUpdateAsync();
         if (update.isAvailable) {
