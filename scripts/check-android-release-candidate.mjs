@@ -41,8 +41,8 @@ export function checkReleaseCandidate({app,eas,env,commitSha,requestedSha}){
   if(app?.expo?.version!=='1.0.2' ||
      app?.expo?.runtimeVersion?.policy!=='appVersion' ||
      app?.expo?.updates?.enabled!==true ||
-     app?.expo?.updates?.requestHeaders?.['expo-channel-name']!=='production')
-    errors.push('Customer OTA runtime must use appVersion 1.0.2 and the verified production channel');
+     app?.expo?.updates?.requestHeaders?.['expo-channel-name'])
+    errors.push('Customer OTA source must use appVersion 1.0.2 without pinning a channel shared by preview builds');
   if(app?.expo?.android?.package!=='uk.carmazium.app')
     errors.push('Candidate must use real CarMazium Android package');
   if(app?.expo?.ios?.bundleIdentifier!=='uk.carmazium.app')
