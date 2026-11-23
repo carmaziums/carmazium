@@ -45,7 +45,8 @@ test('valid synthetic signing metadata allows INTERNAL candidate only, not publi
   assert.ok(source.includes('private-staged-apk/*'));
   assert.ok(source.includes('retention-days: 3'));
   assert.ok(source.includes("app.expo.updates?.enabled!==true"));
-  assert.ok(source.includes("app.expo.updates?.requestHeaders?.['expo-channel-name']!=='production'"));
+  assert.ok(source.includes("app.expo.updates.requestHeaders={'expo-channel-name':'production'}"));
+  assert.ok(!app.expo.updates.requestHeaders?.['expo-channel-name']);
   assert.ok(source.includes('app.expo.version!==\'1.0.2\''));
   assert.ok(source.includes('Number(process.env.CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE)<127'));
   assert.ok(source.includes('app.expo.android.versionCode=Number(process.env.CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE)'));
@@ -134,7 +135,7 @@ test('download website must stay gated even when candidate build exists',()=>{
 
 test('new company-owned OTA runtime rejects old version, unsafe channel and missing updates',()=>{
   const clone=()=>JSON.parse(JSON.stringify(app));
-  const badChannel=clone();badChannel.expo.updates.requestHeaders['expo-channel-name']='preview';
+  const badChannel=clone();badChannel.expo.updates.requestHeaders={'expo-channel-name':'preview'};
   assert.equal(check({},sha,badChannel).ok,false);
   const disabled=clone();disabled.expo.updates.enabled=false;
   assert.equal(check({},sha,disabled).ok,false);
