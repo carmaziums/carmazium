@@ -97,10 +97,14 @@ jobs:
              app.expo.runtimeVersion?.policy!=='appVersion' ||
              app.expo.updates?.enabled!==true ||
              app.expo.updates?.url!==updateUrl ||
-             app.expo.updates?.requestHeaders?.['expo-channel-name']!=='production' ||
+             app.expo.updates?.requestHeaders?.['expo-channel-name'] ||
              Number(process.env.CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE)<127){
-            throw Error('A new source-locked v127+ production OTA runtime is required; do not reuse v126');
+            throw Error('A new source-locked v127+ OTA runtime is required; source must not pin the preview channel');
           }
+          // The signed APK is built outside EAS Build; explicitly embed the
+          // company production channel at native prebuild time only. Source
+          // preview/TestFlight profiles must retain their own EAS channels.
+          app.expo.updates.requestHeaders={'expo-channel-name':'production'};
           // Android sideloaded updates must have a higher versionCode than the prior APK.
           app.expo.android.versionCode=Number(process.env.CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE);
           fs.writeFileSync('app.json',JSON.stringify(app,null,2)+'\n');
