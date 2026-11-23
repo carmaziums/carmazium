@@ -149,7 +149,7 @@ test('app detects signed APK updates on launch and resume with short retry on fa
   assert.match(app, /<AppUpdatePrompt \/>/);
   assert.match(prompt, /CHECK_EVERY_MS = 15 \* 60_000/);
   assert.match(prompt, /RETRY_AFTER_FAILURE_MS = 60_000/);
-  assert.match(prompt, /if \(checkInFlight\.current \|\|/);
+  assert.match(prompt, /busy\.current \|\| checkInFlight\.current \|\|/);
   assert.match(prompt, /AppState\.addEventListener\('change'/);
   assert.match(prompt, /setInterval\(\(\) => \{ void check\(\); \}, FOREGROUND_POLL_MS\)/);
   assert.match(prompt, /REMIND_AFTER_MS/);
