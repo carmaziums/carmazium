@@ -48,6 +48,7 @@ on:
       - "carmazium app/carmazium app/src/screens/main/CreateServiceJobScreen.tsx"
       - "carmazium app/carmazium app/app.json"
       - "carmazium app/carmazium app/scripts/test-app-updater.test.mjs"
+      - "carmazium app/carmazium app/scripts/test-app-update-prompt.test.mjs"
       - "carmazium app/carmazium app/src/components/SiteMenu.tsx"
       - "carmazium app/carmazium app/scripts/test-site-menu-auction.test.mjs"
       - ".github/workflows/mobile-listing-ci.yml"
@@ -82,7 +83,7 @@ jobs:
         run: node --test scripts/test-dashboard-cards.test.mjs scripts/test-web-dashboard-cards.test.mjs scripts/test-native-service-completion.test.mjs
 
       - name: Original Android update and TradeXchange menu navigation
-        run: node --test scripts/test-app-updater.test.mjs scripts/test-site-menu-auction.test.mjs
+        run: node --test scripts/test-app-updater.test.mjs scripts/test-app-update-prompt.test.mjs scripts/test-site-menu-auction.test.mjs
 
       - name: Mobile dealer CRM and iPhone responsive layouts
         run: node ../../scripts/test-ios-compact-dashboard-and-posted-jobs.test.mjs
