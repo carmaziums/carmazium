@@ -1,129 +1,48 @@
-"use client"
-
 import Link from "next/link"
-import { motion } from "framer-motion"
-import {
-    ArrowLeft,
-    ArrowRight,
-    BadgeCheck,
-    CheckCircle,
-    CreditCard,
-    FileSearch,
-    LayoutDashboard,
-    ShieldCheck,
-    Users,
-} from "lucide-react"
-import { Button } from "@/components/ui/Button"
+import { ArrowLeft, ArrowRight, ClipboardCheck, Wrench, Paintbrush, CarFront, ShieldCheck } from "lucide-react"
 import { inspectionServiceEnabled } from "@/lib/featureFlags"
 import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
-import { useAuth } from "@/context/AuthContext"
+import { TradeXchangePartnerAction } from "@/components/tradexchange/TradeXchangeAccountActions"
 
-const STEPS = [
-    { icon: FileSearch, title: "Post the vehicle", desc: "Tell inspectors where the car is, when you need it checked and the vehicle details." },
-    { icon: Users, title: "Approved inspectors quote", desc: "Providers approved by CarMazium for inspection work send fixed-price quotes." },
-    { icon: CreditCard, title: "Choose and pay", desc: "Accept the quote you prefer and pay through CarMazium. Provider contact details then unlock." },
-    { icon: CheckCircle, title: "Inspection completed", desc: "The inspector completes the job. You confirm completion before their payout is released." },
-]
+const choices = [
+    { kind: "prepurchase", title: "Pre-purchase inspection", detail: "Check the vehicle before buying or collecting it.", icon: ClipboardCheck },
+    { kind: "mechanical", title: "Mechanical condition", detail: "Request checks for mechanical faults, diagnostics or other areas of concern.", icon: Wrench },
+    { kind: "cosmetic", title: "Cosmetic and bodywork", detail: "Request checks of paintwork, panels, visible damage and cosmetic condition.", icon: Paintbrush },
+    { kind: "stock", title: "Multiple vehicles / dealer stock", detail: "Request an agreed inspection scope for up to 12 vehicles at one location.", icon: CarFront },
+] as const
+const panel = "rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 sm:p-6"
 
 export default function InspectionLandingPage() {
-    const { user } = useAuth()
-    if (!inspectionServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Vehicle Inspection" />
-
-    const providerHref = user
-        ? "/dashboard/partner#provider-services"
-        : "/auth/signup?role=DEALER"
-
-    return (
-        <div className="min-h-screen" style={{ background: "var(--bg-body)" }}>
-            <section className="relative overflow-hidden border-b border-[var(--border-default)]" style={{ marginTop: "-80px", paddingTop: "80px" }}>
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(16,185,129,0.10)_0%,transparent_55%)]" />
-                <div className="container mx-auto px-6 py-16 md:py-24 relative">
-                    <Link href="/auctions" className="mb-7 inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary">
-                        <ArrowLeft size={15} /> Back to TradeXchange
-                    </Link>
-                    <div className="max-w-3xl">
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-4 py-1.5 mb-6 text-xs font-bold uppercase tracking-widest text-emerald-500">
-                            <FileSearch size={13} /> TradeXchange · Vehicle Inspections
-                        </motion.div>
-                        <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-6xl font-black font-heading tracking-tight leading-[0.95] mb-5">
-                            Inspect the car <span className="text-primary">before you commit.</span>
-                        </motion.h1>
-                        <p className="text-[var(--text-muted)] text-lg max-w-xl leading-relaxed mb-8">
-                            Post one vehicle inspection request and approved inspection businesses can compete for the job. Choose the quote you want and keep the service payment protected through CarMazium until the work is completed.
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-3">
-                            <Button asChild size="lg">
-                                <Link href="/services/inspection/new">
-                                    Post a Job <ArrowRight size={16} />
-                                </Link>
-                            </Button>
-                            <Button asChild variant="outline" size="lg">
-                                <Link href="/dashboard/service/jobs">
-                                    Find Jobs &amp; Bid <ArrowRight size={16} />
-                                </Link>
-                            </Button>
-                            {user && (
-                                <Button asChild variant="outline" size="lg">
-                                    <Link href="/services/jobs">My jobs</Link>
-                                </Button>
-                            )}
-                        </div>
-                    </div>
-                </div>
+    if (!inspectionServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Vehicle Inspections" />
+    return <div className="min-h-screen bg-[var(--bg-body)]">
+        <section className="border-b border-[var(--border-default)] bg-[var(--bg-card)]">
+            <div className="mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
+                <Link href="/auctions" className="mb-6 inline-flex min-h-12 items-center gap-2 font-semibold hover:underline"><ArrowLeft size={18} aria-hidden="true" /> Back to TradeXchange</Link>
+                <p className="flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-300"><ClipboardCheck size={19} aria-hidden="true" /> Vehicle Inspections</p>
+                <h1 className="mt-3 max-w-3xl text-4xl font-heading font-black leading-tight tracking-tight sm:text-5xl">Independent vehicle inspections across the UK.</h1>
+                <p className="mt-4 max-w-3xl text-lg leading-8 text-[var(--text-secondary)]">Compare fixed-price quotes from approved inspection businesses. Agree the scope, report requirements and availability with the provider before booking.</p>
+            </div>
+        </section>
+        <div className="mx-auto max-w-7xl space-y-12 px-5 py-10 sm:px-8 sm:py-14">
+            <section aria-labelledby="inspection-choice"><h2 id="inspection-choice" className="text-2xl font-heading font-bold">What would you like checked?</h2>
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{choices.map(choice => <Link key={choice.kind} href={"/services/inspection/new?kind=" + choice.kind} className={panel + " flex flex-col gap-3 hover:border-primary focus-visible:outline-2 focus-visible:outline-primary"}>
+                    <span className="flex size-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200"><choice.icon size={25} aria-hidden="true" /></span>
+                    <h3 className="text-xl font-bold">{choice.title}</h3><p className="text-base leading-7 text-[var(--text-secondary)]">{choice.detail}</p>
+                    <span className="mt-auto flex items-center justify-between gap-2 pt-2 font-bold text-red-700 dark:text-red-300">Request quotes <ArrowRight size={18} aria-hidden="true" /></span>
+                </Link>)}</div>
+                <Link href="/services/jobs" className="mt-4 inline-flex min-h-12 items-center rounded-xl border border-[var(--border-default)] px-5 py-3 font-semibold hover:bg-[var(--bg-input)]">My service requests</Link>
             </section>
-
-            <section className="container mx-auto px-6 py-16">
-                <div className="text-center mb-12">
-                    <p className="text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-3">For customers</p>
-                    <h2 className="text-3xl md:text-4xl font-black font-heading tracking-tight">From request to completed inspection</h2>
-                </div>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                    {STEPS.map((step, index) => (
-                        <div key={step.title} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-6">
-                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-4"><step.icon size={18} className="text-primary" /></div>
-                            <p className="text-[10px] font-black text-[var(--text-muted)] mb-1">0{index + 1}</p>
-                            <h3 className="font-heading font-bold mb-2">{step.title}</h3>
-                            <p className="text-sm text-[var(--text-muted)] leading-relaxed">{step.desc}</p>
-                        </div>
-                    ))}
-                </div>
+            <section aria-labelledby="inspection-process"><h2 id="inspection-process" className="text-2xl font-heading font-bold">How it works</h2>
+                <ol className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[
+                    ["Describe the work", "Enter the vehicle details, inspection location and preferred checks."],
+                    ["Compare quotes", "Approved providers can quote for the requested scope. Posting does not book or charge you."],
+                    ["Choose and pay", "Review the provider's scope and price, accept a quote and pay through CarMazium."],
+                    ["Review the findings", "Review the inspection outcome and agreed report. Completion and payout follow the service terms, including the 48-hour review period."],
+                ].map(([title,detail],i) => <li key={title} className={panel}><span className="flex size-10 items-center justify-center rounded-full bg-[var(--bg-input)] font-bold">{i+1}</span><h3 className="mt-3 text-lg font-bold">{title}</h3><p className="mt-2 text-base leading-7 text-[var(--text-secondary)]">{detail}</p></li>)}</ol>
             </section>
-
-            <section className="border-y border-[var(--border-default)] bg-[var(--bg-card)]">
-                <div className="container mx-auto px-6 py-12 grid md:grid-cols-3 gap-6">
-                    <div className="flex gap-3"><ShieldCheck className="text-primary shrink-0" /><p className="text-sm text-[var(--text-muted)]"><b className="text-[var(--text-primary)]">Approved providers.</b> Only contractors approved for Vehicle Inspections can quote.</p></div>
-                    <div className="flex gap-3"><CreditCard className="text-primary shrink-0" /><p className="text-sm text-[var(--text-muted)]"><b className="text-[var(--text-primary)]">Protected payment.</b> The accepted quote uses the same secure service-payment flow as vehicle delivery.</p></div>
-                    <div className="flex gap-3"><Users className="text-primary shrink-0" /><p className="text-sm text-[var(--text-muted)]"><b className="text-[var(--text-primary)]">9% platform fee.</b> Deducted from the provider payout; the provider keeps 91%.</p></div>
-                </div>
-            </section>
-
-            <section className="container mx-auto px-6 py-16 md:py-20">
-                <div className="rounded-3xl border border-emerald-500/25 bg-emerald-500/5 p-8 md:p-10">
-                    <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-                        <div>
-                            <p className="text-emerald-500 text-[10px] font-black uppercase tracking-[0.2em] mb-3">For inspection providers</p>
-                            <h2 className="text-3xl font-black font-heading mb-4">Turn your inspection expertise into more paid work</h2>
-                            <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-5">
-                                Apply for Vehicle Inspection capability. Once approved, you can quote on suitable inspection requests and compete for work through TradeXchange.
-                            </p>
-                            <div className="rounded-2xl border border-emerald-500/25 bg-[var(--bg-card)] p-5 mb-6">
-                                <p className="font-black mb-1">9% CarMazium platform fee. You keep 91%.</p>
-                                <p className="text-sm text-[var(--text-muted)] leading-relaxed">The fee is deducted from the accepted job price. Your 91% provider payout is released after the inspection is completed and the customer confirms completion.</p>
-                            </div>
-                            <Button asChild>
-                                <Link href={providerHref}>
-                                    Apply as an inspection provider <ArrowRight size={15} />
-                                </Link>
-                            </Button>
-                        </div>
-                        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-                            <div className="flex gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5"><BadgeCheck className="text-primary shrink-0" /><div><h3 className="font-bold text-sm mb-1">Capability-based approval</h3><p className="text-xs text-[var(--text-muted)]">Customers see providers who have been approved specifically for inspection work.</p></div></div>
-                            <div className="flex gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5"><LayoutDashboard className="text-primary shrink-0" /><div><h3 className="font-bold text-sm mb-1">Central job dashboard</h3><p className="text-xs text-[var(--text-muted)]">Track available inspection work, accepted jobs and progress in one place.</p></div></div>
-                            <div className="flex gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5"><Users className="text-primary shrink-0" /><div><h3 className="font-bold text-sm mb-1">Compete for relevant work</h3><p className="text-xs text-[var(--text-muted)]">Quote selectively on the inspection requests that suit your business and availability.</p></div></div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+            <section className={panel}><h2 className="text-xl font-bold">Inspections for CarMazium purchases</h2><p className="mt-2 text-base leading-7 text-[var(--text-secondary)]">Use the inspection option on an active retail advert to carry vehicle details into your request. If you have won an auction, use the linked inspection option on your won-auction page after buyer-fee clearance and before approved handover. A general inspection request does not qualify for the auction-specific refusal and buyer-fee refund process.</p></section>
+            <section className={panel}><div className="flex gap-3"><ShieldCheck size={25} className="shrink-0 text-emerald-700 dark:text-emerald-300" aria-hidden="true" /><div><h2 className="text-xl font-bold">Approved inspection providers</h2><p className="mt-2 text-base leading-7 text-[var(--text-secondary)]">Inspection-only providers must provide approved Public Liability Insurance. Motor Trade Insurance is not required for inspection-only approval. Check the provider's experience and proposed inspection scope; approval is not a guarantee of a fault-free vehicle.</p></div></div></section>
+            <section className={panel}><h2 className="text-xl font-bold">Do you provide vehicle inspections?</h2><p className="mt-2 max-w-3xl text-base leading-7 text-[var(--text-secondary)]">Apply for inspection services through your existing Partner Account. Approved providers can quote for suitable work. The platform fee is 9% of the accepted job price and the provider share is 91%, subject to service payment terms.</p><TradeXchangePartnerAction /></section>
         </div>
-    )
+    </div>
 }

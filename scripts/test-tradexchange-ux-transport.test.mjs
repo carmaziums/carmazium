@@ -49,7 +49,7 @@ test('UK schedule conversion rejects past and skipped DST hour and preserves UK 
  assert.equal(parse('2026-03-29T01:30',now),null);
  assert.equal(parse('2025-12-31T10:00',now),null);
  assert.match(form,/parseUkServiceDateTime\(requestedFor\)/);
- assert.match(native,/timeZoneName=\{delivery \? 'Europe\/London'/);
+ assert.match(native,/timeZoneName="Europe\/London"/);
 });
 test('posting only requests quotes and retains existing purchase and provider engine',()=>{
  assert.match(landing,/No booking or payment is made just by posting/);

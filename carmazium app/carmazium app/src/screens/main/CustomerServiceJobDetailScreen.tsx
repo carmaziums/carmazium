@@ -484,18 +484,18 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
                 <View style={{ flex: 1 }}>
                   <Text style={styles.providerName}>{providerName(quote)}</Text>
                   <Text style={styles.muted}>
-                    {quote.contractor
-                      ? `${quote.contractor.rating.toFixed(1)} rating · ${quote.contractor.totalReviews} reviews`
-                      : index === 0 ? 'Lowest current quote' : 'Service provider'}
+                    {quote.contractor ? (quote.contractor.totalReviews > 0 ? quote.contractor.rating.toFixed(1) + ' rating · ' + quote.contractor.totalReviews + ' reviews' : 'New to CarMazium') : 'Service provider'}
                   </Text>
-                  {index === 0 ? <Text style={styles.muted}>Lowest available quote</Text> : null}
-                  {quote.message ? <Text style={styles.quoteMessage}>{quote.message}</Text> : null}
+                  {quote.contractor?.serviceArea ? <Text style={styles.muted}>Service area: {quote.contractor.serviceArea}</Text> : null}
+                  {index === 0 ? <Text style={styles.muted}>Lowest current quote</Text> : null}
+                  <Text style={styles.quoteMessage}>{quote.message || "No additional details supplied. Confirm scope before accepting."}</Text>
                   {quote.validUntil ? (
                     <Text style={styles.muted}>Valid until {new Date(quote.validUntil).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</Text>
                   ) : null}
                 </View>
                 <View style={styles.quoteRight}>
                   <Text style={styles.quotePrice}>{formatPence(quote.amountPence)}</Text>
+                  <Text style={styles.muted}>Total for the whole request</Text>
                   <TouchableOpacity
                     style={[styles.primaryButton, busy !== null && styles.disabled]}
                     onPress={() => chooseProvider(quote)}
@@ -721,7 +721,7 @@ const styles = StyleSheet.create({
   resultRow: { flexDirection: 'row', gap: 9, alignItems: 'center' },
   resultTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white },
   quoteCard: {
-    flexDirection: 'row', gap: 12, alignItems: 'flex-start',
+    gap: 12, alignItems: 'stretch',
     borderTopWidth: 1, borderTopColor: Colors.whiteAlpha08, paddingTop: 12,
   },
   providerName: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white },

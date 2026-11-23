@@ -860,7 +860,7 @@ describe('Vehicle Inspection — end to end', () => {
             description: 'Check bodywork, engine, brakes and diagnostic faults.',
             servicePostcode: ' b12  8ab ',
             serviceAddress: '25 Test Lane',
-            vehicles: [{ registration: 'in66 spc', make: 'BMW', model: '320d', year: 2019 }],
+            vehicles: [{ registration: 'in66 spc', make: 'BMW', model: '320d', year: 2019 }, { registration: 'AB12 CDE', make: 'Ford', model: 'Focus', notes: 'Check bodywork' }],
         } as any);
 
         inspectionJobId = job.id;
@@ -873,6 +873,8 @@ describe('Vehicle Inspection — end to end', () => {
             deliveryPostcode: null,
         });
         expect(job.vehicles[0].registration).toBe('IN66SPC');
+        expect(job.vehicles).toHaveLength(2);
+        expect(job.vehicles[1]).toMatchObject({ registration: 'AB12CDE', notes: 'Check bodywork' });
         expect(notify).toHaveBeenCalledWith(expect.objectContaining({
             userId: ADMIN.id,
             link: `/dashboard/admin/services/jobs/${job.id}`,

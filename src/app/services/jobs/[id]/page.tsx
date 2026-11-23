@@ -476,28 +476,19 @@ function Rating({ c }: { c: { rating: number; totalReviews: number } }) {
 
 function QuoteCard({ quote, cheapest, busy, disabled, onAccept }: { quote: ServiceQuote; cheapest: boolean; busy: boolean; disabled: boolean; onAccept: () => void }) {
     const c = quote.contractor
-    return (
-        <div className={`rounded-2xl border p-5 ${cheapest ? "border-primary/40 bg-primary/5" : "border-[var(--border-default)] bg-[var(--bg-card)]"}`}>
-            <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                        <p className="font-heading font-bold truncate">{c?.businessName || c?.user.firstName || "Provider"}</p>
-                        {cheapest && <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/25">Lowest</span>}
-                    </div>
-                    {c && <Rating c={c} />}
-                    {c?.serviceArea && <p className="text-xs text-[var(--text-muted)] mt-1">{c.serviceArea}</p>}
-                    {quote.message && <p className="text-sm text-[var(--text-secondary)] mt-3 whitespace-pre-line">"{quote.message}"</p>}
-                    {quote.validUntil && <p className="text-[11px] text-[var(--text-muted)] mt-2">Valid until {new Date(quote.validUntil).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</p>}
-                </div>
-                <div className="text-right shrink-0">
-                    <p className="text-2xl font-black font-heading">{formatPence(quote.amountPence)}</p>
-                    <Button size="sm" className="mt-2" disabled={disabled} onClick={onAccept}>
-                        {busy ? <Loader2 className="animate-spin" size={14} /> : "Choose & continue to payment"}
-                    </Button>
-                </div>
+    return <article className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1"><h3 className="font-heading font-bold text-lg break-words">{c?.businessName || c?.user.firstName || "Service provider"}</h3>
+                {c && <Rating c={c} />}{c?.serviceArea && <p className="mt-1 text-sm text-[var(--text-secondary)]">Service area: {c.serviceArea}</p>}
             </div>
+            <div className="text-right"><p className="text-2xl font-black font-heading">{formatPence(quote.amountPence)}</p><p className="text-xs text-[var(--text-muted)]">Total for the whole request</p>{cheapest && <p className="text-xs font-semibold text-[var(--text-secondary)]">Lowest current quote</p>}</div>
         </div>
-    )
+        <div className="mt-4 border-t border-[var(--border-default)] pt-3"><p className="text-sm font-semibold">Proposed scope and availability</p>
+            <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-[var(--text-secondary)]">{quote.message || "No additional details supplied. Confirm the scope and report requirements before accepting."}</p>
+            {quote.validUntil && <p className="mt-2 text-xs text-[var(--text-muted)]">Valid until {new Date(quote.validUntil).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/London" })} UK time</p>}
+        </div>
+        <Button className="mt-4 min-h-12 w-full sm:w-auto" disabled={disabled} onClick={onAccept}>{busy ? <Loader2 className="animate-spin" size={16} /> : "Choose & continue to payment"}</Button>
+    </article>
 }
 
 export default function ServiceJobPage() {

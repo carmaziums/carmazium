@@ -16,7 +16,7 @@ test('native job form offers ASAP or a date and time and checks past dates befor
   assert.match(native, /requestedFor: asap \? undefined : requestedFor!\.toISOString\(\)/);
   assert.match(native, /requestedFor\.getTime\(\) <= Date\.now\(\)/);
   assert.match(delivery, /parseUkServiceDateTime\(requestedFor\)/);
-  assert.match(inspection, /jobDateIssue\(form\.requestedFor, false\)/);
+  assert.match(inspection, /parseUkServiceDateTime\(form\.requestedFor\)/);
 });
 
 test('delivery, collection and recovery use the native job form and limit vehicles to the backend maximum of 12', () => {
@@ -27,7 +27,7 @@ test('delivery, collection and recovery use the native job form and limit vehicl
   assert.match(native, /registration\.replace\(\/\\s\+\/g/);
   assert.match(native, /validYear\(v\.year\)/);
   assert.match(delivery, /updated\.slice\(0, 12\)/);
-  assert.match(inspection, /jobYearValid\(form\.year\)/);
+  assert.match(inspection, /jobYearValid\(v\.year\)/);
 });
 
 test('both website job forms validate UK postcode and vehicle year before post', () => {
@@ -37,7 +37,7 @@ test('both website job forms validate UK postcode and vehicle year before post',
   assert.match(delivery, /jobPostcodeValid\(deliveryPostcode\)/);
   assert.match(delivery, /vehicles\.findIndex\(v => !jobYearValid\(v\.year\)\)/);
   assert.match(inspection, /jobPostcodeValid\(form\.postcode\)/);
-  assert.match(inspection, /jobYearValid\(form\.year\)/);
+  assert.match(inspection, /jobYearValid\(v\.year\)/);
 });
 
 test('app uses an account-scoped draft and clears it after a successful post', () => {

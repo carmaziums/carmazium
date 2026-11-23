@@ -167,7 +167,7 @@ export type MainStackParamList = {
   Services: undefined;
   CreateServiceJob: { serviceType: 'DELIVERY' | 'INSPECTION'; purchase?: {
     listingId: string; title: string; registration?: string | null;
-    make?: string | null; model?: string | null;
+    make?: string | null; model?: string | null; year?: number | null;
   } };
   CustomerServiceJobs: undefined;
   CustomerServiceJobDetail: { jobId: string };
