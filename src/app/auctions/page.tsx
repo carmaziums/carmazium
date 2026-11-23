@@ -71,7 +71,7 @@ export default function TradeXchangePage() {
                 {services.map(service => <ServiceCard key={service.href} service={service} />)}
                 <li className="min-w-0 h-full"><a href="#business-partnerships" className={panel + " " + focus + " flex h-full flex-col p-5 sm:p-6 shadow-sm transition-colors hover:border-primary hover:bg-[var(--bg-card-hover)]"}>
                     <span className="flex size-12 items-center justify-center rounded-xl bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100"><Building2 size={25} aria-hidden="true" /></span>
-                    <h3 className="mt-4 text-xl font-bold font-heading">Business partnerships</h3>
+                    <h3 className="mt-4 text-xl font-bold font-heading text-[var(--text-primary)]">Business partnerships</h3>
                     <p className="mt-2 text-base leading-7 text-[var(--text-secondary)]">Join CarMazium as a motor trader or service provider, or discuss a specialist integration with our team.</p>
                     <p className="mt-4 text-sm leading-6 text-[var(--text-muted)]">One Partner Account for eligible trading and paid services</p>
                     <span className="mt-auto flex items-center justify-between gap-2 pt-5 font-bold text-red-700 dark:text-red-300">Explore partnerships <ArrowRight size={20} className="shrink-0" aria-hidden="true" /></span>

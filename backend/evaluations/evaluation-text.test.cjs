@@ -55,3 +55,51 @@ test('auction access criterion checks permissions instead of an unasked retail k
     "Browse retail cars at /search.",
   ]) assert.equal(passes(answer), false, answer);
 });
+
+
+test('accepts the two observed candidate answers while retaining every required auction assertion', () => {
+  const cases = require('./mazium-cases.json');
+  const timer = cases.find(c => c.id === 'MZ-034');
+  const offer = cases.find(c => c.id === 'MZ-122');
+  assert.equal(timer.must.length, 1);
+  assert.equal(offer.must.length, 3);
+  assert.deepEqual(offer.must.slice(1), ['ownership|own.*car|transfer.*owner|not.*own', 'fee']);
+  const observedTimer = "No, not necessarily. A qualifying bid in the final 3 minutes adds 3 minutes to the auction’s scheduled closing time, so the countdown can go up. Check the updated closing time in your auction dashboard.";
+  const observedOffer = "No. Paying £125 does not give the dealer ownership of your car. It’s a CarMazium platform fee, not a deposit or payment towards the car; the vehicle price is paid directly to you.\n\nThe £4,700 bid was below your £5,000 reserve, so it did not automatically create a sale. A below-reserve offer needs your explicit acceptance, and once it expires it can no longer be accepted.\n\nSign in and check the ended auction in [My Auctions](/dashboard/seller/auctions). If the dealer still claims ownership or the dashboard shows something different, share the relevant messages in your official CarMazium support chat and ask for a human review before handing over the car or keys.";
+  for (const pattern of timer.must) assert.equal(matchesCriterion(observedTimer, pattern), true, pattern);
+  for (const pattern of offer.must) assert.equal(matchesCriterion(observedOffer, pattern), true, pattern);
+});
+
+test('auction timer wording requires the bounded bid, three-minute and closing-time relationship', () => {
+  const rule = require('./mazium-cases.json').find(c => c.id === 'MZ-034');
+  const passes = answer => rule.must.every(pattern => matchesCriterion(answer, pattern));
+  for (const answer of [
+    "A qualifying bid in the final 3 minutes adds 3 minutes to the auction\u2019s scheduled closing time.",
+    "A bid in the final three minutes adds three minutes to the auction's closing time.",
+    "A qualifying bid in the final 3 minutes adds 3 minutes to the auction closing time.",
+    "A late bid can trigger an auction extension.",
+  ]) assert.equal(passes(answer), true, answer);
+  for (const answer of [
+    "A qualifying bid in the final 3 minutes adds 3 minutes to a delivery journey.",
+    "A qualifying bid in the final 3 minutes adds 3 minutes to the auction tutorial. Its scheduled closing time stays unchanged.",
+    "A finance call adds 3 minutes to your appointment. The auction's scheduled closing time is shown separately.",
+    "A qualifying bid in the final 3 minutes adds 5 minutes to the auction's scheduled closing time.",
+    "A qualifying bid in the final 5 minutes adds 3 minutes to the auction's scheduled closing time.",
+  ]) assert.equal(passes(answer), false, answer);
+});
+
+test('offer expiry accepts ordinary inflections and still requires the ownership and fee distinctions', () => {
+  const rule = require('./mazium-cases.json').find(c => c.id === 'MZ-122');
+  const passes = answer => rule.must.every(pattern => matchesCriterion(answer, pattern));
+  for (const answer of [
+    "The offer has expired. Paying the fee does not give ownership of the car.",
+    "Offers expire at their deadline. Paying the fee does not transfer ownership of the car.",
+    "Once the offer expires it can no longer be accepted. The platform fee does not give ownership of the car.",
+  ]) assert.equal(passes(answer), true, answer);
+  for (const answer of [
+    "The offer expires after its deadline. The platform fee is separate.",
+    "The offer has expired. Payment does not give ownership of the car.",
+    "The platform fee does not transfer ownership of the car.",
+    "The unexpired offer does not transfer ownership when you pay the fee.",
+  ]) assert.equal(passes(answer), false, answer);
+});
