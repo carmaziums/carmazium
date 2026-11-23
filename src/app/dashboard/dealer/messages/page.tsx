@@ -29,14 +29,17 @@ function MessagesContent() {
     const route = getDealerRoute("/dashboard/dealer/messages")
 
     return (
-        <div className="min-h-screen pt-3 pb-24 lg:pt-20 lg:pb-12">
-            <div className="container mx-auto px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8">
-                <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
+        <div className="min-h-screen pt-3 pb-24 lg:pt-3 lg:pb-4">
+            <div className="w-full max-w-none px-2 sm:px-4 flex flex-col lg:flex-row gap-3 lg:gap-4">
+                <div className="lg:hidden">
+                    <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
+                </div>
                 <div className="flex-1 min-w-0">
                     <RoleMessagesInbox
                         title={route.title}
                         subtitle={route.subHeader}
                         className="dealer-glass-card"
+                        backHref="/dashboard/dealer"
                     />
                 </div>
             </div>

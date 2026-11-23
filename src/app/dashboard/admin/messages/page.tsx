@@ -1,9 +1,11 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { createPortal } from "react-dom"
 import {
     Archive,
+    ArrowLeft,
     Clock3,
     History,
     Inbox,
@@ -49,6 +51,7 @@ function AdminMessagesContent() {
                 : "inbox",
     )
     const [supportFilter, setSupportFilter] = React.useState<SupportFilter>("all")
+    const [showSupportPanel, setShowSupportPanel] = React.useState(false)
     const autoSelectedRef = React.useRef(false)
     const [mobileChat, setMobileChat] = React.useState(false)
     React.useEffect(() => {
@@ -145,14 +148,19 @@ function AdminMessagesContent() {
 
     return (
         <>
-        <div className="min-h-screen pt-3 pb-24 lg:pt-20 lg:pb-12">
-            <div className="container mx-auto px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8">
-                <DashboardSidebar role="admin" userName={userName} userType="Admin Account" />
+        <div className="min-h-screen pt-3 pb-24 lg:pt-3 lg:pb-4">
+            <div className="w-full max-w-none px-2 sm:px-4 flex flex-col lg:flex-row gap-3 lg:gap-4">
+                <div className="lg:hidden">
+                    <DashboardSidebar role="admin" userName={userName} userType="Admin Account" />
+                </div>
 
                 <div className="flex-1 min-w-0">
-                    <div className="glass-card flex h-[calc(100dvh-165px)] min-h-0 flex-col overflow-hidden lg:h-[calc(100vh-180px)] lg:min-h-[620px]">
+                    <div className="glass-card flex h-[calc(100dvh-165px)] min-h-0 flex-col overflow-hidden lg:h-[calc(100dvh-170px)] lg:min-h-0">
                         <div className="shrink-0 p-3 sm:p-6 border-b border-[var(--border-default)] flex flex-col xl:flex-row xl:items-center justify-between gap-2 sm:gap-4">
                             <div className="flex items-center gap-3 min-w-0">
+                                <Link href="/dashboard/admin" aria-label="Back to admin dashboard" title="Back to admin dashboard" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">
+                                    <ArrowLeft size={18} />
+                                </Link>
                                 <MessageSquare className="text-primary shrink-0" />
                                 <div className="min-w-0">
                                     <h2 className="text-xl font-bold font-heading">Admin Messages</h2>
@@ -160,6 +168,11 @@ function AdminMessagesContent() {
                                         Multi-agent support, internal operations and secure broadcasts
                                     </p>
                                 </div>
+                                {mode === "inbox" && selectedRoom?.context === "SUPPORT" && (
+                                    <button type="button" onClick={() => setShowSupportPanel(visible => !visible)} aria-expanded={showSupportPanel} className="hidden lg:inline-flex shrink-0 items-center rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] hover:border-primary">
+                                        {showSupportPanel ? "Hide support controls" : "Support controls"}
+                                    </button>
+                                )}
                             </div>
 
                             <div className="flex w-full items-center gap-2 sm:hidden">
@@ -273,7 +286,7 @@ function AdminMessagesContent() {
                                 />
                             ) : (
                                 <div className="flex h-full min-h-0">
-                                    <div className={`w-full lg:w-[360px] border-r border-[var(--border-default)] ${selectedRoom ? "hidden lg:flex lg:flex-col" : "flex flex-col"}`}>
+                                    <div className={`w-full lg:w-[310px] lg:shrink-0 border-r border-[var(--border-default)] ${selectedRoom ? "hidden lg:flex lg:flex-col" : "flex flex-col"}`}>
                                         <div className="border-b border-[var(--border-default)] px-3 py-2 sm:hidden">
                                             <label className="flex items-center gap-2 text-sm font-medium text-[var(--text-muted)]">
                                                 Show
@@ -320,8 +333,8 @@ function AdminMessagesContent() {
                                                         onBack={() => setSelectedRoom(null)}
                                                     />
                                                 </div>
-                                                {selectedRoom.context === "SUPPORT" && (
-                                                    <div className="hidden xl:block">
+                                                {selectedRoom.context === "SUPPORT" && showSupportPanel && (
+                                                    <div className="hidden lg:block w-[310px] shrink-0">
                                                         <AdminSupportPanel
                                                             room={selectedRoom}
                                                             currentAdminId={user.id}

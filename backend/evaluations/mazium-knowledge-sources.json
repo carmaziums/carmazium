@@ -1,5 +1,5 @@
 {
-  "reviewedAt": "2026-11-22",
+  "reviewedAt": "2026-11-23",
   "sources": {
     "backend/prisma/schema.prisma": "3db29bc3ed259489fbf85c9e9b418ec50b4b7bd57ef7879c7adfeeac6a1b57b2",
     "backend/src/admin/admin-user-filters.ts": "0f7afcf5f18e79666b69f346dda04add2024e42fbf71cca4aefb4bd5221118c4",
@@ -45,7 +45,7 @@
     "src/app/dashboard/partner/page.tsx": "c92fcaa38f03407e6ce291449169cd1a3364cdb87234551ff2e48cdfbca88f6c",
     "src/app/dashboard/seller/auctions/page.tsx": "1588e03506cecabd028700d1ebb89e3a7860da94af05c05c289de83b0f204166",
     "src/app/dashboard/seller/offers/page.tsx": "70a8275e1c62b4edda2580a8bca325ed034d074aa0ad481f93149ac4c6b18ac2",
-    "src/app/dashboard/user/page.tsx": "9b206be303206c4a22953a4b6fb5dd8f0f6e6662ccef9a3a94bc3d09a41c8235",
+    "src/app/dashboard/user/page.tsx": "30d9c3248b988ddc4ebbbffdb016783c1c973347c88f11b327325f31f59eef13",
     "src/app/download-app/page.tsx": "8f4d4c627ca73aab89f7fdd6e63befe55b36c5bd439e215be2c9a0dc6a02fa3f",
     "src/app/how-it-works/page.tsx": "19c09f9a25a8461870b64afc2c365c09400898c8c2ed9c457750a286cc1e69b7",
     "src/app/notifications/page.tsx": "081d0c0f966b27b9ad0a44ec07c40cfe57c7fe6a7e03cbd80c16035791ffca54",

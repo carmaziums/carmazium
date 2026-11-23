@@ -186,9 +186,10 @@ function UnifiedUserDashboardContent() {
     const userRole = profile?.role || "User"
 
     return (
-        <div className={`min-h-screen pb-12 ${activeTab === "messages" ? "pt-3 lg:pt-4" : "pt-20 lg:pt-4"}`}>
-            <div className="container mx-auto px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8">
-                {/* Unified Sidebar */}
+        <div className={`min-h-screen ${activeTab === "messages" ? "pt-3 pb-24 lg:pt-3 lg:pb-4" : "pt-20 lg:pt-4 pb-12"}`}>
+            <div className={`${activeTab === "messages" ? "w-full max-w-none" : "container mx-auto"} px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8`}>
+                {/* Keep the mobile dashboard navigation, but do not reserve desktop width for it in Messages. */}
+                <div className={activeTab === "messages" ? "lg:hidden" : "contents"}>
                 <DashboardSidebar
                     role="seller"
                     userName={userName}
@@ -201,6 +202,7 @@ function UnifiedUserDashboardContent() {
                         </Button>
                     </Link>
                 </DashboardSidebar>
+                </div>
 
                 <div className="flex-1 space-y-8 min-w-0">
 
@@ -1774,6 +1776,7 @@ function MessagesTab() {
             <RoleMessagesInbox
                 title="Messages"
                 subtitle="Conversations with buyers, sellers and CarMazium support"
+                backHref="/dashboard/user"
             />
         </div>
     )
