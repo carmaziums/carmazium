@@ -3,7 +3,8 @@
 import * as React from "react"
 import { createPortal } from "react-dom"
 import dynamic from "next/dynamic"
-import { MessageSquare, RefreshCw } from "lucide-react"
+import { ArrowLeft, MessageSquare, RefreshCw } from "lucide-react"
+import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { ChatRoomList } from "@/components/chat/ChatRoomList"
 import { useChat } from "@/context/ChatContext"
@@ -20,12 +21,14 @@ interface RoleMessagesInboxProps {
     title?: string
     subtitle?: string
     className?: string
+    backHref?: string
 }
 
 export function RoleMessagesInbox({
     title = "Messages",
     subtitle = "Your conversations in one place",
     className = "glass-card",
+    backHref,
 }: RoleMessagesInboxProps) {
     const { rooms, refreshRooms } = useChat()
     const searchParams = useSearchParams()
@@ -104,10 +107,15 @@ export function RoleMessagesInbox({
 
     return (
         <>
-            <div className={`${className} flex h-[calc(100dvh-175px)] min-h-0 min-w-0 flex-col overflow-hidden lg:h-[calc(100vh-180px)]`}>
+            <div className={`${className} flex h-[calc(100dvh-175px)] min-h-0 min-w-0 flex-col overflow-hidden lg:h-[calc(100dvh-170px)]`}>
                 <div className="shrink-0 border-b border-[var(--border-default)] p-3 sm:p-4">
                     <div className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-3">
+                            {backHref && (
+                                <Link href={backHref} aria-label="Back to dashboard" title="Back to dashboard" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">
+                                    <ArrowLeft size={18} />
+                                </Link>
+                            )}
                             <MessageSquare className="shrink-0 text-primary" size={20} />
                             <div className="min-w-0">
                                 <h2 className="truncate text-lg font-bold font-heading text-[var(--text-primary)]">
