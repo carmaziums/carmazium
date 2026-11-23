@@ -7,15 +7,12 @@ import {
     Archive,
     ArrowLeft,
     Clock3,
-    History,
     Inbox,
     MessageSquare,
     MessageSquarePlus,
-    Radio,
-    Flag,
-    ShieldAlert,
     UserCheck,
     UserMinus,
+    X,
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { ChatRoomList } from "@/components/chat/ChatRoomList"
@@ -148,31 +145,26 @@ function AdminMessagesContent() {
 
     return (
         <>
-        <div className="min-h-screen pt-3 pb-24 lg:pt-3 lg:pb-4">
-            <div className="w-full max-w-none px-2 sm:px-4 flex flex-col lg:flex-row gap-3 lg:gap-4">
+        <div className="min-h-screen pt-3 pb-24 lg:h-[calc(100dvh-5rem)] lg:min-h-0 lg:overflow-hidden lg:p-0">
+            <div className="flex w-full max-w-none flex-col gap-3 px-2 sm:px-4 lg:h-full lg:flex-row lg:gap-0 lg:p-0">
                 <div className="lg:hidden">
                     <DashboardSidebar role="admin" userName={userName} userType="Admin Account" />
                 </div>
 
-                <div className="flex-1 min-w-0">
-                    <div className="glass-card flex h-[calc(100dvh-165px)] min-h-0 flex-col overflow-hidden lg:h-[calc(100dvh-170px)] lg:min-h-0">
-                        <div className="shrink-0 p-3 sm:p-6 border-b border-[var(--border-default)] flex flex-col xl:flex-row xl:items-center justify-between gap-2 sm:gap-4">
+                <div className="flex-1 min-w-0 lg:h-full">
+                    <div className="flex h-[calc(100dvh-165px)] min-h-0 min-w-0 flex-col overflow-hidden bg-[var(--bg-card)] lg:h-full lg:border-0 lg:rounded-none lg:shadow-none">
+                        <div className="flex shrink-0 flex-col justify-between gap-2 border-b border-[var(--border-default)] px-3 py-2.5 sm:px-4 lg:min-h-[64px] lg:flex-row lg:items-center">
                             <div className="flex items-center gap-3 min-w-0">
                                 <Link href="/dashboard/admin" aria-label="Back to admin dashboard" title="Back to admin dashboard" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--bg-input)]">
                                     <ArrowLeft size={18} />
                                 </Link>
                                 <MessageSquare className="text-primary shrink-0" />
                                 <div className="min-w-0">
-                                    <h2 className="text-xl font-bold font-heading">Admin Messages</h2>
-                                    <p className="hidden sm:block text-xs text-[var(--text-muted)] mt-0.5 truncate">
+                                    <h2 className="text-lg font-bold font-heading text-[var(--text-primary)]">Admin Messages</h2>
+                                    <p className="hidden 2xl:block text-xs text-[var(--text-muted)] mt-0.5 truncate">
                                         Multi-agent support, internal operations and secure broadcasts
                                     </p>
                                 </div>
-                                {mode === "inbox" && selectedRoom?.context === "SUPPORT" && (
-                                    <button type="button" onClick={() => setShowSupportPanel(visible => !visible)} aria-expanded={showSupportPanel} className="hidden lg:inline-flex shrink-0 items-center rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] hover:border-primary">
-                                        {showSupportPanel ? "Hide support controls" : "Support controls"}
-                                    </button>
-                                )}
                             </div>
 
                             <div className="flex w-full items-center gap-2 sm:hidden">
@@ -197,65 +189,35 @@ function AdminMessagesContent() {
                                     </select>
                                 </label>
                             </div>
-                            <div className="hidden sm:flex max-w-full gap-1 overflow-x-auto whitespace-nowrap rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-1 shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                                <button
-                                    type="button"
-                                    onClick={() => setMode("inbox")}
-                                    className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold transition-all ${mode === "inbox" ? "bg-primary text-white shadow" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
-                                >
-                                    <MessageSquare size={15} /> Inbox
+                            <div className="hidden shrink-0 items-center gap-1.5 sm:flex" aria-label="Admin messaging tools">
+                                <button type="button" onClick={() => setMode("inbox")}
+                                    className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${mode === "inbox" ? "bg-primary text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"}`}>
+                                    Inbox
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setMode("new")
-                                        setSelectedRoom(null)
-                                    }}
-                                    className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold transition-all ${mode === "new" ? "bg-primary text-white shadow" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
-                                >
-                                    <MessageSquarePlus size={15} /> New Conversation
+                                <button type="button" onClick={() => { setMode("new"); setSelectedRoom(null) }}
+                                    className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${mode === "new" ? "bg-primary text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"}`}>
+                                    New conversation
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setMode("broadcast")
-                                        setSelectedRoom(null)
-                                    }}
-                                    className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold transition-all ${mode === "broadcast" ? "bg-primary text-white shadow" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
-                                >
-                                    <Radio size={15} /> Broadcast
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setMode("disputes")
-                                        setSelectedRoom(null)
-                                    }}
-                                    className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold transition-all ${mode === "disputes" ? "bg-primary text-white shadow" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
-                                >
-                                    <ShieldAlert size={15} /> Disputes
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setMode("moderation")
-                                        setSelectedRoom(null)
-                                    }}
-                                    className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold transition-all ${mode === "moderation" ? "bg-primary text-white shadow" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
-                                >
-                                    <Flag size={15} /> Moderation
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setMode("history")
-                                        setSelectedRoom(null)
-                                    }}
-                                    className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold transition-all ${mode === "history" ? "bg-primary text-white shadow" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
-                                >
-                                    <History size={15} /> History
-                                </button>
+                                <label className="shrink-0">
+                                    <span className="sr-only">Additional admin messaging tools</span>
+                                    <select aria-label="Additional admin messaging tools"
+                                        value={["broadcast", "disputes", "moderation", "history"].includes(mode) ? mode : ""}
+                                        onChange={(event) => { const nextMode = event.target.value as AdminMessageMode; if (nextMode) { setMode(nextMode); setSelectedRoom(null) } }}
+                                        className="h-9 max-w-[170px] rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-2 text-sm font-semibold text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-primary/50">
+                                        <option value="">More tools</option>
+                                        <option value="broadcast">Broadcast</option>
+                                        <option value="disputes">Disputes</option>
+                                        <option value="moderation">Moderation</option>
+                                        <option value="history">History</option>
+                                    </select>
+                                </label>
+                                {mode === "inbox" && selectedRoom?.context === "SUPPORT" && (
+                                    <button type="button" onClick={() => setShowSupportPanel(open => !open)}
+                                        aria-expanded={showSupportPanel} aria-label="Support controls"
+                                        className={`hidden rounded-lg border px-3 py-2 text-sm font-semibold transition-colors lg:inline-flex ${showSupportPanel ? "border-primary bg-primary/10 text-primary" : "border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"}`}>
+                                        Support controls
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -286,7 +248,7 @@ function AdminMessagesContent() {
                                 />
                             ) : (
                                 <div className="flex h-full min-h-0">
-                                    <div className={`w-full lg:w-[310px] lg:shrink-0 border-r border-[var(--border-default)] ${selectedRoom ? "hidden lg:flex lg:flex-col" : "flex flex-col"}`}>
+                                    <div className={`w-full lg:w-[320px] lg:shrink-0 border-r border-[var(--border-default)] bg-[var(--bg-card)] ${selectedRoom ? "hidden lg:flex lg:flex-col" : "flex flex-col"}`}>
                                         <div className="border-b border-[var(--border-default)] px-3 py-2 sm:hidden">
                                             <label className="flex items-center gap-2 text-sm font-medium text-[var(--text-muted)]">
                                                 Show
@@ -326,7 +288,7 @@ function AdminMessagesContent() {
 
                                     <div className={`min-h-0 min-w-0 flex-1 ${selectedRoom ? "hidden lg:flex" : "hidden lg:flex lg:items-center lg:justify-center"}`}>
                                         {selectedRoom ? (
-                                            <div className="flex h-full min-h-0 min-w-0 flex-1">
+                                            <div className="relative flex h-full min-h-0 min-w-0 flex-1">
                                                 <div className="min-h-0 min-w-0 flex-1">
                                                     <ChatWindow
                                                         room={selectedRoom}
@@ -334,7 +296,12 @@ function AdminMessagesContent() {
                                                     />
                                                 </div>
                                                 {selectedRoom.context === "SUPPORT" && showSupportPanel && (
-                                                    <div className="hidden lg:block w-[310px] shrink-0">
+                                                    <div className="absolute inset-y-0 right-0 z-30 hidden w-[min(360px,100%)] border-l border-[var(--border-default)] bg-[var(--bg-card)] shadow-2xl lg:block" role="region" aria-label="Internal support controls">
+                                                        <button type="button" onClick={() => setShowSupportPanel(false)}
+                                                            aria-label="Close support controls"
+                                                            className="absolute right-3 top-3 z-10 rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]">
+                                                            <X size={18} />
+                                                        </button>
                                                         <AdminSupportPanel
                                                             room={selectedRoom}
                                                             currentAdminId={user.id}
