@@ -31,15 +31,18 @@ describe('MaziuM source-verified public platform knowledge', () => {
         }
     });
 
-    it('uses the single TradeXchange provider hub for setup while keeping the job feed separate', () => {
+    it('distinguishes the operational Provider Dashboard, Service Setup and approved job feed', () => {
         for (const id of ['verification-and-kyc', 'tradexchange-jobs', 'dealer-services-and-partners']) {
             const topic = PLATFORM_KNOWLEDGE.find(t => t.id === id);
             expect(topic?.facts).toContain('/dashboard/partner');
         }
-        expect(VERIFIED_SITE_NAVIGATION).toContain('For TradeXchange service applications');
+        expect(VERIFIED_SITE_NAVIGATION).toMatch(/Service Provider Dashboard:\s*\/dashboard\/service(?:[,\s])/);
+        expect(VERIFIED_SITE_NAVIGATION).toMatch(/Service Setup[^\n]*:\s*\/dashboard\/partner\./);
+        expect(VERIFIED_SITE_NAVIGATION).toContain('Provider dashboard access does not itself approve a provider for new work.');
+        expect(hasUnverifiedNavigationPath('Open Provider Dashboard at /dashboard/service')).toBe(false);
         expect(VERIFIED_SITE_NAVIGATION).toContain('/dashboard/partner');
         expect(hasUnverifiedNavigationPath('Manage services at /dashboard/partner')).toBe(false);
-        expect(VERIFIED_SITE_NAVIGATION).toContain('/dashboard/service/jobs');
+        expect(VERIFIED_SITE_NAVIGATION).toContain('/dashboard/service/jobs for an approved service provider to find and quote matching jobs.');
     });
 
     it.each([

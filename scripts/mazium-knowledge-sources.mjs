@@ -1,4 +1,8 @@
-import ts from 'typescript';
+import { createRequire } from 'node:module';
+
+// Backend CI installs only backend dependencies. Node can also resolve the
+// website's root install through the normal ancestor node_modules lookup.
+const ts = createRequire(new URL('../backend/package.json', import.meta.url))('typescript');
 
 // Parse the catalogue instead of treating a ] inside a quoted Next route as
 // the end of its sources array. Unsupported entries fail rather than vanish.
