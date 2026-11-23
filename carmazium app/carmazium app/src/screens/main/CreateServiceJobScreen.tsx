@@ -117,14 +117,15 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
     if (event.type === 'dismissed') { setPickerVisible(false); return; }
     if (selected) {
       const next = new Date(selected);
-      if (pickerMode === 'date' && requestedFor) next.setHours(requestedFor.getHours(), requestedFor.getMinutes(), 0, 0);
+      if (Platform.OS === 'android' && pickerMode === 'date' && requestedFor) next.setHours(requestedFor.getHours(), requestedFor.getMinutes(), 0, 0);
       setRequestedFor(next);
       setAsap(false);
     }
     if (Platform.OS === 'android' && pickerMode === 'date') {
       setPickerMode('time');
       setPickerVisible(true);
-    } else setPickerVisible(false);
+    } else if (Platform.OS !== 'ios') setPickerVisible(false);
+    // iOS spinner remains open until Done so date AND time can be selected.
   };
 
   const field = (label: string, value: string, setValue: (value: string) => void, hint?: string, multiline = false, maxLength = 300) => (
@@ -255,17 +256,26 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
       <View style={styles.whenCard}>
         <Text style={styles.label}>When is the work needed?</Text>
         <View style={styles.toggle}><Text style={styles.label}>As soon as possible</Text>
-          <Switch value={asap} onValueChange={setAsap} accessibilityLabel="As soon as possible" /></View>
+          <Switch value={asap} onValueChange={(value) => { setAsap(value); if (value) setPickerVisible(false); }} accessibilityLabel="As soon as possible" /></View>
         {!asap && (
           <TouchableOpacity accessibilityRole="button" onPress={openDatePicker} style={styles.addVehicle}
             accessibilityLabel="Choose preferred date and time">
             <Text style={styles.addVehicleText}>{requestedFor ? requestedFor.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : 'Choose future date and time'}</Text>
           </TouchableOpacity>
         )}
-        {((Platform.OS === 'ios' && !asap) || pickerVisible) && (
-          <DateTimePicker value={requestedFor ?? new Date(Date.now() + 24 * 60 * 60 * 1000)}
-            mode={Platform.OS === 'ios' ? 'datetime' : pickerMode} minimumDate={new Date()}
-            onChange={onDateChange} display={Platform.OS === 'ios' ? 'spinner' : 'default'} />
+        {!asap && pickerVisible && (
+          <>
+            <DateTimePicker value={requestedFor ?? new Date(Date.now() + 24 * 60 * 60 * 1000)}
+              mode={Platform.OS === 'ios' ? 'datetime' : pickerMode} minimumDate={new Date()}
+              onChange={onDateChange} display={Platform.OS === 'ios' ? 'spinner' : 'default'} />
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity style={styles.datePickerDone}
+                accessibilityRole="button" accessibilityLabel="Done choosing date and time"
+                onPress={() => setPickerVisible(false)}>
+                <Text style={styles.datePickerDoneText}>Done</Text>
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </View>
       {field('Additional details', description, setDescription, 'Condition, availability and special instructions', true, 2000)}
@@ -286,6 +296,8 @@ const styles = StyleSheet.create({
   input: { borderColor: Colors.borderSubtle, borderWidth: 1, borderRadius: 12, color: Colors.white, backgroundColor: Colors.bgCardSolid, padding: 14, minHeight: 50 },
   toggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   whenCard: { gap: 12, borderColor: Colors.borderSubtle, borderWidth: 1, borderRadius: 12, padding: 14 },
+  datePickerDone: { minHeight: 48, backgroundColor: Colors.accent, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  datePickerDoneText: { color: Colors.onAccent, fontWeight: '700', fontSize: 14 },
   vehicleCard: { borderColor: Colors.borderSubtle, borderWidth: 1, borderRadius: 12, padding: 12, gap: 12, backgroundColor: Colors.bgCardSolid },
   vehicleHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   vehicleHeading: { fontSize: 16, fontWeight: '700', color: Colors.white },
