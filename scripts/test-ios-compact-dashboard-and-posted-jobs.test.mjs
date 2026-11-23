@@ -51,3 +51,16 @@ test('no second app or separate dealer/provider route was introduced', () => {
   assert.equal(picker?.[1]?.microphonePermission, false);
   assert.match(posted, /navigation\.navigate\('Services'\)/);
 });
+
+
+test('dealer CRM mobile actions follow website one-row Add Customer and full-width Offers hierarchy', () => {
+  const crm = read(native + 'screens/main/DealerLeadsScreen.tsx');
+  assert.match(crm, /width: viewportWidth, fontScale/);
+  assert.match(crm, /viewportWidth >= 640 && canManageOffers/);
+  assert.match(crm, /viewportWidth >= 640 && <View style=\{styles\.viewModeToggle\}>/);
+  assert.match(crm, /viewportWidth < 640 && canManageOffers/);
+  assert.match(crm, /crmOffersMobile: \{ width: '100%', justifyContent: 'space-between'/);
+  assert.match(crm, /accessibilityLabel="Offers received"/);
+  assert.match(crm, /styles\.crmOffersButton, styles\.crmOffersMobile/);
+  assert.match(crm, /accessibilityLabel="Add Customer"/);
+});
