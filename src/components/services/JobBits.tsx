@@ -116,18 +116,18 @@ export function JobListCard({ job, href, trailing }: { job: ServiceJob; href: st
             href={href}
             className="block rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 hover:border-primary/40 transition-colors"
         >
-            <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                 <div className="min-w-0">
-                    <h3 className="font-heading font-black text-base truncate">{job.title}</h3>
+                    <h3 className="font-heading font-black text-base break-words">{job.title}</h3>
                     <JobTiming job={job} />
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-wrap items-center gap-2">
                     {job.isRecovery && <RecoveryBadge />}
                     <JobStatusBadge status={job.status} />
                 </div>
             </div>
             <JobRoute job={job} className="mb-2" />
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
                 <JobVehicles vehicles={job.vehicles} compact />
                 {trailing}
             </div>

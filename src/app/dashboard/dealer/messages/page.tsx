@@ -2,13 +2,13 @@
 
 import * as React from "react"
 import { Activity } from "lucide-react"
-import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import Link from "next/link"
 import { RoleMessagesInbox } from "@/components/chat/RoleMessagesInbox"
 import { useAuth } from "@/context/AuthContext"
 import { getDealerRoute } from "@/config/dealerRouteConfig"
 
 function MessagesContent() {
-    const { user, profile, loading } = useAuth()
+    const { loading } = useAuth()
 
     if (loading) {
         return (
@@ -23,23 +23,12 @@ function MessagesContent() {
         )
     }
 
-    const userName = profile?.firstName
-        ? `${profile.firstName} ${profile.lastName || ""}`
-        : (user?.email?.split("@")[0] || "Dealer")
     const route = getDealerRoute("/dashboard/dealer/messages")
 
     return (
-        <div className="min-h-screen pt-3 pb-24 lg:pt-20 lg:pb-12">
-            <div className="container mx-auto px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8">
-                <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
-                <div className="flex-1 min-w-0">
-                    <RoleMessagesInbox
-                        title={route.title}
-                        subtitle={route.subHeader}
-                        className="dealer-glass-card"
-                    />
-                </div>
-            </div>
+        <div className="w-full min-w-0 px-2 sm:px-4 py-3">
+            <Link href="/dashboard/dealer" className="mb-2 inline-flex min-h-11 items-center font-semibold underline">Back to dealer dashboard</Link>
+            <RoleMessagesInbox title={route.title} subtitle={route.subHeader} spacious className="bg-[var(--bg-card)]" />
         </div>
     )
 }

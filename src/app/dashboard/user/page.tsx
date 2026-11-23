@@ -184,9 +184,10 @@ function UnifiedUserDashboardContent() {
 
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
     const userRole = profile?.role || "User"
+    if (activeTab === "messages") return <div className="w-full min-w-0 px-2 sm:px-4 py-3"><Link href="/dashboard/user?tab=overview" className="mb-2 inline-flex min-h-11 items-center font-semibold underline">Back to dashboard</Link><MessagesTab /></div>
 
     return (
-        <div className={`min-h-screen pb-12 ${activeTab === "messages" ? "pt-3 lg:pt-4" : "pt-20 lg:pt-4"}`}>
+        <div className="min-h-screen pb-12 pt-20 lg:pt-4">
             <div className="container mx-auto px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8">
                 {/* Unified Sidebar */}
                 <DashboardSidebar
@@ -228,7 +229,6 @@ function UnifiedUserDashboardContent() {
                         {activeTab === "bids" && <OutgoingOffersTab onRefreshStats={fetchStats} />}
                         {activeTab === "watchlist" && <WatchlistTab />}
                         {activeTab === "stats" && <StatsTab />}
-                        {activeTab === "messages" && <MessagesTab />}
                         {activeTab === "earnings" && <EarningsTab />}
                         {activeTab === "settings" && <SettingsTab profile={profile} refreshProfile={refreshProfile} />}
                     </div>
@@ -1774,6 +1774,7 @@ function MessagesTab() {
             <RoleMessagesInbox
                 title="Messages"
                 subtitle="Conversations with buyers, sellers and CarMazium support"
+                spacious className="bg-[var(--bg-card)]"
             />
         </div>
     )

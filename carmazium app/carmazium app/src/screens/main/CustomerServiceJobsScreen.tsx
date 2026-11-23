@@ -1,7 +1,6 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   RefreshControl,
   StatusBar,
@@ -27,11 +26,13 @@ import {
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { Button } from '../../components/Button';
+import { REQUEST_FILTERS, requestMatches, requestNextStep, type RequestFilter } from '../../lib/serviceRequestViews';
+import { getServiceSettings } from '../../lib/servicesApi';
+import { useAuthStore } from '../../store/authStore';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CustomerServiceJobs'>;
 
 const statusLabel = (status: ServiceJob['status']) => ({ OPEN: 'Open for quotes', ACCEPTED: 'Awaiting payment', PAID: 'Paid — ready', IN_PROGRESS: 'In progress', COMPLETED: 'Awaiting confirmation', RELEASED: 'Complete', CANCELLED: 'Cancelled', EXPIRED: 'Expired', DISPUTED: 'Disputed' }[status]);
-const isPast = (job: ServiceJob) => ['RELEASED', 'CANCELLED', 'EXPIRED'].includes(job.status);
 
 const locationText = (job: ServiceJob) => {
   if (job.serviceType === 'INSPECTION') {
@@ -52,8 +53,14 @@ const trailingText = (job: ServiceJob) => {
   return `${job._count?.quotes ?? active.length} quote${(job._count?.quotes ?? active.length) === 1 ? '' : 's'}`;
 };
 
-export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
+export const CustomerServiceJobsScreen: React.FC<Props> = props => {
+  const userId=useAuthStore(s=>s.user?.id);
+  return userId ? <CustomerRequests key={userId} {...props}/> : null;
+};
+const CustomerRequests: React.FC<Props> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const [filter,setFilter]=useState<RequestFilter>("all");
+  const [availability,setAvailability]=useState<{DELIVERY?:boolean;INSPECTION?:boolean}|null>(null);
   const [jobs, setJobs] = useState<ServiceJob[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,22 +68,25 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const requestId=useRef(0);
+  const activeRequest=useRef(false);
   const load = useCallback(async (mode: 'reset' | 'more' = 'reset') => {
-    if (mode === 'more' && !nextCursor) return;
+    if (mode === 'more' && (!nextCursor || activeRequest.current)) return;
+    const id=++requestId.current;
+    activeRequest.current=true;
     mode === 'more' ? setLoadingMore(true) : setLoading(true);
     setError(null);
     try {
       const page = await getMyServiceJobsPage(
         mode === 'more' ? nextCursor ?? undefined : undefined,
       );
-      setJobs((prev) => mode === 'more' ? [...prev, ...page.items] : page.items);
+      if(id!==requestId.current)return;
+      setJobs((prev) => mode === 'more' ? [...new Map([...prev,...page.items].map(job=>[job.id,job])).values()] : page.items);
       setNextCursor(page.nextCursor);
     } catch (err: any) {
-      setError(err?.message || 'Could not load your service jobs.');
+      if(id===requestId.current)setError(err?.message || 'Could not load your service requests.');
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
-      setRefreshing(false);
+      if(id===requestId.current){activeRequest.current=false;setLoading(false);setLoadingMore(false);setRefreshing(false);}
     }
   }, [nextCursor]);
 
@@ -85,6 +95,8 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
   // refetch loop when the paginated cursor changes.
   useFocusEffect(useCallback(() => {
     void load('reset');
+    let active=true; getServiceSettings().then(data=>{if(active)setAvailability(data.availability??{});}).catch(()=>{if(active)setAvailability(null)});
+    return ()=>{active=false;requestId.current++;activeRequest.current=false};
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []));
 
@@ -94,14 +106,12 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
     void load('reset');
   }, [load]);
 
-  const ordered = [...jobs.filter(job => !isPast(job)), ...jobs.filter(isPast)];
-  const postJob = () => Alert.alert('Post a Job', 'Choose the service you need.', [
-    { text: 'Delivery or recovery', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'DELIVERY' }) },
-    { text: 'Vehicle inspection', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'INSPECTION' }) },
-    { text: 'Cancel', style: 'cancel' },
-  ]);
-  const renderJob = ({ item: job, index }: { item: ServiceJob; index: number }) => (<View style={styles.jobRow}>
-    {(index === 0 || isPast(ordered[index - 1]) !== isPast(job)) && <Text style={styles.typeText}>{isPast(job) ? 'Past' : 'Active'}</Text>}
+  const ordered = jobs.filter(job=>requestMatches(job,filter));
+  const requestActions = <View style={styles.actions}>
+    {availability && availability.DELIVERY !== false && <Button label="Request transport" size="sm" onPress={()=>navigation.navigate('CreateServiceJob', {serviceType:'DELIVERY'})}/>}
+    {availability && availability.INSPECTION !== false && <Button label="Request inspection" variant="outline" size="sm" onPress={()=>navigation.navigate('CreateServiceJob', {serviceType:'INSPECTION'})}/>}
+  </View>;
+  const renderJob = ({ item: job }: { item: ServiceJob }) => (<View style={styles.jobRow}>
     <TouchableOpacity
       style={styles.card}
       activeOpacity={0.82}
@@ -138,7 +148,7 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.metaRow}>
           <Ionicons name="car-sport-outline" size={14} color={Colors.textMuted} />
           <Text style={styles.metaText}>
-            {[job.vehicles[0].registration, job.vehicles[0].make, job.vehicles[0].model]
+            {job.vehicles.length>1 ? job.vehicles.length+' vehicles' : [job.vehicles[0].registration, job.vehicles[0].make, job.vehicles[0].model]
               .filter(Boolean).join(' · ') || 'Vehicle'}
           </Text>
         </View>
@@ -163,9 +173,9 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
       ) : null}
 
       <View style={styles.footer}>
-        <Text style={styles.trailing}>{job.status === 'OPEN' ? trailingText(job) : ''}</Text>
+        <Text style={styles.trailing}>{job.status === 'OPEN' || job.agreedAmountPence != null ? trailingText(job) : ''}</Text>
         <View style={styles.openRow}>
-          <Text style={styles.openText}>VIEW JOB</Text>
+          <Text style={styles.openText}>{requestNextStep(job)}</Text>
           <Ionicons name="chevron-forward" size={15} color={Colors.accent} />
         </View>
       </View>
@@ -184,17 +194,21 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
           accessibilityLabel="Go back"
         />
         <View style={{ flex: 1 }}>
-          <Text accessibilityRole="header" style={styles.headerTitle} maxFontSizeMultiplier={1.25}>My Posted Jobs</Text>
+          <Text accessibilityRole="header" style={styles.headerTitle} maxFontSizeMultiplier={1.25}>My Service Requests</Text>
           <Text style={styles.headerSub}>TradeXchange</Text>
         </View>
         <HamburgerButton />
       </View>
       <View style={styles.intro}>
-        <Text style={styles.introText}>Track your delivery, recovery and inspection jobs, review quotes and manage the providers you choose.</Text>
+        <Text style={styles.introText}>Review quotes, pay for accepted services and track the work you requested. This is separate from providing services.</Text>
         <View style={styles.actions}>
           <Button label="TradeXchange Services" variant="outline" size="sm" onPress={() => navigation.navigate('Services')} />
-          <Button label="Post a Job" size="sm" onPress={postJob} />
+          <Button label="Warranty orders" variant="outline" size="sm" onPress={()=>navigation.navigate("WarrantyOrders")}/>
         </View>
+        {requestActions}
+        {availability===null && <Text style={styles.metaText}>Service availability is being checked. You can still view your existing requests.</Text>}
+        <View style={styles.actions}>{REQUEST_FILTERS.map(([id,label])=><Button key={id} label={label} size="sm" variant={filter===id?"primary":"outline"} onPress={()=>setFilter(id)}/>)}</View>
+        <Text style={styles.metaText}>{ordered.length} matching requests in {jobs.length} loaded{nextCursor?" — load more to search older requests":""}.</Text>
       </View>
     </>
   );
@@ -213,16 +227,9 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
   ) : (
     <View style={styles.centerCard}>
       <Ionicons name="briefcase-outline" size={34} color={Colors.textMuted} />
-      <Text style={styles.emptyTitle}>No jobs yet</Text>
-      <Text style={styles.emptyText}>Post a delivery, recovery or inspection job and approved providers can compete for it with quotes.</Text>
-      <TouchableOpacity
-        style={styles.primaryButton}
-        onPress={postJob}
-        accessibilityRole="button"
-        accessibilityLabel="Post your first job"
-      >
-        <Text style={styles.primaryText}>Post your first job</Text>
-      </TouchableOpacity>
+      <Text style={styles.emptyTitle}>{jobs.length ? "No matching requests in loaded history" : "No jobs yet"}</Text>
+      <Text style={styles.emptyText}>Request transport or an inspection to receive quotes, or choose another filter.</Text>
+      {requestActions}
     </View>
   );
 
@@ -241,7 +248,7 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
         onEndReachedThreshold={0.35}
         ListFooterComponent={loadingMore
           ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 18 }} />
-          : error && jobs.length > 0 ? <Text style={styles.inlineError}>{error}</Text> : null}
+          : <View>{error && jobs.length > 0 ? <Text style={styles.inlineError}>{error}</Text> : null}{nextCursor && <Button label="Load older requests" variant="outline" onPress={()=>void load("more")}/>}</View>}
       />
     </View>
   );

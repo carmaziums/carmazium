@@ -102,7 +102,7 @@
     {
       "id": "user-service-jobs",
       "section": "Services",
-      "label": "Delivery & Inspections",
+      "label": "My Service Requests",
       "icon": "briefcase-outline",
       "iconLib": "ion",
       "stackScreen": "CustomerServiceJobs",
@@ -338,6 +338,15 @@
       "iconLib": "ion",
       "stackScreen": "PartnerDashboard",
       "href": "/dashboard/partner"
+    },
+    {
+      "id": "dealer-customer-requests",
+      "section": "Services",
+      "label": "My Service Requests",
+      "icon": "clipboard-outline",
+      "iconLib": "ion",
+      "stackScreen": "CustomerServiceJobs",
+      "href": "/services/jobs"
     },
     {
       "id": "dealer-warranties",

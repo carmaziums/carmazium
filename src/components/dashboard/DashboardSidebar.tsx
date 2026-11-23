@@ -211,7 +211,7 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
         { href: "/dashboard/user?tab=watchlist", label: "Saved Cars", icon: Heart, section: "Buying", activePrefixes: ["/dashboard/buyer/watchlist"] },
         { href: "/dashboard/user?tab=purchases", label: "Purchases", icon: Receipt, section: "Buying", activePrefixes: ["/dashboard/buyer/history"] },
         { href: "/dashboard/warranties", label: "My Warranties", icon: ShieldCheck, section: "Buying" },
-        { href: "/services/jobs", label: "Delivery & Inspections", icon: Briefcase, section: "Services" },
+        { href: "/services/jobs", label: "My Service Requests", icon: Briefcase, section: "Services" },
         { href: "/dashboard/cancellations", label: "Sale Cancellations", icon: ShieldCheck, section: "Account" },
         { href: "/dashboard/enquiries", label: "Guest enquiries", icon: MessageSquare, section: "Selling" },
         { href: "/dashboard/user?tab=messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account", activePrefixes: ["/dashboard/buyer/messages", "/dashboard/seller/messages"] },

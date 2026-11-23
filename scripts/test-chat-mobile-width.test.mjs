@@ -27,7 +27,8 @@ test("legacy buyer, seller and admin message panes stay width-constrained", () =
     for (const role of ["seller", "buyer", "admin"]) {
         const page = `src/app/dashboard/${role}/messages/page.tsx`
         const src = readFileSync(page, "utf8")
-        assert.match(src, /min-w-0/, page)
+        if(role==="admin") assert.match(src, /min-w-0/, page)
+        else {assert.match(src,/encodeURIComponent\(room\)/,page);assert.doesNotMatch(src,/ChatWindow|ChatRoomList/,page)}
     }
 })
 

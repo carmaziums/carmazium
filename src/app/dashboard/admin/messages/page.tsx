@@ -15,7 +15,7 @@ import {
     UserCheck,
     UserMinus,
 } from "lucide-react"
-import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
+import Link from "next/link"
 import { ChatRoomList } from "@/components/chat/ChatRoomList"
 import { AdminBroadcastComposer } from "@/components/admin/AdminBroadcastComposer"
 import { AdminBroadcastHistory } from "@/components/admin/AdminBroadcastHistory"
@@ -131,10 +131,6 @@ function AdminMessagesContent() {
 
     if (!user || profile?.role !== "ADMIN") return null
 
-    const userName = profile?.firstName
-        ? `${profile.firstName} ${profile.lastName || ""}`
-        : (user.email?.split("@")[0] || "Admin")
-
     const filters: Array<{ value: SupportFilter; label: string; icon: React.ReactNode; count: number }> = [
         { value: "all", label: "All", icon: <Inbox size={12} />, count: filterCounts.all },
         { value: "needs", label: "Needs reply", icon: <Clock3 size={12} />, count: filterCounts.needs },
@@ -145,12 +141,12 @@ function AdminMessagesContent() {
 
     return (
         <>
-        <div className="min-h-screen pt-3 pb-24 lg:pt-20 lg:pb-12">
-            <div className="container mx-auto px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8">
-                <DashboardSidebar role="admin" userName={userName} userType="Admin Account" />
+        <div className="w-full min-w-0 py-3">
+            <div className="w-full min-w-0 px-2 sm:px-4">
+                <Link href="/dashboard/admin" className="mb-2 inline-flex min-h-11 items-center font-semibold underline">Back to admin dashboard</Link>
 
                 <div className="flex-1 min-w-0">
-                    <div className="glass-card flex h-[calc(100dvh-165px)] min-h-0 flex-col overflow-hidden lg:h-[calc(100vh-180px)] lg:min-h-[620px]">
+                    <div className="bg-[var(--bg-card)] flex h-[calc(100dvh-165px)] min-h-0 flex-col overflow-hidden lg:h-[calc(100dvh-145px)]">
                         <div className="shrink-0 p-3 sm:p-6 border-b border-[var(--border-default)] flex flex-col xl:flex-row xl:items-center justify-between gap-2 sm:gap-4">
                             <div className="flex items-center gap-3 min-w-0">
                                 <MessageSquare className="text-primary shrink-0" />
