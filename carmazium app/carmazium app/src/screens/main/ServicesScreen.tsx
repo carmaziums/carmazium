@@ -174,6 +174,8 @@ export const ServicesScreen: React.FC = () => {
           <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
         </TouchableOpacity>
 
+        <TouchableOpacity style={styles.card} accessibilityRole="button" onPress={()=>navigation.navigate("BusinessSpotlight")}><View style={{flex:1}}><Text style={styles.cardTitle}>Business Spotlight</Text><Text style={styles.cardDesc}>Explore featured automotive businesses.</Text></View><Ionicons name="chevron-forward" size={20} color={Colors.textMuted}/></TouchableOpacity>
+        <TouchableOpacity style={styles.card} accessibilityRole="button" onPress={()=>navigation.navigate("Contact",{topic:"insurance-partnership"})}><View style={{flex:1}}><Text style={styles.cardTitle}>Insurance partnerships</Text><Text style={styles.cardDesc}>Discuss specialist integration directly with CarMazium.</Text></View><Ionicons name="chevron-forward" size={20} color={Colors.textMuted}/></TouchableOpacity>
         <View style={styles.noteCard}>
           <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={styles.noteText}>

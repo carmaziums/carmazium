@@ -31,7 +31,7 @@ export const FinanceScreen: React.FC<any> = ({ navigation, route }) => {
   }, [listingId, retry]);
   const submit = async () => {
     if (inFlight.current || !provider) return;
-    if (fullName.trim().length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || !/^\+?[\d\s().-]{7,30}$/.test(phone.trim()) || !consent) {
+    if (fullName.trim().length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || !/^\+?[\d\s().-]{7,30}$/.test(phone.trim()) || phone.replace(/\D/g,'').length < 7 || phone.replace(/\D/g,'').length > 15 || !consent) {
       setError('Enter your name, valid email and telephone number, then agree to the referral notice.'); return;
     }
     const details = { listingId, providerId: provider.id, providerVersion: provider.version, fullName: fullName.trim(), email: email.trim(), phone: phone.trim(), consent };
@@ -47,7 +47,7 @@ export const FinanceScreen: React.FC<any> = ({ navigation, route }) => {
     finally { inFlight.current = false; setBusy(false); }
   };
   return <NativePage title="Vehicle Finance">
-    <Text style={s.body}>CarMazium does not provide finance or make lending decisions. Start with a participating vehicle to apply through its selected finance provider.</Text>
+    <Text style={s.body}>CarMazium does not provide finance or make lending decisions. Start with a participating retail vehicle, enter your contact details, then complete a separate application with its selected finance provider. Subject to status and lender approval.</Text>
     {loading && <ActivityIndicator accessibilityLabel="Checking finance availability" />}
     {provider && <View style={s.panel}>
       <Text style={s.title}>{title}</Text>
@@ -64,6 +64,6 @@ export const FinanceScreen: React.FC<any> = ({ navigation, route }) => {
     {!!listingId && !provider && !loading && <Button label="Retry availability" variant="outline" onPress={() => setRetry(n => n + 1)} />}
     <Button label="Browse cars" onPress={() => navigation.navigate('Tabs', { screen: 'Search' })} />
     <Text style={s.label}>Finance providers</Text><Text style={s.body}>Contact our team to discuss a partnership. Finance-provider registration is arranged directly with CarMazium.</Text>
-    <Button label="Contact the team" variant="outline" onPress={() => navigation.navigate('Contact')} />
+    <Button label="Contact the team" variant="outline" onPress={() => navigation.navigate('Contact',{topic:'finance-partnership'})} />
   </NativePage>;
 };

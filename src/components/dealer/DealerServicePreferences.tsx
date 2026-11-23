@@ -35,7 +35,7 @@ export function DealerServicePreferences() {
     }
     return <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 space-y-4">
         <h2 className="text-xl font-bold">Listing badges</h2>
-        <p className="text-sm text-[var(--text-muted)]">Finance and warranty badges apply only to your listings. Manage collection, delivery, recovery and inspection from TradeXchange instead.</p>
+        <p className="text-sm text-[var(--text-muted)]">These badges describe services offered by your dealership. They do not activate the CarMazium finance calculator or Warrantywise checkout. Manage collection, delivery, recovery and inspection from TradeXchange instead.</p>
         <div className="grid gap-4 sm:grid-cols-2">{options.map(([key, title, description]) => {
             const enabled = dealer[key] !== false
             return <div key={key} className="rounded-xl border border-[var(--border-default)] p-4"><label data-tour={key} className="flex items-start gap-3">
@@ -45,7 +45,7 @@ export function DealerServicePreferences() {
                     <p className="mt-2 text-xs text-[var(--text-muted)]">{enabled ? 'Badge on — buyers contact you for details.' : 'Badge off — hidden from your listings.'} No provider application is needed.</p>
             </div>
         })}</div>
-        <p className="text-sm text-[var(--text-muted)]">TradeXchange service eligibility is managed separately from listing badges.</p>
+        <p className="text-sm text-[var(--text-muted)]">TradeXchange service eligibility and the platform finance calculator are managed separately from these listing badges.</p>
         {message && <p role="status" className="text-sm">{message}</p>}
     </section>
 }

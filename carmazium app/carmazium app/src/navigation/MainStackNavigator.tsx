@@ -187,7 +187,7 @@ export type MainStackParamList = {
   HowItWorks: undefined;
   AuctionGuide: undefined;
   About: undefined;
-  Contact: undefined;
+  Contact: { topic?: "finance-partnership" | "warranty-partnership" | "insurance-partnership" } | undefined;
   Pricing: undefined;
   TraderPricing: undefined;
   Reviews: undefined;

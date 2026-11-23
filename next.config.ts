@@ -25,6 +25,7 @@ const nextConfig: NextConfig = {
     return [
       // Retired duplicate hub; exact path only, never redirect service details or jobs.
       { source: '/services', destination: '/auctions', permanent: true },
+      { source: '/finance', destination: '/services/finance', permanent: true },
         { source: '/services/jobs/new', destination: '/auctions#request-services', permanent: true },
       {
         source: '/index.html',

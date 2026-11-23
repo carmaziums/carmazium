@@ -112,6 +112,7 @@ export default function TradeXchangePage() {
                     </div>
                 </article>
             </div>
+            <Link href="/business-spotlight" className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-xl border border-[var(--border-default)] px-5 py-3 font-semibold hover:bg-[var(--bg-input)]">Explore Business Spotlight <ArrowRight size={18} aria-hidden="true" /></Link>
         </section>
     </div>
 }

@@ -5,7 +5,7 @@ export function FinanceProviderContact() {
         <h2 className="text-xl font-bold">Finance providers: contact our team</h2>
         <p className="text-sm text-[var(--text-muted)]">Want to offer vehicle finance through CarMazium? Contact our team directly to discuss a partnership. Finance providers cannot register or activate this service through the website.</p>
         <div className="flex flex-wrap gap-4 text-sm font-semibold text-primary">
-            <Link href="/contact">Contact the team</Link>
+            <Link href="/contact?topic=finance-partnership">Discuss a finance partnership</Link>
             <a href="mailto:info@carmazium.com?subject=Finance%20provider%20partnership">Email info@carmazium.com</a>
             <a href="tel:+441218385040">Call 0121 838 5040</a>
         </div>

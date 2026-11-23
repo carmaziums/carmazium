@@ -12,23 +12,26 @@ export function FinanceReferralForm({ listingId }: { listingId: string }) {
     const [provider, setProvider] = useState<FinanceProvider | null>(null)
     const [error, setError] = useState("")
     const [busy, setBusy] = useState(false)
+    const [retry,setRetry] = useState(0)
+    const inFlight = useRef(false)
     const request = useRef<{ key: string; id: string } | null>(null)
     useEffect(() => {
         let active = true
-        setAvailable(null); setProvider(null)
+        setAvailable(null); setProvider(null); setError("")
         apiClient<{ data: { enabled: boolean; title: string | null; provider: FinanceProvider | null } }>(`/finance/referrals/listing/${encodeURIComponent(listingId)}`)
             .then(r => { if (active) { setAvailable(r.data.enabled); setTitle(r.data.title || ""); setProvider(r.data.provider) } })
             .catch(() => { if (active) { setAvailable(false); setError("We could not confirm finance availability. Please return to the listing and try again.") } })
         return () => { active = false }
-    }, [listingId])
+    }, [listingId,retry])
     async function submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault()
-        if (busy || !provider) return
+        if (inFlight.current || !provider) return
         const form = new FormData(event.currentTarget)
         const details = { listingId, providerId: provider.id, providerVersion: provider.version, fullName: String(form.get("fullName")).trim(), email: String(form.get("email")).trim(), phone: String(form.get("phone")).trim(), consent: form.get("consent") === "on" }
+        if (details.phone.replace(/\D/g,"").length < 7 || details.phone.replace(/\D/g,"").length > 15 || !/^\+?[\d\s().-]{7,30}$/.test(details.phone)) { setError("Enter a valid phone number."); return }
         const key = JSON.stringify(details)
         if (!request.current || request.current.key !== key) request.current = { key, id: crypto.randomUUID() }
-        setBusy(true); setError("")
+        inFlight.current = true; setBusy(true); setError("")
         try {
             // The API requires a custom header for anonymous mutations; browsers
             // must pass its existing CORS preflight before submitting this form.
@@ -36,15 +39,15 @@ export function FinanceReferralForm({ listingId }: { listingId: string }) {
             const expected = provider.applicationUrl
             if (result.data.redirectUrl !== expected || new URL(expected).protocol !== "https:") throw new Error("The finance link could not be verified. Please contact the team.")
             window.location.assign(expected)
-        } catch (e) { setError(e instanceof Error ? e.message : "Could not save your details. Please try again."); setBusy(false) }
+        } catch (e) { setError(e instanceof Error ? e.message : "Could not save your details. Please try again."); inFlight.current = false; setBusy(false) }
     }
     if (available === null) return <p role="status">Checking this vehicle…</p>
-    if (!available || !provider) return <div role="status"><p>{error || "Finance has been turned off for this listing, or the vehicle is no longer available."}</p><Link href="/search" className="text-primary underline">Browse available cars</Link></div>
+    if (!available || !provider) return <div role="status"><p>{error || "Finance has been turned off for this listing, or the vehicle is no longer available."}</p><div className="mt-4 flex flex-wrap gap-3"><button type="button" onClick={()=>setRetry(n=>n+1)} className="min-h-12 rounded-xl border px-4 py-3 font-semibold">Check again</button><Link href="/search" className="inline-flex min-h-12 items-center text-primary underline">Browse available cars</Link></div></div>
     const input = "mt-1 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)]"
     return <form onSubmit={submit} className="space-y-5">
-        <h2 className="text-xl font-bold">Apply for Finance</h2>
+        <h2 className="text-xl font-bold">Your finance application</h2>
         <p className="font-semibold">{title}</p>
-        <p className="text-sm text-[var(--text-muted)]">Enter your contact details below. We will record your interest and notify the CarMazium admin team, then take you to the application on {provider.name}’s website.</p>
+        <p className="text-sm text-[var(--text-muted)]">Selected provider: {provider.name}. Enter your contact details below. We will record your interest and notify the CarMazium admin team, then take you to the application on {provider.name}’s website.</p>
         <label className="block text-sm font-semibold">Full name<input className={input} name="fullName" autoComplete="name" required minLength={2} maxLength={120} /></label>
         <label className="block text-sm font-semibold">Email address<input className={input} name="email" type="email" autoComplete="email" required maxLength={254} /></label>
         <label className="block text-sm font-semibold">Phone number<input className={input} name="phone" type="tel" autoComplete="tel" required minLength={7} maxLength={30} /></label>

@@ -36,7 +36,7 @@ export default function WarrantyLayout({ children }: { children: React.ReactNode
                     serviceType: "Vehicle warranty ordering",
                     description: metadata.description,
                     url: SEO_SITE + "/services/warranty",
-                    provider: { "@id": SEO_SITE + "/#organization" },
+                    broker: { "@id": SEO_SITE + "/#organization" },
                     brand: { "@id": SEO_TRADEXCHANGE },
                     areaServed: { "@type": "Country", name: "United Kingdom" },
                 }}

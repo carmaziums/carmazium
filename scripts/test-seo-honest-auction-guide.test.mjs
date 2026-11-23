@@ -2,7 +2,7 @@
 // Customer-facing SEO/trust contract for marketing examples and the finance URL.
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { readFileSync, existsSync } from "node:fs"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -11,9 +11,11 @@ const read = (path) => readFileSync(resolve(root, path), "utf8")
 
 test("finance sitemap entry is the indexable canonical target, not its redirect", () => {
   const sitemap = read("src/app/sitemap.ts")
-  const legacy = read("src/app/finance/page.tsx")
+  const redirects = read("next.config.ts")
+  assert.ok(!existsSync(resolve(root,"src/app/finance/page.tsx")))
+  assert.ok(!existsSync(resolve(root,"src/app/finance/layout.tsx")))
   const target = read("src/app/services/finance/layout.tsx")
-  assert.match(legacy, /redirect\("\/services\/finance"\)/)
+  assert.match(redirects, /source: '\/finance', destination: '\/services\/finance', permanent: true/)
   assert.match(sitemap, /"\/services\/finance"/)
   assert.ok(!sitemap.includes('    "/finance",'), "legacy finance redirect must not be in sitemap")
   assert.match(target, /canonical: "\/services\/finance"/)

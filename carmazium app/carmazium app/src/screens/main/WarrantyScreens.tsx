@@ -10,7 +10,7 @@ import { Button } from '../../components/Button';
 import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
-import { customerFields, vehicleFields, warrantyPayload, money, type WarrantyField, type WarrantyOrder } from '../../lib/nativeWarranty';
+import { customerFields, vehicleFields, warrantyPayload, warrantyEstimate, money, type WarrantyField, type WarrantyOrder } from '../../lib/nativeWarranty';
 const headers = { 'X-CSRF-Token': 'warranty-order' };
 const tokenKey = (id: string) => `carmazium-warranty-${id}`;
 const additions = [['AIRBAGS', 'Airbag protection +£20'], ['DRIVER_ASSISTANCE', 'Driver assistance +£20'], ['EMISSIONS', 'Emissions +£20'], ['MULTIMEDIA', 'Multimedia +£80']];
@@ -30,16 +30,16 @@ export function WarrantyScreen({ navigation, route }: any) {
     apiClient<{data:{title:string;vrm?:string;make?:string;model?:string;engineSize?:number;fuelType?:string;price:string}}>(`/warranties/listing/${encodeURIComponent(listingId)}`).then(({data})=>{
       if(!active)return;setListingTitle(data.title);
       const fields:Record<string,string>={vrm:data.vrm||'',make:data.make||'',model:data.model||'',engineCc:data.engineSize?.toString()||'',fuelType:data.fuelType||'',retailValue:String(data.price)};
-      setValues(old=>({...old,...Object.fromEntries(Object.entries(fields).filter(([key])=>!edited.current.has(key)))}));
+      setValues(old=>({...old,...Object.fromEntries(Object.entries(fields).filter(([key])=>!edited.current.has(key)))}));setConfirmed(false);
     }).catch(()=>{if(active){setError('This listing could not be loaded. Enter the vehicle details manually to request a standalone quote.');setListingId('');}}).finally(()=>{if(active)setPrefillBusy(false);});
     return()=>{active=false;};
   },[listingId]);
-  const change = (key: string, value: string) => { edited.current.add(key); setValues(old => ({ ...old, [key]: value })); setError(''); };
+  const change = (key: string, value: string) => { edited.current.add(key); if (vehicleFields.some(f=>f.key===key)||key==='faultDetails') setConfirmed(false); setValues(old => ({ ...old, [key]: value })); setError(''); };
   const lookup = async () => {
     if (lookupBusy) return;
     const vrm = (values.vrm || '').replace(/\s/g, '').toUpperCase();
     if (!/^[A-Z0-9]{2,8}$/.test(vrm)) { setError('Enter the vehicle registration first.'); return; }
-    setLookupBusy(true); setError('');
+    setLookupBusy(true); setConfirmed(false); setError('');
     try {
       const data = await apiClient<{ make?: string; model?: string; engineSize?: number; fuelType?: string; firstUsedDate?: string; motHistoryStatus?: string }>('/dvla/lookup', { method: 'POST', body: JSON.stringify({ vrm, allowAiEnrichment: false }) });
       setValues(old => old.vrm?.replace(/\s/g, '').toUpperCase() !== vrm ? old : { ...old, vrm, make: data.make || old.make || '', model: data.model || old.model || '', engineCc: data.engineSize !== undefined ? String(data.engineSize) : old.engineCc || '', fuelType: data.fuelType || old.fuelType || '', firstRegistrationDate: /^\d{4}-\d{2}-\d{2}/.test(data.firstUsedDate || '') ? data.firstUsedDate!.slice(0, 10) : old.firstRegistrationDate || '' });
@@ -63,20 +63,23 @@ export function WarrantyScreen({ navigation, route }: any) {
   return <NativePage title="Vehicle warranty">
     {prefillBusy&&<ActivityIndicator/>}{!!listingTitle&&<Text style={s.label}>{listingTitle}</Text>}
     <Text style={s.body}>Warrantywise warranties arranged through Pulse Cars Limited, the broker. CarMazium is the platform. Admin arranges issuance after payment.</Text>
-    <Text style={s.label}>Your vehicle</Text>{field(vehicleFields[0])}<Button label="Find vehicle — DVLA & MOT" variant="outline" loading={lookupBusy} disabled={prefillBusy} onPress={() => void lookup()} />{!!notice && <Text style={s.body}>{notice}</Text>}{vehicleFields.slice(1).map(field)}
-    {values.knownFaults === 'KNOWN' && <FormField label="Describe known faults" value={values.faultDetails || ''} onChangeText={text => change('faultDetails', text)} multiline maxLength={2000} />}
-    <CheckField value={confirmed} onChange={setConfirmed} label="I have checked the vehicle details, current mileage, category and service history and confirm they are accurate. Known or pre-existing faults are not a promise of cover." />
-    <Text style={s.label}>Choose your cover</Text><Text style={s.body}>12 months. Standard car £360; standard SUV £445, including VAT, with a £2,000 single repair limit and £75/hour labour. Review the server-confirmed quote before payment.</Text>
+    <Text style={s.label}>1. Choose your cover</Text><Text style={s.body}>12 months. Standard car £360; standard SUV £445, including VAT, with a £2,000 single repair limit and £75/hour labour. Review the server-confirmed quote before payment.</Text>
+    {field(vehicleFields.find(f=>f.key==='vehicleCategory')!)}
     {field({ key: 'repairLimit', label: 'Single repair limit', options: [['1000', '£1,000 — £30 less'], ['2000', '£2,000 — standard']] })}
     {field({ key: 'labourRate', label: 'Labour per hour', options: [['75', '£75 included'], ['100', '£100 — add 50%'], ['150', '£150 — add 75%'], ['200', '£200 — add 100%']] })}
     {additions.map(([code, label]) => <CheckField key={code} label={label} value={extras.includes(code)} onChange={enabled => setExtras(old => enabled ? [...old, code] : old.filter(x => x !== code))} />)}
+    <View style={s.panel}><Text style={s.label}>Estimated total including VAT</Text><Text style={s.title}>{warrantyEstimate(values,extras) === null ? "Choose car or SUV" : money(warrantyEstimate(values,extras)!)}</Text><Text style={s.body}>Review the server-confirmed quote before payment.</Text></View>
     <Text style={s.body}>Eligibility, covered components, repair limits, labour allowances and exclusions depend on the issued Warrantywise plan. The requested start date is confirmed when issued.</Text>
-    <Text style={s.label}>Your contact and address</Text>{customerFields.map(field)}
+    <Text style={s.label}>2. Your vehicle</Text>{field(vehicleFields[0])}<Button label="Find vehicle — DVLA & MOT" variant="outline" loading={lookupBusy} disabled={prefillBusy} onPress={() => void lookup()} />{!!notice && <Text style={s.body}>{notice}</Text>}{vehicleFields.slice(1).filter(f=>f.key!=="vehicleCategory").map(field)}
+    {values.knownFaults === 'KNOWN' && <FormField label="Describe known faults" value={values.faultDetails || ''} onChangeText={text => change('faultDetails', text)} multiline maxLength={2000} />}
+    <CheckField value={confirmed} onChange={setConfirmed} label="I have checked the vehicle details, current mileage, category and service history and confirm they are accurate. Known or pre-existing faults are not a promise of cover." />
+    <Text style={s.label}>3. Your contact and address</Text>{customerFields.map(field)}
     <Button label="Read warranty order information" variant="outline" onPress={() => navigation.navigate('WarrantyTerms')} /><Button label="Read Privacy Policy" variant="outline" onPress={() => navigation.navigate('PrivacyPolicy')} />
     <CheckField value={consent} onChange={setConsent} label="I agree to the warranty order information and Privacy Policy. CarMazium may use and share these details with Pulse Cars Limited and Warrantywise to arrange the warranty and send order updates. Payment does not activate cover; issuance and confirmed cover dates are separate." />
     {!!error && <Text accessibilityRole="alert" style={s.error}>{error}</Text>}
     <Button label="Get a quote" loading={busy} disabled={lookupBusy||prefillBusy} onPress={() => void quote()} /><Text style={s.body}>No payment is taken when you request a quote.</Text>
     <Button label="My warranty orders" variant="outline" onPress={() => navigation.navigate('WarrantyOrders')} />
+    <Button label="Discuss a warranty partnership" variant="outline" onPress={() => navigation.navigate('Contact',{topic:'warranty-partnership'})} />
   </NativePage>;
 }
 

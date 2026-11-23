@@ -18,6 +18,11 @@ on:
       - "scripts/test-tradexchange-ux-auctions.test.mjs"
       - "scripts/test-tradexchange-ux-transport.test.mjs"
       - "scripts/test-tradexchange-ux-inspection.test.mjs"
+      - "scripts/test-tradexchange-ux-commercial.test.mjs"
+      - "src/app/services/finance/**"
+      - "src/app/services/warranty/**"
+      - "src/components/warranties/**"
+      - "src/components/finance/**"
       - "src/app/services/inspection/**"
       - "src/app/services/jobs/[id]/page.tsx"
       - "src/components/auth/RequireAuth.tsx"
@@ -224,7 +229,7 @@ jobs:
         run: node --test scripts/test-website-introduction.test.mjs
 
       - name: Service setup and provider partnership routing
-        run: node --test scripts/test-service-setup-routing.test.mjs scripts/test-service-job-form-validation.test.mjs scripts/test-tradexchange-audit.test.mjs scripts/test-tradexchange-ux-canonical.test.mjs scripts/test-tradexchange-ux-homepage.test.mjs scripts/test-tradexchange-ux-auctions.test.mjs scripts/test-tradexchange-ux-transport.test.mjs scripts/test-tradexchange-ux-inspection.test.mjs
+        run: node --test scripts/test-service-setup-routing.test.mjs scripts/test-service-job-form-validation.test.mjs scripts/test-tradexchange-audit.test.mjs scripts/test-tradexchange-ux-canonical.test.mjs scripts/test-tradexchange-ux-homepage.test.mjs scripts/test-tradexchange-ux-auctions.test.mjs scripts/test-tradexchange-ux-transport.test.mjs scripts/test-tradexchange-ux-inspection.test.mjs scripts/test-tradexchange-ux-commercial.test.mjs
 
       - name: Caravan buyer facts exclude motor-vehicle reports
         run: node --test scripts/test-caravan-buyer-information.test.mjs
