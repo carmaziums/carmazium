@@ -40,6 +40,10 @@ on:
       - "carmazium app/carmazium app/src/lib/valuationApi.ts"
       - "carmazium app/carmazium app/src/lib/appUpdater.ts"
       - "carmazium app/carmazium app/src/components/AppUpdatePrompt.tsx"
+      - "carmazium app/carmazium app/src/components/AndroidUpdateSettings.tsx"
+      - "carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/main/ProviderOverviewScreen.tsx"
+      - "carmazium app/carmazium app/app.json"
       - "carmazium app/carmazium app/scripts/test-app-updater.test.mjs"
       - "carmazium app/carmazium app/src/components/SiteMenu.tsx"
       - "carmazium app/carmazium app/scripts/test-site-menu-auction.test.mjs"
@@ -101,10 +105,14 @@ jobs:
           fi
 
           LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E 'src/(store/authStore|screens/(sell/SellCarFlowScreen|seller/(SellerAuctionsScreen|SellerListingsScreen)|main/(PricingScreen|PurchaseFlowScreen)|vehicle/AuctionDetailScreen)|navigation/MainStackNavigator|components/ImportListingModal|hooks/useListingFeePayment|constants/pricing|lib/(nativeAuctionDraft|nativeSellerDraftReadiness|sellWizardStore|sellerVehicleSpecs|listingsApi|paymentsApi|storageHelper|vehicleImageMetadata|auctionPricing|valuationApi))\.tsx?' || true)"
-          if [ -n "$LISTING_ERRORS" ]; then
+          # This PR also changes Android update checks and iPhone native UI.
+          # Pre-existing unrelated errors must not mask a new broken release.
+          PARITY_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E 'src/(lib/appUpdater|components/(AppUpdatePrompt|AndroidUpdateSettings)|screens/main/(SettingsScreen|ProviderOverviewScreen))\.tsx?' || true)"
+          if [ -n "$LISTING_ERRORS" ] || [ -n "$PARITY_ERRORS" ]; then
             echo
-            echo "TypeScript errors were found in mobile listing/auction files changed by this PR:"
+            echo "TypeScript errors were found in the affected mobile sources:"
             printf '%s\n' "$LISTING_ERRORS"
+            printf '%s\n' "$PARITY_ERRORS"
             exit 1
           fi
 
