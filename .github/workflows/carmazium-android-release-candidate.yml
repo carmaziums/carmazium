@@ -87,8 +87,20 @@ jobs:
           fs.writeFileSync('keystores/release.keystore.properties',
             Object.entries(keys).map(([k,v])=>k+'='+v).join('\n')+'\n',{mode:0o600});
           const app=JSON.parse(fs.readFileSync('app.json','utf8'));
-          app.expo.updates.enabled=false;
-          delete app.expo.updates.url;
+          // Since v126 was an APK-only release with Expo OTA disabled, a new
+          // 1.0.2 native runtime and original-signed build are required first.
+          // Only the company's production channel can deliver compatible
+          // JavaScript updates after a separately approved publish.
+          const updateUrl='https://u.expo.dev/9c77bb81-205c-42f8-913e-b69a0953ec10';
+          if(app.expo.owner!=='carmazium' ||
+             app.expo.version!=='1.0.2' ||
+             app.expo.runtimeVersion?.policy!=='appVersion' ||
+             app.expo.updates?.enabled!==true ||
+             app.expo.updates?.url!==updateUrl ||
+             app.expo.updates?.requestHeaders?.['expo-channel-name']!=='production' ||
+             Number(process.env.CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE)<127){
+            throw Error('A new source-locked v127+ production OTA runtime is required; do not reuse v126');
+          }
           // Android sideloaded updates must have a higher versionCode than the prior APK.
           app.expo.android.versionCode=Number(process.env.CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE);
           fs.writeFileSync('app.json',JSON.stringify(app,null,2)+'\n');
@@ -124,7 +136,10 @@ jobs:
           npx expo prebuild --platform android --non-interactive --clean
           grep -F 'signingConfig signingConfigs.release' android/app/build.gradle
           test "$(node -p "require('./app.json').expo.android.package")" = 'uk.carmazium.app'
-          test "$(node -p "require('./app.json').expo.updates.enabled")" = 'false'
+          test "$(node -p "require('./app.json').expo.updates.enabled")" = 'true'
+          test "$(node -p "require('./app.json').expo.updates.requestHeaders['expo-channel-name']")" = 'production'
+          test "$(node -p "require('./app.json').expo.runtimeVersion.policy")" = 'appVersion'
+          test "$(node -p "require('./app.json').expo.version")" = '1.0.2'
           test "$(node -p "require('./app.json').expo.android.versionCode")" = "$CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE"
       - name: Build APK with retained release signing key
         shell: bash
