@@ -74,3 +74,16 @@ test('customer Posted Jobs page never promotes provider-only available work', ()
   assert.doesNotMatch(page, /Available Jobs in the provider dashboard/);
   assert.doesNotMatch(page, /href="\/dashboard\/service\/jobs"/);
 });
+
+
+test('native provider Available Jobs keeps website compact navigation and retains real posting workflow', () => {
+  const provider = read(native + 'screens/main/ProviderJobsScreen.tsx');
+  assert.match(provider, /accessibilityRole="link" style=\{styles\.postJobLink\}/);
+  assert.match(provider, /post a job here/);
+  assert.match(provider, /navigation\.navigate\('CreateServiceJob', \{ serviceType: 'DELIVERY' \}\)/);
+  assert.match(provider, /navigation\.navigate\('CreateServiceJob', \{ serviceType: 'INSPECTION' \}\)/);
+  assert.match(provider, /selected\?\.items\.length \? <View style=\{styles\.filters\}>/);
+  assert.match(provider, /alignSelf: 'flex-start'/);
+  assert.doesNotMatch(provider, /Manage service areas & verification/);
+  assert.doesNotMatch(provider, /label="Job messages"/);
+});
