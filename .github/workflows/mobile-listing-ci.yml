@@ -42,6 +42,7 @@ on:
       - "carmazium app/carmazium app/src/components/AppUpdatePrompt.tsx"
       - "carmazium app/carmazium app/src/components/AndroidUpdateSettings.tsx"
       - "carmazium app/carmazium app/App.tsx"
+      - "carmazium app/carmazium app/scripts/test-settings-mobile-profile-fields.test.mjs"
       - "carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx"
       - "carmazium app/carmazium app/src/screens/main/ProviderOverviewScreen.tsx"
       - "carmazium app/carmazium app/app.json"
@@ -87,6 +88,9 @@ jobs:
 
       - name: Personal My Cars and buyer purchase native flows
         run: node --test scripts/test-personal-cars-purchases-mobile.test.mjs
+
+      - name: Native Account Settings and Android updates
+        run: node --test scripts/test-settings-mobile-profile-fields.test.mjs
 
       - name: Native DVLA, 3D and dual-price parity regressions
         run: node ../../scripts/test-native-web-vehicle-parity-20261015.test.mjs
