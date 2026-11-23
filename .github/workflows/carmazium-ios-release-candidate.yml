@@ -1,18 +1,18 @@
 name: CarMazium iOS production release candidate (internal review only)
 
 # Manual, source-locked iOS release review. Default mode builds a signed IPA;
-# explicit UPLOAD_EXISTING_IPA_ONLY mode uploads the exact previously signed IPA
-# to App Store Connect for processing. Neither mode submits for App Review,
-# invites external testers, or publishes to customers.
+# explicit upload modes send a verified previously signed IPA to App Store
+# Connect for processing. No mode submits for App Review, invites external
+# testers, or publishes to customers. The historical pinned upload is unchanged.
 on:
   workflow_dispatch:
     inputs:
       source_sha:
-        description: Exact reviewed 40-character checked-out commit SHA to build
+        description: Exact reviewed 40-character checked-out commit SHA for the candidate
         type: string
         required: true
       approval:
-        description: Build for internal review only; not store submission
+        description: Internal review or Apple processing only; no public release
         type: choice
         required: true
         options: [NOT_APPROVED, INTERNAL_REVIEW_ONLY]
@@ -21,7 +21,15 @@ on:
         description: Keep as build-only, or upload the already signed IPA for Apple processing without public release
         type: choice
         required: true
-        options: [NO_UPLOAD, UPLOAD_EXISTING_IPA_ONLY]
+        options: [NO_UPLOAD, UPLOAD_EXISTING_IPA_ONLY, UPLOAD_REVIEWED_CANDIDATE]
+      candidate_build_id:
+        description: Exact finished EAS build UUID for UPLOAD_REVIEWED_CANDIDATE only
+        type: string
+        required: false
+      expected_ipa_sha256:
+        description: Independently reviewed IPA SHA-256 for UPLOAD_REVIEWED_CANDIDATE only
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -32,7 +40,7 @@ concurrency:
 
 jobs:
   candidate:
-    if: github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/tradexchange-block2-jobs-20261122') && inputs.submission != 'UPLOAD_EXISTING_IPA_ONLY'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.submission == 'NO_UPLOAD'
     runs-on: ubuntu-latest
     timeout-minutes: 110
     defaults:
@@ -70,6 +78,8 @@ jobs:
               app.extra?.eas?.projectId !== '9c77bb81-205c-42f8-913e-b69a0953ec10' ||
               app.updates?.url !== 'https://u.expo.dev/9c77bb81-205c-42f8-913e-b69a0953ec10' ||
               app.ios?.bundleIdentifier !== 'uk.carmazium.app' ||
+              app.version !== '1.0.2' || app.runtimeVersion?.policy !== 'appVersion' ||
+              eas.cli?.requireCommit === true ||
               eas.build?.production?.channel !== 'production' ||
               eas.build?.production?.distribution === 'internal' ||
               eas.build?.production?.android?.buildType !== 'app-bundle' ||
@@ -114,9 +124,12 @@ jobs:
           set -euo pipefail
           # The source app lives under folders with spaces. CocoaPods-generated
           # Xcode scripts are not reliably quoted there. Stage the SAME app in
-          # a space-free path; EAS No-VCS uploads only this app directory.
+          # a space-free path. Retain the ACTUAL checkout's Git metadata so EAS
+          # records its reviewed SHA, then verify every copied native source byte.
+          # EAS's default Git client copies this working tree without a checkout;
+          # .easignore prevents Git metadata from entering the uploaded archive.
           STAGE="$RUNNER_TEMP/carmazium-ios-stage"
-          mkdir -p "$STAGE"
+          git clone --no-checkout --no-hardlinks "$GITHUB_WORKSPACE" "$STAGE"
           rsync -a \
             --exclude='node_modules/' --exclude='.expo/' --exclude='.git/' \
             --exclude='ios/' --exclude='android/' --exclude='.easignore' \
@@ -126,7 +139,7 @@ jobs:
           # The source .easignore excludes package manifests for a Git-root
           # archive. A standalone app archive MUST retain its own manifests.
           printf '%s\n' \
-            '**/node_modules/' '**/.git/' '**/.expo/' \
+            '**/node_modules/' '**/.git' '**/.expo/' \
             '**/ios/' '**/android/' '.env*' '**/coverage/' \
             '**/__tests__/' '**/*.test.ts' '**/*.test.tsx' \
             '**/*.spec.ts' '**/*.spec.tsx' '*.pem' '*.p12' '*.p8' \
@@ -175,7 +188,8 @@ jobs:
           }
           console.log('Native iOS Info.plist contains Apple-required static purpose string, no microphone purpose, and the reviewed photo picker text');
           NODE
-          export EAS_NO_VCS=1
+          node "$GITHUB_WORKSPACE/scripts/verify-ios-release-candidate.mjs" stage "$GITHUB_WORKSPACE" "$STAGE" "$REVIEW_SOURCE_SHA"
+          unset EAS_NO_VCS
           export EAS_PROJECT_ROOT="$STAGE"
           cd "$STAGE"
           npx --yes eas-cli@16.18.0 build --platform ios --profile production --non-interactive --wait --json > "$RUNNER_TEMP/carmazium-ios-candidate.json"
@@ -186,9 +200,31 @@ jobs:
           const id = build?.id;
           const status = String(build?.status || '').toUpperCase();
           const url = build?.artifacts?.buildUrl || build?.artifacts?.applicationArchiveUrl || build?.buildUrl;
-          if (status !== 'FINISHED' || !id || !url?.startsWith('https://')) {
-            throw new Error('EAS did not return a signed, completed iOS candidate with an artifact URL');
+          if (status !== 'FINISHED' || !id || !url?.startsWith('https://') ||
+              build.platform !== 'IOS' || build.distribution !== 'STORE' ||
+              build.buildProfile !== 'production' || build.channel !== 'production' ||
+              build.project?.id !== '9c77bb81-205c-42f8-913e-b69a0953ec10' ||
+              build.appVersion !== '1.0.2' || build.runtimeVersion !== '1.0.2' ||
+              !/^[0-9]+(?:\.[0-9]+){0,2}$/.test(build.appBuildVersion || '') ||
+              build.gitCommitHash !== process.env.REVIEW_SOURCE_SHA) {
+            throw new Error('EAS did not return the exact reviewed, completed production iOS candidate');
           }
+          // Curated review provenance only: never persist tokens, credentials or full API logs.
+          const evidence = {
+            evidence_schema: 1,
+            artifact_kind: 'INTERNAL_REVIEW_ONLY',
+            approved_for_customer_distribution: false,
+            source_sha: process.env.REVIEW_SOURCE_SHA,
+            eas_build_id: id,
+            project_id: build.project.id,
+            bundle_identifier: 'uk.carmazium.app',
+            app_version: build.appVersion,
+            app_build_version: build.appBuildVersion,
+            runtime_version: build.runtimeVersion,
+            channel: build.channel,
+            artifact_url: url,
+          };
+          fs.writeFileSync(process.env.RUNNER_TEMP + '/carmazium-ios-candidate-metadata.json', JSON.stringify(evidence, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
           const summary = [
             '### CarMazium iOS signed release candidate — INTERNAL REVIEW ONLY',
             '- Reviewed source SHA: ' + process.env.GITHUB_SHA,
@@ -205,6 +241,13 @@ jobs:
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary.join('\n') + '\n');
           console.log('Signed iOS release candidate created for internal review; EAS ID: ' + id);
           NODE
+      - name: Preserve curated candidate metadata for independent IPA review
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarMazium-iOS-REVIEW-ONLY
+          path: ${{ runner.temp }}/carmazium-ios-candidate-metadata.json
+          if-no-files-found: error
+          retention-days: 3
   upload:
     if: github.ref == 'refs/heads/feature/tradexchange-block2-jobs-20261122' && inputs.submission == 'UPLOAD_EXISTING_IPA_ONLY' && inputs.approval == 'INTERNAL_REVIEW_ONLY' && inputs.source_sha == '7e8758c03ea004c42fc09203249f892f9aa11ffd'
     runs-on: ubuntu-latest
@@ -289,3 +332,111 @@ jobs:
             '- App Store Connect app: 6837996479' \
             '- This command uploads a binary for processing, but does not submit for App Review, publish to the App Store or invite external testers.' \
             >> "$GITHUB_STEP_SUMMARY"
+
+  reviewed_upload:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.submission == 'UPLOAD_REVIEWED_CANDIDATE' && inputs.approval == 'INTERNAL_REVIEW_ONLY'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      CI: '1'
+      APP_ENV: production
+      EXPO_NO_TELEMETRY: '1'
+      SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || secrets.EAS_TOKEN }}
+      REVIEW_SOURCE_SHA: ${{ inputs.source_sha }}
+      REVIEW_APPROVAL: ${{ inputs.approval }}
+      REVIEW_SUBMISSION: ${{ inputs.submission }}
+      REVIEW_BUILD_ID: ${{ inputs.candidate_build_id }}
+      REVIEW_IPA_SHA256: ${{ inputs.expected_ipa_sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate explicit reviewed source, existing build and IPA checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$REVIEW_SOURCE_SHA" || { echo '::error::Checked-out source does not match the reviewed SHA'; exit 1; }
+          node scripts/verify-ios-release-candidate.mjs request
+          node --test scripts/test-ios-release-candidate.test.mjs scripts/test-ios-candidate-metadata.test.mjs
+          python3 scripts/test-ios-candidate-archive.py
+      - name: Verify original EAS candidate metadata and exact downloaded IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/verify-ios-release-candidate.mjs fetch "$RUNNER_TEMP/carmazium-ios-reviewed-metadata.json"
+          IPA_URL="$(node -p "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')).artifact_url" "$RUNNER_TEMP/carmazium-ios-reviewed-metadata.json")"
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+            --connect-timeout 30 --max-time 600 --max-filesize 1073741824 \
+            --output "$RUNNER_TEMP/carmazium-ios-reviewed.ipa" "$IPA_URL"
+          python3 scripts/verify-ios-candidate-archive.py \
+            "$RUNNER_TEMP/carmazium-ios-reviewed.ipa" \
+            "$RUNNER_TEMP/carmazium-ios-reviewed-metadata.json" \
+            "$RUNNER_TEMP/carmazium-ios-reviewed-evidence.json"
+      - name: Stage reviewed original app configuration for the existing Apple app record
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --quiet --no-ext-diff "$REVIEW_SOURCE_SHA" -- 'carmazium app/carmazium app' || {
+            echo '::error::Original app source changed after checkout; refuse submission'; exit 1;
+          }
+          STAGE="$RUNNER_TEMP/carmazium-ios-reviewed-upload"
+          mkdir -p "$STAGE"
+          rsync -a --exclude='node_modules/' --exclude='.expo/' --exclude='.git/' \
+            --exclude='ios/' --exclude='android/' --exclude='.env*' \
+            --exclude='*.pem' --exclude='*.p12' --exclude='*.p8' --exclude='*.mobileprovision' \
+            "carmazium app/carmazium app/" "$STAGE/"
+          node - "$STAGE" <<'NODE'
+          const fs = require('fs'), path = require('path');
+          const root = process.argv[2];
+          const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8')).expo;
+          const f = path.join(root, 'eas.json');
+          const eas = JSON.parse(fs.readFileSync(f, 'utf8'));
+          if (app.owner !== 'carmazium' ||
+              app.extra?.eas?.projectId !== '9c77bb81-205c-42f8-913e-b69a0953ec10' ||
+              app.updates?.url !== 'https://u.expo.dev/9c77bb81-205c-42f8-913e-b69a0953ec10' ||
+              app.ios?.bundleIdentifier !== 'uk.carmazium.app' || app.version !== '1.0.2' ||
+              app.runtimeVersion?.policy !== 'appVersion' ||
+              eas.build?.production?.channel !== 'production' ||
+              eas.build?.production?.env?.APP_ENV !== 'production' ||
+              eas.build?.production?.distribution === 'internal' ||
+              eas.cli?.appVersionSource !== 'remote') {
+            throw new Error('Reviewed original iPhone app identity or production configuration changed');
+          }
+          eas.submit ||= {};
+          eas.submit.production ||= {};
+          eas.submit.production.ios = { ...(eas.submit.production.ios || {}), ascAppId: '6837996479' };
+          fs.writeFileSync(f, JSON.stringify(eas, null, 2) + '\n');
+          console.log('Original app configuration verified; existing App Store Connect record selected.');
+          NODE
+          npm ci --prefix "$STAGE" --no-audit --no-fund
+          echo "STAGED_PROJECT=$STAGE" >> "$GITHUB_ENV"
+      - name: Verify owner-controlled Expo authentication
+        run: npx --yes eas-cli@16.18.0 whoami --non-interactive
+      - name: Upload the exact verified IPA for Apple processing only
+        shell: bash
+        run: |
+          set -euo pipefail
+          export EAS_NO_VCS=1
+          cd "$STAGED_PROJECT"
+          npx --yes eas-cli@16.18.0 submit --platform ios \
+            --path "$RUNNER_TEMP/carmazium-ios-reviewed.ipa" --profile production --non-interactive --wait
+          printf '%s\n' \
+            '### CarMazium iOS — reviewed candidate upload' \
+            "- Reviewed source: $REVIEW_SOURCE_SHA" \
+            "- Verified EAS build: $REVIEW_BUILD_ID" \
+            "- Reviewed IPA SHA-256: $REVIEW_IPA_SHA256" \
+            '- Original bundle: uk.carmazium.app; App Store Connect app: 6837996479' \
+            '- Uploaded for Apple processing only. This does not submit for App Review, publish to customers, invite testers or attest physical-device QA.' \
+            >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve verified internal-review evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarMazium-iOS-REVIEWED-UPLOAD-EVIDENCE
+          path: ${{ runner.temp }}/carmazium-ios-reviewed-evidence.json
+          if-no-files-found: ignore
+          retention-days: 3
