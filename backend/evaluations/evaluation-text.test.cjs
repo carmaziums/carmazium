@@ -103,3 +103,54 @@ test('offer expiry accepts ordinary inflections and still requires the ownership
     "The unexpired offer does not transfer ownership when you pay the fee.",
   ]) assert.equal(passes(answer), false, answer);
 });
+
+
+test('accepts both full answers observed in the strict second evaluation attempt', () => {
+  const cases = require('./mazium-cases.json');
+  const timer = cases.find(c => c.id === 'MZ-034');
+  const bonus = cases.find(c => c.id === 'MZ-102');
+  assert.equal(timer.must.length, 1);
+  assert.equal(bonus.must.length, 2);
+  assert.equal(bonus.must[1], 'not|no');
+  const observedTimer = "Not necessarily. A qualifying bid placed in the final 3 minutes adds 3 minutes to the auction’s closing time, so the countdown can go up as expected. If the change doesn’t match that rule, share the bid time and the closing times you saw in your official CarMazium support chat so the team can look into it.";
+  const observedBonus = "No — based on what you’ve described, the £100 seller bonus isn’t due yet. Accepting the below-reserve offer, the dealer paying CarMazium’s buyer fee, and uploading a photo don’t complete the sale. The dealer must pay you directly, the handover evidence must be approved, and the payout checks must be completed.\n\nDon’t confirm receipt until the money is in your account. [Sign in](/auth/login) and check [My Auctions](/dashboard/seller/auctions). If the dealer has already collected the car without paying, raise it in your official CarMazium support conversation and keep your messages and handover evidence.";
+  for (const pattern of timer.must) assert.equal(matchesCriterion(observedTimer, pattern), true, pattern);
+  for (const pattern of bonus.must) assert.equal(matchesCriterion(observedBonus, pattern), true, pattern);
+});
+
+test('bid placement and plurality retain the exact three-minute auction closing relationship', () => {
+  const rule = require('./mazium-cases.json').find(c => c.id === 'MZ-034');
+  const passes = answer => rule.must.every(pattern => matchesCriterion(answer, pattern));
+  for (const bid of ['bid', 'bids']) {
+    for (const placement of ['', ' placed', ' received', ' submitted', ' made']) {
+      const verb = bid === 'bid' ? 'adds' : 'add';
+      const answer = 'Qualifying ' + bid + placement + ' in the final 3 minutes ' + verb +
+        ' 3 minutes to the auction\u2019s scheduled closing time.';
+      assert.equal(passes(answer), true, answer);
+    }
+  }
+  for (const answer of [
+    "Qualifying bids placed in the final 5 minutes add 3 minutes to the auction's closing time.",
+    "Qualifying bids received in the final 3 minutes add 5 minutes to the auction's closing time.",
+    "Qualifying bids submitted in the final 3 minutes add 3 minutes to the auction tutorial.",
+    "Qualifying bids made in the final 3 minutes add 3 minutes to a delivery journey.",
+    "A phone call placed in the final 3 minutes adds 3 minutes to the auction's closing time.",
+  ]) assert.equal(passes(answer), false, answer);
+});
+
+test('ordinary pay inflections preserve denial and reject payout, payroll and repay substrings', () => {
+  const rule = require('./mazium-cases.json').find(c => c.id === 'MZ-102');
+  const passes = answer => rule.must.every(pattern => matchesCriterion(answer, pattern));
+  for (const answer of [
+    "No, the dealer must pay you directly before the sale is complete.",
+    "No, the buyer pays the seller directly and the handover must be approved.",
+    "No, the dealer is paying the seller directly; that alone does not complete the sale.",
+  ]) assert.equal(passes(answer), true, answer);
+  for (const answer of [
+    "No, the payout is still pending.",
+    "No, the payroll record is available.",
+    "No, the lender says to repay.",
+    "The dealer must pay you directly.",
+    "No, you uploaded a handover photograph.",
+  ]) assert.equal(passes(answer), false, answer);
+});
