@@ -64,3 +64,13 @@ test('dealer CRM mobile actions follow website one-row Add Customer and full-wid
   assert.match(crm, /styles\.crmOffersButton, styles\.crmOffersMobile/);
   assert.match(crm, /accessibilityLabel="Add Customer"/);
 });
+
+
+test('customer Posted Jobs page never promotes provider-only available work', () => {
+  const page = read('src/app/services/jobs/page.tsx');
+  assert.match(page, /My Posted Jobs/);
+  assert.match(page, /Post a Job/);
+  assert.match(page, /getMyJobsPage/);
+  assert.doesNotMatch(page, /Available Jobs in the provider dashboard/);
+  assert.doesNotMatch(page, /href="\/dashboard\/service\/jobs"/);
+});
