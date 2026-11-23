@@ -18,6 +18,15 @@ test("dealer messages do not reserve a desktop sidebar", () => {
     assert.match(page, /backHref="\/dashboard\/dealer"/)
 })
 
+test("service, finance and insurance partners receive the same full-width messages layout", () => {
+    for (const role of ["service", "finance", "insurance"]) {
+        const page = read(`src/app/dashboard/${role}/messages/page.tsx`)
+        assert.match(page, /className="w-full max-w-none/)
+        assert.match(page, /className="lg:hidden">\s*<DashboardSidebar/)
+        assert.match(page, new RegExp(`backHref="/dashboard/${role}"`))
+    }
+})
+
 test("admin inbox prioritises the conversation and preserves on-demand support tools", () => {
     const page = read("src/app/dashboard/admin/messages/page.tsx")
     assert.match(page, /className="w-full max-w-none/)
