@@ -60,7 +60,7 @@
     "src/app/services/warranty/page.tsx": "4a660bc1a27f498df350c80ea9488fcaf73a15db6d1eec69daca865c464975d1",
     "src/app/terms/page.tsx": "a0b246f6f895906c652d8c11cf576911f2256fa12efd30fceab6bde5c204c1e6",
     "src/components/auctions/AuctionResultsModal.tsx": "0643900661c07ecb8614bea0b610aab20c36cd1c91ea8ab1b37b606bb08866a7",
-    "src/components/chat/ChatWindow.tsx": "7ea9ea3a8064ea07ea66508f6e9f7092f1811f6f7a365df57d9f042814af615d",
+    "src/components/chat/ChatWindow.tsx": "6098423294caf18c45c02e5dd02b80976b15f5c53864b67a42c8960d93f6e4b4",
     "src/components/dashboard/AccountFilters.tsx": "6902e52b0e26f69e1f94423684295ee082b25774cbba6d0580fe7e5234c8840d",
     "src/components/dashboard/DashboardCards.tsx": "5b4d661a8a242dcb55a559ef54c8a06a819098d8ddd65cf192593bc96e5e52ea",
     "src/components/dashboard/DashboardSidebar.tsx": "d3748074351f692c47501ca2f58c55fc58ba3490835c5e3a7c7cdb0fe73e56b3",
