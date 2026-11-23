@@ -40,7 +40,15 @@ on:
       - "carmazium app/carmazium app/src/lib/valuationApi.ts"
       - "carmazium app/carmazium app/src/lib/appUpdater.ts"
       - "carmazium app/carmazium app/src/components/AppUpdatePrompt.tsx"
+      - "carmazium app/carmazium app/src/components/AndroidUpdateSettings.tsx"
+      - "carmazium app/carmazium app/App.tsx"
+      - "carmazium app/carmazium app/scripts/test-settings-mobile-profile-fields.test.mjs"
+      - "carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/main/ProviderOverviewScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/main/CreateServiceJobScreen.tsx"
+      - "carmazium app/carmazium app/app.json"
       - "carmazium app/carmazium app/scripts/test-app-updater.test.mjs"
+      - "carmazium app/carmazium app/scripts/test-app-update-prompt.test.mjs"
       - "carmazium app/carmazium app/src/components/SiteMenu.tsx"
       - "carmazium app/carmazium app/scripts/test-site-menu-auction.test.mjs"
       - ".github/workflows/mobile-listing-ci.yml"
@@ -75,13 +83,16 @@ jobs:
         run: node --test scripts/test-dashboard-cards.test.mjs scripts/test-web-dashboard-cards.test.mjs scripts/test-native-service-completion.test.mjs
 
       - name: Original Android update and TradeXchange menu navigation
-        run: node --test scripts/test-app-updater.test.mjs scripts/test-site-menu-auction.test.mjs
+        run: node --test scripts/test-app-updater.test.mjs scripts/test-app-update-prompt.test.mjs scripts/test-site-menu-auction.test.mjs
 
       - name: Mobile dealer CRM and iPhone responsive layouts
         run: node ../../scripts/test-ios-compact-dashboard-and-posted-jobs.test.mjs
 
       - name: Personal My Cars and buyer purchase native flows
         run: node --test scripts/test-personal-cars-purchases-mobile.test.mjs
+
+      - name: Native Account Settings and Android updates
+        run: node --test scripts/test-settings-mobile-profile-fields.test.mjs
 
       - name: Native DVLA, 3D and dual-price parity regressions
         run: node ../../scripts/test-native-web-vehicle-parity-20261015.test.mjs
@@ -101,10 +112,14 @@ jobs:
           fi
 
           LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E 'src/(store/authStore|screens/(sell/SellCarFlowScreen|seller/(SellerAuctionsScreen|SellerListingsScreen)|main/(PricingScreen|PurchaseFlowScreen)|vehicle/AuctionDetailScreen)|navigation/MainStackNavigator|components/ImportListingModal|hooks/useListingFeePayment|constants/pricing|lib/(nativeAuctionDraft|nativeSellerDraftReadiness|sellWizardStore|sellerVehicleSpecs|listingsApi|paymentsApi|storageHelper|vehicleImageMetadata|auctionPricing|valuationApi))\.tsx?' || true)"
-          if [ -n "$LISTING_ERRORS" ]; then
+          # This PR also changes Android update checks and iPhone native UI.
+          # Pre-existing unrelated errors must not mask a new broken release.
+          PARITY_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E '(App\.tsx|src/(lib/appUpdater|components/(AppUpdatePrompt|AndroidUpdateSettings)|screens/main/(SettingsScreen|ProviderOverviewScreen|CreateServiceJobScreen))\.tsx?)' || true)"
+          if [ -n "$LISTING_ERRORS" ] || [ -n "$PARITY_ERRORS" ]; then
             echo
-            echo "TypeScript errors were found in mobile listing/auction files changed by this PR:"
+            echo "TypeScript errors were found in the affected mobile sources:"
             printf '%s\n' "$LISTING_ERRORS"
+            printf '%s\n' "$PARITY_ERRORS"
             exit 1
           fi
 

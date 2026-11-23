@@ -12,7 +12,6 @@ import { StatusBar } from 'expo-status-bar';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import * as Updates from 'expo-updates';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { linking } from './src/navigation/linking';
 import { OfflineBanner } from './src/components/OfflineBanner';
@@ -48,22 +47,9 @@ export default function App() {
   const subscribeToAuthChanges = useAuthStore.getState().subscribeToAuthChanges;
   const reinitializeAuth = useAuthStore.getState().initializeAuth;
 
-  // ── OTA Updates ────────────────────────────────────────────────
-  useEffect(() => {
-    const checkUpdates = async () => {
-      if (__DEV__) return; // Skip in development
-      try {
-        const update = await Updates.checkForUpdateAsync();
-        if (update.isAvailable) {
-          await Updates.fetchUpdateAsync();
-          await Updates.reloadAsync();
-        }
-      } catch {
-        // Non-fatal — user will get the update next launch
-      }
-    };
-    checkUpdates();
-  }, []);
+  // Signed APK and compatible OTA checks are handled by AppUpdatePrompt,
+  // which notifies users and waits for Update now. Never fetch and reload
+  // JavaScript silently: new releases are optional, not forced.
 
   // ── Push Notification listeners ─────────────────────────────────
   useEffect(() => {

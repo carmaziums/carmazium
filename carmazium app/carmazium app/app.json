@@ -2,7 +2,7 @@
   "expo": {
     "name": "CarMazium",
     "slug": "carmazium",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#1B2538",
@@ -15,7 +15,7 @@
       "url": "https://u.expo.dev/9c77bb81-205c-42f8-913e-b69a0953ec10",
       "enabled": true,
       "fallbackToCacheTimeout": 0,
-      "checkAutomatically": "ON_LOAD"
+      "checkAutomatically": "NEVER"
     },
     "splash": {
       "image": "./assets/images/splash.png",

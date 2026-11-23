@@ -9,10 +9,12 @@ const code = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
 }).outputText;
 
-function loadUpdater({ nativeBuildVersion = '125', manifestVersion = 111, platform = 'android', response = null } = {}) {
+function loadUpdater({ nativeBuildVersion = '125', manifestVersion = 111, platform = 'android', response = null,
+  nativePackage = null, httpOk = true, fetchError = false } = {}) {
   const calls = { downloads: [], installed: [] };
   const constants = {
     nativeBuildVersion,
+    platform: nativePackage === null ? undefined : { android: { package: nativePackage } },
     expoConfig: { android: { package: 'uk.carmazium.app', versionCode: manifestVersion } },
   };
   const modules = {
@@ -38,7 +40,10 @@ function loadUpdater({ nativeBuildVersion = '125', manifestVersion = 111, platfo
       if (!(name in modules)) throw Error('Unmocked module: ' + name);
       return modules[name];
     },
-    fetch: async () => ({ ok: true, json: async () => ({ android: response }) }),
+    fetch: async () => {
+      if (fetchError) throw Error('Offline');
+      return { ok: httpOk, json: async () => ({ android: response }) };
+    },
     AbortController, setTimeout, clearTimeout,
   });
   return { api: exports, calls };
@@ -105,4 +110,58 @@ test('approved later Android release opens only the Android package installer', 
   assert.equal(calls.installed[0].action, 'android.intent.action.VIEW');
   assert.equal(calls.installed[0].details.type, 'application/vnd.android.package-archive');
   assert.equal(calls.installed[0].details.flags, 1);
+});
+
+
+test('native Android package identity overrides the stale JavaScript manifest', async () => {
+  assert.equal(loadUpdater({ nativePackage: 'uk.carmazium.app' }).api.canSelfUpdate(), true);
+  const foreign = loadUpdater({ nativePackage: 'uk.carmazium.qa', response: version(126) });
+  assert.equal(foreign.api.canSelfUpdate(), false);
+  assert.equal((await foreign.api.checkForUpdateStatus()).status, 'unsupported');
+});
+
+test('manual checks report available, up-to-date, offline and untrusted responses', async () => {
+  const available = await loadUpdater({ response: version(126) }).api.checkForUpdateStatus();
+  assert.equal(available.status, 'available');
+  assert.equal(available.update?.versionCode, 126);
+
+  const current = await loadUpdater({ nativeBuildVersion: '126', response: version(126) }).api.checkForUpdateStatus();
+  assert.equal(current.status, 'up-to-date');
+  assert.equal(current.versionCode, 126);
+
+  const offline = await loadUpdater({ fetchError: true }).api.checkForUpdateStatus();
+  assert.equal(offline.status, 'error');
+  assert.match(offline.message, /connection/i);
+  const failed = await loadUpdater({ httpOk: false }).api.checkForUpdateStatus();
+  assert.equal(failed.status, 'error');
+  const untrusted = await loadUpdater({ response: version(127, 126) }).api.checkForUpdateStatus();
+  assert.equal(untrusted.status, 'error');
+});
+
+
+test('app detects signed APK updates on launch and resume with short retry on failure', () => {
+  const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  const prompt = readFileSync(new URL('../src/components/AppUpdatePrompt.tsx', import.meta.url), 'utf8');
+  const settings = readFileSync(new URL('../src/screens/main/SettingsScreen.tsx', import.meta.url), 'utf8');
+  const control = readFileSync(new URL('../src/components/AndroidUpdateSettings.tsx', import.meta.url), 'utf8');
+  assert.ok(!app.includes('Updates.fetchUpdateAsync()'));
+  assert.ok(!app.includes('Updates.reloadAsync()'));
+  assert.match(app, /<AppUpdatePrompt \/>/);
+  assert.match(prompt, /CHECK_EVERY_MS = 15 \* 60_000/);
+  assert.match(prompt, /RETRY_AFTER_FAILURE_MS = 60_000/);
+  assert.match(prompt, /busy\.current \|\| checkInFlight\.current \|\|/);
+  assert.match(prompt, /AppState\.addEventListener\('change'/);
+  assert.match(prompt, /setInterval\(\(\) => \{ void check\(\); \}, FOREGROUND_POLL_MS\)/);
+  assert.match(prompt, /REMIND_AFTER_MS/);
+  assert.match(prompt, /SNOOZE_KEY = 'carmazium:app-update:later:v1'/);
+  assert.match(prompt, /label="Later"/);
+  assert.match(prompt, /label=\{downloading \? 'Updating…' : 'Update now'\}/);
+  assert.match(prompt, /Updates\.fetchUpdateAsync\(\)/);
+  assert.match(prompt, /Updates\.reloadAsync\(\)/);
+  const appConfig = JSON.parse(readFileSync(new URL('../app.json', import.meta.url), 'utf8')).expo;
+  assert.equal(appConfig.updates.checkAutomatically, 'NEVER');
+  assert.match(settings, /<AndroidUpdateSettings \/>/);
+  assert.match(control, /accessibilityLabel="Check for updates"/);
+  assert.match(control, /Android installer opened\. Confirm Install/);
+  assert.match(control, /if \(!supported\) return null/);
 });

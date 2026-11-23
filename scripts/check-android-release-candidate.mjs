@@ -34,6 +34,15 @@ export function checkReleaseCandidate({app,eas,env,commitSha,requestedSha}){
   if(typeof rawVersion!=='string' || !/^[1-9][0-9]{0,9}$/.test(rawVersion) ||
       !Number.isSafeInteger(versionCode) || versionCode>2147483647)
     errors.push('Candidate Android versionCode must be a valid positive 32-bit integer');
+  // The publicly installed v126 has Expo OTA disabled. Never reuse an old
+  // Android build number or runtime when enabling signed production updates.
+  if(Number.isSafeInteger(versionCode) && versionCode < 127)
+    errors.push('OTA-enabled customer candidate must be Android build 127 or later');
+  if(app?.expo?.version!=='1.0.2' ||
+     app?.expo?.runtimeVersion?.policy!=='appVersion' ||
+     app?.expo?.updates?.enabled!==true ||
+     app?.expo?.updates?.requestHeaders?.['expo-channel-name'])
+    errors.push('Customer OTA source must use appVersion 1.0.2 without pinning a channel shared by preview builds');
   if(app?.expo?.android?.package!=='uk.carmazium.app')
     errors.push('Candidate must use real CarMazium Android package');
   if(app?.expo?.ios?.bundleIdentifier!=='uk.carmazium.app')

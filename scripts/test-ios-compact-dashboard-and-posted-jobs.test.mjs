@@ -87,3 +87,42 @@ test('native provider Available Jobs keeps website compact navigation and retain
   assert.doesNotMatch(provider, /Manage service areas & verification/);
   assert.doesNotMatch(provider, /label="Job messages"/);
 });
+
+
+test('iPhone provider overview uses the existing mobile website two-column density', () => {
+  const overview = read(native + 'screens/main/ProviderOverviewScreen.tsx');
+  const website = read('src/app/dashboard/service/page.tsx');
+  assert.match(website, /grid grid-cols-2 xl:grid-cols-4/);
+  assert.match(overview, /Platform\.OS === 'ios' && width < 600/);
+  assert.match(overview, /width < 340 \|\| fontScale >= 1\.75/);
+  assert.match(overview, /fontScale >= 1\.3/);
+  assert.match(overview, /width: singleMetricColumn \? '100%' : '48%'/);
+  // No second iOS-only page or forked layout was introduced.
+  assert.match(overview, /navigation\.navigate\('PartnerDashboard'\)/);
+  assert.match(overview, /navigation\.navigate\('ProviderJobs'/);
+});
+
+test('iPhone customer job posting scrolls its full page rather than freezing the top half', () => {
+  const jobs = read(native + 'screens/main/CustomerServiceJobsScreen.tsx');
+  assert.equal((jobs.match(/<FlatList\b/g) || []).length, 1);
+  assert.match(jobs, /ListHeaderComponent=\{listHeader\}/);
+  assert.match(jobs, /ListEmptyComponent=\{emptyContent\}/);
+  assert.match(jobs, /onEndReachedThreshold=\{0\.35\}/);
+  const provider = read(native + 'screens/main/ProviderJobsScreen.tsx');
+  assert.equal((provider.match(/<FlatList\b/g) || []).length, 1);
+  assert.match(provider, /ListHeaderComponent=\{listHeader\}/);
+  assert.match(provider, /navigation\.navigate\('CreateServiceJob'/);
+});
+
+
+test('iPhone job booking date picker remains compact until opened and keeps the chosen time', () => {
+  const jobForm = read(native + 'screens/main/CreateServiceJobScreen.tsx');
+  assert.match(jobForm, /!asap && pickerVisible && \(/);
+  assert.doesNotMatch(jobForm, /Platform\.OS === 'ios' && !asap\) \|\| pickerVisible/);
+  assert.match(jobForm, /Platform\.OS === 'android' && pickerMode === 'date' && requestedFor/);
+  assert.match(jobForm, /Platform\.OS !== 'ios'\) setPickerVisible\(false\)/);
+  assert.match(jobForm, /accessibilityLabel="Done choosing date and time"/);
+  assert.match(jobForm, /onPress=\{\(\) => setPickerVisible\(false\)\}/);
+  assert.match(jobForm, /minHeight: 48, backgroundColor: Colors\.accent/);
+  assert.match(jobForm, /if \(value\) setPickerVisible\(false\)/);
+});

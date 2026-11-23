@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -11,7 +11,14 @@ import { getMyCapabilities, getJobFeedPage, getAssignedJobsPage, formatPence, ty
 import { loadAllProviderJobs, loadProviderJobLists, type ProviderJobLists } from '../../lib/tradeXchangeProviderJobLoad';
 type Props = NativeStackScreenProps<MainStackParamList, 'ProviderOverview'>;
 export function ProviderOverviewScreen({ navigation }: Props) {
-  const { fontScale } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
+  // iPhone Dynamic Type must not make an ordinary phone show giant full-width
+  // metric tiles when the mobile website and the Android dashboard use two.
+  // Keep single-column layout for narrow screens or larger accessibility text.
+  const iphoneColumns = Platform.OS === 'ios' && width < 600;
+  const singleMetricColumn = iphoneColumns
+    ? (width < 340 || fontScale >= 1.75)
+    : fontScale >= 1.3;
   const [capabilities, setCapabilities] = useState<MyCapabilities | null>(null);
   const [lists, setLists] = useState<ProviderJobLists<ServiceJob> | null>(null);
   const [loading, setLoading] = useState(true), [error, setError] = useState<string | null>(null);
@@ -47,7 +54,7 @@ export function ProviderOverviewScreen({ navigation }: Props) {
     <View style={s.actions}><Button label="My services" variant="outline" onPress={() => navigation.navigate('PartnerDashboard')} /><Button label="Find jobs" onPress={() => openJobs()} /><Button label="Job messages" variant="outline" onPress={() => navigation.navigate('ProviderMessages')} /></View>
     <Button label={loading ? 'Refreshing…' : 'Refresh dashboard'} variant="outline" disabled={loading} onPress={() => void load()} />
     {error && <Text accessibilityRole="alert" style={s.error}>{error}</Text>}
-    <View style={s.metrics}>{metrics.map(([label, value]) => <View key={label} style={[s.metric, { width: fontScale >= 1.3 ? '100%' : '48%' }]}><Text style={s.body}>{label}</Text><Text style={s.value}>{loading ? '…' : value}</Text></View>)}</View>
+    <View style={s.metrics}>{metrics.map(([label, value]) => <View key={label} style={[s.metric, { width: singleMetricColumn ? '100%' : '48%' }]}><Text style={s.body}>{label}</Text><Text style={s.value}>{loading ? '…' : value}</Text></View>)}</View>
     <View style={s.card}><Text style={s.heading}>Delivery &amp; Inspection jobs</Text><Text style={s.body}>See open jobs in your approved service areas, submit quotes and manage jobs you win.</Text><Button label="Available Jobs" variant="outline" onPress={() => openJobs()} /></View>
     <View style={s.card}><Text style={s.heading}>My work</Text><Text style={s.body}>Continue jobs assigned to your business and review completed work. Existing jobs remain accessible when approval for new work needs renewal.</Text><Button label="My Work" variant="outline" onPress={() => openJobs('assigned')} /></View>
     <View style={s.card}><Text style={s.heading}>My recent assigned jobs</Text><Text style={s.body}>Delivery and Inspection jobs assigned to your business.</Text><Button label="View all" variant="outline" onPress={() => openJobs('assigned')} />

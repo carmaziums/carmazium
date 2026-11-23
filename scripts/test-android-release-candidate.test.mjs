@@ -14,7 +14,7 @@ const env=()=>({
   GITHUB_REF:'refs/heads/main',
   GITHUB_EVENT_NAME:'workflow_dispatch',
   CARMAZIUM_ANDROID_CANDIDATE_APPROVAL:'INTERNAL_REVIEW_ONLY',
-  CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE:'2',
+  CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE:'127',
   APP_ENV:'production',
   CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64:'AQID'.repeat(32),
   CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS:'carmazium',
@@ -44,7 +44,11 @@ test('valid synthetic signing metadata allows INTERNAL candidate only, not publi
   assert.ok(source.includes('CarMazium-Android-STAGED-NOT-APPROVED'));
   assert.ok(source.includes('private-staged-apk/*'));
   assert.ok(source.includes('retention-days: 3'));
-  assert.ok(source.includes('app.expo.updates.enabled=false'));
+  assert.ok(source.includes("app.expo.updates?.enabled!==true"));
+  assert.ok(source.includes("app.expo.updates.requestHeaders={'expo-channel-name':'production'}"));
+  assert.ok(!app.expo.updates.requestHeaders?.['expo-channel-name']);
+  assert.ok(source.includes('app.expo.version!==\'1.0.2\''));
+  assert.ok(source.includes('Number(process.env.CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE)<127'));
   assert.ok(source.includes('app.expo.android.versionCode=Number(process.env.CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE)'));
   assert.ok(source.includes("versionCode='${CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE}'"));
   assert.ok(source.includes('cert'));
@@ -62,7 +66,7 @@ test('must verify exact main SHA and explicit internal-only approval',()=>{
 });
 
 test('must reject unsafe release versionCode and wrong APP_ENV',()=>{
-  for(const invalid of ['', '0','01','-1','1.1','abc','2147483648','99999999999']){
+  for(const invalid of ['', '0','01','-1','1.1','abc','126','2147483648','99999999999']){
     assert.equal(check({CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE:invalid}).ok,false,invalid);
   }
   assert.equal(check({APP_ENV:'preview'}).ok,false);
@@ -126,4 +130,18 @@ test('download website must stay gated even when candidate build exists',()=>{
   assert.ok(doc.includes('Apple Developer'));
   assert.ok(doc.includes('TestFlight'));
   assert.ok(doc.includes('signed'));
+});
+
+
+test('new company-owned OTA runtime rejects old version, unsafe channel and missing updates',()=>{
+  const clone=()=>JSON.parse(JSON.stringify(app));
+  const badChannel=clone();badChannel.expo.updates.requestHeaders={'expo-channel-name':'preview'};
+  assert.equal(check({},sha,badChannel).ok,false);
+  const disabled=clone();disabled.expo.updates.enabled=false;
+  assert.equal(check({},sha,disabled).ok,false);
+  const stale=clone();stale.expo.version='1.0.1';
+  assert.equal(check({},sha,stale).ok,false);
+  const unscoped=clone();unscoped.expo.runtimeVersion={policy:'sdkVersion'};
+  assert.equal(check({},sha,unscoped).ok,false);
+  assert.equal(check({CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE:'127'}).ok,true);
 });
