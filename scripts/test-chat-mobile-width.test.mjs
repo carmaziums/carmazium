@@ -32,7 +32,7 @@ test("legacy buyer, seller and admin message panes stay width-constrained", () =
 })
 
 test("long words and links in a message wrap instead of widening the bubble", () => {
-    assert.match(readFileSync("src/components/chat/ChatWindow.tsx", "utf8"), /whitespace-pre-wrap break-words \[overflow-wrap:anywhere\] px-1">\{parsed\.text\}/)
+    assert.match(readFileSync("src/components/chat/ChatWindow.tsx", "utf8"), /whitespace-pre-wrap break-words \[overflow-wrap:anywhere\] px-1 lg:text-\[15px\] lg:leading-\[1\.55\]">\{parsed\.text\}/)
 })
 
 test("the message box can shrink so the send button stays on screen", () => {
