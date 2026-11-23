@@ -8,6 +8,8 @@ on:
       - 'backend/**'
       - 'carmazium app/carmazium app/**'
       - 'product-parity.json'
+      - 'next.config.ts'
+      - 'scripts/test-apex-app-association-redirects.test.mjs'
       - 'scripts/check-product-parity.mjs'
       - 'scripts/lib/dealer-menu-parity.mjs'
       - 'scripts/test-product-navigation-parity.test.mjs'
@@ -350,6 +352,8 @@ jobs:
         run: node --test scripts/test-login-session-rebridge.test.mjs scripts/test-login-profile-recovery.test.mjs scripts/test-desktop-dealer-auth-loading.test.mjs
       - name: Audit public Apple and Android app install link safety
         run: node --test scripts/test-website-mobile-app-downloads.test.mjs
+      - name: Keep both declared app-link hosts directly verifiable without losing canonical redirects
+        run: node --test scripts/test-apex-app-association-redirects.test.mjs
       - name: Verify admin Analytics mobile labels, date controls and status semantics
         run: node --test scripts/test-admin-analytics-mobile-qa.test.mjs
       - run: npx tsc --noEmit
