@@ -113,3 +113,16 @@ test('iPhone customer job posting scrolls its full page rather than freezing the
   assert.match(provider, /ListHeaderComponent=\{listHeader\}/);
   assert.match(provider, /navigation\.navigate\('CreateServiceJob'/);
 });
+
+
+test('iPhone job booking date picker remains compact until opened and keeps the chosen time', () => {
+  const jobForm = read(native + 'screens/main/CreateServiceJobScreen.tsx');
+  assert.match(jobForm, /!asap && pickerVisible && \(/);
+  assert.doesNotMatch(jobForm, /Platform\.OS === 'ios' && !asap\) \|\| pickerVisible/);
+  assert.match(jobForm, /Platform\.OS === 'android' && pickerMode === 'date' && requestedFor/);
+  assert.match(jobForm, /Platform\.OS !== 'ios'\) setPickerVisible\(false\)/);
+  assert.match(jobForm, /accessibilityLabel="Done choosing date and time"/);
+  assert.match(jobForm, /onPress=\{\(\) => setPickerVisible\(false\)\}/);
+  assert.match(jobForm, /minHeight: 48, backgroundColor: Colors\.accent/);
+  assert.match(jobForm, /if \(value\) setPickerVisible\(false\)/);
+});
