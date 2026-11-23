@@ -109,9 +109,9 @@ export const AppUpdatePrompt: React.FC = () => {
     };
   }, [check]);
 
-  const dismiss = async (hours = 24) => {
+  const dismiss = async () => {
     if (!candidate || busy.current) return;
-    const next = { key: candidate.key, until: Date.now() + hours * 60 * 60_000 };
+    const next = { key: candidate.key, until: Date.now() + REMIND_AFTER_MS };
     setSnooze(next);
     try { await AsyncStorage.setItem(SNOOZE_KEY, JSON.stringify(next)); }
     catch { /* a storage error must not force installation or lock the user in */ }
@@ -165,7 +165,7 @@ export const AppUpdatePrompt: React.FC = () => {
           <View style={styles.icon}><Ionicons name="arrow-down-circle" size={34} color={Colors.accent} /></View>
           <Text style={styles.title} accessibilityRole="header">New version available</Text>
           <Text style={styles.body}>
-            {isApk
+            {candidate?.kind === 'apk'
               ? `CarMazium build ${candidate.release.versionCode} is available with the latest fixes and features. Would you like to update?`
               : 'Compatible CarMazium improvements are available. Would you like to apply them now?'}
           </Text>
@@ -175,7 +175,9 @@ export const AppUpdatePrompt: React.FC = () => {
                 <View style={[styles.progressFill, { width: `${Math.round((progress ?? 0) * 100)}%` }]} />
               </View>
               <Text style={styles.progressText}>
-                {progress === 1 ? 'Opening installer…' : `Downloading… ${Math.round((progress ?? 0) * 100)}%`}
+                {candidate?.kind === 'ota'
+                  ? 'Preparing the compatible update…'
+                  : progress === 1 ? 'Opening installer…' : `Downloading… ${Math.round((progress ?? 0) * 100)}%`}
               </Text>
             </View>
           )}
