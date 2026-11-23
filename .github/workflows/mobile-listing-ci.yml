@@ -27,6 +27,8 @@ on:
       - "carmazium app/carmazium app/src/components/HorizontalVehicleCard.tsx"
       - "carmazium app/carmazium app/src/screens/main/SearchScreen.tsx"
       - "carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/main/DealerPurchasesScreen.tsx"
+      - "scripts/test-dealer-purchase-destinations.test.mjs"
       - "carmazium app/carmazium app/src/screens/account/MyCarsScreen.tsx"
       - "carmazium app/carmazium app/scripts/test-personal-cars-purchases-mobile.test.mjs"
       - "scripts/test-ios-compact-dashboard-and-posted-jobs.test.mjs"
