@@ -27,6 +27,8 @@ on:
       - "carmazium app/carmazium app/src/components/HorizontalVehicleCard.tsx"
       - "carmazium app/carmazium app/src/screens/main/SearchScreen.tsx"
       - "carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/account/MyCarsScreen.tsx"
+      - "carmazium app/carmazium app/scripts/test-personal-cars-purchases-mobile.test.mjs"
       - "scripts/test-ios-compact-dashboard-and-posted-jobs.test.mjs"
       - "carmazium app/carmazium app/src/lib/paymentsApi.ts"
       - "carmazium app/carmazium app/src/lib/storageHelper.ts"
@@ -74,6 +76,9 @@ jobs:
 
       - name: Mobile dealer CRM and iPhone responsive layouts
         run: node ../../scripts/test-ios-compact-dashboard-and-posted-jobs.test.mjs
+
+      - name: Personal My Cars and buyer purchase native flows
+        run: node --test scripts/test-personal-cars-purchases-mobile.test.mjs
 
       - name: Native DVLA, 3D and dual-price parity regressions
         run: node ../../scripts/test-native-web-vehicle-parity-20261015.test.mjs
