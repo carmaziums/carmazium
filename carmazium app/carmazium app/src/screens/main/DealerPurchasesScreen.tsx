@@ -241,6 +241,20 @@ export const DealerPurchasesScreen: React.FC = () => {
     (!isHistory || HISTORY_STATUSES.includes(s)) && (s === statusFilter || purchases.some(p =>
       (!isRetail || p.purchaseChannel === 'RETAIL' || (!p.purchaseChannel && p.retailSold)) && p.status === s)));
 
+  // The mobile website keeps completed purchases grouped by their actual
+  // lifecycle stage. Preserve every record and its server-confirmed status,
+  // only arranging the rows for a clearer completed-history presentation.
+  const groupedVisible = useMemo(() => {
+    if (!isHistory) return visible;
+    return [...visible].sort((a, b) =>
+      HISTORY_STATUSES.indexOf(a.status) - HISTORY_STATUSES.indexOf(b.status));
+  }, [visible, isHistory]);
+  const historyGroupCounts = useMemo(() => {
+    const counts = new Map<PurchaseStatus, number>();
+    for (const item of groupedVisible) counts.set(item.status, (counts.get(item.status) ?? 0) + 1);
+    return counts;
+  }, [groupedVisible]);
+
   const totalSpent = visible.reduce((sum, p) => sum + p.purchasePrice, 0);
 
   const selectDestination = useCallback((destination: PurchaseDestination) => {
@@ -408,10 +422,18 @@ export const DealerPurchasesScreen: React.FC = () => {
     </View>
   );
 
-  const renderPurchaseCard = useCallback(({ item }: { item: PurchaseItem }) => {
+  const renderPurchaseCard = useCallback(({ item, index }: { item: PurchaseItem; index: number }) => {
     const cfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.AWAITING_CONFIRMATION;
+    const startsGroup = isHistory && (index === 0 || groupedVisible[index - 1]?.status !== item.status);
 
     return (
+      <>
+      {startsGroup && (
+        <View style={styles.statusSectionHeader} accessibilityRole="header">
+          <Text style={styles.statusSectionLabel}>{cfg.label.toUpperCase()}</Text>
+          <Text style={styles.statusSectionCount}>{historyGroupCounts.get(item.status) ?? 0}</Text>
+        </View>
+      )}
       <View style={styles.purchaseCard}>
       <TouchableOpacity
         activeOpacity={0.8}
@@ -453,8 +475,9 @@ export const DealerPurchasesScreen: React.FC = () => {
       {item.reconciledPurchase && <Text style={styles.purchaseDate}>Purchased from original CarMazium auction listing · Owner confirmed</Text>}
       {!!item.buyerCollectedAt && <PurchaseReceiptButton saleId={item.id} reconciled={item.reconciledPurchase} />}
       </View>
+      </>
     );
-  }, [navigation]);
+  }, [navigation, groupedVisible, historyGroupCounts, isHistory]);
 
   // ─────────────── main render ───────────────────────
 
@@ -514,7 +537,7 @@ export const DealerPurchasesScreen: React.FC = () => {
         // lifetime, so we only mount rows near the viewport.
         <FlatList
           style={styles.scroll}
-          data={visible}
+          data={groupedVisible}
           keyExtractor={(item) => item.id}
           renderItem={renderPurchaseCard}
           ListHeaderComponent={
@@ -602,6 +625,21 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
     color: Colors.white,
+  },
+
+  statusSectionHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginTop: 19, marginBottom: 8,
+  },
+  statusSectionLabel: {
+    fontSize: FontSize.sm - 1, fontFamily: FontFamily.bold,
+    color: Colors.textMuted, letterSpacing: 1.2, flexShrink: 1,
+  },
+  statusSectionCount: {
+    fontSize: FontSize.xs, color: Colors.textMuted,
+    fontFamily: FontFamily.bold, backgroundColor: Colors.bgCard,
+    borderRadius: 8, overflow: 'hidden',
+    paddingHorizontal: 10, paddingVertical: 4,
   },
 
   // ── Search + status ──

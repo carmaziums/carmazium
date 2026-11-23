@@ -229,3 +229,18 @@ test("free purchase grants: a settled fee never shows a deadline or a second £1
     const deadline = read("backend/src/auctions/buyer-fee-deadline.ts")
     assert.match(deadline, /a\.buyerFeePaid \|\| !a\.wonAt\) return null/)
 })
+
+
+test("native completed purchases show the same grouped stage headings without losing records or receipts", () => {
+    const native = read(APP + "screens/main/DealerPurchasesScreen.tsx")
+    assert.match(native, /const groupedVisible = useMemo\(\(\) => \{/)
+    assert.match(native, /if \(!isHistory\) return visible/)
+    assert.match(native, /HISTORY_STATUSES\.indexOf\(a\.status\) - HISTORY_STATUSES\.indexOf\(b\.status\)/)
+    assert.match(native, /historyGroupCounts = useMemo/)
+    assert.match(native, /startsGroup = isHistory &&/)
+    assert.match(native, /accessibilityRole="header"/)
+    assert.match(native, /historyGroupCounts\.get\(item\.status\)/)
+    assert.match(native, /data=\{groupedVisible\}/)
+    assert.match(native, /PurchaseReceiptButton saleId=\{item\.id\}/)
+    assert.match(native, /navigation\.navigate\('DealerPurchaseDetail'/)
+});

@@ -100,7 +100,7 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
     { text: 'Vehicle inspection', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'INSPECTION' }) },
     { text: 'Cancel', style: 'cancel' },
   ]);
-  const renderJob = ({ item: job, index }: { item: ServiceJob; index: number }) => (<>
+  const renderJob = ({ item: job, index }: { item: ServiceJob; index: number }) => (<View style={styles.jobRow}>
     {(index === 0 || isPast(ordered[index - 1]) !== isPast(job)) && <Text style={styles.typeText}>{isPast(job) ? 'Past' : 'Active'}</Text>}
     <TouchableOpacity
       style={styles.card}
@@ -169,13 +169,13 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
           <Ionicons name="chevron-forward" size={15} color={Colors.accent} />
         </View>
       </View>
-    </TouchableOpacity></>
+    </TouchableOpacity></View>
   );
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
-
+  // Keep customer controls and job history in ONE scrolling list. Previously
+  // the static toolbar consumed half the iPhone viewport while only cards moved.
+  const listHeader = (
+    <>
       <View style={styles.header}>
         <IconButton
           style={styles.headerButton}
@@ -184,69 +184,65 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
           accessibilityLabel="Go back"
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>My Posted Jobs</Text>
+          <Text accessibilityRole="header" style={styles.headerTitle} maxFontSizeMultiplier={1.25}>My Posted Jobs</Text>
           <Text style={styles.headerSub}>TradeXchange</Text>
         </View>
         <HamburgerButton />
       </View>
-
-      <View style={{ padding: 18, gap: 10 }}>
-        <Text style={styles.metaText}>Track the delivery, recovery and inspection jobs you posted, compare quotes and manage the provider you choose.</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      <View style={styles.intro}>
+        <Text style={styles.introText}>Track your delivery, recovery and inspection jobs, review quotes and manage the providers you choose.</Text>
+        <View style={styles.actions}>
           <Button label="TradeXchange Services" variant="outline" size="sm" onPress={() => navigation.navigate('Services')} />
           <Button label="Post a Job" size="sm" onPress={postJob} />
         </View>
-        <Text style={styles.metaText}>This is the customer side of TradeXchange. If you run an approved service-provider business and want to compete for open work, use:</Text>
-        <Button label="Available Jobs in the provider dashboard" variant="ghost" size="sm" onPress={() => navigation.navigate('ProviderJobs', { initialTab: 'open' })} />
       </View>
+    </>
+  );
 
-      {loading && jobs.length === 0 ? (
-        <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
-      ) : error && jobs.length === 0 ? (
-        <View style={styles.centerCard}>
-          <Ionicons name="alert-circle-outline" size={32} color={Colors.accent} />
-          <Text style={styles.emptyTitle}>Could not load jobs</Text>
-          <Text style={styles.emptyText}>{error}</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => void load('reset')}>
-            <Text style={styles.primaryText}>TRY AGAIN</Text>
-          </TouchableOpacity>
-        </View>
-      ) : jobs.length === 0 ? (
-        <View style={styles.centerCard}>
-          <Ionicons name="briefcase-outline" size={34} color={Colors.textMuted} />
-          <Text style={styles.emptyTitle}>No jobs yet</Text>
-          <Text style={styles.emptyText}>
-            Post a delivery, recovery or inspection job and approved providers can compete for it with quotes.
-          </Text>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={postJob}
-            accessibilityRole="button"
-            accessibilityLabel="Post your first job"
-          >
-            <Text style={styles.primaryText}>Post your first job</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <FlatList
-          data={ordered}
-          keyExtractor={(item) => item.id}
-          renderItem={renderJob}
-          contentContainerStyle={styles.list}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.accent} />
-          }
-          onEndReached={() => nextCursor && !loadingMore && void load('more')}
-          onEndReachedThreshold={0.35}
-          ListFooterComponent={
-            loadingMore
-              ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 18 }} />
-              : error
-                ? <Text style={styles.inlineError}>{error}</Text>
-                : null
-          }
-        />
-      )}
+  const emptyContent = loading ? (
+    <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
+  ) : error ? (
+    <View style={styles.centerCard}>
+      <Ionicons name="alert-circle-outline" size={32} color={Colors.accent} />
+      <Text style={styles.emptyTitle}>Could not load jobs</Text>
+      <Text style={styles.emptyText}>{error}</Text>
+      <TouchableOpacity style={styles.primaryButton} onPress={() => void load('reset')}>
+        <Text style={styles.primaryText}>TRY AGAIN</Text>
+      </TouchableOpacity>
+    </View>
+  ) : (
+    <View style={styles.centerCard}>
+      <Ionicons name="briefcase-outline" size={34} color={Colors.textMuted} />
+      <Text style={styles.emptyTitle}>No jobs yet</Text>
+      <Text style={styles.emptyText}>Post a delivery, recovery or inspection job and approved providers can compete for it with quotes.</Text>
+      <TouchableOpacity
+        style={styles.primaryButton}
+        onPress={postJob}
+        accessibilityRole="button"
+        accessibilityLabel="Post your first job"
+      >
+        <Text style={styles.primaryText}>Post your first job</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
+      <FlatList
+        data={ordered}
+        keyExtractor={(item) => item.id}
+        renderItem={renderJob}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={emptyContent}
+        contentContainerStyle={styles.list}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.accent} />}
+        onEndReached={() => nextCursor && !loadingMore && void load('more')}
+        onEndReachedThreshold={0.35}
+        ListFooterComponent={loadingMore
+          ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 18 }} />
+          : error && jobs.length > 0 ? <Text style={styles.inlineError}>{error}</Text> : null}
+      />
     </View>
   );
 };
@@ -276,7 +272,11 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
-  list: { padding: 18, gap: 12, paddingBottom: 60 },
+  list: { paddingBottom: 60 },
+  intro: { paddingHorizontal: 18, paddingVertical: 14, gap: 12 },
+  introText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, lineHeight: 20, color: Colors.textSecondary },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  jobRow: { paddingHorizontal: 18, marginBottom: 12, gap: 12 },
   card: {
     borderWidth: 1,
     borderRadius: Radius.card,
@@ -306,8 +306,8 @@ const styles = StyleSheet.create({
   trailing: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
   openRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   openText: { fontFamily: FontFamily.bold, fontSize: 10, color: Colors.accent },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  centerCard: { flex: 1, padding: 34, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  center: { minHeight: 180, alignItems: 'center', justifyContent: 'center' },
+  centerCard: { minHeight: 240, padding: 34, alignItems: 'center', justifyContent: 'center', gap: 12 },
   emptyTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white, textAlign: 'center' },
   emptyText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
   primaryButton: { backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 12, minHeight: 48, justifyContent: 'center', marginTop: 6, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },

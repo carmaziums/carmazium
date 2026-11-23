@@ -23,7 +23,29 @@ export interface AvailableUpdate {
 }
 
 export function currentVersionCode(): number {
-  return Number(Constants.expoConfig?.android?.versionCode ?? 0) || 0;
+  // Expo's published JS manifest can differ from the installed APK after an
+  // OTA update or ownership migration. Android's native versionCode is what
+  // the package installer actually compares for in-place upgrades.
+  const installed = Number(Constants.nativeBuildVersion);
+  if (Number.isSafeInteger(installed) && installed > 0) return installed;
+  const configured = Number(Constants.expoConfig?.android?.versionCode);
+  return Number.isSafeInteger(configured) && configured > 0 ? configured : 0;
+}
+
+export function isTrustedAndroidUpdate(value: unknown): value is AvailableUpdate {
+  if (!value || typeof value !== 'object') return false;
+  const update = value as Partial<AvailableUpdate>;
+  if (!Number.isSafeInteger(update.versionCode) || !update.versionCode ||
+      update.versionCode <= 0 || update.versionCode > 2147483647 ||
+      typeof update.versionName !== 'string' ||
+      !/^\d+\.\d+\.\d+$/.test(update.versionName) ||
+      typeof update.url !== 'string') return false;
+
+  // The public /api/app-version derives the version and URL from an approved
+  // first-party APK filename. Reject an API response with mismatched numbers
+  // before opening Android's installer.
+  const match = /^https:\/\/(?:www\.)?carmazium\.com\/downloads\/[A-Za-z0-9][A-Za-z0-9._-]*-(\d+\.\d+\.\d+)-v(\d+)\.apk$/.exec(update.url);
+  return !!match && match[1] === update.versionName && Number(match[2]) === update.versionCode;
 }
 
 /** Only the customer build checks (not preview/test builds or iOS). */
@@ -40,9 +62,7 @@ export async function checkForUpdate(): Promise<AvailableUpdate | null> {
     if (!res.ok) return null;
     const body = (await res.json()) as { android?: AvailableUpdate | null };
     const latest = body?.android;
-    if (!latest || typeof latest.versionCode !== 'number' || typeof latest.url !== 'string') return null;
-    // Only ever download from CarMazium's own domain.
-    if (!/^https:\/\/(www\.)?carmazium\.com\/downloads\/[A-Za-z0-9._-]+\.apk$/.test(latest.url)) return null;
+    if (!isTrustedAndroidUpdate(latest)) return null;
     return latest.versionCode > currentVersionCode() ? latest : null;
   } catch {
     return null;
@@ -53,6 +73,9 @@ export async function checkForUpdate(): Promise<AvailableUpdate | null> {
 
 /** Downloads the update (reporting 0–1 progress) and opens the installer. */
 export async function downloadAndInstall(update: AvailableUpdate, onProgress: (p: number) => void): Promise<void> {
+  if (!canSelfUpdate() || !isTrustedAndroidUpdate(update) || update.versionCode <= currentVersionCode()) {
+    throw new Error('This update is not a newer approved CarMazium Android release.');
+  }
   const target = `${FileSystem.cacheDirectory}CarMazium-update-${update.versionCode}.apk`;
   await FileSystem.deleteAsync(target, { idempotent: true });
   const task = FileSystem.createDownloadResumable(update.url, target, {}, (p) => {

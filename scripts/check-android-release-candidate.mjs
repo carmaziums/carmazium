@@ -38,6 +38,10 @@ export function checkReleaseCandidate({app,eas,env,commitSha,requestedSha}){
     errors.push('Candidate must use real CarMazium Android package');
   if(app?.expo?.ios?.bundleIdentifier!=='uk.carmazium.app')
     errors.push('Original app identity changed: refusing to proceed');
+  if(app?.expo?.owner!=='carmazium' ||
+     app?.expo?.extra?.eas?.projectId!=='9c77bb81-205c-42f8-913e-b69a0953ec10' ||
+     app?.expo?.updates?.url!=='https://u.expo.dev/9c77bb81-205c-42f8-913e-b69a0953ec10')
+    errors.push('Original CarMazium APK must migrate through the company-owned Expo project, not the former developer account');
   if(!app?.expo?.plugins?.includes('./plugins/withAndroidReleaseSigning'))
     errors.push('Release-signing config plugin is missing');
   if(eas?.build?.production?.android?.buildType!=='app-bundle' ||

@@ -26,6 +26,9 @@ import {
   ServiceMarketplaceSettings,
   completeProviderJob,
   formatPence,
+  parseServiceQuotePence,
+  servicePaymentEvidence,
+  servicePaymentStatusText,
   getProviderJob,
   getServiceSettings,
   startProviderJob,
@@ -85,6 +88,9 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
       if (mine?.status === 'ACTIVE') {
         setAmount((mine.amountPence / 100).toFixed(2));
         setQuoteMessage(mine.message || '');
+      } else {
+        setAmount('');
+        setQuoteMessage('');
       }
       setInspectionOutcome(nextJob.inspectionOutcome || '');
       setInspectionSummary(nextJob.inspectionSummary || '');
@@ -100,8 +106,11 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
   const myQuote = job?.quotes?.[0];
+  const paymentEvidence = servicePaymentEvidence(job?.payment, job?.agreedAmountPence);
   const isMine = job?.viewerRole === 'contractor';
-  const canQuote = job?.status === 'OPEN';
+  const canQuote = job?.status === 'OPEN' && job.canQuote === true;
+  const hasOpenQuote = myQuote?.status === 'ACTIVE';
+  const canWithdrawQuote = job?.status === 'OPEN' && job.canWithdrawQuote === true && hasOpenQuote;
   const nextStep = job?.status === 'OPEN'
     ? 'Review the vehicle and location, then send a quote. You cannot start work until the customer accepts and pays.'
     : job?.status === 'ACCEPTED'
@@ -121,23 +130,21 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
     isMine && job && ACTIVE_JOB_STATUSES.includes(job.status),
   );
 
-  const amountPence = useMemo(() => {
-    const parsed = Number(amount);
-    return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
-  }, [amount]);
+  const quotePence = useMemo(() => parseServiceQuotePence(amount), [amount]);
+  const amountPence = quotePence ?? 0;
 
-  const providerPence = useMemo(() => {
-    if (amountPence < 1) return null;
-    const feeRate = settings?.platformFeeRate;
-    if (feeRate == null) return null;
-    return amountPence - Math.round(amountPence * feeRate);
-  }, [amountPence, settings?.platformFeeRate]);
+  const platformFeePence = useMemo(() => {
+    if (quotePence === null || settings?.platformFeeRate == null) return null;
+    return Math.round(amountPence * settings.platformFeeRate);
+  }, [quotePence, amountPence, settings?.platformFeeRate]);
+  const providerPence = platformFeePence === null ? null : amountPence - platformFeePence;
 
   const run = async (
     key: string,
     action: () => Promise<unknown>,
     success: string,
   ) => {
+    if (busy) return;
     setBusy(key);
     setError(null);
     setFlash(null);
@@ -153,8 +160,12 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
   };
 
   const sendQuote = async () => {
-    if (!job || amountPence < 100) {
-      setError('Enter a quote of at least £1.00.');
+    if (!job || !canQuote || busy) {
+      setError('This job is not available for a new quote from your account.');
+      return;
+    }
+    if (quotePence === null) {
+      setError('Enter a fixed whole-job price between £1 and £50,000 with up to two decimal places.');
       return;
     }
     await run(
@@ -163,14 +174,14 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
         amountPence,
         message: quoteMessage.trim() || undefined,
       }),
-      myQuote?.status === 'ACTIVE'
+      hasOpenQuote
         ? 'Quote updated.'
         : 'Quote sent. The customer has been notified.',
     );
   };
 
   const withdraw = () => {
-    if (!job) return;
+    if (!job || !canWithdrawQuote || busy) return;
     Alert.alert(
       'Withdraw quote?',
       'The customer will no longer be able to accept this quote.',
@@ -393,7 +404,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
         {canQuote ? (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>
-              {myQuote?.status === 'ACTIVE' ? 'Your quote' : 'Quote this job'}
+              {hasOpenQuote ? 'Your quote' : 'Quote this job'}
             </Text>
 
             <Text style={styles.label}>Customer price</Text>
@@ -406,12 +417,21 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
                 placeholder="0.00"
                 placeholderTextColor={Colors.textMuted}
                 keyboardType="decimal-pad"
+                maxLength={8}
+                accessibilityLabel="Fixed price for whole service job in GBP"
               />
             </View>
+            <Text style={styles.smallText}>
+              £1 to £50,000 for the entire job. Include VAT if your business charges it.
+            </Text>
 
-            {providerPence != null ? (
+            {providerPence !== null && platformFeePence !== null ? (
               <Text style={styles.payoutHint}>
-                Customer pays {formatPence(amountPence)}. Your business receives approximately {formatPence(providerPence)} after the current CarMazium platform fee.
+                Customer pays {formatPence(amountPence)}. CarMazium fee {formatPence(platformFeePence)}. Your business receives {formatPence(providerPence)}.
+              </Text>
+            ) : quotePence !== null ? (
+              <Text style={styles.payoutHint}>
+                The current platform fee and provider payout will be confirmed when your quote is accepted.
               </Text>
             ) : null}
 
@@ -427,21 +447,21 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
             />
 
             <TouchableOpacity
-              style={[styles.primaryButton, (busy === 'quote' || amountPence < 100) && styles.disabled]}
-              disabled={busy === 'quote' || amountPence < 100}
+              style={[styles.primaryButton, (busy !== null || quotePence === null) && styles.disabled]}
+              disabled={busy !== null || quotePence === null}
               onPress={() => void sendQuote()}
             >
               {busy === 'quote'
                 ? <ActivityIndicator color={Colors.onAccent} />
                 : <Text style={styles.primaryText}>
-                    {myQuote?.status === 'ACTIVE' ? 'UPDATE QUOTE' : 'SEND QUOTE'}
+                    {hasOpenQuote ? 'UPDATE QUOTE' : 'SEND QUOTE'}
                   </Text>}
             </TouchableOpacity>
 
-            {myQuote?.status === 'ACTIVE' ? (
+            {canWithdrawQuote ? (
               <TouchableOpacity
                 style={styles.dangerButton}
-                disabled={busy === 'withdraw'}
+                disabled={busy !== null}
                 onPress={withdraw}
               >
                 {busy === 'withdraw'
@@ -452,21 +472,48 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
           </View>
         ) : null}
 
+        {job.status === 'OPEN' && !canQuote ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>New quotes unavailable</Text>
+            <Text style={styles.bodyText}>
+              Check service approval, insurance, payouts and team permissions in My services.
+              Previously accepted work remains in My Work.
+            </Text>
+            {canWithdrawQuote ? (
+              <TouchableOpacity style={styles.dangerButton} disabled={busy !== null}
+                accessibilityRole="button" accessibilityLabel="Withdraw existing service quote"
+                onPress={withdraw}>
+                <Text style={styles.dangerText}>WITHDRAW YOUR EXISTING QUOTE</Text>
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity style={styles.secondaryButton}
+              onPress={() => navigation.navigate('PartnerDashboard')}
+              accessibilityRole="button" accessibilityLabel="Review provider verification">
+              <Text style={styles.secondaryText}>MY SERVICES</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         {isMine && job.agreedAmountPence != null ? (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Your payout</Text>
-            <Text style={styles.payoutAmount}>
-              {formatPence(job.contractorAmountPence ?? 0)}
-            </Text>
-            <Text style={styles.bodyText}>
-              From {formatPence(job.agreedAmountPence)} customer price. {
-                job.payment?.status === 'RELEASED'
-                  ? 'Transferred to your Stripe business account.'
-                  : job.payment?.status === 'PAID'
-                    ? 'Held by CarMazium until customer confirmation or auto-release.'
-                    : 'Waiting for customer payment.'
-              }
-            </Text>
+            {paymentEvidence ? (
+              <>
+                <Text style={styles.payoutAmount}>{formatPence(paymentEvidence.contractorPence)}</Text>
+                <Info label="Customer total" value={formatPence(paymentEvidence.grossPence)} />
+                {paymentEvidence.refundPence > 0 ? <>
+                  <Info label="Recorded customer refund" value={formatPence(paymentEvidence.refundPence)} />
+                  <Info label="Remaining service amount" value={formatPence(paymentEvidence.netServicePence)} />
+                </> : null}
+                <Info label="CarMazium fee (9%)" value={formatPence(paymentEvidence.platformFeePence)} />
+                <Info label="Provider allocation (91%)" value={formatPence(paymentEvidence.contractorPence)} />
+              </>
+            ) : (
+              <Text accessibilityRole="alert" style={styles.warningText}>
+                Payment breakdown needs verification. Refresh or contact support before relying on this payout amount.
+              </Text>
+            )}
+            <Text style={styles.bodyText}>{servicePaymentStatusText(job.payment?.status)}</Text>
           </View>
         ) : null}
 

@@ -37,7 +37,10 @@ async function mount(items) {
 for (const items of [[], [{ id: 'past', status: 'CANCELLED' }, { id: 'active', status: 'OPEN' }]]) {
   test(`job posting remains available with ${items.length} existing jobs and only navigates`, async () => {
     const h = await mount(items);
-    const buttons = h.tree.root.findAllByType('Button');
+    const header = h.tree.root.findByType('FlatList').props.ListHeaderComponent;
+    let headerTree;
+    await act(async () => { headerTree = create(header); });
+    const buttons = headerTree.root.findAllByType('Button');
     await act(async () => buttons.find(x => x.props.label === 'Post a Job').props.onPress());
     assert.equal(h.choices.length, 1);
     const options = h.choices[0][2];
@@ -46,6 +49,6 @@ for (const items of [[], [{ id: 'past', status: 'CANCELLED' }, { id: 'active', s
     assert.deepEqual(JSON.parse(JSON.stringify(h.navigation)), [['CreateServiceJob', { serviceType: 'DELIVERY' }], ['CreateServiceJob', { serviceType: 'INSPECTION' }]]);
     assert.equal(h.reads.length, 1);
     if (items.length) assert.deepEqual(Array.from(h.tree.root.findByType('FlatList').props.data, x => x.id), ['active', 'past']);
-    await act(async () => h.tree.unmount());
+    await act(async () => { headerTree.unmount(); h.tree.unmount(); });
   });
 }

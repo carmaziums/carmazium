@@ -6,6 +6,36 @@ on:
     paths:
       - '.github/workflows/tradexchange-provider-workflow-guards.yml'
       - 'scripts/test-tradexchange-provider-continuity.test.mjs'
+      - 'scripts/test-tradexchange-block2-*.test.mjs'
+      - 'carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx'
+      - 'carmazium app/carmazium app/src/screens/main/ProviderJobDetailScreen.tsx'
+      - 'backend/src/services/services.service.spec.ts'
+      - 'carmazium app/carmazium app/src/screens/main/ProviderOverviewScreen.tsx'
+      - 'scripts/check-product-parity.mjs'
+      - 'scripts/check-customer-app-release-acceptance.mjs'
+      - 'backend/evaluations/mazium-knowledge-sources.json'
+      - 'backend/src/services/services.audit.integration.spec.ts'
+      - 'src/lib/ukServiceDateTime.ts'
+      - 'carmazium app/carmazium app/src/lib/ukServiceDateTime.ts'
+      - 'src/components/services/ServiceJobChanges.tsx'
+      - 'carmazium app/carmazium app/src/components/ServiceJobChanges.tsx'
+      - 'backend/src/services/services.payment-hardening.spec.ts'
+      - 'backend/src/services/services.lifecycle-hardening.spec.ts'
+      - 'carmazium app/carmazium app/src/screens/main/CustomerServiceJobDetailScreen.tsx'
+      - 'carmazium app/carmazium app/src/lib/servicesApi.ts'
+      - 'backend/src/services/services.service.ts'
+      - 'backend/src/services/services.controller.ts'
+      - 'src/lib/servicesApi.ts'
+      - 'src/lib/notificationNavigation.ts'
+      - 'carmazium app/carmazium app/src/lib/notificationRouting.ts'
+      - 'carmazium app/carmazium app/src/navigation/linking.ts'
+      - 'carmazium app/carmazium app/src/lib/nativeTourRoutes.ts'
+      - 'backend/src/services/service-job-alerts.service.ts'
+      - 'backend/src/services/service-job-alert-eligibility.ts'
+      - 'backend/src/services/service-job-alerts.service.spec.ts'
+      - 'backend/src/notifications/notification-email-policy.ts'
+      - 'backend/src/notifications/notification-email-policy.spec.ts'
+      - 'backend/src/notifications/service-job-notification.spec.ts'
       - 'src/lib/tradeXchangeProviderJobLoad.ts'
       - 'src/lib/tradeXchangeCheckoutNotice.ts'
       - 'src/app/dashboard/service/jobs/**'
@@ -28,4 +58,215 @@ jobs:
       - name: Install source-test dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Check provider job access and honest Stripe checkout state
-        run: node --test scripts/test-tradexchange-provider-continuity.test.mjs
+        run: >-
+          node --test
+          scripts/test-tradexchange-provider-continuity.test.mjs
+          scripts/test-tradexchange-block2-post-job.test.mjs
+          scripts/test-tradexchange-block2-stage2.test.mjs
+          scripts/test-tradexchange-block2-stage3.test.mjs
+          scripts/test-tradexchange-block2-stage4.test.mjs
+          scripts/test-tradexchange-block2-stage5.test.mjs
+          scripts/test-tradexchange-block2-stage6.test.mjs
+          scripts/test-tradexchange-block2-stage7.test.mjs
+          scripts/test-tradexchange-block2-stage8.test.mjs
+          scripts/test-tradexchange-block2-stage9.test.mjs
+          scripts/test-tradexchange-block2-stage10.test.mjs
+          scripts/test-tradexchange-block1-navigation.test.mjs
+          scripts/test-tradexchange-legacy-retirement.test.mjs
+          scripts/test-tradexchange-stage9-qa.test.mjs
+
+  quote-acceptance-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend test dependencies
+        working-directory: backend
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Generate Prisma client without connecting to a database
+        working-directory: backend
+        run: npx prisma generate
+      - name: Verify quote and payment lifecycle, provider alerts and email preferences
+        working-directory: backend
+        run: >-
+          npx jest --runInBand
+          src/services/services.service.spec.ts
+          src/services/services.payment-hardening.spec.ts
+          src/services/services.lifecycle-hardening.spec.ts
+          src/services/service-job-alerts.service.spec.ts
+          src/notifications/notification-email-policy.spec.ts
+          src/notifications/service-job-notification.spec.ts
+
+  expo-credential-check:
+    name: Verify CarMazium-owned Expo robot (read-only)
+    # Internal branch only; never expose organization credentials to fork PRs.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == 'carmaziums/carmazium' &&
+      github.event.pull_request.head.ref == 'feature/tradexchange-block2-jobs-20261122'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check owner-managed Expo token without printing credentials
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${EXPO_TOKEN:-}" ]; then
+            echo '::error::EXPO_TOKEN is not configured for this repository.'
+            exit 1
+          fi
+          # Expo's token inventory also displays a 40-character identifier.
+          # That identifier is NOT the one-time access token value.
+          if [[ "${#EXPO_TOKEN}" -eq 40 && "$EXPO_TOKEN" =~ ^[A-Za-z0-9]{40}$ ]]; then
+            echo '::error::EXPO_TOKEN resembles the 40-character token ID shown in Expo, not the access token generated in its one-time dialog. Regenerate and copy the access token value.'
+            exit 1
+          fi
+          if ! npx --yes eas-cli@16.18.0 whoami --non-interactive > "$RUNNER_TEMP/carmazium-expo-auth.log" 2>&1; then
+            if grep -Eqi 'Not logged in|Invalid token|Authentication.*fail|Unauthorized|401|invalid credentials' "$RUNNER_TEMP/carmazium-expo-auth.log"; then
+              echo '::error::Expo could not authenticate with EXPO_TOKEN. Copy the access token VALUE, not the token ID.'
+            elif grep -Eqi 'npm (ERR|error)|ENOTFOUND|ECONNRESET|EAI_AGAIN|ETIMEDOUT|network' "$RUNNER_TEMP/carmazium-expo-auth.log"; then
+              echo '::error::Expo authentication check failed due to a dependency/network error rather than verified token rejection.'
+            else
+              # Diagnostic excerpt with all secret-value occurrences and opaque identifiers redacted.
+              EXPO_AUTH_LOG="$RUNNER_TEMP/carmazium-expo-auth.log" node -e '
+                const fs = require("node:fs");
+                let log = fs.readFileSync(process.env.EXPO_AUTH_LOG, "utf8");
+                if (process.env.EXPO_TOKEN) log = log.split(process.env.EXPO_TOKEN).join("[REDACTED]");
+                log = log.replace(/[A-Za-z0-9_+\/=.-]{18,}/g, "[REDACTED]");
+                for (const line of log.split(/\r?\n/).slice(-9)) if (line.trim()) console.log("Expo diagnostic (redacted): " + line.slice(0, 220));
+              '
+              echo '::error::Expo EAS CLI authentication failed; inspect sanitized error category above.'
+            fi
+            exit 1
+          fi
+          echo 'Expo EAS authentication succeeded using the repository-managed token.'
+      - name: Verify Expo robot can access the CarMazium-owned project
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const expectedId='9c77bb81-205c-42f8-913e-b69a0953ec10';
+          const fullName='@carmazium/carmazium';
+          const response=await fetch('https://api.expo.dev/graphql',{
+            method:'POST',
+            headers:{
+              'Content-Type':'application/json',
+              Authorization:'Bearer '+process.env.EXPO_TOKEN,
+            },
+            body:JSON.stringify({
+              query:'query($fullName: String!) { app { byFullName(fullName: $fullName) { id fullName } } }',
+              variables:{fullName},
+            }),
+          });
+          const body=await response.json().catch(()=>null);
+          const project=body?.data?.app?.byFullName;
+          if(!response.ok || body?.errors?.length || project?.id!==expectedId || project?.fullName!==fullName){
+            console.error('Expo robot cannot access the expected owner-controlled EAS project; refusing build authorisation.');
+            process.exit(1);
+          }
+          console.log('Verified Expo project ownership and robot project access: @carmazium/carmazium.');
+          NODE
+
+  ios-store-candidate:
+    name: Signed original CarMazium iOS App Store candidate
+    # Manually dispatched from the reviewed internal source branch.
+    # Never merges, deploys the website, publishes OTA, or submits to App Review.
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/feature/tradexchange-block2-jobs-20261122'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 110
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: 'carmazium app/carmazium app'
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      APP_ENV: production
+      EXPO_NO_TELEMETRY: '1'
+      SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
+      - name: Ensure original app and owner-controlled EAS identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const app=JSON.parse(fs.readFileSync('app.json','utf8')).expo;
+          const eas=JSON.parse(fs.readFileSync('eas.json','utf8'));
+          if(app.owner!=='carmazium'||
+            app.slug!=='carmazium'||
+            app.extra?.eas?.projectId!=='9c77bb81-205c-42f8-913e-b69a0953ec10'||
+            app.updates?.url!=='https://u.expo.dev/9c77bb81-205c-42f8-913e-b69a0953ec10'||
+            app.ios?.bundleIdentifier!=='uk.carmazium.app'||
+            app.android?.package!=='uk.carmazium.app'||
+            eas.build.production.channel!=='production'||
+            eas.build.production.env.APP_ENV!=='production') {
+            throw new Error('Original app identity or company-owned EAS project mismatch');
+          }
+          console.log('Original app and owner-controlled Expo project validated.');
+          NODE
+      - name: Install exact native dependencies and check TypeScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run typescript
+      - name: Validate company Expo robot credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${EXPO_TOKEN:-}"
+          npx --yes eas-cli@16.18.0 whoami --non-interactive >/dev/null
+          echo 'CarMazium-owned Expo credential authenticated.'
+      - name: Request signed iOS production build (no store submission)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes eas-cli@16.18.0 build \
+            --platform ios \
+            --profile production \
+            --non-interactive \
+            --wait \
+            --json > "$RUNNER_TEMP/carmazium-ios-candidate.json"
+          EAS_BUILD_RESULT="$RUNNER_TEMP/carmazium-ios-candidate.json" node - <<'NODE'
+          const fs=require('node:fs');
+          const result=JSON.parse(fs.readFileSync(process.env.EAS_BUILD_RESULT,'utf8'));
+          const b=Array.isArray(result)?result[0]:result;
+          if(!b || b.status!=='FINISHED' || !b.id || !b.artifacts?.buildUrl) {
+            throw new Error('Signed iOS App Store candidate was not returned by EAS');
+          }
+          console.log('Signed owner-controlled iOS candidate created: '+b.id);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,[
+            '## Original CarMazium iOS candidate — not submitted',
+            '- EAS build ID: '+b.id,
+            '- Source commit: '+process.env.GITHUB_SHA,
+            '- Original bundle ID: uk.carmazium.app',
+            '- EAS owner: @carmazium',
+            '- Submission still requires IPA verification, TestFlight and owner review.',
+          ].join('\n')+'\n');
+          NODE

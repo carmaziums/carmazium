@@ -65,7 +65,8 @@ export const buildSiteGroups = (dealerMode: boolean): Group[] => [
   {
     id: 'trade', label: 'TradeXchange', entries: [
       { id: 'tx-overview', label: 'TradeXchange Overview', icon: 'grid-outline', target: { screen: 'Services' } },
-      { id: 'tx-auctions', label: 'Vehicle Auctions', icon: 'gavel', iconLib: 'mci', target: { screen: 'HowItWorks' } },
+      { id: 'tx-auctions', label: 'Vehicle Auctions', icon: 'gavel', iconLib: 'mci',
+        target: dealerMode ? { tab: 'DealerBuyBid', tabParams: { initialSection: 'live' } } : { tab: 'Live' } },
       { id: 'tx-delivery', label: 'Delivery & Recovery', icon: 'car-sport-outline', actions: jobActions('DELIVERY') },
       { id: 'tx-inspection', label: 'Vehicle Inspection', icon: 'construct-outline', actions: jobActions('INSPECTION') },
       { id: 'tx-finance', label: 'Vehicle Finance', icon: 'cash-outline', target: { screen: 'Finance' } },

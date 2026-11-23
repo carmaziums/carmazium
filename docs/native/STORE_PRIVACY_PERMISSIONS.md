@@ -40,8 +40,13 @@ The Expo app config explicitly blocks:
 - `android.permission.READ_MEDIA_IMAGES`
 - `android.permission.READ_MEDIA_VIDEO`
 
-`expo-image-picker` is configured with both `cameraPermission: false` and
-`microphonePermission: false`.
+`expo-image-picker` has `microphonePermission: false`. It retains a specific
+`NSCameraUsageDescription` **iOS purpose string** because Apple's automated
+binary scan previously reported ITMS-90683: the linked image-picker SDK contains
+camera-capable APIs even though no current CarMazium UI launches the camera.
+The purpose string is explanatory metadata, **not** a permission grant or an
+automatic camera prompt. Android `CAMERA` remains independently blocked by
+`android.blockedPermissions`. No current app flow may request camera access.
 
 Photo selection uses the system picker. Code must not call
 `requestMediaLibraryPermissionsAsync()` merely to let a member select one or a
@@ -59,8 +64,13 @@ The Expo iOS config carries an app privacy manifest with:
 - required-reason API coverage for UserDefaults, file timestamps and disk space
   used by the current Expo/native dependency graph.
 
-The app intentionally does not advertise camera use in Info.plist because there
-is no camera-capture feature.
+iOS Info.plist retains a narrowly scoped `NSCameraUsageDescription` whose
+text must **exactly match** the Expo Image Picker plugin's `cameraPermission`
+string, avoiding another Apple ITMS-90683 missing-purpose rejection. This does
+not mean that CarMazium has added camera capture or collects camera data. The
+generated Info.plist must omit `NSMicrophoneUsageDescription` while the
+microphone remains disabled. The App Store build and permissions must still be
+independently verified before submission.
 
 The photo and foreground-location usage descriptions must remain specific to
 the actual CarMazium actions that trigger them.

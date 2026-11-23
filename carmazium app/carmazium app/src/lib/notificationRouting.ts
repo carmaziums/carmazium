@@ -58,6 +58,22 @@ function routeFromLink(
 ): MobileNotificationTarget | null {
   if (!link) return null;
 
+  // Service job alerts already carry canonical website paths. Treat these as
+  // native routes before the generic messages/dealer fallbacks; never open a
+  // WebView or a secondary TradeXchange dashboard for a job notification.
+  const path = link.split(/[?#]/, 1)[0].replace(/\/$/, '');
+  const providerJob = /^\/dashboard\/service\/jobs\/([a-zA-Z0-9_-]+)$/.exec(path);
+  if (providerJob) return { screen: 'ProviderJobDetail', params: { jobId: providerJob[1] } };
+  const customerJob = /^\/services\/jobs\/([a-zA-Z0-9_-]+)$/.exec(path);
+  if (customerJob) return { screen: 'CustomerServiceJobDetail', params: { jobId: customerJob[1] } };
+  if (path === '/dashboard/service/jobs') return {
+    screen: 'ProviderJobs',
+    params: { initialTab: /[?&]tab=mine(?:&|$)/.test(link) ? 'assigned' : 'open' },
+  };
+  if (path === '/services/jobs') return { screen: 'CustomerServiceJobs' };
+  if (path === '/dashboard/service' || path === '/dashboard/service/capabilities'
+      || path === '/dashboard/partner') return { screen: 'PartnerDashboard' };
+
   const roomId = roomIdFromLink(link);
   if (/messages/i.test(link) && roomId) {
     return { screen: 'ChatScreen', params: { threadId: roomId } };
@@ -116,6 +132,21 @@ export async function resolveMobileNotificationTarget(
   const entityId = value(notification, 'entityId') as string | undefined;
   const link = (value(notification, 'link') as string | undefined) ?? null;
   const roomId = value(notification, 'roomId') as string | undefined;
+
+  const notificationJobId = (value(notification, 'jobId') as string | undefined)
+    ?? (entityType === 'SERVICE_JOB' ? entityId : undefined);
+  // For older persisted notifications without a usable link, keep service
+  // alerts accessible in the same native app. Role alone is not sufficient:
+  // dealers can post customer jobs too, so use the event's recipient side.
+  if (notificationJobId && /^[a-zA-Z0-9_-]+$/.test(notificationJobId)) {
+    if (type === 'SERVICE_JOB_AVAILABLE' || type === 'SERVICE_QUOTE_DECLINED'
+        || type === 'SERVICE_PAYOUT_RELEASED') {
+      return { screen: 'ProviderJobDetail', params: { jobId: notificationJobId } };
+    }
+    if (type === 'SERVICE_QUOTE_RECEIVED' || type === 'SERVICE_JOB_COMPLETED') {
+      return { screen: 'CustomerServiceJobDetail', params: { jobId: notificationJobId } };
+    }
+  }
 
   const explicitScreen = value(notification, 'screen');
   if (typeof explicitScreen === 'string' && explicitScreen) {

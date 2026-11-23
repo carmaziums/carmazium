@@ -44,7 +44,7 @@ export function ProviderOverviewScreen({ navigation }: Props) {
   return <View style={s.screen}><WebsiteTopBar /><ScrollView contentContainerStyle={s.content}>
     <Text style={s.eyebrow}>TradeXchange Services</Text><Text accessibilityRole="header" style={s.title}>Provider overview</Text>
     <Text style={s.body}>Delivery and Inspection jobs, approvals and earnings in one place. Contact our team about finance and warranty partnerships.</Text>
-    <View style={s.actions}><Button label="My services" variant="outline" onPress={() => navigation.navigate('PartnerDashboard')} /><Button label="Find jobs" onPress={() => openJobs()} /></View>
+    <View style={s.actions}><Button label="My services" variant="outline" onPress={() => navigation.navigate('PartnerDashboard')} /><Button label="Find jobs" onPress={() => openJobs()} /><Button label="Job messages" variant="outline" onPress={() => navigation.navigate('ProviderMessages')} /></View>
     <Button label={loading ? 'Refreshing…' : 'Refresh dashboard'} variant="outline" disabled={loading} onPress={() => void load()} />
     {error && <Text accessibilityRole="alert" style={s.error}>{error}</Text>}
     <View style={s.metrics}>{metrics.map(([label, value]) => <View key={label} style={[s.metric, { width: fontScale >= 1.3 ? '100%' : '48%' }]}><Text style={s.body}>{label}</Text><Text style={s.value}>{loading ? '…' : value}</Text></View>)}</View>

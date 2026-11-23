@@ -49,6 +49,15 @@ const DEDICATED_EMAIL_TYPES = new Set([
 
     'LISTING_APPROVED',
     'LISTING_REJECTED',
+
+    // TradeXchange's own transactional messages are sent by ServicesService.
+    // Keep the durable account/push notification, but do not email the
+    // customer/provider twice when generic notification email is enabled.
+    'SERVICE_CAPABILITY_APPROVED',
+    'SERVICE_CAPABILITY_REJECTED',
+    'SERVICE_JOB_PAID',
+    'SERVICE_JOB_COMPLETED',
+    'SERVICE_PAYOUT_RELEASED',
 ]);
 
 export const CHAT_NOTIFICATION_EMAIL_DELAY_MS = 5 * 60 * 1000;
@@ -58,6 +67,13 @@ export function notificationEmailPolicy(
 ): NotificationEmailPolicyDecision {
     if (input.data?.adminBroadcast === true) {
         return { eligible: false, delayMs: 0, reason: 'admin-broadcast-has-own-email' };
+    }
+
+    // A new TradeXchange quote has its own personalised email. An updated
+    // quote does not: keep the generic account/email update available for
+    // subscribers, rather than accidentally silencing legitimate updates.
+    if (input.type === 'SERVICE_QUOTE_RECEIVED' && input.data?.dedicatedServiceEmail === true) {
+        return { eligible: false, delayMs: 0, reason: 'dedicated-email-exists' };
     }
 
     if (DEDICATED_EMAIL_TYPES.has(input.type)) {

@@ -136,6 +136,9 @@ export interface ServiceJob {
   /** Current verified paid-job providers matching this service/area. */
   eligibleProviderCount?: number | null;
   viewerRole?: 'customer' | 'contractor' | 'admin' | 'bidder';
+  /** Server-computed permission; viewable accepted work does not imply new quote eligibility. */
+  canQuote?: boolean;
+  canWithdrawQuote?: boolean;
 }
 
 export interface ContractorCapability {
@@ -241,6 +244,109 @@ export interface ServiceLead {
 export interface CursorPage<T> {
   items: T[];
   nextCursor: string | null;
+}
+
+/** Parse GBP entered by a provider exactly into integer pence.
+ * Whole-job quotes must be £1–£50,000. No exponent, negative, sub-penny,
+ * empty or locale-ambiguous values are accepted.
+ */
+/** Compare only unexpired ACTIVE service quotes. Invalid expiry dates fail closed.
+ * The accepted quote remains separately visible while payment is pending.
+ */
+export function isServiceQuoteSelectable(
+  quote: Pick<ServiceQuote, 'status' | 'validUntil'>,
+  now = Date.now(),
+): boolean {
+  if (quote.status !== 'ACTIVE') return false;
+  if (!quote.validUntil) return true;
+  const expiry = Date.parse(quote.validUntil);
+  return Number.isFinite(expiry) && expiry > now;
+}
+
+export function comparableServiceQuotes(
+  quotes: readonly ServiceQuote[] | null | undefined,
+  now = Date.now(),
+): ServiceQuote[] {
+  return (quotes ?? []).filter(quote => isServiceQuoteSelectable(quote, now))
+    .sort((a, b) => a.amountPence - b.amountPence || a.id.localeCompare(b.id));
+}
+
+export function parseServiceQuotePence(input: string): number | null {
+  const value = input.trim();
+  if (!/^\d{1,5}(?:\.\d{1,2})?$/.test(value)) return null;
+  const [pounds, fractional = ''] = value.split('.');
+  const pence = Number(pounds) * 100 + Number(fractional.padEnd(2, '0'));
+  return Number.isSafeInteger(pence) && pence >= 100 && pence <= 5_000_000 ? pence : null;
+}
+
+/**
+ * Checkout may return either a real Stripe payment URL or the current job URL
+ * after Stripe has already reported an earlier session as paid. This route
+ * classifier does NOT prove payment: callers must re-fetch backend status.
+ */
+export function classifyServiceCheckoutTarget(
+  value: string,
+  jobId: string,
+): 'STRIPE_CHECKOUT' | 'JOB_RETURN' | null {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password || url.port) return null;
+    if (url.hostname === 'checkout.stripe.com') return 'STRIPE_CHECKOUT';
+    if ((url.hostname === 'www.carmazium.com' || url.hostname === 'carmazium.com')
+      && url.pathname === `/services/jobs/${encodeURIComponent(jobId)}`
+      && url.searchParams.get('paid') === '1') return 'JOB_RETURN';
+  } catch { /* An untrusted or malformed URL must never be opened. */ }
+  return null;
+}
+
+/** Human-readable server payment state. A browser return URL is not evidence. */
+export function servicePaymentStatusText(
+  status: ServicePayment['status'] | null | undefined,
+): string {
+  switch (status) {
+    case 'PENDING': return 'Payment is not yet confirmed. If you just paid, allow Stripe confirmation to arrive before trying another payment.';
+    case 'PAID': return 'Customer payment is confirmed by CarMazium. Provider payout remains pending completion confirmation or the applicable release process.';
+    case 'RELEASED': return 'CarMazium has recorded the provider payout as released. Bank settlement may take additional time.';
+    case 'REFUNDED': return 'This service payment has been recorded as refunded. Check your original payment method for receipt.';
+    case 'FAILED': return 'Payment could not be confirmed. Check the latest job status or contact CarMazium before retrying.';
+    default: return 'Payment status is unavailable. Refresh the job or contact CarMazium before relying on payment confirmation.';
+  }
+}
+
+/** Read-only financial evidence from the saved service payment row.
+ * Never derive a fresh price or display an inconsistent payment breakdown.
+ */
+export function servicePaymentEvidence(
+  payment: Pick<ServicePayment, 'grossPence' | 'platformFeePence' | 'contractorPence' | 'refundAmountPence'> | null | undefined,
+  agreedAmountPence: number | null | undefined,
+): { grossPence: number; refundPence: number; netServicePence: number; platformFeePence: number; contractorPence: number } | null {
+  if (!payment || typeof agreedAmountPence !== 'number' || !Number.isSafeInteger(agreedAmountPence)) return null;
+  const { grossPence, platformFeePence, contractorPence } = payment;
+  const refundPence = payment.refundAmountPence ?? 0;
+  if (![grossPence, platformFeePence, contractorPence, refundPence].every(Number.isSafeInteger)) return null;
+  if (grossPence < 0 || grossPence !== agreedAmountPence || refundPence < 0 || refundPence > grossPence) return null;
+  // Admin-confirmed partial refunds recompute the 9%/91% split on the
+  // remaining service amount, while grossPence stays the original card charge.
+  const netServicePence = grossPence - refundPence;
+  if (platformFeePence !== Math.round(netServicePence * 0.09)) return null;
+  if (contractorPence !== netServicePence - platformFeePence) return null;
+  return { grossPence, refundPence, netServicePence, platformFeePence, contractorPence };
+}
+
+/** Read-only review deadline: the hourly backend task may settle after this
+ * instant. A DISPUTED, invalid or already paid-out job has no active timer. */
+export function serviceCompletionReview(
+  job: Pick<ServiceJob, 'status' | 'startedAt' | 'completedAt' | 'confirmedAt' | 'payment'>,
+  now = Date.now(),
+): { dueAt: string; elapsed: boolean } | null {
+  if (job.status !== 'COMPLETED' || job.confirmedAt || job.payment?.status !== 'PAID'
+    || !job.startedAt || !job.completedAt) return null;
+  const start = Date.parse(job.startedAt);
+  const completed = Date.parse(job.completedAt);
+  if (!Number.isFinite(start) || !Number.isFinite(completed) || completed < start) return null;
+  const due = completed + 48 * 3_600_000;
+  if (!Number.isFinite(due)) return null;
+  return { dueAt: new Date(due).toISOString(), elapsed: now >= due };
 }
 
 export const formatPence = (p: number) =>
@@ -384,8 +490,9 @@ export async function getJobFeedPage(
 export async function getJobFeed(serviceType?: ServiceType): Promise<ServiceJob[]> {
   return (await getJobFeedPage(serviceType)).items;
 }
-export async function getAssignedJobsPage(cursor?: string, limit = 20): Promise<CursorPage<ServiceJob>> {
+export async function getAssignedJobsPage(cursor?: string, limit = 20, serviceType?: ServiceType): Promise<CursorPage<ServiceJob>> {
   const q = new URLSearchParams({ limit: String(limit) });
+  if (serviceType) q.set('serviceType', serviceType);
   if (cursor) q.set('cursor', cursor);
   const r = await apiClient<{ data: CursorPage<ServiceJob> }>(`/services/jobs/assigned?${q.toString()}`);
   return r.data;

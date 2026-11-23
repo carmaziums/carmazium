@@ -65,25 +65,33 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
   const [loadingMore, setLoadingMore] = useState(false);
   const generation = useRef(0), morePending = useRef(false);
   const selected = tab === 'open' ? lists?.available : lists?.assigned;
+  // The backend filters BEFORE cursor pagination; retaining a local check is
+  // defensive for an older backend during rollout, not a substitute for matching.
   const jobs = useMemo(() => (selected?.items ?? []).filter(job => filter === 'ALL' || job.serviceType === filter), [selected, filter]);
+  const serviceType = filter === 'ALL' ? undefined : filter;
   const nextCursor = selected?.nextCursor;
   const error = tab === 'open' ? lists?.availableError : lists?.assignedError;
   const notApproved = tab === 'open' && lists?.approvalRequired;
   const load = useCallback(async () => {
     const request = ++generation.current;
     morePending.current = false; setLoadingMore(false); setLoading(true); setLists(null);
-    const result = await loadProviderJobLists(() => getJobFeedPage(), () => getAssignedJobsPage());
+    const result = await loadProviderJobLists(
+      () => getJobFeedPage(serviceType),
+      () => getAssignedJobsPage(undefined, 20, serviceType),
+    );
     if (request !== generation.current) return;
     setLists(result); setLoading(false);
-  }, []);
+  }, [serviceType]);
   useFocusEffect(useCallback(() => { void load(); return () => { generation.current++; }; }, [load]));
   const refresh = () => { void load(); };
   const loadMore = async () => {
     if (!nextCursor || morePending.current || loading) return;
-    const request = generation.current, target = tab;
+    const request = generation.current, target = tab, requestedService = serviceType;
     morePending.current = true; setLoadingMore(true);
     try {
-      const page = target === 'open' ? await getJobFeedPage(undefined, nextCursor) : await getAssignedJobsPage(nextCursor);
+      const page = target === 'open'
+        ? await getJobFeedPage(requestedService, nextCursor)
+        : await getAssignedJobsPage(nextCursor, 20, requestedService);
       if (request !== generation.current) return;
       setLists(previous => {
         if (!previous) return previous;
@@ -174,9 +182,18 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
       <View style={styles.pageActions}>
         <Button label="Refresh jobs" variant="outline" disabled={loading} onPress={refresh} />
         <Button label="Provider overview" variant="outline" onPress={() => navigation.navigate('ProviderOverview')} />
-        <Button label="Job messages" variant="outline" onPress={() => navigation.navigate('ProviderMessages')} />
       </View>
-      <View style={styles.postJobCard}><Text style={styles.pageDescription}>Looking for the customer side instead? Any signed-in CarMazium user can post a job and approved providers will see matching work in this marketplace.</Text><Button label="Post a job" variant="outline" onPress={() => Alert.alert('Post a job', 'Choose the service you need.', [{ text: 'Delivery & Recovery', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'DELIVERY' }) }, { text: 'Vehicle Inspection', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'INSPECTION' }) }, { text: 'Cancel', style: 'cancel' }])} /></View>
+      <View style={styles.postJobCard}>
+        <Text style={styles.pageDescription}>Looking for the customer side instead? Any signed-in CarMazium user can{' '}
+          <Text accessibilityRole="link" style={styles.postJobLink}
+            onPress={() => Alert.alert('Post a job', 'Choose the service you need.', [
+              { text: 'Delivery & Recovery', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'DELIVERY' }) },
+              { text: 'Vehicle Inspection', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'INSPECTION' }) },
+              { text: 'Cancel', style: 'cancel' },
+            ])}>post a job here</Text>{' '}
+          and approved providers will see matching work in this marketplace.
+        </Text>
+      </View>
 
       <View style={styles.tabs}>
         <TouchableOpacity
@@ -200,33 +217,30 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
       </View>
 
       {!!error && jobs.length > 0 && <View style={styles.postJobCard}><Text accessibilityRole="alert" style={styles.errorText}>{error}</Text><Button label="Retry loading more" variant="outline" onPress={() => void loadMore()} /></View>}
-      <View style={styles.filters}>
+      {selected?.items.length ? <View style={styles.filters}>
         {FILTERS.map((item) => (
           <TouchableOpacity
             key={item}
             style={[styles.filter, filter === item && styles.filterActive]}
             onPress={() => setFilter(item)}
             accessibilityRole="button"
+            accessibilityLabel={`Filter ${item === 'ALL' ? 'all services' : item === 'DELIVERY' ? 'delivery' : 'inspection'} jobs`}
             accessibilityState={{ selected: filter === item }}
           >
             <Text style={[styles.filterText, filter === item && styles.filterTextActive]}>
-              {item === 'ALL' ? 'All' : item === 'DELIVERY' ? 'Delivery' : 'Inspection'}
+              {item === 'ALL' ? 'All services' : item === 'DELIVERY' ? 'Delivery & recovery' : 'Inspections'}
             </Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </View> : null}
 
-      <TouchableOpacity
-        style={styles.manageCoverage}
-        onPress={() => navigation.navigate('PartnerDashboard')}
-        accessibilityRole="button"
-        accessibilityLabel="Manage approved services and job-matching coverage"
-        activeOpacity={0.8}
-      >
-        <Ionicons name="options-outline" size={17} color={Colors.accent} />
-        <Text style={styles.manageCoverageText}>Manage service areas & verification</Text>
-        <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
-      </TouchableOpacity>
+      {tab === 'open' && (
+        <Text style={styles.pageDescription}>
+          Jobs here require your service opt-in, verified insurance, payout readiness and postcode coverage.
+          Manage matching areas in My services. Email alerts depend on notification settings.
+        </Text>
+      )}
+
     </View>
   );
   // Loading / approval / load-error states render inside the list.
@@ -285,8 +299,8 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
               </Text>
               <Text style={styles.emptyText}>
                 {tab === 'open'
-                  ? 'Refresh to check for jobs matching your approved services. Eligible providers also receive account and email notifications for new matching jobs.'
-                  : 'Quote on Available Jobs to start building your completed work history.'}
+                  ? 'Refresh for jobs matching your approved services. Account alerts require an active verified service and postcode match; email depends on notification settings.'
+                  : 'Your accepted and completed jobs remain here even if verification for new work needs renewal.'}
               </Text>
             </View>
           )}
@@ -307,7 +321,8 @@ const styles = StyleSheet.create({
   pageTitle: { fontSize: 30, fontFamily: FontFamily.bold, color: Colors.textPrimary, marginVertical: 12 },
   pageDescription: { fontSize: 14, lineHeight: 22, color: Colors.textSecondary },
   pageActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 16 },
-  postJobCard: { padding: 16, gap: 12, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderRadius: 16, marginBottom: 16 },
+  postJobCard: { padding: 16, gap: 8, backgroundColor: Colors.bgElevated, borderWidth: 1, borderColor: Colors.borderSubtle, borderRadius: 16, marginBottom: 16 },
+  postJobLink: { fontFamily: FontFamily.bold, color: Colors.accent, textDecorationLine: 'underline' },
   errorText: { fontSize: 14, color: Colors.error },
   header: {
     flexDirection: 'row',
@@ -329,9 +344,9 @@ const styles = StyleSheet.create({
     ...Elevation.card,
   },
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.textPrimary },
-  headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted, marginTop: 2 },
-  tabs: { flexDirection: 'row', marginHorizontal: 0, marginTop: 4, borderRadius: Radius.inline, padding: 4, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border },
-  tab: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
+  headerSub: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accent, marginTop: 10, letterSpacing: 2, textTransform: 'uppercase' },
+  tabs: { flexDirection: 'row', alignSelf: 'flex-start', marginHorizontal: 0, marginTop: 4, borderRadius: Radius.inline, padding: 4, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border },
+  tab: { minHeight: 48, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
   tabActive: { backgroundColor: Colors.accent, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   tabText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.textMuted, letterSpacing: 0.7 },
   tabTextActive: { color: Colors.onAccent },

@@ -3,6 +3,18 @@ import type { AppNotification } from './notificationsApi';
 function normalizeNotificationHref(href: string): string {
     if (!href.startsWith('/')) return '/dashboard/user?tab=overview';
     if (href.startsWith('/dashboard/user')) return href;
+    // Old provider setup links still work on the web, but notifications
+    // should open the canonical inline service hub instead of an extra page.
+    if (/^\/dashboard\/service\/capabilities\/[^/]+\/verification(?:[?#].*)?$/.test(href)) {
+        return '/dashboard/partner#provider-business';
+    }
+    if (/^\/dashboard\/service\/capabilities\/[^/]+\/matching(?:[?#].*)?$/.test(href)) {
+        return '/dashboard/partner#provider-preferences';
+    }
+    if (href === '/dashboard/service/capabilities' || href.startsWith('/dashboard/service/capabilities/')) {
+        return '/dashboard/partner#provider-services';
+    }
+    if (href === '/dashboard/service/settings') return '/dashboard/partner#provider-business';
     if (href.startsWith('/dashboard/buyer/offers')) return '/dashboard/user?tab=bids';
     if (href.startsWith('/dashboard/seller/offers')) return '/dashboard/user?tab=offers';
     if (href.startsWith('/dashboard/buyer/messages')) {

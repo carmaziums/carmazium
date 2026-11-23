@@ -32,6 +32,20 @@ export function nativeTourDestination(href?: string): Destination | null {
     ? { screen: 'DealerMyOffers', params: { fromBidsOffers: true } }
     : tab('DealerBuyBid', { initialSection: 'bids' });
   if (path === '/dashboard/service/jobs') return { screen: 'ProviderJobs', params: { initialTab: params.get('tab') === 'mine' ? 'assigned' : 'open' } };
+  // All customer/provider job and historic setup links stay on their existing
+  // native screen; no WebView or second TradeXchange navigation layer.
+  const providerJob = /^\/dashboard\/service\/jobs\/([a-zA-Z0-9_-]+)$/.exec(path);
+  if (providerJob) return { screen: 'ProviderJobDetail', params: { jobId: providerJob[1] } };
+  const customerJob = /^\/services\/jobs\/([a-zA-Z0-9_-]+)$/.exec(path);
+  if (customerJob) return { screen: 'CustomerServiceJobDetail', params: { jobId: customerJob[1] } };
+  if (path === '/dashboard/service/settings' || path === '/dashboard/service/capabilities') {
+    return page('PartnerDashboard');
+  }
+  if (/^\/dashboard\/service\/capabilities\/[^/]+\/(verification|matching)$/.test(path)) {
+    return { screen: 'PartnerDashboard', params: {
+      openSection: path.endsWith('/verification') ? 'business' : 'preferences',
+    } };
+  }
   const routes: Record<string, keyof MainStackParamList> = {
     '/dashboard/admin': 'AdminDashboard',
     '/dashboard/admin/listings': 'AdminListingsReview',

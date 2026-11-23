@@ -26,11 +26,23 @@ on:
       - "carmazium app/carmazium app/src/components/VehicleCard.tsx"
       - "carmazium app/carmazium app/src/components/HorizontalVehicleCard.tsx"
       - "carmazium app/carmazium app/src/screens/main/SearchScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/main/DealerPurchasesScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx"
+      - "scripts/test-dealer-purchase-destinations.test.mjs"
+      - "carmazium app/carmazium app/src/screens/account/MyCarsScreen.tsx"
+      - "carmazium app/carmazium app/scripts/test-personal-cars-purchases-mobile.test.mjs"
+      - "scripts/test-ios-compact-dashboard-and-posted-jobs.test.mjs"
       - "carmazium app/carmazium app/src/lib/paymentsApi.ts"
       - "carmazium app/carmazium app/src/lib/storageHelper.ts"
       - "carmazium app/carmazium app/src/lib/vehicleImageMetadata.ts"
       - "carmazium app/carmazium app/src/lib/auctionPricing.ts"
       - "carmazium app/carmazium app/src/lib/valuationApi.ts"
+      - "carmazium app/carmazium app/src/lib/appUpdater.ts"
+      - "carmazium app/carmazium app/src/components/AppUpdatePrompt.tsx"
+      - "carmazium app/carmazium app/scripts/test-app-updater.test.mjs"
+      - "carmazium app/carmazium app/src/components/SiteMenu.tsx"
+      - "carmazium app/carmazium app/scripts/test-site-menu-auction.test.mjs"
       - ".github/workflows/mobile-listing-ci.yml"
 
 permissions:
@@ -61,6 +73,15 @@ jobs:
 
       - name: Dashboard customisation and native service flows
         run: node --test scripts/test-dashboard-cards.test.mjs scripts/test-web-dashboard-cards.test.mjs scripts/test-native-service-completion.test.mjs
+
+      - name: Original Android update and TradeXchange menu navigation
+        run: node --test scripts/test-app-updater.test.mjs scripts/test-site-menu-auction.test.mjs
+
+      - name: Mobile dealer CRM and iPhone responsive layouts
+        run: node ../../scripts/test-ios-compact-dashboard-and-posted-jobs.test.mjs
+
+      - name: Personal My Cars and buyer purchase native flows
+        run: node --test scripts/test-personal-cars-purchases-mobile.test.mjs
 
       - name: Native DVLA, 3D and dual-price parity regressions
         run: node ../../scripts/test-native-web-vehicle-parity-20261015.test.mjs

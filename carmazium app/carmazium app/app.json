@@ -12,7 +12,7 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/f0ab914b-3433-4816-80a2-0a94e6c6a066",
+      "url": "https://u.expo.dev/9c77bb81-205c-42f8-913e-b69a0953ec10",
       "enabled": true,
       "fallbackToCacheTimeout": 0,
       "checkAutomatically": "ON_LOAD"
@@ -30,7 +30,8 @@
       "bundleIdentifier": "uk.carmazium.app",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "CarMazium lets you choose photos to upload for vehicle listings, chat, profile, verification and evidence.",
-        "NSLocationWhenInUseUsageDescription": "CarMazium uses your location only when you tap Locate Me, to find a nearby postcode."
+        "NSLocationWhenInUseUsageDescription": "CarMazium uses your location only when you tap Locate Me, to find a nearby postcode.",
+        "NSCameraUsageDescription": "CarMazium may use the camera only when you choose to take a photo for a vehicle listing, your profile or supporting documents. CarMazium never accesses your camera without your action."
       },
       "associatedDomains": [
         "applinks:carmazium.com",
@@ -247,7 +248,7 @@
     "web": {},
     "extra": {
       "eas": {
-        "projectId": "f0ab914b-3433-4816-80a2-0a94e6c6a066"
+        "projectId": "9c77bb81-205c-42f8-913e-b69a0953ec10"
       }
     },
     "plugins": [
@@ -265,7 +266,7 @@
         "expo-image-picker",
         {
           "photosPermission": "CarMazium lets you choose photos to upload for vehicle listings, chat, profile, verification and evidence.",
-          "cameraPermission": false,
+          "cameraPermission": "CarMazium may use the camera only when you choose to take a photo for a vehicle listing, your profile or supporting documents. CarMazium never accesses your camera without your action.",
           "microphonePermission": false
         }
       ],
@@ -320,6 +321,6 @@
         }
       ]
     ],
-    "owner": "pizn-01s-team"
+    "owner": "carmazium"
   }
 }

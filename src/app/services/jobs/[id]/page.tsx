@@ -12,12 +12,15 @@ import { RequireAuth } from "@/components/auth/RequireAuth"
 import { Button } from "@/components/ui/Button"
 import {
     getJob, acceptQuote, confirmCompletion, disputeJob, cancelJob, createServiceReview, formatPence,
+    comparableServiceQuotes, isServiceQuoteSelectable, classifyServiceCheckoutTarget,
+    servicePaymentEvidence, servicePaymentStatusText, serviceCompletionReview,
     type ServiceJob, type ServiceQuote,
 } from "@/lib/servicesApi"
 import { JobStatusBadge, RecoveryBadge, JobRoute, JobTiming, JobVehicles } from "@/components/services/JobBits"
 import { getOrCreateServiceJobRoom } from "@/lib/chatApi"
 import { refuseAuctionAfterInspection } from "@/lib/auctionApi"
 import { checkoutPaymentNotice } from "@/lib/tradeXchangeCheckoutNotice"
+import { formatUkServiceDateTime } from "@/lib/ukServiceDateTime"
 
 /**
  * The customer's view of one TradeXchange service job. Quotes can be compared
@@ -33,6 +36,8 @@ function JobDetail() {
     const [job, setJob] = React.useState<ServiceJob | null>(null)
     const [error, setError] = React.useState<string | null>(null)
     const [busy, setBusy] = React.useState<string | null>(null)
+    const checkoutPending = React.useRef(false)
+    const actionPending = React.useRef(false)
     const [reviewRating, setReviewRating] = React.useState(0)
     const [reviewComment, setReviewComment] = React.useState("")
     const [flash, setFlash] = React.useState<string | null>(
@@ -76,10 +81,59 @@ function JobDetail() {
     }
 
     const run = async (key: string, fn: () => Promise<void>, after?: string) => {
+        if (actionPending.current || checkoutPending.current) return
+        actionPending.current = true
         setBusy(key); setError(null)
         try { await fn(); if (after) setFlash(after); load() }
-        catch (e: any) { setError(e?.message || "Something went wrong") }
-        finally { setBusy(null) }
+        catch (e: any) { setError(e?.message || "Something went wrong"); load() }
+        finally { actionPending.current = false; setBusy(null) }
+    }
+
+    // A synchronous latch prevents a second tap choosing a different provider
+    // while the first acceptance/Checkout request is still in flight.
+    const startCheckout = async (quote: ServiceQuote, resume = false) => {
+        if (!job || checkoutPending.current || busy !== null) return
+        if (resume) {
+            if (job.status !== "ACCEPTED" || job.acceptedQuoteId !== quote.id || job.payment?.status !== "PENDING") {
+                setError("This job is no longer awaiting checkout. Refresh the job for its current payment status.")
+                load()
+                return
+            }
+        } else {
+            if (job.status !== "OPEN" || !isServiceQuoteSelectable(quote)) {
+                setError("This quote is no longer available. Refresh the job to compare current offers.")
+                load()
+                return
+            }
+            const provider = quote.contractor?.businessName || quote.contractor?.user.firstName || "this provider"
+            if (!window.confirm(`Choose ${provider} for ${formatPence(quote.amountPence)}?\n\nOnly this quote will be accepted. Secure checkout opens next; the provider must not start until payment is confirmed.`)) return
+        }
+        checkoutPending.current = true
+        setBusy(quote.id)
+        setError(null)
+        try {
+            const url = await acceptQuote(job.id, quote.id)
+            const target = classifyServiceCheckoutTarget(url, job.id)
+            if (target === "JOB_RETURN") {
+                // Stripe already reported this existing session as paid. Never
+                // open a second Checkout; re-read server-recorded payment state.
+                setFlash("The previous checkout was completed. Refreshing the confirmed payment status.")
+                load()
+                return
+            }
+            if (target !== "STRIPE_CHECKOUT") {
+                throw new Error("Secure checkout could not be verified. Please refresh and try again.")
+            }
+            window.location.assign(url)
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : "Could not open secure checkout.")
+            // Accept may have committed before Stripe became unavailable. Never
+            // leave stale OPEN quotes on screen or imply that payment succeeded.
+            load()
+        } finally {
+            checkoutPending.current = false
+            setBusy(null)
+        }
     }
 
     const submitReview = async () => {
@@ -110,9 +164,11 @@ function JobDetail() {
     if (!job) return <div className="flex justify-center py-32"><Loader2 className="animate-spin text-primary" /></div>
 
     const checkoutNotice = checkoutPaymentNotice(params.get("paid"), job.payment?.status)
-    const activeQuotes = (job.quotes ?? []).filter(q => q.status === "ACTIVE")
+    const paymentEvidence = servicePaymentEvidence(job.payment, job.agreedAmountPence)
+    const completionReview = serviceCompletionReview(job)
+    const activeQuotes = comparableServiceQuotes(job.quotes)
     const accepted = (job.quotes ?? []).find(q => q.id === job.acceptedQuoteId)
-    const isPaidState = ["PAID", "IN_PROGRESS", "COMPLETED"].includes(job.status)
+    const isPaidState = ["PAID", "IN_PROGRESS", "COMPLETED", "RELEASED"].includes(job.status)
     const isInspection = job.serviceType === "INSPECTION"
     const providerLabel = isInspection ? "inspector" : "transporter"
     const completionLabel = isInspection ? "inspection" : "delivery"
@@ -218,8 +274,9 @@ function JobDetail() {
                             ) : (
                                 <div className="space-y-3">
                                     {activeQuotes.map((q, i) => (
-                                        <QuoteCard key={q.id} quote={q} cheapest={i === 0} busy={busy === q.id}
-                                            onAccept={() => run(q.id, async () => { window.location.href = await acceptQuote(job.id, q.id) })} />
+                                        <QuoteCard key={q.id} quote={q} cheapest={i === 0}
+                                            busy={busy === q.id} disabled={busy !== null}
+                                            onAccept={() => void startCheckout(q)} />
                                     ))}
                                 </div>
                             )}
@@ -270,19 +327,31 @@ function JobDetail() {
                             <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-3">Price</p>
                             <p className="text-3xl font-black font-heading">{formatPence(job.agreedAmountPence)}</p>
                             <p className="text-xs text-[var(--text-muted)] mt-1">
-                                {job.payment?.status === "RELEASED" ? `Paid to your ${providerLabel}.`
-                                    : job.payment?.status === "PAID" ? `Held by CarMazium until you confirm ${completionLabel}.`
-                                        : job.payment?.status === "REFUNDED" ? "Refunded to you."
-                                            : "Not yet paid."}
+                                {servicePaymentStatusText(job.payment?.status)}
                             </p>
+                            {paymentEvidence ? (
+                                <dl className="mt-4 border-t border-[var(--border-default)] pt-3 space-y-2 text-xs">
+                                    <div className="flex justify-between gap-3"><dt>Recorded customer amount</dt><dd className="font-semibold">{formatPence(paymentEvidence.grossPence)}</dd></div>
+                                    {paymentEvidence.refundPence > 0 && <>
+                                        <div className="flex justify-between gap-3"><dt>Recorded customer refund</dt><dd className="font-semibold">{formatPence(paymentEvidence.refundPence)}</dd></div>
+                                        <div className="flex justify-between gap-3"><dt>Remaining service amount</dt><dd className="font-semibold">{formatPence(paymentEvidence.netServicePence)}</dd></div>
+                                    </>}
+                                    <div className="flex justify-between gap-3"><dt>CarMazium service fee (9%)</dt><dd className="font-semibold">{formatPence(paymentEvidence.platformFeePence)}</dd></div>
+                                    <div className="flex justify-between gap-3"><dt>Provider allocation (91%)</dt><dd className="font-semibold">{formatPence(paymentEvidence.contractorPence)}</dd></div>
+                                </dl>
+                            ) : (
+                                <p role="status" className="text-xs text-amber-600 dark:text-amber-300 mt-3">
+                                    Payment breakdown is not yet verified. Refresh or contact support before relying on these amounts.
+                                </p>
+                            )}
                         </div>
                     )}
 
                     <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 space-y-3">
                         {job.status === "ACCEPTED" && accepted && (
-                            <Button className="w-full" disabled={busy === "pay"}
-                                onClick={() => run("pay", async () => { window.location.href = await acceptQuote(job.id, accepted.id) })}>
-                                {busy === "pay" ? <Loader2 className="animate-spin" size={16} /> : <><Banknote size={16} className="mr-2" /> Pay {formatPence(accepted.amountPence)}</>}
+                            <Button className="w-full" disabled={busy !== null || job.payment?.status !== "PENDING"}
+                                onClick={() => void startCheckout(accepted, true)}>
+                                {busy === accepted.id ? <Loader2 className="animate-spin" size={16} /> : <><Banknote size={16} className="mr-2" /> Continue to payment · {formatPence(accepted.amountPence)}</>}
                             </Button>
                         )}
                         {isInspection && job.inspectionOutcome === "FAULTS_FOUND" && job.sourceAuctionId && ["COMPLETED", "RELEASED"].includes(job.status) && (
@@ -313,16 +382,31 @@ function JobDetail() {
 
                         {job.status === "COMPLETED" && (
                             <>
-                                <Button className="w-full" disabled={busy === "confirm"}
-                                    onClick={() => run("confirm", () => confirmCompletion(job.id), `Confirmed. Your ${providerLabel} has been paid.`)}>
+                                <Button className="w-full" disabled={busy !== null}
+                                    onClick={() => {
+                                        if (!window.confirm(`Confirm this ${completionLabel} is complete and release the recorded provider payment? Only confirm after reviewing the work. If something is wrong, raise a dispute instead.`)) return
+                                        void run("confirm", () => confirmCompletion(job.id), `Completion confirmed. Provider payout recorded.`)
+                                    }}>
                                     {busy === "confirm" ? <Loader2 className="animate-spin" size={16} /> : <><CheckCircle size={16} className="mr-2" /> Confirm {completionLabel}</>}
                                 </Button>
-                                <p className="text-[11px] text-[var(--text-muted)] text-center">Releases {job.contractorAmountPence != null ? formatPence(job.contractorAmountPence) : "payment"} to the {providerLabel}. Auto-confirms 48h after they marked it complete.</p>
+                                <p className="text-[11px] text-[var(--text-muted)] text-center">
+                                    {completionReview
+                                        ? completionReview.elapsed
+                                            ? "The 48-hour review period has elapsed. Automatic confirmation may still be processing; check the recorded payment status."
+                                            : `Automatic confirmation becomes eligible after ${formatUkServiceDateTime(completionReview.dueAt)} if no dispute blocks release.`
+                                        : "Completion is awaiting verification. Do not rely on an automatic payout deadline until the payment state is confirmed."}
+                                </p>
                             </>
                         )}
                         {isPaidState && (
-                            <button type="button" disabled={busy === "dispute"}
-                                onClick={() => { const r = prompt("What went wrong? This freezes the job for CarMazium to review."); if (r !== null) run("dispute", () => disputeJob(job.id, r || undefined), "Dispute raised. CarMazium will be in touch.") }}
+                            <button type="button" disabled={busy !== null}
+                                onClick={() => {
+                                    const warning = job.status === "RELEASED"
+                                        ? "What went wrong? This opens a post-payout review. It does not automatically reverse the provider's transfer."
+                                        : "What went wrong? A dispute pauses the normal provider payout while CarMazium reviews."
+                                    const reason = window.prompt(warning)
+                                    if (reason !== null) void run("dispute", () => disputeJob(job.id, reason.trim() || undefined), "Dispute raised. CarMazium will review the job.")
+                                }}
                                 className={buttonVariants({ variant: "outline", size: "sm", className: "w-full" })}>
                                 Something is wrong — raise a dispute
                             </button>
@@ -390,7 +474,7 @@ function Rating({ c }: { c: { rating: number; totalReviews: number } }) {
     )
 }
 
-function QuoteCard({ quote, cheapest, busy, onAccept }: { quote: ServiceQuote; cheapest: boolean; busy: boolean; onAccept: () => void }) {
+function QuoteCard({ quote, cheapest, busy, disabled, onAccept }: { quote: ServiceQuote; cheapest: boolean; busy: boolean; disabled: boolean; onAccept: () => void }) {
     const c = quote.contractor
     return (
         <div className={`rounded-2xl border p-5 ${cheapest ? "border-primary/40 bg-primary/5" : "border-[var(--border-default)] bg-[var(--bg-card)]"}`}>
@@ -407,8 +491,8 @@ function QuoteCard({ quote, cheapest, busy, onAccept }: { quote: ServiceQuote; c
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-2xl font-black font-heading">{formatPence(quote.amountPence)}</p>
-                    <Button size="sm" className="mt-2" disabled={busy} onClick={onAccept}>
-                        {busy ? <Loader2 className="animate-spin" size={14} /> : "Accept & pay"}
+                    <Button size="sm" className="mt-2" disabled={disabled} onClick={onAccept}>
+                        {busy ? <Loader2 className="animate-spin" size={14} /> : "Choose & continue to payment"}
                     </Button>
                 </div>
             </div>

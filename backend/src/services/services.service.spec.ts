@@ -438,11 +438,27 @@ describe('Delivery & Recovery — end to end', () => {
         await expect(svc.upsertQuote(kentProfileId, ['INSPECTION'] as any, TRUCKER.id, jobId, { amountPence: 10000 } as any)).rejects.toThrow(ForbiddenException);
     });
 
+    it('refuses invalid direct-service quote amounts before any mutation or notification', async () => {
+        const before = db.many('serviceQuote', { jobId }).length;
+        const notifications = notificationsTo(CUSTOMER.id).length;
+        for (const amountPence of [0, 99, -100, 100.5, Number.NaN, Number.POSITIVE_INFINITY, 5_000_001]) {
+            await expect(svc.upsertQuote(kentProfileId, ['DELIVERY'] as any,
+                TRUCKER.id, jobId, { amountPence } as any)).rejects.toThrow(/between £1 and £50,000/);
+        }
+        expect(db.many('serviceQuote', { jobId })).toHaveLength(before);
+        expect(notificationsTo(CUSTOMER.id)).toHaveLength(notifications);
+    });
+
     it('Kent quotes £180, rival quotes £150, and the customer hears about both', async () => {
         const q1 = await svc.upsertQuote(kentProfileId, ['DELIVERY'] as any, TRUCKER.id, jobId, { amountPence: 18000, message: 'Flatbed, tomorrow AM' } as any);
         const q2 = await svc.upsertQuote(rivalProfileId, ['DELIVERY'] as any, RIVAL.id, jobId, { amountPence: 15000 } as any);
         kentQuoteId = q1.id; rivalQuoteId = q2.id;
         expect(notificationsTo(CUSTOMER.id).filter((t) => t === 'SERVICE_QUOTE_RECEIVED')).toHaveLength(2);
+        const received = notify.mock.calls
+            .map(call => call[0])
+            .filter(message => message.userId === CUSTOMER.id && message.type === 'SERVICE_QUOTE_RECEIVED');
+        expect(received).toHaveLength(2);
+        expect(received.every(message => message.data?.dedicatedServiceEmail === true)).toBe(true);
         expect(sendBrandedEmail).toHaveBeenCalledWith(expect.objectContaining({ to: CUSTOMER.email, subject: expect.stringContaining('£180.00') }));
     });
 
@@ -450,6 +466,32 @@ describe('Delivery & Recovery — end to end', () => {
         const q = await svc.upsertQuote(kentProfileId, ['DELIVERY'] as any, TRUCKER.id, jobId, { amountPence: 17000 } as any);
         expect(q.id).toBe(kentQuoteId);
         expect(db.many('serviceQuote', { jobId })).toHaveLength(2);
+        const changed = notify.mock.calls
+            .map(call => call[0])
+            .filter(message => message.userId === CUSTOMER.id && message.type === 'SERVICE_QUOTE_RECEIVED')
+            .at(-1);
+        expect(changed.title).toBe('Quote updated');
+        expect(changed.data?.dedicatedServiceEmail).toBeUndefined();
+    });
+
+    it('withdrawal cannot create a second quote and reactivation announces a new offer', async () => {
+        const separate = await svc.createJob(CUSTOMER.id, {
+            serviceType: 'DELIVERY', title: 'Optional quote lifecycle',
+            pickupPostcode: 'LS1 4AP', deliveryPostcode: 'BS1 4DJ',
+            vehicles: [{ registration: 'AB12CDE' }],
+        } as any);
+        const initial = await svc.upsertQuote(kentProfileId, ['DELIVERY'] as any,
+            TRUCKER.id, separate.id, { amountPence: 20000 } as any);
+        await svc.withdrawQuote(kentProfileId, separate.id);
+        expect(db.one('serviceQuote', { id: initial.id })?.status).toBe('WITHDRAWN');
+        await expect(svc.withdrawQuote(kentProfileId, separate.id)).rejects.toThrow(/active quote/);
+        const before = sendBrandedEmail.mock.calls.length;
+        const resumed = await svc.upsertQuote(kentProfileId, ['DELIVERY'] as any,
+            TRUCKER.id, separate.id, { amountPence: 19000 } as any);
+        expect(resumed.id).toBe(initial.id);
+        expect(db.many('serviceQuote', { jobId: separate.id })).toHaveLength(1);
+        expect(sendBrandedEmail.mock.calls.length).toBe(before + 1);
+        expect(db.one('serviceQuote', { id: initial.id })?.status).toBe('ACTIVE');
     });
 
     it('the customer sees both quotes cheapest-first; a bidder sees only their own', async () => {
@@ -460,13 +502,63 @@ describe('Delivery & Recovery — end to end', () => {
 
         const asKent = await svc.getJob({ userId: TRUCKER.id, role: 'CONTRACTOR' as any, contractorProfileId: kentProfileId }, jobId);
         expect(asKent.viewerRole).toBe('bidder');
+        expect(asKent.canQuote).toBe(true);
+        expect(asKent.canWithdrawQuote).toBe(true);
         expect(asKent.quotes!.map((q: any) => q.id)).toEqual([kentQuoteId]);
         expect(asKent.pickupAddress).toBeNull();
         expect((asKent as any).customer.phone).toBeUndefined();
+
+        const staffReadOnly = await svc.getJob({
+            userId: TRUCKER.id, role: 'CONTRACTOR' as any,
+            contractorProfileId: kentProfileId, quoteAllowedByActor: false,
+        }, jobId);
+        expect(staffReadOnly.canQuote).toBe(false);
+        expect(staffReadOnly.canWithdrawQuote).toBe(false);
+        expect(staffReadOnly.quotes!.map((q: any) => q.id)).toEqual([kentQuoteId]);
+        expect(staffReadOnly.pickupAddress).toBeNull();
+        expect((staffReadOnly as any).customer.email).toBeUndefined();
+    });
+
+    it('permits withdrawal of an old active quote even when insurance verification has expired', async () => {
+        const cap = db.one('contractorCapability', { contractorId: kentProfileId, serviceType: 'DELIVERY' })!;
+        const expiry = cap.verificationExpiresAt;
+        try {
+            cap.verificationExpiresAt = new Date(Date.now() - 60_000);
+            const restricted = await svc.getJob({
+                userId: TRUCKER.id, role: 'CONTRACTOR' as any, contractorProfileId: kentProfileId,
+            }, jobId);
+            expect(restricted.canQuote).toBe(false);
+            expect(restricted.canWithdrawQuote).toBe(true);
+            expect(restricted.quotes!.map((q: any) => q.id)).toEqual([kentQuoteId]);
+            expect(restricted.pickupAddress).toBeNull();
+        } finally {
+            cap.verificationExpiresAt = expiry;
+        }
     });
 
     it('a stranger with no quote and no capability cannot open the job', async () => {
         await expect(svc.getJob({ userId: 'u_nobody', role: 'BUYER' as any }, jobId)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('a provider moving outside the pickup area cannot have their quote accepted', async () => {
+        const cap = db.one('contractorCapability', { contractorId: kentProfileId, serviceType: 'DELIVERY' })!;
+        const oldNationwide = cap.jobNationwide;
+        const oldAreas = cap.jobPostcodeAreas;
+        const previousStatus = db.one('serviceJob', { id: jobId })!.status;
+        const previousQuotes = db.many('serviceQuote', { jobId }).map(q => [q.id, q.status]);
+        const previousPayments = db.many('servicePayment', { jobId }).length;
+        try {
+            cap.jobNationwide = false;
+            cap.jobPostcodeAreas = ['B'];
+            await expect(svc.acceptQuote(CUSTOMER.id, jobId, kentQuoteId))
+                .rejects.toThrow(/no longer verified or eligible for this job area/);
+            expect(db.one('serviceJob', { id: jobId })!.status).toBe(previousStatus);
+            expect(db.many('serviceQuote', { jobId }).map(q => [q.id, q.status])).toEqual(previousQuotes);
+            expect(db.many('servicePayment', { jobId })).toHaveLength(previousPayments);
+        } finally {
+            cap.jobNationwide = oldNationwide;
+            cap.jobPostcodeAreas = oldAreas;
+        }
     });
 
     // 4. Acceptance and money ────────────────────────────────────────────
@@ -493,6 +585,33 @@ describe('Delivery & Recovery — end to end', () => {
         const session = sessionsCreate.mock.calls[0][0];
         expect(session.line_items[0].price_data.unit_amount).toBe(17000);
         expect(session.metadata).toMatchObject({ type: 'SERVICE_JOB', jobId, paymentId: pay.id });
+    });
+
+    it('keeps both parties private after acceptance until service payment is confirmed', async () => {
+        const customer = await svc.getJob({ userId: CUSTOMER.id, role: 'BUYER' as any }, jobId);
+        expect(customer.viewerRole).toBe('customer');
+        expect((customer as any).contractor.phone).toBeUndefined();
+        expect((customer as any).contractor.user.email).toBeUndefined();
+
+        const provider = await svc.getJob({
+            userId: TRUCKER.id,
+            role: 'CONTRACTOR' as any,
+            contractorProfileId: kentProfileId,
+        }, jobId);
+        expect(provider.viewerRole).toBe('contractor');
+        expect((provider as any).customer.phone).toBeUndefined();
+        expect((provider as any).customer.email).toBeUndefined();
+        expect(provider.pickupAddress).toBeNull();
+        expect(provider.deliveryAddress).toBeNull();
+    });
+
+    it('a competing quote cannot be accepted after the first quote wins', async () => {
+        const paymentsBefore = db.many('servicePayment', { jobId }).length;
+        await expect(svc.acceptQuote(CUSTOMER.id, jobId, rivalQuoteId))
+            .rejects.toThrow(/no longer open for acceptance/);
+        expect(db.many('servicePayment', { jobId })).toHaveLength(paymentsBefore);
+        expect(db.one('serviceJob', { id: jobId })!.contractorId).toBe(kentProfileId);
+        expect(db.one('serviceQuote', { id: rivalQuoteId })!.status).toBe('DECLINED');
     });
 
     it('the rival quoting again after acceptance is refused', async () => {
@@ -641,6 +760,32 @@ describe('Delivery & Recovery — end to end', () => {
         expect(db.one('serviceJob', { id: j.id })!.status).toBe('CANCELLED');
         expect(db.one('serviceQuote', { jobId: j.id })!.status).toBe('EXPIRED');
         expect(notificationsTo(TRUCKER.id).slice(before)).toContain('SERVICE_JOB_CANCELLED');
+    });
+
+    it('never auto-releases a disputed completion even after the 48-hour review window', async () => {
+        const j = await svc.createJob(CUSTOMER.id, {
+            serviceType: 'DELIVERY', title: 'Disputed 48-hour review',
+            pickupPostcode: 'A1 1AA', deliveryPostcode: 'B2 2BB',
+            vehicles: [{ make: 'Synthetic', model: 'Car' }],
+        } as any);
+        const q = await svc.upsertQuote(kentProfileId, ['DELIVERY'] as any, TRUCKER.id,
+            j.id, { amountPence: 9000 } as any);
+        sessionsCreate.mockResolvedValueOnce({ id: 'cs_dispute_48h', url: 'https://checkout.stripe.com/cs_dispute_48h' });
+        await svc.acceptQuote(CUSTOMER.id, j.id, q.id);
+        const payment = db.one('servicePayment', { jobId: j.id })!;
+        await svc.markPaid(j.id, payment.id, 'pi_dispute_48h');
+        await svc.startJob(kentProfileId, j.id);
+        await svc.completeJob(kentProfileId, j.id);
+        const row = db.one('serviceJob', { id: j.id })!;
+        row.startedAt = new Date(Date.now() - 51 * 3_600_000);
+        row.completedAt = new Date(Date.now() - 49 * 3_600_000);
+        const before = transfersCreate.mock.calls.length;
+        await svc.openDispute(CUSTOMER.id, j.id, 'Service not performed correctly');
+        expect(row.status).toBe('DISPUTED');
+        await svc.autoConfirmCompleted();
+        expect(row.status).toBe('DISPUTED');
+        expect(db.one('servicePayment', { id: payment.id })!.status).toBe('PAID');
+        expect(transfersCreate).toHaveBeenCalledTimes(before);
     });
 
     it('the cron expires stale open jobs and auto-confirms stale completions', async () => {
@@ -820,5 +965,56 @@ describe('Vehicle Inspection — end to end', () => {
         );
         expect(db.one('serviceJob', { id: inspectionJobId })!.status).toBe('RELEASED');
         expect(payment.status).toBe('RELEASED');
+    });
+
+    it('never reopens a completed or released inspection through a reschedule request', async () => {
+        const finished = db.one('serviceJob', { id: inspectionJobId })!;
+        const oldStatus = finished.status;
+        const oldCompletedAt = finished.completedAt;
+        const oldRequestedFor = finished.requestedFor;
+        const proposal = new Date(Date.now() + 86_400_000).toISOString();
+        try {
+            for (const status of ['COMPLETED', 'RELEASED']) {
+                finished.status = status;
+                await expect(svc.requestJobChange(CUSTOMER.id, null, inspectionJobId, {
+                    kind: 'RESCHEDULE',
+                    reason: 'Try to reset already finished work',
+                    requestedFor: proposal,
+                } as any)).rejects.toThrow(/Only unfinished paid work can be rescheduled/);
+                expect(finished.status).toBe(status);
+                expect(finished.completedAt).toEqual(oldCompletedAt);
+                expect(finished.requestedFor).toEqual(oldRequestedFor);
+            }
+        } finally {
+            finished.status = oldStatus;
+            finished.completedAt = oldCompletedAt;
+            finished.requestedFor = oldRequestedFor;
+        }
+    });
+
+    it('keeps authorised inspection work visible after verification expiry and filters it server-side', async () => {
+        const capability = db.one('contractorCapability', {
+            contractorId: providerProfileId, serviceType: 'INSPECTION',
+        })!;
+        capability.verificationExpiresAt = new Date(Date.now() - 60_000);
+
+        const inspectionWork = await svc.assignedPage(providerProfileId,
+            ['DELIVERY', 'INSPECTION'] as any, { serviceType: 'INSPECTION' as any, limit: 50 });
+        expect(inspectionWork.items.some((job) => job.id === inspectionJobId)).toBe(true);
+        expect(inspectionWork.items.every((job) => job.serviceType === 'INSPECTION')).toBe(true);
+
+        // A caller with delivery permission is never granted the inspection
+        // history merely by supplying ?serviceType=INSPECTION.
+        const denied = await svc.assignedPage(providerProfileId,
+            ['DELIVERY'] as any, { serviceType: 'INSPECTION' as any });
+        expect(denied.items).toEqual([]);
+        expect(denied.nextCursor).toBeNull();
+
+        // In the opposite direction, a selected delivery filter cannot leak
+        // other service types into this inspected-only work list.
+        const otherService = await svc.assignedPage(providerProfileId,
+            ['INSPECTION'] as any, { serviceType: 'DELIVERY' as any });
+        expect(otherService.items).toEqual([]);
+        expect(otherService.nextCursor).toBeNull();
     });
 });

@@ -140,3 +140,30 @@ test('Approved but expired provider is not incorrectly advertised as ready for n
  assert.equal(h.nav.length,0);
  await act(async()=>h.tree.unmount());
 });
+
+test('service filters request server-paginated inspection jobs and preserve My Work',async()=>{
+ const calls=[];
+ const h=await render('ProviderJobsScreen',{
+   getJobFeedPage:async(service,cursor)=>{
+     calls.push(['available',service??'ALL',cursor??null]);
+     return {items:service==='INSPECTION'?[{...job('open-inspection'),serviceType:'INSPECTION',status:'OPEN'}]:[job('open-delivery')],nextCursor:null};
+   },
+   getAssignedJobsPage:async(cursor,_limit,service)=>{
+     calls.push(['assigned',service??'ALL',cursor??null]);
+     return {items:service==='INSPECTION'?[{...job('past-inspection'),serviceType:'INSPECTION'}]:[job('past-delivery')],nextCursor:null};
+   },
+   formatPence:p=>'£'+p/100,
+ });
+ const choose=h.tree.root.findAllByType('Press').find(n=>n.props.accessibilityLabel==='Filter inspection jobs');
+ assert.ok(choose);
+ await act(async()=>choose.props.onPress());
+ assert.ok(calls.some(([area,type])=>area==='available'&&type==='INSPECTION'));
+ assert.ok(calls.some(([area,type])=>area==='assigned'&&type==='INSPECTION'));
+ assert.match(text(h.tree),/Synthetic work open-inspection/);
+ assert.doesNotMatch(text(h.tree),/Synthetic work open-delivery/);
+ const mine=h.tree.root.findAllByType('Press').find(n=>n.props.accessibilityLabel==='My assigned service work');
+ await act(async()=>mine.props.onPress());
+ assert.match(text(h.tree),/Synthetic work past-inspection/);
+ assert.doesNotMatch(text(h.tree),/Synthetic work past-delivery/);
+ await act(async()=>h.tree.unmount());
+});

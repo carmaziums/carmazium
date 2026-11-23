@@ -360,6 +360,18 @@ if (
   ok(`Expo EAS projectId is configured (${easProjectId})`);
 }
 
+const expectedExpoProjectId = '9c77bb81-205c-42f8-913e-b69a0953ec10';
+if (app.owner !== 'carmazium' || easProjectId !== expectedExpoProjectId) {
+  fail('Production EAS builds must use CarMazium-owned @carmazium project rather than the previous developer account');
+} else {
+  ok('Expo EAS project owner is the CarMazium organisation');
+}
+if (app.updates?.url !== `https://u.expo.dev/${easProjectId}`) {
+  fail('Expo Update URL must match the company-controlled EAS project ID');
+} else {
+  ok('Native OTA Update URL matches the company-controlled EAS project');
+}
+
 // EAS Build sets expo-channel-name from the selected preview/production
 // profile. A fixed app.json request header can silently point preview testers
 // at production over-the-air updates, bypassing preview isolation.
@@ -546,10 +558,19 @@ const iosInfoPlist = app.ios?.infoPlist ?? {};
 const privacyManifest = app.ios?.privacyManifests ?? {};
 const androidBlockedPermissions = new Set(app.android?.blockedPermissions ?? []);
 
-if ('NSCameraUsageDescription' in iosInfoPlist) {
-  fail('iOS camera usage description must not be present while CarMazium has no camera-capture flow');
+// Expo Image Picker links camera-capable native APIs. Apple previously flagged
+// a missing purpose string even though our current UI only selects library
+// photos. A purpose string does not request permission: runtime camera calls
+// must still remain absent and Android camera access stays explicitly blocked.
+if (
+  typeof iosInfoPlist.NSCameraUsageDescription !== 'string' ||
+  !/camera/i.test(iosInfoPlist.NSCameraUsageDescription) ||
+  !/photo/i.test(iosInfoPlist.NSCameraUsageDescription) ||
+  !/choose/i.test(iosInfoPlist.NSCameraUsageDescription)
+) {
+  fail('iOS image picker must retain an accurate camera purpose string for Apple native-library analysis');
 } else {
-  ok('iOS does not advertise unused camera access');
+  ok('iOS image picker declares an appropriately scoped camera purpose without requesting camera access');
 }
 
 if (
@@ -610,12 +631,12 @@ const imagePickerPlugin = (app.plugins ?? []).find(
 );
 if (
   !Array.isArray(imagePickerPlugin) ||
-  imagePickerPlugin[1]?.cameraPermission !== false ||
+  imagePickerPlugin[1]?.cameraPermission !== iosInfoPlist.NSCameraUsageDescription ||
   imagePickerPlugin[1]?.microphonePermission !== false
 ) {
-  fail('expo-image-picker must explicitly disable unused camera and microphone permissions');
+  fail('expo-image-picker must preserve the Apple-required camera purpose string and disable microphone permissions');
 } else {
-  ok('expo-image-picker disables unused camera and microphone permissions');
+  ok('expo-image-picker iOS camera purpose matches Info.plist; microphone disabled and Android camera separately blocked');
 }
 
 for (const permission of [

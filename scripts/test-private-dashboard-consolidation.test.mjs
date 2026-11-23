@@ -68,7 +68,11 @@ test("native private dashboard groups selling and buying consistently", () => {
     assert.match(cars, /fetchAllMyAuctions/)
     assert.match(cars, /fetchAllMyListings/)
     assert.match(cars, /Filter/)
-    assert.match(cars, /navigate\(channel === 'Listings' \? 'SellerListings' : 'SellerAuctions',/)
+    // Both channels keep native management routes after the compact card redesign.
+    assert.match(cars, /navigate\('SellerListings', \{ focusListingId: item\.id \}/)
+    assert.match(cars, /navigate\('SellerAuctions', \{ focusListingId: item\.listingId \|\| item\.listing\?\.id \}/)
+    assert.match(cars, /accessibilityLabel="Edit listing"/)
+    assert.match(cars, /accessibilityLabel="More listing options"/)
     const buyerPurchases = read("carmazium app/carmazium app/src/screens/buyer/BuyerPurchaseHistoryScreen.tsx")
     assert.match(buyerPurchases, /AGREED RETAIL PURCHASES/)
     assert.match(buyerPurchases, /o\.status === 'ACCEPTED'/)
@@ -108,7 +112,10 @@ test("review fixes: editing, auction manager links, app car focus and load error
     assert.ok(user.includes("visibleListings.length === 0 && !loadError"))
     // App My cars opens the selected car's own actions.
     const app = "carmazium app/carmazium app/src/screens/"
-    assert.ok(rd(app + "account/MyCarsScreen.tsx").includes("focusListingId: channel === 'Listings' ? item.id"))
+    const carsSource = rd(app + "account/MyCarsScreen.tsx")
+    assert.ok(carsSource.includes("focusListingId: item.id"))
+    assert.ok(carsSource.includes("focusListingId: item.listingId || item.listing?.id"))
+    assert.ok(carsSource.includes("focusAction: 'mark_sold'"))
     assert.ok(rd(app + "seller/SellerListingsScreen.tsx").includes("setActionMenuListing(match)"))
     assert.ok(rd(app + "seller/SellerAuctionsScreen.tsx").includes("a.listingId === focusListingId"))
 })

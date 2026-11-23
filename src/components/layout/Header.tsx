@@ -323,7 +323,7 @@ export function Header() {
                         if (link.kind === "trade-menu") {
                             const tradeItems = [
                                 { name: "TradeXchange Overview", href: "/auctions", icon: LayoutGrid, desc: "See every TradeXchange service area." },
-                                { name: "Vehicle Auctions", href: "/auctions/how-it-works", icon: Gavel, desc: "Buy and sell trade stock through live auctions." },
+                                { name: "Vehicle Auctions", href: "/auctions/browse", icon: Gavel, desc: "Buy and sell trade stock through live auctions." },
                                 { name: "Delivery & Recovery", href: "/services/delivery", icon: Truck, desc: "Arrange vehicle transport and recovery." },
                                 { name: "Vehicle Inspection", href: "/services/inspection", icon: Wrench, desc: "Request independent vehicle inspections." },
                                 { name: "Vehicle Finance", href: "/services/finance", icon: Banknote, desc: "Apply through a selected partner; providers contact our team." },
@@ -713,7 +713,7 @@ export function Header() {
                             if (link.kind === "trade-menu") {
                                 const tradeItems = [
                                     { name: "TradeXchange Overview", href: "/auctions", icon: LayoutGrid },
-                                    { name: "Vehicle Auctions", href: "/auctions/how-it-works", icon: Gavel },
+                                    { name: "Vehicle Auctions", href: "/auctions/browse", icon: Gavel },
                                     { name: "Delivery & Recovery", href: "/services/delivery", icon: Truck },
                                     { name: "Vehicle Inspection", href: "/services/inspection", icon: Wrench },
                                     { name: "Vehicle Finance", href: "/services/finance", icon: Banknote },

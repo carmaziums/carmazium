@@ -1,13 +1,14 @@
 name: CarMazium iOS production release candidate (internal review only)
 
-# Produces a signed App Store candidate via the owner's preconfigured EAS
-# credentials. Does not submit to App Store Connect, TestFlight or customers.
-# Manual-only to avoid surprise EAS/Apple charges or signing side effects.
+# Manual, source-locked iOS release review. Default mode builds a signed IPA;
+# explicit UPLOAD_EXISTING_IPA_ONLY mode uploads the exact previously signed IPA
+# to App Store Connect for processing. Neither mode submits for App Review,
+# invites external testers, or publishes to customers.
 on:
   workflow_dispatch:
     inputs:
       source_sha:
-        description: Exact reviewed 40-character main commit SHA to build
+        description: Exact reviewed 40-character checked-out commit SHA to build
         type: string
         required: true
       approval:
@@ -15,6 +16,12 @@ on:
         type: choice
         required: true
         options: [NOT_APPROVED, INTERNAL_REVIEW_ONLY]
+
+      submission:
+        description: Keep as build-only, or upload the already signed IPA for Apple processing without public release
+        type: choice
+        required: true
+        options: [NO_UPLOAD, UPLOAD_EXISTING_IPA_ONLY]
 
 permissions:
   contents: read
@@ -25,7 +32,7 @@ concurrency:
 
 jobs:
   candidate:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/tradexchange-block2-jobs-20261122') && inputs.submission != 'UPLOAD_EXISTING_IPA_ONLY'
     runs-on: ubuntu-latest
     timeout-minutes: 110
     defaults:
@@ -48,18 +55,21 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
-      - name: Validate exact main commit, owner choice and production build settings
+      - name: Validate exact reviewed commit, owner choice and production build settings
         shell: bash
         run: |
           set -euo pipefail
           if [[ ! "$REVIEW_SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]] || [[ "$REVIEW_SOURCE_SHA" != "$GITHUB_SHA" ]] || [[ "$REVIEW_APPROVAL" != 'INTERNAL_REVIEW_ONLY' ]]; then
-            echo '::error::Internal candidate requires the exact checked-out main SHA and INTERNAL_REVIEW_ONLY approval.'
+            echo '::error::Internal candidate requires the exact checked-out SHA and INTERNAL_REVIEW_ONLY approval.'
             exit 1
           fi
           node - <<'NODE'
           const app = require('./app.json').expo;
           const eas = require('./eas.json');
-          if (app.ios?.bundleIdentifier !== 'uk.carmazium.app' ||
+          if (app.owner !== 'carmazium' ||
+              app.extra?.eas?.projectId !== '9c77bb81-205c-42f8-913e-b69a0953ec10' ||
+              app.updates?.url !== 'https://u.expo.dev/9c77bb81-205c-42f8-913e-b69a0953ec10' ||
+              app.ios?.bundleIdentifier !== 'uk.carmazium.app' ||
               eas.build?.production?.channel !== 'production' ||
               eas.build?.production?.distribution === 'internal' ||
               eas.build?.production?.android?.buildType !== 'app-bundle' ||
@@ -72,7 +82,16 @@ jobs:
               !String(eas.build.production.env.EXPO_PUBLIC_API_URL || '').startsWith('https://')) {
             throw new Error('Production API endpoint is not configured');
           }
-          console.log('Reviewed source, EAS project and production iOS build profile verified');
+          const imagePicker = app.plugins?.find(p => Array.isArray(p) && p[0] === 'expo-image-picker');
+          const cameraPurpose = app.ios?.infoPlist?.NSCameraUsageDescription;
+          if (typeof cameraPurpose !== 'string' || !/camera/i.test(cameraPurpose) ||
+              !/photo/i.test(cameraPurpose) ||
+              imagePicker?.[1]?.cameraPermission !== cameraPurpose ||
+              imagePicker?.[1]?.microphonePermission !== false ||
+              !(app.android?.blockedPermissions ?? []).includes('android.permission.CAMERA')) {
+            throw new Error('Apple ITMS-90683: static image-picker camera purpose must match Info.plist; microphone and Android camera remain disabled');
+          }
+          console.log('Reviewed source, EAS project, Apple static purpose string and production iOS build profile verified');
           NODE
       - name: Require previously connected Expo signing account
         shell: bash
@@ -93,6 +112,72 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # The source app lives under folders with spaces. CocoaPods-generated
+          # Xcode scripts are not reliably quoted there. Stage the SAME app in
+          # a space-free path; EAS No-VCS uploads only this app directory.
+          STAGE="$RUNNER_TEMP/carmazium-ios-stage"
+          mkdir -p "$STAGE"
+          rsync -a \
+            --exclude='node_modules/' --exclude='.expo/' --exclude='.git/' \
+            --exclude='ios/' --exclude='android/' --exclude='.easignore' \
+            --exclude='.env*' --exclude='*.pem' --exclude='*.p12' \
+            --exclude='*.p8' --exclude='*.mobileprovision' \
+            ./ "$STAGE/"
+          # The source .easignore excludes package manifests for a Git-root
+          # archive. A standalone app archive MUST retain its own manifests.
+          printf '%s\n' \
+            '**/node_modules/' '**/.git/' '**/.expo/' \
+            '**/ios/' '**/android/' '.env*' '**/coverage/' \
+            '**/__tests__/' '**/*.test.ts' '**/*.test.tsx' \
+            '**/*.spec.ts' '**/*.spec.tsx' '*.pem' '*.p12' '*.p8' \
+            '*.mobileprovision' > "$STAGE/.easignore"
+          node - "$STAGE" <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const root = process.argv[2];
+          if (root.includes(' ')) throw new Error('iOS staging path contains spaces');
+          for (const required of ['index.js', 'app.json', 'eas.json', 'package.json', 'package-lock.json', 'src']) {
+            if (!fs.existsSync(path.join(root, required))) throw new Error('Missing native app source in staged archive: ' + required);
+          }
+          if (fs.existsSync(path.join(root, 'node_modules'))) throw new Error('Native dependencies must be installed on EAS, not uploaded');
+          const app = JSON.parse(fs.readFileSync(path.join(root, 'app.json'), 'utf8')).expo;
+          const eas = JSON.parse(fs.readFileSync(path.join(root, 'eas.json'), 'utf8'));
+          if (app.owner !== 'carmazium' ||
+              app.extra?.eas?.projectId !== '9c77bb81-205c-42f8-913e-b69a0953ec10' ||
+              app.ios?.bundleIdentifier !== 'uk.carmazium.app' ||
+              eas.build?.production?.channel !== 'production' ||
+              eas.build?.production?.env?.APP_ENV !== 'production') {
+            throw new Error('Staged project does not match the reviewed production CarMazium app');
+          }
+          console.log('Space-free EAS staging checked: original CarMazium project, bundle and production profile');
+          NODE
+          # EAS evaluates the local Expo config before creating the upload.
+          # Install dependencies inside the isolated staging root; .easignore
+          # still prevents node_modules from being included in the cloud archive.
+          npm ci --prefix "$STAGE" --no-audit --no-fund
+          # Evaluate native config plugins, not only the static app.json fields.
+          # Apple previously rejected the image-picker binary for a missing
+          # camera purpose string. Static purpose metadata alone does NOT prompt
+          # the user; current UI remains library-picker-only. Check the generated
+          # native Info.plist without enabling microphone or Android camera.
+          (cd "$STAGE" && npx --no-install expo config --type introspect --json > "$RUNNER_TEMP/carmazium-ios-introspected.json")
+          node - "$RUNNER_TEMP/carmazium-ios-introspected.json" <<'NODE'
+          const fs = require('fs');
+          const config = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const info = config?._internal?.modResults?.ios?.infoPlist;
+          const app = JSON.parse(fs.readFileSync('app.json', 'utf8')).expo;
+          const cameraPurpose = app.ios?.infoPlist?.NSCameraUsageDescription;
+          if (!info || typeof cameraPurpose !== 'string' ||
+              info.NSCameraUsageDescription !== cameraPurpose ||
+              info.NSMicrophoneUsageDescription !== undefined ||
+              !String(info.NSPhotoLibraryUsageDescription || '').includes('photos')) {
+            throw new Error('Generated iOS Info.plist is missing Apple's reviewed image-picker purpose description or added unwanted microphone access.');
+          }
+          console.log('Native iOS Info.plist contains Apple-required static purpose string, no microphone purpose, and the reviewed photo picker text');
+          NODE
+          export EAS_NO_VCS=1
+          export EAS_PROJECT_ROOT="$STAGE"
+          cd "$STAGE"
           npx --yes eas-cli@16.18.0 build --platform ios --profile production --non-interactive --wait --json > "$RUNNER_TEMP/carmazium-ios-candidate.json"
           node - "$RUNNER_TEMP/carmazium-ios-candidate.json" <<'NODE'
           const fs = require('fs');
@@ -106,7 +191,7 @@ jobs:
           }
           const summary = [
             '### CarMazium iOS signed release candidate — INTERNAL REVIEW ONLY',
-            '- Reviewed main source SHA: ' + process.env.GITHUB_SHA,
+            '- Reviewed source SHA: ' + process.env.GITHUB_SHA,
             '- EAS build ID: ' + id,
             '- EAS build status: ' + status,
             '- iOS bundle ID: uk.carmazium.app',
@@ -120,3 +205,87 @@ jobs:
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary.join('\n') + '\n');
           console.log('Signed iOS release candidate created for internal review; EAS ID: ' + id);
           NODE
+  upload:
+    if: github.ref == 'refs/heads/feature/tradexchange-block2-jobs-20261122' && inputs.submission == 'UPLOAD_EXISTING_IPA_ONLY' && inputs.approval == 'INTERNAL_REVIEW_ONLY' && inputs.source_sha == '7e8758c03ea004c42fc09203249f892f9aa11ffd'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      CI: '1'
+      EXPO_NO_TELEMETRY: 'true'
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || secrets.EAS_TOKEN }}
+      APP_ENV: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate reviewed unchanged app source and exact already-signed build
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${EXPO_TOKEN}" || { echo '::error::Missing Expo credential'; exit 1; }
+          # A follow-up workflow-only commit must not alter the original signed app.
+          git diff --quiet 7e8758c03ea004c42fc09203249f892f9aa11ffd HEAD -- 'carmazium app/carmazium app' || {
+            echo '::error::App source changed after iOS binary signing; refuse to upload'; exit 1;
+          }
+          node - <<'NODE'
+          const fs = require('fs');
+          const root = 'carmazium app/carmazium app/';
+          const app = JSON.parse(fs.readFileSync(root + 'app.json','utf8')).expo;
+          if (app.owner !== 'carmazium' ||
+              app.ios?.bundleIdentifier !== 'uk.carmazium.app' ||
+              app.extra?.eas?.projectId !== '9c77bb81-205c-42f8-913e-b69a0953ec10' ||
+              app.version !== '1.0.1' ||
+              !app.ios?.infoPlist?.NSCameraUsageDescription ||
+              app.plugins?.find(p => Array.isArray(p) && p[0] === 'expo-image-picker')?.[1]?.cameraPermission !== app.ios.infoPlist.NSCameraUsageDescription) {
+            throw new Error('CarMazium original iOS identity/version mismatch');
+          }
+          console.log('Original 1.0.1 production iOS source matches the reviewed IPA build');
+          NODE
+      - name: Stage source-identical project and supply App Store app record to submit profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAGE="$RUNNER_TEMP/carmazium-ios-upload"
+          mkdir -p "$STAGE"
+          rsync -a --exclude='node_modules/' --exclude='.expo/' --exclude='.git/' \
+            --exclude='ios/' --exclude='android/' --exclude='.env*' \
+            "carmazium app/carmazium app/" "$STAGE/"
+          node - "$STAGE" <<'NODE'
+          const fs = require('fs'), path = require('path');
+          const root = process.argv[2];
+          const f = path.join(root, 'eas.json');
+          const eas = JSON.parse(fs.readFileSync(f, 'utf8'));
+          if (eas.build?.production?.channel !== 'production' ||
+              eas.build?.production?.env?.APP_ENV !== 'production') {
+            throw new Error('Production settings mismatch');
+          }
+          eas.submit ||= {};
+          eas.submit.production ||= {};
+          eas.submit.production.ios = { ...(eas.submit.production.ios || {}), ascAppId: '6837996479' };
+          fs.writeFileSync(f, JSON.stringify(eas, null, 2) + '\n');
+          console.log('Staged only submit metadata: App Store Connect app 6837996479');
+          NODE
+          npm ci --prefix "$STAGE" --no-audit --no-fund
+          echo "STAGED_PROJECT=$STAGE" >> "$GITHUB_ENV"
+      - name: Verify owner-controlled Expo authentication
+        run: npx --yes eas-cli@16.18.0 whoami --non-interactive
+      - name: Upload prebuilt signed iOS IPA to App Store Connect processing only
+        shell: bash
+        run: |
+          set -euo pipefail
+          export EAS_NO_VCS=1
+          cd "$STAGED_PROJECT"
+          npx --yes eas-cli@16.18.0 submit --platform ios \
+            --id b2a6e3d5-2a85-4ecd-9c9e-75c698d77693 \
+            --profile production --non-interactive --wait
+          printf '%s\n' \
+            '### CarMazium iOS — build-upload result' \
+            '- Signed EAS build: b2a6e3d5-2a85-4ecd-9c9e-75c698d77693' \
+            '- Original reviewed app source: 7e8758c03ea004c42fc09203249f892f9aa11ffd' \
+            '- App Store Connect app: 6837996479' \
+            '- This command uploads a binary for processing, but does not submit for App Review, publish to the App Store or invite external testers.' \
+            >> "$GITHUB_STEP_SUMMARY"

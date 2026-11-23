@@ -109,3 +109,22 @@ test('valuation quote is handed from the registration screen directly to both na
   assert.match(wizard, /landingListingType === 'AUCTION' \? 'FREE' : !editListingId/);
   assert.match(wizard, /setBadgeTier\(method === 'AUCTION' \? 'FREE' : 'BASIC'\)/);
 });
+
+test('fullscreen native gallery handles Android touch streams as well as gesture callbacks', () => {
+  const detail = source('screens/vehicle/VehicleDetailScreen.tsx');
+  for (const required of [
+    'Gesture.Simultaneous(pinchGesture, fullscreenPanGesture)',
+    'onTouchStart={beginFullscreenTouch}',
+    'onTouchEnd={finishFullscreenTouch}',
+    'onTouchCancel={() => { fullscreenTouchStart.current = null; }}',
+    'pointerEvents="none"',
+    'source={{ uri: images[fullscreenIndex] }}',
+    'pinchScale.value > 1.05',
+    'Math.abs(translationX) < Math.abs(translationY) * 1.4',
+    'lastFullscreenSwipeAt.current < 260',
+    'runOnJS(advanceFullscreenFromSwipe)',
+    'fullscreenPhotoCounter(fullscreenIndex, totalImages)',
+    'onPress={() => moveFullscreenBy(-1)}',
+    'onPress={() => moveFullscreenBy(1)}',
+  ]) assert.ok(detail.includes(required), 'missing gallery safeguard: ' + required);
+});

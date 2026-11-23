@@ -526,7 +526,7 @@ const BoardCard: React.FC<{
 // ─── Main Leads Screen ───────────────────────────────────────────────────────
 export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { fontScale } = useWindowDimensions();
+  const { width: viewportWidth, fontScale } = useWindowDimensions();
   const { hasPermission } = useDealerAccess(true);
   const canManageOffers = hasPermission('MANAGE_OFFERS');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
@@ -836,7 +836,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
             <Ionicons name="add-circle-outline" size={19} color={Colors.onAccent} />
             <Text style={styles.crmAddButtonText}>Add Customer</Text>
           </TouchableOpacity>
-          {canManageOffers && (
+          {viewportWidth >= 640 && canManageOffers && (
             <TouchableOpacity style={styles.crmOffersButton}
               onPress={() => navigation?.navigate('DealerOffers')}
               accessibilityRole="button" accessibilityLabel="Offers received">
@@ -844,7 +844,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
               <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
             </TouchableOpacity>
           )}
-          <View style={styles.viewModeToggle}>
+          {viewportWidth >= 640 && <View style={styles.viewModeToggle}>
             <TouchableOpacity
               style={[styles.viewModeBtn, viewMode === 'board' && styles.viewModeBtnActive]}
               onPress={() => setViewMode('board')} activeOpacity={0.75}
@@ -861,8 +861,16 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
               <Ionicons name="list-outline" size={17}
                 color={viewMode === 'list' ? Colors.onAccent : Colors.textMuted} />
             </TouchableOpacity>
-          </View>
+          </View>}
         </View>
+        {viewportWidth < 640 && canManageOffers && (
+          <TouchableOpacity style={[styles.crmOffersButton, styles.crmOffersMobile]}
+            onPress={() => navigation?.navigate('DealerOffers')}
+            accessibilityRole="button" accessibilityLabel="Offers received">
+            <Text style={styles.crmOffersText}>Offers received</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        )}
       </View>
       <View style={styles.crmAutoBanner}>
         <Ionicons name="sparkles-outline" size={19} color={Colors.success} />
@@ -1187,6 +1195,8 @@ const styles = StyleSheet.create({
   crmOffersButton: { flexDirection: 'row', alignItems: 'center', gap: 4,
     borderRadius: 12, borderWidth: 1, borderColor: Colors.borderSubtle,
     backgroundColor: Colors.bgCard, paddingHorizontal: 11, minHeight: 44 },
+  crmOffersMobile: { width: '100%', justifyContent: 'space-between',
+    paddingHorizontal: 16, marginTop: 10 },
   crmOffersText: { fontFamily: FontFamily.bold, fontSize: 12, color: Colors.textPrimary },
   crmAutoBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 12,
     marginHorizontal: 20, marginBottom: 13, padding: 14, borderRadius: 16,

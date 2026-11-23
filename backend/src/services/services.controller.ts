@@ -142,7 +142,7 @@ export class ServicesController {
     @Get('jobs/assigned')
     @UseGuards(ContractorGuard)
     @ApiOperation({ summary: 'Jobs assigned to the provider business and visible to the caller’s role' })
-    async assigned(@Req() req: any, @Query() page: ServiceListQueryDto) {
+    async assigned(@Req() req: any, @Query() page: ServiceJobFeedQueryDto) {
         return new StandardResponse(
             await this.services.assignedPage(
                 req.contractorProfileId,
@@ -215,7 +215,13 @@ export class ServicesController {
         const contractorProfileId = user.role === 'ADMIN'
             ? null
             : await this.tradeTeam.contractorProfileForJob(user.id, id);
-        const result = await this.services.getJob({ userId: user.id, role: user.role, contractorProfileId }, id);
+        const result = await this.services.getJob({
+            userId: user.id,
+            role: user.role,
+            contractorProfileId,
+            quoteAllowedByActor: actor ? (!actor.isStaff || actor.canQuote) : false,
+            businessOwnerUserId: actor?.businessOwnerUserId ?? null,
+        }, id);
         if (actor?.isStaff && contractorProfileId) {
             await this.tradeTeam.logAction(actor, id, 'JOB_VIEWED');
         }

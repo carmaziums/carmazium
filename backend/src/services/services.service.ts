@@ -69,7 +69,14 @@ const ACTIVE_CUSTOMER_JOB_STATUSES: ServiceJobStatus[] = [
  * street addresses are private until the accepted job is paid. Postcodes are
  * NOT private: an approved provider cannot quote a route without them.
  */
-type Viewer = { userId: string; role: UserRole; contractorProfileId?: string | null };
+type Viewer = {
+    userId: string;
+    role: UserRole;
+    contractorProfileId?: string | null;
+    /** TradeTeam's per-user quote permission, distinct from viewing or finishing accepted work. */
+    quoteAllowedByActor?: boolean;
+    businessOwnerUserId?: string | null;
+};
 
 const CUSTOMER_PUBLIC = { id: true, firstName: true } as const;
 const CUSTOMER_PRIVATE = { id: true, firstName: true, lastName: true, email: true, phone: true } as const;
@@ -1150,9 +1157,11 @@ export class ServicesService {
         if (quote.validUntil && quote.validUntil <= now) {
             throw new BadRequestException('That quote has expired. Ask the provider to re-quote.');
         }
-        if (!(await this.currentNewWorkCapability(quote.contractorId, job.serviceType))) {
+        // Recheck service approval AND current postcode matching at acceptance.
+        // A provider may have changed their service area since first quoting.
+        if (!(await this.capabilityAllowsJob(quote.contractorId, job.serviceType, this.jobArea(job)))) {
             throw new BadRequestException(
-                'That provider is no longer verified to take new TradeXchange work. Choose another active quote.',
+                'That provider is no longer verified or eligible for this job area. Choose another active quote.',
             );
         }
         await this.assertProviderPayoutReadyForNewWork(quote.contractorId);
@@ -1439,8 +1448,12 @@ export class ServicesService {
             throw new BadRequestException('This job already has a case open or is not eligible. Add evidence to an open case instead.');
         }
         const requestedFor = dto.kind === 'RESCHEDULE' ? parseFutureRequestedFor(dto.requestedFor) : null;
-        if (dto.kind === 'RESCHEDULE' && (!requestedFor || job.status === ServiceJobStatus.RELEASED)) {
-            throw new BadRequestException('Choose a future date for work that has not been paid out.');
+        // A completed job must not be rolled back to PAID/IN_PROGRESS through
+        // a change request: that would discard completion evidence and bypass
+        // payout/dispute review. Only unfinished paid work can be rescheduled.
+        if (dto.kind === 'RESCHEDULE' && (!requestedFor
+            || (job.status !== ServiceJobStatus.PAID && job.status !== ServiceJobStatus.IN_PROGRESS))) {
+            throw new BadRequestException('Only unfinished paid work can be rescheduled. Choose a future date.');
         }
         const change = { kind: dto.kind, reason, requestedFor: requestedFor?.toISOString() ?? null,
             requestedById: userId, requestedByRole: customer ? 'customer' : 'provider', previousStatus: job.status,
@@ -1469,10 +1482,14 @@ export class ServicesService {
             if (!job || (job.customerId !== userId && (!contractorId || contractorId !== job.contractorId))) throw new ForbiddenException('Not your job.');
             const role = job.customerId === userId ? 'customer' : 'provider';
             if (!request || request.kind !== 'RESCHEDULE' || request.resolved || request.requestedByRole === role) throw new BadRequestException('Only the other party can accept this reschedule.');
+            if (![ServiceJobStatus.PAID, ServiceJobStatus.IN_PROGRESS].includes(request.previousStatus)
+                || job.completedAt || job.confirmedAt) {
+                throw new ConflictException('Completed or settled work cannot be rescheduled. Contact support.');
+            }
             if (job.payment?.status !== ServicePaymentStatus.PAID || job.payment.stripeTransferId || job.payment.externalDisputeId) throw new ConflictException('Payment requires review before rescheduling.');
             const date = parseFutureRequestedFor(request.requestedFor);
             await tx.serviceJob.update({ where: { id: jobId }, data: {
-                status: job.startedAt ? ServiceJobStatus.IN_PROGRESS : ServiceJobStatus.PAID,
+                status: request.previousStatus,
                 completedAt: null, confirmedAt: null, requestedFor: date,
                 changeRequest: { ...request, resolved: true, acceptedById: userId, acceptedAt: new Date().toISOString() },
             } });
@@ -1630,15 +1647,25 @@ export class ServicesService {
     async assignedPage(
         contractorProfileId: string,
         approved: ServiceType[],
-        options: { limit?: number; cursor?: string } = {},
+        options: { limit?: number; cursor?: string; serviceType?: ServiceType } = {},
     ) {
+        // Only service types already authorised for this business/team member.
+        // Approved here is the actor's accessible history, NOT a fresh/new-quote gate:
+        // an expired insurance verification must not hide previously accepted jobs.
+        if (options.serviceType && !JOB_SERVICE_AREAS.includes(options.serviceType)) {
+            throw new BadRequestException('Unknown job service type.');
+        }
+        const types = options.serviceType
+            ? approved.filter(type => type === options.serviceType)
+            : approved.filter(type => JOB_SERVICE_AREAS.includes(type));
+        if (!types.length) return { items: [], nextCursor: null };
         const limit = boundedServiceLimit(options.limit);
         const cursor = decodeServiceCursor(options.cursor);
         const cursorDate = cursor ? new Date(cursor.at) : null;
         const jobs = await this.prisma.serviceJob.findMany({
             where: {
                 contractorId: contractorProfileId,
-                serviceType: { in: approved },
+                serviceType: { in: types },
                 ...(cursorDate ? {
                     OR: [
                         { updatedAt: { lt: cursorDate } },
@@ -1666,6 +1693,11 @@ export class ServicesService {
     }
 
     async upsertQuote(contractorProfileId: string, approved: ServiceType[], userId: string, jobId: string, dto: UpsertQuoteDto) {
+        // Mirror the validated DTO even for internal callers: no fractional
+        // pence, negative, non-finite, or over-cap amount reaches a quote write.
+        if (!Number.isSafeInteger(dto.amountPence) || dto.amountPence < 100 || dto.amountPence > 5_000_000) {
+            throw new BadRequestException('Quote must be a whole-pence amount between £1 and £50,000.');
+        }
         const job = await this.prisma.serviceJob.findUnique({ where: { id: jobId }, include: { customer: true } });
         if (!job) throw new NotFoundException('Job not found');
         if (job.status !== ServiceJobStatus.OPEN || job.expiresAt < new Date()) {
@@ -1692,7 +1724,9 @@ export class ServicesService {
         const existing = await this.prisma.serviceQuote.findUnique({
             where: { jobId_contractorId: { jobId, contractorId: contractorProfileId } },
         });
-        const isNew = !existing || existing.status === ServiceQuoteStatus.WITHDRAWN;
+        // Reactivating a withdrawn, declined or expired quote is a new offer,
+        // not an edit to a quote the customer can still accept.
+        const isNew = existing?.status !== ServiceQuoteStatus.ACTIVE;
 
         const quote = await this.prisma.$transaction(async (tx) => {
             const locked = await tx.serviceJob.updateMany({
@@ -1718,7 +1752,8 @@ export class ServicesService {
         const profile = await this.prisma.contractorProfile.findUnique({ where: { id: contractorProfileId }, select: { businessName: true } });
         const who = profile?.businessName || 'A provider';
         await this.notify(job.customerId, 'SERVICE_QUOTE_RECEIVED', isNew ? 'New quote' : 'Quote updated',
-            `${who} quoted ${gbp(dto.amountPence)} for "${job.title}".`, `/services/jobs/${jobId}`);
+            `${who} quoted ${gbp(dto.amountPence)} for "${job.title}".`, `/services/jobs/${jobId}`,
+            isNew ? { dedicatedServiceEmail: true } : undefined);
         if (isNew) {
             this.sendEmail(job.customer.email, job.customer.firstName, `New quote: ${gbp(dto.amountPence)} for ${job.title}`,
                 `<p><strong>${escapeHtml(who)}</strong> has quoted <strong>${gbp(dto.amountPence)}</strong>.</p>${dto.message ? `<p style="color:#94a3b8">"${escapeHtml(dto.message)}"</p>` : ''}`,
@@ -1912,9 +1947,29 @@ export class ServicesService {
         const eligibleProviderCount = job.status === ServiceJobStatus.OPEN
             ? await this.eligibleProviderCountForJob(job.serviceType, this.jobArea(job))
             : null;
+        // Presentation may only offer a quote when the business capability is
+        // current AND this user can quote. The mutation still re-checks all
+        // eligibility, payment readiness and race conditions authoritatively.
+        const canQuote = !!viewer.contractorProfileId
+            && !!isEligible
+            && viewer.quoteAllowedByActor !== false
+            && job.status === ServiceJobStatus.OPEN
+            && job.expiresAt > new Date()
+            && !isCustomer && !isAdmin
+            && job.customerId !== viewer.businessOwnerUserId;
+        // A verified capability can expire while an ACTIVE quote still
+        // exists. Allow an authorised provider to withdraw that existing offer
+        // without giving them permission to submit new quotes.
+        const canWithdrawQuote = !!viewer.contractorProfileId
+            && viewer.quoteAllowedByActor !== false
+            && job.status === ServiceJobStatus.OPEN
+            && job.quotes.some(q => q.contractorId === viewer.contractorProfileId
+                && q.status === ServiceQuoteStatus.ACTIVE);
 
         return {
             ...shaped,
+            canQuote,
+            canWithdrawQuote,
             review,
             eligibleProviderCount,
             canReview: isCustomer && job.status === ServiceJobStatus.RELEASED && !review,
@@ -2494,9 +2549,11 @@ export class ServicesService {
         return { DELIVERY: 'Delivery & Recovery', INSPECTION: 'Vehicle Inspections', FINANCE: 'Vehicle Finance', WARRANTY: 'Warranty' }[t];
     }
 
-    private async notify(userId: string, type: string, title: string, message: string, link: string) {
+    private async notify(userId: string, type: string, title: string, message: string, link: string,
+        data?: Record<string, unknown>) {
         try {
-            await this.notifications.create({ userId, type, title, message, link, entityType: 'SERVICE_JOB' } as any);
+            await this.notifications.create({ userId, type, title, message, link,
+                entityType: 'SERVICE_JOB', ...(data ? { data } : {}) } as any);
         } catch (e: any) {
             this.logger.warn(`Notification ${type} to ${userId} failed: ${e?.message}`);
         }

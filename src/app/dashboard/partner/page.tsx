@@ -11,6 +11,7 @@ import {
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
 import { Button } from "@/components/ui/Button"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { validatedServiceCapability, type JobService } from "@/lib/serviceSetupRouting"
 import { ProviderDocumentsSection } from "@/components/tradexchange/ProviderDocumentsSection"
 import { ContractorServicesInline } from "@/components/tradexchange/ContractorServicesInline"
@@ -213,9 +214,9 @@ export default function PartnerDashboardPage() {
                         Continue using your existing service-provider account. Your applications, approvals and documents remain unchanged; no dealer registration is needed.
                     </p>
                     <div className="flex flex-wrap gap-3">
-                        <Link href="#provider-services"><Button>My services</Button></Link>
-                        <Link href="/dashboard/service/jobs"><Button variant="outline">Find jobs</Button></Link>
-                        <Link href="/dashboard/service/jobs?tab=mine"><Button variant="outline">My work</Button></Link>
+                        <Link href="#provider-services" className={buttonVariants()}>My services</Link>
+                        <Link href="/dashboard/service/jobs" className={buttonVariants({ variant: "outline" })}>Find jobs</Link>
+                        <Link href="/dashboard/service/jobs?tab=mine" className={buttonVariants({ variant: "outline" })}>My work</Link>
                     </div>
                     <div className="mt-5 space-y-4">
                         <ContractorServicesInline capabilities={legacyCapabilities} profile={legacyProviderProfile} onUpdated={async () => {
@@ -320,7 +321,7 @@ export default function PartnerDashboardPage() {
                                                 ? <Button size="sm" onClick={() => openInlineSection("business", cap.id)}>{cap.status === "PENDING" ? "Continue setup" : "Review verification"}</Button>
                                                 : cap.status === "SUSPENDED"
                                                     ? <p className="text-xs text-[var(--text-muted)]">Contact CarMazium to reactivate this service.</p>
-                                                    : <Link href="/dashboard/service/jobs"><Button size="sm" variant="outline">View jobs</Button></Link>}
+                                                    : <Link href="/dashboard/service/jobs" className={buttonVariants({ size: "sm", variant: "outline" })}>View jobs</Link>}
                                         {cap?.status === "APPROVED" && verified && !coverage &&
                                             <Button size="sm" variant="outline" onClick={() => openInlineSection('preferences', cap.id)}>Set working areas</Button>}
                                     </div>}

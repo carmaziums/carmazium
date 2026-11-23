@@ -203,6 +203,19 @@ integration('TradeXchange: real PostgreSQL transactions, synthetic Stripe only',
     const { j } = await job(status); await service.requestJobChange(providerUser.id, provider.id, j.id, { kind: 'CANNOT_ATTEND', reason: 'Vehicle breakdown' });
     expect((await current(j.id)).status).toBe('DISPUTED'); expect(stripe.transfers.create).not.toHaveBeenCalled();
   });
+  it.each(['COMPLETED', 'RELEASED'])('never reopens finished %s work through a reschedule', async status => {
+    const { j } = await job(status);
+    const before = await current(j.id);
+    const proposed = new Date(Date.now() + 86_400_000).toISOString();
+    await expect(service.requestJobChange(customer.id, null, j.id, {
+      kind: 'RESCHEDULE', reason: 'Attempt to reset completed work', requestedFor: proposed,
+    })).rejects.toThrow(/Only unfinished paid work can be rescheduled/);
+    const after = await current(j.id);
+    expect(after.status).toBe(before.status);
+    expect(after.completedAt).toEqual(before.completedAt);
+    expect(after.payment?.id).toBe(before.payment?.id);
+  });
+
   it('only the other party can agree a reschedule; outsiders cannot act', async () => {
     const { j } = await job('PAID'); const when = new Date(Date.now()+86400000).toISOString();
     await expect(service.requestJobChange(outsider.id, null, j.id, { kind: 'CANCEL', reason: 'Forged' })).rejects.toThrow();
