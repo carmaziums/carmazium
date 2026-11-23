@@ -74,6 +74,7 @@ jobs:
           scripts/test-tradexchange-block1-navigation.test.mjs
           scripts/test-tradexchange-legacy-retirement.test.mjs
           scripts/test-tradexchange-stage9-qa.test.mjs
+          scripts/test-tradexchange-app-links.test.mjs
 
   quote-acceptance-integration:
     runs-on: ubuntu-24.04

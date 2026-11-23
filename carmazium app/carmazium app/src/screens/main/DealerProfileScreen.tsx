@@ -65,6 +65,7 @@ export const DealerProfileScreen: React.FC = () => {
       case 'customers': if (canManageCrm) navigation.navigate('DealerLeads'); break;
       case 'buy-and-bid': if (canViewTrade) navigation.navigate('Tabs', { screen: 'DealerBuyBid' }); break;
       case 'partner-services': navigation.navigate('PartnerDashboard'); break;
+      case 'provider-dashboard': navigation.navigate('ProviderOverview'); break;
       case 'performance': if (canViewAnalytics) navigation.navigate('DealerAnalytics'); break;
       case 'stock': if (hasPermission('VIEW_INVENTORY')) navigation.navigate('DealerInventory'); break;
       case 'offers': if (canManageOffers) navigation.navigate('DealerOffers'); break;

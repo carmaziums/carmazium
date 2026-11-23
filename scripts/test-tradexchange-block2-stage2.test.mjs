@@ -15,8 +15,8 @@ test('native job form offers ASAP or a date and time and checks past dates befor
   assert.match(native, /setPickerMode\('time'\)/);
   assert.match(native, /requestedFor: asap \? undefined : requestedFor!\.toISOString\(\)/);
   assert.match(native, /requestedFor\.getTime\(\) <= Date\.now\(\)/);
-  assert.match(delivery, /jobDateIssue\(requestedFor, !asap\)/);
-  assert.match(inspection, /jobDateIssue\(form\.requestedFor, false\)/);
+  assert.match(delivery, /parseUkServiceDateTime\(requestedFor\)/);
+  assert.match(inspection, /parseUkServiceDateTime\(form\.requestedFor\)/);
 });
 
 test('delivery, collection and recovery use the native job form and limit vehicles to the backend maximum of 12', () => {
@@ -27,7 +27,7 @@ test('delivery, collection and recovery use the native job form and limit vehicl
   assert.match(native, /registration\.replace\(\/\\s\+\/g/);
   assert.match(native, /validYear\(v\.year\)/);
   assert.match(delivery, /updated\.slice\(0, 12\)/);
-  assert.match(inspection, /jobYearValid\(form\.year\)/);
+  assert.match(inspection, /jobYearValid\(v\.year\)/);
 });
 
 test('both website job forms validate UK postcode and vehicle year before post', () => {
@@ -37,7 +37,7 @@ test('both website job forms validate UK postcode and vehicle year before post',
   assert.match(delivery, /jobPostcodeValid\(deliveryPostcode\)/);
   assert.match(delivery, /vehicles\.findIndex\(v => !jobYearValid\(v\.year\)\)/);
   assert.match(inspection, /jobPostcodeValid\(form\.postcode\)/);
-  assert.match(inspection, /jobYearValid\(form\.year\)/);
+  assert.match(inspection, /jobYearValid\(v\.year\)/);
 });
 
 test('app uses an account-scoped draft and clears it after a successful post', () => {
@@ -59,8 +59,9 @@ test('website delivery drafts reuse account-isolated session storage and are cle
   assert.match(inspection, /useSessionDraft\(/);
 });
 
-test('one native Post Job CTA lets customer choose the relevant existing form, without another screen', () => {
-  assert.match(menu, /Alert\.alert\('Post a job', 'Choose the service you need\.'/);
+test('native service cards open the relevant existing form without a chooser or provider-only action', () => {
+  assert.match(menu, /onPress=\{\(\) => openService\(service.path\)\}/);
+  assert.doesNotMatch(menu, /Alert\.alert\('Post a job'|navigate\('ProviderJobs'/);
   assert.match(menu, /navigation\.navigate\('CreateServiceJob', \{ serviceType: 'DELIVERY' \}\)/);
   assert.match(menu, /navigation\.navigate\('CreateServiceJob', \{ serviceType: 'INSPECTION' \}\)/);
   assert.doesNotMatch(menu, /navigate\('NewJobChooser'/);

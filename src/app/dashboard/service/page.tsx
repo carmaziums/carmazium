@@ -100,6 +100,7 @@ function ProviderOverview() {
         ? `${profile.firstName} ${profile.lastName || ""}`.trim()
         : user?.email?.split("@")[0] || "Provider"
 
+    const isDealerStaff = !!profile?.dealerStaffMemberships?.length
     const approvedCount = capabilities?.capabilities.filter(c => c.status === "APPROVED" && (c.serviceType === "DELIVERY" || c.serviceType === "INSPECTION")).length ?? 0
     const activeAssigned = (assigned ?? []).filter(j => !["RELEASED", "CANCELLED", "EXPIRED"].includes(j.status))
     const releasedEarnings = (assigned ?? [])
@@ -118,18 +119,20 @@ function ProviderOverview() {
                     <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-5">
                         <div>
                             <p className="text-primary text-xs font-black uppercase tracking-[0.18em] mb-2">TradeXchange Services</p>
-                            <h1 className="text-3xl md:text-4xl font-black font-heading mb-2">Provider overview</h1>
+                            <h1 className="text-3xl md:text-4xl font-black font-heading mb-2">Service Provider Dashboard</h1>
                             <p className="text-sm text-[var(--text-muted)] max-w-2xl">
                                 Delivery and Inspection jobs, approvals and earnings in one place. Contact our team about finance and warranty partnerships.
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
+                            {profile?.role === "DEALER" && <Link href="/dashboard/dealer" className={buttonVariants({ variant: "outline", size: "sm" })}>Dealer dashboard</Link>}
                             <Link href="/dashboard/partner#provider-services" className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-default)] px-4 py-2.5 text-xs font-black uppercase tracking-widest hover:border-primary/40 transition-colors">
-                                <ShieldCheck size={15} /> My services
+                                <ShieldCheck size={15} /> Service setup
                             </Link>
                             <Link href="/dashboard/service/jobs" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-black uppercase tracking-widest text-white hover:bg-primary/90 transition-colors">
                                 Find jobs <ChevronRight size={15} />
                             </Link>
+                            <Link href="/dashboard/service/jobs?tab=mine" className={buttonVariants({ variant: "outline", size: "sm" })}>My work</Link>
                         </div>
                     </div>
 
@@ -141,8 +144,20 @@ function ProviderOverview() {
                         </div>
                     )}
 
+                    {isDealerStaff && <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
+                        <h2 className="font-bold">Your business manages service access</h2>
+                        <p className="mt-1 text-sm text-[var(--text-muted)]">Your dealership owner manages service approvals, insurance, payouts and your job permissions. Find jobs and My work show the work available to your business role.</p>
+                    </section>}
+                    {!isDealerStaff && !loading && capabilities && (approvedCount === 0 || approvalRequired) && (
+                        <section className="rounded-2xl border border-primary/25 bg-primary/5 p-5">
+                            <h2 className="font-bold">Get ready to quote on jobs</h2>
+                            <p className="mt-1 text-sm text-[var(--text-muted)]">Open Service Setup to check applications, insurance, verification and payouts. You can still open any work already assigned to your business.</p>
+                            <Link href="/dashboard/partner#provider-services" className={buttonVariants({ size: "sm", className: "mt-3" })}>Open service setup</Link>
+                        </section>
+                    )}
+
                     <section className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
-                        <StatCard icon={ShieldCheck} label="Approved services" value={loading ? "…" : capabilities ? String(approvedCount) : "Unavailable"} />
+                        <StatCard icon={ShieldCheck} label={isDealerStaff ? "Service access" : "Approved services"} value={isDealerStaff ? "Business managed" : loading ? "…" : capabilities ? String(approvedCount) : "Unavailable"} />
                         <StatCard icon={Inbox} label="Available jobs" value={loading ? "…" : feed ? String(feed.length) : approvalRequired ? "Setup needed" : "Unavailable"} />
                         <StatCard icon={Briefcase} label="My active jobs" value={loading ? "…" : assigned ? String(activeAssigned.length) : "Unavailable"} />
                         <StatCard icon={PoundSterling} label="Released earnings" value={loading ? "…" : assigned ? formatPence(releasedEarnings) : "Unavailable"} />

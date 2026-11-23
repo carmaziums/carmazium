@@ -17,8 +17,8 @@ export function VehicleWarrantyCta({ listingId, status, listingType, compact = f
         >
             <ShieldCheck size={compact ? 17 : 22} className="shrink-0 text-primary" />
             <span className="min-w-0 flex-1">
-                <span className={`block font-bold text-[var(--text-primary)] ${compact ? "text-xs" : "text-sm"}`}>Buy this car with warranty</span>
-                {!compact && <span className="mt-1 block text-xs leading-relaxed text-[var(--text-muted)]">Get an instant price, choose cover options and pay securely online.</span>}
+                <span className={`block font-bold text-[var(--text-primary)] ${compact ? "text-xs" : "text-sm"}`}>Get a warranty quote for this car</span>
+                {!compact && <span className="mt-1 block text-xs leading-relaxed text-[var(--text-muted)]">Choose cover options and review the confirmed price. Warranty payment does not buy or reserve the vehicle.</span>}
             </span>
             <ArrowRight size={16} className="shrink-0 text-primary" />
         </Link>

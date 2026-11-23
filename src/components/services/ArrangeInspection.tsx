@@ -12,6 +12,7 @@ export function ArrangeInspection({ auctionId }: { auctionId: string }) {
     const [error, setError] = React.useState<string | null>(null)
 
     const create = async () => {
+        if (busy) return
         setBusy(true)
         setError(null)
         try {
@@ -38,7 +39,7 @@ export function ArrangeInspection({ auctionId }: { auctionId: string }) {
             </button>
             {error && (
                 <p className="text-xs text-red-500 max-w-xs sm:text-right">
-                    {error} If the seller postcode is unavailable, use the full inspection request form.
+                    {error} Check the purchase details and contact support if the seller postcode is unavailable. A generic inspection request is not linked to this auction.
                 </p>
             )}
         </div>

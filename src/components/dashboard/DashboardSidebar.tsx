@@ -211,7 +211,7 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
         { href: "/dashboard/user?tab=watchlist", label: "Saved Cars", icon: Heart, section: "Buying", activePrefixes: ["/dashboard/buyer/watchlist"] },
         { href: "/dashboard/user?tab=purchases", label: "Purchases", icon: Receipt, section: "Buying", activePrefixes: ["/dashboard/buyer/history"] },
         { href: "/dashboard/warranties", label: "My Warranties", icon: ShieldCheck, section: "Buying" },
-        { href: "/services/jobs", label: "Delivery & Inspections", icon: Briefcase, section: "Services" },
+        { href: "/services/jobs", label: "My Service Requests", icon: Briefcase, section: "Services" },
         { href: "/dashboard/cancellations", label: "Sale Cancellations", icon: ShieldCheck, section: "Account" },
         { href: "/dashboard/enquiries", label: "Guest enquiries", icon: MessageSquare, section: "Selling" },
         { href: "/dashboard/user?tab=messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account", activePrefixes: ["/dashboard/buyer/messages", "/dashboard/seller/messages"] },
@@ -227,9 +227,11 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
         buyer: unifiedLinks,
         seller: sellerLinks,
         provider: [
-            // One provider entry point. The job and setup actions stay available on this existing hub.
-            { href: "/dashboard/partner", label: "TradeXchange", icon: Briefcase, section: "Services", activePrefixes: ["/dashboard/service"] },
+            { href: "/dashboard/service", label: "Provider Dashboard", icon: LayoutDashboard, section: "Services" },
+            { href: "/dashboard/service/jobs", label: "Find Jobs", icon: Briefcase, section: "Services" },
+            { href: "/dashboard/service/jobs?tab=mine", label: "My Work", icon: ClipboardList, section: "Services" },
             { href: "/dashboard/service/messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account" },
+            { href: "/dashboard/partner", label: "Service Setup", icon: ShieldCheck, section: "Account", activePrefixes: ["/dashboard/service/capabilities", "/dashboard/service/settings"] },
             { href: "/profile", label: "Account Settings", icon: Settings, section: "Account" },
         ],
         finance: [

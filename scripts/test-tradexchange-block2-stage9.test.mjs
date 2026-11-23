@@ -63,6 +63,8 @@ test('service notifications open existing original native job screens, never bro
       { screen: 'CustomerServiceJobDetail', params: { jobId: 'j2' } }],
     [{ type: 'SERVICE_CAPABILITY_REJECTED', data: { link: '/dashboard/service/capabilities' } },
       { screen: 'PartnerDashboard' }],
+    [{ type: 'SERVICE_JOB_AVAILABLE', link: '/dashboard/service' },
+      { screen: 'ProviderOverview' }],
     [{ type: 'SERVICE_JOB_AVAILABLE', link: '/dashboard/service/jobs?tab=mine' },
       { screen: 'ProviderJobs', params: { initialTab: 'assigned' } }],
     [{ type: 'MESSAGE_RECEIVED', link: '/dashboard/service/messages?room=my-room' },
@@ -87,6 +89,7 @@ test('website notification links keep job details and resolve retired setup rout
 });
 
 test('email deep links and guide/navigation routes use existing typed native job pages', () => {
+  assert.match(nativeLinks, /ProviderOverview: 'dashboard\/service'/);
   assert.match(nativeLinks, /ProviderJobs: 'dashboard\/service\/jobs'/);
   assert.match(nativeLinks, /ProviderJobDetail:\s*\{\s*path: 'dashboard\/service\/jobs\/:jobId'/);
   assert.match(nativeLinks, /CustomerServiceJobDetail:\s*\{\s*path: 'services\/jobs\/:jobId'/);

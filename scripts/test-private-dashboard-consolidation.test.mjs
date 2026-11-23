@@ -26,7 +26,10 @@ test("all fourteen legacy buyer and seller routes point to their canonical desti
         const source = read("src/app/dashboard/" + path)
         const target = tab ? "/dashboard/user?tab=" + tab : "/sell"
         assert.ok(source.includes(target), path + " missing " + target)
-        if (path !== "seller/listings/page.tsx") {
+        if (path.endsWith("/messages/page.tsx")) {
+            assert.match(source, /encodeURIComponent\(room\)/)
+            assert.doesNotMatch(source, /ChatWindow|ChatRoomList/)
+        } else if (path !== "seller/listings/page.tsx") {
             assert.match(source, /LegacyDashboardRedirect/, path)
         }
     }

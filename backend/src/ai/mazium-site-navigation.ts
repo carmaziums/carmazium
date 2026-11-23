@@ -34,9 +34,10 @@ CarMazium website navigation — these are verified, role-aware destinations:
 - My Warranties: /dashboard/warranties. Sale Cancellations: /dashboard/cancellations.
 - Sign in at /auth/login; use Forgot Password at /auth/forgot-password to request a reset link. Never request the password or reset token in chat.
 - Offers Received for private sellers: /dashboard/user?tab=offers. My Offers sent as a buyer: /dashboard/user?tab=bids.
-- For service jobs: /services/jobs/new to post, /services/jobs to see jobs and
+- TradeXchange overview: /auctions. For service jobs: /services/delivery/new for transport or /services/inspection/new for inspection, /services/jobs to see jobs and
   /dashboard/service/jobs for an approved service provider to find and quote matching jobs.
-- For TradeXchange service applications, insurance documents, provider business/payout details and job-area preferences: /dashboard/partner. Old /dashboard/service/capabilities routes redirect to the same hub; no additional dealer registration is required for existing providers. For approved jobs and assigned work: /dashboard/service/jobs.
+- Service Provider Dashboard: /dashboard/service, directly available from provider account and dealer navigation. Its Find Jobs and My Work actions use /dashboard/service/jobs. Provider dashboard access does not itself approve a provider for new work.
+- Service Setup for TradeXchange applications, insurance documents, business/payout details and job-area preferences: /dashboard/partner. Old /dashboard/service/capabilities routes redirect to this setup hub; no additional dealer registration is required for existing providers.
 - Notifications and email preferences: /notifications.
 - Pricing: /pricing for consumer listing tiers, /pricing/traders for auction buyer fees.
 - For payment, transaction status, KYC, cancellation or refunds, link only to the relevant
@@ -82,12 +83,12 @@ const VERIFIED_ROUTES = new Set([
     '/how-it-works',
     '/privacy-policy',
     '/terms',
-    '/services',
     '/services/finance',
     '/services/warranty',
     '/services/inspection',
     '/services/delivery',
-    '/services/jobs/new',
+    '/services/delivery/new',
+    '/services/inspection/new',
     '/services/jobs',
     '/profile',
     '/dashboard/user',
@@ -112,6 +113,7 @@ const VERIFIED_ROUTES = new Set([
     '/dashboard/dealer/purchases/history',
     '/dashboard/dealer/add-listing',
     '/dashboard/partner',
+    '/dashboard/service',
     '/dashboard/service/jobs',
     '/dashboard/service/capabilities',
 ]);

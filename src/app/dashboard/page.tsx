@@ -35,7 +35,7 @@ export default function DashboardPage() {
             // Partner services remain one tap away from that dashboard.
             router.push('/dashboard/dealer')
         } else if (role === 'CONTRACTOR') {
-            router.push('/dashboard/partner')
+            router.push('/dashboard/service')
         } else if (role === 'FINANCE_PARTNER') {
             router.push('/dashboard/finance')
         } else if (role === 'INSURANCE_PARTNER') {

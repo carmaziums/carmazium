@@ -44,3 +44,11 @@ export function warrantyPayload(values: Record<string, string>, extras: string[]
   };
   return { customer, vehicle, selection: { vehicleCategory: values.vehicleCategory, months: 12, repairLimit: Number(values.repairLimit), labourRate: Number(values.labourRate), extras }, consent };
 }
+
+export function warrantyEstimate(values: Record<string,string>, extras: string[]): number | null {
+    if (!["CAR","SUV"].includes(values.vehicleCategory) || !["1000","2000"].includes(values.repairLimit) || !["75","100","150","200"].includes(values.labourRate)) return null
+    const base = values.vehicleCategory === "SUV" ? 44500 : 36000
+    const labour = ({ "75": 0, "100": 0.5, "150": 0.75, "200": 1 } as Record<string,number>)[values.labourRate]
+    const additions: Record<string,number> = { AIRBAGS:2000, DRIVER_ASSISTANCE:2000, EMISSIONS:2000, MULTIMEDIA:8000 }
+    return base - (values.repairLimit === "1000" ? 3000 : 0) + base * labour + [...new Set(extras)].reduce((total,code)=>total+(additions[code] ?? 0),0)
+}

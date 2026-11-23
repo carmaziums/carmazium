@@ -14,7 +14,7 @@ export function getGuidedWebsiteSteps(profile: TourProfile): GuidedStep[] {
     const dealer = profile.role === "DEALER"
     const contractor = profile.role === "CONTRACTOR"
     const specialist = ["FINANCE_PARTNER", "INSURANCE_PARTNER"].includes(profile.role)
-    const home = dealer ? "/dashboard/dealer" : contractor ? "/dashboard/partner" : profile.role === "FINANCE_PARTNER" ? "/dashboard/finance" : profile.role === "INSURANCE_PARTNER" ? "/dashboard/insurance" : "/dashboard/user"
+    const home = dealer ? "/dashboard/dealer" : contractor ? "/dashboard/service" : profile.role === "FINANCE_PARTNER" ? "/dashboard/finance" : profile.role === "INSURANCE_PARTNER" ? "/dashboard/insurance" : "/dashboard/user"
     const heading = { selector: "main h1, main h2" }
     const steps: GuidedStep[] = [{
         id: "welcome", title: "Let’s explore CarMazium", description: "This walkthrough opens the relevant pages and highlights the options as we explain them. Use Next and Back, jump to a topic, or skip at any time. Turn on voice guidance if you would like the explanations read aloud. Your account permissions still apply. No forms, bids or payments are submitted by the tour.",
@@ -36,7 +36,7 @@ export function getGuidedWebsiteSteps(profile: TourProfile): GuidedStep[] {
             ["overview", "Admin dashboard", "", "Review platform activity and outstanding work. Open the relevant module to investigate; this guide never approves, publishes or charges anything."],
             ["listings", "Listing moderation", "/listings", "Review listing details, photographs and declarations before making a moderation decision."],
             ["dealers", "Dealer verification", "/dealer-verification", "Review business and account verification. The original dealer verification payment is reused for service applications."],
-            ["services", "Service jobs and providers", "/services", "Review provider approvals, service jobs and disputes. Delivery and recovery require trade insurance; inspections require the declaration and verified business and payout details."],
+            ["services", "Service jobs and providers", "/services", "Review provider approvals, service jobs and disputes. Delivery, collection and recovery require Motor Trade and Public Liability Insurance; inspection requires Public Liability Insurance."],
             ["users", "Account management", "/users", "Find the correct account before reviewing its details or permissions."],
             ["transactions", "Transactions", "/transactions", "Review recorded payment statuses. Vehicle buyers pay sellers directly; listing fees and service payments are separate."],
             ["handovers", "Vehicle handovers", "/handovers", "Review collection evidence and required confirmations before approving an eligible seller incentive."],

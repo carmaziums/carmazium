@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const base = new URL('../', import.meta.url);
-const read = path => readFileSync(fileURLToPath(new URL(path, base)), 'utf8');
+const read = path => readFileSync(fileURLToPath(new URL(path, base)), 'utf8').replace(/\r\n/g, '\n');
 
 test('web and native share an identical A–Z make/model catalogue', () => {
   const web = read('src/lib/carData.ts');

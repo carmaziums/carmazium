@@ -228,9 +228,9 @@ function UnifiedUserDashboardContent() {
                         {activeTab === "purchases" && <PrivatePurchasesTab />}
                         {activeTab === "offers" && <OffersTab onRefreshStats={fetchStats} />}
                         {activeTab === "bids" && <OutgoingOffersTab onRefreshStats={fetchStats} />}
+                        {activeTab === "messages" && <MessagesTab />}
                         {activeTab === "watchlist" && <WatchlistTab />}
                         {activeTab === "stats" && <StatsTab />}
-                        {activeTab === "messages" && <MessagesTab />}
                         {activeTab === "earnings" && <EarningsTab />}
                         {activeTab === "settings" && <SettingsTab profile={profile} refreshProfile={refreshProfile} />}
                     </div>

@@ -22,7 +22,8 @@ const destinations = {
   'dealer-team': '/dashboard/dealer/team', 'dealer-settings': '/profile?section=business',
   'dealer-finance': '/dashboard/dealer/finance', 'dealer-analytics': '/dashboard/dealer/analytics',
   'dealer-earnings': '/dashboard/dealer/earnings', 'dealer-partner': '/dashboard/partner',
-  'dealer-warranties': '/dashboard/warranties',
+  'dealer-provider-dashboard': '/dashboard/service',
+  'dealer-customer-requests': '/services/jobs', 'dealer-warranties': '/dashboard/warranties',
 };
 const extra = {
   personal: [

@@ -227,6 +227,296 @@
               "scheme": "https",
               "host": "www.carmazium.com",
               "pathPrefix": "/dashboard/earnings"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/auctions"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/auctions/"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/services"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/services/"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/auctions/how-it-works"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/auctions/browse"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/finance"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/dashboard/service"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/dashboard/service/"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/dashboard/partner"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/dashboard/partner/"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/dashboard/warranties"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/become-a-partner"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/contact"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "pathPrefix": "/dashboard/service/jobs"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/auctions"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/auctions/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/services"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/services/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/auctions/how-it-works"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/auctions/browse"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/finance"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/dashboard/service"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/dashboard/service/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/dashboard/partner"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/dashboard/partner/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/dashboard/warranties"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/become-a-partner"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/contact"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "pathPrefix": "/dashboard/service/jobs"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/services/delivery"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/services/delivery/"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/services/delivery/new"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/services/delivery/new/"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/services/inspection"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/services/inspection/"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/services/inspection/new"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/services/inspection/new/"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/services/finance"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/services/finance/"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/services/warranty"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/services/warranty/"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/services/warranty/terms"
+            },
+            {
+              "scheme": "https",
+              "host": "carmazium.com",
+              "path": "/services/warranty/terms/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/services/delivery"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/services/delivery/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/services/delivery/new"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/services/delivery/new/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/services/inspection"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/services/inspection/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/services/inspection/new"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/services/inspection/new/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/services/finance"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/services/finance/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/services/warranty"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/services/warranty/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/services/warranty/terms"
+            },
+            {
+              "scheme": "https",
+              "host": "www.carmazium.com",
+              "path": "/services/warranty/terms/"
             }
           ],
           "category": [

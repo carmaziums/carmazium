@@ -1,0 +1,62 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync,existsSync} from 'node:fs';
+import ts from 'typescript';
+import {runInNewContext} from 'node:vm';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8').replace(/\r\n/g,'\n');
+const landing=read('src/app/services/delivery/page.tsx');
+const form=read('src/app/services/delivery/new/page.tsx');
+const native=read('carmazium app/carmazium app/src/screens/main/CreateServiceJobScreen.tsx');
+test('one transport landing, three entry intents, one existing request form',()=>{
+ for(const kind of ['delivery','collection','recovery']) assert.match(landing,new RegExp('kind: "'+kind+'"'));
+ assert.match(landing,/href=\{"\/services\/delivery\/new\?kind=" \+ choice\.kind\}/);
+ assert.match(form,/kind === "recovery"/);
+ assert.match(form,/createJob\(\{/);
+ assert.match(form,/serviceType: "DELIVERY"/);
+ assert.match(form,/title: title\.trim\(\) \|\| autoTitle/);
+ assert.match(form,/Transport requested: Collection/);
+ assert.match(native,/const recovery = transportKind === 'recovery'/);
+ assert.match(native,/Transport requested: Collection/);
+ assert.match(landing,/Motor Trade Insurance and Public Liability Insurance/);
+ assert.doesNotMatch(landing,/\/dashboard\/service\/jobs|Find Jobs/);
+});
+test('old chooser is retired and private request forms are not indexed',()=>{
+ assert.ok(!existsSync(new URL('../src/app/services/jobs/new/page.tsx',import.meta.url)));
+ assert.match(read('next.config.ts'),/source: '\/services\/jobs\/new', destination: '\/auctions#request-services', permanent: true/);
+ assert.match(read('src/app/auctions/page.tsx'),/id="request-services"/);
+ assert.match(read('src/app/services/delivery/layout.tsx'),/canonical: "\/services\/delivery"/);
+ assert.match(read('src/app/services/delivery/new/layout.tsx'),/index: false/);
+ assert.match(form,/returnTo=\{returnTo\}/);
+ assert.match(read('src/components/auth/RequireAuth.tsx'),/returnTo\.startsWith\(pathname \+ "\?"\)/);
+});
+test('account and listing scoped drafts preserve edited values and correct vehicle associations',()=>{
+ assert.match(form,/draftNamespace = "tradexchange:delivery:new" \+ \(listingContext/);
+ assert.match(form,/current\.prefillKey === key/);
+ assert.match(form,/vehicles\.map\(v => \(\{/);
+ assert.match(form,/listingId: v\.listingId \|\| undefined/);
+ assert.match(native,/purchase\?\.listingId \? ":listing:" \+ purchase\.listingId/);
+ assert.match(native,/vehicle\.listingId && vehicle\.listingId === purchase\?\.listingId/);
+ assert.doesNotMatch(native,/index === 0 && purchase\?\.listingId/);
+ assert.match(form,/updated\.slice\(0, 12\)/);
+ assert.match(native,/const MAX_VEHICLES = 12/);
+});
+test('UK schedule conversion rejects past and skipped DST hour and preserves UK time',()=>{
+ const exports={};runInNewContext(ts.transpileModule(read('src/lib/ukServiceDateTime.ts'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports,Intl,Date,Number});
+ const parse=exports.parseUkServiceDateTime;
+ const now=Date.parse('2026-01-01T00:00:00Z');
+ assert.equal(parse('2026-07-15T10:30',now),'2026-07-15T09:30:00.000Z');
+ assert.equal(parse('2026-12-15T10:30',now),'2026-12-15T10:30:00.000Z');
+ assert.equal(parse('2026-03-29T01:30',now),null);
+ assert.equal(parse('2025-12-31T10:00',now),null);
+ assert.match(form,/parseUkServiceDateTime\(requestedFor\)/);
+ assert.match(native,/timeZoneName="Europe\/London"/);
+});
+test('posting only requests quotes and retains existing purchase and provider engine',()=>{
+ assert.match(landing,/No booking or payment is made just by posting/);
+ assert.match(landing,/48-hour completion review/);
+ assert.match(form,/No payment is taken when you post/);
+ assert.match(form,/clearDraft\(\)\s*router\.push/);
+ assert.match(read('src/components/services/ArrangeDelivery.tsx'),/createJobFromPurchase/);
+ assert.match(read('src/app/auctions/won/[id]/page.tsx'),/<ArrangeDelivery auctionId=\{auction\.id\} \/>/);
+ assert.match(read('backend/src/services/services.service.ts'),/assertServiceAcceptingNewRequests\(ServiceType\.DELIVERY\)/);
+});

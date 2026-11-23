@@ -37,7 +37,7 @@ export function RoleMessagesInbox({
     const [filter, setFilter] = React.useState<InboxFilter>("all")
     const [mobileChat, setMobileChat] = React.useState(false)
     const [chatViewport, setChatViewport] = React.useState<{ top: number; height: number } | null>(null)
-    const autoSelectedRef = React.useRef(false)
+    const autoSelectedRef = React.useRef<string | null>(null)
 
     React.useEffect(() => {
         void refreshRooms()
@@ -70,12 +70,13 @@ export function RoleMessagesInbox({
     }, [mobileChat, selectedRoom])
 
     React.useEffect(() => {
-        if (!targetRoomId || autoSelectedRef.current) return
+        if (!targetRoomId) {autoSelectedRef.current=null;return}
+        if (autoSelectedRef.current === targetRoomId) return
         const match = rooms.find(room => room.id === targetRoomId)
         if (match) {
             setFilter("all")
             setSelectedRoom(match)
-            autoSelectedRef.current = true
+            autoSelectedRef.current = targetRoomId
         }
     }, [rooms, targetRoomId])
 
@@ -83,6 +84,7 @@ export function RoleMessagesInbox({
         if (!selectedRoom) return
         const fresh = rooms.find(room => room.id === selectedRoom.id)
         if (fresh) setSelectedRoom(fresh)
+        else setSelectedRoom(null)
         // selectedRoom object changes as messages arrive; only track its ID.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [rooms, selectedRoom?.id])
@@ -121,7 +123,7 @@ export function RoleMessagesInbox({
                                 <h2 className="truncate text-lg font-bold font-heading text-[var(--text-primary)]">
                                     {title}
                                 </h2>
-                                <p className="hidden truncate text-xs text-[var(--text-muted)] sm:block">
+                                <p className="hidden truncate text-sm text-[var(--text-muted)] sm:block">
                                     {subtitle}
                                 </p>
                             </div>
@@ -142,6 +144,7 @@ export function RoleMessagesInbox({
                             <button
                                 key={item.value}
                                 type="button"
+                                aria-pressed={filter === item.value}
                                 onClick={() => {
                                     setFilter(item.value)
                                     if (selectedRoom && item.value !== "all") {
@@ -151,7 +154,7 @@ export function RoleMessagesInbox({
                                         if (!stillVisible) setSelectedRoom(null)
                                     }
                                 }}
-                                className={`shrink-0 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${
+                                className={`shrink-0 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${
                                     filter === item.value
                                         ? "bg-primary text-white"
                                         : "bg-[var(--bg-input)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
@@ -165,7 +168,7 @@ export function RoleMessagesInbox({
                 </div>
 
                 <div className="flex min-h-0 min-w-0 flex-1">
-                    <div className={`min-h-0 w-full border-r border-[var(--border-default)] lg:w-80 lg:shrink-0 ${selectedRoom ? "hidden lg:block" : ""}`}>
+                    <div className={`min-h-0 w-full border-r border-[var(--border-default)] lg:w-80 xl:w-96 lg:shrink-0 ${selectedRoom ? "hidden lg:block" : ""}`}>
                         <ChatRoomList
                             onSelectRoom={setSelectedRoom}
                             selectedRoomId={selectedRoom?.id}
@@ -193,7 +196,7 @@ export function RoleMessagesInbox({
 
             {mobileChat && selectedRoom && typeof document !== "undefined" && createPortal(
                 <div
-                    className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[var(--bg-card)]"
+                    className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[var(--bg-body)]"
                     style={chatViewport ? { top: chatViewport.top, height: chatViewport.height, bottom: "auto" } : undefined}
                     role="dialog"
                     aria-modal="true"

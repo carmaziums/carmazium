@@ -11,7 +11,42 @@ on:
       - "src/lib/analyticsDateRange.ts"
       - "src/hooks/useSessionDraft.ts"
       - "scripts/test-tradexchange-audit.test.mjs"
-      - "src/app/services/page.tsx"
+      - "next.config.ts"
+      - "src/app/sitemap.ts"
+      - "scripts/test-tradexchange-ux-canonical.test.mjs"
+      - "scripts/test-tradexchange-ux-homepage.test.mjs"
+      - "scripts/test-tradexchange-ux-auctions.test.mjs"
+      - "scripts/test-tradexchange-ux-transport.test.mjs"
+      - "scripts/test-tradexchange-ux-inspection.test.mjs"
+      - "scripts/test-tradexchange-ux-commercial.test.mjs"
+      - "scripts/test-tradexchange-ux-dashboards.test.mjs"
+      - "scripts/test-tradexchange-ux-lifecycle.test.mjs"
+      - "scripts/test-mazium-knowledge-sources.test.mjs"
+      - "scripts/mazium-knowledge-sources.mjs"
+      - "scripts/check-mazium-knowledge.mjs"
+      - "src/lib/serviceJobJourney.ts"
+      - "carmazium app/carmazium app/src/lib/serviceJobJourney.ts"
+      - "carmazium app/carmazium app/src/screens/main/CustomerServiceJobDetailScreen.tsx"
+      - "carmazium app/carmazium app/src/components/ServiceJobChanges.tsx"
+      - "src/app/services/jobs/**"
+      - "src/lib/serviceRequestViews.ts"
+      - "src/components/chat/RoleMessagesInbox.tsx"
+      - "src/app/dashboard/**/messages/page.tsx"
+      - "src/app/services/finance/**"
+      - "src/app/services/warranty/**"
+      - "src/components/warranties/**"
+      - "src/components/finance/**"
+      - "src/app/services/inspection/**"
+      - "src/app/services/jobs/[id]/page.tsx"
+      - "src/components/auth/RequireAuth.tsx"
+      - "src/app/services/delivery/new/layout.tsx"
+      - "src/app/auctions/how-it-works/**"
+      - "src/app/auctions/won/**"
+      - "src/components/services/ArrangeDelivery.tsx"
+      - "src/components/services/ArrangeInspection.tsx"
+      - "src/components/tradexchange/TradeXchangeAccountActions.tsx"
+      - "src/app/become-a-partner/page.tsx"
+      - "src/components/layout/Header.tsx"
       - "src/app/services/delivery/page.tsx"
       - "src/app/services/inspection/page.tsx"
       - "src/components/auctions/HowAuctionsWork.tsx"
@@ -207,7 +242,7 @@ jobs:
         run: node --test scripts/test-website-introduction.test.mjs
 
       - name: Service setup and provider partnership routing
-        run: node --test scripts/test-service-setup-routing.test.mjs scripts/test-service-job-form-validation.test.mjs scripts/test-tradexchange-audit.test.mjs
+        run: node --test scripts/test-service-setup-routing.test.mjs scripts/test-service-job-form-validation.test.mjs scripts/test-tradexchange-audit.test.mjs scripts/test-tradexchange-ux-canonical.test.mjs scripts/test-tradexchange-ux-homepage.test.mjs scripts/test-tradexchange-ux-auctions.test.mjs scripts/test-tradexchange-ux-transport.test.mjs scripts/test-tradexchange-ux-inspection.test.mjs scripts/test-tradexchange-ux-commercial.test.mjs scripts/test-tradexchange-ux-dashboards.test.mjs scripts/test-tradexchange-ux-lifecycle.test.mjs scripts/test-mazium-knowledge-sources.test.mjs
 
       - name: Caravan buyer facts exclude motor-vehicle reports
         run: node --test scripts/test-caravan-buyer-information.test.mjs

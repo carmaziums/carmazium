@@ -1,6 +1,7 @@
 import type { DealerPermission } from "@/lib/dealerAccess"
 import {
     LayoutDashboard,
+    ClipboardList,
     Car,
     Kanban,
     Tag,
@@ -195,9 +196,21 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
 
     {
+        href: "/services/jobs", label: "My Service Requests", title: "My Service Requests", subHeader: "Quotes and services requested by your account", icon: ClipboardList, section: "Services"
+    },
+    {
+        href: "/dashboard/service",
+        label: "Provider Dashboard",
+        title: "Service Provider Dashboard",
+        subHeader: "Find jobs, manage your work and review earnings",
+        icon: LayoutDashboard,
+        section: "Services",
+        activePrefixes: ["/dashboard/service/jobs", "/dashboard/service/messages"]
+    },
+    {
         href: "/dashboard/partner",
-        label: "TradeXchange",
-        title: "TradeXchange",
+        label: "Service Setup",
+        title: "Service Setup",
         subHeader: "Business details, payouts and service status",
         icon: LayoutDashboard,
         hidden: true,

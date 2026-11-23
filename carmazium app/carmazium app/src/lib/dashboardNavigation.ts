@@ -28,8 +28,11 @@ export interface MenuItem {
 
 // Website provider sidebar (DashboardSidebar.tsx `provider` links).
 export const PROVIDER_ITEMS: MenuItem[] = [
-  { id: 'provider-home', section: 'Services', label: 'TradeXchange', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'PartnerDashboard' },
+  { id: 'provider-home', section: 'Services', label: 'Provider Dashboard', icon: 'grid-outline', iconLib: 'ion', stackScreen: 'ProviderOverview' },
+  { id: 'provider-jobs', section: 'Services', label: 'Find Jobs', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'ProviderJobs', stackParams: { initialTab: 'open' } },
+  { id: 'provider-work', section: 'Services', label: 'My Work', icon: 'clipboard-outline', iconLib: 'ion', stackScreen: 'ProviderJobs', stackParams: { initialTab: 'assigned' } },
   { id: 'provider-messages', section: 'Account', label: 'Messages', icon: 'chatbubbles-outline', iconLib: 'ion', stackScreen: 'ProviderMessages' },
+  { id: 'provider-setup', section: 'Account', label: 'Service Setup', icon: 'shield-checkmark-outline', iconLib: 'ion', stackScreen: 'PartnerDashboard' },
   { id: 'provider-settings', section: 'Account', label: 'Account Settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings' },
 ];
 
@@ -46,7 +49,7 @@ export const USER_ITEMS: MenuItem[] = [
   { id: 'user-auction-bids', section: 'Buying', label: 'My Auction Bids', icon: 'gavel', iconLib: 'mci', stackScreen: 'BuyerBids' },
   { id: 'user-watchlist', section: 'Buying', label: 'Saved Cars', icon: 'heart-outline', iconLib: 'ion', tabName: 'Saved' },
   { id: 'user-purchases', section: 'Buying', label: 'Purchases', icon: 'receipt-outline', iconLib: 'ion', stackScreen: 'BuyerPurchaseHistory' },
-  { id: 'user-service-jobs', section: 'Services', label: 'Delivery & Inspections', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'CustomerServiceJobs' },
+  { id: 'user-service-jobs', section: 'Services', label: 'My Service Requests', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'CustomerServiceJobs' },
   { id: 'user-deliveries', section: 'Services', label: 'Seller Delivery Requests', icon: 'car-outline', iconLib: 'ion', stackScreen: 'BuyerDeliveryRequests' },
   { id: 'user-warranties', section: 'Services', label: 'Warranty Orders', icon: 'shield-checkmark-outline', iconLib: 'ion', stackScreen: 'WarrantyOrders' },
   { id: 'user-cancellations', section: 'Account', label: 'Sale Cancellations', icon: 'shield-checkmark-outline', iconLib: 'ion', stackScreen: 'SaleCancellations' },
@@ -80,7 +83,9 @@ export const DEALER_ITEMS: MenuItem[] = [
   { id: 'dealer-finance', section: 'Business', label: 'Finance Calculator', icon: 'cash-outline', iconLib: 'ion', stackScreen: 'DealerFinance' },
   { id: 'dealer-analytics', section: 'Business', label: 'Analytics', icon: 'bar-chart-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerAnalytics' },
   { id: 'dealer-earnings', section: 'Business', label: 'Earnings', icon: 'receipt-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerEarnings' },
-  { id: 'dealer-partner', section: 'Services', label: 'TradeXchange', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'PartnerDashboard' },
+  { id: 'dealer-provider-dashboard', section: 'Services', label: 'Provider Dashboard', icon: 'grid-outline', iconLib: 'ion', stackScreen: 'ProviderOverview' },
+  { id: 'dealer-partner', section: 'Services', label: 'Service Setup', icon: 'briefcase-outline', iconLib: 'ion', stackScreen: 'PartnerDashboard' },
+  { id: 'dealer-customer-requests', section: 'Services', label: 'My Service Requests', icon: 'clipboard-outline', iconLib: 'ion', stackScreen: 'CustomerServiceJobs' },
   { id: 'dealer-warranties', section: 'Services', label: 'Warranty Orders', icon: 'shield-checkmark-outline', iconLib: 'ion', stackScreen: 'WarrantyOrders' },
 ];
 

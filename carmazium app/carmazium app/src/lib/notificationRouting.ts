@@ -71,8 +71,8 @@ function routeFromLink(
     params: { initialTab: /[?&]tab=mine(?:&|$)/.test(link) ? 'assigned' : 'open' },
   };
   if (path === '/services/jobs') return { screen: 'CustomerServiceJobs' };
-  if (path === '/dashboard/service' || path === '/dashboard/service/capabilities'
-      || path === '/dashboard/partner') return { screen: 'PartnerDashboard' };
+  if (path === '/dashboard/service') return { screen: 'ProviderOverview' };
+  if (path === '/dashboard/service/capabilities' || path === '/dashboard/partner') return { screen: 'PartnerDashboard' };
 
   const roomId = roomIdFromLink(link);
   if (/messages/i.test(link) && roomId) {

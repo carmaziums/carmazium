@@ -25,9 +25,9 @@ function loadCta(enabled = true) {
 test('active retail cards and detail pages link the correct vehicle to the warranty form', () => {
     for (const compact of [true, false]) {
         const html = loadCta()({ listingId: 'car-123', listingType: 'CLASSIFIED', status: 'ACTIVE', compact })
-        assert.match(html, /Buy this car with warranty/)
+        assert.match(html, /Get a warranty quote for this car/)
         assert.match(html, /href="\/services\/warranty\?listingId=car-123"/)
-        if (!compact) assert.match(html, /Get an instant price, choose cover options and pay securely online/)
+        if (!compact) assert.match(html, /Choose cover options and review the confirmed price/)
     }
 })
 

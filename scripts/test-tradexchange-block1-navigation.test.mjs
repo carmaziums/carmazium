@@ -1,37 +1,55 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { existsSync, readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
+import ts from 'typescript';
 const read = rel => readFileSync(new URL('../' + rel, import.meta.url), 'utf8');
 const native = 'carmazium app/carmazium app/src/';
-test('provider sidebar has one TradeXchange destination and keeps messages and general settings', () => {
+test('provider sidebar exposes the operational dashboard, jobs and setup directly', () => {
   const sidebar = read('src/components/dashboard/DashboardSidebar.tsx');
   const provider = sidebar.match(/        provider: \[([\s\S]*?)\n        \],/);
   assert.ok(provider, 'provider navigation must exist');
-  assert.match(provider[1], /href: "\/dashboard\/partner", label: "TradeXchange"/);
-  assert.equal((provider[1].match(/label:/g) ?? []).length, 3, 'one hub plus messages and settings');
-  assert.doesNotMatch(provider[1], /Service Overview|Available Jobs|My Work|My services|Partner Home/);
-  assert.match(provider[1], /href: "\/dashboard\/service\/messages"/);
-  assert.match(provider[1], /href: "\/profile"/);
+  const hrefs = [...provider[1].matchAll(/href: "([^"]+)"/g)].map(match => match[1]);
+  assert.deepEqual(hrefs, ['/dashboard/service', '/dashboard/service/jobs', '/dashboard/service/jobs?tab=mine', '/dashboard/service/messages', '/dashboard/partner', '/profile']);
+  assert.equal(new Set(hrefs).size, hrefs.length, 'one entry per destination');
+  assert.match(provider[1], /href: "\/dashboard\/service", label: "Provider Dashboard"/);
+  assert.match(provider[1], /href: "\/dashboard\/partner", label: "Service Setup"/);
 });
-test('native menu contains one entry and dealer dashboard cards have no legacy duplicates', () => {
+test('native provider destinations and dealer cards match the website without legacy duplicates', () => {
   const nav = read(native + 'lib/dashboardNavigation.ts');
-  const providers = nav.match(/export const PROVIDER_ITEMS: MenuItem\[\] = \[([\s\S]*?)\n\];/);
-  assert.ok(providers);
-  assert.equal((providers[1].match(/label: 'TradeXchange'/g) ?? []).length, 1);
-  assert.doesNotMatch(providers[1], /Service Overview|Available Jobs|Partner Home/);
-  const dealer = nav.match(/export const DEALER_ITEMS: MenuItem\[\] = \[([\s\S]*?)\n\];/);
-  assert.ok(dealer);
-  assert.equal((dealer[1].match(/label: 'TradeXchange'/g) ?? []).length, 1);
-  assert.doesNotMatch(dealer[1], /dealer-service-addons|dealer-service-jobs/);
+  const exports = {};
+  runInNewContext(ts.transpileModule(nav, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { exports });
+  const providers = JSON.parse(JSON.stringify(exports.PROVIDER_ITEMS));
+  assert.deepEqual(providers.map(item => [item.label, item.stackScreen]), [
+    ['Provider Dashboard', 'ProviderOverview'], ['Find Jobs', 'ProviderJobs'], ['My Work', 'ProviderJobs'],
+    ['Messages', 'ProviderMessages'], ['Service Setup', 'PartnerDashboard'], ['Account Settings', 'Settings'],
+  ]);
+  assert.equal(providers[1].stackParams.initialTab, 'open');
+  assert.equal(providers[2].stackParams.initialTab, 'assigned');
   const webCards = JSON.parse(read('src/data/dashboardCards.json'));
   const appCards = JSON.parse(read(native + 'data/dashboardCards.json'));
   assert.deepEqual(webCards, appCards);
-  const txCards = webCards.dealer.filter(x => x.id === 'dealer-partner');
-  assert.equal(txCards.length, 1);
-  assert.equal(txCards[0].label, 'TradeXchange');
-  assert.equal(txCards[0].href, '/dashboard/partner');
-  assert.equal(txCards[0].stackScreen, 'PartnerDashboard');
-  assert.ok(!webCards.dealer.some(x => ['dealer-service-addons', 'dealer-service-jobs'].includes(x.id)));
+  const dashboard = webCards.dealer.filter(item => item.href === '/dashboard/service');
+  assert.equal(dashboard.length, 1);
+  assert.equal(dashboard[0].label, 'Provider Dashboard');
+  assert.equal(dashboard[0].stackScreen, 'ProviderOverview');
+  const setup = webCards.dealer.filter(item => item.id === 'dealer-partner');
+  assert.equal(setup.length, 1, 'preserve the saved setup card identity');
+  assert.equal(setup[0].label, 'Service Setup');
+  assert.equal(setup[0].href, '/dashboard/partner');
+  assert.equal(setup[0].stackScreen, 'PartnerDashboard');
+  assert.ok(!webCards.dealer.some(item => ['dealer-service-addons', 'dealer-service-jobs'].includes(item.id)));
+});
+test('provider entry is available outside customisable cards and contractor home opens work', () => {
+  const header = read('src/components/layout/Header.tsx');
+  assert.match(header, /profile\?\.role === 'DEALER' \|\| profile\?\.role === 'CONTRACTOR'/);
+  assert.match(header, /href="\/dashboard\/service" onClick=\{\(\) => setIsUserMenuOpen\(false\)\}/);
+  assert.match(header, /href="\/dashboard\/service" onClick=\{\(\) => setIsMobileMenuOpen\(false\)\}/);
+  assert.match(read('src/app/dashboard/dealer/page.tsx'), /href="\/dashboard\/service"/);
+  assert.match(read('src/app/dashboard/page.tsx'), /role === 'CONTRACTOR'[\s\S]*?router.push\('\/dashboard\/service'\)/);
+  assert.match(read(native+'navigation/TabNavigator.tsx'), /accountRole === 'contractor'[\s\S]*?<ProviderOverviewScreen/);
+  assert.match(read(native+'screens/main/DealerWebParityOverview.tsx'), /onNavigate\('provider-dashboard'\)/);
+  assert.match(read(native+'screens/main/DealerProfileScreen.tsx'), /case 'provider-dashboard': navigation.navigate\('ProviderOverview'\)/);
 });
 test('old provider settings pages are deleted while work screens and compatibility redirects remain', () => {
   assert.equal(existsSync(new URL('../' + native + 'components/ProviderPageTabs.tsx', import.meta.url)), false);

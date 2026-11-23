@@ -226,6 +226,10 @@ export default function DealerDashboard() {
                         </div>
                     )}
 
+                    <Link href="/dashboard/service" className="flex min-h-12 items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-5 py-3 font-bold text-primary hover:bg-primary/10">
+                        Provider Dashboard <ChevronRight size={18} aria-hidden="true" />
+                    </Link>
+
                     {/* ── What needs doing today, most urgent first ── */}
                     {isEmailVerified && <DealerAttentionPanel />}
                     <DashboardCards mode="dealer" />

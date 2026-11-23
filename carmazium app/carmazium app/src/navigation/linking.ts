@@ -1,4 +1,5 @@
-import type { LinkingOptions } from '@react-navigation/native';
+import { getStateFromPath as getNavigationStateFromPath, type LinkingOptions } from '@react-navigation/native';
+import { nativeContentTarget } from '../lib/nativeContentLinks';
 import * as Linking from 'expo-linking';
 import type { RootStackParamList } from './RootNavigator';
 
@@ -24,8 +25,8 @@ import type { RootStackParamList } from './RootNavigator';
  *    Android `data.host`/`pathPrefix` entries and iOS `associatedDomains`, plus
  *    an `apple-app-site-association` / `assetlinks.json` served from the domain,
  *    before `https://carmazium.com/...` opens the app. The Android intent filter
- *    is added here; **the iOS half and the server-side association files are
- *    not done** — see PROGRESS.md.
+ *    and iOS associated domains are declared in app.json. The release must also
+ *    verify the live domain associations against the actual signed binaries.
  */
 
 const prefixes = [
@@ -46,10 +47,35 @@ function isAuthCallbackUrl(url: string): boolean {
   );
 }
 
+// The directory and service forms already share one native content-link mapper.
+// Reuse it for incoming URLs, before the parameterised job-detail matcher can
+// mistake the retired /services/jobs/new URL for a real job ID.
+const serviceEntryPaths = new Set([
+  '/auctions', '/services', '/auctions/how-it-works', '/auctions/browse',
+  '/services/jobs/new', '/services/delivery', '/services/delivery/new',
+  '/services/inspection', '/services/inspection/new', '/services/finance',
+  '/finance', '/services/warranty', '/services/warranty/terms',
+  '/dashboard/warranties', '/become-a-partner', '/contact',
+]);
+
 export const linking: LinkingOptions<RootStackParamList> = {
   prefixes,
 
   filter: (url) => !isAuthCallbackUrl(url),
+
+  getStateFromPath: (path, options) => {
+    const pathname = ('/' + path.replace(/^\/+/, '')).split(/[?#]/)[0].replace(/\/$/, '');
+    if (serviceEntryPaths.has(pathname)) {
+      const target = nativeContentTarget('/' + path.replace(/^\/+/, ''));
+      if (target) {
+        const routes = target.name === 'Tabs' ? [{ ...target, path }] : [{ name: 'Tabs' }, { ...target, path }];
+        // MainStackNavigator's existing screenLayout still applies GuestGate
+        // to account-only routes, including CreateServiceJob.
+        return { routes: [{ name: 'Main', state: { index: routes.length - 1, routes } }] };
+      }
+    }
+    return getNavigationStateFromPath(path, options);
+  },
 
   config: {
     screens: {
@@ -82,6 +108,7 @@ export const linking: LinkingOptions<RootStackParamList> = {
           Messages: 'messages',
           Settings: 'settings',
           PartnerDashboard: 'dashboard/partner',
+          ProviderOverview: 'dashboard/service',
           DealerSaved: 'dashboard/dealer/wishlist',
           DealerOffers: 'dashboard/dealer/offers',
           CustomerServiceJobs: 'services/jobs',

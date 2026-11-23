@@ -23,6 +23,18 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // Both declared app-link hosts must serve association files directly.
+      // Keep canonical www redirects for all other apex requests.
+      {
+        source: '/:path((?!\\.well-known/(?:assetlinks\\.json|apple-app-site-association)$).*)',
+        has: [{ type: 'host', value: 'carmazium\\.com' }],
+        destination: 'https://www.carmazium.com/:path',
+        permanent: true,
+      },
+      // Retired duplicate hub; exact path only, never redirect service details or jobs.
+      { source: '/services', destination: '/auctions', permanent: true },
+      { source: '/finance', destination: '/services/finance', permanent: true },
+        { source: '/services/jobs/new', destination: '/auctions#request-services', permanent: true },
       {
         source: '/index.html',
         destination: '/',

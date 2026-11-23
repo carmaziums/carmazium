@@ -844,6 +844,7 @@ export const GlobalAIChatBot: React.FC = () => {
       {!isOpen && (
         <View style={[styles.container, { bottom: floatingBottom }]} pointerEvents="box-none">
           {isForeground && !isKeyboardVisible && activeRoute !== 'LiveAuctionDetailed' &&
+            !['CustomerServiceJobs', 'CustomerServiceJobDetail', 'CreateServiceJob', 'ProviderOverview', 'ProviderJobs', 'ProviderJobDetail', 'PartnerDashboard'].includes(activeRoute) &&
             greetingState?.userId === authUserId && showGreeting && (
             <Animated.View
               style={[styles.greetingBubble, {

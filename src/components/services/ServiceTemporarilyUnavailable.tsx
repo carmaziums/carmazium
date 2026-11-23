@@ -16,7 +16,7 @@ export function ServiceTemporarilyUnavailable({ serviceName }: { serviceName: st
                         CarMazium is not accepting new requests for this service right now. Existing jobs and enquiries are unaffected, and the other TradeXchange services remain available.
                     </p>
                     <Button asChild variant="outline">
-                        <Link href="/services"><ArrowLeft size={15} className="mr-2" /> View available services</Link>
+                        <Link href="/auctions"><ArrowLeft size={15} className="mr-2" /> View available services</Link>
                     </Button>
                 </div>
             </div>

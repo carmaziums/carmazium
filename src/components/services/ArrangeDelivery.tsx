@@ -5,6 +5,7 @@ import { buttonVariants } from "@/components/ui/buttonVariants"
 import { useRouter } from "next/navigation"
 import { Truck, Loader2, ArrowRight } from "lucide-react"
 import { createJobFromPurchase, type PurchaseDeliverySource } from "@/lib/servicesApi"
+import { jobPostcodeValid } from "@/lib/serviceJobFormValidation"
 import { deliveryServiceEnabled } from "@/lib/featureFlags"
 
 /**
@@ -26,7 +27,8 @@ export function ArrangeDelivery({ compact = false, ...source }: PurchaseDelivery
 
     const go = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!postcode.trim()) return setError("Enter the delivery postcode")
+        if (busy) return
+        if (!jobPostcodeValid(postcode)) return setError("Enter a valid UK delivery postcode")
         setBusy(true); setError(null)
         try {
             const job = await createJobFromPurchase({ ...source, deliveryPostcode: postcode.trim() })
@@ -56,7 +58,7 @@ export function ArrangeDelivery({ compact = false, ...source }: PurchaseDelivery
         <form onSubmit={go} className="flex flex-col sm:flex-row sm:items-center gap-2">
             <input
                 autoFocus
-                className="rounded-xl border px-3 py-2 text-sm font-mono uppercase outline-none focus:border-primary bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-primary)] w-full sm:w-40"
+                className="min-h-12 rounded-xl border px-3 py-2 text-sm font-mono uppercase outline-none focus:border-primary bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-primary)] w-full sm:w-40"
                 placeholder="Deliver to postcode"
                 value={postcode}
                 onChange={e => setPostcode(e.target.value)}
@@ -64,8 +66,8 @@ export function ArrangeDelivery({ compact = false, ...source }: PurchaseDelivery
                 aria-label="Delivery postcode"
             />
             <button type="submit" disabled={busy}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest hover:bg-primary/90 disabled:opacity-60">
-                {busy ? <Loader2 className="animate-spin" size={14} /> : <>Post job <ArrowRight size={13} /></>}
+                className="inline-flex min-h-12 items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest hover:bg-primary/90 disabled:opacity-60">
+                {busy ? <Loader2 className="animate-spin" size={14} /> : <>Request quotes <ArrowRight size={13} /></>}
             </button>
             <button type="button" onClick={() => setOpen(false)} className={buttonVariants({ variant: "outline", size: "sm" })}>Cancel</button>
             {error && <span className="text-xs text-red-500">{error}</span>}

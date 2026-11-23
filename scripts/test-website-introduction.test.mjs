@@ -43,6 +43,7 @@ test('guided pages match account roles without treating a stale dealer profile a
     const contractor = getGuidedWebsiteSteps({ ...account, role: 'CONTRACTOR' });
     assert.ok(dealer.some(step => step.href === '/dashboard/dealer/team'));
     assert.ok(dealer.some(step => step.title === 'My dealership services'));
+    assert.ok(contractor.some(step => step.href === '/dashboard/service'), 'provider dashboard is the contractor home in the tour');
     assert.ok(contractor.some(step => step.title === 'TradeXchange services and approvals' && step.href === '/dashboard/partner'));
     assert.ok(!buyer.some(step => step.href?.startsWith('/dashboard/dealer')));
     assert.deepEqual(getGuidedWebsiteSteps({ ...account, dealerProfile: {} }), buyer);

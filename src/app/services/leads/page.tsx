@@ -42,7 +42,7 @@ export default function MyServiceLeadsPage() {
             <div className="container mx-auto px-5 max-w-4xl">
                 <div className="flex items-end justify-between gap-4 mb-8">
                     <div><p className="text-primary text-xs font-black uppercase tracking-widest mb-2">My services</p><h1 className="text-3xl font-black font-heading">Warranty & previous enquiries</h1></div>
-                    <Link href="/services" className="text-sm font-bold text-primary">Service Hub</Link>
+                    <Link href="/auctions" className="text-sm font-bold text-primary">TradeXchange</Link>
                 </div>
 
                 {!loading && !user && <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-8 text-center"><p className="mb-4">Sign in to see your enquiries.</p><Link href="/auth/login?redirect=%2Fservices%2Fleads" className="text-primary font-bold">Sign in</Link></div>}

@@ -40,7 +40,7 @@ export const DealerFinanceScreen: React.FC = () => {
         <Text style={styles.body}>Choose whether the calculator and Apply for Finance button appear on your current and future retail listings. It is on by default. You can turn it off or back on at any time. Buyers enter their name, email and phone number, then continue to the application with the finance provider selected by CarMazium admin.</Text>
         {loading ? <ActivityIndicator color={Colors.accent} /> : error ? <View style={{gap:12}}><Text accessibilityRole="alert" style={styles.body}>{error}</Text><Button label="Try again" variant="outline" onPress={() => setRetry(n => n + 1)} /></View> :
           <View style={styles.toggle}><Text style={styles.body}>{enabled ? 'On' : 'Off'}</Text><Switch value={enabled} disabled={saving} onValueChange={save} trackColor={{true:Colors.accent}} accessibilityLabel="Show finance calculator on my listings" /></View>}
-        <Text style={styles.body}>CarMazium does not provide finance or make lending decisions. Enabling this option does not register you as a finance provider.</Text>
+        <Text style={styles.body}>CarMazium does not provide finance or make lending decisions. Enabling this option does not register you as a finance provider. Your own dealership finance badge is a separate setting.</Text>
       </View>
     </ScrollView><DealerPageTabs />
   </View>;

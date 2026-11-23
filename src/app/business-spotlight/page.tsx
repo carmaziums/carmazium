@@ -40,7 +40,7 @@ export default function BusinessSpotlightDirectory() {
                   {business.category}
                 </span>
                 {business.logoUrl && (
-                  <Image src={business.logoUrl} alt="Official SimpleDMS brand logo" width={800} height={188} sizes="(max-width: 640px) 80vw, 340px" className="mt-5 h-auto w-full max-w-[340px]" />
+                  <Image src={business.logoUrl} alt={business.name + " logo"} width={800} height={188} sizes="(max-width: 640px) 80vw, 340px" className="mt-5 h-auto w-full max-w-[340px]" />
                 )}
                 <h3 className="mt-5 text-3xl font-black tracking-tight">{business.name}</h3>
                 <p className="mt-2 text-lg font-semibold text-[#b3eee8]">{business.strapline}</p>
@@ -51,7 +51,7 @@ export default function BusinessSpotlightDirectory() {
                   <div className="mt-6 overflow-hidden rounded-xl border border-[var(--border-default)] bg-[#06121e]">
                     <Image
                       src={business.bannerDesktopUrl}
-                      alt="SimpleDMS BuySmart original advertisement with example buying research reports"
+                      alt={business.name + " promotional information"}
                       width={1920}
                       height={960}
                       sizes="(max-width: 1024px) 100vw, 550px"
@@ -73,7 +73,7 @@ export default function BusinessSpotlightDirectory() {
                       rel="noopener noreferrer sponsored"
                       className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] px-5 py-3 text-sm font-bold transition hover:bg-[var(--bg-hover)]"
                     >
-                      Visit BuySmart <ArrowUpRight size={16} aria-hidden="true" />
+                      Visit business website <ArrowUpRight size={16} aria-hidden="true" />
                     </a>
                   )}
                   <a

@@ -142,7 +142,7 @@ export default function AboutPage() {
                             <h3 className="mt-5 text-xl font-bold">For automotive businesses</h3>
                             <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">Use one Partner Account for the business and the relevant approved capabilities, including Vehicle Dealer and supported TradeXchange services.</p>
                             <Button asChild size="sm" className="mt-5">
-                                <Link href="/services">Explore TradeXchange <ArrowRight size={14} /></Link>
+                                <Link href="/auctions">Explore TradeXchange <ArrowRight size={14} /></Link>
                             </Button>
                         </article>
                     </div>

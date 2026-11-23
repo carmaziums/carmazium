@@ -16,7 +16,7 @@ test('customer posted jobs cannot expose the provider-only available jobs shortc
 
 test('posted jobs scrolls the navigation heading, actions, history and empty states together', () => {
   assert.equal((posted.match(/<FlatList\b/g) ?? []).length, 1);
-  assert.match(posted, /const listHeader = \([\s\S]*?styles\.header[\s\S]*?styles\.intro[\s\S]*?Post a Job/);
+  assert.match(posted, /const listHeader = \([\s\S]*?styles\.header[\s\S]*?styles\.intro[\s\S]*?requestActions/);
   assert.match(posted, /const emptyContent = loading \?[\s\S]*?No jobs yet/);
   assert.match(posted, /<FlatList[\s\S]*?ListHeaderComponent=\{listHeader\}[\s\S]*?ListEmptyComponent=\{emptyContent\}/);
   assert.match(posted, /const renderJob =[\s\S]*?styles\.jobRow[\s\S]*?CustomerServiceJobDetail/);
@@ -68,8 +68,8 @@ test('dealer CRM mobile actions follow website one-row Add Customer and full-wid
 
 test('customer Posted Jobs page never promotes provider-only available work', () => {
   const page = read('src/app/services/jobs/page.tsx');
-  assert.match(page, /My Posted Jobs/);
-  assert.match(page, /Post a Job/);
+  assert.match(page, /My Service Requests/);
+  assert.match(page, /Request transport/); assert.match(page, /Request inspection/);
   assert.match(page, /getMyJobsPage/);
   assert.doesNotMatch(page, /Available Jobs in the provider dashboard/);
   assert.doesNotMatch(page, /href="\/dashboard\/service\/jobs"/);

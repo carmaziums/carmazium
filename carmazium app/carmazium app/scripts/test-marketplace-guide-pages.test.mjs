@@ -21,10 +21,15 @@ test('marketplace explanation retains both six-step flows, qualifying reward wor
  for(const node of tree.root.findAllByType('Button'))await act(async()=>node.props.onPress());
  assert.deepEqual(JSON.parse(JSON.stringify(nav)),[['SellLanding',{listingType:'AUCTION'}],['AuctionGuide'],['Tabs',{screen:'Search'}]]);await act(async()=>tree.unmount());
 });
-test('auction guide switches seller/buyer tracks and opens each complete FAQ without submitting anything',async()=>{
- const{tree,nav,guides}=await mount('AuctionGuideScreen');assert.ok(JSON.stringify(tree.toJSON()).includes('Set your reserve.'));
- const tabs=tree.root.findAllByType('TouchableOpacity').filter(n=>n.props.accessibilityRole==='tab');await act(async()=>tabs[1].props.onPress());assert.ok(JSON.stringify(tree.toJSON()).includes('Get verified.'));assert.ok(!JSON.stringify(tree.toJSON()).includes('Set your reserve.'));
- for(const faq of guides.auction.FAQS){const node=tree.root.findAllByType('TouchableOpacity').find(n=>n.props.accessibilityLabel===faq.q);assert.equal(node.props.accessibilityState.expanded,false);await act(async()=>node.props.onPress());assert.equal(node.props.accessibilityState.expanded,true);assert.ok(JSON.stringify(tree.toJSON()).includes(faq.a));}
- for(const node of tree.root.findAllByType('Button'))await act(async()=>node.props.onPress());assert.deepEqual(JSON.parse(JSON.stringify(nav)),[['Services'],['Tabs',{screen:'Live'}],['SellLanding',{listingType:'AUCTION'}],['Contact']]);await act(async()=>tree.unmount());
+test('auction guide shows both complete journeys and opens FAQs and existing native actions',async()=>{
+ const{tree,nav,guides}=await mount('AuctionGuideScreen'),output=JSON.stringify(tree.toJSON());
+ assert.ok(output.includes('Sell a vehicle at auction'));assert.ok(output.includes('Buy vehicles at auction'));
+ for(const step of [...guides.auction.SELLER_STEPS,...guides.auction.BUYER_STEPS])assert.ok(output.includes(step.desc),step.desc);
+ assert.equal(tree.root.findAllByType('TouchableOpacity').filter(n=>n.props.accessibilityRole==='tab').length,0);
+ for(const faq of guides.auction.FAQS){const node=tree.root.findAllByType('TouchableOpacity').find(n=>n.props.accessibilityLabel===faq.q);assert.equal(node.props.accessibilityState.expanded,false);await act(async()=>node.props.onPress());assert.equal(node.props.accessibilityState.expanded,true);assert.ok(JSON.stringify(tree.toJSON()).includes(faq.a));await act(async()=>node.props.onPress());assert.equal(node.props.accessibilityState.expanded,false);}
+ for(const node of tree.root.findAllByType('Button'))await act(async()=>node.props.onPress());
+ assert.deepEqual(JSON.parse(JSON.stringify(nav)),[['Services'],['SellLanding',{listingType:'AUCTION'}],['Tabs',{screen:'Live'}],['PartnerGuide'],['Tabs',{screen:'Search'}],['Contact']]);
+ await act(async()=>tree.unmount());
 });
+
 test('all generated native marketplace explanations match current website source',()=>{assert.match(execFileSync(process.execPath,['scripts/generate-native-marketplace-guides.mjs','--check'],{cwd:new URL('../../../',import.meta.url),encoding:'utf8'}),/matches website/)});

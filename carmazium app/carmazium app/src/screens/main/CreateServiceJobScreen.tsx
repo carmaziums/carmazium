@@ -8,11 +8,15 @@ import { Elevation } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { formatUkServiceDateTime, parseUkServiceDateTime } from '../../lib/ukServiceDateTime';
 import { useAuthStore } from '../../store/authStore';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CreateServiceJob'>;
 type ServiceType = 'DELIVERY' | 'INSPECTION';
-type VehicleDraft = { registration: string; make: string; model: string; year: string; notes: string };
+type TransportKind = 'delivery' | 'collection' | 'recovery';
+const inspectionKinds = {prepurchase:'Pre-purchase inspection', mechanical:'Mechanical condition inspection', cosmetic:'Cosmetic and bodywork inspection', stock:'Multiple vehicle / dealer stock inspection'} as const;
+type InspectionKind = keyof typeof inspectionKinds;
+type VehicleDraft = { listingId?: string; registration: string; make: string; model: string; year: string; notes: string };
 const MAX_VEHICLES = 12;
 const emptyVehicle = (): VehicleDraft => ({ registration: '', make: '', model: '', year: '', notes: '' });
 const validYear = (year: string) => !year || (/^\d{4}$/.test(year) && Number(year) >= 1900 && Number(year) <= 2100);
@@ -23,26 +27,32 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
   const serviceType: ServiceType = route.params.serviceType;
   const delivery = serviceType === 'DELIVERY';
   const purchase = route.params.purchase;
+  const kind = route.params.kind;
+  const explicitTransport = kind === 'collection' || kind === 'recovery' || kind === 'delivery' ? kind : undefined;
+  const explicitInspection = kind && Object.prototype.hasOwnProperty.call(inspectionKinds, kind) ? kind as InspectionKind : undefined;
   const userId = useAuthStore(state => state.user?.id);
-  const draftKey = userId ? `tradexchange:job-draft:${userId}:${serviceType}` : null;
+  const draftKey = userId ? `tradexchange:job-draft:${userId}:${serviceType}` + (purchase?.listingId ? ":listing:" + purchase.listingId : "") : null;
   const [draftOwner, setDraftOwner] = useState<string | null>(null);
   const draftReady = Boolean(draftKey && draftOwner === draftKey);
   const pendingWrites = useRef<Promise<unknown>>(Promise.resolve());
   const posted = useRef(false);
-  const [title, setTitle] = useState(purchase ? `${purchase.title} delivery` : delivery ? '' : 'Pre-purchase vehicle inspection');
+  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [vehicles, setVehicles] = useState<VehicleDraft[]>([{
     ...emptyVehicle(),
+    listingId: purchase?.listingId,
     registration: purchase?.registration || '',
     make: purchase?.make || '',
-    model: purchase?.model || '',
+    model: purchase?.model || '', year: purchase?.year ? String(purchase.year) : '',
   }]);
   const [pickup, setPickup] = useState('');
   const [pickupAddress, setPickupAddress] = useState('');
   const [destination, setDestination] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [address, setAddress] = useState('');
-  const [recovery, setRecovery] = useState(false);
+  const [inspectionKind, setInspectionKind] = useState<InspectionKind>('prepurchase');
+  const [transportKind, setTransportKind] = useState<TransportKind>('delivery');
+  const recovery = transportKind === 'recovery';
   const [saving, setSaving] = useState(false);
   const [asap, setAsap] = useState(true);
   const [requestedFor, setRequestedFor] = useState<Date | null>(null);
@@ -58,36 +68,36 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
     let cancelled = false;
     setDraftOwner(null);
     // Do not retain a previous account's or service's values while restoring.
-    setTitle(purchase ? `${purchase.title} delivery` : delivery ? '' : 'Pre-purchase vehicle inspection');
+    setTitle('');
     setDescription('');
-    setVehicles([{ ...emptyVehicle(), registration: purchase?.registration || '',
-      make: purchase?.make || '', model: purchase?.model || '' }]);
+    setVehicles([{ ...emptyVehicle(), listingId: purchase?.listingId, registration: purchase?.registration || '',
+      make: purchase?.make || '', model: purchase?.model || '', year: purchase?.year ? String(purchase.year) : '' }]);
     setPickup(''); setPickupAddress(''); setDestination('');
-    setDeliveryAddress(''); setAddress(''); setRecovery(false);
+    setDeliveryAddress(''); setAddress(''); setTransportKind(explicitTransport ?? 'delivery'); setInspectionKind(explicitInspection ?? 'prepurchase');
     setAsap(true); setRequestedFor(null);
     if (!draftKey) return;
-    if (purchase) { setDraftOwner(draftKey); return; }
     void AsyncStorage.getItem(draftKey).then(raw => {
       if (cancelled) return;
       if (raw) {
         try {
           const saved = JSON.parse(raw) as Record<string, unknown>;
           if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
-            setTitle(safeText(saved.title, 120) || (delivery ? '' : 'Pre-purchase vehicle inspection'));
+            setTitle(safeText(saved.title, 120) || (''));
             setDescription(safeText(saved.description, 2000));
             setPickup(safeText(saved.pickup, 10));
             setPickupAddress(safeText(saved.pickupAddress, 300));
             setDestination(safeText(saved.destination, 10));
             setDeliveryAddress(safeText(saved.deliveryAddress, 300));
             setAddress(safeText(saved.address, 300));
-            setRecovery(saved.recovery === true);
+            setInspectionKind(explicitInspection ?? (typeof saved.inspectionKind === 'string' && Object.prototype.hasOwnProperty.call(inspectionKinds,saved.inspectionKind) ? saved.inspectionKind as InspectionKind : 'prepurchase'));
+            setTransportKind(explicitTransport ?? (saved.transportKind === 'collection' || saved.transportKind === 'recovery' || saved.transportKind === 'delivery' ? saved.transportKind : saved.recovery === true ? 'recovery' : 'delivery'));
             setAsap(saved.asap !== false);
             const date = typeof saved.requestedFor === 'string' ? new Date(saved.requestedFor) : null;
             setRequestedFor(date && Number.isFinite(date.getTime()) ? date : null);
             if (Array.isArray(saved.vehicles)) {
-              const restored = saved.vehicles.slice(0, delivery ? MAX_VEHICLES : 1).map((item: unknown) => {
+              const restored = saved.vehicles.slice(0, MAX_VEHICLES).map((item: unknown) => {
                 const v = item && typeof item === 'object' ? item as Record<string, unknown> : {};
-                return { registration: safeText(v.registration, 10), make: safeText(v.make, 60),
+                return { listingId: typeof v.listingId === 'string' && v.listingId === purchase?.listingId ? v.listingId : undefined, registration: safeText(v.registration, 10), make: safeText(v.make, 60),
                   model: safeText(v.model, 60), year: safeText(v.year, 4), notes: safeText(v.notes, 300) };
               });
               if (restored.length) setVehicles(restored);
@@ -98,26 +108,32 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
       setDraftOwner(draftKey);
     }).catch(() => { if (!cancelled) setDraftOwner(draftKey); });
     return () => { cancelled = true; };
-  }, [draftKey, delivery, purchase]);
+  }, [draftKey, delivery, purchase, explicitTransport, explicitInspection]);
 
   useEffect(() => {
     if (!draftReady || !draftKey || posted.current) return;
     const snapshot = JSON.stringify({ title, description, vehicles, pickup, pickupAddress, destination,
-      deliveryAddress, address, recovery, asap, requestedFor: requestedFor?.toISOString() ?? null });
+      deliveryAddress, address, recovery, transportKind, inspectionKind, asap, requestedFor: requestedFor?.toISOString() ?? null });
     const timer = setTimeout(() => {
       if (posted.current) return;
       pendingWrites.current = pendingWrites.current.catch(() => {}).then(() => AsyncStorage.setItem(draftKey, snapshot));
     }, 350);
     return () => clearTimeout(timer);
   }, [draftReady, draftKey, title, description, vehicles, pickup, pickupAddress,
-    destination, deliveryAddress, address, recovery, asap, requestedFor]);
+    destination, deliveryAddress, address, recovery, transportKind, inspectionKind, asap, requestedFor]);
 
   const openDatePicker = () => { setPickerMode('date'); setPickerVisible(true); };
   const onDateChange = (event: DateTimePickerEvent, selected?: Date) => {
     if (event.type === 'dismissed') { setPickerVisible(false); return; }
     if (selected) {
-      const next = new Date(selected);
-      if (Platform.OS === 'android' && pickerMode === 'date' && requestedFor) next.setHours(requestedFor.getHours(), requestedFor.getMinutes(), 0, 0);
+      let next = new Date(selected);
+      if (Platform.OS === 'android' && pickerMode === 'date' && requestedFor) {
+        const formatter = new Intl.DateTimeFormat('en-GB', {timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+        const parts = (date:Date) => Object.fromEntries(formatter.formatToParts(date).map(p=>[p.type,p.value]));
+        const day = parts(next), time = parts(requestedFor);
+        const preserved = parseUkServiceDateTime(day.year+'-'+day.month+'-'+day.day+'T'+time.hour+':'+time.minute,0);
+        if (preserved) next = new Date(preserved);
+      }
       setRequestedFor(next);
       setAsap(false);
     }
@@ -137,10 +153,6 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
   );
   const submit = async () => {
     if (saving || !draftReady) return;
-    if (!title.trim()) {
-      Alert.alert('Missing information', 'Enter a short job title.');
-      return;
-    }
     const incomplete = vehicles.findIndex(vehicle =>
       !vehicle.registration.trim() && !(vehicle.make.trim() && vehicle.model.trim()));
     if (incomplete !== -1) {
@@ -152,8 +164,8 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
       Alert.alert('Check vehicle year', `Vehicle ${invalidYear + 1} needs a year between 1900 and 2100.`);
       return;
     }
-    if (!vehicles.length || vehicles.length > MAX_VEHICLES || (!delivery && vehicles.length !== 1)) {
-      Alert.alert('Check vehicles', 'Delivery supports 1–12 vehicles. Inspection requires one.');
+    if (!vehicles.length || vehicles.length > MAX_VEHICLES) {
+      Alert.alert('Check vehicles', 'Each request supports 1–12 vehicles at the same location or on the same route.');
       return;
     }
     if (!asap && (!requestedFor || !Number.isFinite(requestedFor.getTime()) || requestedFor.getTime() <= Date.now())) {
@@ -170,8 +182,8 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
         method: 'POST',
         body: JSON.stringify({
           serviceType,
-          title: title.trim(),
-          description: description.trim() || undefined,
+          title: title.trim() || (!delivery ? (inspectionKinds[inspectionKind] + ": " + (vehicles.length === 1 ? ([vehicles[0].make,vehicles[0].model].filter(Boolean).join(" ") || vehicles[0].registration || "Vehicle") : vehicles.length + " vehicles")).slice(0,120) : (transportKind.charAt(0).toUpperCase() + transportKind.slice(1) + ': ' + (vehicles.length === 1 ? ([vehicles[0].make, vehicles[0].model].filter(Boolean).join(' ') || vehicles[0].registration || 'Vehicle') : vehicles.length + ' vehicles') + ' — ' + pickup.trim().toUpperCase() + ' to ' + destination.trim().toUpperCase()).slice(0,120)),
+          description: (!delivery ? 'Inspection requested: ' + inspectionKinds[inspectionKind] + '.\n' + description.trim() : delivery && transportKind === 'collection' ? 'Transport requested: Collection.\n' + description.trim() : description.trim()).trim().slice(0,2000) || undefined,
           requestedFor: asap ? undefined : requestedFor!.toISOString(),
           ...(delivery
             ? {
@@ -182,8 +194,8 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
                 isRecovery: recovery,
               }
             : { servicePostcode: destination.trim().toUpperCase(), serviceAddress: address.trim() || undefined }),
-          vehicles: vehicles.map((vehicle, index) => ({
-            ...(index === 0 && purchase?.listingId ? { listingId: purchase.listingId } : {}),
+          vehicles: vehicles.map(vehicle => ({
+            ...(vehicle.listingId && vehicle.listingId === purchase?.listingId ? { listingId: vehicle.listingId } : {}),
             registration: vehicle.registration.replace(/\s+/g, '').toUpperCase() || undefined,
             make: vehicle.make.trim() || undefined,
             model: vehicle.model.trim() || undefined,
@@ -213,14 +225,18 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
     <View style={styles.container}>
     <ScreenBackBar title="TradeXchange" forceSafeArea />
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>{delivery ? 'Post Delivery & Recovery Job' : 'Post Vehicle Inspection Job'}</Text>
-      <Text style={styles.subtitle}>Approved providers can quote for your request. No provider is booked until you accept a quote.</Text>
-      {field('Job title *', title, setTitle, delivery ? 'Transport my vehicle' : 'Pre-purchase vehicle inspection', false, 120)}
+      <Text style={styles.title}>{delivery ? 'Request vehicle transport' : 'Request vehicle inspection'}</Text>
+      <Text style={styles.subtitle}>Approved providers can quote for your request. Posting does not book a provider or take payment.</Text>
+      {delivery && <View style={styles.whenCard}><Text style={styles.label}>Choose transport type</Text>{(['delivery','collection','recovery'] as const).map(kind => <TouchableOpacity key={kind} style={[styles.addVehicle, transportKind === kind && {borderColor: Colors.accent}]} accessibilityRole="radio" accessibilityState={{checked: transportKind === kind}} onPress={() => setTransportKind(kind)}><Text style={styles.addVehicleText}>{kind.charAt(0).toUpperCase() + kind.slice(1)}{transportKind === kind ? ' — selected' : ''}</Text></TouchableOpacity>)}</View>}
+      {!delivery && <View style={styles.whenCard}><Text style={styles.label}>Inspection type</Text>{(Object.keys(inspectionKinds) as InspectionKind[]).map(kind => <TouchableOpacity key={kind} style={[styles.addVehicle, inspectionKind === kind && {borderColor: Colors.accent}]} accessibilityRole="radio" accessibilityState={{checked:inspectionKind === kind}} onPress={()=>setInspectionKind(kind)}><Text style={styles.addVehicleText}>{inspectionKinds[kind]}{inspectionKind === kind ? ' — selected' : ''}</Text></TouchableOpacity>)}</View>}
+      {field('Request title (optional)', title, setTitle, 'Leave blank for automatic title', false, 120)}
+      {!delivery && <Text style={styles.subtitle}>Vehicles ({vehicles.length}/12). Same location, one quote and completion outcome. Use separate requests for individual outcomes.</Text>}
+      {delivery && <Text style={styles.subtitle}>Vehicles ({vehicles.length}/12). All vehicles must travel on the same route.</Text>}
       {vehicles.map((vehicle, index) => (
         <View key={index} style={styles.vehicleCard}>
           <View style={styles.vehicleHeader}>
             <Text style={styles.vehicleHeading}>Vehicle {index + 1}</Text>
-            {delivery && vehicles.length > 1 && (
+            {vehicles.length > 1 && (
               <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Remove vehicle ${index + 1}`}
                 onPress={() => removeVehicle(index)} disabled={saving}>
                 <Text style={styles.removeVehicle}>Remove</Text>
@@ -234,7 +250,7 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
           {field('Vehicle notes', vehicle.notes, value => updateVehicle(index, { notes: value }), 'Condition, access or equipment', false, 300)}
         </View>
       ))}
-      {delivery && vehicles.length < MAX_VEHICLES && (
+      {vehicles.length < MAX_VEHICLES && (
         <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={addVehicle} style={styles.addVehicle}>
           <Text style={styles.addVehicleText}>+ Add another vehicle</Text>
         </TouchableOpacity>
@@ -245,7 +261,7 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
           {field('Collection address (optional)', pickupAddress, setPickupAddress, 'Shared with the chosen provider')}
           {field('Delivery postcode *', destination, setDestination, 'SW1A 1AA', false, 10)}
           {field('Delivery address (optional)', deliveryAddress, setDeliveryAddress, 'Shared with the chosen provider')}
-          <View style={styles.toggle}><Text style={styles.label}>Vehicle requires recovery</Text><Switch value={recovery} onValueChange={setRecovery} /></View>
+          {recovery && <Text style={styles.subtitle}>Describe non-running vehicles, keys, tyres and access restrictions in the vehicle notes.</Text>}
         </>
       ) : (
         <>
@@ -260,13 +276,13 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
         {!asap && (
           <TouchableOpacity accessibilityRole="button" onPress={openDatePicker} style={styles.addVehicle}
             accessibilityLabel="Choose preferred date and time">
-            <Text style={styles.addVehicleText}>{requestedFor ? requestedFor.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : 'Choose future date and time'}</Text>
+            <Text style={styles.addVehicleText}>{requestedFor ? formatUkServiceDateTime(requestedFor.toISOString()) : 'Choose future date and time'}</Text>
           </TouchableOpacity>
         )}
         {!asap && pickerVisible && (
           <>
             <DateTimePicker value={requestedFor ?? new Date(Date.now() + 24 * 60 * 60 * 1000)}
-              mode={Platform.OS === 'ios' ? 'datetime' : pickerMode} minimumDate={new Date()}
+              mode={Platform.OS === 'ios' ? 'datetime' : pickerMode} timeZoneName="Europe/London" minimumDate={new Date()}
               onChange={onDateChange} display={Platform.OS === 'ios' ? 'spinner' : 'default'} />
             {Platform.OS === 'ios' && (
               <TouchableOpacity style={styles.datePickerDone}
@@ -278,9 +294,9 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
           </>
         )}
       </View>
-      {field('Additional details', description, setDescription, 'Condition, availability and special instructions', true, 2000)}
+      {field(delivery ? 'Additional details' : 'Requested scope and report requirements', description, setDescription, 'Condition, availability and special instructions', true, 2000)}
       <TouchableOpacity accessibilityRole="button" disabled={saving || !draftReady} onPress={() => void submit()} style={[styles.submit, (saving || !draftReady) && { opacity: 0.6 }]}>
-        {saving ? <ActivityIndicator color={Colors.onAccent} /> : <Text style={styles.submitText}>Post a Job</Text>}
+        {saving ? <ActivityIndicator color={Colors.onAccent} /> : <Text style={styles.submitText}>{'Request quotes'}</Text>}
       </TouchableOpacity>
     </ScrollView>
     </View>

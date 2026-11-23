@@ -260,7 +260,7 @@ export default async function Home() {
                             <p className="mt-3 text-sm leading-7" style={{ color: "var(--text-secondary)" }}>
                                 Whether you want to sell your car, compare auction options or browse used cars in the UK, CarMazium is built around direct marketplace transactions with dedicated buying, selling and automotive-service entry points. Vehicle purchase funds are handled between buyer and seller rather than being held by CarMazium.
                             </p>
-                            <Link href="/services" className={buttonVariants({ variant: "outline", className: "mt-5" })}>
+                            <Link href="/auctions" className={buttonVariants({ variant: "outline", className: "mt-5" })}>
                                 Explore TradeXchange services
                             </Link>
                         </article>

@@ -326,7 +326,7 @@ function AdminMessagesContent() {
             </div>
         </div>
         {mobileChat && selectedRoom && typeof document !== "undefined" && createPortal(
-            <div className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[var(--bg-card)]" role="dialog" aria-modal="true" aria-label="Customer conversation">
+            <div className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col overflow-hidden bg-[var(--bg-body)]" role="dialog" aria-modal="true" aria-label="Customer conversation">
                 <ChatWindow room={selectedRoom} onBack={() => setSelectedRoom(null)} />
             </div>,
             document.body

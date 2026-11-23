@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { apiClient } from '@/lib/apiClient'
-import { money, WarrantyOrder, warrantyHeaders, warrantyInput, warrantyPanel } from './types'
+import { money, warrantyEstimate, WarrantyOrder, warrantyHeaders, warrantyInput, warrantyPanel } from './types'
 
 type Values = Record<string, string>
 function Field({ name, label, values, change, options, optional = false, type = 'text', min, max, autoComplete }: {
@@ -23,6 +23,9 @@ const extrasOptions = [['AIRBAGS', 'Airbag protection', 2000], ['DRIVER_ASSISTAN
 export function WarrantyQuoteForm() {
     const params = useSearchParams()
     const [listingId, setListingId] = useState(params.get('listingId') || '')
+    const [prefillBusy, setPrefillBusy] = useState(!!listingId)
+    const edited = useRef(new Set<string>())
+    const inFlight = useRef(false)
     const [listingTitle, setListingTitle] = useState('')
     const [values, setValues] = useState<Values>({ repairLimit: '2000', labourRate: '75', requestedStartDate: new Date().toISOString().slice(0, 10) })
     const [extras, setExtras] = useState<string[]>([])
@@ -35,21 +38,23 @@ export function WarrantyQuoteForm() {
     const [confirmed, setConfirmed] = useState(false)
     const quoteHeading = useRef<HTMLHeadingElement>(null)
     const request = useRef<{ key: string; id: string; token: string } | null>(null)
-    const change = (name: string, value: string) => { setValues(v => ({ ...v, [name]: value })); setQuote(null); setError('') }
+    const change = (name: string, value: string) => { edited.current.add(name); if (!["repairLimit","labourRate","title","firstName","lastName","email","phone","addressLine1","addressLine2","town","county","postcode"].includes(name)) setConfirmed(false); setValues(v => ({ ...v, [name]: value })); setQuote(null); setError('') }
     const field = (name: string, label: string, opts: Partial<React.ComponentProps<typeof Field>> = {}) => <Field key={name} name={name} label={label} values={values} change={change} {...opts} />
 
     useEffect(() => {
-        if (!listingId) return
-        let active = true
+        if (!listingId) { setPrefillBusy(false); return }
+        let active = true; setPrefillBusy(true)
         apiClient<{ data: { title: string; vrm?: string; make?: string; model?: string; engineSize?: number; fuelType?: string; price: string } }>(`/warranties/listing/${encodeURIComponent(listingId)}`)
-            .then(({ data }) => { if (active) { setListingTitle(data.title); setValues(v => ({ ...v, vrm: data.vrm || '', make: data.make || '', model: data.model || '', engineCc: data.engineSize?.toString() || '', fuelType: data.fuelType || '', retailValue: String(data.price) })) } })
-            .catch(e => { if (active) { setError(e.message); setListingId('') } })
+            .then(({ data }) => { if (active) { setListingTitle(data.title); setValues(v => ({ ...v, ...Object.fromEntries(Object.entries({ vrm: data.vrm || '', make: data.make || '', model: data.model || '', engineCc: data.engineSize?.toString() || '', fuelType: data.fuelType || '', retailValue: String(data.price) }).filter(([key])=>!edited.current.has(key))) })); setConfirmed(false) } })
+            .catch(e => { if (active) { setLookupNotice('This listing could not be loaded. Enter the vehicle details manually for a standalone quote.'); setListingId('') } })
+            .finally(() => { if (active) setPrefillBusy(false) })
         return () => { active = false }
     }, [listingId])
 
     async function lookup() {
-        if (!/^[a-z0-9 ]{2,8}$/i.test(values.vrm || '')) { setError('Enter a valid registration first.'); return }
-        setLookingUp(true); setError(''); setLookupNotice('')
+        if (lookingUp || prefillBusy || inFlight.current) return
+        if (!/^[a-z0-9]{2,8}$/i.test((values.vrm || '').replace(/\s/g,''))) { setError('Enter a valid registration first.'); return }
+        setLookingUp(true); setConfirmed(false); setError(''); setLookupNotice('')
         const registration = values.vrm.replace(/\s/g, '').toUpperCase()
         try {
             const data = await apiClient<{ vrm: string; make?: string; model?: string; engineSize?: number; fuelType?: string; firstUsedDate?: string; officialVehicleData?: { dvla?: { manufactureDate?: string }; mot?: { manufactureDate?: string } }; motHistoryStatus?: string; motStatus?: string; lastMotMileage?: { value: number; unit: string; recordedAt: string } }>('/dvla/lookup', { method: 'POST', body: JSON.stringify({ vrm: registration, allowAiEnrichment: false }) })
@@ -65,7 +70,8 @@ export function WarrantyQuoteForm() {
     }
 
     async function getQuote(event: React.FormEvent) {
-        event.preventDefault(); if (busy) return
+        event.preventDefault(); if (inFlight.current || lookingUp || prefillBusy) return
+        inFlight.current = true
         setBusy(true); setError('')
         const customer = Object.fromEntries(['title', 'firstName', 'lastName', 'email', 'phone', 'addressLine1', 'addressLine2', 'town', 'county', 'postcode'].map(k => [k, (values[k] || '').trim()]))
         const vehicle = { vrm: values.vrm, make: values.make, model: values.model, mileage: Number(values.mileage), engineCc: Number(values.engineCc), fuelType: values.fuelType,
@@ -85,20 +91,21 @@ export function WarrantyQuoteForm() {
             setQuote(data)
             setTimeout(() => { quoteHeading.current?.focus(); quoteHeading.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, 50)
         } catch (e) { setError(e instanceof Error ? e.message : 'Could not prepare your quote. Please try again.') }
-        finally { setBusy(false) }
+        finally { inFlight.current = false; setBusy(false) }
     }
 
     async function pay() {
-        if (!quote || !request.current || busy) return
-        setBusy(true); setError('')
+        if (!quote || !request.current || inFlight.current) return
+        inFlight.current = true; setBusy(true); setError('')
         try {
             const { data } = await apiClient<{ data: { url: string } }>(`/warranties/orders/${quote.id}/checkout`, { method: 'POST', headers: warrantyHeaders, body: JSON.stringify({ accessToken: request.current.token }) })
             const target = new URL(data.url)
             if (target.protocol !== 'https:' || target.hostname !== 'checkout.stripe.com') throw new Error('Payment link could not be verified.')
             window.location.assign(data.url)
-        } catch (e) { setError(e instanceof Error ? e.message : 'Could not open checkout.'); setBusy(false) }
+        } catch (e) { setError(e instanceof Error ? e.message : 'Could not open checkout.'); inFlight.current = false; setBusy(false) }
     }
 
+    const estimate = warrantyEstimate(values, extras)
     const today = new Date().toISOString().slice(0, 10)
     return <div className="space-y-6">
         {quote ? <section className={`${warrantyPanel} space-y-5`}>
@@ -106,20 +113,32 @@ export function WarrantyQuoteForm() {
             <p>{String(quote.vehicle.vrm)} · {String(quote.vehicle.make)} {String(quote.vehicle.model)} · {quote.selection.vehicleCategory === 'SUV' ? 'SUV' : 'Car'}</p>
             <dl className="space-y-3">{quote.price.lines.map(line => <div key={line.code} className="flex justify-between gap-4"><dt>{line.label}</dt><dd className="font-semibold whitespace-nowrap">{money(line.amountPence)}</dd></div>)}</dl>
             <div className="border-t border-[var(--border-default)] pt-4 flex justify-between gap-4 items-center"><span>Total, including VAT</span><strong className="text-3xl">{money(quote.totalPence)}</strong></div>
-            <p className="text-sm text-[var(--text-muted)]">Quote valid until {new Date(quote.expiresAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}. This payment is for a warranty order only; it does not buy or reserve the vehicle.</p>
+            <p className="text-sm text-[var(--text-muted)]">Quote valid until {new Date(quote.expiresAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/London" })} UK time. This payment is for a warranty order only; it does not buy or reserve the vehicle.</p>
             <div className="rounded-xl bg-[var(--bg-input)] p-4 text-sm space-y-2"><p>CarMazium collects your payment through Stripe. Our admin team then arranges the warranty separately through Pulse Cars Limited, the broker, with Warrantywise.</p><p>Your status will be <strong>Paid — awaiting warranty issue</strong>. Cover is active only once the warranty is issued and its start date is confirmed. If the selected cover cannot be arranged, we will contact you and refund your payment.</p></div>
             <button onClick={pay} disabled={busy} className="w-full bg-primary text-white rounded-xl p-4 font-bold disabled:opacity-50">{busy ? 'Opening secure checkout…' : `Pay ${money(quote.totalPence)} securely with Stripe`}</button>
             <button onClick={() => { setQuote(null); request.current = null }} disabled={busy} className="text-primary underline">Edit my details or cover options</button>
-        </section> : <form onSubmit={getQuote} className="space-y-6">
+        </section> : <form onSubmit={getQuote}><fieldset disabled={busy} className="min-w-0 space-y-6">
             <section className={`${warrantyPanel} space-y-5`}>
-                <h2 className="text-2xl font-bold">1. Your vehicle</h2>
+                <h2 className="text-2xl font-bold">1. Choose your cover options</h2>
+                <p>12 months · Standard car <strong>£360</strong> · Standard SUV <strong>£445</strong>, including VAT, with a £2,000 single repair limit and £75/hour labour.</p>
+                {field("vehicleCategory", "Vehicle category", { options: [["CAR","Car"],["SUV","SUV / crossover"]] })}
+                <div className="grid sm:grid-cols-2 gap-5">
+                    {field('repairLimit', 'Single repair limit', { options: [['1000', '£1,000 — £30 less than standard'], ['2000', '£2,000 — standard']] })}
+                    {field('labourRate', 'Labour rate per hour', { options: [['75', '£75/hour — included'], ['100', '£100/hour — add 50% of standard price'], ['150', '£150/hour — add 75% of standard price'], ['200', '£200/hour — add 100% of standard price']] })}
+                </div>
+                <fieldset><legend className="font-semibold mb-3">Optional additions</legend><div className="grid sm:grid-cols-2 gap-3">{extrasOptions.map(([code, label, price]) => <label key={code} className="flex items-center gap-3 rounded-xl border border-[var(--border-default)] p-4"><input type="checkbox" checked={extras.includes(code)} onChange={e => setExtras(list => e.target.checked ? [...list, code] : list.filter(x => x !== code))} /><span>{label} <strong>+{money(price)}</strong></span></label>)}</div></fieldset>
+                <div aria-live="polite" className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4"><p className="text-sm font-semibold">Estimated total, including VAT</p><p className="mt-1 text-3xl font-bold">{estimate === null ? "Choose car or SUV" : money(estimate)}</p><p className="mt-1 text-sm text-[var(--text-muted)]">Illustrative tariff total only. Review the server-confirmed quote before payment.</p></div>
+                <p className="text-sm text-[var(--text-muted)]">Eligibility and the components covered depend on the vehicle and the issued Warrantywise plan. Repair limits and labour rates are maximum allowances, subject to its terms and exclusions. The requested start date is confirmed when the warranty is issued.</p>
+            </section>
+            <section className={`${warrantyPanel} space-y-5`}>
+                <h2 className="text-2xl font-bold">2. Your vehicle</h2>
+                {prefillBusy && <p role="status">Loading vehicle details…</p>}
                 {listingTitle && <p className="font-semibold">{listingTitle}</p>}
-                <div className="grid sm:grid-cols-[1fr_auto] gap-3 items-end">{field('vrm', 'Vehicle registration')}<button type="button" onClick={lookup} disabled={lookingUp} className="rounded-xl border border-primary text-primary px-5 py-3 font-bold disabled:opacity-50">{lookingUp ? 'Looking up…' : 'Find vehicle — DVLA & MOT'}</button></div>
+                <div className="grid sm:grid-cols-[1fr_auto] gap-3 items-end">{field('vrm', 'Vehicle registration')}<button type="button" onClick={lookup} disabled={lookingUp || prefillBusy || busy} className="rounded-xl border border-primary text-primary px-5 py-3 font-bold disabled:opacity-50">{lookingUp ? 'Looking up…' : 'Find vehicle — DVLA & MOT'}</button></div>
                 {lookupNotice && <p role="status" className="text-sm rounded-xl bg-[var(--bg-input)] p-4">{lookupNotice}</p>}
                 <p className="text-sm text-[var(--text-muted)]">Use the lookup to fill available official details. Confirm the current mileage and enter anything the APIs cannot supply.</p>
                 <div className="grid sm:grid-cols-2 gap-5">
                     {field('make', 'Make')}{field('model', 'Model')}
-                    {field('vehicleCategory', 'Vehicle category', { options: [['CAR', 'Car'], ['SUV', 'SUV / crossover']] })}
                     {field('mileage', 'Current mileage (miles)', { type: 'number', min: 0, max: 1000000 })}
                     {field('fuelType', 'Fuel type', { options: [['PETROL', 'Petrol'], ['DIESEL', 'Diesel'], ['HYBRID', 'Hybrid'], ['ELECTRIC', 'Electric'], ['OTHER', 'Other']] })}
                     {field('engineCc', 'Engine size (cc; enter 0 for electric)', { type: 'number', min: 0, max: 12000 })}
@@ -138,16 +157,6 @@ export function WarrantyQuoteForm() {
                 <label className="flex gap-3 text-sm"><input type="checkbox" required checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-1" /><span>I have checked the vehicle details, current mileage, category and service history and confirm they are accurate. Known or pre-existing faults are not a promise of cover.</span></label>
             </section>
             <section className={`${warrantyPanel} space-y-5`}>
-                <h2 className="text-2xl font-bold">2. Choose your cover options</h2>
-                <p>12 months · Standard car <strong>£360</strong> · Standard SUV <strong>£445</strong>, including VAT, with a £2,000 single repair limit and £75/hour labour.</p>
-                <div className="grid sm:grid-cols-2 gap-5">
-                    {field('repairLimit', 'Single repair limit', { options: [['1000', '£1,000 — £30 less than standard'], ['2000', '£2,000 — standard']] })}
-                    {field('labourRate', 'Labour rate per hour', { options: [['75', '£75/hour — included'], ['100', '£100/hour — add 50% of standard price'], ['150', '£150/hour — add 75% of standard price'], ['200', '£200/hour — add 100% of standard price']] })}
-                </div>
-                <fieldset><legend className="font-semibold mb-3">Optional additions</legend><div className="grid sm:grid-cols-2 gap-3">{extrasOptions.map(([code, label, price]) => <label key={code} className="flex items-center gap-3 rounded-xl border border-[var(--border-default)] p-4"><input type="checkbox" checked={extras.includes(code)} onChange={e => setExtras(list => e.target.checked ? [...list, code] : list.filter(x => x !== code))} /><span>{label} <strong>+{money(price)}</strong></span></label>)}</div></fieldset>
-                <p className="text-sm text-[var(--text-muted)]">Eligibility and the components covered depend on the vehicle and the issued Warrantywise plan. Repair limits and labour rates are maximum allowances, subject to its terms and exclusions. The requested start date is confirmed when the warranty is issued.</p>
-            </section>
-            <section className={`${warrantyPanel} space-y-5`}>
                 <h2 className="text-2xl font-bold">3. Your contact and address details</h2>
                 <div className="grid sm:grid-cols-2 gap-5">
                     {field('title', 'Title', { options: ['Mr', 'Mrs', 'Miss', 'Ms', 'Mx', 'Dr', 'Other'].map(x => [x, x]) })}
@@ -157,10 +166,10 @@ export function WarrantyQuoteForm() {
                     {field('town', 'Town / city', { autoComplete: 'address-level2' })}{field('county', 'County', { optional: true, autoComplete: 'address-level1' })}{field('postcode', 'Postcode', { autoComplete: 'postal-code' })}
                 </div>
                 <label className="flex gap-3 text-sm"><input required type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} className="mt-1" /><span>I agree to the <Link href="/services/warranty/terms" target="_blank" className="underline">warranty order information</Link> and <Link href="/privacy-policy" target="_blank" className="underline">Privacy Policy</Link>. CarMazium may use and share these details with Pulse Cars Limited and Warrantywise to arrange this warranty and send order updates. Payment does not activate cover; issuance and the confirmed cover dates are separate.</span></label>
-                <button type="submit" disabled={busy || lookingUp} className="w-full rounded-xl bg-primary text-white p-4 text-lg font-bold disabled:opacity-50">{busy ? 'Preparing your quote…' : 'Get a Quote'}</button>
+                <button type="submit" disabled={busy || lookingUp || prefillBusy} className="w-full rounded-xl bg-primary text-white p-4 text-lg font-bold disabled:opacity-50">{busy ? 'Preparing your quote…' : 'Get a Quote'}</button>
                 <p className="text-xs text-[var(--text-muted)]">No payment is taken when you request a quote. Review the full price before continuing to Stripe.</p>
             </section>
-        </form>}
+        </fieldset></form>}
         {error && <p role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-500">{error}</p>}
     </div>
 }

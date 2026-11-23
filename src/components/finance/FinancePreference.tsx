@@ -35,6 +35,6 @@ export function FinancePreference() {
         </button>
         {message && <p role="status" className="text-sm text-emerald-500">{message}</p>}
         {error && <p role="alert" className="text-sm text-red-500">{error} <button onClick={load} className="underline">Try again</button></p>}
-        <p className="text-sm text-[var(--text-muted)]">CarMazium does not provide finance or make lending decisions. Enabling this option does not register you as a finance provider.</p>
+        <p className="text-sm text-[var(--text-muted)]">CarMazium does not provide finance or make lending decisions. Enabling this option does not register you as a finance provider. Your own dealership finance badge is a separate setting under Business Profile.</p>
     </section>
 }

@@ -3,107 +3,66 @@
 import * as React from "react"
 import Link from "next/link"
 import { buttonVariants } from "@/components/ui/buttonVariants"
-import { ArrowLeft, Loader2, Truck, Plus } from "lucide-react"
+import { ArrowLeft, Loader2, Truck, ClipboardCheck, RefreshCw } from "lucide-react"
+import { deliveryServiceEnabled, inspectionServiceEnabled } from "@/lib/featureFlags"
 import { RequireAuth } from "@/components/auth/RequireAuth"
-import { getMyJobsPage, type ServiceJob } from "@/lib/servicesApi"
+import { useAuth } from "@/context/AuthContext"
+import { getMyJobsPage, formatPence, type ServiceJob } from "@/lib/servicesApi"
 import { JobListCard } from "@/components/services/JobBits"
+import { REQUEST_FILTERS, requestMatches, requestNextStep, type RequestFilter } from "@/lib/serviceRequestViews"
 
-/** Jobs the signed-in customer has posted, any service. */
-function MyJobsList() {
-    const [jobs, setJobs] = React.useState<ServiceJob[] | null>(null)
-    const [error, setError] = React.useState<string | null>(null)
-    const [nextCursor, setNextCursor] = React.useState<string | null>(null)
-    const [loadingMore, setLoadingMore] = React.useState(false)
-
-    React.useEffect(() => {
-        getMyJobsPage()
-            .then(page => { setJobs(page.items); setNextCursor(page.nextCursor) })
-            .catch(e => setError(e?.message || "Could not load your jobs"))
-    }, [])
-
-    const loadMore = async () => {
-        if (!nextCursor || loadingMore) return
-        setLoadingMore(true)
-        try {
-            const page = await getMyJobsPage(nextCursor)
-            setJobs(current => [...(current ?? []), ...page.items])
-            setNextCursor(page.nextCursor)
-        } catch (e: any) {
-            setError(e?.message || "Could not load more jobs")
-        } finally {
-            setLoadingMore(false)
-        }
-    }
-
-    const active = jobs?.filter(j => !["RELEASED", "CANCELLED", "EXPIRED"].includes(j.status)) ?? []
-    const past = jobs?.filter(j => ["RELEASED", "CANCELLED", "EXPIRED"].includes(j.status)) ?? []
-
-    return (
-        <div className="container mx-auto px-5 py-12 max-w-4xl">
-            <div className="flex items-start justify-between gap-4 mb-8 flex-wrap">
-                <div>
-                    <p className="text-primary text-xs font-black uppercase tracking-[0.18em] mb-2">TradeXchange</p>
-                    <h1 className="text-3xl md:text-4xl font-black font-heading tracking-tight mb-1">My Posted Jobs</h1>
-                    <p className="text-[var(--text-muted)] text-sm">Track the delivery, recovery and inspection jobs you posted, compare quotes and manage the provider you choose.</p>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                    <Link href="/services" className="inline-flex items-center gap-2 px-4 py-3 rounded-xl border border-[var(--border-default)] text-sm font-bold hover:border-primary/40 transition-colors">
-                        <ArrowLeft size={15} /> TradeXchange Services
-                    </Link>
-                    <Link href="/services/jobs/new" className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-white text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-colors">
-                        <Plus size={16} /> Post a Job
-                    </Link>
-                </div>
-            </div>
-
-            {error && <p className="text-red-500 text-sm mb-6">{error}</p>}
-            {!jobs && !error && <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" /></div>}
-
-            {jobs && jobs.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-[var(--border-default)] p-12 text-center">
-                    <Truck size={32} className="mx-auto text-[var(--text-muted)] mb-4" />
-                    <h2 className="font-heading font-bold text-lg mb-2">No jobs yet</h2>
-                    <p className="text-sm text-[var(--text-muted)] mb-6">Post a delivery, recovery or inspection job and approved providers can compete for it with quotes.</p>
-                    <Link href="/services/jobs/new" className={buttonVariants()}>Post your first job →</Link>
-                </div>
-            )}
-
-            {active.length > 0 && (
-                <section className="mb-10">
-                    <h2 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-3">Active</h2>
-                    <div className="space-y-3">
-                        {active.map(j => (
-                            <JobListCard key={j.id} job={j} href={`/services/jobs/${j.id}`}
-                                trailing={j.status === "OPEN" ? <span className="text-xs font-bold text-primary">{j._count?.quotes ?? 0} quote{(j._count?.quotes ?? 0) === 1 ? "" : "s"}</span> : undefined} />
-                        ))}
-                    </div>
-                </section>
-            )}
-
-            {past.length > 0 && (
-                <section>
-                    <h2 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-3">Past</h2>
-                    <div className="space-y-3 opacity-80">
-                        {past.map(j => <JobListCard key={j.id} job={j} href={`/services/jobs/${j.id}`} />)}
-                    </div>
-                </section>
-            )}
-            {nextCursor && <div className="flex justify-center mt-8">
-                <button type="button" onClick={loadMore} disabled={loadingMore}
-                    className="rounded-xl border border-[var(--border-default)] px-5 py-2.5 text-sm font-bold hover:border-primary disabled:opacity-50">
-                    {loadingMore ? "Loading…" : "Load more jobs"}
-                </button>
-            </div>}
-        </div>
-    )
+function RequestActions() {
+    return <div className="flex flex-wrap gap-2">
+        {deliveryServiceEnabled && <Link href="/services/delivery/new" className={buttonVariants({className:"min-h-12"})}><Truck size={18}/> Request transport</Link>}
+        {inspectionServiceEnabled && <Link href="/services/inspection/new" className={buttonVariants({variant:"outline",className:"min-h-12"})}><ClipboardCheck size={18}/> Request inspection</Link>}
+    </div>
 }
 
-export default function MyServiceJobsPage() {
-    return (
-        <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
-            <RequireAuth title="Sign in to see your jobs" message="Your posted jobs and their quotes live here.">
-                <MyJobsList />
-            </RequireAuth>
+// Only the authenticated customer's own jobs are returned by this API.
+function MyJobsList() {
+    const [jobs,setJobs] = React.useState<ServiceJob[] | null>(null)
+    const [filter,setFilter] = React.useState<RequestFilter>("all")
+    const [cursor,setCursor] = React.useState<string | null>(null)
+    const [busy,setBusy] = React.useState(false)
+    const [error,setError] = React.useState("")
+    const generation = React.useRef(0)
+    const lock = React.useRef(false)
+    const load = React.useCallback(async (more=false, next?:string) => {
+        if (lock.current) return
+        const request = ++generation.current
+        lock.current=true;setBusy(true);setError("")
+        try {
+            const page=await getMyJobsPage(more?next:undefined)
+            if(request!==generation.current)return
+            setJobs(old=>more?[...new Map([...(old??[]),...page.items].map(job=>[job.id,job])).values()]:page.items)
+            setCursor(page.nextCursor)
+        }catch(e){if(request===generation.current)setError(e instanceof Error?e.message:"Could not load your service requests")}
+        finally{if(request===generation.current){lock.current=false;setBusy(false)}}
+    },[])
+    React.useEffect(()=>{void load();return()=>{generation.current++;lock.current=false}},[load])
+    const visible=(jobs??[]).filter(j=>requestMatches(j,filter))
+    return <div className="mx-auto max-w-6xl px-5 py-8 sm:py-12">
+        <Link href="/auctions" className="mb-5 inline-flex min-h-12 items-center gap-2 font-semibold hover:underline"><ArrowLeft size={18}/> TradeXchange</Link>
+        <header className="flex flex-wrap items-end justify-between gap-4">
+            <div><h1 className="text-3xl sm:text-4xl font-heading font-black">My Service Requests</h1><p className="mt-2 max-w-2xl text-base text-[var(--text-secondary)]">Review quotes, pay for accepted services and track the work you requested. This is separate from providing services.</p></div>
+            <RequestActions/>
+        </header>
+        <div className="mt-6 flex flex-wrap items-center gap-3"><Link href="/dashboard/warranties" className={buttonVariants({variant:"outline",className:"min-h-12"})}>Warranty orders</Link><Link href="/dashboard" className="inline-flex min-h-12 items-center font-semibold underline">Back to dashboard</Link><button type="button" disabled={busy} onClick={()=>void load()} className="ml-auto inline-flex min-h-12 items-center gap-2 rounded-xl border px-4 font-semibold disabled:opacity-50"><RefreshCw size={16}/> Refresh</button></div>
+        <div className="mt-6 flex flex-wrap gap-2 border-b border-[var(--border-default)] pb-4" role="group" aria-label="Filter service requests">
+            {REQUEST_FILTERS.map(([id,label])=><button type="button" key={id} aria-pressed={filter===id} onClick={()=>setFilter(id)} className={"min-h-12 rounded-xl px-4 py-2 font-semibold border "+(filter===id?"bg-red-700 text-white border-red-700":"border-[var(--border-default)] bg-[var(--bg-card)]")}>{label}</button>)}
         </div>
-    )
+        {jobs && <p className="mt-3 text-sm text-[var(--text-muted)]" aria-live="polite">{visible.length} matching request{visible.length===1?"":"s"} in {jobs.length} loaded{cursor?" — load more to search older requests":""}.</p>}
+        {error && <p role="alert" className="mt-4 rounded-xl border border-red-500/30 p-4 text-red-700 dark:text-red-300">{error} <button onClick={()=>void load()} className="underline font-semibold">Try again</button></p>}
+        {!jobs && !error && <div role="status" className="flex items-center justify-center gap-2 py-16"><Loader2 className="animate-spin"/> Loading your requests</div>}
+        {jobs && !visible.length && <section className="mt-5 rounded-2xl border border-dashed border-[var(--border-default)] p-6 text-center"><h2 className="text-xl font-bold">{jobs.length?"No matching requests in loaded history":"No jobs yet"}</h2><p className="mt-2 text-[var(--text-secondary)]">{jobs.length?"Choose another filter or load older requests if available.":"Request transport or an inspection to receive quotes from approved providers."}</p></section>}
+        <section className="mt-5 grid gap-3 lg:grid-cols-2" aria-label="Service requests">
+            {visible.map(j=><JobListCard key={j.id} job={j} href={"/services/jobs/"+j.id} trailing={<div className="text-right shrink-0"><p className="text-sm font-semibold">{requestNextStep(j)}</p>{j.status==="OPEN"?<p className="text-sm text-[var(--text-secondary)]">{j._count?.quotes??0} active quotes</p>:j.agreedAmountPence!=null?<p className="text-sm">{formatPence(j.agreedAmountPence)}</p>:null}</div>}/>)}
+        </section>
+        {cursor && <div className="mt-6 text-center"><button type="button" onClick={()=>void load(true,cursor)} disabled={busy} className="min-h-12 rounded-xl border border-[var(--border-default)] px-5 font-semibold disabled:opacity-50">{busy?"Loading…":"Load older requests"}</button></div>}
+    </div>
+}
+
+function AccountRequests(){const {user}=useAuth();return user?<MyJobsList key={user.id}/>:null}
+export default function MyServiceJobsPage() {
+    return <div className="min-h-screen bg-[var(--bg-body)]"><RequireAuth title="Sign in to see your service requests" message="Your requests, quotes and completed services live here." helpHref="/auctions" helpLabel="Explore TradeXchange"><AccountRequests/></RequireAuth></div>
 }

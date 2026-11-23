@@ -1,6 +1,10 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
+import { runInNewContext } from "node:vm"
+import React from "react"
+import { renderToStaticMarkup } from "react-dom/server"
+import ts from "typescript"
 
 const read = (path) => readFileSync(path, "utf8")
 
@@ -62,3 +66,23 @@ test("desktop Messages are an edge-to-edge workspace, not a hovering glass card"
     assert.match(admin, /aria-label="Close support controls"/)
     assert.match(admin, /Additional admin messaging tools/)
 })
+
+// Execute the real personal dashboard with its messages query. Import-only and
+// CSS assertions cannot detect a lost conditional render during integration.
+test("personal messages query mounts the existing inbox inside the dashboard", () => {
+    const exports = {};
+    const placeholder = ({ children }) => React.createElement(React.Fragment, null, children);
+    const modules = {
+        react: React,
+        "next/navigation": { useSearchParams: () => new URLSearchParams("tab=messages"), useRouter: () => ({ push() {}, replace() {} }) },
+        "@/context/AuthContext": { useAuth: () => ({ user: { id: "customer-fixture", email: "fixture@example.test" }, profile: { role: "BUYER" }, loading: false, refreshProfile() {} }) },
+        "@/context/ChatContext": { useChat: () => ({ refreshRooms() {} }) },
+        "@/components/chat/RoleMessagesInbox": { RoleMessagesInbox: props => React.createElement("section", { "data-existing-inbox": "true", "data-dashboard-back": props.backHref }, props.title) },
+    };
+    const code = ts.transpileModule(read("src/app/dashboard/user/page.tsx"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React, esModuleInterop: true } }).outputText;
+    runInNewContext(code, { exports, require: name => modules[name] || new Proxy({}, { get: (_target, key) => key === "__esModule" ? true : placeholder }) });
+    const output = renderToStaticMarkup(React.createElement(exports.default));
+    assert.match(output, /data-existing-inbox="true"/);
+    assert.match(output, /data-dashboard-back="\/dashboard\/user"/);
+    assert.equal((output.match(/data-existing-inbox/g) || []).length, 1);
+});

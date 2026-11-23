@@ -52,6 +52,7 @@ import { createChatRoom } from '../../lib/chatApi';
 import { useChat } from '../../context/ChatContext';
 import { BuyerDamageViewer } from '../../components/damage/BuyerDamageViewer';
 import { GradeChip } from '../../components/GradeChip';
+import { getServiceSettings } from '../../lib/servicesApi';
 import { useAuthStore } from '../../store/authStore';
 import { openSignIn } from '../../components/SignInRequired';
 import { haptics } from '../../lib/haptics';
@@ -560,6 +561,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // Fetch the current user's offer status for this listing (to gate "Request Delivery")
   const currentUser = useAuthStore((s) => s.user);
+  const [inspectionAvailable,setInspectionAvailable] = useState(false);
+  useEffect(()=>{let active=true; getServiceSettings().then(settings=>{if(active)setInspectionAvailable(settings.availability?.INSPECTION !== false)}).catch(()=>{});return()=>{active=false}},[]);
   // Guests can view every public listing; acting on one (offer, enquiry,
   // chat, delivery, history check) needs an account, as on the website.
   const requireAccount = (): boolean => {
@@ -1878,6 +1881,15 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
 
           {/* ── Delivery section — only when seller offers delivery ── */}
+          {inspectionAvailable && listing.status === 'ACTIVE' && listing.listingType !== 'AUCTION' && (
+            <View style={styles.deliveryCard}>
+              <Text style={styles.financeTitle}>Independent vehicle inspection</Text>
+              <Text style={styles.financeSubtext}>Compare quotes for this vehicle before buying. Inspection is a separate paid service.</Text>
+              <TouchableOpacity accessibilityRole="button" style={styles.financeEnquiryBtn} onPress={()=>{if(!requireAccount())return;navigation.navigate('CreateServiceJob',{serviceType:'INSPECTION',purchase:{listingId:listing.id,title:[listing.make,listing.model].join(' '),registration:listing.vrm,make:listing.make,model:listing.model,year:listing.year}})}}>
+                <Text style={styles.financeEnquiryText}>Request inspection</Text>
+              </TouchableOpacity>
+            </View>
+          )}
           {listing.deliveryAvailable && (
             <View style={styles.deliveryCard}>
               {/* Header row */}

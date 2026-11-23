@@ -165,9 +165,9 @@ export type MainStackParamList = {
   DealerFinance: undefined;
   FinancePreferences: undefined;
   Services: undefined;
-  CreateServiceJob: { serviceType: 'DELIVERY' | 'INSPECTION'; purchase?: {
+  CreateServiceJob: { serviceType: 'DELIVERY' | 'INSPECTION'; kind?: 'delivery' | 'collection' | 'recovery' | 'prepurchase' | 'mechanical' | 'cosmetic' | 'stock'; purchase?: {
     listingId: string; title: string; registration?: string | null;
-    make?: string | null; model?: string | null;
+    make?: string | null; model?: string | null; year?: number | null;
   } };
   CustomerServiceJobs: undefined;
   CustomerServiceJobDetail: { jobId: string };
@@ -187,7 +187,7 @@ export type MainStackParamList = {
   HowItWorks: undefined;
   AuctionGuide: undefined;
   About: undefined;
-  Contact: undefined;
+  Contact: { topic?: "finance-partnership" | "warranty-partnership" | "insurance-partnership" } | undefined;
   Pricing: undefined;
   TraderPricing: undefined;
   Reviews: undefined;

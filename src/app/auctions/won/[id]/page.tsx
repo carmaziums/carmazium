@@ -17,6 +17,7 @@ import { ImageLightbox } from "@/components/features/ImageLightbox"
 import { useAuth } from "@/context/AuthContext"
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { ArrangeDelivery } from "@/components/services/ArrangeDelivery"
+import { deliveryServiceEnabled, inspectionServiceEnabled } from "@/lib/featureFlags"
 import { ArrangeInspection } from "@/components/services/ArrangeInspection"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 import { TRADE_EXCHANGE_ROLES, canAccessTradeStock } from "@/lib/tradeAccess"
@@ -206,10 +207,10 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                 {/* Back + win banner */}
                 <div className="mb-6 space-y-4">
                     <Link
-                        href="/dashboard/user?tab=overview"
+                        href="/dashboard/dealer/purchases"
                         className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors"
                     >
-                        <ArrowLeft size={15} /> Back to Dashboard
+                        <ArrowLeft size={15} /> Back to Purchases
                     </Link>
 
                     <div className="flex items-center gap-4 p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
@@ -221,7 +222,7 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                             <p className="text-[var(--text-muted)] text-sm mt-0.5">
                                 Winning bid: <strong className="text-[var(--text-primary)]">£{winAmount.toLocaleString()}</strong>
                                 <span className="mx-2 text-gray-600">·</span>
-                                Contact the seller below to arrange collection or delivery.
+                                Inspect the vehicle and arrange handover directly with the seller. The vehicle price is paid to the seller.
                             </p>
                         </div>
                     </div>
@@ -550,26 +551,27 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                             </div>
                         </div>
 
-                        {/* Trade Exchange delivery: the winner is a dealer moving stock,
-                            the most natural delivery customer there is. Pickup and
-                            vehicle are pre-filled from the auction. */}
-                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div>
-                                <p className="font-heading font-bold text-sm">Arrange delivery</p>
-                                <p className="text-xs text-[var(--text-muted)]">Approved transporters quote the route. You pay CarMazium, the driver is paid on arrival.</p>
-                            </div>
-                            <ArrangeDelivery auctionId={auction.id} />
-                        </div>
-
-                        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/5 p-5 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div>
-                                <p className="font-heading font-bold text-sm">Inspect before handover</p>
-                                <p className="text-xs text-[var(--text-muted)]">
-                                    Approved inspectors can quote this exact won vehicle. If a completed linked inspection records faults, you can refuse before approved handover and receive a full £125 buyer-fee refund.
-                                </p>
-                            </div>
-                            <ArrangeInspection auctionId={auction.id} />
-                        </div>
+                        {/* Reuse the purchase-linked service engine; do not show empty or ineligible actions. */}
+                        {!auction.buyerRefusedAt && (deliveryServiceEnabled || (inspectionServiceEnabled && !auction.sellerBonusReleased)) && (
+                            <section aria-label="Services for this purchase" className="space-y-3 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
+                                <h2 className="text-lg font-heading font-bold">Services for this purchase</h2>
+                                <p className="text-sm leading-6 text-[var(--text-secondary)]">Vehicle payment goes directly to the seller. Inspection and transport are separate paid services.</p>
+                                {inspectionServiceEnabled && !auction.sellerBonusReleased && (
+                                    <div className="rounded-xl border border-[var(--border-default)] p-4 space-y-3">
+                                        <h3 className="font-bold">Inspect before handover</h3>
+                                        <p className="text-sm leading-6 text-[var(--text-secondary)]">Request quotes for this won vehicle. A completed linked inspection recording faults may allow refusal before approved handover. The £125 buyer fee is refunded if paid; an approved waiver has no cash refund.</p>
+                                        <ArrangeInspection auctionId={auction.id} />
+                                    </div>
+                                )}
+                                {deliveryServiceEnabled && (
+                                    <div className="rounded-xl border border-[var(--border-default)] p-4 space-y-3">
+                                        <h3 className="font-bold">Arrange vehicle transport</h3>
+                                        <p className="text-sm leading-6 text-[var(--text-secondary)]">Compare fixed-price quotes from approved transport providers. Pay for the service through CarMazium; payout follows the completion and review terms.</p>
+                                        <ArrangeDelivery auctionId={auction.id} />
+                                    </div>
+                                )}
+                            </section>
+                        )}
 
                         <div className="rounded-2xl border border-red-500/25 bg-red-500/5 p-5 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div>

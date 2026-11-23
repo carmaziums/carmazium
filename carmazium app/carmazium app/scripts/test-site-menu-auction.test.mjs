@@ -51,13 +51,13 @@ test('TradeXchange Vehicle Auctions opens the same native live auction destinati
   }
 });
 
-test('TradeXchange jobs remain native and retain their distinct posting and provider routes', () => {
+test('TradeXchange customer service menus open native request forms directly without provider actions', () => {
   const groups = buildSiteGroups(false);
   for (const [key, service] of [['tx-delivery', 'DELIVERY'], ['tx-inspection', 'INSPECTION']]) {
     const e = entry(groups, 'trade', key);
-    assert.equal(e.actions.find(a => a.id === service + '-post').target.screen, 'CreateServiceJob');
-    assert.equal(e.actions.find(a => a.id === service + '-post').target.params.serviceType, service);
-    assert.equal(e.actions.find(a => a.id === service + '-bid').target.screen, 'ProviderJobs');
+    assert.equal(e.target.screen, 'CreateServiceJob');
+    assert.equal(e.target.params.serviceType, service);
+    assert.equal(e.actions, undefined);
   }
 });
 

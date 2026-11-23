@@ -49,12 +49,13 @@ const CONTACT_ROWS = [
   },
 ];
 
-export const ContactScreen: React.FC = () => {
+export const ContactScreen: React.FC<{route?: {params?: MainStackParamList["Contact"]}}> = ({route}) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [subject, setSubject] = useState('');
+  const topic = route?.params?.topic;
+  const [subject, setSubject] = useState(topic ? ({'finance-partnership':'Finance provider integration and partnership','warranty-partnership':'Warranty provider integration and partnership','insurance-partnership':'Insurance provider integration and partnership'}[topic] || '') : '');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [attempted, setAttempted] = useState(false);

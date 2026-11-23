@@ -101,11 +101,11 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'CarMazium seller auctions are free to list and normally run for 24 hours, with verified motor traders eligible to bid.',
             'Dealer trading access and ALL live auction bidding is restricted to approved verified motor-trade dealers. Platform ADMIN auction oversight is separate and available through /dashboard/admin/auctions; it does not confer dealer bidding permission. Private buyers and private sellers cannot bid or buy directly through these auctions; retail cars for the general public are at /search. Selling a car via a free auction is not the same as being eligible to bid.',
             'Winning dealer auction fee is £125 one-off (subject to authorised grants), payable within the prescribed 72-hour period; a losing bidder does not pay that fee.',
-            'After the fee is paid, seller contact and deal details can unlock; the winning dealer pays the actual vehicle purchase price directly to the seller.',
-            'Do not claim that a bid, a reserve offer, a sale or a fee refund is automatically final without checking its status in the relevant dashboard.',
+            'After fee clearance (payment or an approved waiver), seller contact and deal details can unlock; the winning dealer pays the actual vehicle purchase price directly to the seller.',
+            'A qualifying late bid in the final 3 minutes adds 3 minutes to the closing time. Buy It Now requires seller acceptance before the earlier of the 24-hour response period or the auction close. A below-reserve provisional offer requires explicit seller acceptance. Do not claim that a bid, a reserve offer, a sale or a fee refund is automatically final without checking its status in the relevant dashboard.',
             'Private seller auction management: /dashboard/seller/auctions. Dealer auction management: /dashboard/dealer/auctions.',
         ].join(' '),
-        sources: ['src/app/pricing/traders/page.tsx','src/app/pricing/page.tsx','src/app/auctions/won/[id]/page.tsx','src/lib/auctionApi.ts','backend/src/auth/guards/verified-dealer.guard.ts']
+        sources: ['src/components/auctions/HowAuctionsWork.tsx','src/app/pricing/traders/page.tsx','src/app/pricing/page.tsx','src/app/auctions/won/[id]/page.tsx','src/lib/auctionApi.ts','backend/src/auth/guards/verified-dealer.guard.ts']
     },
     {
         id: 'sale-handover-reward',
@@ -188,17 +188,17 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         triggers: /\b(?:tradexchange|trade exchange|collection service|transport|delivery|recovery|inspection|provider|quote for job|post a job|service job)\b/i,
         facts: [
             'TradeXchange is the CarMazium marketplace for delivery, recovery and independent inspection jobs.',
-            'Any signed-in customer can post an eligible service job at /services/jobs/new; see posted jobs at /services/jobs.',
-            'Approved and eligible provider businesses see matching available jobs at /dashboard/service/jobs and can quote. Business setup, service applications, trade insurance evidence, payout verification and job preferences are managed together at /dashboard/partner (TradeXchange); old capability links redirect there.',
-            'Customers compare quotes, accept one, complete the required checkout and can track or confirm service completion in the job detail.',
+            'Any signed-in customer can request transport at /services/delivery/new or inspection at /services/inspection/new, subject to availability. See My Service Requests at /services/jobs.',
+            'Service Provider Dashboard is /dashboard/service, directly accessible from the provider account menu and dealer dashboard. Contractor accounts open this operational overview from Dashboard on the website and Profile in the original native app. Approved and eligible providers find matching jobs at /dashboard/service/jobs and can quote. Service Setup at /dashboard/partner manages business details, service applications, insurance evidence, payout verification and job preferences; old capability links still redirect to setup.',
+            'Customer job detail shows the current next action before request details: compare quotes, continue the chosen quote to secure checkout, or review completion. A checkout return alone does not prove payment. Changes, support and progress opens the existing cancellation, rescheduling, case-note, evidence and work-history controls; disputes open this section automatically. Verified service reviews are available on website and native after release, when the server permits a review.',
             'Paid TradeXchange service jobs use a 9% platform and 91% provider split, rounded in pence. Service-job payment is separate from the vehicle sale price paid directly to the vehicle seller. Service funds follow job completion, confirmation, dispute and release rules; never promise immediate payout.',
             'Completed, unconfirmed service jobs are eligible for automatic release after 48 hours from provider completion, subject to settlement checks. Leaving a job unconfirmed or merely sending a chat message does not freeze that process. If work was not completed correctly, open the job in /services/jobs and promptly use Something is wrong — raise a dispute before that window ends. If settlement is already in progress or released, ask staff to review; never promise a refund or that a chat message halted release.',
             'Only approved providers for the relevant service can quote; never guarantee an available provider, service price or immediate booking.',
             'When authorised, read_my_service_jobs checks 10 recent jobs booked by the signed-in customer, with saved payment and completion states. It does not read assigned provider jobs or other dealership members’ jobs. An empty result is not a full-history check.',
             'Platform administrators review jobs through Admin Control Panel -> Trade Services -> Jobs at /dashboard/admin/services?tab=jobs. This administrative console is separate from the assistant owner-scoped customer job tools.',
-            'Some service types can be temporarily switched off; refer to /services for actual availability.'
+            'Some service types can be temporarily switched off; refer to /auctions for actual availability.'
         ].join(' '),
-        sources: ['src/app/services/page.tsx','src/app/services/jobs/[id]/page.tsx','src/lib/featureFlags.ts','backend/src/services/services.service.ts','src/app/dashboard/admin/services/page.tsx']
+        sources: ['src/app/auctions/page.tsx','src/app/services/jobs/[id]/page.tsx','src/app/dashboard/service/page.tsx','src/components/layout/Header.tsx','carmazium app/carmazium app/src/screens/main/ProviderOverviewScreen.tsx','carmazium app/carmazium app/src/screens/main/CustomerServiceJobDetailScreen.tsx','src/lib/featureFlags.ts','backend/src/services/services.service.ts','src/app/dashboard/admin/services/page.tsx']
     },
     {
         id: 'dealer-services-and-partners',
@@ -207,10 +207,10 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'Dealer accounts have opt-in service preferences for Finance badge, Warranty badge, Delivery/Recovery and Inspection. New accounts default the choices on, and a dealer can turn off unwanted services.',
             'Badges on a dealer listing describe that dealer’s services; they do not enrol the dealer as CarMazium’s central warranty or finance provider.',
             'Delivery/collection/recovery require approved current Motor Trade and Public Liability Insurance. Inspection requires approved current Public Liability Insurance only. The same account can apply for both services independently; turning a preference on does not confer approval.',
-            'Manage own-listing Finance and Warranty badges in Account Settings /profile?section=business. Manage Delivery/Recovery and Inspection service applications, approved evidence, payout setup and job-area preferences together from the TradeXchange hub /dashboard/partner, not a separate capability settings page. New provider job feed and accepted work remain at /dashboard/service/jobs. Existing providers keep their accounts and existing jobs.',
+            'Manage own-listing Finance and Warranty badges in Account Settings /profile?section=business. Manage Delivery/Recovery and Inspection service applications, approved evidence, payout setup and job-area preferences together from the TradeXchange hub /dashboard/partner, not a separate capability settings page. Open Service Provider Dashboard at /dashboard/service directly from the account or dealer navigation; Find Jobs and My Work remain at /dashboard/service/jobs. Existing providers keep their accounts and existing jobs.',
             'Finance, warranty and insurance companies wanting central platform partnerships must contact the CarMazium team.'
         ].join(' '),
-        sources: ['src/components/dealer/DealerServicePreferences.tsx','src/app/services/page.tsx','src/app/dashboard/partner/page.tsx','backend/src/ai/mazium-site-navigation.ts','carmazium app/carmazium app/src/screens/main/PartnerDashboardScreen.tsx']
+        sources: ['src/components/dealer/DealerServicePreferences.tsx','src/app/auctions/page.tsx','src/app/dashboard/partner/page.tsx','backend/src/ai/mazium-site-navigation.ts','carmazium app/carmazium app/src/screens/main/PartnerDashboardScreen.tsx']
     },
     {
         id: 'search-buying',
