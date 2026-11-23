@@ -189,7 +189,7 @@ function AdminMessagesContent() {
                                     </select>
                                 </label>
                             </div>
-                            <div className="hidden shrink-0 items-center gap-1.5 sm:flex" aria-label="Admin messaging tools">
+                            <div className="hidden shrink-0 items-center gap-1.5 sm:flex" role="toolbar" aria-label="Admin messaging tools">
                                 <button type="button" onClick={() => setMode("inbox")}
                                     className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${mode === "inbox" ? "bg-primary text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-input)]"}`}>
                                     Inbox
@@ -278,7 +278,7 @@ function AdminMessagesContent() {
                                         </div>
                                         <div className="min-h-0 flex-1">
                                             <ChatRoomList
-                                                onSelectRoom={setSelectedRoom}
+                                                onSelectRoom={(room) => { setSelectedRoom(room); setShowSupportPanel(false) }}
                                                 selectedRoomId={selectedRoom?.id}
                                                 roomsOverride={filteredRooms}
                                                 showSupportOps
@@ -292,7 +292,7 @@ function AdminMessagesContent() {
                                                 <div className="min-h-0 min-w-0 flex-1">
                                                     <ChatWindow
                                                         room={selectedRoom}
-                                                        onBack={() => setSelectedRoom(null)}
+                                                        onBack={() => { setSelectedRoom(null); setShowSupportPanel(false) }}
                                                     />
                                                 </div>
                                                 {selectedRoom.context === "SUPPORT" && showSupportPanel && (
