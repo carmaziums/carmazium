@@ -64,6 +64,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const [aiEnabled, setAiEnabled] = React.useState(supportAiEnabled(room))
     const [consentBusy, setConsentBusy] = React.useState(false)
     const [showAiOptions, setShowAiOptions] = React.useState(false)
+    const [showAdminQuickReplies, setShowAdminQuickReplies] = React.useState(false)
     const [consentError, setConsentError] = React.useState<string | null>(null)
     const [loading, setLoading] = React.useState(true)
     const [loadingOlder, setLoadingOlder] = React.useState(false)
@@ -783,9 +784,9 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     }, [messages])
 
     return (
-        <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col bg-[var(--bg-input)] rounded-xl border border-[var(--border-default)]">
+        <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] lg:rounded-none lg:border-0">
             {/* Header */}
-            <div className="flex items-center gap-3 p-4 border-b border-[var(--border-default)]">
+            <div className="flex shrink-0 items-center gap-3 border-b border-[var(--border-default)] px-3 py-2.5 lg:px-5">
                 {onBack && (
                     <button onClick={onBack} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors shrink-0">
                         <ArrowLeft size={20} />
@@ -1085,7 +1086,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
             <div ref={messagesContainerRef} data-testid="chat-message-scroll" onScroll={(event) => {
                 const container = event.currentTarget
                 scrollTracker.current.onScroll(container.scrollTop, container.scrollHeight, container.clientHeight)
-            }} className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain p-4">
+            }} className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain p-3 sm:p-4 lg:p-5">
               <div ref={messagesContentRef} className="space-y-4">
                 {loading ? (
                     <div className="flex justify-center py-8">
@@ -1159,7 +1160,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                     >
                                         <div
                                             data-message-author={appearance.kind}
-                                            className={`max-w-[82%] sm:max-w-[75%] px-3 py-2 rounded-2xl shadow-sm ${appearance.bubble} ${isOwn ? 'rounded-br-sm' : 'rounded-bl-sm'} ${msg.deliveryStatus === 'failed' ? 'ring-2 ring-red-400/70' : ''}`}
+                                            className={`max-w-[88%] sm:max-w-[78%] lg:max-w-[min(78%,860px)] px-3 py-2.5 rounded-2xl shadow-sm ${appearance.bubble} ${isOwn ? 'rounded-br-sm' : 'rounded-bl-sm'} ${msg.deliveryStatus === 'failed' ? 'ring-2 ring-red-400/70' : ''}`}
                                         >
                                             {msg.aiGenerated && room.context === 'SUPPORT' && (
                                                 <p className="mb-1 text-[10px] font-bold" aria-label="Automated support message">
@@ -1232,7 +1233,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                                 </div>
                                             )}
                                             {parsed.text && msg.aiGenerated && room.context === 'SUPPORT' ? (
-                                                <div className="text-sm break-words [overflow-wrap:anywhere] px-1 [&_p]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-1">
+                                                <div className="text-sm break-words [overflow-wrap:anywhere] px-1 lg:text-[15px] lg:leading-[1.55] [&_p]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-1">
                                                     <ReactMarkdown skipHtml remarkPlugins={[remarkGfm]}
                                                         allowedElements={['p', 'strong', 'em', 'ol', 'ul', 'li', 'br', 'a', 'code']}
                                                         unwrapDisallowed
@@ -1241,7 +1242,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                                     </ReactMarkdown>
                                                 </div>
                                             ) : parsed.text && (
-                                                <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere] px-1">{parsed.text}</p>
+                                                <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere] px-1 lg:text-[15px] lg:leading-[1.55]">{parsed.text}</p>
                                             )}
                                             <div className="flex items-center gap-1.5 text-[10px] mt-1 px-1 text-inherit">
                                                 <span>{formatTime(msg.createdAt)}</span>
@@ -1333,32 +1334,35 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                 ) : (
                 <>
                 {isAdminViewer && (
-                    <div className="hidden sm:flex shrink-0 items-center gap-1.5 overflow-x-auto px-4 pt-3 scrollbar-hide">
-                        <Zap size={12} className="text-[var(--text-muted)] shrink-0" />
-                        {ADMIN_QUICK_REPLIES.map((qr) => (
-                            <button
-                                key={qr.label}
-                                type="button"
-                                onClick={() => insertQuickReply(qr.text)}
-                                className="shrink-0 text-xs font-semibold text-[var(--text-secondary)] bg-[var(--bg-input)] border border-[var(--border-default)] rounded-full px-3 py-1.5 hover:border-primary/40 hover:text-primary transition-colors whitespace-nowrap"
-                            >
+                    <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border-default)] px-3 py-1.5 lg:px-4">
+                        <button type="button" onClick={() => setShowAdminQuickReplies(open => !open)}
+                            aria-expanded={showAdminQuickReplies} aria-controls="admin-chat-quick-replies"
+                            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]">
+                            <Zap size={13} aria-hidden="true" /> Quick replies {showAdminQuickReplies ? "−" : "+"}
+                        </button>
+                        {canDraftSupport && (
+                            <button type="button" onClick={() => void prepareSupportDraft()}
+                                disabled={generatingSupportDraft || sending}
+                                className="rounded-md px-2 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+                                title="Review the suggested draft before sending">
+                                {generatingSupportDraft ? "Preparing MaziuM draft…" : "Suggest MaziuM reply"}
+                            </button>
+                        )}
+                        {canDraftSupport && automationStatus && (
+                            <span role="status" title={automationStatus} className="ml-auto hidden max-w-[260px] truncate text-[11px] text-[var(--text-muted)] xl:block">
+                                {automationStatus.includes("is running") ? "MaziuM automation active" : automationStatus}
+                            </span>
+                        )}
+                    </div>
+                )}
+                {isAdminViewer && showAdminQuickReplies && (
+                    <div id="admin-chat-quick-replies" className="flex shrink-0 gap-1.5 overflow-x-auto px-3 py-2 [scrollbar-width:thin] lg:px-4">
+                        {ADMIN_QUICK_REPLIES.map(qr => (
+                            <button key={qr.label} type="button" onClick={() => { insertQuickReply(qr.text); setShowAdminQuickReplies(false) }}
+                                className="shrink-0 whitespace-nowrap rounded-full border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:border-primary/40 hover:text-primary">
                                 {qr.label}
                             </button>
                         ))}
-                    </div>
-                )}
-                {canDraftSupport && automationStatus && <p role="status" className="px-4 pt-2 text-xs text-[var(--text-secondary)]">{automationStatus}</p>}
-                {canDraftSupport && (
-                    <div className="shrink-0 px-3 pt-1 sm:px-4 sm:pt-2 flex flex-wrap items-center gap-1 sm:gap-2">
-                        <button
-                            type="button"
-                            onClick={() => void prepareSupportDraft()}
-                            disabled={generatingSupportDraft || sending}
-                            className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] disabled:opacity-50"
-                        >
-                            {generatingSupportDraft ? 'Preparing MaziuM draft…' : 'Suggest MaziuM reply'}
-                        </button>
-                        <span className="hidden sm:inline text-xs text-[var(--text-muted)]">This suggested draft needs your review. Automatic MaziuM replies are labelled in the chat.</span>
                     </div>
                 )}
                 {supportDraftNotice && canDraftSupport && (
@@ -1367,7 +1371,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                 {attachmentError && (
                     <div className="px-4 pt-3 text-xs text-red-400">{attachmentError}</div>
                 )}
-                <div className="flex shrink-0 items-end gap-2 p-3 sm:p-4">
+                <div className="flex shrink-0 items-end gap-2 px-3 py-2.5 sm:px-4 sm:py-3">
                     <input
                         ref={attachmentInputRef}
                         type="file"
