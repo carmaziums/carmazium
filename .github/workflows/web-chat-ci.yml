@@ -13,6 +13,9 @@ on:
       - "scripts/test-chat-scroll.test.mjs"
       - "scripts/test-chat-message-appearance.test.mjs"
       - "src/components/chat/**"
+      - "scripts/test-chat-desktop-layout.test.mjs"
+      - "scripts/test-chat-mobile-width.test.mjs"
+      - "src/app/dashboard/user/page.tsx"
       - "src/components/admin/AdminChatModerationQueue.tsx"
       - "src/app/dashboard/admin/messages/**"
       - "src/app/dashboard/buyer/messages/**"
@@ -53,6 +56,9 @@ jobs:
 
       - name: Test message author colours and contrast
         run: node --test scripts/test-chat-message-appearance.test.mjs
+
+      - name: Test desktop and mobile messaging layout
+        run: node --test scripts/test-chat-desktop-layout.test.mjs scripts/test-chat-mobile-width.test.mjs
 
       - name: Typecheck web chat surfaces
         shell: bash

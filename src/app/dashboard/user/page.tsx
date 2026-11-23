@@ -186,8 +186,8 @@ function UnifiedUserDashboardContent() {
     const userRole = profile?.role || "User"
 
     return (
-        <div className={`min-h-screen ${activeTab === "messages" ? "pt-3 pb-24 lg:pt-3 lg:pb-4" : "pt-20 lg:pt-4 pb-12"}`}>
-            <div className={`${activeTab === "messages" ? "w-full max-w-none" : "container mx-auto"} px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8`}>
+        <div className={`min-h-screen ${activeTab === "messages" ? "pt-3 pb-24 lg:h-[calc(100dvh-5rem)] lg:min-h-0 lg:overflow-hidden lg:p-0" : "pt-20 lg:pt-4 pb-12"}`}>
+            <div className={`${activeTab === "messages" ? "w-full max-w-none lg:h-full lg:gap-0 lg:p-0" : "container mx-auto"} px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8`}>
                 {/* Keep the mobile dashboard navigation, but do not reserve desktop width for it in Messages. */}
                 <div className={activeTab === "messages" ? "lg:hidden" : "contents"}>
                 <DashboardSidebar
@@ -204,7 +204,7 @@ function UnifiedUserDashboardContent() {
                 </DashboardSidebar>
                 </div>
 
-                <div className="flex-1 space-y-8 min-w-0">
+                <div className={`flex-1 min-w-0 space-y-8 ${activeTab === "messages" ? "lg:h-full lg:min-h-0 lg:space-y-0" : ""}`}>
 
                     {showBoostSuccess && (
                         <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
@@ -215,7 +215,7 @@ function UnifiedUserDashboardContent() {
                     )}
 
                     {/* Tab Content */}
-                    <div data-tour="personal-dashboard-content" className="min-h-[60vh] w-full min-w-0">
+                    <div data-tour="personal-dashboard-content" className={`min-h-[60vh] w-full min-w-0 ${activeTab === "messages" ? "lg:h-full lg:min-h-0" : ""}`}>
                         {activeTab === "overview" && (
                             <OverviewTab
                                 data={dashboardData}
@@ -1772,7 +1772,7 @@ function StatsTab() {
 
 function MessagesTab() {
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full min-w-0">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full min-w-0 lg:h-full">
             <RoleMessagesInbox
                 title="Messages"
                 subtitle="Conversations with buyers, sellers and CarMazium support"

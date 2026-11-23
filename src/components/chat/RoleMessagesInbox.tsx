@@ -27,7 +27,7 @@ interface RoleMessagesInboxProps {
 export function RoleMessagesInbox({
     title = "Messages",
     subtitle = "Your conversations in one place",
-    className = "glass-card",
+    className = "",
     backHref,
 }: RoleMessagesInboxProps) {
     const { rooms, refreshRooms } = useChat()
@@ -107,8 +107,8 @@ export function RoleMessagesInbox({
 
     return (
         <>
-            <div className={`${className} flex h-[calc(100dvh-175px)] min-h-0 min-w-0 flex-col overflow-hidden lg:h-[calc(100dvh-170px)]`}>
-                <div className="shrink-0 border-b border-[var(--border-default)] p-3 sm:p-4">
+            <div className={`${className} flex h-[calc(100dvh-175px)] min-h-0 min-w-0 flex-col overflow-hidden bg-[var(--bg-card)] lg:h-full lg:border-0 lg:rounded-none lg:shadow-none`}>
+                <div className="shrink-0 border-b border-[var(--border-default)] px-3 py-2.5 sm:px-4 lg:min-h-[64px]">
                     <div className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-3">
                             {backHref && (
