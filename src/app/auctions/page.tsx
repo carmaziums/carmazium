@@ -1,472 +1,116 @@
-"use client"
-
 import Link from "next/link"
-import { PageJsonLd, SEO_SITE, SEO_TRADEXCHANGE } from "@/components/seo/PageJsonLd"
 import Image from "next/image"
-import { motion } from "framer-motion"
-import {
-    ArrowRight,
-    BadgeCheck,
-    Banknote,
-    BriefcaseBusiness,
-    ClipboardList,
-    Gavel,
-    LayoutDashboard,
-    Plus,
-    Search,
-    ShieldCheck,
-    Truck,
-    Users,
-    Wrench,
-    type LucideIcon,
-} from "lucide-react"
-import { Button, buttonVariants } from "@/components/ui/Button"
-import { useAuth } from "@/context/AuthContext"
-import {
-    deliveryServiceEnabled,
-    inspectionServiceEnabled,
-    financeServiceEnabled,
-    warrantyServiceEnabled,
-} from "@/lib/featureFlags"
+import { ArrowRight, Banknote, Building2, ClipboardCheck, Gavel, ShieldCheck, Truck, type LucideIcon } from "lucide-react"
+import { PageJsonLd, SEO_SITE, SEO_TRADEXCHANGE } from "@/components/seo/PageJsonLd"
+import { TradeXchangeAccountActions, TradeXchangePartnerAction } from "@/components/tradexchange/TradeXchangeAccountActions"
+import { deliveryServiceEnabled, inspectionServiceEnabled, financeServiceEnabled, warrantyServiceEnabled } from "@/lib/featureFlags"
 
-type Pillar = {
-    icon: LucideIcon
-    title: string
-    eyebrow: string
-    description: string
-    points: string[]
-    href?: string
-    cta: string
-    partnership?: boolean
+type Service = {
+    title: string; description: string; href: string; cta: string; icon: LucideIcon;
+    tone: string; enabled: boolean; detail: string;
 }
 
-const PILLARS: Pillar[] = [
-    {
-        icon: Gavel,
-        title: "Vehicle Auctions",
-        eyebrow: "Buy & sell trade stock",
-        description: "Sell vehicles in 24-hour auctions or bid as a verified trade dealer, with live bidding and anti-snipe protection.",
-        points: ["Free auction listings", "£100 qualifying seller bonus", "£125 fee only for the winning dealer"],
-        href: "/auctions/how-it-works",
-        cta: "How auctions work",
-    },
-    {
-        icon: Truck,
-        title: "Delivery & Recovery",
-        eyebrow: "Move vehicles nationwide",
-        description: "Post a route and let approved transport businesses compete with fixed-price quotes for delivery or recovery work.",
-        points: ["Single and multi-car moves", "Protected service payment", "Providers keep 91% of the job price"],
-        ...(deliveryServiceEnabled ? { href: "/services/delivery" } : {}),
-        cta: "Explore delivery",
-    },
-    {
-        icon: Wrench,
-        title: "Vehicle Inspections",
-        eyebrow: "Check before you commit",
-        description: "Request an independent vehicle inspection and compare fixed-price quotes from approved inspection providers.",
-        points: ["Pre-purchase checks", "Competitive provider quotes", "Providers keep 91% of the job price"],
-        ...(inspectionServiceEnabled ? { href: "/services/inspection" } : {}),
-        cta: "Explore inspections",
-    },
-    {
-        icon: Banknote,
-        title: "Finance Providers",
-        eyebrow: "Integrations & partnerships",
-        description: "Finance providers must contact CarMazium directly to discuss integration and partnership arrangements. Provider registration is handled by our team.",
-        points: ["Discuss your finance offering", "Agree integration requirements", "Partnership approval by CarMazium"],
-        href: "/contact?topic=finance-partnership",
-        cta: "Contact CarMazium about finance",
-        partnership: true,
-    },
-    {
-        icon: ShieldCheck,
-        title: "Warranty Providers",
-        eyebrow: "Integrations & partnerships",
-        description: "Warranty providers must contact CarMazium directly to discuss products, integration and partnerships. A dealer’s own warranty badge is a separate setting.",
-        points: ["Discuss products and cover", "Agree integration requirements", "Partnership approval by CarMazium"],
-        href: "/contact?topic=warranty-partnership",
-        cta: "Contact CarMazium about warranties",
-        partnership: true,
-    },
-    {
-        icon: ShieldCheck,
-        title: "Insurance Providers",
-        eyebrow: "Integrations & partnerships",
-        description: "Insurance providers must contact CarMazium directly to discuss integration and partnership opportunities. This is a business enquiry, not an insurance quote or policy application.",
-        points: ["Discuss your insurance offering", "Agree integration requirements", "Partnership approval by CarMazium"],
-        href: "/contact?topic=insurance-partnership",
-        cta: "Contact CarMazium about insurance",
-        partnership: true,
-    },
+// Customer services are the primary navigation, not provider registration.
+const services: Service[] = [
+    { title: "Vehicle auctions", description: "Sell your vehicle through a free dealer auction, or browse live auctions as a verified motor trader.", href: "/auctions/how-it-works", cta: "Explore auctions", icon: Gavel, tone: "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-200", enabled: true, detail: "Free seller listing · Verified dealer bidding" },
+    { title: "Vehicle transport", description: "Arrange delivery, collection or recovery for one vehicle or several. Compare fixed-price quotes from approved transport providers.", href: "/services/delivery", cta: "Get transport quotes", icon: Truck, tone: "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-200", enabled: deliveryServiceEnabled, detail: "Delivery · Collection · Recovery" },
+    { title: "Vehicle inspections", description: "Request an independent vehicle inspection and compare quotes from approved inspection businesses.", href: "/services/inspection", cta: "Request an inspection", icon: ClipboardCheck, tone: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200", enabled: inspectionServiceEnabled, detail: "Pre-purchase and condition checks" },
+    { title: "Vehicle finance", description: "Start from a participating vehicle listing and continue your application with the selected finance provider. Subject to status and approval.", href: "/services/finance", cta: "Explore finance", icon: Banknote, tone: "bg-violet-100 text-violet-800 dark:bg-violet-950/60 dark:text-violet-200", enabled: financeServiceEnabled, detail: "Finance application with a selected partner" },
+    { title: "Vehicle warranty", description: "Choose available cover, see your warranty quote and order online. Cover is confirmed after issuance.", href: "/services/warranty", cta: "Get a warranty quote", icon: ShieldCheck, tone: "bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200", enabled: warrantyServiceEnabled, detail: "Vehicle-specific cover options" },
 ]
 
-function PillarCard({ pillar, index }: { pillar: Pillar; index: number }) {
-    const { icon: Icon, title, eyebrow, description, points, href, cta } = pillar
-    const live = Boolean(href)
+const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-body)]"
+const panel = "rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)]"
 
-    return (
-        <motion.article
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05, duration: 0.4 }}
-            className="h-full min-w-0"
-        >
-            {live ? (
-                <Link
-                    href={href!}
-                    className="group flex h-full flex-col rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg"
-                >
-                    <div className="mb-5 flex items-start justify-between gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
-                            <Icon size={22} className="text-primary" />
-                        </div>
-                        <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                            {pillar.partnership ? 'Contact our team' : 'Open now'}
-                        </span>
-                    </div>
-                    <p className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-primary">{eyebrow}</p>
-                    <h2 className="mb-3 text-xl font-black font-heading tracking-tight">{title}</h2>
-                    <p className="mb-5 text-sm leading-relaxed text-[var(--text-muted)]">{description}</p>
-                    <ul className="mb-6 space-y-2.5">
-                        {points.map((point) => (
-                            <li key={point} className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
-                                <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                                {point}
-                            </li>
-                        ))}
-                    </ul>
-                    <span className={buttonVariants({ className: "mt-auto w-full min-h-11 h-auto py-3 justify-between whitespace-normal text-left" })}>
-                        {cta}
-                        <ArrowRight size={16} className="shrink-0 transition-transform group-hover:translate-x-1" />
-                    </span>
-                </Link>
-            ) : (
-                <div className="flex h-full flex-col rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5 opacity-70">
-                    <div className="mb-5 flex items-start justify-between gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)]">
-                            <Icon size={22} className="text-[var(--text-muted)]" />
-                        </div>
-                        <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-500">
-                            Temporarily unavailable
-                        </span>
-                    </div>
-                    <p className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">{eyebrow}</p>
-                    <h2 className="mb-3 text-xl font-black font-heading tracking-tight">{title}</h2>
-                    <p className="mb-5 text-sm leading-relaxed text-[var(--text-muted)]">{description}</p>
-                    <ul className="space-y-2.5">
-                        {points.map((point) => (
-                            <li key={point} className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
-                                <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--text-muted)]" />
-                                {point}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-        </motion.article>
-    )
+function ServiceCard({ service }: { service: Service }) {
+    const Icon = service.icon
+    const body = <>
+        <span className={"flex size-12 shrink-0 items-center justify-center rounded-xl " + service.tone}><Icon size={25} aria-hidden="true" /></span>
+        <h3 className="mt-4 text-xl font-bold font-heading leading-snug text-[var(--text-primary)]">{service.title}</h3>
+        <p className="mt-2 text-base leading-7 text-[var(--text-secondary)]">{service.description}</p>
+        <p className="mt-4 text-sm leading-6 text-[var(--text-muted)]">{service.detail}</p>
+        <span className="mt-auto pt-5 flex items-center justify-between gap-2 font-bold text-base">
+            {service.enabled ? <><span className="text-red-700 dark:text-red-300">{service.cta}</span><ArrowRight size={20} className="shrink-0 text-red-700 dark:text-red-300" aria-hidden="true" /></> : <span className="text-[var(--text-muted)]">Temporarily unavailable</span>}
+        </span>
+    </>
+    return <li className="min-w-0 h-full">
+        {service.enabled
+            ? <Link href={service.href} className={panel + " " + focus + " flex h-full flex-col p-5 sm:p-6 shadow-sm transition-colors hover:border-primary hover:bg-[var(--bg-card-hover)]"}>{body}</Link>
+            : <article className={panel + " flex h-full flex-col p-5 sm:p-6"}>{body}</article>}
+    </li>
 }
-
-const PROVIDER_BENEFITS = [
-    {
-        icon: Users,
-        title: "Reach customers with real automotive intent",
-        text: "Put your business in front of buyers, sellers and dealers already using CarMazium to move, inspect, finance and protect vehicles.",
-    },
-    {
-        icon: BriefcaseBusiness,
-        title: "Choose the work that fits your business",
-        text: "Delivery and Inspection providers can quote selectively on the jobs that suit their routes, availability and pricing.",
-    },
-    {
-        icon: Banknote,
-        title: "Keep 91% on paid service jobs",
-        text: "For completed Delivery and Inspection jobs, the CarMazium platform fee is 9% and the provider receives 91% of the accepted job price.",
-    },
-    {
-        icon: BadgeCheck,
-        title: "Stand out as an approved provider",
-        text: "Capability-specific approval gives customers a clearer reason to trust the businesses they see inside TradeXchange.",
-    },
-    {
-        icon: LayoutDashboard,
-        title: "Run opportunities from one dashboard",
-        text: "Keep relevant jobs, accepted work and capability approvals together instead of relying on scattered calls and messages.",
-    },
-    {
-        icon: ShieldCheck,
-        title: "Use the model that suits your service",
-        text: "Delivery and Inspection use paid jobs. Insurance, warranty and finance providers contact CarMazium directly for integration and partnership discussions.",
-    },
-]
-
-const PROVIDER_STEPS = [
-    {
-        step: "01",
-        title: "Create your Partner Account",
-        text: "Register one CarMazium business account, then add the provider services your business offers.",
-    },
-    {
-        step: "02",
-        title: "Choose your capabilities",
-        text: "Apply for Delivery or Inspection services. Insurance, warranty and finance providers must contact CarMazium directly about integration and partnerships.",
-    },
-    {
-        step: "03",
-        title: "Complete capability approval",
-        text: "Submit the business information requested for each capability. CarMazium reviews every service capability separately.",
-    },
-    {
-        step: "04",
-        title: "Start receiving opportunities",
-        text: "Once approved, quote on Delivery or Inspection jobs. Insurance, finance and warranty partnerships are arranged directly with our team.",
-    },
-]
 
 export default function TradeXchangePage() {
-    const { user } = useAuth()
-    const providerHref = user
-        ? "/dashboard/partner"
-        : "/auth/signup?role=DEALER"
-    const jobMarketplaceEnabled = deliveryServiceEnabled || inspectionServiceEnabled
-
-    return (
-        <div className="min-h-screen" style={{ background: "var(--bg-body)" }}>
-            <PageJsonLd
-                path="/auctions"
-                title="TradeXchange Car Auctions & Vehicle Services UK | CarMazium"
-                about={SEO_TRADEXCHANGE}
-                type="CollectionPage"
-                mainEntity={{
-                    "@type": "ItemList", "@id": SEO_SITE + "/auctions#service-directory",
-                    name: "TradeXchange vehicle auctions and services",
-                    itemListElement: ["/auctions/how-it-works", ...(deliveryServiceEnabled ? ["/services/delivery"] : []), ...(inspectionServiceEnabled ? ["/services/inspection"] : []), ...(financeServiceEnabled ? ["/services/finance"] : []), ...(warrantyServiceEnabled ? ["/services/warranty"] : [])].map((path, i) => ({ "@type": "ListItem", position: i + 1, url: SEO_SITE + path })),
-                }}
-            />
-            <section className="relative overflow-hidden text-white" style={{ marginTop: "-80px", paddingTop: "80px" }}>
-                <Image
-                    src="/assets/images/live-auction-hero.webp"
-                    alt="TradeXchange automotive marketplace"
-                    fill
-                    priority
-                    className="object-cover object-center"
-                />
-                <div className="absolute inset-0 bg-slate-950/75" />
-                <div className="container mx-auto px-6 py-20 md:py-28 relative z-10">
-                    <div className="max-w-4xl">
-                        <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-5 text-xs font-black uppercase tracking-[0.22em] text-red-300">
-                            CarMazium TradeXchange
-                        </motion.p>
-                        <motion.h1
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="mb-6 text-4xl md:text-6xl font-black font-heading tracking-tight leading-[0.98]"
-                        >
-                            One trade platform.
-                            <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-300 to-red-200">Services and partnerships.</span>
-                        </motion.h1>
-                        <motion.p
-                            initial={{ opacity: 0, y: 16 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="max-w-2xl text-lg leading-relaxed text-slate-100"
-                        >
-                            Auction vehicles, move them, inspect them, apply for vehicle finance and choose warranty cover — while approved service providers can compete for work and grow their automotive business through the same marketplace.
-                        </motion.p>
-                        <motion.div
-                            initial={{ opacity: 0, y: 14 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.18 }}
-                            className="mt-8 flex flex-col gap-3 sm:flex-row"
-                        >
-                            <Button asChild size="lg">
-                                <Link href={providerHref}>
-                                    Join for delivery or inspection <ArrowRight size={16} />
-                                </Link>
-                            </Button>
-                            <Button asChild variant="outline" size="lg" className="border-white/25 bg-white/10 text-white hover:border-white/40 hover:bg-white/15 hover:text-white">
-                                <a href="#tradexchange-areas">Explore TradeXchange</a>
-                            </Button>
-                        </motion.div>
+    return <div className="min-h-screen bg-[var(--bg-body)]">
+        <PageJsonLd path="/auctions" title="TradeXchange Car Auctions & Vehicle Services UK | CarMazium"
+            description="Vehicle auctions, delivery, collection, recovery, inspections, finance and warranty services across the UK."
+            about={SEO_TRADEXCHANGE} type="CollectionPage"
+            mainEntity={{ "@type": "ItemList", "@id": SEO_SITE + "/auctions#service-directory",
+                name: "TradeXchange vehicle auctions and services",
+                itemListElement: services.filter(service => service.enabled).map((service, index) => ({ "@type": "ListItem", position: index + 1, url: SEO_SITE + service.href, name: service.title })) }} />
+        <section className="relative isolate overflow-hidden bg-slate-950 text-white">
+            <Image src="/assets/images/live-auction-hero.webp" alt="" fill priority sizes="100vw" className="object-cover object-center opacity-35" />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-slate-950/60" aria-hidden="true" />
+            <div className="relative mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16 lg:py-20">
+                <div className="max-w-3xl">
+                    <p className="text-sm font-bold tracking-wide text-red-200">CarMazium TradeXchange</p>
+                    <h1 className="mt-3 text-4xl font-heading font-black tracking-tight leading-[1.12] sm:text-5xl lg:text-6xl">Everything your vehicle needs.<br className="hidden sm:block" /> One marketplace.</h1>
+                    <p className="mt-5 max-w-2xl text-base leading-7 text-slate-100 sm:text-lg">Buy or sell at auction, arrange vehicle transport and inspections, explore finance and choose warranty cover. For private customers and automotive businesses across the UK.</p>
+                    <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                        <a href="#tradexchange-areas" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-red-700 px-5 py-3 font-bold text-white hover:bg-red-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">Explore services <ArrowRight size={18} aria-hidden="true" /></a>
+                        <a href="#business-partnerships" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-300 px-5 py-3 font-semibold text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">For automotive businesses</a>
                     </div>
                 </div>
-            </section>
+            </div>
+        </section>
 
-            {jobMarketplaceEnabled && (
-                <section className="border-b border-[var(--border-default)] bg-[var(--bg-card)]">
-                    <div className="container mx-auto px-6 py-7">
-                        <div className="mb-4 text-center sm:text-left">
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">TradeXchange Jobs</p>
-                            <p className="mt-1 text-sm text-[var(--text-muted)]">Post work in seconds, compare competing provider quotes, or browse jobs if you provide a service.</p>
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-3">
-                            <Link href="/services/jobs/new" className="group rounded-2xl bg-primary p-5 text-white transition-colors hover:bg-primary/90">
-                                <Plus size={20} className="mb-3" />
-                                <span className="block text-base font-black">Post a Job</span>
-                                <span className="mt-1 block text-xs text-white/80">Delivery, collection, recovery or inspection.</span>
-                            </Link>
-                            <Link href="/dashboard/service/jobs" className="group rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5 transition-colors hover:border-primary/50">
-                                <Search size={20} className="mb-3 text-primary" />
-                                <span className="block text-base font-black">Available Jobs</span>
-                                <span className="mt-1 block text-xs text-[var(--text-muted)]">See open work. Approved providers can quote.</span>
-                            </Link>
-                            <Link href="/services/jobs" className="group rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5 transition-colors hover:border-primary/50">
-                                <ClipboardList size={20} className="mb-3 text-primary" />
-                                <span className="block text-base font-black">My Jobs</span>
-                                <span className="mt-1 block text-xs text-[var(--text-muted)]">Track your posts, compare quotes and manage jobs.</span>
-                            </Link>
-                        </div>
+        <section id="tradexchange-areas" aria-labelledby="services-heading" className="mx-auto max-w-7xl scroll-mt-24 px-5 py-10 sm:px-8 sm:py-14">
+            <h2 id="services-heading" className="text-3xl font-heading font-bold tracking-tight sm:text-4xl">What can we help you with?</h2>
+            <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--text-secondary)]">Choose the service you need. Each service has its own clear process and terms.</p>
+            <ul className="mt-7 grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {services.map(service => <ServiceCard key={service.href} service={service} />)}
+                <li className="min-w-0 h-full"><a href="#business-partnerships" className={panel + " " + focus + " flex h-full flex-col p-5 sm:p-6 shadow-sm transition-colors hover:border-primary hover:bg-[var(--bg-card-hover)]"}>
+                    <span className="flex size-12 items-center justify-center rounded-xl bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100"><Building2 size={25} aria-hidden="true" /></span>
+                    <h3 className="mt-4 text-xl font-bold font-heading">Business partnerships</h3>
+                    <p className="mt-2 text-base leading-7 text-[var(--text-secondary)]">Join CarMazium as a motor trader or service provider, or discuss a specialist integration with our team.</p>
+                    <p className="mt-4 text-sm leading-6 text-[var(--text-muted)]">One Partner Account for eligible trading and paid services</p>
+                    <span className="mt-auto flex items-center justify-between gap-2 pt-5 font-bold text-red-700 dark:text-red-300">Explore partnerships <ArrowRight size={20} className="shrink-0" aria-hidden="true" /></span>
+                </a></li>
+            </ul>
+            <TradeXchangeAccountActions paidJobsEnabled={deliveryServiceEnabled || inspectionServiceEnabled} />
+        </section>
+
+        {(deliveryServiceEnabled || inspectionServiceEnabled) && <section aria-labelledby="jobs-heading" className="border-y border-[var(--border-default)] bg-[var(--bg-card)]">
+            <div className="mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
+                <h2 id="jobs-heading" className="text-2xl font-heading font-bold sm:text-3xl">How transport and inspection requests work</h2>
+                <ol className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-3">
+                    {[["Request a service", "Tell us about your vehicle, location and the work you need."], ["Compare and choose", "Approved providers may send fixed-price quotes. Review the scope and price before accepting."], ["Pay and track", "Pay for the service through CarMazium, track progress and review completion under the service payment terms."]].map(([title, description], index) => <li key={title} className="flex gap-4">
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--bg-input)] text-lg font-bold" aria-hidden="true">{index + 1}</span>
+                        <div><h3 className="font-bold text-lg">{title}</h3><p className="mt-1 text-base leading-7 text-[var(--text-secondary)]">{description}</p></div>
+                    </li>)}
+                </ol>
+                <p className="mt-6 text-sm leading-6 text-[var(--text-muted)]">Service availability depends on suitable providers. Vehicle purchase funds are paid directly between buyer and seller, separately from paid service jobs.</p>
+            </div>
+        </section>}
+
+        <section id="business-partnerships" aria-labelledby="business-heading" className="mx-auto max-w-7xl scroll-mt-24 px-5 py-10 sm:px-8 sm:py-14">
+            <h2 id="business-heading" className="text-3xl font-heading font-bold tracking-tight">Grow your automotive business</h2>
+            <p className="mt-3 max-w-3xl text-base leading-7 text-[var(--text-secondary)]">Choose the route that matches your business. No separate account is needed for each eligible service.</p>
+            <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                <article className={panel + " p-5 sm:p-7"}>
+                    <h3 className="text-xl font-heading font-bold">Motor traders and paid service providers</h3>
+                    <p className="mt-3 text-base leading-7 text-[var(--text-secondary)]">Use one Partner Account for trading and apply for delivery, collection, recovery or inspection services. Each service requires approval before you can quote.</p>
+                    <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">For completed paid transport and inspection jobs, the platform fee is 9% and the provider share is 91%. Payment release is subject to the service terms.</p>
+                    <TradeXchangePartnerAction />
+                </article>
+                <article className={panel + " p-5 sm:p-7"}>
+                    <h3 className="text-xl font-heading font-bold">Finance, warranty and insurance businesses</h3>
+                    <p className="mt-3 text-base leading-7 text-[var(--text-secondary)]">These partnerships are arranged directly with CarMazium. Contact our team to discuss products, integration and requirements. They are not paid-job applications.</p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                        {["finance", "warranty", "insurance"].map(topic => <Link key={topic} href={"/contact?topic=" + topic + "-partnership"} className={focus + " inline-flex min-h-12 items-center gap-2 rounded-lg border border-[var(--border-default)] px-4 py-2 font-semibold capitalize hover:bg-[var(--bg-input)]"}>{topic} partnership <ArrowRight size={16} aria-hidden="true" /></Link>)}
                     </div>
-                </section>
-            )}
-
-            <section className="border-b border-[var(--border-default)] bg-[var(--bg-card)]">
-                <div className="container mx-auto px-6 py-8">
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-2xl border border-primary/25 bg-primary/5 p-5">
-                            <p className="mb-1 text-2xl font-black font-heading text-primary">91%</p>
-                            <p className="text-sm font-bold">Provider share on paid Delivery &amp; Inspection jobs</p>
-                        </div>
-                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5">
-                            <p className="mb-1 text-lg font-black font-heading">Quote selectively</p>
-                            <p className="text-sm text-[var(--text-muted)]">Choose the jobs that fit your routes, capacity, availability and pricing.</p>
-                        </div>
-                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5">
-                            <p className="mb-1 text-lg font-black font-heading">Business partnerships</p>
-                            <p className="text-sm text-[var(--text-muted)]">Insurance, warranty and finance providers must contact CarMazium directly for integrations and partnerships.</p>
-                        </div>
-                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5">
-                            <p className="mb-1 text-lg font-black font-heading">Approved-provider status</p>
-                            <p className="text-sm text-[var(--text-muted)]">Build customer confidence through capability-specific approval.</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section id="tradexchange-areas" className="container mx-auto px-4 md:px-6 py-16 md:py-20 scroll-mt-24">
-                <div className="mx-auto mb-10 max-w-3xl text-center">
-                    <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Choose a TradeXchange area</p>
-                    <h2 className="mb-3 text-3xl md:text-4xl font-black font-heading tracking-tight">Find the right service or partnership</h2>
-                    <p className="text-sm md:text-base text-[var(--text-muted)]">
-                        Each area has its own rules, fees and workflow. Open a card to see exactly how that part of TradeXchange works before you continue.
-                    </p>
-                </div>
-
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-                    {PILLARS.map((pillar, index) => (
-                        <PillarCard key={pillar.title} pillar={pillar} index={index} />
-                    ))}
-                </div>
-                <div className="mt-6 rounded-xl border border-[var(--border-default)] p-5 text-sm">
-                    <p className="font-bold">Looking for finance or warranty cover for your vehicle?</p>
-                    <p className="mt-1 text-[var(--text-muted)]">The partnership cards above are for provider businesses. Apply for finance from a participating vehicle listing, or choose warranty cover and get a quote online.</p>
-                    <div className="mt-3 flex flex-wrap gap-5">{financeServiceEnabled && <Link className="inline-flex min-h-11 items-center font-bold text-primary underline" href="/services/finance">Vehicle finance for buyers</Link>}{warrantyServiceEnabled && <Link className="inline-flex min-h-11 items-center font-bold text-primary underline" href="/services/warranty">Warranty cover for buyers</Link>}</div>
-                </div>
-            </section>
-
-            <section className="border-y border-[var(--border-default)] bg-[var(--bg-card)]">
-                <div className="container mx-auto px-6 py-16 md:py-20">
-                    <div className="mx-auto mb-12 max-w-3xl text-center">
-                        <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Grow with TradeXchange</p>
-                        <h2 className="mb-4 text-3xl md:text-5xl font-black font-heading tracking-tight">Turn your automotive expertise into more business</h2>
-                        <p className="text-[var(--text-muted)] leading-relaxed">
-                            TradeXchange is built to bring approved automotive businesses closer to customers who already need vehicle services. Apply for the capabilities that match your business, choose the opportunities you want and manage them from one provider area.
-                        </p>
-                    </div>
-
-                    <div className="mb-12 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        {PROVIDER_BENEFITS.map((benefit) => (
-                            <div key={benefit.title} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-6">
-                                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
-                                    <benefit.icon size={19} className="text-primary" />
-                                </div>
-                                <h3 className="mb-2 font-heading font-bold">{benefit.title}</h3>
-                                <p className="text-sm leading-relaxed text-[var(--text-muted)]">{benefit.text}</p>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="grid gap-6 lg:grid-cols-2">
-                        <div className="rounded-3xl border border-primary/30 bg-primary/5 p-7 md:p-8">
-                            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Delivery &amp; Inspection providers</p>
-                            <h3 className="mb-4 text-2xl md:text-3xl font-black font-heading">Your quote. Your work. 91% provider share.</h3>
-                            <p className="mb-5 text-sm leading-relaxed text-[var(--text-muted)]">
-                                You decide which suitable jobs to quote on and what fixed price to offer. When a paid Delivery or Inspection job is successfully completed, CarMazium keeps a 9% platform fee and the provider receives 91% of the accepted job price after payment is released.
-                            </p>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4">
-                                    <p className="font-black">9% CarMazium fee</p>
-                                    <p className="mt-1 text-xs text-[var(--text-muted)]">Clear platform economics before you build your provider activity.</p>
-                                </div>
-                                <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4">
-                                    <p className="font-black">91% to the provider</p>
-                                    <p className="mt-1 text-xs text-[var(--text-muted)]">Released after successful completion through the service-job payment flow.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="rounded-3xl border border-[var(--border-default)] bg-[var(--bg-input)] p-7 md:p-8">
-                            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Insurance, Warranty &amp; Finance providers</p>
-                            <h3 className="mb-4 text-2xl md:text-3xl font-black font-heading">Meet customers already in the vehicle journey</h3>
-                            <p className="mb-5 text-sm leading-relaxed text-[var(--text-muted)]">
-                                Insurance, warranty and finance providers must contact CarMazium directly to discuss integrations and partnerships. Our team agrees the requirements and approves each partnership.
-                            </p>
-                            <p className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 text-sm text-[var(--text-secondary)]">
-                                The opportunity is simple: reach relevant CarMazium users at the point they are already buying, selling or managing a vehicle.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="mt-14">
-                        <div className="mx-auto mb-9 max-w-2xl text-center">
-                            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Getting started</p>
-                            <h3 className="text-2xl md:text-3xl font-black font-heading">Delivery and inspection: four steps to get started</h3>
-                        </div>
-                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                            {PROVIDER_STEPS.map((item) => (
-                                <div key={item.step} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5">
-                                    <p className="mb-4 text-sm font-black text-primary">{item.step}</p>
-                                    <h4 className="mb-2 font-heading font-bold">{item.title}</h4>
-                                    <p className="text-sm leading-relaxed text-[var(--text-muted)]">{item.text}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="mt-10 rounded-3xl border border-primary/30 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-7 md:p-9">
-                        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                            <div className="max-w-2xl">
-                                <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Ready to grow with CarMazium?</p>
-                                <h3 className="mb-2 text-2xl md:text-3xl font-black font-heading">Create one Partner Account for delivery, recovery and inspection.</h3>
-                                <p className="text-sm leading-relaxed text-[var(--text-muted)]">
-                                    Start with one capability or apply for several. Approval is handled per service, so your TradeXchange presence can grow with your business.
-                                </p>
-                            </div>
-                            <Button asChild size="lg" className="shrink-0">
-                                <Link href={providerHref}>
-                                    {user ? "Open Partner Account" : "Create Partner Account"} <ArrowRight size={16} />
-                                </Link>
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section className="container mx-auto px-6 py-14 md:py-16">
-                <div className="rounded-3xl border border-[var(--border-default)] bg-[var(--bg-input)] p-8 md:p-10 text-center">
-                    <h2 className="mb-3 text-2xl md:text-3xl font-black font-heading">Not sure where to start?</h2>
-                    <p className="mx-auto mb-6 max-w-2xl text-sm md:text-base text-[var(--text-muted)]">
-                        Open the card that matches what you need. Every TradeXchange page explains that service first, then gives you the relevant action — browse, post a job, send an enquiry or apply as a provider.
-                    </p>
-                    <Button asChild className="h-auto min-h-11 max-w-full whitespace-normal text-center">
-                        <a href="#tradexchange-areas">
-                            Explore our services <ArrowRight size={15} className="shrink-0" />
-                        </a>
-                    </Button>
-                </div>
-            </section>
-        <section className="container mx-auto px-5 py-8"><div className="rounded-2xl border border-primary/30 bg-[var(--bg-card)] p-6 space-y-3"><h2 className="text-xl font-bold">Provider integrations and partnerships</h2><p>Insurance, warranty and finance providers must contact CarMazium directly. These partnerships are arranged with our team, not through a dealer service application.</p><div className="flex flex-wrap gap-5 font-semibold text-primary"><Link className="inline-flex min-h-11 items-center underline" href="/contact">Contact CarMazium</Link><a className="inline-flex min-h-11 items-center underline" href="mailto:info@carmazium.com">Email info@carmazium.com</a><a className="inline-flex min-h-11 items-center underline" href="tel:+441218385040">Call 0121 838 5040</a></div></div></section>
-        </div>
-    )
+                </article>
+            </div>
+        </section>
+    </div>
 }

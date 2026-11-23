@@ -2,7 +2,6 @@ import React from 'react';
 import {
   ScrollView,
   StatusBar,
-   Alert,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -40,25 +39,25 @@ interface ServiceItem {
 // All CarMazium forms use native screens.
 const SERVICES: ServiceItem[] = [
   {
-    title: 'Delivery & Recovery',
+    title: 'Vehicle Transport',
     desc: 'Post a vehicle transport or recovery job. Approved providers can send competing fixed-price quotes.',
     icon: 'car-outline',
     color: Colors.infoBlueLight,
     bg: Colors.infoBlueAlpha10,
     border: Colors.infoBlueAlpha20,
     path: '/services/delivery/new',
-    cta: 'Post a Job',
+    cta: 'Get transport quotes',
     kind: 'Paid service job',
   },
   {
-    title: 'Vehicle Inspection',
+    title: 'Vehicle Inspections',
     desc: 'Arrange an independent pre-purchase inspection and choose from approved inspectors’ quotes.',
     icon: 'search-outline',
     color: Colors.lightGreen_34d399,
     bg: Colors.successAlpha10,
     border: Colors.successAlpha25,
     path: '/services/inspection/new',
-    cta: 'Post a Job',
+    cta: 'Request an inspection',
     kind: 'Paid service job',
   },
   {
@@ -88,11 +87,14 @@ const SERVICES: ServiceItem[] = [
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const ServicesScreen: React.FC = () => {
-  const [expandedService, setExpandedService] = React.useState<string | null>(null);
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
-  const openService = (path: string) => navigation.navigate(path === '/services/finance' ? 'Finance' : 'Warranty');
+  const openService = (path: string) => {
+    if (path === '/services/delivery/new') navigation.navigate('CreateServiceJob', { serviceType: 'DELIVERY' });
+    else if (path === '/services/inspection/new') navigation.navigate('CreateServiceJob', { serviceType: 'INSPECTION' });
+    else navigation.navigate(path === '/services/finance' ? 'Finance' : 'Warranty');
+  };
 
   return (
     <View style={styles.container}>
@@ -119,32 +121,24 @@ export const ServicesScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.eyebrow}>TRADEXCHANGE</Text>
-        <Text style={styles.introTitle}>Post work or compete for it</Text>
+        <Text style={styles.introTitle}>Everything your vehicle needs. One marketplace.</Text>
         <Text style={styles.introSub}>
-          Book vehicle delivery or inspection, request finance or warranty options,
+          Arrange vehicle delivery or inspection, explore finance and warranty cover,
           and manage your jobs with approved service partners.
         </Text>
-        <TouchableOpacity
-          style={styles.postJobButton}
-          activeOpacity={0.8}
-          onPress={() => Alert.alert('Post a job', 'Choose the service you need.', [
-            { text: 'Delivery, collection or recovery', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'DELIVERY' }) },
-            { text: 'Vehicle inspection', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'INSPECTION' }) },
-            { text: 'Cancel', style: 'cancel' },
-          ])}
-          accessibilityRole="button"
-          accessibilityLabel="Post a delivery or inspection job"
-          accessibilityHint="Opens the job form to request quotes from approved providers"
-        >
-          <Ionicons name="add-circle-outline" size={22} color={Colors.onAccent} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.postJobTitle}>Post a delivery or inspection job</Text>
-            <Text style={styles.postJobHint}>Get competing quotes from approved providers</Text>
-          </View>
-          <Ionicons name="arrow-forward" size={20} color={Colors.onAccent} />
-        </TouchableOpacity>
 
-        <View style={{ height: 8 }} />
+        <Text style={styles.sectionHeading}>Choose a service</Text>
+        {SERVICES.map(service => (
+          <TouchableOpacity key={service.path} style={styles.card} activeOpacity={0.8}
+            onPress={() => openService(service.path)} accessibilityRole="button" accessibilityLabel={service.cta}>
+            <View style={styles.iconWrap}><Ionicons name={service.icon} size={22} color={Colors.accent} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>{service.title}</Text>
+              <Text style={styles.cardDesc}>{service.desc}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+          </TouchableOpacity>
+        ))}
 
         <TouchableOpacity
           style={styles.customerJobsCard}
@@ -155,7 +149,7 @@ export const ServicesScreen: React.FC = () => {
             <Ionicons name="briefcase-outline" size={22} color={Colors.accent} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.partnerTitle}>My service jobs</Text>
+            <Text style={styles.partnerTitle}>My service requests</Text>
             <Text style={styles.partnerText}>
               Track delivery and inspection requests, compare quotes, pay providers and manage completed work.
             </Text>
@@ -174,77 +168,16 @@ export const ServicesScreen: React.FC = () => {
           <View style={{ flex: 1 }}>
             <Text style={styles.partnerTitle}>Provide services with CarMazium</Text>
             <Text style={styles.partnerText}>
-              Use one Partner Account for Delivery and Inspections. Contact our team about finance and warranty partnerships.
+              Use one Partner Account for Delivery and Inspections. Contact our team about finance, warranty and insurance partnerships.
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
         </TouchableOpacity>
 
-        <Text style={styles.sectionHeading}>Choose a service</Text>
-        {SERVICES.map((service) => {
-          const isJobService = service.kind === 'Paid service job';
-          const expanded = expandedService === service.title;
-          return (
-            <View key={service.title} style={isJobService && expanded ? styles.expandedGroup : undefined}>
-              <TouchableOpacity
-                style={[styles.card, isJobService && expanded && styles.cardExpanded]}
-                activeOpacity={0.8}
-                onPress={() => isJobService
-                  ? setExpandedService(current => current === service.title ? null : service.title)
-                  : openService(service.path)}
-                accessibilityRole="button"
-                accessibilityLabel={service.title}
-                accessibilityState={isJobService ? { expanded } : undefined}
-                accessibilityHint={isJobService ? 'Show or hide Post a Job and Find Jobs and Bid' : 'Opens the service form in the app'}
-              >
-                <View style={styles.iconWrap}>
-                  <Ionicons name={service.icon} size={22} color={Colors.accent} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle}>{service.title}</Text>
-                  <Text style={styles.cardDesc}>{service.desc}</Text>
-                </View>
-                <Ionicons name={isJobService && expanded ? 'chevron-up' : isJobService ? 'chevron-down' : 'chevron-forward'} size={20} color={Colors.textMuted} />
-              </TouchableOpacity>
-              {isJobService && expanded && (
-                <View style={styles.expandedPanel}>
-                  <TouchableOpacity
-                    style={styles.expandedRow}
-                    onPress={() => navigation.navigate('CreateServiceJob', { serviceType: service.title === 'Delivery & Recovery' ? 'DELIVERY' : 'INSPECTION' })}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Post a Job for ${service.title}`}
-                  >
-                    <Ionicons name="document-text-outline" size={22} color={Colors.accent} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.partnerTitle}>Post a Job</Text>
-                      <Text style={styles.partnerText}>Request quotes from approved providers.</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-                  </TouchableOpacity>
-                  <View style={{ height: 1, backgroundColor: Colors.borderSubtle }} />
-                  <TouchableOpacity
-                    style={styles.expandedRow}
-                    onPress={() => navigation.navigate('ProviderJobs')}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Find Jobs and Bid for ${service.title}`}
-                  >
-                    <Ionicons name="briefcase-outline" size={22} color={Colors.accent} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.partnerTitle}>Find Jobs & Bid</Text>
-                      <Text style={styles.partnerText}>For verified service providers.</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          );
-        })}
-
         <View style={styles.noteCard}>
           <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={styles.noteText}>
-            Delivery and inspection are paid service jobs with competing provider quotes and CarMazium checkout. Warranty enquiries are handled directly by admin. Finance applications continue externally with the provider selected by admin; prospective partners contact our team. CarMazium does not make lending decisions or guarantee approval.
+            Delivery and inspection are paid service jobs with competing provider quotes and CarMazium checkout. Warranty cover is quoted and ordered through CarMazium; cover begins after issuance. Finance applications continue externally with the provider selected by admin; prospective partners contact our team. CarMazium does not make lending decisions or guarantee approval.
           </Text>
         </View>
 
@@ -283,7 +216,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.lg,
     color: Colors.white,
   },
-  headerPlaceholder: { width: 38 },
 
   scroll: { flex: 1 },
   scrollContent: {
@@ -294,9 +226,7 @@ const styles = StyleSheet.create({
 
   eyebrow: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent, letterSpacing: 1.2, marginBottom: -7 },
   sectionHeading: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white, marginTop: 10 },
-  postJobButton: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, minHeight: 75, backgroundColor: Colors.accent, borderRadius: Radius.card, marginBottom: 3 },
-  postJobTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.onAccent },
-  postJobHint: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.onAccent, opacity: 0.9, marginTop: 4 },
+
   introTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xl,
@@ -389,10 +319,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  cardKind: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent, letterSpacing: 0.4, marginBottom: 5 },
-  cardAction: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 10 },
-  cardActionText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent },
-  cardWebHint: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 4 },
   cardTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
@@ -406,14 +332,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  cardExpanded: { marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
-  expandedGroup: { marginBottom: 12 },
-  expandedPanel: {
-    borderWidth: 1, borderTopWidth: 0, borderColor: Colors.borderSubtle,
-    borderBottomLeftRadius: Radius.card, borderBottomRightRadius: Radius.card,
-    overflow: 'hidden', backgroundColor: Colors.bgCardSolid,
-  },
-  expandedRow: { flexDirection: 'row', gap: 13, alignItems: 'center', padding: 16 },
   noteCard: {
     flexDirection: 'row',
     gap: 10,

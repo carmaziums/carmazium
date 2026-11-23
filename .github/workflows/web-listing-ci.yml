@@ -14,6 +14,10 @@ on:
       - "next.config.ts"
       - "src/app/sitemap.ts"
       - "scripts/test-tradexchange-ux-canonical.test.mjs"
+      - "scripts/test-tradexchange-ux-homepage.test.mjs"
+      - "src/components/tradexchange/TradeXchangeAccountActions.tsx"
+      - "src/app/become-a-partner/page.tsx"
+      - "src/components/layout/Header.tsx"
       - "src/app/services/delivery/page.tsx"
       - "src/app/services/inspection/page.tsx"
       - "src/components/auctions/HowAuctionsWork.tsx"
@@ -209,7 +213,7 @@ jobs:
         run: node --test scripts/test-website-introduction.test.mjs
 
       - name: Service setup and provider partnership routing
-        run: node --test scripts/test-service-setup-routing.test.mjs scripts/test-service-job-form-validation.test.mjs scripts/test-tradexchange-audit.test.mjs scripts/test-tradexchange-ux-canonical.test.mjs
+        run: node --test scripts/test-service-setup-routing.test.mjs scripts/test-service-job-form-validation.test.mjs scripts/test-tradexchange-audit.test.mjs scripts/test-tradexchange-ux-canonical.test.mjs scripts/test-tradexchange-ux-homepage.test.mjs
 
       - name: Caravan buyer facts exclude motor-vehicle reports
         run: node --test scripts/test-caravan-buyer-information.test.mjs

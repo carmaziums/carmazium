@@ -33,16 +33,9 @@ interface Entry {
   iconLib?: 'ion' | 'mci';
   badge?: string;
   target?: SiteTarget;
-  /** Nested actions (website Delivery/Inspection: Post a Job, Find Jobs & Bid). */
-  actions?: { id: string; label: string; desc: string; icon: string; target: SiteTarget }[];
 }
 
 interface Group { id: string; label: string; target?: SiteTarget; entries?: Entry[] }
-
-const jobActions = (serviceType: 'DELIVERY' | 'INSPECTION') => [
-  { id: `${serviceType}-post`, label: 'Post a Job', desc: 'Request quotes from approved providers.', icon: 'add-circle-outline', target: { screen: 'CreateServiceJob', params: { serviceType } } },
-  { id: `${serviceType}-bid`, label: 'Find Jobs & Bid', desc: 'For verified service providers.', icon: 'briefcase-outline', target: { screen: 'ProviderJobs' } },
-];
 
 export const buildSiteGroups = (dealerMode: boolean): Group[] => [
   { id: 'home', label: 'Home', target: { tab: dealerMode ? 'DealerHome' : 'Home' } },
@@ -67,10 +60,10 @@ export const buildSiteGroups = (dealerMode: boolean): Group[] => [
       { id: 'tx-overview', label: 'TradeXchange Overview', icon: 'grid-outline', target: { screen: 'Services' } },
       { id: 'tx-auctions', label: 'Vehicle Auctions', icon: 'gavel', iconLib: 'mci',
         target: dealerMode ? { tab: 'DealerBuyBid', tabParams: { initialSection: 'live' } } : { tab: 'Live' } },
-      { id: 'tx-delivery', label: 'Delivery & Recovery', icon: 'car-sport-outline', actions: jobActions('DELIVERY') },
-      { id: 'tx-inspection', label: 'Vehicle Inspection', icon: 'construct-outline', actions: jobActions('INSPECTION') },
+      { id: 'tx-delivery', label: 'Vehicle Transport', icon: 'car-sport-outline', target: { screen: 'CreateServiceJob', params: { serviceType: 'DELIVERY' } } },
+      { id: 'tx-inspection', label: 'Vehicle Inspections', icon: 'construct-outline', target: { screen: 'CreateServiceJob', params: { serviceType: 'INSPECTION' } } },
       { id: 'tx-finance', label: 'Vehicle Finance', icon: 'cash-outline', target: { screen: 'Finance' } },
-      { id: 'tx-warranty', label: 'Warranty', icon: 'shield-checkmark-outline', target: { screen: 'Warranty' } },
+      { id: 'tx-warranty', label: 'Vehicle Warranty', icon: 'shield-checkmark-outline', target: { screen: 'Warranty' } },
     ],
   },
   { id: 'compare', label: 'Compare', target: { screen: 'Compare' } },
@@ -103,7 +96,6 @@ export const SiteMenu: React.FC<{
 }> = ({ top, activeTab, dealerMode, isGuest, onNavigate, onSignIn, onSignOut }) => {
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState<string | null>(null);
-  const [openEntry, setOpenEntry] = useState<string | null>(null);
   const groups = buildSiteGroups(dealerMode);
   const currentTheme = resolveThemeMode(getThemePreference());
 
@@ -136,21 +128,19 @@ export const SiteMenu: React.FC<{
           const isOpen = open === group.id;
           return (
             <View key={group.id}>
-              <TouchableOpacity style={styles.navRow} onPress={() => { setOpen(isOpen ? null : group.id); setOpenEntry(null); }} accessibilityRole="button" accessibilityState={{ expanded: isOpen }}>
+              <TouchableOpacity style={styles.navRow} onPress={() => { setOpen(isOpen ? null : group.id); }} accessibilityRole="button" accessibilityState={{ expanded: isOpen }}>
                 <Text style={styles.navLabel}>{group.label}</Text>
                 <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textPrimary} />
               </TouchableOpacity>
               {isOpen && (
                 <View style={styles.card}>
                   {group.entries!.map((entry, i) => {
-                    const entryOpen = openEntry === entry.id;
                     return (
                       <View key={entry.id} style={i > 0 && styles.cardDivider}>
                         <TouchableOpacity
                           style={styles.entry}
-                          onPress={() => entry.actions ? setOpenEntry(entryOpen ? null : entry.id) : onNavigate(entry.target!)}
+                          onPress={() => onNavigate(entry.target!)}
                           accessibilityRole="button"
-                          accessibilityState={entry.actions ? { expanded: entryOpen } : undefined}
                         >
                           <View style={styles.entryIcon}>{icon(entry)}</View>
                           <View style={{ flex: 1 }}>
@@ -165,17 +155,8 @@ export const SiteMenu: React.FC<{
                             </View>
                             {entry.desc && <Text style={styles.entryDesc}>{entry.desc}</Text>}
                           </View>
-                          {entry.actions && <Ionicons name={entryOpen ? 'chevron-up' : 'chevron-down'} size={17} color={Colors.textPrimary} />}
                         </TouchableOpacity>
-                        {entryOpen && entry.actions!.map(action => (
-                          <TouchableOpacity key={action.id} style={[styles.entry, styles.subEntry]} onPress={() => onNavigate(action.target)} accessibilityRole="button">
-                            <View style={styles.entryIcon}><Ionicons name={action.icon} size={18} color={Colors.accent} /></View>
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.entryTitle}>{action.label}</Text>
-                              <Text style={styles.entryDesc}>{action.desc}</Text>
-                            </View>
-                          </TouchableOpacity>
-                        ))}
+
                       </View>
                     );
                   })}
@@ -239,7 +220,6 @@ const styles = StyleSheet.create({
   },
   cardDivider: { borderTopWidth: 1, borderTopColor: Colors.border },
   entry: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18, paddingVertical: 15 },
-  subEntry: { paddingLeft: 30, backgroundColor: Colors.bgSecondary },
   entryIcon: { width: 24, alignItems: 'center' },
   entryTitleRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   entryTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.textPrimary },

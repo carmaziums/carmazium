@@ -4,7 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
-import { Menu, X, LogIn, User as UserIcon, LogOut, ChevronDown, Car, Gavel, ShieldCheck, Truck, Wrench, Banknote, LayoutGrid, Smartphone, FileText, Briefcase } from "lucide-react"
+import { Menu, X, LogIn, User as UserIcon, LogOut, ChevronDown, Car, Gavel, ShieldCheck, Truck, Wrench, Banknote, LayoutGrid, Smartphone } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
@@ -19,10 +19,6 @@ type NavLink =
     | { name: "Buy Cars"; kind: "buy-menu"; href?: undefined; prefetch?: undefined; badge?: undefined }
     | { name: "Sell Cars"; kind: "sell-menu"; href?: undefined; prefetch?: undefined; badge?: undefined }
     | { name: "TradeXchange"; kind: "trade-menu"; href?: undefined; prefetch?: undefined; badge?: undefined }
-
-const tradeJobActions = (href: string) => href === "/services/delivery" || href === "/services/inspection"
-    ? { post: `${href}/new`, bid: "/dashboard/service/jobs" }
-    : null
 
 const navLinks: NavLink[] = [
     { name: "Home", href: "/" },
@@ -43,7 +39,7 @@ export function Header() {
     const [isBuyMenuOpen, setIsBuyMenuOpen] = React.useState(false)
     const [isSellMenuOpen, setIsSellMenuOpen] = React.useState(false)
     const [isTradeMenuOpen, setIsTradeMenuOpen] = React.useState(false)
-    const [expandedTradeService, setExpandedTradeService] = React.useState<string | null>(null)
+
     const [activeLink, setActiveLink] = React.useState("")
     const desktopMenuCloseTimer = React.useRef<number | null>(null)
 
@@ -324,10 +320,10 @@ export function Header() {
                             const tradeItems = [
                                 { name: "TradeXchange Overview", href: "/auctions", icon: LayoutGrid, desc: "See every TradeXchange service area." },
                                 { name: "Vehicle Auctions", href: "/auctions/browse", icon: Gavel, desc: "Buy and sell trade stock through live auctions." },
-                                { name: "Delivery & Recovery", href: "/services/delivery", icon: Truck, desc: "Arrange vehicle transport and recovery." },
-                                { name: "Vehicle Inspection", href: "/services/inspection", icon: Wrench, desc: "Request independent vehicle inspections." },
-                                { name: "Vehicle Finance", href: "/services/finance", icon: Banknote, desc: "Apply through a selected partner; providers contact our team." },
-                                { name: "Warranty", href: "/services/warranty", icon: ShieldCheck, desc: "Request vehicle warranty options." },
+                                { name: "Vehicle Transport", href: "/services/delivery", icon: Truck, desc: "Arrange vehicle transport and recovery." },
+                                { name: "Vehicle Inspections", href: "/services/inspection", icon: Wrench, desc: "Request independent vehicle inspections." },
+                                { name: "Vehicle Finance", href: "/services/finance", icon: Banknote, desc: "Apply through a selected finance partner." },
+                                { name: "Vehicle Warranty", href: "/services/warranty", icon: ShieldCheck, desc: "Request vehicle warranty options." },
                             ]
                             return (
                                 <div
@@ -376,29 +372,9 @@ export function Header() {
                                                 return (
                                                     <React.Fragment key={item.href}>
                                                         {index > 0 && <div className="h-px bg-[var(--border-default)]" />}
-                                                        {tradeJobActions(item.href) ? (
-                                                            <button type="button" aria-expanded={expandedTradeService === item.href} onClick={() => setExpandedTradeService(current => current === item.href ? null : item.href)} className="flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-primary/5 w-full text-left">
-                                                                <Icon size={18} className="mt-0.5 text-primary shrink-0" /><span className="text-left flex-1"><span className="block text-sm font-bold">{item.name}</span><span className="mt-0.5 block text-xs text-[var(--text-muted)]">{item.desc}</span></span>
-                                                                <ChevronDown size={17} className={cn("shrink-0 transition-transform", expandedTradeService === item.href && "rotate-180")} />
-                                                            </button>
-                                                        ) : (
-                                                            <Link href={item.href} role="menuitem" className="flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-primary/5" onClick={() => { setIsTradeMenuOpen(false) }}>
+                                                        <Link href={item.href} role="menuitem" className="flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-primary/5" onClick={() => { setIsTradeMenuOpen(false) }}>
                                                                 <Icon size={18} className="mt-0.5 text-primary shrink-0" /><span className="text-left flex-1"><span className="block text-sm font-bold">{item.name}</span><span className="mt-0.5 block text-xs text-[var(--text-muted)]">{item.desc}</span></span>
                                                             </Link>
-                                                        )}
-                                                        {tradeJobActions(item.href) && expandedTradeService === item.href && (
-                                                            <div className="border-t border-[var(--border-default)]">
-                                                                <Link href={tradeJobActions(item.href)!.post} role="menuitem" onClick={() => setIsTradeMenuOpen(false)} className="flex items-start gap-3 px-6 py-3 hover:bg-primary/5">
-                                                                    <FileText size={18} className="mt-0.5 text-primary shrink-0" />
-                                                                    <span className="text-left"><span className="block text-sm font-bold">Post a Job</span><span className="block text-xs text-[var(--text-muted)]">Request quotes from approved providers.</span></span>
-                                                                </Link>
-                                                                <div className="h-px bg-[var(--border-default)]" />
-                                                                <Link href={tradeJobActions(item.href)!.bid} role="menuitem" onClick={() => setIsTradeMenuOpen(false)} className="flex items-start gap-3 px-6 py-3 hover:bg-primary/5">
-                                                                    <Briefcase size={18} className="mt-0.5 text-primary shrink-0" />
-                                                                    <span className="text-left"><span className="block text-sm font-bold">Find Jobs &amp; Bid</span><span className="block text-xs text-[var(--text-muted)]">For verified service providers.</span></span>
-                                                                </Link>
-                                                            </div>
-                                                        )}
                                                     </React.Fragment>
                                                 )
                                             })}
@@ -714,10 +690,10 @@ export function Header() {
                                 const tradeItems = [
                                     { name: "TradeXchange Overview", href: "/auctions", icon: LayoutGrid },
                                     { name: "Vehicle Auctions", href: "/auctions/browse", icon: Gavel },
-                                    { name: "Delivery & Recovery", href: "/services/delivery", icon: Truck },
-                                    { name: "Vehicle Inspection", href: "/services/inspection", icon: Wrench },
+                                    { name: "Vehicle Transport", href: "/services/delivery", icon: Truck },
+                                    { name: "Vehicle Inspections", href: "/services/inspection", icon: Wrench },
                                     { name: "Vehicle Finance", href: "/services/finance", icon: Banknote },
-                                    { name: "Warranty", href: "/services/warranty", icon: ShieldCheck },
+                                    { name: "Vehicle Warranty", href: "/services/warranty", icon: ShieldCheck },
                                 ]
                                 return (
                                     <div key={link.name} className="w-full">
@@ -748,29 +724,9 @@ export function Header() {
                                                     return (
                                                         <React.Fragment key={item.href}>
                                                             {index > 0 && <div className="h-px bg-[var(--border-default)]" />}
-                                                            {tradeJobActions(item.href) ? (
-                                                                <button type="button" aria-expanded={expandedTradeService === item.href} onClick={() => setExpandedTradeService(current => current === item.href ? null : item.href)} className="flex items-center gap-3 px-4 py-3.5 hover:bg-primary/5 w-full text-left">
-                                                                    <Icon size={19} className="text-primary shrink-0" /><span className="font-bold flex-1">{item.name}</span>
-                                                                    <ChevronDown size={17} className={cn("shrink-0 transition-transform", expandedTradeService === item.href && "rotate-180")} />
-                                                                </button>
-                                                            ) : (
-                                                                <Link href={item.href} role="menuitem" className="flex items-center gap-3 px-4 py-3.5 hover:bg-primary/5" onClick={() => { setIsTradeMenuOpen(false); setIsMobileMenuOpen(false) }}>
+                                                            <Link href={item.href} role="menuitem" className="flex items-center gap-3 px-4 py-3.5 hover:bg-primary/5" onClick={() => { setIsTradeMenuOpen(false); setIsMobileMenuOpen(false) }}>
                                                                     <Icon size={19} className="text-primary shrink-0" /><span className="font-bold flex-1">{item.name}</span>
                                                                 </Link>
-                                                            )}
-                                                            {tradeJobActions(item.href) && expandedTradeService === item.href && (
-                                                                <div className="border-t border-[var(--border-default)]">
-                                                                    <Link href={tradeJobActions(item.href)!.post} className="flex items-start gap-3 px-6 py-3.5 hover:bg-primary/5" onClick={() => { setIsTradeMenuOpen(false); setIsMobileMenuOpen(false) }}>
-                                                                        <FileText size={19} className="mt-0.5 text-primary shrink-0" />
-                                                                        <span><span className="block font-bold">Post a Job</span><span className="block text-xs text-[var(--text-muted)] mt-0.5">Request quotes from approved providers.</span></span>
-                                                                    </Link>
-                                                                    <div className="h-px bg-[var(--border-default)]" />
-                                                                    <Link href={tradeJobActions(item.href)!.bid} className="flex items-start gap-3 px-6 py-3.5 hover:bg-primary/5" onClick={() => { setIsTradeMenuOpen(false); setIsMobileMenuOpen(false) }}>
-                                                                        <Briefcase size={19} className="mt-0.5 text-primary shrink-0" />
-                                                                        <span><span className="block font-bold">Find Jobs &amp; Bid</span><span className="block text-xs text-[var(--text-muted)] mt-0.5">For verified service providers.</span></span>
-                                                                    </Link>
-                                                                </div>
-                                                            )}
                                                         </React.Fragment>
                                                     )
                                                 })}

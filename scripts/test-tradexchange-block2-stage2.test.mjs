@@ -59,8 +59,9 @@ test('website delivery drafts reuse account-isolated session storage and are cle
   assert.match(inspection, /useSessionDraft\(/);
 });
 
-test('one native Post Job CTA lets customer choose the relevant existing form, without another screen', () => {
-  assert.match(menu, /Alert\.alert\('Post a job', 'Choose the service you need\.'/);
+test('native service cards open the relevant existing form without a chooser or provider-only action', () => {
+  assert.match(menu, /onPress=\{\(\) => openService\(service.path\)\}/);
+  assert.doesNotMatch(menu, /Alert\.alert\('Post a job'|navigate\('ProviderJobs'/);
   assert.match(menu, /navigation\.navigate\('CreateServiceJob', \{ serviceType: 'DELIVERY' \}\)/);
   assert.match(menu, /navigation\.navigate\('CreateServiceJob', \{ serviceType: 'INSPECTION' \}\)/);
   assert.doesNotMatch(menu, /navigate\('NewJobChooser'/);
