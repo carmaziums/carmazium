@@ -9,10 +9,12 @@ const code = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
 }).outputText;
 
-function loadUpdater({ nativeBuildVersion = '125', manifestVersion = 111, platform = 'android', response = null } = {}) {
+function loadUpdater({ nativeBuildVersion = '125', manifestVersion = 111, platform = 'android', response = null,
+  nativePackage = null, httpOk = true, fetchError = false } = {}) {
   const calls = { downloads: [], installed: [] };
   const constants = {
     nativeBuildVersion,
+    platform: nativePackage === null ? undefined : { android: { package: nativePackage } },
     expoConfig: { android: { package: 'uk.carmazium.app', versionCode: manifestVersion } },
   };
   const modules = {
@@ -38,7 +40,10 @@ function loadUpdater({ nativeBuildVersion = '125', manifestVersion = 111, platfo
       if (!(name in modules)) throw Error('Unmocked module: ' + name);
       return modules[name];
     },
-    fetch: async () => ({ ok: true, json: async () => ({ android: response }) }),
+    fetch: async () => {
+      if (fetchError) throw Error('Offline');
+      return { ok: httpOk, json: async () => ({ android: response }) };
+    },
     AbortController, setTimeout, clearTimeout,
   });
   return { api: exports, calls };
@@ -105,4 +110,30 @@ test('approved later Android release opens only the Android package installer', 
   assert.equal(calls.installed[0].action, 'android.intent.action.VIEW');
   assert.equal(calls.installed[0].details.type, 'application/vnd.android.package-archive');
   assert.equal(calls.installed[0].details.flags, 1);
+});
+
+
+test('native Android package identity overrides the stale JavaScript manifest', async () => {
+  assert.equal(loadUpdater({ nativePackage: 'uk.carmazium.app' }).api.canSelfUpdate(), true);
+  const foreign = loadUpdater({ nativePackage: 'uk.carmazium.qa', response: version(126) });
+  assert.equal(foreign.api.canSelfUpdate(), false);
+  assert.equal((await foreign.api.checkForUpdateStatus()).status, 'unsupported');
+});
+
+test('manual checks report available, up-to-date, offline and untrusted responses', async () => {
+  const available = await loadUpdater({ response: version(126) }).api.checkForUpdateStatus();
+  assert.equal(available.status, 'available');
+  assert.equal(available.update?.versionCode, 126);
+
+  const current = await loadUpdater({ nativeBuildVersion: '126', response: version(126) }).api.checkForUpdateStatus();
+  assert.equal(current.status, 'up-to-date');
+  assert.equal(current.versionCode, 126);
+
+  const offline = await loadUpdater({ fetchError: true }).api.checkForUpdateStatus();
+  assert.equal(offline.status, 'error');
+  assert.match(offline.message, /connection/i);
+  const failed = await loadUpdater({ httpOk: false }).api.checkForUpdateStatus();
+  assert.equal(failed.status, 'error');
+  const untrusted = await loadUpdater({ response: version(127, 126) }).api.checkForUpdateStatus();
+  assert.equal(untrusted.status, 'error');
 });
