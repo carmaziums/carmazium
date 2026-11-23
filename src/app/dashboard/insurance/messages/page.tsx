@@ -21,11 +21,13 @@ function InsuranceMessagesContent() {
         : (user?.email?.split("@")[0] || "User")
 
     return (
-        <div className="min-h-screen pt-3 pb-24 lg:pt-20 lg:pb-12">
-            <div className="container mx-auto px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8">
-                <DashboardSidebar role="insurance" userName={userName} userType="Insurance Partner" />
+        <div className="min-h-screen pt-3 pb-24 lg:pt-3 lg:pb-4">
+            <div className="w-full max-w-none px-2 sm:px-4 flex flex-col lg:flex-row gap-3 lg:gap-4">
+                <div className="lg:hidden">
+                    <DashboardSidebar role="insurance" userName={userName} userType="Insurance Partner" />
+                </div>
                 <div className="flex-1 min-w-0">
-                    <RoleMessagesInbox subtitle="Customer and insurance conversations" />
+                    <RoleMessagesInbox backHref="/dashboard/insurance" subtitle="Customer and insurance conversations" />
                 </div>
             </div>
         </div>
