@@ -60,3 +60,13 @@ test('TradeXchange jobs remain native and retain their distinct posting and prov
     assert.equal(e.actions.find(a => a.id === service + '-bid').target.screen, 'ProviderJobs');
   }
 });
+
+test('website TradeXchange auction menus agree with native live-auction target', () => {
+  const webHeader = readFileSync(new URL('../../../src/components/layout/Header.tsx', import.meta.url), 'utf8');
+  const destinations = [...webHeader.matchAll(/name: "Vehicle Auctions", href: "([^"]+)"/g)];
+  assert.equal(destinations.length, 2, 'website mobile and desktop menus must both be checked');
+  assert.ok(destinations.every(match => match[1] === '/auctions/browse'));
+  // The live catalogue is KYC gated; a navigation link cannot bypass that.
+  const browse = readFileSync(new URL('../../../src/app/auctions/browse/page.tsx', import.meta.url), 'utf8');
+  assert.match(browse, /canAccessTradeStock|RequireAuth/);
+});
