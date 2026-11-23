@@ -28,6 +28,7 @@ on:
       - "carmazium app/carmazium app/src/screens/main/SearchScreen.tsx"
       - "carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx"
       - "carmazium app/carmazium app/src/screens/main/DealerPurchasesScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/main/ProviderJobsScreen.tsx"
       - "scripts/test-dealer-purchase-destinations.test.mjs"
       - "carmazium app/carmazium app/src/screens/account/MyCarsScreen.tsx"
       - "carmazium app/carmazium app/scripts/test-personal-cars-purchases-mobile.test.mjs"
