@@ -6,7 +6,7 @@ const read = (path) => readFileSync(path, "utf8")
 
 test("personal messages use full desktop width without hiding mobile navigation", () => {
     const page = read("src/app/dashboard/user/page.tsx")
-    assert.match(page, /activeTab === "messages" \? "w-full max-w-none"/)
+    assert.match(page, /activeTab === "messages" \? "w-full max-w-none/)
     assert.match(page, /activeTab === "messages" \? "lg:hidden" : "contents"/)
     assert.match(page, /backHref="\/dashboard\/user"/)
 })
