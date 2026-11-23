@@ -171,7 +171,7 @@ jobs:
               info.NSCameraUsageDescription !== cameraPurpose ||
               info.NSMicrophoneUsageDescription !== undefined ||
               !String(info.NSPhotoLibraryUsageDescription || '').includes('photos')) {
-            throw new Error('Generated iOS Info.plist is missing Apple's reviewed image-picker purpose description or added unwanted microphone access.');
+            throw new Error("Generated iOS Info.plist is missing Apple's reviewed image-picker purpose description or added unwanted microphone access.");
           }
           console.log('Native iOS Info.plist contains Apple-required static purpose string, no microphone purpose, and the reviewed photo picker text');
           NODE

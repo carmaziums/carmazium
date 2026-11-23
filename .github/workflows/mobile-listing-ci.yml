@@ -90,7 +90,7 @@ jobs:
         run: npm run test:seller-specs
 
       - name: Dashboard customisation and native service flows
-        run: node --test scripts/test-dashboard-cards.test.mjs scripts/test-web-dashboard-cards.test.mjs scripts/test-native-service-completion.test.mjs scripts/test-partner-service-parity.test.mjs scripts/test-customer-service-lifecycle.test.mjs scripts/test-tradexchange-directory-parity.test.mjs
+        run: node --test scripts/test-dashboard-cards.test.mjs scripts/test-web-dashboard-cards.test.mjs scripts/test-native-service-completion.test.mjs scripts/test-partner-service-parity.test.mjs scripts/test-customer-service-lifecycle.test.mjs scripts/test-tradexchange-directory-parity.test.mjs scripts/test-tradexchange-entry-links.test.mjs
 
       - name: Original Android update and TradeXchange menu navigation
         run: node --test scripts/test-app-updater.test.mjs scripts/test-app-update-prompt.test.mjs scripts/test-site-menu-auction.test.mjs

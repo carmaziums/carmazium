@@ -14,10 +14,10 @@ function compile(path, modules) {
   runInNewContext(code, { exports, URL, Date, require: name => { assert.ok(Object.hasOwn(modules, name), name); return modules[name]; } });
   return exports;
 }
-async function mount({ role = 'buyer', staff = false, guest = false, width = 390, fontScale = 1, settings = { availability: { DELIVERY: true, INSPECTION: true, FINANCE: true, WARRANTY: true } }, fail = false } = {}) {
+async function mount({ role = 'buyer', staff = false, hasDealerProfile = false, guest = false, width = 390, fontScale = 1, settings = { availability: { DELIVERY: true, INSPECTION: true, FINANCE: true, WARRANTY: true } }, fail = false } = {}) {
   const destinations = [];
   let calls = 0;
-  const auth = { user: guest ? null : { id: 'test-user', isDealerStaff: staff }, accountRole: role, isAuthenticated: !guest };
+  const auth = { user: guest ? null : { id: 'test-user', isDealerStaff: staff, hasDealerProfile }, accountRole: role, isAuthenticated: !guest };
   const navigation = { navigate: (...args) => destinations.push(args), goBack() {} };
   const native = Object.fromEntries(['ScrollView', 'StatusBar', 'Text', 'TouchableOpacity', 'View'].map(name => [name, name]));
   const { ServicesScreen } = compile('screens/main/ServicesScreen.tsx', {
@@ -62,15 +62,17 @@ test('all six native service cards are present, native routes work and the 320px
   } finally { await m.close(); }
 });
 test('business-owner access is direct, staff use dealer dashboard and specialist roles do not enter self-service setup', async () => {
-  for (const [role, staff, label, target, provider] of [
+  for (const [role, staff, label, target, provider, hasDealerProfile = false] of [
     ['dealer', false, 'Manage Partner Account', 'PartnerDashboard', true],
     ['contractor', false, 'Manage Partner Account', 'PartnerDashboard', true],
     ['dealer', true, 'Open dealer dashboard', 'Tabs', false],
+    ['dealer', true, 'Manage Partner Account', 'PartnerDashboard', true, true],
+    ['contractor', true, 'Manage Partner Account', 'PartnerDashboard', true],
     ['finance_partner', false, 'Explore Partner Accounts', 'PartnerGuide', false],
     ['insurance_partner', false, 'Explore Partner Accounts', 'PartnerGuide', false],
     ['admin', false, 'Explore Partner Accounts', 'PartnerGuide', false],
   ]) {
-    const m = await mount({ role, staff });
+    const m = await mount({ role, staff, hasDealerProfile });
     try {
       assert.equal(Boolean(m.button('Provider Dashboard')), provider);
       if (provider) { await m.tap(m.button('Provider Dashboard')); assert.equal(m.destinations.at(-1)[0], 'ProviderOverview'); }
@@ -125,5 +127,5 @@ test('native content links retain validated service scope, warranty listing and 
     ['/services', { name: 'Services' }],
     ['/auctions', { name: 'Services' }],
   ]) assert.deepEqual(normalise(target(path)), expected, path);
-  assert.equal(target('https://other.example/services/delivery/new'), null);
+  for (const href of ['https://other.example/services/delivery/new', 'javascript://www.carmazium.com/services/delivery/new', 'https://name:password@www.carmazium.com/services/delivery/new', 'http://www.carmazium.com/services/delivery/new']) assert.equal(target(href), null, href);
 });

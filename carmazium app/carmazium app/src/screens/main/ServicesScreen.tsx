@@ -40,6 +40,7 @@ export const ServicesScreen: React.FC = () => {
   const userId = useAuthStore(s => s.user?.id);
   const role = useAuthStore(s => s.accountRole);
   const staff = useAuthStore(s => s.user?.isDealerStaff);
+  const hasDealerProfile = useAuthStore(s => s.user?.hasDealerProfile);
   const authenticated = useAuthStore(s => s.isAuthenticated);
   const current = authenticated && !!userId;
   const [snapshot, setSnapshot] = useState<{ userId: string; availability: Availability } | null>(null);
@@ -69,10 +70,11 @@ export const ServicesScreen: React.FC = () => {
     else navigation.navigate(path === '/services/finance' ? 'Finance' : 'Warranty');
   };
   const specialist = ['finance_partner', 'insurance_partner', 'admin'].includes(role);
-  const businessOwner = current && !staff && (role === 'dealer' || role === 'contractor');
-  const partnerLabel = current && staff ? 'Open dealer dashboard' : businessOwner ? 'Manage Partner Account' : current && !specialist ? 'Explore Partner Account setup' : 'Explore Partner Accounts';
+  const staffOnly = current && !!staff && !hasDealerProfile && role !== 'contractor';
+  const businessOwner = current && !staffOnly && (role === 'dealer' || role === 'contractor');
+  const partnerLabel = staffOnly ? 'Open dealer dashboard' : businessOwner ? 'Manage Partner Account' : current && !specialist ? 'Explore Partner Account setup' : 'Explore Partner Accounts';
   const openPartner = () => {
-    if (current && staff) navigation.navigate('Tabs', { screen: 'DealerHome' });
+    if (staffOnly) navigation.navigate('Tabs', { screen: 'DealerHome' });
     else if (current && !specialist) navigation.navigate('PartnerDashboard');
     else navigation.navigate('PartnerGuide');
   };

@@ -92,6 +92,8 @@ interface User {
    * || isStaffMember`).
    */
   isDealerStaff?: boolean;
+  /** Own dealer profile, including pending verification; independent of staff memberships. */
+  hasDealerProfile?: boolean;
 }
 
 interface UserProfileResponse {
@@ -391,6 +393,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               isEmailVerified: profile.isEmailVerified || false,
               isVerified: profile.dealerProfile?.isVerified ?? false,
               isDealerStaff: (profile.dealerStaffMemberships?.length ?? 0) > 0,
+              hasDealerProfile: !!profile.dealerProfile,
             },
           });
         }
@@ -487,6 +490,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             isEmailVerified: profile.isEmailVerified || false,
             isVerified: profile.dealerProfile?.isVerified ?? false,
             isDealerStaff: (profile.dealerStaffMemberships?.length ?? 0) > 0,
+            hasDealerProfile: !!profile.dealerProfile,
           },
         });
       }
@@ -595,6 +599,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               isEmailVerified: profile.isEmailVerified || false,
               isVerified: profile.dealerProfile?.isVerified ?? false,
               isDealerStaff: (profile.dealerStaffMemberships?.length ?? 0) > 0,
+              hasDealerProfile: !!profile.dealerProfile,
             },
           });
         }

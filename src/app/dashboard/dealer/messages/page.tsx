@@ -2,13 +2,13 @@
 
 import * as React from "react"
 import { Activity } from "lucide-react"
-import Link from "next/link"
+import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { RoleMessagesInbox } from "@/components/chat/RoleMessagesInbox"
 import { useAuth } from "@/context/AuthContext"
 import { getDealerRoute } from "@/config/dealerRouteConfig"
 
 function MessagesContent() {
-    const { loading } = useAuth()
+    const { user, profile, loading } = useAuth()
 
     if (loading) {
         return (
@@ -23,12 +23,25 @@ function MessagesContent() {
         )
     }
 
+    const userName = profile?.firstName
+        ? `${profile.firstName} ${profile.lastName || ""}`
+        : (user?.email?.split("@")[0] || "Dealer")
     const route = getDealerRoute("/dashboard/dealer/messages")
 
     return (
-        <div className="w-full min-w-0 px-2 sm:px-4 py-3">
-            <Link href="/dashboard/dealer" className="mb-2 inline-flex min-h-11 items-center font-semibold underline">Back to dealer dashboard</Link>
-            <RoleMessagesInbox title={route.title} subtitle={route.subHeader} spacious className="bg-[var(--bg-card)]" />
+        <div className="min-h-screen pt-3 pb-24 lg:h-[calc(100dvh-5rem)] lg:min-h-0 lg:overflow-hidden lg:p-0">
+            <div className="flex w-full max-w-none flex-col gap-3 px-2 sm:px-4 lg:h-full lg:flex-row lg:gap-0 lg:p-0">
+                <div className="lg:hidden">
+                    <DashboardSidebar role="dealer" userName={userName} userType="Dealer Account" />
+                </div>
+                <div className="flex-1 min-w-0 lg:h-full">
+                    <RoleMessagesInbox
+                        title={route.title}
+                        subtitle={route.subHeader}
+                        backHref="/dashboard/dealer"
+                    />
+                </div>
+            </div>
         </div>
     )
 }

@@ -21,15 +21,17 @@ function ServiceMessagesContent() {
         : (user?.email?.split("@")[0] || "User")
 
     return (
-        <div className="min-h-screen pt-3 pb-24 lg:pt-20 lg:pb-12">
-            <div className="container mx-auto px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8">
+        <div className="min-h-screen pt-3 pb-24 lg:h-[calc(100dvh-5rem)] lg:min-h-0 lg:overflow-hidden lg:p-0">
+            <div className="flex w-full max-w-none flex-col gap-3 px-2 sm:px-4 lg:h-full lg:flex-row lg:gap-0 lg:p-0">
+                <div className="lg:hidden">
                 <DashboardSidebar
                     role="provider"
                     userName={userName}
                     userType={profile?.role ? `${profile.role} Account` : "Service Provider"}
                 />
-                <div className="flex-1 min-w-0">
-                    <RoleMessagesInbox subtitle="Customer and provider conversations" />
+                </div>
+                <div className="flex-1 min-w-0 lg:h-full">
+                    <RoleMessagesInbox backHref="/dashboard/service" subtitle="Customer and provider conversations" />
                 </div>
             </div>
         </div>

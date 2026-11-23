@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Script } from 'node:vm';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const read = (path) => readFileSync(resolve(root, path), 'utf8');
@@ -64,4 +65,17 @@ test('iOS candidate validates the same photo-picker permission policy as app.jso
   assert.ok(candidateFlow.includes('expo config --type introspect --json'));
   assert.ok(candidateFlow.includes("throw new Error('Apple ITMS-90683:"));
   assert.ok(candidateFlow.includes('info.NSMicrophoneUsageDescription !== undefined'));
+});
+
+test('every inline iOS release validation script parses before a signed build is requested', () => {
+  const openings = [...flow.matchAll(/^[ \t]*node -[^\r\n]* <<'NODE'\r?$/gm)];
+  const scripts = [...flow.matchAll(/^([ \t]*)node -[^\r\n]* <<'NODE'\r?\n([\s\S]*?)^\1NODE[ \t]*\r?$/gm)];
+  assert.ok(scripts.length > 0, 'The source, signing and Info.plist checks must remain present');
+  assert.equal(scripts.length, openings.length, 'Every inline Node validation must have its closing heredoc');
+  for (const [index, match] of scripts.entries()) {
+    assert.doesNotThrow(
+      () => new Script(match[2], { filename: `ios-release-inline-${index + 1}.js` }),
+      `Inline validation ${index + 1} must parse before EAS consumes build minutes`,
+    );
+  }
 });

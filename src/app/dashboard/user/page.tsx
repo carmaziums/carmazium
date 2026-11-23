@@ -184,12 +184,12 @@ function UnifiedUserDashboardContent() {
 
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
     const userRole = profile?.role || "User"
-    if (activeTab === "messages") return <div className="w-full min-w-0 px-2 sm:px-4 py-3"><Link href="/dashboard/user?tab=overview" className="mb-2 inline-flex min-h-11 items-center font-semibold underline">Back to dashboard</Link><MessagesTab /></div>
 
     return (
-        <div className="min-h-screen pb-12 pt-20 lg:pt-4">
-            <div className="container mx-auto px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8">
-                {/* Unified Sidebar */}
+        <div className={`min-h-screen ${activeTab === "messages" ? "pt-3 pb-24 lg:h-[calc(100dvh-5rem)] lg:min-h-0 lg:overflow-hidden lg:p-0" : "pt-20 lg:pt-4 pb-12"}`}>
+            <div className={`${activeTab === "messages" ? "w-full max-w-none lg:h-full lg:gap-0 lg:p-0" : "container mx-auto"} px-2 sm:px-5 flex flex-col lg:flex-row gap-3 lg:gap-8`}>
+                {/* Keep the mobile dashboard navigation, but do not reserve desktop width for it in Messages. */}
+                <div className={activeTab === "messages" ? "lg:hidden" : "contents"}>
                 <DashboardSidebar
                     role="seller"
                     userName={userName}
@@ -202,8 +202,9 @@ function UnifiedUserDashboardContent() {
                         </Button>
                     </Link>
                 </DashboardSidebar>
+                </div>
 
-                <div className="flex-1 space-y-8 min-w-0">
+                <div className={`flex-1 min-w-0 space-y-8 ${activeTab === "messages" ? "lg:h-full lg:min-h-0 lg:space-y-0" : ""}`}>
 
                     {showBoostSuccess && (
                         <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
@@ -214,7 +215,7 @@ function UnifiedUserDashboardContent() {
                     )}
 
                     {/* Tab Content */}
-                    <div data-tour="personal-dashboard-content" className="min-h-[60vh] w-full min-w-0">
+                    <div data-tour="personal-dashboard-content" className={`min-h-[60vh] w-full min-w-0 ${activeTab === "messages" ? "lg:h-full lg:min-h-0" : ""}`}>
                         {activeTab === "overview" && (
                             <OverviewTab
                                 data={dashboardData}
@@ -227,6 +228,7 @@ function UnifiedUserDashboardContent() {
                         {activeTab === "purchases" && <PrivatePurchasesTab />}
                         {activeTab === "offers" && <OffersTab onRefreshStats={fetchStats} />}
                         {activeTab === "bids" && <OutgoingOffersTab onRefreshStats={fetchStats} />}
+                        {activeTab === "messages" && <MessagesTab />}
                         {activeTab === "watchlist" && <WatchlistTab />}
                         {activeTab === "stats" && <StatsTab />}
                         {activeTab === "earnings" && <EarningsTab />}
@@ -1770,11 +1772,11 @@ function StatsTab() {
 
 function MessagesTab() {
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full min-w-0">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 w-full min-w-0 lg:h-full">
             <RoleMessagesInbox
                 title="Messages"
                 subtitle="Conversations with buyers, sellers and CarMazium support"
-                spacious className="bg-[var(--bg-card)]"
+                backHref="/dashboard/user"
             />
         </div>
     )

@@ -34,7 +34,7 @@ test('dealer and personal cards use the same customer workspace while provider d
 });
 test('legacy message pages preserve room links but do not render duplicate inboxes',()=>{
  for(const role of ['buyer','seller']){const s=read('src/app/dashboard/'+role+'/messages/page.tsx');assert.match(s,/redirect\("\/dashboard\/user\?tab=messages"/);assert.match(s,/encodeURIComponent\(room\)/);assert.doesNotMatch(s,/ChatWindow|ChatRoomList/);}
- for(const role of ['user','dealer']){const s=read('src/app/dashboard/'+role+(role==='user'?'/page.tsx':'/messages/page.tsx'));assert.match(s,/spacious/);assert.match(s,/Back to .*dashboard/);}
- const shared=read('src/components/chat/RoleMessagesInbox.tsx');assert.match(shared,/lg:h-\[calc\(100dvh-145px\)\]/);assert.match(shared,/autoSelectedRef.current === targetRoomId/);
+ for(const role of ['user','dealer']){const s=read('src/app/dashboard/'+role+(role==='user'?'/page.tsx':'/messages/page.tsx'));assert.match(s,/lg:h-full/);assert.ok(s.includes('backHref="/dashboard/'+role+'"'));assert.match(s,/lg:hidden/);}
+ const shared=read('src/components/chat/RoleMessagesInbox.tsx');assert.match(shared,/lg:h-full lg:border-0 lg:rounded-none lg:shadow-none/);assert.match(shared,/autoSelectedRef.current === targetRoomId/);
  const admin=read('src/app/dashboard/admin/messages/page.tsx');assert.match(admin,/Back to admin dashboard/);assert.match(admin,/AdminSupportPanel/);assert.match(admin,/profile\?\.role !== "ADMIN"/);
 });
