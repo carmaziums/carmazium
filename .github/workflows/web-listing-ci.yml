@@ -15,6 +15,11 @@ on:
       - "src/app/sitemap.ts"
       - "scripts/test-tradexchange-ux-canonical.test.mjs"
       - "scripts/test-tradexchange-ux-homepage.test.mjs"
+      - "scripts/test-tradexchange-ux-auctions.test.mjs"
+      - "src/app/auctions/how-it-works/**"
+      - "src/app/auctions/won/**"
+      - "src/components/services/ArrangeDelivery.tsx"
+      - "src/components/services/ArrangeInspection.tsx"
       - "src/components/tradexchange/TradeXchangeAccountActions.tsx"
       - "src/app/become-a-partner/page.tsx"
       - "src/components/layout/Header.tsx"
@@ -213,7 +218,7 @@ jobs:
         run: node --test scripts/test-website-introduction.test.mjs
 
       - name: Service setup and provider partnership routing
-        run: node --test scripts/test-service-setup-routing.test.mjs scripts/test-service-job-form-validation.test.mjs scripts/test-tradexchange-audit.test.mjs scripts/test-tradexchange-ux-canonical.test.mjs scripts/test-tradexchange-ux-homepage.test.mjs
+        run: node --test scripts/test-service-setup-routing.test.mjs scripts/test-service-job-form-validation.test.mjs scripts/test-tradexchange-audit.test.mjs scripts/test-tradexchange-ux-canonical.test.mjs scripts/test-tradexchange-ux-homepage.test.mjs scripts/test-tradexchange-ux-auctions.test.mjs
 
       - name: Caravan buyer facts exclude motor-vehicle reports
         run: node --test scripts/test-caravan-buyer-information.test.mjs

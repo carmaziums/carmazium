@@ -1,298 +1,106 @@
-"use client"
-
-import * as React from "react"
 import Link from "next/link"
-import { motion, AnimatePresence } from "framer-motion"
-import {
-    BadgeCheck, Banknote, Box, ChevronDown, ChevronRight, Clock, CreditCard,
-    Eye, FileText, Gauge, Gavel, Handshake, Lock, Search, ShieldCheck,
-    TrendingUp, Trophy, Users, Zap,
-} from "lucide-react"
+import { ArrowRight, BadgeCheck, Banknote, Clock, CreditCard, FileText, Gavel, Handshake, Lock, Search, ShieldCheck, Truck, Zap, type LucideIcon } from "lucide-react"
+import { deliveryServiceEnabled, inspectionServiceEnabled } from "@/lib/featureFlags"
 
-/**
- * The public "How Carmazium Auctions Work" pitch.
- *
- * Lifted verbatim out of the old single-file /auctions page so the Trade
- * Exchange landing page and anything else can render it. It is deliberately
- * NOT behind the dealer gate: this is the recruitment pitch, it shows no
- * vehicles and no live bids, and it is what makes the Trade Exchange findable
- * by the dealers it is for. Keep it outside <RequireAuth> wherever it is used.
- *
- * Copy is approved — do not paraphrase.
- */
-
-
-// ─── How It Works content (moved from the standalone /auctions/how-it-works page,
-// which now just redirects here — approved copy, do not paraphrase. 31 Oct 2026:
-// two factual corrections in seller steps 1 and 5, pending owner approval in #719) ──
-
+// Literal content is also the source for the native auction guide.
 const SELLER_STEPS = [
-    {
-        icon: FileText,
-        title: "List for free.",
-        desc: "Add your vehicle details, photos and known damage. Motor vehicles use the registration-assisted form. Touring caravans use manual details, need at least one photo and do not require registration, VIN, mileage or year; you choose your price without an automated valuation.",
-    },
-    {
-        icon: Lock,
-        title: "Set your reserve.",
-        desc: "This is the minimum you're willing to accept. It's never shown to bidders — only you know it.",
-    },
-    {
-        icon: Clock,
-        title: "Go live for 24 hours.",
-        desc: "Your auction runs for a full 24-hour window, with real-time bidding from verified trade dealers.",
-    },
-    {
-        icon: Zap,
-        title: "Anti-snipe protection.",
-        desc: "Any bid placed in the final 3 minutes automatically extends the auction by 3 more minutes — so a last-second bid can't end things before you've had a fair chance to respond.",
-    },
-    {
-        icon: Gavel,
-        title: "Auction ends.",
-        desc: "If your reserve is met, the winning dealer is notified. In-app chat with them opens once they've paid the £125 buyer fee, or straight away if a fee waiver applies.",
-    },
-    {
-        icon: Handshake,
-        title: "Arrange handover.",
-        desc: "Agree the final details and handover directly with the buyer, then submit proof once it's done.",
-    },
-    {
-        icon: Banknote,
-        title: "Get paid — plus £100.",
-        desc: "Once your handover proof is approved, CarMazium pays your £100 seller bonus directly to your account.",
-    },
+    { icon: FileText, title: "List your vehicle for free", desc: "Add vehicle details, photos and all known faults. Motor vehicles use registration-assisted entry. Touring caravans use manual details and at least one photo; no registration, VIN, mileage or year is required for a touring caravan." },
+    { icon: Lock, title: "Choose a private reserve", desc: "Set the minimum price you are willing to accept. Bidders cannot see your reserve." },
+    { icon: Clock, title: "Let verified dealers bid", desc: "Your approved listing enters a 24-hour auction. Late bids can extend the closing time." },
+    { icon: Gavel, title: "Agree a successful sale", desc: "A qualifying winning bid or an offer you explicitly accept below reserve can complete the auction. If no sale is agreed, you can relist." },
+    { icon: Handshake, title: "Arrange the handover", desc: "The winning dealer can contact you once the buyer fee is paid or an approved waiver applies. Arrange inspection and collection directly." },
+    { icon: Banknote, title: "Receive payment directly", desc: "The dealer pays you for the vehicle. Confirm receipt of the funds before releasing the vehicle and submitting handover evidence." },
+    { icon: BadgeCheck, title: "Receive the qualifying £100 incentive", desc: "After a qualifying successful sale, confirmed payment and approved handover photo, CarMazium releases the £100 seller incentive through its payout process." },
 ]
 
 const BUYER_STEPS = [
-    {
-        icon: ShieldCheck,
-        title: "Get verified.",
-        desc: "Apply for a Dealer account and complete our KYC check.",
-    },
-    {
-        icon: Search,
-        title: "Browse live and upcoming auctions.",
-        desc: "Filter by make, model, condition grade, and more.",
-    },
-    {
-        icon: Eye,
-        title: "Check the vehicle.",
-        desc: "Review the seller’s photos, description and disclosures. Motor vehicles show available official history; touring caravans use seller-supplied information without DVLA/MOT history or a car-shaped damage model.",
-    },
-    {
-        icon: TrendingUp,
-        title: "Bid in real time,",
-        desc: "or use Buy It Now if the seller has set one for an instant win.",
-    },
-    {
-        icon: Trophy,
-        title: "Win the auction.",
-        desc: "Highest bid wins, provided the seller's reserve is met.",
-    },
-    {
-        icon: CreditCard,
-        title: "Pay the buyer fee, if applicable.",
-        desc: "After winning, pay the one-off £125 buyer fee unless your account has an approved fee waiver. Paying the fee, or an eligible waiver, unlocks in-app chat with the seller to arrange handover. The fee is separate from the vehicle price.",
-    },
-    {
-        icon: Users,
-        title: "Complete the purchase",
-        desc: "directly with the seller.",
-    },
+    { icon: ShieldCheck, title: "Complete dealer verification", desc: "Use your existing Partner Account or create one if you are new. Verified motor traders can bid; ordinary retail customers cannot bid." },
+    { icon: Search, title: "Find and review a vehicle", desc: "Review the seller's photographs, declared faults and available vehicle history. Exterior grading is not a mechanical inspection." },
+    { icon: Gavel, title: "Place a bid or request Buy It Now", desc: "Bid in real time. If the seller offers Buy It Now, submit a request at that price; it is not an instant win and requires seller acceptance." },
+    { icon: Clock, title: "Wait for a confirmed win", desc: "The highest qualifying bid can win when the auction closes. A below-reserve offer requires the seller's explicit acceptance." },
+    { icon: CreditCard, title: "Pay the standard £125 buyer fee", desc: "Complete the buyer-fee checkout within the displayed 72-hour deadline, unless an approved fee waiver applies. This unlocks seller contact and chat; the fee is separate from the vehicle price." },
+    { icon: Truck, title: "Inspect and arrange collection", desc: "After winning and fee clearance, use the purchase's linked inspection or delivery request where available. Agree collection and inspect the vehicle before handover." },
+    { icon: Handshake, title: "Pay the seller and complete handover", desc: "Pay the vehicle price directly to the seller. CarMazium does not collect or hold the vehicle purchase funds." },
 ]
 
 const RULES = [
-    { icon: Clock, term: "24-Hour Auctions", def: "Auctions start with a 24-hour window. Late bids can extend the end time under the anti-snipe rule." },
-    { icon: Zap, term: "Anti-Snipe Rule", def: "A bid in the last 3 minutes extends the auction by 3 minutes — repeats until bidding settles." },
-    { icon: Lock, term: "Reserve Price", def: "Set privately by the seller. If it isn't met, there's no sale and nothing is owed by anyone." },
-    { icon: Trophy, term: "Buy It Now", def: "Optional — sellers can set an instant-buy price. Buyers can request it; the seller has 24 hours to confirm or decline." },
-    { icon: FileText, term: "Free to List", def: "Listing a car for auction costs nothing." },
-    { icon: Banknote, term: "£100 Seller Bonus", def: "Paid once CarMazium approves your submitted handover proof." },
-    { icon: CreditCard, term: "£125 Buyer Fee", def: "Charged on auction wins unless an approved fee waiver applies. Payment or a waiver unlocks seller chat." },
-    { icon: ShieldCheck, term: "Verified Bidders Only", def: "Every bidder is a KYC-verified trade dealer." },
+    { icon: Clock, term: "24-hour auction", def: "The initial auction window is 24 hours; late bids may extend it." },
+    { icon: Zap, term: "Late-bid extension", def: "A qualifying bid in the final 3 minutes adds 3 minutes to the scheduled closing time. This can repeat." },
+    { icon: Lock, term: "Reserve price", def: "The seller's minimum remains private. Below-reserve bids do not automatically complete a sale; the seller may explicitly accept a provisional offer." },
+    { icon: Gavel, term: "Buy It Now", def: "The seller must accept the request before the earlier of 24 hours after the request or the auction closing time." },
+    { icon: CreditCard, term: "Buyer fee", def: "The standard £125 fee is charged after a confirmed win, subject to an approved fee waiver. It is separate from the vehicle price." },
+    { icon: BadgeCheck, term: "Seller incentive", def: "The £100 incentive is conditional on a qualifying completed sale and approved handover evidence." },
 ]
 
 const TRUST = [
-    { icon: Gauge, title: "Automatic condition grading (1–5)", desc: "Computed from the damage you report, not self-selected." },
-    { icon: Box, title: "Condition & damage information", desc: "Review seller photographs and disclosures before bidding. Touring caravans use photographs instead of a car-shaped 3D damage model." },
-    { icon: BadgeCheck, title: "Vehicle history where available", desc: "Motor-vehicle listings show available official MOT and registration information. Touring caravan details are supplied manually by the seller." },
+    { icon: ShieldCheck, title: "Verified trade buyers", desc: "Dealer bidding requires verification. Private buyers can use the retail marketplace." },
+    { icon: FileText, title: "Seller-reported condition", desc: "Review declared faults and photographs. Exterior damage grades are based on reported damage, not independent mechanical checks. Touring caravans use seller-supplied details." },
+    { icon: Search, title: "Available vehicle history", desc: "Motor-vehicle listings show available MOT and registration information. History and disclosed condition do not guarantee a fault-free vehicle." },
 ]
 
 const FAQS = [
-    {
-        q: "Do I need to be a dealer to bid?",
-        a: "Yes — bidding is limited to verified dealer accounts. Anyone can list and sell a car, though.",
-    },
-    {
-        q: "What happens if my reserve isn't met?",
-        a: "No sale happens, no fees are charged, and you're free to relist.",
-    },
-    {
-        q: "When do I actually get my £100?",
-        a: "After you submit proof of handover and CarMazium's team approves it.",
-    },
-    {
-        q: "What's the £125 buyer fee for?",
-        a: "The standard fee is £125 after an auction win, unless your account has an approved waiver. Paying it, or having an eligible waiver, unlocks in-app chat with the seller for handover. The vehicle price is settled directly between buyer and seller.",
-    },
-    {
-        q: "Does CarMazium handle payment for the car itself?",
-        a: "No. The vehicle sale is agreed and completed directly between you and the buyer — CarMazium isn't a party to that payment. CarMazium's role covers the auction, verification, the seller bonus, and the buyer connection fee.",
-    },
+    { q: "Can a private individual sell at auction?", a: "Yes. Private sellers and motor traders can list for free. Only verified trade dealers can bid." },
+    { q: "What if my reserve is not met?", a: "There is no automatic sale. The seller may explicitly accept a provisional offer below reserve or relist if no sale is agreed." },
+    { q: "When do I receive the £100 incentive?", a: "After a qualifying successful sale, confirmation that the dealer paid you directly and approval of your handover photo. Payout is subject to the applicable terms." },
+    { q: "Does CarMazium hold the vehicle purchase price?", a: "No. Buyers pay sellers directly for vehicles. The auction buyer fee, seller incentive and separate paid TradeXchange services use their own payment processes." },
+    { q: "Can a winning dealer arrange an independent inspection?", a: "Where available, an eligible winning dealer can request a linked inspection after fee clearance and before approved handover. A completed linked inspection with faults recorded may allow refusal under the auction terms. The £125 buyer fee is refunded if paid; a waived fee has no cash refund." },
+    { q: "Can I arrange vehicle delivery?", a: "Yes, where available. Use the linked delivery option on an eligible purchase to request transport quotes. Delivery is a separate paid service, not included in the auction fee." },
 ]
 
-function StepTimeline({ steps }: { steps: { icon: React.ComponentType<{ size?: number; className?: string }>; title: string; desc: string }[] }) {
-    return (
-        <ol className="relative">
-            {steps.map((step, i) => (
-                <li key={step.title} className="relative pl-16 pb-8 last:pb-0">
-                    {i < steps.length - 1 && (
-                        <span className="absolute left-[21px] top-11 bottom-0 w-px bg-gradient-to-b from-primary/40 via-[var(--border-default)] to-transparent" aria-hidden />
-                    )}
-                    <span className="absolute left-0 top-0 flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white font-black text-sm tabular-nums shadow-[0_4px_14px_rgba(237,28,36,0.3)]">
-                        {i + 1}
-                    </span>
-                    <div className="flex items-center gap-2 mb-1">
-                        <step.icon size={14} className="text-primary shrink-0" />
-                        <h4 className="font-heading font-bold text-[15px]">{step.title}</h4>
-                    </div>
-                    <p className="text-sm text-[var(--text-muted)] leading-relaxed max-w-lg">{step.desc}</p>
-                </li>
-            ))}
-        </ol>
-    )
-}
+const panel = "rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 sm:p-7"
+const linkStyle = "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 py-3 font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-body)]"
+const primary = linkStyle + " bg-red-700 text-white hover:bg-red-800"
+const secondary = linkStyle + " border border-[var(--border-default)] hover:bg-[var(--bg-input)]"
 
-function FaqItem({ q, a }: { q: string; a: string }) {
-    return (
-        <details className="group border border-[var(--border-default)] rounded-xl overflow-hidden bg-[var(--bg-input)]">
-            <summary className="flex items-center justify-between gap-4 px-6 py-5 cursor-pointer list-none hover:bg-primary/5 dark:hover:bg-white/5 transition-colors">
-                <span className="font-semibold text-sm">{q}</span>
-                <ChevronDown size={18} className="text-[var(--text-muted)] shrink-0 transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="px-6 pb-5 text-sm text-[var(--text-muted)] leading-relaxed border-t border-[var(--border-default)] pt-4">
-                {a}
-            </div>
-        </details>
-    )
+function Steps({ steps }: { steps: { icon: LucideIcon; title: string; desc: string }[] }) {
+    return <ol className="mt-6 space-y-5">
+        {steps.map((step, i) => <li key={step.title} className="flex gap-4">
+            <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--bg-input)] font-bold tabular-nums">{i + 1}</span>
+            <div className="min-w-0"><h3 className="font-bold text-lg leading-snug">{step.title}</h3><p className="mt-1 text-base leading-7 text-[var(--text-secondary)]">{step.desc}</p></div>
+        </li>)}
+    </ol>
 }
-
 
 export function HowAuctionsWork() {
-    const [track, setTrack] = React.useState<"seller" | "buyer">("seller")
-
-    return (
-        <section id="how-it-works" className="border-t border-[var(--border-default)] bg-[var(--bg-card)] mt-8">
-                <div className="container mx-auto px-6 py-20">
-
-                    {/* Intro */}
-                    <div className="text-center mb-12">
-                        <p className="text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-3">How It Works</p>
-                        <h2 className="text-3xl md:text-4xl font-black text-[var(--text-primary)] font-heading">How CarMazium Auctions Work</h2>
-                        <p className="text-[var(--text-muted)] text-sm mt-3 max-w-md mx-auto">Two audiences, two tracks — pick the one that&apos;s you, then see exactly what happens next.</p>
-                    </div>
-
-                    {/* Track toggle */}
-                    <div className="flex justify-center mb-12">
-                        <div className="inline-flex items-center bg-[var(--bg-input)] p-1 rounded-full border border-[var(--border-default)] relative">
-                            <motion.div
-                                className="absolute top-1 bottom-1 bg-primary rounded-full shadow-lg shadow-primary/25 z-0"
-                                layoutId="track-pill"
-                                transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
-                                style={{
-                                    left: track === "seller" ? "4px" : "50%",
-                                    right: track === "seller" ? "50%" : "4px",
-                                }}
-                            />
-                            <button
-                                onClick={() => setTrack("seller")}
-                                className={`relative z-10 px-8 py-2.5 rounded-full text-sm font-bold transition-colors duration-300 ${track === "seller" ? "text-white" : "text-[var(--text-secondary)] hover:text-primary"}`}
-                            >
-                                For Sellers
-                            </button>
-                            <button
-                                onClick={() => setTrack("buyer")}
-                                className={`relative z-10 px-8 py-2.5 rounded-full text-sm font-bold transition-colors duration-300 ${track === "buyer" ? "text-white" : "text-[var(--text-secondary)] hover:text-primary"}`}
-                            >
-                                For Buyers
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="max-w-3xl mx-auto mb-20">
-                        <div className="rounded-[1.75rem] border border-[var(--border-default)] bg-[var(--bg-input)] p-8 md:p-10">
-                            {track === "seller" ? (
-                                <>
-                                    <StepTimeline steps={SELLER_STEPS} />
-                                    <div className="mt-2 rounded-xl border-l-[3px] border-primary bg-[var(--bg-card)] px-5 py-4 text-sm text-[var(--text-muted)] leading-relaxed">
-                                        <strong className="text-[var(--text-primary)]">Note:</strong> CarMazium isn&apos;t a party to the vehicle sale itself — that&apos;s agreed directly between you and the buyer. The £100 bonus is CarMazium&apos;s reward for selling through the platform.
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <p className="text-sm text-[var(--text-muted)] mb-8 leading-relaxed">
-                                        Bidding is restricted to <strong className="text-[var(--text-primary)]">KYC-verified dealer accounts</strong> — every bid comes from a checked, trade buyer, not an anonymous account.
-                                    </p>
-                                    <StepTimeline steps={BUYER_STEPS} />
-                                    <div className="mt-2 rounded-xl border-l-[3px] border-primary bg-[var(--bg-card)] px-5 py-4 text-sm text-[var(--text-muted)] leading-relaxed">
-                                        <strong className="text-[var(--text-primary)]">Note:</strong> The standard £125 fee is payable only after an auction win, unless an approved waiver applies — there&apos;s nothing to pay just for bidding or browsing.
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Rules, explained */}
-                    <div className="text-center mb-10">
-                        <h3 className="text-2xl md:text-3xl font-black font-heading tracking-tight mb-3">The Rules, Explained</h3>
-                        <p className="text-[var(--text-muted)] text-sm">The fine print, in plain English.</p>
-                    </div>
-                    <div className="max-w-4xl mx-auto grid sm:grid-cols-2 gap-4 mb-20">
-                        {RULES.map((rule) => (
-                            <div key={rule.term} className="flex items-start gap-3.5 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5 hover:border-primary/25 transition-colors">
-                                <div className="shrink-0 w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
-                                    <rule.icon size={16} className="text-primary" />
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="font-heading font-bold text-sm mb-1">{rule.term}</p>
-                                    <p className="text-xs text-[var(--text-muted)] leading-relaxed">{rule.def}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Trust & Transparency */}
-                    <div className="text-center mb-10">
-                        <h3 className="text-2xl md:text-3xl font-black font-heading tracking-tight mb-3">Trust &amp; Transparency</h3>
-                        <p className="text-[var(--text-muted)] text-sm">Every listing tells you exactly what you&apos;re bidding on.</p>
-                    </div>
-                    <div className="max-w-4xl mx-auto grid sm:grid-cols-3 gap-5 mb-20">
-                        {TRUST.map((item) => (
-                            <div key={item.title} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-6 text-center hover:border-primary/25 transition-colors">
-                                <div className="mx-auto mb-4 w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                                    <item.icon size={22} className="text-primary" />
-                                </div>
-                                <h4 className="font-heading font-bold text-sm mb-2">{item.title}</h4>
-                                <p className="text-xs text-[var(--text-muted)] leading-relaxed">{item.desc}</p>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* FAQ */}
-                    <div className="max-w-2xl mx-auto mb-20">
-                        <div className="text-center mb-10">
-                            <h3 className="text-2xl md:text-3xl font-black font-heading tracking-tight mb-3">FAQ</h3>
-                            <p className="text-[var(--text-muted)] text-sm">Can&apos;t find your answer? <Link href="/contact" className="text-primary hover:underline">Get in touch</Link>.</p>
-                        </div>
-                        <div className="space-y-3">
-                            {FAQS.map((faq) => (
-                                <FaqItem key={faq.q} q={faq.q} a={faq.a} />
-                            ))}
-                        </div>
-                    </div>
-
-                </div>
+    return <div id="how-it-works" className="mx-auto max-w-7xl space-y-12 px-5 py-10 sm:px-8 sm:py-14">
+        <div className="grid gap-5 lg:grid-cols-2">
+            <section id="for-sellers" aria-labelledby="seller-heading" className={panel + " scroll-mt-24 flex flex-col"}>
+                <p className="text-sm font-bold text-red-700 dark:text-red-300">For private sellers and motor traders</p>
+                <h2 id="seller-heading" className="mt-2 text-3xl font-heading font-bold">Sell a vehicle at auction</h2>
+                <p className="mt-3 text-base leading-7 text-[var(--text-secondary)]">Free auction listing. No seller auction listing fee. A qualifying sale can earn a £100 incentive.</p>
+                <Steps steps={SELLER_STEPS} />
+                <div className="mt-auto pt-6"><Link href="/sell?sellMode=auction#sell-options" className={primary}>Start free auction listing <ArrowRight size={18} aria-hidden="true" /></Link></div>
             </section>
-    )
+            <section id="for-dealers" aria-labelledby="dealer-heading" className={panel + " scroll-mt-24 flex flex-col"}>
+                <p className="text-sm font-bold text-red-700 dark:text-red-300">For verified motor traders</p>
+                <h2 id="dealer-heading" className="mt-2 text-3xl font-heading font-bold">Buy vehicles at auction</h2>
+                <p className="mt-3 text-base leading-7 text-[var(--text-secondary)]">Browse trade stock. Pay the standard £125 buyer fee only after a confirmed win, unless an approved waiver applies.</p>
+                <Steps steps={BUYER_STEPS} />
+                <div className="mt-auto flex flex-wrap gap-2 pt-6"><Link href="/auctions/browse" className={primary}>Browse dealer auctions <ArrowRight size={18} aria-hidden="true" /></Link><Link href="/become-a-partner" className={secondary}>Partner Account guide</Link></div>
+            </section>
+        </div>
+        <section aria-label="Private retail buyers" className={panel}>
+            <h2 className="text-xl font-bold">Buying as a private customer?</h2>
+            <p className="mt-2 text-base leading-7 text-[var(--text-secondary)]">You can buy directly from retail sellers without bidding in a dealer auction.</p>
+            <Link href="/search" className={secondary + " mt-4"}>Browse retail cars <ArrowRight size={17} aria-hidden="true" /></Link>
+        </section>
+        <section aria-labelledby="auction-rules"><h2 id="auction-rules" className="text-2xl font-heading font-bold">Auction rules explained</h2>
+            <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{RULES.map(rule => <div key={rule.term} className={panel}>
+                <rule.icon size={23} className="text-red-700 dark:text-red-300" aria-hidden="true" />
+                <dt className="mt-3 text-lg font-bold">{rule.term}</dt><dd className="mt-2 text-base leading-7 text-[var(--text-secondary)]">{rule.def}</dd>
+            </div>)}</dl>
+        </section>
+        <section aria-labelledby="auction-checks"><h2 id="auction-checks" className="text-2xl font-heading font-bold">Know what you are buying</h2>
+            <div className="mt-5 grid gap-4 md:grid-cols-3">{TRUST.map(item => <article className={panel} key={item.title}><item.icon size={23} className="text-red-700 dark:text-red-300" aria-hidden="true" /><h3 className="mt-3 font-bold text-lg">{item.title}</h3><p className="mt-2 text-base leading-7 text-[var(--text-secondary)]">{item.desc}</p></article>)}</div>
+        </section>
+        {(deliveryServiceEnabled || inspectionServiceEnabled) && <section aria-labelledby="auction-services" className={panel}>
+            <h2 id="auction-services" className="text-2xl font-heading font-bold">Need help with inspection or transport?</h2>
+            <p className="mt-3 text-base leading-7 text-[var(--text-secondary)]">For an eligible auction purchase, use the linked services on the won-auction page after fee clearance. This keeps the vehicle and purchase associated with your request. Service charges are separate from the auction fee and vehicle price.</p>
+            <div className="mt-4 flex flex-wrap gap-2">{inspectionServiceEnabled && <Link href="/services/inspection" className={secondary}>Explore vehicle inspections</Link>}{deliveryServiceEnabled && <Link href="/services/delivery" className={secondary}>Explore vehicle transport</Link>}</div>
+        </section>}
+        <section aria-labelledby="auction-faq"><h2 id="auction-faq" className="text-2xl font-heading font-bold">Frequently asked questions</h2>
+            <div className="mt-5 space-y-3">{FAQS.map(faq => <details key={faq.q} className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)]"><summary className="min-h-12 cursor-pointer px-5 py-4 font-semibold focus-visible:outline-2 focus-visible:outline-primary">{faq.q}</summary><p className="px-5 pb-5 text-base leading-7 text-[var(--text-secondary)]">{faq.a}</p></details>)}</div>
+            <p className="mt-5 text-base text-[var(--text-secondary)]">Read the <Link href="/terms" className="font-semibold underline">auction terms</Link> or <Link href="/contact" className="font-semibold underline">contact our team</Link>.</p>
+        </section>
+    </div>
 }

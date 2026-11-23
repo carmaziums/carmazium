@@ -37,8 +37,8 @@ const SELLER_STEPS: LedgerStep[] = [
 const DEALER_STEPS: LedgerStep[] = [
   { icon: Search, title: "Search & find", desc: "Filter by make, model, grade and location to shortlist cars.", tag: "Browse stock" },
   { icon: Gavel, title: "Join the auction", desc: "Only verified motor traders with bidding access can bid live in the dealer auction.", tag: "LIVE · 24h" },
-  { icon: Trophy, title: "Win the auction", desc: "Highest bid when the clock runs out takes the car.", tag: "Won" },
-  { icon: ClipboardCheck, title: "Complete checkout", desc: "Pay the one-off buyer fee that unlocks the seller's contact details.", tag: "£125 fee" },
+  { icon: Trophy, title: "Win the auction", desc: "The highest qualifying bid can win at close; a below-reserve offer requires seller acceptance.", tag: "Won" },
+  { icon: ClipboardCheck, title: "Complete checkout", desc: "Pay the standard £125 buyer fee unless an approved waiver applies; fee clearance unlocks seller contact.", tag: "£125 fee" },
   { icon: Truck, title: "Arrange collection", desc: "Coordinate inspection and collection directly with the seller.", tag: "Direct chat" },
   { icon: ShieldCheck, title: "Drive with confidence", desc: "Inspect, complete the handover, and it's yours.", tag: "✓ Done" },
 ]
@@ -59,7 +59,7 @@ const RECEIPTS = {
       { k: "Winning bid", v: "£8,450", note: "paid to the seller, directly" },
       { k: "CarMazium buyer fee", v: "£125", note: "unlocks the seller's contact details" },
     ],
-    total: { k: "Total to drive away", v: "£8,575" },
+    total: { k: "Vehicle price + standard buyer fee", v: "£8,575" },
   },
 }
 
@@ -292,7 +292,7 @@ export default function HowItWorksPage() {
         receipt={RECEIPTS.buyer}
         ctaLabel="Learn About Dealer Auctions"
         ctaHref="/auctions/how-it-works"
-        photo={{ src: "/assets/images/featured-suv.webp", alt: "Vehicle ready for collection", quote: "One fee. Nothing else moves through CarMazium.", align: "right" }}
+        photo={{ src: "/assets/images/featured-suv.webp", alt: "Vehicle ready for collection", quote: "Pay the vehicle price directly to the seller.", align: "right" }}
       />
 
       <section aria-label="Retail buyers" className="container mx-auto px-5 pb-4">
@@ -322,7 +322,7 @@ export default function HowItWorksPage() {
                 Fairness Built-In with <br /> <span className="text-primary">Anti-Snipe</span> Tech
               </h2>
               <p className="text-[var(--text-muted)] text-lg mb-8 leading-relaxed">
-                Say goodbye to last-second "sniping". Our auction system simulates a real auction room—if a bid comes in during the final 3 minutes, the clock resets, giving everyone a fair chance to win.
+                Say goodbye to last-second "sniping". Our auction system simulates a real auction room—if a bid comes in during the final 3 minutes, 3 minutes are added to the scheduled closing time, giving bidders more time to respond.
               </p>
 
               <div className="space-y-6 mb-10">
@@ -357,7 +357,7 @@ export default function HowItWorksPage() {
 
                 <p className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Example time remaining</p>
                 <p className="text-4xl sm:text-5xl font-mono text-primary font-bold tabular-nums mb-1">00:01:58</p>
-                <p className="text-xs text-[var(--text-muted)] mb-6">Resets to 3:00 on every bid in the final 3 minutes</p>
+                <p className="text-xs text-[var(--text-muted)] mb-6">A bid in the final 3 minutes adds 3 minutes to the closing time</p>
 
                 <div className="space-y-2">
                   {BID_LOG.map((row) => (
@@ -366,7 +366,7 @@ export default function HowItWorksPage() {
                       <span className="font-mono font-bold tabular-nums">{row.amount}</span>
                       {row.reset && (
                         <span className="flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 rounded-full px-2 py-0.5 shrink-0 whitespace-nowrap">
-                          <Zap size={10} /> clock reset
+                          <Zap size={10} /> 3 min added
                         </span>
                       )}
                     </div>

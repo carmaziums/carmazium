@@ -101,11 +101,11 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'CarMazium seller auctions are free to list and normally run for 24 hours, with verified motor traders eligible to bid.',
             'Dealer trading access and ALL live auction bidding is restricted to approved verified motor-trade dealers. Platform ADMIN auction oversight is separate and available through /dashboard/admin/auctions; it does not confer dealer bidding permission. Private buyers and private sellers cannot bid or buy directly through these auctions; retail cars for the general public are at /search. Selling a car via a free auction is not the same as being eligible to bid.',
             'Winning dealer auction fee is £125 one-off (subject to authorised grants), payable within the prescribed 72-hour period; a losing bidder does not pay that fee.',
-            'After the fee is paid, seller contact and deal details can unlock; the winning dealer pays the actual vehicle purchase price directly to the seller.',
-            'Do not claim that a bid, a reserve offer, a sale or a fee refund is automatically final without checking its status in the relevant dashboard.',
+            'After fee clearance (payment or an approved waiver), seller contact and deal details can unlock; the winning dealer pays the actual vehicle purchase price directly to the seller.',
+            'A qualifying late bid in the final 3 minutes adds 3 minutes to the closing time. Buy It Now requires seller acceptance before the earlier of the 24-hour response period or the auction close. A below-reserve provisional offer requires explicit seller acceptance. Do not claim that a bid, a reserve offer, a sale or a fee refund is automatically final without checking its status in the relevant dashboard.',
             'Private seller auction management: /dashboard/seller/auctions. Dealer auction management: /dashboard/dealer/auctions.',
         ].join(' '),
-        sources: ['src/app/pricing/traders/page.tsx','src/app/pricing/page.tsx','src/app/auctions/won/[id]/page.tsx','src/lib/auctionApi.ts','backend/src/auth/guards/verified-dealer.guard.ts']
+        sources: ['src/components/auctions/HowAuctionsWork.tsx','src/app/pricing/traders/page.tsx','src/app/pricing/page.tsx','src/app/auctions/won/[id]/page.tsx','src/lib/auctionApi.ts','backend/src/auth/guards/verified-dealer.guard.ts']
     },
     {
         id: 'sale-handover-reward',

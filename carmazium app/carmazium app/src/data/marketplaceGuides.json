@@ -45,12 +45,12 @@
       },
       {
         "title": "Win the auction",
-        "desc": "Highest bid when the clock runs out takes the car.",
+        "desc": "The highest qualifying bid can win at close; a below-reserve offer requires seller acceptance.",
         "tag": "Won"
       },
       {
         "title": "Complete checkout",
-        "desc": "Pay the one-off buyer fee that unlocks the seller's contact details.",
+        "desc": "Pay the standard £125 buyer fee unless an approved waiver applies; fee clearance unlocks seller contact.",
         "tag": "£125 fee"
       },
       {
@@ -104,7 +104,7 @@
           }
         ],
         "total": {
-          "k": "Total to drive away",
+          "k": "Vehicle price + standard buyer fee",
           "v": "£8,575"
         }
       }
@@ -139,132 +139,128 @@
   "auction": {
     "SELLER_STEPS": [
       {
-        "title": "List for free.",
-        "desc": "Add your vehicle details, photos and known damage. Motor vehicles use the registration-assisted form. Touring caravans use manual details, need at least one photo and do not require registration, VIN, mileage or year; you choose your price without an automated valuation."
+        "title": "List your vehicle for free",
+        "desc": "Add vehicle details, photos and all known faults. Motor vehicles use registration-assisted entry. Touring caravans use manual details and at least one photo; no registration, VIN, mileage or year is required for a touring caravan."
       },
       {
-        "title": "Set your reserve.",
-        "desc": "This is the minimum you're willing to accept. It's never shown to bidders — only you know it."
+        "title": "Choose a private reserve",
+        "desc": "Set the minimum price you are willing to accept. Bidders cannot see your reserve."
       },
       {
-        "title": "Go live for 24 hours.",
-        "desc": "Your auction runs for a full 24-hour window, with real-time bidding from verified trade dealers."
+        "title": "Let verified dealers bid",
+        "desc": "Your approved listing enters a 24-hour auction. Late bids can extend the closing time."
       },
       {
-        "title": "Anti-snipe protection.",
-        "desc": "Any bid placed in the final 3 minutes automatically extends the auction by 3 more minutes — so a last-second bid can't end things before you've had a fair chance to respond."
+        "title": "Agree a successful sale",
+        "desc": "A qualifying winning bid or an offer you explicitly accept below reserve can complete the auction. If no sale is agreed, you can relist."
       },
       {
-        "title": "Auction ends.",
-        "desc": "If your reserve is met, the winning dealer is notified. In-app chat with them opens once they've paid the £125 buyer fee, or straight away if a fee waiver applies."
+        "title": "Arrange the handover",
+        "desc": "The winning dealer can contact you once the buyer fee is paid or an approved waiver applies. Arrange inspection and collection directly."
       },
       {
-        "title": "Arrange handover.",
-        "desc": "Agree the final details and handover directly with the buyer, then submit proof once it's done."
+        "title": "Receive payment directly",
+        "desc": "The dealer pays you for the vehicle. Confirm receipt of the funds before releasing the vehicle and submitting handover evidence."
       },
       {
-        "title": "Get paid — plus £100.",
-        "desc": "Once your handover proof is approved, CarMazium pays your £100 seller bonus directly to your account."
+        "title": "Receive the qualifying £100 incentive",
+        "desc": "After a qualifying successful sale, confirmed payment and approved handover photo, CarMazium releases the £100 seller incentive through its payout process."
       }
     ],
     "BUYER_STEPS": [
       {
-        "title": "Get verified.",
-        "desc": "Apply for a Dealer account and complete our KYC check."
+        "title": "Complete dealer verification",
+        "desc": "Use your existing Partner Account or create one if you are new. Verified motor traders can bid; ordinary retail customers cannot bid."
       },
       {
-        "title": "Browse live and upcoming auctions.",
-        "desc": "Filter by make, model, condition grade, and more."
+        "title": "Find and review a vehicle",
+        "desc": "Review the seller's photographs, declared faults and available vehicle history. Exterior grading is not a mechanical inspection."
       },
       {
-        "title": "Check the vehicle.",
-        "desc": "Review the seller’s photos, description and disclosures. Motor vehicles show available official history; touring caravans use seller-supplied information without DVLA/MOT history or a car-shaped damage model."
+        "title": "Place a bid or request Buy It Now",
+        "desc": "Bid in real time. If the seller offers Buy It Now, submit a request at that price; it is not an instant win and requires seller acceptance."
       },
       {
-        "title": "Bid in real time,",
-        "desc": "or use Buy It Now if the seller has set one for an instant win."
+        "title": "Wait for a confirmed win",
+        "desc": "The highest qualifying bid can win when the auction closes. A below-reserve offer requires the seller's explicit acceptance."
       },
       {
-        "title": "Win the auction.",
-        "desc": "Highest bid wins, provided the seller's reserve is met."
+        "title": "Pay the standard £125 buyer fee",
+        "desc": "Complete the buyer-fee checkout within the displayed 72-hour deadline, unless an approved fee waiver applies. This unlocks seller contact and chat; the fee is separate from the vehicle price."
       },
       {
-        "title": "Pay the buyer fee, if applicable.",
-        "desc": "After winning, pay the one-off £125 buyer fee unless your account has an approved fee waiver. Paying the fee, or an eligible waiver, unlocks in-app chat with the seller to arrange handover. The fee is separate from the vehicle price."
+        "title": "Inspect and arrange collection",
+        "desc": "After winning and fee clearance, use the purchase's linked inspection or delivery request where available. Agree collection and inspect the vehicle before handover."
       },
       {
-        "title": "Complete the purchase",
-        "desc": "directly with the seller."
+        "title": "Pay the seller and complete handover",
+        "desc": "Pay the vehicle price directly to the seller. CarMazium does not collect or hold the vehicle purchase funds."
       }
     ],
     "RULES": [
       {
-        "term": "24-Hour Auctions",
-        "def": "Auctions start with a 24-hour window. Late bids can extend the end time under the anti-snipe rule."
+        "term": "24-hour auction",
+        "def": "The initial auction window is 24 hours; late bids may extend it."
       },
       {
-        "term": "Anti-Snipe Rule",
-        "def": "A bid in the last 3 minutes extends the auction by 3 minutes — repeats until bidding settles."
+        "term": "Late-bid extension",
+        "def": "A qualifying bid in the final 3 minutes adds 3 minutes to the scheduled closing time. This can repeat."
       },
       {
-        "term": "Reserve Price",
-        "def": "Set privately by the seller. If it isn't met, there's no sale and nothing is owed by anyone."
+        "term": "Reserve price",
+        "def": "The seller's minimum remains private. Below-reserve bids do not automatically complete a sale; the seller may explicitly accept a provisional offer."
       },
       {
         "term": "Buy It Now",
-        "def": "Optional — sellers can set an instant-buy price. Buyers can request it; the seller has 24 hours to confirm or decline."
+        "def": "The seller must accept the request before the earlier of 24 hours after the request or the auction closing time."
       },
       {
-        "term": "Free to List",
-        "def": "Listing a car for auction costs nothing."
+        "term": "Buyer fee",
+        "def": "The standard £125 fee is charged after a confirmed win, subject to an approved fee waiver. It is separate from the vehicle price."
       },
       {
-        "term": "£100 Seller Bonus",
-        "def": "Paid once CarMazium approves your submitted handover proof."
-      },
-      {
-        "term": "£125 Buyer Fee",
-        "def": "Charged on auction wins unless an approved fee waiver applies. Payment or a waiver unlocks seller chat."
-      },
-      {
-        "term": "Verified Bidders Only",
-        "def": "Every bidder is a KYC-verified trade dealer."
+        "term": "Seller incentive",
+        "def": "The £100 incentive is conditional on a qualifying completed sale and approved handover evidence."
       }
     ],
     "TRUST": [
       {
-        "title": "Automatic condition grading (1–5)",
-        "desc": "Computed from the damage you report, not self-selected."
+        "title": "Verified trade buyers",
+        "desc": "Dealer bidding requires verification. Private buyers can use the retail marketplace."
       },
       {
-        "title": "Condition & damage information",
-        "desc": "Review seller photographs and disclosures before bidding. Touring caravans use photographs instead of a car-shaped 3D damage model."
+        "title": "Seller-reported condition",
+        "desc": "Review declared faults and photographs. Exterior damage grades are based on reported damage, not independent mechanical checks. Touring caravans use seller-supplied details."
       },
       {
-        "title": "Vehicle history where available",
-        "desc": "Motor-vehicle listings show available official MOT and registration information. Touring caravan details are supplied manually by the seller."
+        "title": "Available vehicle history",
+        "desc": "Motor-vehicle listings show available MOT and registration information. History and disclosed condition do not guarantee a fault-free vehicle."
       }
     ],
     "FAQS": [
       {
-        "q": "Do I need to be a dealer to bid?",
-        "a": "Yes — bidding is limited to verified dealer accounts. Anyone can list and sell a car, though."
+        "q": "Can a private individual sell at auction?",
+        "a": "Yes. Private sellers and motor traders can list for free. Only verified trade dealers can bid."
       },
       {
-        "q": "What happens if my reserve isn't met?",
-        "a": "No sale happens, no fees are charged, and you're free to relist."
+        "q": "What if my reserve is not met?",
+        "a": "There is no automatic sale. The seller may explicitly accept a provisional offer below reserve or relist if no sale is agreed."
       },
       {
-        "q": "When do I actually get my £100?",
-        "a": "After you submit proof of handover and CarMazium's team approves it."
+        "q": "When do I receive the £100 incentive?",
+        "a": "After a qualifying successful sale, confirmation that the dealer paid you directly and approval of your handover photo. Payout is subject to the applicable terms."
       },
       {
-        "q": "What's the £125 buyer fee for?",
-        "a": "The standard fee is £125 after an auction win, unless your account has an approved waiver. Paying it, or having an eligible waiver, unlocks in-app chat with the seller for handover. The vehicle price is settled directly between buyer and seller."
+        "q": "Does CarMazium hold the vehicle purchase price?",
+        "a": "No. Buyers pay sellers directly for vehicles. The auction buyer fee, seller incentive and separate paid TradeXchange services use their own payment processes."
       },
       {
-        "q": "Does CarMazium handle payment for the car itself?",
-        "a": "No. The vehicle sale is agreed and completed directly between you and the buyer — CarMazium isn't a party to that payment. CarMazium's role covers the auction, verification, the seller bonus, and the buyer connection fee."
+        "q": "Can a winning dealer arrange an independent inspection?",
+        "a": "Where available, an eligible winning dealer can request a linked inspection after fee clearance and before approved handover. A completed linked inspection with faults recorded may allow refusal under the auction terms. The £125 buyer fee is refunded if paid; a waived fee has no cash refund."
+      },
+      {
+        "q": "Can I arrange vehicle delivery?",
+        "a": "Yes, where available. Use the linked delivery option on an eligible purchase to request transport quotes. Delivery is a separate paid service, not included in the auction fee."
       }
     ]
   }

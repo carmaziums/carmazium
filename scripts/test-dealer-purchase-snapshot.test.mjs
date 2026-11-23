@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs"
 // Ships switched off: nothing reads or writes the new tables until the owner
 // applies the migration and sets PURCHASE_SNAPSHOTS_ENABLED=true.
 
-const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8")
+const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8").replace(/\r\n/g, "\n")
 const APP = "carmazium app/carmazium app/src/"
 
 test("migration is additive, idempotent, RLS-locked and documented as unapplied", () => {
