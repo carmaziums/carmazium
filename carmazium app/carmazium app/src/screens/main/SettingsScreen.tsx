@@ -26,6 +26,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { PresentedProfileImage, ProfileImageAdjustment } from '../../components/ProfileImagePresentation';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { AndroidUpdateSettings } from '../../components/AndroidUpdateSettings';
 import { useSingleColumnSettings } from '../../lib/nativeLayoutParity';
 import { getOrCreateSupportRoom } from '../../lib/chatApi';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
@@ -1566,7 +1567,7 @@ export const SettingsScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         </View>
-
+        <AndroidUpdateSettings />
 
       </ScrollView>
 
