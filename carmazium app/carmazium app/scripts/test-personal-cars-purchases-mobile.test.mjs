@@ -29,3 +29,20 @@ test('Purchases shows recorded collections, real accepted state and only purchas
 test('Collection writes only after explicit confirmation and ignores duplicate submits',async()=>{
  let alert,finish;const writes=[];const {BuyerCollectedButton}=compile('components/purchases/BuyerCollectedButton.tsx',{'../Button':{Button:'Button'},'react-native':{View:'View',Text:'Text',Alert:{alert:(...args)=>{alert=args;}}},'../../lib/apiClient':{apiClient:(path,options)=>{writes.push([path,options]);return new Promise(resolve=>finish=resolve);}}});let t;await act(async()=>{t=create(React.createElement(BuyerCollectedButton,{saleId:'safe/id'}));});await click(t,"I've collected this car");assert.equal(writes.length,0);assert.match(alert[1],/physically received/);const confirm=alert[2].find(b=>b.text==='Confirm collected');await act(async()=>{confirm.onPress();confirm.onPress();});assert.equal(writes.length,1);assert.equal(writes[0][0],'/listings/purchase-sales/safe%2Fid/confirm-collection');await act(async()=>finish({}));assert.match(text(t),/Collection recorded/);await act(async()=>t.unmount());
 });
+
+
+test('dealer completed purchase rows follow website stage groups and preserve receipt actions', () => {
+ const source=readFileSync(new URL('../src/screens/main/DealerPurchasesScreen.tsx',import.meta.url),'utf8');
+ for(const required of [
+  'const groupedVisible = useMemo',
+  'if (!isHistory) return visible',
+  'HISTORY_STATUSES.indexOf(a.status)',
+  'historyGroupCounts = useMemo',
+  'startsGroup = isHistory &&',
+  'styles.statusSectionHeader',
+  'styles.statusSectionCount',
+  'data={groupedVisible}',
+  'PurchaseReceiptButton saleId={item.id}',
+  "navigation.navigate('DealerPurchaseDetail'",
+ ]) assert.ok(source.includes(required),required);
+});
