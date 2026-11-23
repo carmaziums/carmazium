@@ -465,7 +465,7 @@
       }
     ],
     "must": [
-      "extend|extension|late|anti.snipe|\\b(?:qualifying\\s+)?bid\\s+in\\s+the\\s+final\\s+(?:3|three)\\s+minutes?\\s+adds?\\s+(?:3|three)\\s+minutes?\\s+to\\s+(?:the\\s+)?auction(?:['\\u2019]s)?\\s+(?:scheduled\\s+)?closing\\s+time\\b"
+      "extend|extension|late|anti.snipe|\\b(?:qualifying\\s+)?bids?(?:\\s+(?:placed|received|submitted|made))?\\s+in\\s+the\\s+final\\s+(?:3|three)\\s+minutes?\\s+adds?\\s+(?:3|three)\\s+minutes?\\s+to\\s+(?:the\\s+)?auction(?:['\\u2019]s)?\\s+(?:scheduled\\s+)?closing\\s+time\\b"
     ]
   },
   {
@@ -1379,7 +1379,7 @@
       }
     ],
     "must": [
-      "payment|paid|funds",
+      "payment|paid|funds|\\bpay(?:s|ing)?\\b",
       "not|no"
     ]
   },
