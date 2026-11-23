@@ -137,3 +137,21 @@ test('manual checks report available, up-to-date, offline and untrusted response
   const untrusted = await loadUpdater({ response: version(127, 126) }).api.checkForUpdateStatus();
   assert.equal(untrusted.status, 'error');
 });
+
+
+test('app detects signed APK updates on launch and resume with short retry on failure', () => {
+  const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  const prompt = readFileSync(new URL('../src/components/AppUpdatePrompt.tsx', import.meta.url), 'utf8');
+  const settings = readFileSync(new URL('../src/screens/main/SettingsScreen.tsx', import.meta.url), 'utf8');
+  const control = readFileSync(new URL('../src/components/AndroidUpdateSettings.tsx', import.meta.url), 'utf8');
+  assert.match(app, /if \(__DEV__ \|\| !Updates\.isEnabled\) return/);
+  assert.match(app, /<AppUpdatePrompt \/>/);
+  assert.match(prompt, /CHECK_EVERY_MS = 15 \* 60_000/);
+  assert.match(prompt, /RETRY_AFTER_FAILURE_MS = 60_000/);
+  assert.match(prompt, /if \(checkInFlight\.current \|\|/);
+  assert.match(prompt, /AppState\.addEventListener\('change'/);
+  assert.match(settings, /<AndroidUpdateSettings \/>/);
+  assert.match(control, /accessibilityLabel="Check for updates"/);
+  assert.match(control, /Android installer opened\. Confirm Install/);
+  assert.match(control, /if \(!supported\) return null/);
+});
