@@ -152,7 +152,7 @@ test('app detects signed APK updates on launch and resume with short retry on fa
   assert.match(prompt, /if \(checkInFlight\.current \|\|/);
   assert.match(prompt, /AppState\.addEventListener\('change'/);
   assert.match(prompt, /setInterval\(\(\) => \{ void check\(\); \}, FOREGROUND_POLL_MS\)/);
-  assert.match(prompt, /REMIN D_AFTER_MS/.replace('REMIN D','REMIND'));
+  assert.match(prompt, /REMIND_AFTER_MS/);
   assert.match(prompt, /SNOOZE_KEY = 'carmazium:app-update:later:v1'/);
   assert.match(prompt, /label="Later"/);
   assert.match(prompt, /label=\{downloading \? 'Updating…' : 'Update now'\}/);
