@@ -183,7 +183,17 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
         <Button label="Refresh jobs" variant="outline" disabled={loading} onPress={refresh} />
         <Button label="Provider overview" variant="outline" onPress={() => navigation.navigate('ProviderOverview')} />
       </View>
-      <View style={styles.postJobCard}><Text style={styles.pageDescription}>Looking for the customer side instead? Any signed-in CarMazium user can post a job and approved providers will see matching work in this marketplace.</Text><Button label="Post a job" variant="outline" onPress={() => Alert.alert('Post a job', 'Choose the service you need.', [{ text: 'Delivery & Recovery', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'DELIVERY' }) }, { text: 'Vehicle Inspection', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'INSPECTION' }) }, { text: 'Cancel', style: 'cancel' }])} /></View>
+      <View style={styles.postJobCard}>
+        <Text style={styles.pageDescription}>Looking for the customer side instead? Any signed-in CarMazium user can{' '}
+          <Text accessibilityRole="link" style={styles.postJobLink}
+            onPress={() => Alert.alert('Post a job', 'Choose the service you need.', [
+              { text: 'Delivery & Recovery', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'DELIVERY' }) },
+              { text: 'Vehicle Inspection', onPress: () => navigation.navigate('CreateServiceJob', { serviceType: 'INSPECTION' }) },
+              { text: 'Cancel', style: 'cancel' },
+            ])}>post a job here</Text>{' '}
+          and approved providers will see matching work in this marketplace.
+        </Text>
+      </View>
 
       <View style={styles.tabs}>
         <TouchableOpacity
@@ -207,7 +217,7 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
       </View>
 
       {!!error && jobs.length > 0 && <View style={styles.postJobCard}><Text accessibilityRole="alert" style={styles.errorText}>{error}</Text><Button label="Retry loading more" variant="outline" onPress={() => void loadMore()} /></View>}
-      <View style={styles.filters}>
+      {selected?.items.length ? <View style={styles.filters}>
         {FILTERS.map((item) => (
           <TouchableOpacity
             key={item}
@@ -222,7 +232,7 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
             </Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </View> : null}
 
       {tab === 'open' && (
         <Text style={styles.pageDescription}>
@@ -230,17 +240,7 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation, route }) => {
           Manage matching areas in My services. Email alerts depend on notification settings.
         </Text>
       )}
-      <TouchableOpacity
-        style={styles.manageCoverage}
-        onPress={() => navigation.navigate('PartnerDashboard')}
-        accessibilityRole="button"
-        accessibilityLabel="Manage approved services and job-matching coverage"
-        activeOpacity={0.8}
-      >
-        <Ionicons name="options-outline" size={17} color={Colors.accent} />
-        <Text style={styles.manageCoverageText}>Manage service areas & verification</Text>
-        <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
-      </TouchableOpacity>
+
     </View>
   );
   // Loading / approval / load-error states render inside the list.
@@ -321,7 +321,8 @@ const styles = StyleSheet.create({
   pageTitle: { fontSize: 30, fontFamily: FontFamily.bold, color: Colors.textPrimary, marginVertical: 12 },
   pageDescription: { fontSize: 14, lineHeight: 22, color: Colors.textSecondary },
   pageActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 16 },
-  postJobCard: { padding: 16, gap: 12, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderRadius: 16, marginBottom: 16 },
+  postJobCard: { padding: 16, gap: 8, backgroundColor: Colors.bgElevated, borderWidth: 1, borderColor: Colors.borderSubtle, borderRadius: 16, marginBottom: 16 },
+  postJobLink: { fontFamily: FontFamily.bold, color: Colors.accent, textDecorationLine: 'underline' },
   errorText: { fontSize: 14, color: Colors.error },
   header: {
     flexDirection: 'row',
@@ -343,9 +344,9 @@ const styles = StyleSheet.create({
     ...Elevation.card,
   },
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.textPrimary },
-  headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted, marginTop: 2 },
-  tabs: { flexDirection: 'row', marginHorizontal: 0, marginTop: 4, borderRadius: Radius.inline, padding: 4, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border },
-  tab: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
+  headerSub: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accent, marginTop: 10, letterSpacing: 2, textTransform: 'uppercase' },
+  tabs: { flexDirection: 'row', alignSelf: 'flex-start', marginHorizontal: 0, marginTop: 4, borderRadius: Radius.inline, padding: 4, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border },
+  tab: { minHeight: 48, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
   tabActive: { backgroundColor: Colors.accent, borderBottomWidth: 3, borderBottomColor: Colors.accentDark, ...Elevation.neon },
   tabText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.textMuted, letterSpacing: 0.7 },
   tabTextActive: { color: Colors.onAccent },
