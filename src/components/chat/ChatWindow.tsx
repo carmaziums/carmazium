@@ -65,6 +65,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const [consentBusy, setConsentBusy] = React.useState(false)
     const [showAiOptions, setShowAiOptions] = React.useState(false)
     const [showAdminQuickReplies, setShowAdminQuickReplies] = React.useState(false)
+    React.useEffect(() => setShowAdminQuickReplies(false), [room.id])
     const [consentError, setConsentError] = React.useState<string | null>(null)
     const [loading, setLoading] = React.useState(true)
     const [loadingOlder, setLoadingOlder] = React.useState(false)
@@ -788,7 +789,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
             {/* Header */}
             <div className="flex shrink-0 items-center gap-3 border-b border-[var(--border-default)] px-3 py-2.5 lg:px-5">
                 {onBack && (
-                    <button onClick={onBack} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors shrink-0">
+                    <button onClick={onBack} className="shrink-0 text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)] lg:hidden">
                         <ArrowLeft size={20} />
                     </button>
                 )}
@@ -1336,7 +1337,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                 {isAdminViewer && (
                     <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border-default)] px-3 py-1.5 lg:px-4">
                         <button type="button" onClick={() => setShowAdminQuickReplies(open => !open)}
-                            aria-expanded={showAdminQuickReplies} aria-controls="admin-chat-quick-replies"
+                            aria-expanded={showAdminQuickReplies} aria-controls={showAdminQuickReplies ? "admin-chat-quick-replies" : undefined}
                             className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]">
                             <Zap size={13} aria-hidden="true" /> Quick replies {showAdminQuickReplies ? "−" : "+"}
                         </button>
