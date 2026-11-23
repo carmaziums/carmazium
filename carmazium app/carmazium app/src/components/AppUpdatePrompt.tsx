@@ -2,16 +2,17 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Modal, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { Button } from './Button';
-import { AvailableUpdate, checkForUpdate, downloadAndInstall } from '../lib/appUpdater';
+import { AvailableUpdate, checkForUpdateStatus, downloadAndInstall } from '../lib/appUpdater';
 import { Colors } from '../constants/colors';
 import { Elevation, Radius } from '../constants/spacing';
 import { FontFamily, FontSize } from '../constants/typography';
 
-const CHECK_EVERY_MS = 6 * 60 * 60_000;
+const CHECK_EVERY_MS = 15 * 60_000;
+const RETRY_AFTER_FAILURE_MS = 60_000;
 
 /**
  * "New version available" prompt. Checks on launch and when the app comes
- * back to the foreground (at most every 6 hours). Update downloads the new
+ * back to the foreground (after 15 minutes, or one minute after failure). Update downloads the new
  * version in the app and opens Android's installer.
  */
 export const AppUpdatePrompt: React.FC = () => {
@@ -20,12 +21,25 @@ export const AppUpdatePrompt: React.FC = () => {
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const lastCheck = useRef(0);
+  const checkInFlight = useRef(false);
 
   const check = useCallback(async () => {
-    if (Date.now() - lastCheck.current < CHECK_EVERY_MS) return;
+    if (checkInFlight.current || Date.now() - lastCheck.current < CHECK_EVERY_MS) return;
+    checkInFlight.current = true;
     lastCheck.current = Date.now();
-    const found = await checkForUpdate();
-    if (found) setUpdate(found);
+    try {
+      const result = await checkForUpdateStatus();
+      // A network error must not block another update check for six hours.
+      if (result.status === 'error') {
+        lastCheck.current = Date.now() - CHECK_EVERY_MS + RETRY_AFTER_FAILURE_MS;
+      } else if (result.status === 'available') {
+        setUpdate(result.update);
+      } else {
+        setUpdate(null);
+      }
+    } finally {
+      checkInFlight.current = false;
+    }
   }, []);
 
   useEffect(() => {
