@@ -50,25 +50,55 @@ export function isTrustedAndroidUpdate(value: unknown): value is AvailableUpdate
 
 /** Only the customer build checks (not preview/test builds or iOS). */
 export function canSelfUpdate(): boolean {
-  return Platform.OS === 'android' && Constants.expoConfig?.android?.package === PRODUCTION_PACKAGE;
+  if (Platform.OS !== 'android') return false;
+  // On signed APKs the native platform manifest is more authoritative than a
+  // potentially stale Expo JS manifest; never offer a customer APK to a
+  // differently identified app.
+  const nativePackage = Constants.platform?.android?.package;
+  if (nativePackage && nativePackage !== PRODUCTION_PACKAGE) return false;
+  return (nativePackage || Constants.expoConfig?.android?.package) === PRODUCTION_PACKAGE;
 }
 
-export async function checkForUpdate(): Promise<AvailableUpdate | null> {
-  if (!canSelfUpdate()) return null;
+export type UpdateCheckStatus =
+  | { status: 'available'; update: AvailableUpdate }
+  | { status: 'up-to-date'; versionCode: number }
+  | { status: 'unsupported' }
+  | { status: 'error'; message: string };
+
+/**
+ * Returns a visible result for Settings and a retryable error for the launch
+ * checker. The previous null-only API concealed offline and invalid responses
+ * for six hours, making a failed check indistinguishable from up to date.
+ */
+export async function checkForUpdateStatus(): Promise<UpdateCheckStatus> {
+  if (!canSelfUpdate()) return { status: 'unsupported' };
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10_000);
   try {
-    const res = await fetch(VERSION_URL, { signal: controller.signal, headers: { Accept: 'application/json' } });
-    if (!res.ok) return null;
+    const res = await fetch(VERSION_URL, {
+      signal: controller.signal,
+      headers: { Accept: 'application/json', 'Cache-Control': 'no-cache' },
+    });
+    if (!res.ok) return { status: 'error', message: 'Could not contact CarMazium updates. Please try again.' };
     const body = (await res.json()) as { android?: AvailableUpdate | null };
-    const latest = body?.android;
-    if (!isTrustedAndroidUpdate(latest)) return null;
-    return latest.versionCode > currentVersionCode() ? latest : null;
+    if (!isTrustedAndroidUpdate(body?.android)) {
+      return { status: 'error', message: 'The latest Android release details could not be verified.' };
+    }
+    if (body.android.versionCode > currentVersionCode()) {
+      return { status: 'available', update: body.android };
+    }
+    return { status: 'up-to-date', versionCode: currentVersionCode() };
   } catch {
-    return null;
+    return { status: 'error', message: 'Could not check for updates. Check your connection and try again.' };
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Compatibility wrapper for consumers that only need an available APK. */
+export async function checkForUpdate(): Promise<AvailableUpdate | null> {
+  const result = await checkForUpdateStatus();
+  return result.status === 'available' ? result.update : null;
 }
 
 /** Downloads the update (reporting 0–1 progress) and opens the installer. */
