@@ -91,6 +91,8 @@ test('native provider Available Jobs keeps website compact navigation and retain
 
 test('iPhone provider overview uses the existing mobile website two-column density', () => {
   const overview = read(native + 'screens/main/ProviderOverviewScreen.tsx');
+  const website = read('src/app/dashboard/service/page.tsx');
+  assert.match(website, /grid grid-cols-2 xl:grid-cols-4/);
   assert.match(overview, /Platform\.OS === 'ios' && width < 600/);
   assert.match(overview, /width < 340 \|\| fontScale >= 1\.75/);
   assert.match(overview, /fontScale >= 1\.3/);
