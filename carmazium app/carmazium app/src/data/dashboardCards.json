@@ -331,9 +331,18 @@
       "href": "/dashboard/dealer/earnings"
     },
     {
+      "id": "dealer-provider-dashboard",
+      "section": "Services",
+      "label": "Provider Dashboard",
+      "icon": "grid-outline",
+      "iconLib": "ion",
+      "stackScreen": "ProviderOverview",
+      "href": "/dashboard/service"
+    },
+    {
       "id": "dealer-partner",
       "section": "Services",
-      "label": "TradeXchange",
+      "label": "Service Setup",
       "icon": "briefcase-outline",
       "iconLib": "ion",
       "stackScreen": "PartnerDashboard",

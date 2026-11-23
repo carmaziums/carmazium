@@ -1,15 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { Colors } from '../constants/colors';
+import { serviceJobChangeOptions, validServiceJobChangeKind } from '../lib/serviceJobJourney';
 import { formatUkServiceDateTime, parseUkServiceDateTime } from '../lib/ukServiceDateTime';
 import { ServiceJob, ServiceJobChange, requestServiceJobChange, acceptServiceReschedule, addServiceCaseNote, uploadServiceCaseEvidence } from '../lib/servicesApi';
 
-export function ServiceJobChanges({ job, role, onChange }: { job: ServiceJob; role: 'customer' | 'provider'; onChange: () => void }) {
+export function ServiceJobChanges({ job, role, onChange, disabled = false, onBusyChange }: { job: ServiceJob; role: 'customer' | 'provider'; onChange: () => void | Promise<unknown>; disabled?: boolean; onBusyChange?: (busy: boolean) => void }) {
   const [kind, setKind] = useState<ServiceJobChange['kind']>(job.status === 'ACCEPTED' ? 'CANCEL' : 'OTHER');
   const [reason, setReason] = useState('');
   const [date, setDate] = useState('');
   const [busy, setBusy] = useState(false);
+  const pending = useRef(false);
+  const [expanded, setExpanded] = useState(job.status === 'DISPUTED');
+  const blocked = busy || disabled;
   const [message, setMessage] = useState('');
   const canReschedule = job.status === 'PAID' || job.status === 'IN_PROGRESS';
   const proposalPending = job.status === 'DISPUTED' && job.changeRequest?.kind === 'RESCHEDULE' && !job.changeRequest.resolved;
@@ -21,21 +25,19 @@ export function ServiceJobChanges({ job, role, onChange }: { job: ServiceJob; ro
     ['Provider payout recorded', job.payment?.releasedAt],
   ] as const;
   useEffect(() => {
-    if (!canReschedule && kind === 'RESCHEDULE') setKind('OTHER');
-  }, [canReschedule, kind]);
+    setKind(current => validServiceJobChangeKind(current, job.status, role));
+    if (job.status === 'DISPUTED') setExpanded(true);
+  }, [job.status, role]);
   if (!['ACCEPTED', 'PAID', 'IN_PROGRESS', 'COMPLETED', 'DISPUTED', 'RELEASED'].includes(job.status)) return null;
   const run = async (action: () => Promise<void>) => {
-    if (busy) return;
-    setBusy(true); setMessage('');
-    try { await action(); setReason(''); setDate(''); setMessage('Saved.'); onChange(); }
+    if (pending.current || disabled) return;
+    pending.current = true; setBusy(true); onBusyChange?.(true); setMessage('');
+    try { await action(); setReason(''); setDate(''); setMessage('Saved.'); await onChange(); }
     catch (e: any) { setMessage(e?.message || 'Could not save. Please try again.'); }
-    finally { setBusy(false); }
+    finally { pending.current = false; setBusy(false); onBusyChange?.(false); }
   };
-  const button = (label: string, action: () => void, disabled = false) => <TouchableOpacity accessibilityRole="button" accessibilityLabel={label} disabled={busy || disabled} onPress={action} style={[styles.button, (busy || disabled) && { opacity: 0.5 }]}><Text style={styles.text}>{label}</Text></TouchableOpacity>;
-  const choices: Array<[ServiceJobChange['kind'], string]> = [['CANCEL', 'Request cancellation']];
-  if (role === 'provider') choices.push(['CANNOT_ATTEND', 'I cannot attend or complete this job']);
-  if (job.status !== 'ACCEPTED') choices.push(['NOT_COMPLETED', 'The work was not completed'], ['OTHER', 'Report a problem']);
-  if (canReschedule) choices.push(['RESCHEDULE', 'Request a new date']);
+  const button = (label: string, action: () => void, disabled = false) => <TouchableOpacity accessibilityRole="button" accessibilityLabel={label} disabled={blocked || disabled} onPress={action} style={[styles.button, (blocked || disabled) && { opacity: 0.5 }]}><Text style={styles.text}>{label}</Text></TouchableOpacity>;
+  const choices = serviceJobChangeOptions(job.status, role);
   const upload = async () => {
     const result = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'], multiple: false, copyToCacheDirectory: true });
     if (result.canceled || !result.assets?.[0]) return;
@@ -47,7 +49,8 @@ export function ServiceJobChanges({ job, role, onChange }: { job: ServiceJob; ro
     await uploadServiceCaseEvidence(job.id, body);
   };
   return <View style={styles.card}>
-    <Text style={[styles.text, { fontWeight: '700', fontSize: 18 }]}>Job changes and support</Text>
+    <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded }} style={styles.toggle} onPress={() => setExpanded(value => !value)}><Text style={[styles.text, { fontWeight: '700', fontSize: 17 }]}>Changes, support and progress</Text><Text style={styles.text}>{expanded ? 'Hide' : 'Show'}</Text></TouchableOpacity>
+    {expanded && <>
     <Text style={styles.text}>Unreleased payment stays on hold during review. Reporting a problem after payout does not itself recover the money.</Text>
     <View style={styles.progressCard}>
       <Text style={[styles.text, { fontWeight: '700' }]}>Work progress</Text>
@@ -71,19 +74,20 @@ export function ServiceJobChanges({ job, role, onChange }: { job: ServiceJob; ro
           { text: 'Agree to date', onPress: () => { void run(() => acceptServiceReschedule(job.id)); } },
         ]);
       })}
-      <TextInput accessibilityLabel="Information for CarMazium" placeholder="Add information for CarMazium" placeholderTextColor={Colors.textMuted} multiline value={reason} onChangeText={setReason} maxLength={2000} style={styles.input}/>
+      <TextInput editable={!blocked} accessibilityLabel="Information for CarMazium" placeholder="Add information for CarMazium" placeholderTextColor={Colors.textMuted} multiline value={reason} onChangeText={setReason} maxLength={2000} style={styles.input}/>
       {button('Send case note', () => run(() => addServiceCaseNote(job.id, reason.trim())), reason.trim().length < 3)}
       {button('Upload private image or PDF evidence', () => run(upload))}
     </> : <>
-      {choices.map(([value, label]) => <TouchableOpacity accessibilityRole="radio" accessibilityState={{ checked: kind === value }} key={value} disabled={busy} style={[styles.button, kind === value && { borderColor: Colors.accent }]} onPress={() => setKind(value)}><Text style={styles.text}>{kind === value ? 'Selected: ' : ''}{label}</Text></TouchableOpacity>)}
-      <TextInput accessibilityLabel="Explain the request" placeholder="Explain the request" placeholderTextColor={Colors.textMuted} multiline value={reason} onChangeText={setReason} maxLength={2000} style={styles.input}/>
+      {choices.map(([value, label]) => <TouchableOpacity accessibilityRole="radio" accessibilityState={{ checked: kind === value }} key={value} disabled={blocked} style={[styles.button, kind === value && { borderColor: Colors.accent }]} onPress={() => setKind(value)}><Text style={styles.text}>{kind === value ? 'Selected: ' : ''}{label}</Text></TouchableOpacity>)}
+      <TextInput editable={!blocked} accessibilityLabel="Explain the request" placeholder="Explain the request" placeholderTextColor={Colors.textMuted} multiline value={reason} onChangeText={setReason} maxLength={2000} style={styles.input}/>
       {kind === 'RESCHEDULE' && canReschedule && <>
         <Text style={styles.text}>Proposed UK date and time: DD/MM/YYYY HH:mm</Text>
-        <TextInput accessibilityLabel="Proposed UK date and time" placeholder="15/12/2026 14:30"
+        <TextInput editable={!blocked} accessibilityLabel="Proposed UK date and time" placeholder="15/12/2026 14:30"
           placeholderTextColor={Colors.textMuted} value={date} onChangeText={setDate} style={styles.input}/>
         <Text style={styles.text}>Interpreted in Europe/London time; skipped daylight-saving times are not valid.</Text>
       </>}
       {button('Submit request', () => run(async () => {
+        if (validServiceJobChangeKind(kind, job.status, role) !== kind) throw new Error('This request changed. Review the available options and try again.');
         let requestedFor: string | undefined;
         if (kind === 'RESCHEDULE') {
           if (!canReschedule) throw new Error('Only unfinished paid work can be rescheduled.');
@@ -95,9 +99,11 @@ export function ServiceJobChanges({ job, role, onChange }: { job: ServiceJob; ro
       }), reason.trim().length < 3 || (kind === 'RESCHEDULE' && (!canReschedule || !date.trim())))}
     </>}
     {!!message && <Text accessibilityLiveRegion="polite" style={styles.text}>{message}</Text>}
+    </>}
   </View>;
 }
 const styles = StyleSheet.create({
+  toggle: { minHeight: 44, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   card: { padding: 16, gap: 12, borderWidth: 1, borderColor: Colors.border, borderRadius: 12, backgroundColor: Colors.bgCard },
   progressCard: { gap: 7, borderWidth: 1, borderColor: Colors.border, padding: 12, borderRadius: 12 },
   progressRow: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 5 },

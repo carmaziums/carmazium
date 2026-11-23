@@ -13,7 +13,7 @@ const cap=(serviceType,status='APPROVED')=>({id:serviceType+'-test',serviceType,
 async function render(name,overrides={}){
  const nav=[],calls=[];
  const services={SERVICE_LABELS:{DELIVERY:'Delivery & Recovery',INSPECTION:'Vehicle Inspections'},getPartnerProfile:async()=>profile,getPartnerTeam:async()=>({capabilities:[cap('DELIVERY'),cap('INSPECTION')],stripeConnect:{complete:true}}),getMyCapabilities:async()=>({profile:null,capabilities:[cap('DELIVERY'),cap('INSPECTION')],stripeConnect:{complete:true}}),applyPartnerCapability:async type=>{calls.push(type);return cap(type,'PENDING');},updatePartnerServicePreference:async(key,enabled)=>{calls.push({key,enabled});},...overrides};
- const modules={react:React,'react-native':{Platform:{OS:'android'},...Object.fromEntries(['View','Text','ScrollView','TextInput','StatusBar','ActivityIndicator','Switch'].map(n=>[n,n])),StyleSheet:{create:x=>x},useWindowDimensions:()=>({width:600,fontScale:1}),Alert:{alert(){}},Linking:{openURL:async()=>{}},AppState:{addEventListener:()=>({remove(){}})}},'@react-navigation/native':{useFocusEffect:cb=>React.useEffect(cb,[cb])},'@/components/BrandIcon':{Ionicons:'Icon'},'../../components/WebsiteTopBar':{WebsiteTopBar:'WebsiteTopBar'},'../../components/tradexchange/ProviderDocumentsSection':{ProviderDocumentsSection:'ProviderDocumentsSection'},'../../components/tradexchange/ContractorServicesInline':{ContractorServicesInline:'ContractorServicesInline'},'../../components/tradexchange/ProviderSettingsSections':{ProviderBusinessPaymentsSection:'ProviderBusinessPaymentsSection',ProviderJobPreferencesSection:'ProviderJobPreferencesSection'},'../../components/Button':{Button:'Button'},'../../components/dealer/DealerPageTabs':{DealerPageTabs:'DealerPageTabs'},'../../constants/colors':{Colors:{}},'../../constants/typography':{FontFamily:{},FontSize:{}},'../../store/authStore':{useAuthStore:cb=>cb({accountRole:overrides.__accountRole??'dealer',initializeAuth:async()=>{}})},'../../lib/servicesApi':services,'../../lib/apiClient':{apiClient:async()=>{throw Error('Unexpected write');}}};
+ const modules={react:React,'react-native':{Platform:{OS:'android'},...Object.fromEntries(['View','Text','ScrollView','TextInput','StatusBar','ActivityIndicator','Switch'].map(n=>[n,n])),StyleSheet:{create:x=>x},useWindowDimensions:()=>({width:600,fontScale:1}),Alert:{alert(){}},Linking:{openURL:async()=>{}},AppState:{addEventListener:()=>({remove(){}})}},'@react-navigation/native':{useFocusEffect:cb=>React.useEffect(cb,[cb])},'@/components/BrandIcon':{Ionicons:'Icon'},'../../components/WebsiteTopBar':{WebsiteTopBar:'WebsiteTopBar'},'../../components/tradexchange/ProviderDocumentsSection':{ProviderDocumentsSection:'ProviderDocumentsSection'},'../../components/tradexchange/ContractorServicesInline':{ContractorServicesInline:'ContractorServicesInline'},'../../components/tradexchange/ProviderSettingsSections':{ProviderBusinessPaymentsSection:'ProviderBusinessPaymentsSection',ProviderJobPreferencesSection:'ProviderJobPreferencesSection'},'../../components/Button':{Button:'Button'},'../../components/dealer/DealerPageTabs':{DealerPageTabs:'DealerPageTabs'},'../../constants/colors':{Colors:{}},'../../constants/typography':{FontFamily:{},FontSize:{}},'../../hooks/useTabBarClearance':{useTabBarClearance:()=>104},'../../store/authStore':{useAuthStore:cb=>cb({user:{id:'synthetic-provider-user',isDealerStaff:overrides.__isDealerStaff===true},accountRole:overrides.__accountRole??'dealer',initializeAuth:async()=>{}})},'../../lib/servicesApi':services,'../../lib/apiClient':{apiClient:async()=>{throw Error('Unexpected write');}}};
  const rules={};runInNewContext(ts.transpileModule(readFileSync(new URL('../src/lib/tradeXchangeProviderJobLoad.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:rules,Error});
  modules['../../lib/tradeXchangeProviderJobLoad']=rules;modules['../../constants/spacing']={Elevation:{},Radius:{}};modules['react-native'].TouchableOpacity='Press';modules['react-native'].RefreshControl='Refresh';modules['react-native'].FlatList=({ListHeaderComponent,ListEmptyComponent,data,renderItem,onEndReached})=>React.createElement('List',{onEndReached},ListHeaderComponent,data.length?data.map((item)=>React.createElement(React.Fragment,{key:item.id},renderItem({item}))):ListEmptyComponent);
  const exports={};const source=readFileSync(new URL('../src/screens/main/'+name+'.tsx',import.meta.url),'utf8');runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:n=>{assert.ok(n in modules,n);return modules[n];}});
@@ -72,6 +72,7 @@ test('Provider overview aggregates every page for released earnings and preserve
    getAssignedJobsPage:async cursor=>{calls.push(cursor);return cursor?{items:[{...job('release2'),status:'RELEASED',contractorAmountPence:20025,updatedAt:'2026-11-21'}],nextCursor:null}:{items:[{...job('live'),updatedAt:'2026-11-21'},{...job('release1'),status:'RELEASED',contractorAmountPence:10050,updatedAt:'2026-11-20'}],nextCursor:'next'};},
    formatPence:p=>'£'+(p/100).toFixed(2),
  });
+ assert.equal(h.tree.root.findByType('ScrollView').props.contentContainerStyle.at(-1).paddingBottom,104, 'provider tab scroll content clears the navigation bar');
  assert.equal(calls.length,2);assert.match(text(h.tree),/£300.75/);assert.match(text(h.tree),/Setup needed/);assert.match(text(h.tree),/Unavailable/);assert.match(text(h.tree),/Synthetic work live/);
  await click(h.tree,'My Work');assert.equal(h.nav[0][0],'ProviderJobs');assert.equal(h.nav[0][1].initialTab,'assigned');await act(async()=>h.tree.unmount());
 });
@@ -165,5 +166,43 @@ test('service filters request server-paginated inspection jobs and preserve My W
  await act(async()=>mine.props.onPress());
  assert.match(text(h.tree),/Synthetic work past-inspection/);
  assert.doesNotMatch(text(h.tree),/Synthetic work past-delivery/);
+ await act(async()=>h.tree.unmount());
+});
+
+test('Provider dashboard keeps setup directly accessible before the first service application',async()=>{
+ const h=await render('ProviderOverviewScreen',{
+   __accountRole:'contractor',
+   getMyCapabilities:async()=>({profile:null,capabilities:[],stripeConnect:{connected:false,complete:false}}),
+   getJobFeedPage:async()=>{throw Error('This area is for approved service providers or authorised dealership team members.');},
+   getAssignedJobsPage:async()=>({items:[],nextCursor:null}),
+   formatPence:p=>'£'+(p/100).toFixed(2),
+ });
+ assert.match(text(h.tree),/Service Provider Dashboard/);
+ assert.match(text(h.tree),/Get ready to quote on jobs/);
+ await click(h.tree,'Open service setup');
+ assert.equal(h.nav.at(-1)[0],'PartnerDashboard');
+ await click(h.tree,'My work');
+ assert.equal(h.nav.at(-1)[0],'ProviderJobs');
+ assert.equal(h.nav.at(-1)[1].initialTab,'assigned');
+ assert.equal(h.calls.length,0,'opening navigation never creates or approves an application');
+ await act(async()=>h.tree.unmount());
+});
+
+test('Staff provider dashboard uses business access rather than requesting a personal service application',async()=>{
+ const h=await render('ProviderOverviewScreen',{
+   __isDealerStaff:true,
+   getMyCapabilities:async()=>({profile:null,capabilities:[],stripeConnect:{complete:false}}),
+   getJobFeedPage:async()=>({items:[],nextCursor:null}),
+   getAssignedJobsPage:async()=>({items:[{...job('business-work'),updatedAt:'2026-11-23'}],nextCursor:null}),
+   formatPence:p=>'£'+(p/100).toFixed(2),
+ });
+ assert.match(text(h.tree),/Your business manages service access/);
+ assert.match(text(h.tree),/Business managed/);
+ assert.match(text(h.tree),/Synthetic work business-work/);
+ assert.doesNotMatch(text(h.tree),/Get ready to quote on jobs/);
+ assert.equal(h.tree.root.findAllByType('Button').filter(item=>item.props.label==='Open service setup').length,0);
+ await click(h.tree,'My work');
+ assert.equal(h.nav.at(-1)[0],'ProviderJobs');
+ assert.equal(h.nav.at(-1)[1].initialTab,'assigned');
  await act(async()=>h.tree.unmount());
 });

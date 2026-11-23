@@ -5,12 +5,21 @@ import { useFocusEffect } from '@react-navigation/native';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Button } from '../../components/Button';
+import { useAuthStore } from '../../store/authStore';
+import { useTabBarClearance } from '../../hooks/useTabBarClearance';
 import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
 import { getMyCapabilities, getJobFeedPage, getAssignedJobsPage, formatPence, type MyCapabilities, type ServiceJob } from '../../lib/servicesApi';
 import { loadAllProviderJobs, loadProviderJobLists, type ProviderJobLists } from '../../lib/tradeXchangeProviderJobLoad';
 type Props = NativeStackScreenProps<MainStackParamList, 'ProviderOverview'>;
-export function ProviderOverviewScreen({ navigation }: Props) {
+export function ProviderOverviewScreen(props: Props) {
+  const userId = useAuthStore(state => state.user?.id);
+  return userId ? <ProviderOverview key={userId} {...props} /> : null;
+}
+function ProviderOverview({ navigation }: Props) {
+  const accountRole = useAuthStore(state => state.accountRole);
+  const isDealerStaff = useAuthStore(state => !!state.user?.isDealerStaff);
+  const tabBarClearance = useTabBarClearance();
   const { width, fontScale } = useWindowDimensions();
   // iPhone Dynamic Type must not make an ordinary phone show giant full-width
   // metric tiles when the mobile website and the Android dashboard use two.
@@ -42,18 +51,20 @@ export function ProviderOverviewScreen({ navigation }: Props) {
   const earnings = assigned?.filter(job => job.status === 'RELEASED').reduce((sum, job) => sum + (job.contractorAmountPence ?? 0), 0);
   const recent = [...(assigned ?? [])].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 4);
   const metrics = [
-    ['Approved services', capabilities ? String(capabilities.capabilities.filter(cap => cap.status === 'APPROVED' && ['DELIVERY', 'INSPECTION'].includes(cap.serviceType)).length) : 'Unavailable'],
+    [isDealerStaff ? 'Service access' : 'Approved services', isDealerStaff ? 'Business managed' : capabilities ? String(capabilities.capabilities.filter(cap => cap.status === 'APPROVED' && ['DELIVERY', 'INSPECTION'].includes(cap.serviceType)).length) : 'Unavailable'],
     ['Available jobs', lists?.available ? String(lists.available.items.length) : lists?.approvalRequired ? 'Setup needed' : 'Unavailable'],
     ['My active jobs', active ? String(active.length) : 'Unavailable'],
     ['Released earnings', earnings !== undefined ? formatPence(earnings) : 'Unavailable'],
   ];
   const openJobs = (initialTab: 'open' | 'assigned' = 'open') => navigation.navigate('ProviderJobs', { initialTab });
-  return <View style={s.screen}><WebsiteTopBar /><ScrollView contentContainerStyle={s.content}>
-    <Text style={s.eyebrow}>TradeXchange Services</Text><Text accessibilityRole="header" style={s.title}>Provider overview</Text>
+  return <View style={s.screen}><WebsiteTopBar /><ScrollView contentContainerStyle={[s.content, { paddingBottom: tabBarClearance }]}>
+    <Text style={s.eyebrow}>TradeXchange Services</Text><Text accessibilityRole="header" style={s.title}>Service Provider Dashboard</Text>
     <Text style={s.body}>Delivery and Inspection jobs, approvals and earnings in one place. Contact our team about finance and warranty partnerships.</Text>
-    <View style={s.actions}><Button label="My services" variant="outline" onPress={() => navigation.navigate('PartnerDashboard')} /><Button label="Find jobs" onPress={() => openJobs()} /><Button label="Job messages" variant="outline" onPress={() => navigation.navigate('ProviderMessages')} /></View>
+    <View style={s.actions}>{accountRole === 'dealer' && <Button label="Dealer dashboard" variant="outline" onPress={() => navigation.navigate('Tabs', { screen: 'DealerHome' })} />}<Button label="Find jobs" onPress={() => openJobs()} /><Button label="My work" variant="outline" onPress={() => openJobs('assigned')} /><Button label="Service setup" variant="outline" onPress={() => navigation.navigate('PartnerDashboard')} /><Button label="Job messages" variant="outline" onPress={() => navigation.navigate('ProviderMessages')} /></View>
     <Button label={loading ? 'Refreshing…' : 'Refresh dashboard'} variant="outline" disabled={loading} onPress={() => void load()} />
     {error && <Text accessibilityRole="alert" style={s.error}>{error}</Text>}
+    {isDealerStaff && <View style={s.card}><Text style={s.heading}>Your business manages service access</Text><Text style={s.body}>Your dealership owner manages service approvals, insurance, payouts and your job permissions. Find jobs and My work show the work available to your business role.</Text></View>}
+    {!isDealerStaff && !loading && capabilities && (!capabilities.capabilities.some(cap => cap.status === 'APPROVED' && ['DELIVERY', 'INSPECTION'].includes(cap.serviceType)) || lists?.approvalRequired) && <View style={s.card}><Text style={s.heading}>Get ready to quote on jobs</Text><Text style={s.body}>Open Service Setup to check applications, insurance, verification and payouts. You can still open any work already assigned to your business.</Text><Button label="Open service setup" variant="outline" onPress={() => navigation.navigate('PartnerDashboard')} /></View>}
     <View style={s.metrics}>{metrics.map(([label, value]) => <View key={label} style={[s.metric, { width: singleMetricColumn ? '100%' : '48%' }]}><Text style={s.body}>{label}</Text><Text style={s.value}>{loading ? '…' : value}</Text></View>)}</View>
     <View style={s.card}><Text style={s.heading}>Delivery &amp; Inspection jobs</Text><Text style={s.body}>See open jobs in your approved service areas, submit quotes and manage jobs you win.</Text><Button label="Available Jobs" variant="outline" onPress={() => openJobs()} /></View>
     <View style={s.card}><Text style={s.heading}>My work</Text><Text style={s.body}>Continue jobs assigned to your business and review completed work. Existing jobs remain accessible when approval for new work needs renewal.</Text><Button label="My Work" variant="outline" onPress={() => openJobs('assigned')} /></View>

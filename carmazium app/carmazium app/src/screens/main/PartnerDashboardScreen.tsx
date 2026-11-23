@@ -209,11 +209,13 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation, route }) =
         <ScrollView ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.hero}>
             <Text style={styles.eyebrow}>TRADEXCHANGE</Text>
-            <Text style={styles.title}>TradeXchange</Text>
+            <Text style={styles.title}>Service Setup</Text>
             <Text style={styles.sub}>
               One CarMazium business account. Choose one or multiple services, including collection, delivery & recovery and vehicle inspections, under the same login. Each has its own insurance checks.
             </Text>
           </View>
+
+          {(isPartnerRole || profile?.role === 'CONTRACTOR') && <Button label="Provider Dashboard" variant="outline" onPress={() => navigation.navigate('ProviderOverview')} />}
 
           {error ? (
             <View style={styles.errorCard}>
@@ -224,7 +226,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation, route }) =
 
           {!isPartnerRole && profile?.role === 'CONTRACTOR' ? (
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>TradeXchange</Text>
+              <Text style={styles.cardTitle}>Service Setup</Text>
               <Text style={styles.cardText}>Use your existing service-provider account. Your services, approvals and documents are retained. You do not need to become a dealer.</Text>
               <ContractorServicesInline capabilities={legacyCapabilities} profile={legacyProfile} onUpdated={async () => { await load(); openBusiness(); }} openRequest={route?.params?.openSection === 'services' ? 1 : 0} />
               <Button label="Find jobs" variant="outline" onPress={() => navigation.navigate('ProviderJobs', { initialTab: 'open' })} />

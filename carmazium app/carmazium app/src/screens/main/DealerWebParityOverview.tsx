@@ -12,7 +12,7 @@ import { FontFamily } from '../../constants/typography';
 
 export type DealerHomeDestination =
   | 'add-vehicle' | 'customers' | 'buy-and-bid'
-  | 'partner-services' | 'performance' | 'stock' | 'offers' | 'manage-auctions' | 'messages' | 'won-auctions';
+  | 'partner-services' | 'provider-dashboard' | 'performance' | 'stock' | 'offers' | 'manage-auctions' | 'messages' | 'won-auctions';
 interface DashboardSummary { isVerified?: boolean }
 interface Props {
   userName: string;
@@ -91,6 +91,7 @@ export const DealerWebParityOverview: React.FC<Props> = ({
         </View>
       </View>
     </View>
+    <View style={{ marginHorizontal: 20 }}><Button label="Provider Dashboard" variant="outline" onPress={() => onNavigate('provider-dashboard')} /></View>
     <View style={styles.actionSection}>
       <Text style={styles.actionsTitle}>Needs your attention</Text>
       <Text style={styles.sectionHint}>Your to-do list, most urgent first.</Text>

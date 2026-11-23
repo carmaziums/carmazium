@@ -31,7 +31,7 @@ import { BuyerDashboardScreen } from '../screens/buyer/BuyerDashboardScreen';
 import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
 import { LegacyPartnerDashboardScreen } from '../screens/account/LegacyPartnerDashboardScreen';
 import { DealerBuyBidScreen } from '../screens/main/DealerBuyBidScreen';
-import { PartnerDashboardScreen } from '../screens/main/PartnerDashboardScreen';
+import { ProviderOverviewScreen } from '../screens/main/ProviderOverviewScreen';
 import { useAuthStore } from '../store/authStore';
 import { GUEST_TABS, SignInRequired } from '../components/SignInRequired';
 
@@ -51,7 +51,7 @@ const ProfileTabScreen: React.FC<any> = React.memo((props) => {
   // seller tasks for accounts originally registered as BUYER. Operational
   // business roles retain their own permission-protected workspaces.
   if (accountRole === 'contractor') {
-    return <PartnerDashboardScreen {...props} />;
+    return <ProviderOverviewScreen {...props} />;
   }
   if (accountRole === 'finance_partner' || accountRole === 'insurance_partner') {
     return <LegacyPartnerDashboardScreen {...props} />;
@@ -235,7 +235,8 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
       <View style={[StyleSheet.absoluteFillObject, styles.tabBarGlass]} />
       <View style={styles.tabBarInner}>
         {visibleRoutes.map((route: any) => {
-          const config = TAB_CONFIG.find((c) => c.name === route.name)!;
+          const config = { ...TAB_CONFIG.find((c) => c.name === route.name)! };
+          if (route.name === 'Profile' && accountRole === 'contractor') config.label = 'Provider Dashboard';
           const isFocused = state.routes[state.index]?.name === route.name;
           const onPress = pressHandlers[route.key];
 

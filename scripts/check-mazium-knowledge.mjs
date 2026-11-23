@@ -3,9 +3,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
+import {extractKnowledgeSources} from './mazium-knowledge-sources.mjs';
 const root=path.resolve(import.meta.dirname,'..');
 const catalogue=fs.readFileSync(path.join(root,'backend/src/ai/mazium-platform-knowledge.ts'),'utf8');
-const sources=[...new Set([...catalogue.matchAll(/sources: \[([^\]]+)\]/g)].flatMap(m=>[...m[1].matchAll(/'([^']+)'/g)].map(x=>x[1])))].sort();
+const sources=extractKnowledgeSources(catalogue);
 // Hash reviewed text semantics, not checkout-specific CRLF/LF bytes. This must
 // agree on Windows (core.autocrlf=true) and Linux CI for the same Git content.
 const hashes=Object.fromEntries(sources.map(p=>[p,createHash('sha256').update(fs.readFileSync(path.join(root,p),'utf8').replace(/\r\n/g,'\n')).digest('hex')]));

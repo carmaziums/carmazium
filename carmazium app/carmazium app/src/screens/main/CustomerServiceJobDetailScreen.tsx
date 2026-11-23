@@ -9,6 +9,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -36,10 +37,13 @@ import {
   comparableServiceQuotes,
   isServiceQuoteSelectable,
   getCustomerServiceJob,
+  createCustomerServiceReview,
 } from '../../lib/servicesApi';
 import { refuseAuctionAfterInspection } from '../../lib/auctionApi';
 import { getOrCreateServiceJobRoom } from '../../lib/chatApi';
 import { IconButton } from '../../components/IconButton';
+import { useAuthStore } from '../../store/authStore';
+import { customerServiceNextStep, inspectionRefusalNotice } from '../../lib/serviceJobJourney';
 import { formatUkServiceDateTime } from '../../lib/ukServiceDateTime';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CustomerServiceJobDetail'>;
@@ -51,7 +55,12 @@ const providerName = (quote?: ServiceQuote | null) =>
   || [quote?.contractor?.user?.firstName, quote?.contractor?.user?.lastName].filter(Boolean).join(' ')
   || 'Service provider';
 
-export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, route }) => {
+export const CustomerServiceJobDetailScreen: React.FC<Props> = (props) => {
+  const userId = useAuthStore(state => state.user?.id);
+  return userId ? <CustomerJobDetail key={`${userId}:${props.route.params.jobId}`} {...props} /> : null;
+};
+
+const CustomerJobDetail: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const { jobId } = route.params;
   const [job, setJob] = useState<ServiceJob | null>(null);
@@ -59,26 +68,37 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
   const [busy, setBusy] = useState<string | null>(null);
   const checkoutPending = useRef(false);
   const actionPending = useRef(false);
+  const generation = useRef(0);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (preserveError = true) => {
+    const request = ++generation.current;
     setLoading(true);
-    setError(null);
+    if (!preserveError) setError(null);
     try {
-      setJob(await getCustomerServiceJob(jobId));
+      const next = await getCustomerServiceJob(jobId);
+      if (request !== generation.current) return;
+      if (next.viewerRole === 'contractor' || next.viewerRole === 'bidder') {
+        navigation.replace('ProviderJobDetail', { jobId });
+        return;
+      }
+      setJob(next);
     } catch (err: any) {
-      setError(err?.message || 'Could not load this service job.');
+      if (request === generation.current) setError(current => current || err?.message || 'Could not load this service request.');
     } finally {
-      setLoading(false);
+      if (request === generation.current) setLoading(false);
     }
-  }, [jobId]);
+  }, [jobId, navigation]);
 
   // Checkout leaves the app and job chat opens a separate stack screen.
   // Re-read server-confirmed payment/completion state when returning; never
   // infer payment success just because checkout launched.
   useFocusEffect(useCallback(() => {
     void load();
+    return () => { generation.current++; };
   }, [load]));
 
   useEffect(() => {
@@ -98,17 +118,18 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
   );
 
   const run = async (key: string, action: () => Promise<unknown>, success: string) => {
-    if (actionPending.current || checkoutPending.current) return;
+    if (actionPending.current || checkoutPending.current || busy !== null) return;
     actionPending.current = true;
     setBusy(key);
     setError(null);
     setFlash(null);
     try {
-      await action();
-      setFlash(success);
+      const response = await action();
+      setFlash(typeof response === 'string' ? response : success);
       await load();
     } catch (err: any) {
       setError(err?.message || 'Something went wrong.');
+      await load();
     } finally {
       actionPending.current = false;
       setBusy(null);
@@ -119,7 +140,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
   // before React has rendered the first busy state. The backend also claims
   // exactly one quote atomically; the client never assumes payment succeeded.
   const openCheckout = async (quote: ServiceQuote, resume = false) => {
-    if (!job || checkoutPending.current || busy !== null) return;
+    if (!job || checkoutPending.current || busy !== null || actionPending.current) return;
     if (resume) {
       if (job.status !== 'ACCEPTED' || job.acceptedQuoteId !== quote.id || job.payment?.status !== 'PENDING') {
         setError('This job is no longer awaiting checkout. Refresh for the current payment status.');
@@ -164,7 +185,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
   };
 
   const chooseProvider = (quote: ServiceQuote) => {
-    if (!job || busy !== null || checkoutPending.current) return;
+    if (!job || busy !== null || checkoutPending.current || actionPending.current) return;
     if (job.status !== 'OPEN' || !isServiceQuoteSelectable(quote)) {
       setError('That quote has expired or the job has changed. Refresh and compare current offers.');
       void load();
@@ -181,7 +202,8 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
   };
 
   const openChat = async () => {
-    if (!job) return;
+    if (!job || actionPending.current || checkoutPending.current || busy !== null) return;
+    actionPending.current = true;
     setBusy('chat');
     setError(null);
     try {
@@ -190,6 +212,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
     } catch (err: any) {
       setError(err?.message || 'Could not open the provider conversation.');
     } finally {
+      actionPending.current = false;
       setBusy(null);
     }
   };
@@ -198,19 +221,20 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
     if (!job?.sourceAuctionId) return;
     Alert.alert(
       'Refuse this vehicle?',
-      'The linked inspection recorded faults. Refusing will cancel the auction sale and refund the full £125 buyer fee.',
+      'The linked inspection recorded faults. Refusing will cancel the auction sale and refund any buyer fee paid (up to £125).',
       [
         { text: 'Keep vehicle', style: 'cancel' },
         {
-          text: 'Refuse & refund £125',
+          text: 'Refuse vehicle',
           style: 'destructive',
           onPress: () => void run(
             'refuse',
-            () => refuseAuctionAfterInspection(
-              job.sourceAuctionId!,
-              job.inspectionSummary?.trim() || undefined,
-            ),
-            'Vehicle refused. Your £125 buyer fee has been refunded and the seller can repair or relist the vehicle.',
+            async () => {
+              const result = await refuseAuctionAfterInspection(job.sourceAuctionId!, job.inspectionSummary?.trim() || undefined);
+              if (!result.refused) throw new Error('Vehicle refusal could not be confirmed. Refresh the auction purchase for its status.');
+              return inspectionRefusalNotice(result.refundedAmount);
+            },
+            'Vehicle refusal recorded.',
           ),
         },
       ],
@@ -218,7 +242,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
   };
 
   const confirmJob = () => {
-    if (!job || job.status !== 'COMPLETED' || actionPending.current || checkoutPending.current) return;
+    if (!job || !serviceCompletionReview(job) || actionPending.current || checkoutPending.current || busy !== null) return;
     Alert.alert(
       'Confirm service completion?',
       'Only confirm after checking the completed work. This releases the provider payout through the existing payment process. If something is wrong, raise a dispute instead.',
@@ -278,6 +302,15 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
     );
   };
 
+  const submitReview = async () => {
+    if (!job || !job.canReview || job.status !== 'RELEASED' || reviewRating < 1 || reviewRating > 5) return;
+    await run('review', async () => {
+      await createCustomerServiceReview(job.id, { rating: reviewRating, comment: reviewComment.trim() || undefined });
+      setReviewRating(0);
+      setReviewComment('');
+    }, 'Thank you. Your verified service review is now published.');
+  };
+
   if (loading && !job) {
     return (
       <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
@@ -296,14 +329,14 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
             onPress={() => navigation.goBack()}
             accessibilityLabel="Go back"
           />
-          <Text style={styles.headerTitle}>Service Job</Text>
+          <Text style={styles.headerTitle}>Service Request</Text>
           <View style={{ width: 38 }} />
         </View>
         <View style={styles.centerCard}>
           <Ionicons name="alert-circle-outline" size={32} color={Colors.accent} />
           <Text style={styles.emptyTitle}>Job unavailable</Text>
           <Text style={styles.bodyText}>{error || 'This service job could not be loaded.'}</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => void load()}>
+          <TouchableOpacity style={styles.primaryButton} onPress={() => void load(false)}>
             <Text style={styles.primaryText}>TRY AGAIN</Text>
           </TouchableOpacity>
         </View>
@@ -313,24 +346,9 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
 
   const paymentEvidence = servicePaymentEvidence(job.payment, job.agreedAmountPence);
   const completionReview = serviceCompletionReview(job);
-  const vehicle = job.vehicles?.[0];
   const isInspection = job.serviceType === 'INSPECTION';
   const paidState = ['PAID', 'IN_PROGRESS', 'COMPLETED', 'RELEASED', 'DISPUTED'].includes(job.status);
-  const nextStep = job.status === 'OPEN'
-    ? 'Compare provider quotes and choose your preferred provider. You only pay after choosing a quote.'
-    : job.status === 'ACCEPTED'
-      ? 'Your provider is reserved. Complete secure checkout to confirm the job.'
-      : job.status === 'PAID'
-        ? 'Service payment is confirmed. The provider can now arrange and start the work.'
-        : job.status === 'IN_PROGRESS'
-          ? 'Your provider is carrying out the work. Contact them from this screen if needed.'
-          : job.status === 'COMPLETED'
-            ? 'Review the completed work. Confirm completion only when satisfied, or raise a dispute.'
-            : job.status === 'DISPUTED'
-              ? 'The service is under review. Do not confirm completion while a dispute is open.'
-              : job.status === 'RELEASED'
-                ? 'Your service is complete and the provider payout has been released.'
-                : 'Review the service status and any messages below.';
+  const nextStep = customerServiceNextStep(job);
   const canMessageProvider = Boolean(job.contractor && paidState);
   const canRefuse = Boolean(
     isInspection
@@ -351,10 +369,10 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
           accessibilityLabel="Go back"
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Service Job</Text>
+          <Text style={styles.headerTitle}>Service Request</Text>
           <Text style={styles.headerSub}>{SERVICE_LABELS[job.serviceType]}</Text>
         </View>
-        <TouchableOpacity style={styles.refreshButton} onPress={() => void load()}>
+        <TouchableOpacity accessibilityLabel="Refresh request" disabled={loading || busy !== null} style={styles.refreshButton} onPress={() => void load(false)}>
           {loading
             ? <ActivityIndicator size="small" color={Colors.textSecondary} />
             : <Ionicons name="refresh-outline" size={18} color={Colors.textSecondary} />}
@@ -378,15 +396,6 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
           </View>
         ) : null}
 
-        <View style={styles.nextStepCard}>
-          <Ionicons name="information-circle-outline" size={20} color={Colors.accent} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.sectionLabel}>WHAT HAPPENS NEXT</Text>
-            <Text style={styles.bodyText}>{nextStep}</Text>
-          </View>
-        </View>
-
-        <View style={styles.card}>
           <View style={styles.titleRow}>
             <View style={styles.serviceIcon}>
               <Ionicons
@@ -401,24 +410,73 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
             </View>
           </View>
 
-          <Info
-            icon="location-outline"
-            label={isInspection ? 'Inspection location' : 'Route'}
-            value={
-              isInspection
-                ? [job.serviceAddress, job.servicePostcode].filter(Boolean).join(', ') || 'Location pending'
-                : `${job.pickupPostcode || 'Pickup'} → ${job.deliveryPostcode || 'Delivery'}`
-            }
-          />
-          {vehicle ? (
-            <Info
-              icon="car-sport-outline"
-              label="Vehicle"
-              value={[vehicle.registration, vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(' · ') || 'Vehicle'}
-            />
-          ) : null}
-          {job.description ? <Text style={styles.description}>{job.description}</Text> : null}
+
+        <View style={styles.nextStepCard}>
+          <Ionicons name="information-circle-outline" size={20} color={Colors.accent} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sectionLabel}>NEXT STEP</Text>
+            <Text style={styles.providerName}>{nextStep.title}</Text>
+            <Text style={styles.bodyText}>{nextStep.description}</Text>
+          </View>
         </View>
+
+        {job.status === 'ACCEPTED' && accepted ? (
+          <View style={styles.card}>
+            <Text style={styles.sectionLabel}>PAYMENT REQUIRED</Text>
+            <Text style={styles.providerName}>{providerName(accepted)}</Text>
+            <Text style={styles.quotePrice}>{formatPence(accepted.amountPence)}</Text>
+            <Text style={styles.bodyText}>
+              {accepted.message || 'No additional scope supplied.'}
+            </Text>
+            <TouchableOpacity
+              style={[styles.primaryButton, busy !== null && styles.disabled]}
+              onPress={() => { void openCheckout(accepted, true); }}
+              disabled={busy !== null || job.payment?.status !== 'PENDING'}
+            >
+              {busy === accepted.id
+                ? <ActivityIndicator size="small" color={Colors.onAccent} />
+                : <Text style={styles.primaryText}>CONTINUE TO PAYMENT</Text>}
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        {job.contractor && paidState ? (
+          <View style={styles.card}>
+            <Text style={styles.sectionLabel}>YOUR PROVIDER</Text>
+            <Text style={styles.providerName}>
+              {job.contractor.businessName
+                || [job.contractor.user.firstName, job.contractor.user.lastName].filter(Boolean).join(' ')
+                || 'Verified provider'}
+            </Text>
+            <Text style={styles.muted}>
+              {job.contractor.totalReviews > 0 ? `${job.contractor.rating.toFixed(1)} rating · ${job.contractor.totalReviews} reviews` : 'New to CarMazium'}
+            </Text>
+            <View style={styles.actionRow}>
+              {job.contractor.phone || job.contractor.user.phone ? (
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={() => void Linking.openURL(`tel:${job.contractor?.phone || job.contractor?.user.phone}`)}
+                >
+                  <Ionicons name="call-outline" size={16} color={Colors.accent} />
+                  <Text style={styles.secondaryText}>CALL</Text>
+                </TouchableOpacity>
+              ) : null}
+              {canMessageProvider ? (
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={() => void openChat()}
+                  disabled={busy !== null}
+                >
+                  {busy === 'chat'
+                    ? <ActivityIndicator size="small" color={Colors.accent} />
+                    : <Ionicons name="chatbubble-outline" size={16} color={Colors.accent} />}
+                  <Text style={styles.secondaryText}>MESSAGE</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+
 
         {isInspection && job.inspectionOutcome ? (
           <View style={[
@@ -456,15 +514,49 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
               <TouchableOpacity
                 style={[styles.dangerButton, busy === 'refuse' && styles.disabled]}
                 onPress={refuseVehicle}
-                disabled={busy === 'refuse'}
+                disabled={busy !== null}
               >
                 {busy === 'refuse'
                   ? <ActivityIndicator size="small" color={Colors.onAccent} />
                   : <Ionicons name="close-circle-outline" size={17} color={Colors.onAccent} />}
-                <Text style={styles.dangerText}>REFUSE VEHICLE & REFUND £125</Text>
+                <Text style={styles.dangerText}>REFUSE VEHICLE & REVIEW REFUND</Text>
               </TouchableOpacity>
             ) : null}
           </View>
+        ) : null}
+
+        {job.status === 'COMPLETED' ? (
+          <View style={styles.card}>
+            <Text style={styles.sectionLabel}>CONFIRM SERVICE</Text>
+            <Text style={styles.bodyText}>
+              The provider marked this {isInspection ? 'inspection' : 'delivery'} complete.
+              Confirm only when you are satisfied. Confirming authorises provider payout; raise a dispute if the work is incomplete or incorrect.
+            </Text>
+            <Text style={styles.muted}>
+              {completionReview
+                ? completionReview.elapsed
+                  ? 'The 48-hour review period has elapsed. Automatic confirmation may still be processing; check payment status.'
+                  : `Automatic confirmation becomes eligible after ${formatUkServiceDateTime(completionReview.dueAt)}, unless a dispute blocks release.`
+                : 'Completion is awaiting verification. Do not rely on an automatic payout date yet.'}
+            </Text>
+            <TouchableOpacity
+              style={[styles.primaryButton, busy === 'confirm' && styles.disabled]}
+              disabled={busy !== null || !completionReview}
+              onPress={confirmJob}
+            >
+              {busy === 'confirm'
+                ? <ActivityIndicator size="small" color={Colors.onAccent} />
+                : <Text style={styles.primaryText}>CONFIRM COMPLETION</Text>}
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        {['PAID', 'IN_PROGRESS', 'COMPLETED', 'RELEASED'].includes(job.status) ? (
+          <TouchableOpacity style={styles.dangerButton} accessibilityRole="button"
+            accessibilityLabel="Raise a service dispute"
+            disabled={busy !== null} onPress={disputeJob}>
+            <Text style={styles.dangerText}>SOMETHING WRONG? RAISE A DISPUTE</Text>
+          </TouchableOpacity>
         ) : null}
 
         {job.status === 'OPEN' ? (
@@ -490,7 +582,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
                   {index === 0 ? <Text style={styles.muted}>Lowest current quote</Text> : null}
                   <Text style={styles.quoteMessage}>{quote.message || "No additional details supplied. Confirm scope before accepting."}</Text>
                   {quote.validUntil ? (
-                    <Text style={styles.muted}>Valid until {new Date(quote.validUntil).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</Text>
+                    <Text style={styles.muted}>Valid until {new Date(quote.validUntil).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/London' })} UK time</Text>
                   ) : null}
                 </View>
                 <View style={styles.quoteRight}>
@@ -503,7 +595,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
                   >
                     {busy === quote.id
                       ? <ActivityIndicator size="small" color={Colors.onAccent} />
-                      : <Text style={styles.primaryText}>CHOOSE & PAY</Text>}
+                      : <Text style={styles.primaryText}>CHOOSE & CONTINUE TO PAYMENT</Text>}
                   </TouchableOpacity>
                 </View>
               </View>
@@ -511,25 +603,33 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
           </View>
         ) : null}
 
-        {job.status === 'ACCEPTED' && accepted ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionLabel}>PAYMENT REQUIRED</Text>
-            <Text style={styles.providerName}>{providerName(accepted)}</Text>
-            <Text style={styles.quotePrice}>{formatPence(accepted.amountPence)}</Text>
-            <Text style={styles.bodyText}>
-              Your provider is reserved. Complete secure checkout to confirm the job.
-            </Text>
-            <TouchableOpacity
-              style={[styles.primaryButton, busy !== null && styles.disabled]}
-              onPress={() => { void openCheckout(accepted, true); }}
-              disabled={busy !== null || job.payment?.status !== 'PENDING'}
-            >
-              {busy === accepted.id
-                ? <ActivityIndicator size="small" color={Colors.onAccent} />
-                : <Text style={styles.primaryText}>PAY SECURELY</Text>}
-            </TouchableOpacity>
-          </View>
-        ) : null}
+
+        <View style={styles.card}>
+          <Text style={styles.providerName}>Request details</Text>
+
+          <Info
+            icon="location-outline"
+            label={isInspection ? 'Inspection location' : 'Route'}
+            value={
+              isInspection
+                ? [job.serviceAddress, job.servicePostcode].filter(Boolean).join(', ') || 'Location pending'
+                : `${job.pickupPostcode || 'Pickup'} → ${job.deliveryPostcode || 'Delivery'}`
+            }
+          />
+          {job.vehicles.map((vehicle, index) => <Info
+            key={vehicle.id || index}
+            icon="car-sport-outline"
+            label={job.vehicles.length > 1 ? `Vehicle ${index + 1} of ${job.vehicles.length}` : 'Vehicle'}
+            value={[
+              [vehicle.registration, vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(' · ') || 'Vehicle',
+              vehicle.notes,
+            ].filter(Boolean).join('\n')}
+          />)}
+          <Info icon="calendar-outline" label="Requested time" value={formatUkServiceDateTime(job.requestedFor)} />
+          {job.description ? <Text style={styles.description}>{job.description}</Text> : null}
+        </View>
+
+
 
         {job.agreedAmountPence != null ? (
           <View style={styles.card}>
@@ -556,82 +656,11 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
           </View>
         ) : null}
 
-        {job.contractor && paidState ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionLabel}>YOUR PROVIDER</Text>
-            <Text style={styles.providerName}>
-              {job.contractor.businessName
-                || [job.contractor.user.firstName, job.contractor.user.lastName].filter(Boolean).join(' ')
-                || 'Verified provider'}
-            </Text>
-            <Text style={styles.muted}>
-              {job.contractor.rating.toFixed(1)} rating · {job.contractor.totalReviews} reviews
-            </Text>
-            <View style={styles.actionRow}>
-              {job.contractor.phone || job.contractor.user.phone ? (
-                <TouchableOpacity
-                  style={styles.secondaryButton}
-                  onPress={() => void Linking.openURL(`tel:${job.contractor?.phone || job.contractor?.user.phone}`)}
-                >
-                  <Ionicons name="call-outline" size={16} color={Colors.accent} />
-                  <Text style={styles.secondaryText}>CALL</Text>
-                </TouchableOpacity>
-              ) : null}
-              {canMessageProvider ? (
-                <TouchableOpacity
-                  style={styles.secondaryButton}
-                  onPress={() => void openChat()}
-                  disabled={busy === 'chat'}
-                >
-                  {busy === 'chat'
-                    ? <ActivityIndicator size="small" color={Colors.accent} />
-                    : <Ionicons name="chatbubble-outline" size={16} color={Colors.accent} />}
-                  <Text style={styles.secondaryText}>MESSAGE</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          </View>
-        ) : null}
-
-        {job.status === 'COMPLETED' ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionLabel}>CONFIRM SERVICE</Text>
-            <Text style={styles.bodyText}>
-              The provider marked this {isInspection ? 'inspection' : 'delivery'} complete.
-              Confirm only when you are satisfied. Confirming authorises provider payout; raise a dispute if the work is incomplete or incorrect.
-            </Text>
-            <Text style={styles.muted}>
-              {completionReview
-                ? completionReview.elapsed
-                  ? 'The 48-hour review period has elapsed. Automatic confirmation may still be processing; check payment status.'
-                  : `Automatic confirmation becomes eligible after ${formatUkServiceDateTime(completionReview.dueAt)}, unless a dispute blocks release.`
-                : 'Completion is awaiting verification. Do not rely on an automatic payout date yet.'}
-            </Text>
-            <TouchableOpacity
-              style={[styles.primaryButton, busy === 'confirm' && styles.disabled]}
-              disabled={busy !== null}
-              onPress={confirmJob}
-            >
-              {busy === 'confirm'
-                ? <ActivityIndicator size="small" color={Colors.onAccent} />
-                : <Text style={styles.primaryText}>CONFIRM COMPLETION</Text>}
-            </TouchableOpacity>
-          </View>
-        ) : null}
-
-        {['PAID', 'IN_PROGRESS', 'COMPLETED', 'RELEASED'].includes(job.status) ? (
-          <TouchableOpacity style={styles.dangerButton} accessibilityRole="button"
-            accessibilityLabel="Raise a service dispute"
-            disabled={busy !== null} onPress={disputeJob}>
-            <Text style={styles.dangerText}>SOMETHING WRONG? RAISE A DISPUTE</Text>
-          </TouchableOpacity>
-        ) : null}
-
         {job.status === 'OPEN' ? (
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={cancelJob}
-            disabled={busy === 'cancel'}
+            disabled={busy !== null}
           >
             <Ionicons name="trash-outline" size={15} color={Colors.textMuted} />
             <Text style={styles.cancelText}>Cancel service request</Text>
@@ -645,8 +674,35 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
           </View>
         ) : null}
 
-        <View style={{ height: 60 }} />
-        {<ServiceJobChanges job={job} role="customer" onChange={load} />}
+        {job.status === 'RELEASED' && (job.review || job.canReview) ? (
+          <View style={styles.card}>
+            <Text style={styles.providerName}>{job.review ? 'Your verified service review' : 'Review your provider'}</Text>
+            <Text style={styles.bodyText}>Reviews are available to customers after the paid service is completed.</Text>
+            <View style={styles.actionRow}>
+              {[1, 2, 3, 4, 5].map(star => <TouchableOpacity
+                key={star} accessibilityRole="button" accessibilityLabel={`Rate ${star} star${star === 1 ? '' : 's'}`}
+                accessibilityState={{ selected: star <= (job.review?.rating || reviewRating), disabled: !!job.review || busy !== null }}
+                disabled={!!job.review || busy !== null} onPress={() => setReviewRating(star)} style={styles.starButton}>
+                <Ionicons name={star <= (job.review?.rating || reviewRating) ? 'star' : 'star-outline'} size={25} color={Colors.warning} />
+              </TouchableOpacity>)}
+            </View>
+            {job.review ? <>
+              <Text style={styles.bodyText}>{job.review.rating} out of 5 stars</Text>
+              {job.review.comment ? <Text style={styles.bodyText}>{job.review.comment}</Text> : null}
+              <Text style={styles.muted}>{formatUkServiceDateTime(job.review.createdAt)}</Text>
+            </> : <>
+              <TextInput accessibilityLabel="Service review comment" placeholder="Optional comment about the service"
+                placeholderTextColor={Colors.textMuted} value={reviewComment} onChangeText={setReviewComment}
+                maxLength={2000} multiline editable={busy === null} style={styles.reviewInput} />
+              <TouchableOpacity accessibilityRole="button" style={[styles.primaryButton, (busy !== null || !reviewRating) && styles.disabled]}
+                disabled={busy !== null || !reviewRating} onPress={() => void submitReview()}>
+                {busy === 'review' ? <ActivityIndicator size="small" color={Colors.onAccent} /> : <Text style={styles.primaryText}>SUBMIT VERIFIED REVIEW</Text>}
+              </TouchableOpacity>
+            </>}
+          </View>
+        ) : null}
+        <ServiceJobChanges job={job} role="customer" onChange={load} disabled={busy !== null}
+          onBusyChange={value => { actionPending.current = value; setBusy(value ? 'support' : null); }} />
       </ScrollView>
     </View>
   );
@@ -693,6 +749,8 @@ const styles = StyleSheet.create({
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
   content: { padding: 18, gap: 12, paddingBottom: 70 },
+  starButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  reviewInput: { minHeight: 100, textAlignVertical: 'top', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, color: Colors.textSecondary, backgroundColor: Colors.bgTertiary },
   card: {
     borderRadius: Radius.card,
     borderWidth: 1,
@@ -726,7 +784,7 @@ const styles = StyleSheet.create({
   },
   providerName: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white },
   quoteMessage: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 6, lineHeight: 18 },
-  quoteRight: { alignItems: 'flex-end', gap: 7 },
+  quoteRight: { alignItems: 'stretch', gap: 7 },
   quotePrice: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   bigPrice: { fontFamily: FontFamily.bold, fontSize: FontSize.xl, color: Colors.white },
   primaryButton: {
@@ -737,7 +795,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.accentDark,
     ...Elevation.neon,
   },
-  primaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent },
+  primaryText: { flexShrink: 1, textAlign: 'center', fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent },
   secondaryButton: {
     minHeight: 42, borderRadius: 11, paddingHorizontal: 14, paddingVertical: 10,
     borderWidth: 1, borderColor: Colors.borderHi,
@@ -750,14 +808,14 @@ const styles = StyleSheet.create({
   dangerButton: {
     minHeight: 46, borderRadius: 11, paddingHorizontal: 14, paddingVertical: 11,
     backgroundColor: Colors.accent, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 8,
+    justifyContent: 'center', gap: 8, flexWrap: 'wrap',
     borderBottomWidth: 3,
     borderBottomColor: Colors.accentDark,
     ...Elevation.neon,
   },
-  dangerText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent },
+  dangerText: { flexShrink: 1, textAlign: 'center', fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.onAccent },
   disabled: { opacity: 0.6 },
-  actionRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
+  actionRow: { flexDirection: 'row', gap: 5, flexWrap: 'wrap' },
   cancelButton: { alignSelf: 'center', flexDirection: 'row', gap: 7, alignItems: 'center', padding: 12, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.borderHi, borderBottomWidth: 3, ...Elevation.card },
   cancelText: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textMuted },
   notice: {

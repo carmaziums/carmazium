@@ -227,9 +227,11 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
         buyer: unifiedLinks,
         seller: sellerLinks,
         provider: [
-            // One provider entry point. The job and setup actions stay available on this existing hub.
-            { href: "/dashboard/partner", label: "TradeXchange", icon: Briefcase, section: "Services", activePrefixes: ["/dashboard/service"] },
+            { href: "/dashboard/service", label: "Provider Dashboard", icon: LayoutDashboard, section: "Services" },
+            { href: "/dashboard/service/jobs", label: "Find Jobs", icon: Briefcase, section: "Services" },
+            { href: "/dashboard/service/jobs?tab=mine", label: "My Work", icon: ClipboardList, section: "Services" },
             { href: "/dashboard/service/messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account" },
+            { href: "/dashboard/partner", label: "Service Setup", icon: ShieldCheck, section: "Account", activePrefixes: ["/dashboard/service/capabilities", "/dashboard/service/settings"] },
             { href: "/profile", label: "Account Settings", icon: Settings, section: "Account" },
         ],
         finance: [

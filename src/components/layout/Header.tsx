@@ -62,6 +62,7 @@ export function Header() {
     const router = useRouter()
     const { user, profile, loading, signOut } = useAuth()
     const { unreadCount } = useChat()
+    const providerAccount = !!user && (profile?.role === 'DEALER' || profile?.role === 'CONTRACTOR')
 
     React.useEffect(() => {
         setActiveLink(pathname || "")
@@ -461,14 +462,19 @@ export function Header() {
                                         <p className="text-sm font-semibold truncate">{user.email}</p>
                                     </div>
                                     <Link
-                                        href={profile?.role === 'ADMIN' ? '/dashboard/admin' : '/dashboard'}
+                                        href={profile?.role === 'ADMIN' ? '/dashboard/admin' : profile?.role === 'CONTRACTOR' ? '/dashboard/service' : '/dashboard'}
                                         onClick={() => setIsUserMenuOpen(false)}
                                         className="flex items-center gap-3 px-4 py-2 hover:bg-primary/5 text-sm transition-colors"
                                         style={{ color: 'var(--text-secondary)' }}
                                     >
                                         {profile?.role === 'ADMIN' ? <ShieldCheck size={16} /> : <Car size={16} />}
-                                        {profile?.role === 'ADMIN' ? 'Admin Control Panel' : 'Dashboard'}
+                                        {profile?.role === 'ADMIN' ? 'Admin Control Panel' : profile?.role === 'CONTRACTOR' ? 'Provider Dashboard' : 'Dashboard'}
                                     </Link>
+                                    {profile?.role === 'DEALER' && (
+                                        <Link href="/dashboard/service" onClick={() => setIsUserMenuOpen(false)} className="flex min-h-11 items-center gap-3 px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">
+                                            <LayoutGrid size={16} /> Provider Dashboard
+                                        </Link>
+                                    )}
                                     <Link
                                         href="/profile"
                                         onClick={() => setIsUserMenuOpen(false)}
@@ -554,6 +560,11 @@ export function Header() {
                             <span className="text-base font-semibold">Appearance</span>
                             <ThemeToggle />
                         </div>
+                        {providerAccount && (
+                            <Link href="/dashboard/service" onClick={() => setIsMobileMenuOpen(false)} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-primary/35 bg-primary/10 px-4 py-3 text-base font-bold text-primary">
+                                <LayoutGrid size={20} aria-hidden="true" /> Provider Dashboard
+                            </Link>
+                        )}
                         {visibleNavLinks.map((link) => {
                             if (link.kind === "buy-menu") {
                                 return (

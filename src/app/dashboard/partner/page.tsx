@@ -209,11 +209,12 @@ export default function PartnerDashboardPage() {
         return (
             <div className="max-w-3xl mx-auto pt-28 pb-16 px-5">
                 <div className="rounded-3xl border border-primary/30 bg-primary/5 p-8 md:p-12">
-                    <h1 className="text-3xl font-black font-heading mb-3">TradeXchange</h1>
+                    <h1 className="text-3xl font-black font-heading mb-3">Service Setup</h1>
                     <p className="text-[var(--text-muted)] mb-5">
                         Continue using your existing service-provider account. Your applications, approvals and documents remain unchanged; no dealer registration is needed.
                     </p>
                     <div className="flex flex-wrap gap-3">
+                        <Link href="/dashboard/service" className={buttonVariants()}>Provider Dashboard</Link>
                         <Link href="#provider-services" className={buttonVariants()}>My services</Link>
                         <Link href="/dashboard/service/jobs" className={buttonVariants({ variant: "outline" })}>Find jobs</Link>
                         <Link href="/dashboard/service/jobs?tab=mine" className={buttonVariants({ variant: "outline" })}>My work</Link>
@@ -241,12 +242,13 @@ export default function PartnerDashboardPage() {
                     <div className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-primary mb-3">
                         <Building2 size={15} /> TradeXchange
                     </div>
-                    <h1 className="text-4xl font-black font-heading tracking-tight">TradeXchange</h1>
+                    <h1 className="text-4xl font-black font-heading tracking-tight">Service Setup</h1>
                     <p className="text-[var(--text-muted)] mt-2 max-w-2xl">
                         One CarMazium business account. Choose one or multiple services—collection, delivery & recovery and/or vehicle inspections—under the same login. Each application has its own insurance checks.
                     </p>
                     <Link href="/business-partner-agreement" className="mt-3 inline-flex text-sm font-bold text-primary underline">View signed Business Partner Agreement and legal record</Link>
                 </div>
+                <Link href="/dashboard/service" className={buttonVariants({ variant: "outline" })}>Provider Dashboard</Link>
             </header>
 
             {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 text-red-500 p-4 text-sm">{error}</div>}

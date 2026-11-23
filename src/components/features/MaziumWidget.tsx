@@ -56,6 +56,7 @@ export function MaziumWidget() {
     const { user } = useAuth()
     const router = useRouter()
     const pathname = usePathname()
+    const quietServiceGreeting = ["/services/jobs", "/dashboard/service", "/dashboard/partner", "/services/delivery/new", "/services/inspection/new"].some(path => pathname === path || pathname.startsWith(path + "/"))
     const [isOpen, setIsOpen] = React.useState(false)
     const [messages, setMessages] = React.useState<ChatMessage[]>([
         {
@@ -591,7 +592,7 @@ export function MaziumWidget() {
                 greeting so it cannot cover the valuation CTA. */}
             {/* Greeting Pop-up */}
             <AnimatePresence>
-                {!isOpen && showGreeting === true && (
+                {!isOpen && !quietServiceGreeting && showGreeting === true && (
                     <motion.div
                         initial={{ opacity: 0, y: 10, scale: 0.9 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}

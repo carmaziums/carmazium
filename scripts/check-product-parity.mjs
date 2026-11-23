@@ -346,17 +346,17 @@ const webPartnerApi = read('src/lib/partnerApi.ts');
 const webCheckout = read('src/app/checkout/page.tsx');
 
 // Block 9 revalidation — operational business-role landing must match web.
-// CONTRACTOR uses the consolidated Partner workspace. The legacy FINANCE_PARTNER
+// CONTRACTOR lands directly on its operational provider dashboard. The legacy FINANCE_PARTNER
 // now receives the finance contact page; INSURANCE_PARTNER retains its operations.
 if (
   !webDashboardRoleRouter.includes("role === 'CONTRACTOR'") ||
-  !webDashboardRoleRouter.includes("router.push('/dashboard/partner')") ||
+  !webDashboardRoleRouter.includes("router.push('/dashboard/service')") ||
   !webDashboardRoleRouter.includes("role === 'FINANCE_PARTNER'") ||
   !webDashboardRoleRouter.includes("router.push('/dashboard/finance')") ||
   !webDashboardRoleRouter.includes("role === 'INSURANCE_PARTNER'") ||
   !webDashboardRoleRouter.includes("router.push('/dashboard/insurance')") ||
   !mobileTabNavigator.includes("accountRole === 'contractor'") ||
-  !mobileTabNavigator.includes('<PartnerDashboardScreen {...props} />') ||
+  !mobileTabNavigator.includes('<ProviderOverviewScreen {...props} />') ||
   !mobileTabNavigator.includes("accountRole === 'finance_partner' || accountRole === 'insurance_partner'") ||
   !mobileTabNavigator.includes('<LegacyPartnerDashboardScreen {...props} />')
 ) {
@@ -498,7 +498,7 @@ if (
 ) {
   fail('Auction inspection refusal must remain a verified, full-refund backend contract on both clients');
 } else {
-  ok('Auction inspection refusal is fault-verified and refunds the full £125 buyer fee');
+  ok('Auction inspection refusal is fault-verified and refunds the paid buyer fee up to £125');
 }
 
 
@@ -564,7 +564,9 @@ if (
   !mobileCustomerServiceJobs.includes("navigation.navigate('CustomerServiceJobDetail'") ||
   !mobileCustomerServiceJobDetail.includes('refuseAuctionAfterInspection') ||
   !mobileCustomerServiceJobDetail.includes("job.inspectionOutcome === 'FAULTS_FOUND'") ||
-  !mobileCustomerServiceJobDetail.includes('REFUSE VEHICLE & REFUND £125') ||
+  !mobileCustomerServiceJobDetail.includes('REFUSE VEHICLE & REVIEW REFUND') ||
+  !mobileCustomerServiceJobDetail.includes('inspectionRefusalNotice(result.refundedAmount)') ||
+  !mobileCustomerServiceJobDetail.includes('if (!result.refused)') ||
   !mobileCustomerServiceJobDetail.includes('acceptCustomerQuote') ||
   !mobileCustomerServiceJobDetail.includes('getOrCreateServiceJobRoom') ||
   !mobileServicesScreen.includes("navigation.navigate('CustomerServiceJobs')") ||
@@ -1035,8 +1037,10 @@ if (
   !webDealerRoutes.includes('label: "Stock"') ||
   !webDealerRoutes.includes('label: "Customers"') ||
   !webDealerRoutes.includes('label: "Offers received"') ||
-  !webDealerRoutes.includes('label: "TradeXchange"') ||
-  !mobileDealerDrawer.includes("label: 'TradeXchange'") ||
+  !webDealerRoutes.includes('label: "Provider Dashboard"') ||
+  !mobileDealerDrawer.includes("label: 'Provider Dashboard'") ||
+  !webDealerRoutes.includes('label: "Service Setup"') ||
+  !mobileDealerDrawer.includes("label: 'Service Setup'") ||
   !mobileDealerDrawer.includes("label: 'Stock'") ||
   !mobileDealerDrawer.includes("label: 'Customers'") ||
   !mobileDealerDrawer.includes("label: 'Offers received'") ||
