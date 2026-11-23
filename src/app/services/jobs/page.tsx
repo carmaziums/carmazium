@@ -47,7 +47,7 @@ function MyJobsList() {
                     <p className="text-[var(--text-muted)] text-sm">Track the delivery, recovery and inspection jobs you posted, compare quotes and manage the provider you choose.</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                    <Link href="/services" className="inline-flex items-center gap-2 px-4 py-3 rounded-xl border border-[var(--border-default)] text-sm font-bold hover:border-primary/40 transition-colors">
+                    <Link href="/auctions" className="inline-flex items-center gap-2 px-4 py-3 rounded-xl border border-[var(--border-default)] text-sm font-bold hover:border-primary/40 transition-colors">
                         <ArrowLeft size={15} /> TradeXchange Services
                     </Link>
                     <Link href="/services/jobs/new" className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-white text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-colors">

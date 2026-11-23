@@ -26,7 +26,7 @@ export default function DeliveryLayout({ children }: { children: React.ReactNode
                 description={metadata.description as string}
                 crumbs={[
                     { label: "Home", path: "/" },
-                    { label: "Services", path: "/services" },
+                    { label: "TradeXchange", path: "/auctions" },
                     { label: "Vehicle delivery and recovery", path: "/services/delivery" },
                 ]}
                 mainEntity={{

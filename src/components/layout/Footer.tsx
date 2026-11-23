@@ -46,7 +46,6 @@ export function Footer() {
                             <li><Link href="/blog" className={footerLinkClass}>Automotive Insights &amp; Guides</Link></li>
                             <li><Link href="/sell" className={footerLinkClass}>Sell Cars</Link></li>
                             <li><Link href="/auctions" className={footerLinkClass}>TradeXchange</Link></li>
-                            <li><Link href="/services" className={footerLinkClass}>Services Hub</Link></li>
                             <li><Link href="/compare" className={footerLinkClass}>Compare Cars</Link></li>
                             <li><Link href="/pricing" className={footerLinkClass}>Pricing</Link></li>
                             <li><Link href="/about" className={footerLinkClass}>About</Link></li>

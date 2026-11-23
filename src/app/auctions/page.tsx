@@ -236,16 +236,11 @@ export default function TradeXchangePage() {
                 path="/auctions"
                 title="TradeXchange Car Auctions & Vehicle Services UK | CarMazium"
                 about={SEO_TRADEXCHANGE}
+                type="CollectionPage"
                 mainEntity={{
-                    "@type": "Service", "@id": SEO_SITE + "/auctions#service",
-                    name: "TradeXchange dealer car auctions",
-                    serviceType: "Online trade vehicle auction",
-                    description: "24-hour online auctions where verified UK motor traders bid on seller-listed vehicles.",
-                    provider: { "@id": SEO_SITE + "/#organization" },
-                    brand: { "@id": SEO_TRADEXCHANGE },
-                    audience: { "@type": "BusinessAudience", name: "Verified UK motor traders" },
-                    areaServed: { "@type": "Country", name: "United Kingdom" },
-                    offers: { "@type": "Offer", name: "Auction seller listing", price: "0", priceCurrency: "GBP" },
+                    "@type": "ItemList", "@id": SEO_SITE + "/auctions#service-directory",
+                    name: "TradeXchange vehicle auctions and services",
+                    itemListElement: ["/auctions/how-it-works", ...(deliveryServiceEnabled ? ["/services/delivery"] : []), ...(inspectionServiceEnabled ? ["/services/inspection"] : []), ...(financeServiceEnabled ? ["/services/finance"] : []), ...(warrantyServiceEnabled ? ["/services/warranty"] : [])].map((path, i) => ({ "@type": "ListItem", position: i + 1, url: SEO_SITE + path })),
                 }}
             />
             <section className="relative overflow-hidden text-white" style={{ marginTop: "-80px", paddingTop: "80px" }}>
@@ -277,7 +272,7 @@ export default function TradeXchangePage() {
                             transition={{ delay: 0.1 }}
                             className="max-w-2xl text-lg leading-relaxed text-slate-100"
                         >
-                            Auction vehicles, move them, inspect them, arrange finance enquiries and source warranty cover — while approved service providers can compete for work and grow their automotive business through the same marketplace.
+                            Auction vehicles, move them, inspect them, apply for vehicle finance and choose warranty cover — while approved service providers can compete for work and grow their automotive business through the same marketplace.
                         </motion.p>
                         <motion.div
                             initial={{ opacity: 0, y: 14 }}
@@ -365,7 +360,7 @@ export default function TradeXchangePage() {
                 </div>
                 <div className="mt-6 rounded-xl border border-[var(--border-default)] p-5 text-sm">
                     <p className="font-bold">Looking for finance or warranty cover for your vehicle?</p>
-                    <p className="mt-1 text-[var(--text-muted)]">The partnership cards above are for provider businesses. Buyers can use the existing customer services below.</p>
+                    <p className="mt-1 text-[var(--text-muted)]">The partnership cards above are for provider businesses. Apply for finance from a participating vehicle listing, or choose warranty cover and get a quote online.</p>
                     <div className="mt-3 flex flex-wrap gap-5">{financeServiceEnabled && <Link className="inline-flex min-h-11 items-center font-bold text-primary underline" href="/services/finance">Vehicle finance for buyers</Link>}{warrantyServiceEnabled && <Link className="inline-flex min-h-11 items-center font-bold text-primary underline" href="/services/warranty">Warranty cover for buyers</Link>}</div>
                 </div>
             </section>
@@ -465,9 +460,9 @@ export default function TradeXchangePage() {
                         Open the card that matches what you need. Every TradeXchange page explains that service first, then gives you the relevant action — browse, post a job, send an enquiry or apply as a provider.
                     </p>
                     <Button asChild className="h-auto min-h-11 max-w-full whitespace-normal text-center">
-                        <Link href="/services">
-                            Explore vehicle services <ArrowRight size={15} className="shrink-0" />
-                        </Link>
+                        <a href="#tradexchange-areas">
+                            Explore our services <ArrowRight size={15} className="shrink-0" />
+                        </a>
                     </Button>
                 </div>
             </section>

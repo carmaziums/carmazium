@@ -34,7 +34,6 @@ const STATIC_ROUTES = [
     "/about",
     "/download-app",
     "/contact",
-    "/services",
     "/business-spotlight",
     ...businessSpotlights.map((business) => `/business-spotlight/${business.slug}`),
     "/services/delivery",

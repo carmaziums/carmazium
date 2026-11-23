@@ -36,7 +36,7 @@ export function getGuidedWebsiteSteps(profile: TourProfile): GuidedStep[] {
             ["overview", "Admin dashboard", "", "Review platform activity and outstanding work. Open the relevant module to investigate; this guide never approves, publishes or charges anything."],
             ["listings", "Listing moderation", "/listings", "Review listing details, photographs and declarations before making a moderation decision."],
             ["dealers", "Dealer verification", "/dealer-verification", "Review business and account verification. The original dealer verification payment is reused for service applications."],
-            ["services", "Service jobs and providers", "/services", "Review provider approvals, service jobs and disputes. Delivery and recovery require trade insurance; inspections require the declaration and verified business and payout details."],
+            ["services", "Service jobs and providers", "/services", "Review provider approvals, service jobs and disputes. Delivery, collection and recovery require Motor Trade and Public Liability Insurance; inspection requires Public Liability Insurance."],
             ["users", "Account management", "/users", "Find the correct account before reviewing its details or permissions."],
             ["transactions", "Transactions", "/transactions", "Review recorded payment statuses. Vehicle buyers pay sellers directly; listing fees and service payments are separate."],
             ["handovers", "Vehicle handovers", "/handovers", "Review collection evidence and required confirmations before approving an eligible seller incentive."],

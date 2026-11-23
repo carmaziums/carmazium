@@ -23,6 +23,8 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // Retired duplicate hub; exact path only, never redirect service details or jobs.
+      { source: '/services', destination: '/auctions', permanent: true },
       {
         source: '/index.html',
         destination: '/',

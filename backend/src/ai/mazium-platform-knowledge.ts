@@ -196,9 +196,9 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'Only approved providers for the relevant service can quote; never guarantee an available provider, service price or immediate booking.',
             'When authorised, read_my_service_jobs checks 10 recent jobs booked by the signed-in customer, with saved payment and completion states. It does not read assigned provider jobs or other dealership members’ jobs. An empty result is not a full-history check.',
             'Platform administrators review jobs through Admin Control Panel -> Trade Services -> Jobs at /dashboard/admin/services?tab=jobs. This administrative console is separate from the assistant owner-scoped customer job tools.',
-            'Some service types can be temporarily switched off; refer to /services for actual availability.'
+            'Some service types can be temporarily switched off; refer to /auctions for actual availability.'
         ].join(' '),
-        sources: ['src/app/services/page.tsx','src/app/services/jobs/[id]/page.tsx','src/lib/featureFlags.ts','backend/src/services/services.service.ts','src/app/dashboard/admin/services/page.tsx']
+        sources: ['src/app/auctions/page.tsx','src/app/services/jobs/[id]/page.tsx','src/lib/featureFlags.ts','backend/src/services/services.service.ts','src/app/dashboard/admin/services/page.tsx']
     },
     {
         id: 'dealer-services-and-partners',
@@ -210,7 +210,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
             'Manage own-listing Finance and Warranty badges in Account Settings /profile?section=business. Manage Delivery/Recovery and Inspection service applications, approved evidence, payout setup and job-area preferences together from the TradeXchange hub /dashboard/partner, not a separate capability settings page. New provider job feed and accepted work remain at /dashboard/service/jobs. Existing providers keep their accounts and existing jobs.',
             'Finance, warranty and insurance companies wanting central platform partnerships must contact the CarMazium team.'
         ].join(' '),
-        sources: ['src/components/dealer/DealerServicePreferences.tsx','src/app/services/page.tsx','src/app/dashboard/partner/page.tsx','backend/src/ai/mazium-site-navigation.ts','carmazium app/carmazium app/src/screens/main/PartnerDashboardScreen.tsx']
+        sources: ['src/components/dealer/DealerServicePreferences.tsx','src/app/auctions/page.tsx','src/app/dashboard/partner/page.tsx','backend/src/ai/mazium-site-navigation.ts','carmazium app/carmazium app/src/screens/main/PartnerDashboardScreen.tsx']
     },
     {
         id: 'search-buying',

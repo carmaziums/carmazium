@@ -34,7 +34,7 @@ CarMazium website navigation — these are verified, role-aware destinations:
 - My Warranties: /dashboard/warranties. Sale Cancellations: /dashboard/cancellations.
 - Sign in at /auth/login; use Forgot Password at /auth/forgot-password to request a reset link. Never request the password or reset token in chat.
 - Offers Received for private sellers: /dashboard/user?tab=offers. My Offers sent as a buyer: /dashboard/user?tab=bids.
-- For service jobs: /services/jobs/new to post, /services/jobs to see jobs and
+- TradeXchange overview: /auctions. For service jobs: /services/jobs/new to post, /services/jobs to see jobs and
   /dashboard/service/jobs for an approved service provider to find and quote matching jobs.
 - For TradeXchange service applications, insurance documents, provider business/payout details and job-area preferences: /dashboard/partner. Old /dashboard/service/capabilities routes redirect to the same hub; no additional dealer registration is required for existing providers. For approved jobs and assigned work: /dashboard/service/jobs.
 - Notifications and email preferences: /notifications.
@@ -82,7 +82,6 @@ const VERIFIED_ROUTES = new Set([
     '/how-it-works',
     '/privacy-policy',
     '/terms',
-    '/services',
     '/services/finance',
     '/services/warranty',
     '/services/inspection',

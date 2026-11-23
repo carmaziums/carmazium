@@ -1,5 +1,5 @@
 {
-  "reviewedAt": "2026-11-22",
+  "reviewedAt": "2026-11-23",
   "sources": {
     "backend/prisma/schema.prisma": "3db29bc3ed259489fbf85c9e9b418ec50b4b7bd57ef7879c7adfeeac6a1b57b2",
     "backend/src/admin/admin-user-filters.ts": "0f7afcf5f18e79666b69f346dda04add2024e42fbf71cca4aefb4bd5221118c4",
@@ -7,7 +7,7 @@
     "backend/src/ai/ai.controller.ts": "9ff65932480e9a99085249bed84354ac513965877b380b25f54f1c6293ad4011",
     "backend/src/ai/ai.service.ts": "d0257f456c507415683637b393e482559af63035255af46bbef6df92f2f0073c",
     "backend/src/ai/mazium-assistant-tools.ts": "117233dadd8e6cb157bde72d3976fe667841f65da363fb28fba04b7730070f33",
-    "backend/src/ai/mazium-site-navigation.ts": "906b5d038c5062c52bd93483387b9bd520cef02ba5301bce7c6b147537246859",
+    "backend/src/ai/mazium-site-navigation.ts": "c974919b842778c1db55fbec4c019c7aa94c1dab12ba58f6ba11a21caf991669",
     "backend/src/ai/search-filter-contract.ts": "c5a2069778baacf2acaf9de36087009b9f3782a803b226b97a678cb4cc69a8d8",
     "backend/src/chat/chat.service.ts": "e167a48000c60845b0932053953cb8fbcc247f936771fc8b995e9bb10689661d",
     "backend/src/chat/support-automatic-responses.ts": "b06cb0169af9691ff4ee4117c9a869a01342cb95f73221d835bb7a1c97717bef",
@@ -30,6 +30,7 @@
     "carmazium app/carmazium app/src/screens/main/DealerWebParityOverview.tsx": "48561878b9f8fedae8ddb5e2fa30cdedfaa345124e7ea8beb7c9f590614f3de5",
     "carmazium app/carmazium app/src/screens/main/PartnerDashboardScreen.tsx": "329b1b05d378f131ae99662135d7748a9b5d1e5174cc080f255bd497bcc50aa5",
     "docs/privacy/ACCOUNT_DELETION_RETENTION.md": "fc5e72b46344a699116df3575b657d888d8b2dfd5751ec3defd4a2b2bf752077",
+    "src/app/auctions/page.tsx": "72d3a8f64dd8cfeb5370ef1cd69a1bd1f786239ced9dab1b19d5d53b62fee0cb",
     "src/app/auth/forgot-password/page.tsx": "e31d2c8ec55d997152239fb073a48aa4ebeefda8c46229e3b5b3a3dc93d69a9f",
     "src/app/auth/login/page.tsx": "cbb780d0482668d587085e85526fc818e09daa8ff382107836fd8957ccf2b3b6",
     "src/app/become-a-partner/page.tsx": "6e060613d61f43fb11c454d9979e9b101496d36cc66c1ae7cce040390f7904e4",
@@ -55,8 +56,7 @@
     "src/app/profile/page.tsx": "90e631985a6aee00fd025c5ce60d1933f3a8bd312a151f00fe1a1bb897bfeb3a",
     "src/app/search/page.tsx": "ba0c602c445c9eed090518156573b4c5fc81b91cb0736a35c58b850a4c4d99ee",
     "src/app/sell/page.tsx": "da52b24a0f0e98d88e09449a3b991382416bf3fd378609e9c43c86caf6fad718",
-    "src/app/services/finance/page.tsx": "514294706c306693f6be2e3b7f847e9852306fe2598e2f7c73c672a7b79d7ab3",
-    "src/app/services/page.tsx": "2a2cea970bfa1b79ac3fc25d8ca96cf5ad78a70e917aa12d4a955753841737b6",
+    "src/app/services/finance/page.tsx": "bd0b35255f05aae2fe38a96e5b6e0851b33075b02e838d255e88b5df1524d4dd",
     "src/app/services/warranty/page.tsx": "4a660bc1a27f498df350c80ea9488fcaf73a15db6d1eec69daca865c464975d1",
     "src/app/terms/page.tsx": "a0b246f6f895906c652d8c11cf576911f2256fa12efd30fceab6bde5c204c1e6",
     "src/components/auctions/AuctionResultsModal.tsx": "0643900661c07ecb8614bea0b610aab20c36cd1c91ea8ab1b37b606bb08866a7",

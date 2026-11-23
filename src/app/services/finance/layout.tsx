@@ -26,7 +26,7 @@ export default function FinanceLayout({ children }: { children: React.ReactNode 
                 description={metadata.description as string}
                 crumbs={[
                     { label: "Home", path: "/" },
-                    { label: "Services", path: "/services" },
+                    { label: "TradeXchange", path: "/auctions" },
                     { label: "Vehicle finance enquiries", path: "/services/finance" },
                 ]}
                 mainEntity={{

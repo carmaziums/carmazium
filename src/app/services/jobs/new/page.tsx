@@ -31,7 +31,7 @@ export default function NewServiceJobPage() {
         <div className="min-h-screen pt-24 pb-20">
             <div className="container mx-auto px-5 max-w-4xl">
                 <Link
-                    href="/services"
+                    href="/auctions"
                     className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary mb-7"
                 >
                     <ArrowLeft size={15} /> TradeXchange

@@ -26,7 +26,7 @@ export default function InspectionLayout({ children }: { children: React.ReactNo
                 description={metadata.description as string}
                 crumbs={[
                     { label: "Home", path: "/" },
-                    { label: "Services", path: "/services" },
+                    { label: "TradeXchange", path: "/auctions" },
                     { label: "Vehicle inspection", path: "/services/inspection" },
                 ]}
                 mainEntity={{

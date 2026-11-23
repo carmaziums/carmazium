@@ -5,7 +5,7 @@ import { FinanceProviderContact } from "@/components/finance/FinanceProviderCont
 export default async function VehicleFinanceServicePage({ searchParams }: { searchParams: Promise<{ listingId?: string }> }) {
     const { listingId } = await searchParams
     return <div className="container mx-auto max-w-4xl px-5 py-12 space-y-8">
-        <Link href="/services" className="text-sm text-primary">Back to services</Link>
+        <Link href="/auctions" className="text-sm text-primary">Back to TradeXchange</Link>
         <header className="space-y-4"><h1 className="text-4xl font-bold">Vehicle Finance</h1>
             <p className="text-[var(--text-muted)]">Apply through the finance provider selected for your vehicle by CarMazium admin. CarMazium does not provide finance or make lending decisions.</p>
         </header>
