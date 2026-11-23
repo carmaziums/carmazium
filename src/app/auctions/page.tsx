@@ -80,7 +80,7 @@ export default function TradeXchangePage() {
             <TradeXchangeAccountActions paidJobsEnabled={deliveryServiceEnabled || inspectionServiceEnabled} />
         </section>
 
-        {(deliveryServiceEnabled || inspectionServiceEnabled) && <section aria-labelledby="jobs-heading" className="border-y border-[var(--border-default)] bg-[var(--bg-card)]">
+        {(deliveryServiceEnabled || inspectionServiceEnabled) && <section id="request-services" aria-labelledby="jobs-heading" className="scroll-mt-24 border-y border-[var(--border-default)] bg-[var(--bg-card)]">
             <div className="mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
                 <h2 id="jobs-heading" className="text-2xl font-heading font-bold sm:text-3xl">How transport and inspection requests work</h2>
                 <ol className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-3">
@@ -89,6 +89,7 @@ export default function TradeXchangePage() {
                         <div><h3 className="font-bold text-lg">{title}</h3><p className="mt-1 text-base leading-7 text-[var(--text-secondary)]">{description}</p></div>
                     </li>)}
                 </ol>
+                <div className="mt-6 flex flex-wrap gap-3">{deliveryServiceEnabled && <Link href="/services/delivery/new" className="inline-flex min-h-12 items-center rounded-xl bg-red-700 px-5 py-3 font-bold text-white hover:bg-red-800">Request transport</Link>}{inspectionServiceEnabled && <Link href="/services/inspection/new" className="inline-flex min-h-12 items-center rounded-xl border border-[var(--border-default)] px-5 py-3 font-bold hover:bg-[var(--bg-input)]">Request inspection</Link>}</div>
                 <p className="mt-6 text-sm leading-6 text-[var(--text-muted)]">Service availability depends on suitable providers. Vehicle purchase funds are paid directly between buyer and seller, separately from paid service jobs.</p>
             </div>
         </section>}

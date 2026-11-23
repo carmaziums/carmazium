@@ -1,135 +1,47 @@
-"use client"
-
 import Link from "next/link"
-import { motion } from "framer-motion"
-import {
-    ArrowLeft,
-    ArrowRight,
-    BadgeCheck,
-    Banknote,
-    CheckCircle,
-    FileText,
-    LayoutDashboard,
-    Lock,
-    ShieldCheck,
-    Truck,
-    Users,
-} from "lucide-react"
-import { Button } from "@/components/ui/Button"
+import { ArrowLeft, ArrowRight, CarFront, Truck, Wrench, ShieldCheck } from "lucide-react"
 import { deliveryServiceEnabled } from "@/lib/featureFlags"
 import { ServiceTemporarilyUnavailable } from "@/components/services/ServiceTemporarilyUnavailable"
-import { useAuth } from "@/context/AuthContext"
+import { TradeXchangePartnerAction } from "@/components/tradexchange/TradeXchangeAccountActions"
 
-const STEPS = [
-    { icon: FileText, title: "Post the route", desc: "Where the car is, where it is going, and when. One car or a full load." },
-    { icon: Users, title: "Approved transporters quote", desc: "Only businesses CarMazium has approved for delivery can see and quote on the job." },
-    { icon: Lock, title: "Pick one and pay CarMazium", desc: "Your service payment is held by CarMazium. Provider contact details unlock after you accept and pay." },
-    { icon: CheckCircle, title: "Confirm delivery, then payout", desc: "When the vehicle arrives you confirm completion. The provider payout is then released." },
-]
+const choices = [
+    { kind: "delivery", title: "Delivery", description: "Move a vehicle to your home, dealership or another destination.", icon: Truck },
+    { kind: "collection", title: "Collection", description: "Arrange collection from a seller, auction or other agreed location.", icon: CarFront },
+    { kind: "recovery", title: "Recovery", description: "Move a non-running, damaged or immobilised vehicle. Explain its condition so providers can quote suitable equipment.", icon: Wrench },
+] as const
+const panel = "rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 sm:p-6"
+const action = "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 py-3 font-semibold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
 
 export default function DeliveryLandingPage() {
-    const { user } = useAuth()
-    if (!deliveryServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Delivery & Recovery" />
-
-    const providerHref = user
-        ? "/dashboard/partner#provider-services"
-        : "/auth/signup?role=DEALER"
-
-    return (
-        <div className="min-h-screen" style={{ background: "var(--bg-body)" }}>
-            <section className="relative overflow-hidden border-b border-[var(--border-default)]" style={{ marginTop: "-80px", paddingTop: "80px" }}>
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(237,28,36,0.10)_0%,transparent_55%)]" />
-                <div className="container mx-auto px-6 py-16 md:py-24 relative">
-                    <Link href="/auctions" className="mb-7 inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-primary">
-                        <ArrowLeft size={15} /> Back to TradeXchange
-                    </Link>
-                    <div className="max-w-3xl">
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4 py-1.5 mb-6 text-xs font-bold uppercase tracking-widest text-primary">
-                            <Truck size={13} /> TradeXchange · Delivery &amp; Recovery
-                        </motion.div>
-                        <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="text-4xl md:text-6xl font-black font-heading tracking-tight leading-[0.95] mb-5">
-                            Move any car,<br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-red-700">anywhere in the UK.</span>
-                        </motion.h1>
-                        <motion.p initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="text-[var(--text-muted)] text-lg max-w-xl leading-relaxed mb-8">
-                            Post a route and approved transport businesses compete with fixed-price quotes. Use it for single vehicles, multi-car moves and recovery jobs for non-runners.
-                        </motion.p>
-                        <div className="flex flex-col sm:flex-row gap-3">
-                            <Button asChild size="lg">
-                                <Link href="/services/delivery/new">
-                                    Post a Job <ArrowRight size={16} />
-                                </Link>
-                            </Button>
-                            <Button asChild variant="outline" size="lg">
-                                <Link href="/dashboard/service/jobs">
-                                    Find Jobs &amp; Bid <ArrowRight size={16} />
-                                </Link>
-                            </Button>
-                            {user && (
-                                <Button asChild variant="outline" size="lg">
-                                    <Link href="/services/jobs">My jobs</Link>
-                                </Button>
-                            )}
-                        </div>
-                    </div>
-                </div>
+    if (!deliveryServiceEnabled) return <ServiceTemporarilyUnavailable serviceName="Vehicle Transport" />
+    return <div className="min-h-screen bg-[var(--bg-body)]">
+        <section className="border-b border-[var(--border-default)] bg-[var(--bg-card)]">
+            <div className="mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
+                <Link href="/auctions" className="mb-6 inline-flex min-h-12 items-center gap-2 text-[var(--text-secondary)] font-semibold hover:underline"><ArrowLeft size={18} aria-hidden="true" /> Back to TradeXchange</Link>
+                <p className="flex items-center gap-2 text-sm font-bold text-red-700 dark:text-red-300"><Truck size={19} aria-hidden="true" /> Vehicle Transport</p>
+                <h1 className="mt-3 max-w-3xl text-4xl font-heading font-black leading-tight tracking-tight sm:text-5xl">Vehicle delivery, collection and recovery across the UK.</h1>
+                <p className="mt-4 max-w-3xl text-lg leading-8 text-[var(--text-secondary)]">Request fixed-price transport quotes for one vehicle or up to 12 vehicles travelling on the same route. Choose an approved provider that suits your requirements. Availability depends on your route and providers.</p>
+            </div>
+        </section>
+        <div className="mx-auto max-w-7xl space-y-12 px-5 py-10 sm:px-8 sm:py-14">
+            <section aria-labelledby="transport-choice"><h2 id="transport-choice" className="text-2xl font-heading font-bold">What do you need?</h2>
+                <div className="mt-5 grid gap-4 sm:grid-cols-3">{choices.map(choice => <Link key={choice.kind} href={"/services/delivery/new?kind=" + choice.kind} className={panel + " flex flex-col gap-3 hover:border-primary focus-visible:outline-2 focus-visible:outline-primary"}>
+                    <span className="flex size-12 items-center justify-center rounded-xl bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-200"><choice.icon size={25} aria-hidden="true" /></span>
+                    <h3 className="text-xl font-bold">{choice.title}</h3><p className="text-base leading-7 text-[var(--text-secondary)]">{choice.description}</p>
+                    <span className="mt-auto pt-2 flex items-center justify-between gap-2 font-bold text-red-700 dark:text-red-300">Get {choice.kind} quotes <ArrowRight size={18} aria-hidden="true" /></span>
+                </Link>)}</div>
+                <Link href="/services/jobs" className={action + " mt-4 border border-[var(--border-default)] hover:bg-[var(--bg-input)]"}>My service requests</Link>
             </section>
-
-            <section className="container mx-auto px-6 py-16">
-                <div className="text-center mb-12">
-                    <p className="text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-3">For customers</p>
-                    <h2 className="text-3xl md:text-4xl font-black font-heading tracking-tight">Four steps from route to delivery</h2>
-                </div>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                    {STEPS.map((step, index) => (
-                        <div key={step.title} className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-6">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                                    <step.icon size={18} className="text-primary" />
-                                </div>
-                                <span className="text-xs font-black text-[var(--text-muted)]">0{index + 1}</span>
-                            </div>
-                            <h3 className="font-heading font-bold mb-2">{step.title}</h3>
-                            <p className="text-sm text-[var(--text-muted)] leading-relaxed">{step.desc}</p>
-                        </div>
-                    ))}
-                </div>
+            <section aria-labelledby="transport-process"><h2 id="transport-process" className="text-2xl font-heading font-bold">How it works</h2>
+                <ol className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[
+                    ["Request transport", "Enter collection and delivery postcodes, vehicles and your preferred date."],
+                    ["Compare quotes", "Approved providers can quote for your route. No booking or payment is made just by posting."],
+                    ["Choose and pay", "Accept a suitable quote and pay through CarMazium. Your chosen provider receives the required contact and address details after payment."],
+                    ["Confirm completion", "Review the completed work. Provider payout follows the service terms, including the 48-hour completion review and dispute process."],
+                ].map(([title,desc],index) => <li key={title} className={panel}><span className="flex size-10 items-center justify-center rounded-full bg-[var(--bg-input)] font-bold">{index+1}</span><h3 className="mt-3 text-lg font-bold">{title}</h3><p className="mt-2 text-base leading-7 text-[var(--text-secondary)]">{desc}</p></li>)}</ol>
             </section>
-
-            <section className="border-y border-[var(--border-default)] bg-[var(--bg-card)]">
-                <div className="container mx-auto px-6 py-14 grid md:grid-cols-3 gap-6">
-                    <div className="flex gap-4"><ShieldCheck size={22} className="text-primary shrink-0 mt-0.5" /><div><h3 className="font-heading font-bold mb-1">Approved transporters only</h3><p className="text-sm text-[var(--text-muted)] leading-relaxed">Only businesses approved by CarMazium for Delivery &amp; Recovery can quote.</p></div></div>
-                    <div className="flex gap-4"><Banknote size={22} className="text-primary shrink-0 mt-0.5" /><div><h3 className="font-heading font-bold mb-1">Protected service payment</h3><p className="text-sm text-[var(--text-muted)] leading-relaxed">The accepted job is paid through CarMazium and released to the provider after completion.</p></div></div>
-                    <div className="flex gap-4"><Users size={22} className="text-primary shrink-0 mt-0.5" /><div><h3 className="font-heading font-bold mb-1">Contact shared after payment</h3><p className="text-sm text-[var(--text-muted)] leading-relaxed">Private contact details are shared only after you choose a provider and the accepted quote has been paid through CarMazium.</p></div></div>
-                </div>
-            </section>
-
-            <section className="container mx-auto px-6 py-16 md:py-20">
-                <div className="rounded-3xl border border-primary/25 bg-primary/5 p-8 md:p-10">
-                    <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-                        <div>
-                            <p className="text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-3">For transport providers</p>
-                            <h2 className="text-3xl font-black font-heading mb-4">Win more vehicle movement work through TradeXchange</h2>
-                            <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-5">
-                                Apply for Delivery &amp; Recovery capability and, once approved, quote on suitable jobs posted by CarMazium users.
-                            </p>
-                            <div className="rounded-2xl border border-primary/25 bg-[var(--bg-card)] p-5 mb-6">
-                                <p className="font-black mb-1">9% CarMazium platform fee. You keep 91%.</p>
-                                <p className="text-sm text-[var(--text-muted)] leading-relaxed">The fee is deducted from the accepted job price. Your 91% provider payout is released after the job is successfully completed and payment is released.</p>
-                            </div>
-                            <Button asChild>
-                                <Link href={providerHref}>
-                                    Apply as a delivery provider <ArrowRight size={15} />
-                                </Link>
-                            </Button>
-                        </div>
-                        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-                            <div className="flex gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5"><BadgeCheck className="text-primary shrink-0" /><div><h3 className="font-bold text-sm mb-1">Approved-provider visibility</h3><p className="text-xs text-[var(--text-muted)]">Customers can see they are choosing from businesses approved for delivery work.</p></div></div>
-                            <div className="flex gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5"><LayoutDashboard className="text-primary shrink-0" /><div><h3 className="font-bold text-sm mb-1">One job dashboard</h3><p className="text-xs text-[var(--text-muted)]">See available work, accepted jobs and progress from the same provider area.</p></div></div>
-                            <div className="flex gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5"><Banknote className="text-primary shrink-0" /><div><h3 className="font-bold text-sm mb-1">Clear payout economics</h3><p className="text-xs text-[var(--text-muted)]">Know the customer price, the 9% platform fee and your 91% share before completion.</p></div></div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+            <section className={panel}><div className="flex gap-3"><ShieldCheck size={25} className="shrink-0 text-red-700 dark:text-red-300" aria-hidden="true" /><div><h2 className="text-xl font-bold">Approved transport providers</h2><p className="mt-2 text-base leading-7 text-[var(--text-secondary)]">Transport providers must have approved Motor Trade Insurance and Public Liability Insurance. Vehicle purchase payments remain separate and go directly to the vehicle seller. For a vehicle purchased on CarMazium, use the linked transport option in your purchase details where available.</p></div></div></section>
+            <section className={panel}><h2 className="text-xl font-bold">Do you provide vehicle transport?</h2><p className="mt-2 max-w-3xl text-base leading-7 text-[var(--text-secondary)]">Use your existing Partner Account to add transport services or learn how to join. The platform fee is 9% of the accepted job price and the provider share is 91%, subject to completion and payment release terms.</p><TradeXchangePartnerAction /></section>
         </div>
-    )
+    </div>
 }

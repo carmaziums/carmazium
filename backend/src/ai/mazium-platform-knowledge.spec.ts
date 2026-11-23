@@ -126,7 +126,7 @@ describe('MaziuM source-verified public platform knowledge', () => {
         expect(hasUnverifiedNavigationPath('Open /dashboard/dealer/add-listing?editId=madeup')).toBe(true);
     });
     it.each([
-        'Choose collection/delivery or inspection at /services/jobs/new.',
+        'Request collection/delivery at /services/delivery/new or inspection at /services/inspection/new.',
         'Accept/reject an offer from /dashboard/seller/auctions.',
         'Open [Offers Received](/dashboard/user?tab=offers).',
         'Outgoing offers are at /dashboard/user?tab=bids.',

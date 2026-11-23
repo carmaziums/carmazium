@@ -9,6 +9,9 @@ import { useAuth } from "@/context/AuthContext"
 
 interface Props {
     children: React.ReactNode
+    returnTo?: string
+    helpHref?: string
+    helpLabel?: string
     /** Shown above the buttons — say what signing in unlocks, not just that it's required. */
     message?: string
     title?: string
@@ -83,6 +86,9 @@ interface Props {
  */
 export function RequireAuth({
     children,
+    returnTo,
+    helpHref = "/auctions/how-it-works",
+    helpLabel = "See how auctions work",
     title = "Sign up to enter the Trade Exchange",
     message = "The Trade Exchange is open to registered dealers. Signing up takes a minute.",
     signupRole,
@@ -94,7 +100,8 @@ export function RequireAuth({
 }: Props) {
     const { user, profile, loading } = useAuth()
     const pathname = usePathname()
-    const redirect = encodeURIComponent(pathname || "/auctions")
+    const safeReturn = returnTo && pathname && (returnTo === pathname || returnTo.startsWith(pathname + "?")) ? returnTo : pathname || "/auctions"
+    const redirect = encodeURIComponent(safeReturn)
 
     if (loading) {
         return (
@@ -248,13 +255,10 @@ export function RequireAuth({
                     </Link>
                 </div>
 
-                {/* The How It Works block on /auctions sits below this gate and
-                    stays public on purpose — it is what persuades a dealer the
-                    account is worth creating. */}
                 <p className="text-xs text-[var(--text-muted)] mt-8">
-                    New to auctions?{" "}
-                    <Link href="/auctions#how-it-works" className="text-primary font-semibold hover:underline">
-                        See how it works
+                    Need more information?{" "}
+                    <Link href={helpHref} className="text-primary font-semibold hover:underline">
+                        {helpLabel}
                     </Link>
                 </p>
             </div>

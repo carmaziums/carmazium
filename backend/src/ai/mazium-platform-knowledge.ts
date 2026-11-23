@@ -188,7 +188,7 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         triggers: /\b(?:tradexchange|trade exchange|collection service|transport|delivery|recovery|inspection|provider|quote for job|post a job|service job)\b/i,
         facts: [
             'TradeXchange is the CarMazium marketplace for delivery, recovery and independent inspection jobs.',
-            'Any signed-in customer can post an eligible service job at /services/jobs/new; see posted jobs at /services/jobs.',
+            'Any signed-in customer can request transport at /services/delivery/new or inspection at /services/inspection/new, subject to availability. See posted jobs at /services/jobs.',
             'Approved and eligible provider businesses see matching available jobs at /dashboard/service/jobs and can quote. Business setup, service applications, trade insurance evidence, payout verification and job preferences are managed together at /dashboard/partner (TradeXchange); old capability links redirect there.',
             'Customers compare quotes, accept one, complete the required checkout and can track or confirm service completion in the job detail.',
             'Paid TradeXchange service jobs use a 9% platform and 91% provider split, rounded in pence. Service-job payment is separate from the vehicle sale price paid directly to the vehicle seller. Service funds follow job completion, confirmation, dispute and release rules; never promise immediate payout.',

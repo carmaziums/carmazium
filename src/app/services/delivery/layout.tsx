@@ -2,18 +2,18 @@ import type { Metadata } from "next"
 import { PageJsonLd, SEO_SITE, SEO_TRADEXCHANGE } from "@/components/seo/PageJsonLd"
 
 export const metadata: Metadata = {
-    title: "Vehicle Delivery & Recovery UK",
-    description: "Post vehicle delivery or recovery work and compare fixed-price quotes from approved transport providers through CarMazium TradeXchange.",
+    title: "Vehicle Delivery, Collection & Recovery UK",
+    description: "Request vehicle delivery, collection or recovery and compare fixed-price quotes from approved transport providers through CarMazium TradeXchange.",
     alternates: { canonical: "/services/delivery" },
     openGraph: {
-        title: "Vehicle Delivery & Recovery UK | CarMazium",
-        description: "Post vehicle delivery or recovery work and compare fixed-price quotes from approved transport providers through CarMazium TradeXchange.",
+        title: "Vehicle Delivery, Collection & Recovery UK | CarMazium",
+        description: "Request vehicle delivery, collection or recovery and compare fixed-price quotes from approved transport providers through CarMazium TradeXchange.",
         url: "/services/delivery",
         type: "website",
     },
     twitter: {
-        title: "Vehicle Delivery & Recovery UK | CarMazium",
-        description: "Post vehicle delivery or recovery work and compare fixed-price quotes from approved transport providers through CarMazium TradeXchange.",
+        title: "Vehicle Delivery, Collection & Recovery UK | CarMazium",
+        description: "Request vehicle delivery, collection or recovery and compare fixed-price quotes from approved transport providers through CarMazium TradeXchange.",
     },
 }
 
@@ -22,17 +22,17 @@ export default function DeliveryLayout({ children }: { children: React.ReactNode
         <>
             <PageJsonLd
                 path="/services/delivery"
-                title="Vehicle Delivery & Recovery UK | CarMazium"
+                title="Vehicle Delivery, Collection & Recovery UK | CarMazium"
                 description={metadata.description as string}
                 crumbs={[
                     { label: "Home", path: "/" },
                     { label: "TradeXchange", path: "/auctions" },
-                    { label: "Vehicle delivery and recovery", path: "/services/delivery" },
+                    { label: "Vehicle delivery, collection and recovery", path: "/services/delivery" },
                 ]}
                 mainEntity={{
                     "@type": "Service",
                     "@id": SEO_SITE + "/services/delivery#service",
-                    name: "Vehicle delivery and recovery",
+                    name: "Vehicle delivery, collection and recovery",
                     serviceType: "Vehicle transport",
                     description: metadata.description,
                     url: SEO_SITE + "/services/delivery",

@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { ArrowRight, ClipboardList, ShieldCheck } from "lucide-react"
+import { deliveryServiceEnabled, inspectionServiceEnabled } from "@/lib/featureFlags"
 import { useAuth } from "@/context/AuthContext"
 
 const linkClass = "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] px-4 py-3 font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-input)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -19,7 +20,8 @@ export function TradeXchangeAccountActions({ paidJobsEnabled }: { paidJobsEnable
             <div className="flex flex-wrap gap-2">
                 <Link href="/services/jobs" className={linkClass}><ClipboardList size={19} aria-hidden="true" /> My service requests</Link>
                 <Link href="/dashboard/warranties" className={linkClass}><ShieldCheck size={19} aria-hidden="true" /> My warranties</Link>
-                {paidJobsEnabled && <Link href="/services/jobs/new" className={linkClass}>New service request <ArrowRight size={17} aria-hidden="true" /></Link>}
+                {paidJobsEnabled && deliveryServiceEnabled && <Link href="/services/delivery/new" className={linkClass}>Request transport <ArrowRight size={17} aria-hidden="true" /></Link>}
+                {paidJobsEnabled && inspectionServiceEnabled && <Link href="/services/inspection/new" className={linkClass}>Request inspection <ArrowRight size={17} aria-hidden="true" /></Link>}
             </div>
         </div>
     </aside>

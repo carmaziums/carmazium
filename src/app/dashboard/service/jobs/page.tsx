@@ -140,7 +140,7 @@ function ProviderJobs() {
                     </div>
 
                     <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5 text-sm leading-6 text-[var(--text-muted)]">
-                        Looking for the customer side instead? Any signed-in CarMazium user can <Link href="/services/jobs/new" className="font-bold text-primary hover:underline">post a job here</Link> and approved providers will see matching work in this marketplace.
+                        Looking for the customer side instead? Any signed-in CarMazium user can <Link href="/auctions#request-services" className="font-bold text-primary hover:underline">post a job here</Link> and approved providers will see matching work in this marketplace.
                     </div>
 
                     <div className="flex items-center gap-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl p-1 w-fit max-w-full">

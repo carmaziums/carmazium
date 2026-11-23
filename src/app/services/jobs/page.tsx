@@ -4,6 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { buttonVariants } from "@/components/ui/buttonVariants"
 import { ArrowLeft, Loader2, Truck, Plus } from "lucide-react"
+import { deliveryServiceEnabled, inspectionServiceEnabled } from "@/lib/featureFlags"
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { getMyJobsPage, type ServiceJob } from "@/lib/servicesApi"
 import { JobListCard } from "@/components/services/JobBits"
@@ -43,16 +44,15 @@ function MyJobsList() {
             <div className="flex items-start justify-between gap-4 mb-8 flex-wrap">
                 <div>
                     <p className="text-primary text-xs font-black uppercase tracking-[0.18em] mb-2">TradeXchange</p>
-                    <h1 className="text-3xl md:text-4xl font-black font-heading tracking-tight mb-1">My Posted Jobs</h1>
+                    <h1 className="text-3xl md:text-4xl font-black font-heading tracking-tight mb-1">My Service Requests</h1>
                     <p className="text-[var(--text-muted)] text-sm">Track the delivery, recovery and inspection jobs you posted, compare quotes and manage the provider you choose.</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                     <Link href="/auctions" className="inline-flex items-center gap-2 px-4 py-3 rounded-xl border border-[var(--border-default)] text-sm font-bold hover:border-primary/40 transition-colors">
                         <ArrowLeft size={15} /> TradeXchange Services
                     </Link>
-                    <Link href="/services/jobs/new" className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-white text-sm font-black uppercase tracking-widest hover:bg-primary/90 transition-colors">
-                        <Plus size={16} /> Post a Job
-                    </Link>
+                    {deliveryServiceEnabled && <Link href="/services/delivery/new" className={buttonVariants()}><Plus size={16} /> Request transport</Link>}
+                    {inspectionServiceEnabled && <Link href="/services/inspection/new" className={buttonVariants({ variant: "outline" })}>Request inspection</Link>}
                 </div>
             </div>
 
@@ -64,7 +64,7 @@ function MyJobsList() {
                     <Truck size={32} className="mx-auto text-[var(--text-muted)] mb-4" />
                     <h2 className="font-heading font-bold text-lg mb-2">No jobs yet</h2>
                     <p className="text-sm text-[var(--text-muted)] mb-6">Post a delivery, recovery or inspection job and approved providers can compete for it with quotes.</p>
-                    <Link href="/services/jobs/new" className={buttonVariants()}>Post your first job →</Link>
+                    <div className="flex flex-wrap justify-center gap-2">{deliveryServiceEnabled && <Link href="/services/delivery/new" className={buttonVariants()}>Request transport</Link>}{inspectionServiceEnabled && <Link href="/services/inspection/new" className={buttonVariants({ variant: "outline" })}>Request inspection</Link>}</div>
                 </div>
             )}
 

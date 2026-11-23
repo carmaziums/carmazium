@@ -15,7 +15,7 @@ test('native job form offers ASAP or a date and time and checks past dates befor
   assert.match(native, /setPickerMode\('time'\)/);
   assert.match(native, /requestedFor: asap \? undefined : requestedFor!\.toISOString\(\)/);
   assert.match(native, /requestedFor\.getTime\(\) <= Date\.now\(\)/);
-  assert.match(delivery, /jobDateIssue\(requestedFor, !asap\)/);
+  assert.match(delivery, /parseUkServiceDateTime\(requestedFor\)/);
   assert.match(inspection, /jobDateIssue\(form\.requestedFor, false\)/);
 });
 

@@ -15,6 +15,7 @@ const exp={};
 runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText,{exports:exp,require:(name)=>{
  if(name==='next/link')return {__esModule:true,default:({children,...props})=>React.createElement('a',props,children)};
  if(name==='@/context/AuthContext')return {useAuth:()=>auth};
+ if(name==='@/lib/featureFlags')return {deliveryServiceEnabled:true,inspectionServiceEnabled:true};
  return require(name);
 }});
 const render=(name,props={})=>renderToStaticMarkup(React.createElement(exp[name],props));
@@ -40,7 +41,8 @@ test('customer and dealer account actions retain their own jobs, never provider 
    set(role);const html=render('TradeXchangeAccountActions',{paidJobsEnabled:true});
    assert.match(html,/href="\/services\/jobs"/);assert.match(html,/href="\/dashboard\/warranties"/);
    assert.doesNotMatch(html,/\/dashboard\/service\/jobs/);
-   assert.doesNotMatch(render('TradeXchangeAccountActions',{paidJobsEnabled:false}),/\/services\/jobs\/new/);
+   assert.match(html,/href="\/services\/delivery\/new"/);assert.match(html,/href="\/services\/inspection\/new"/);
+   assert.doesNotMatch(render('TradeXchangeAccountActions',{paidJobsEnabled:false}),/\/services\/(delivery|inspection)\/new/);
  }
 });
 test('business owners reuse their account; staff never start another business setup',()=>{
