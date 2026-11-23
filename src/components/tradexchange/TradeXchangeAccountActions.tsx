@@ -20,6 +20,7 @@ export function TradeXchangeAccountActions({ paidJobsEnabled }: { paidJobsEnable
             <div className="flex flex-wrap gap-2">
                 <Link href="/services/jobs" className={linkClass}><ClipboardList size={19} aria-hidden="true" /> My service requests</Link>
                 <Link href="/dashboard/warranties" className={linkClass}><ShieldCheck size={19} aria-hidden="true" /> My warranties</Link>
+                {["DEALER", "CONTRACTOR"].includes(profile.role) && (!profile.dealerStaffMemberships?.length || !!profile.dealerProfile || profile.role === "CONTRACTOR") && <Link href="/dashboard/service" className={linkClass}>Provider Dashboard <ArrowRight size={17} aria-hidden="true" /></Link>}
                 {paidJobsEnabled && deliveryServiceEnabled && <Link href="/services/delivery/new" className={linkClass}>Request transport <ArrowRight size={17} aria-hidden="true" /></Link>}
                 {paidJobsEnabled && inspectionServiceEnabled && <Link href="/services/inspection/new" className={linkClass}>Request inspection <ArrowRight size={17} aria-hidden="true" /></Link>}
             </div>

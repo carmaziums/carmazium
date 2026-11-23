@@ -27,6 +27,9 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
   const serviceType: ServiceType = route.params.serviceType;
   const delivery = serviceType === 'DELIVERY';
   const purchase = route.params.purchase;
+  const kind = route.params.kind;
+  const explicitTransport = kind === 'collection' || kind === 'recovery' || kind === 'delivery' ? kind : undefined;
+  const explicitInspection = kind && Object.prototype.hasOwnProperty.call(inspectionKinds, kind) ? kind as InspectionKind : undefined;
   const userId = useAuthStore(state => state.user?.id);
   const draftKey = userId ? `tradexchange:job-draft:${userId}:${serviceType}` + (purchase?.listingId ? ":listing:" + purchase.listingId : "") : null;
   const [draftOwner, setDraftOwner] = useState<string | null>(null);
@@ -70,7 +73,7 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
     setVehicles([{ ...emptyVehicle(), listingId: purchase?.listingId, registration: purchase?.registration || '',
       make: purchase?.make || '', model: purchase?.model || '', year: purchase?.year ? String(purchase.year) : '' }]);
     setPickup(''); setPickupAddress(''); setDestination('');
-    setDeliveryAddress(''); setAddress(''); setTransportKind('delivery'); setInspectionKind('prepurchase');
+    setDeliveryAddress(''); setAddress(''); setTransportKind(explicitTransport ?? 'delivery'); setInspectionKind(explicitInspection ?? 'prepurchase');
     setAsap(true); setRequestedFor(null);
     if (!draftKey) return;
     void AsyncStorage.getItem(draftKey).then(raw => {
@@ -86,8 +89,8 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
             setDestination(safeText(saved.destination, 10));
             setDeliveryAddress(safeText(saved.deliveryAddress, 300));
             setAddress(safeText(saved.address, 300));
-            setInspectionKind(typeof saved.inspectionKind === 'string' && Object.prototype.hasOwnProperty.call(inspectionKinds,saved.inspectionKind) ? saved.inspectionKind as InspectionKind : 'prepurchase');
-            setTransportKind(saved.transportKind === 'collection' || saved.transportKind === 'recovery' || saved.transportKind === 'delivery' ? saved.transportKind : saved.recovery === true ? 'recovery' : 'delivery');
+            setInspectionKind(explicitInspection ?? (typeof saved.inspectionKind === 'string' && Object.prototype.hasOwnProperty.call(inspectionKinds,saved.inspectionKind) ? saved.inspectionKind as InspectionKind : 'prepurchase'));
+            setTransportKind(explicitTransport ?? (saved.transportKind === 'collection' || saved.transportKind === 'recovery' || saved.transportKind === 'delivery' ? saved.transportKind : saved.recovery === true ? 'recovery' : 'delivery'));
             setAsap(saved.asap !== false);
             const date = typeof saved.requestedFor === 'string' ? new Date(saved.requestedFor) : null;
             setRequestedFor(date && Number.isFinite(date.getTime()) ? date : null);
@@ -105,7 +108,7 @@ export const CreateServiceJobScreen: React.FC<Props> = ({ navigation, route }) =
       setDraftOwner(draftKey);
     }).catch(() => { if (!cancelled) setDraftOwner(draftKey); });
     return () => { cancelled = true; };
-  }, [draftKey, delivery, purchase]);
+  }, [draftKey, delivery, purchase, explicitTransport, explicitInspection]);
 
   useEffect(() => {
     if (!draftReady || !draftKey || posted.current) return;

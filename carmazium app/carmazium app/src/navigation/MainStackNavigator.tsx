@@ -165,7 +165,7 @@ export type MainStackParamList = {
   DealerFinance: undefined;
   FinancePreferences: undefined;
   Services: undefined;
-  CreateServiceJob: { serviceType: 'DELIVERY' | 'INSPECTION'; purchase?: {
+  CreateServiceJob: { serviceType: 'DELIVERY' | 'INSPECTION'; kind?: 'delivery' | 'collection' | 'recovery' | 'prepurchase' | 'mechanical' | 'cosmetic' | 'stock'; purchase?: {
     listingId: string; title: string; registration?: string | null;
     make?: string | null; model?: string | null; year?: number | null;
   } };

@@ -16,6 +16,22 @@ export function nativeContentTarget(href: string): { name: string; params?: obje
   if (path === '/dashboard/user' || path === '/dashboard') return { name: 'Tabs', params: { screen: 'Profile' } };
   if (path === '/dashboard/dealer') return { name: 'Tabs', params: { screen: 'DealerHome' } };
   const simple: Record<string, string> = { '/terms': 'Terms', '/privacy-policy': 'PrivacyPolicy', '/contact': 'Contact', '/pricing': 'Pricing', '/about': 'About', '/how-it-works': 'HowItWorks', '/auctions/how-it-works': 'AuctionGuide', '/auctions': 'Services', '/services': 'Services', '/blog': 'Blog', '/business-spotlight': 'BusinessSpotlight', '/used-car-types': 'CarBodyGuide', '/services/warranty': 'Warranty', '/dashboard/warranties': 'WarrantyOrders', '/delete-account': 'Settings', '/cookie-policy': 'CookiePolicy' };
+  if (path === '/contact') {
+    const topic = url.searchParams.get('topic');
+    return { name: 'Contact', params: ['finance-partnership', 'warranty-partnership', 'insurance-partnership'].includes(topic || '') ? { topic } : undefined };
+  }
+  if (path === '/services/warranty') return { name: 'Warranty', params: { listingId: url.searchParams.get('listingId') || undefined } };
+  if (path === '/services/delivery' || path === '/services/delivery/new') {
+    const kind = url.searchParams.get('kind');
+    return { name: 'CreateServiceJob', params: { serviceType: 'DELIVERY', ...(['delivery', 'collection', 'recovery'].includes(kind || '') ? { kind } : {}) } };
+  }
+  if (path === '/services/inspection' || path === '/services/inspection/new') {
+    const kind = url.searchParams.get('kind');
+    return { name: 'CreateServiceJob', params: { serviceType: 'INSPECTION', ...(['prepurchase', 'mechanical', 'cosmetic', 'stock'].includes(kind || '') ? { kind } : {}) } };
+  }
+  if (path === '/services/jobs/new') return { name: 'Services' };
+  if (path === '/services/jobs') return { name: 'CustomerServiceJobs' };
+  if (path === '/auctions/browse') return { name: 'Tabs', params: { screen: 'Live' } };
   if (simple[path]) return { name: simple[path] };
   if (path === '/services/finance') return { name: 'Finance', params: { listingId: url.searchParams.get('listingId') || undefined } };
   if (path === '/become-a-partner') return { name: 'PartnerGuide' };

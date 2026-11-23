@@ -55,7 +55,7 @@ export default function TradeXchangePage() {
                 <div className="max-w-3xl">
                     <p className="text-sm font-bold tracking-wide text-red-200">CarMazium TradeXchange</p>
                     <h1 className="mt-3 text-4xl font-heading font-black tracking-tight leading-[1.12] sm:text-5xl lg:text-6xl">Everything your vehicle needs.<br className="hidden sm:block" /> One marketplace.</h1>
-                    <p className="mt-5 max-w-2xl text-base leading-7 text-slate-100 sm:text-lg">Buy or sell at auction, arrange vehicle transport and inspections, explore finance and choose warranty cover. For private customers and automotive businesses across the UK.</p>
+                    <p className="mt-5 max-w-2xl text-base leading-7 text-slate-100 sm:text-lg">Sell at auction, buy at auction as a verified motor trader, arrange vehicle transport and inspections, explore finance and choose warranty cover. For private customers and automotive businesses across the UK.</p>
                     <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                         <a href="#tradexchange-areas" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-red-700 px-5 py-3 font-bold text-white hover:bg-red-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">Explore services <ArrowRight size={18} aria-hidden="true" /></a>
                         <a href="#business-partnerships" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-300 px-5 py-3 font-semibold text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">For automotive businesses</a>

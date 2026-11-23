@@ -36,7 +36,7 @@
     "carmazium app/carmazium app/src/screens/main/ProviderOverviewScreen.tsx": "1aba295b99492bc2f76369ffb65413514d6bf2202d8d5b826e7bc289ecb757de",
     "docs/privacy/ACCOUNT_DELETION_RETENTION.md": "fc5e72b46344a699116df3575b657d888d8b2dfd5751ec3defd4a2b2bf752077",
     "src/app/auctions/live/[id]/page.tsx": "e8ebbd1c3a3fb4ce4823be56839556037fb4985d74709e179dc15330864a2de7",
-    "src/app/auctions/page.tsx": "f25bc4917a29e77483ce66a630d7b43a781d31f9ccdcc36f9eddeb62147dcc71",
+    "src/app/auctions/page.tsx": "a7e43bc32e60add9d66a012d4c674be59fb26fdec711d207f5d824e7bf81764e",
     "src/app/auctions/won/[id]/page.tsx": "e424fb28e7788ed18dd73cd2694d8e2839a8b548257270771735d74fc0ca94a8",
     "src/app/auth/forgot-password/page.tsx": "e31d2c8ec55d997152239fb073a48aa4ebeefda8c46229e3b5b3a3dc93d69a9f",
     "src/app/auth/login/page.tsx": "cbb780d0482668d587085e85526fc818e09daa8ff382107836fd8957ccf2b3b6",

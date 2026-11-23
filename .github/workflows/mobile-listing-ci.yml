@@ -45,6 +45,10 @@ on:
       - "carmazium app/carmazium app/scripts/test-settings-mobile-profile-fields.test.mjs"
       - "carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx"
       - "carmazium app/carmazium app/src/screens/main/ProviderOverviewScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/main/ServicesScreen.tsx"
+      - "carmazium app/carmazium app/src/lib/nativeContentLinks.ts"
+      - "carmazium app/carmazium app/assets/images/live-auction-hero.webp"
+      - "carmazium app/carmazium app/scripts/test-tradexchange-directory-parity.test.mjs"
       - "carmazium app/carmazium app/src/screens/main/CustomerServiceJobDetailScreen.tsx"
       - "carmazium app/carmazium app/src/lib/serviceJobJourney.ts"
       - "carmazium app/carmazium app/src/lib/servicesApi.ts"
@@ -86,7 +90,7 @@ jobs:
         run: npm run test:seller-specs
 
       - name: Dashboard customisation and native service flows
-        run: node --test scripts/test-dashboard-cards.test.mjs scripts/test-web-dashboard-cards.test.mjs scripts/test-native-service-completion.test.mjs scripts/test-partner-service-parity.test.mjs scripts/test-customer-service-lifecycle.test.mjs
+        run: node --test scripts/test-dashboard-cards.test.mjs scripts/test-web-dashboard-cards.test.mjs scripts/test-native-service-completion.test.mjs scripts/test-partner-service-parity.test.mjs scripts/test-customer-service-lifecycle.test.mjs scripts/test-tradexchange-directory-parity.test.mjs
 
       - name: Original Android update and TradeXchange menu navigation
         run: node --test scripts/test-app-updater.test.mjs scripts/test-app-update-prompt.test.mjs scripts/test-site-menu-auction.test.mjs

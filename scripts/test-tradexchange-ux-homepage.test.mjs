@@ -67,3 +67,24 @@ test('linked business guide matches both insurance requirements',()=>{
  assert.match(guide,/Public Liability Insurance covering inspection work/);
  assert.doesNotMatch(guide,/inspection service setup does not require document uploads/);
 });
+
+test('provider dashboard shortcut is visible for business owners but not ordinary customers or staff-only accounts',()=>{
+ for(const role of ['DEALER','CONTRACTOR']){
+  set(role);assert.match(render('TradeXchangeAccountActions',{paidJobsEnabled:false}),/href="\/dashboard\/service"/);
+ }
+ for(const role of ['BUYER','SELLER','FINANCE_PARTNER','INSURANCE_PARTNER','ADMIN']){
+  set(role);assert.doesNotMatch(render('TradeXchangeAccountActions',{paidJobsEnabled:true}),/href="\/dashboard\/service"/);
+ }
+ set('DEALER');auth.profile.dealerStaffMemberships=[{id:'staff'}];
+ assert.doesNotMatch(render('TradeXchangeAccountActions',{paidJobsEnabled:true}),/href="\/dashboard\/service"/);
+});
+test('native and web directory preserve the same six service titles, descriptions and hero asset',()=>{
+ const native=read('carmazium app/carmazium app/src/screens/main/ServicesScreen.tsx');
+ for(const title of ['Vehicle auctions','Vehicle transport','Vehicle inspections','Vehicle finance','Vehicle warranty','Business partnerships']){
+  assert.ok(page.includes(title),title);assert.ok(native.includes(title),title);
+ }
+ for(const match of page.matchAll(/description: "([^"]+)", href: "/g)) assert.ok(native.includes(match[1]),match[1]);
+ assert.ok(page.includes('buy at auction as a verified motor trader'));
+ assert.ok(native.includes('buy at auction as a verified motor trader'));
+ assert.deepEqual(readFileSync(new URL('../public/assets/images/live-auction-hero.webp',import.meta.url)),readFileSync(new URL('../carmazium app/carmazium app/assets/images/live-auction-hero.webp',import.meta.url)));
+});
