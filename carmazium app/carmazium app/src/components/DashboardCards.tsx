@@ -32,7 +32,6 @@ function AccountCards({ userId, mode }: { userId: string; mode: 'dealer' | 'pers
   const writes = useRef(Promise.resolve());
   const [ready, setReady] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [iosGridWidth, setIosGridWidth] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
@@ -65,18 +64,29 @@ function AccountCards({ userId, mode }: { userId: string; mode: 'dealer' | 'pers
     if (item.tabName) navigation.navigate('Tabs', { screen: item.tabName, params: item.tabParams ?? item.tabStackParams });
     else if (item.stackScreen) navigation.navigate(item.stackScreen, item.stackParams);
   };
-  // iOS Dynamic Type at 1.3x was forcing ordinary iPhones into oversized,
-  // full-width cards. Keep the same two-column phone grid as Android while
-  // preserving a single column for truly large accessibility settings.
-  const compactIOS = Platform.OS === 'ios' && width < 600;
-  const columns = compactIOS
-    ? (width < 340 || fontScale >= 1.75 ? 1 : 2)
-    : (fontScale >= 1.3 || width < 360 ? 1 : width >= 1280 ? 3 : 2);
-  const availableWidth = compactIOS ? Math.min(width - 40, iosGridWidth ?? width - 40) : width - 40;
-  // Round down so fractional iOS layout points never push the second tile to another row.
-  const cardWidth = compactIOS
-    ? Math.max(0, Math.floor((availableWidth - (columns - 1) * 16) / columns))
-    : (width - 40 - (columns - 1) * 16) / columns;
+  // iPhone phone dashboards use explicit pairs: no window-width estimate or
+  // Dynamic Type threshold can silently switch their navigation to one column.
+  // Labels can wrap and cards grow vertically; the user can still use VoiceOver.
+  const compactIOS = Platform.OS === 'ios' && (width < 600 || !Platform.isPad);
+  const columns = fontScale >= 1.3 || width < 360 ? 1 : width >= 1280 ? 3 : 2;
+  const cardWidth = (width - 40 - (columns - 1) * 16) / columns;
+  const iosRows = compactIOS ? Array.from({ length: Math.ceil(shown.length / 2) }, (_, index) => shown.slice(index * 2, index * 2 + 2)) : [];
+  const renderCard = (item: MenuItem) => {
+        const color = palette[item.section || 'Account'] || Colors.dashboardAccount;
+        const hidden = preferences.hidden.includes(item.id);
+        const index = ordered.findIndex(entry => entry.id === item.id);
+        return <View key={item.id} style={[s.card, { width: compactIOS ? undefined : cardWidth, backgroundColor: color, opacity: hidden ? 0.55 : 1 }, compactIOS && s.iosCard]}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={item.label} onPress={() => open(item)} style={[s.cardAction, compactIOS && s.compactCardAction]} activeOpacity={0.8}>
+            <View style={[s.icon, compactIOS && s.compactIcon]}>{item.iconLib === 'mci' ? <MaterialCommunityIcons name={item.icon} size={compactIOS ? 22 : 27} color={Colors.onAccent} /> : <Ionicons name={item.icon as any} size={compactIOS ? 22 : 27} color={Colors.onAccent} />}</View>
+            <Text style={[s.group, compactIOS && s.compactGroup]} maxFontSizeMultiplier={compactIOS ? 1.2 : undefined}>{item.section}</Text>
+            <Text style={[s.label, compactIOS && s.compactLabel]} maxFontSizeMultiplier={compactIOS ? 1.25 : undefined}>{item.label}</Text>
+          </TouchableOpacity>
+          {editing && <View style={s.controls}>
+            <TouchableOpacity accessibilityRole="switch" accessibilityLabel={`Show ${item.label}`} accessibilityState={{ checked: !hidden }} style={s.control} onPress={() => save({ ...current.current, hidden: hidden ? current.current.hidden.filter(id => id !== item.id) : [...current.current.hidden, item.id] })}><Text style={s.controlLabel}>{hidden ? 'Show card' : 'Hide card'}</Text></TouchableOpacity>
+            {([-1, 1] as const).map(direction => <TouchableOpacity key={direction} accessibilityRole="button" accessibilityLabel={`Move ${item.label} ${direction === -1 ? 'earlier' : 'later'}`} accessibilityState={{ disabled: direction === -1 ? index === 0 : index === ordered.length - 1 }} disabled={direction === -1 ? index === 0 : index === ordered.length - 1} style={[s.control, (direction === -1 ? index === 0 : index === ordered.length - 1) && { opacity: 0.4 }]} onPress={() => save(moveDashboardItem(current.current, ordered.map(entry => entry.id), item.id, direction))}><Text style={s.controlLabel}>{direction === -1 ? 'Earlier' : 'Later'}</Text></TouchableOpacity>)}
+          </View>}
+        </View>;
+  };
   return <View style={s.section}>
     <View style={[s.header, compactIOS && s.compactHeader, !compactIOS && fontScale >= 1.3 && { flexDirection: 'column', alignItems: 'stretch' }]}>
       {compactIOS ? (
@@ -99,25 +109,14 @@ function AccountCards({ userId, mode }: { userId: string; mode: 'dealer' | 'pers
     {!ready ? <ActivityIndicator accessibilityLabel="Loading dashboard layout" color={Colors.accent} /> : <>
       {editing && <View style={s.editIntro}><Text style={s.hint}>Show or hide cards, then use Earlier and Later to change their order. Your layout is saved on this device.</Text><Button label="Reset layout" size="sm" variant="ghost" onPress={() => save(defaultPreferences())} /></View>}
       {!shown.length && <Text style={s.hint}>All cards are hidden. Choose Customise to show them again.</Text>}
-      <View style={s.grid} onLayout={compactIOS ? event => {
-        const measured = event.nativeEvent.layout.width;
-        if (Number.isFinite(measured) && measured > 0) setIosGridWidth(measured);
-      } : undefined}>{shown.map(item => {
-        const color = palette[item.section || 'Account'] || Colors.dashboardAccount;
-        const hidden = preferences.hidden.includes(item.id);
-        const index = ordered.findIndex(entry => entry.id === item.id);
-        return <View key={item.id} style={[s.card, { width: cardWidth, backgroundColor: color, opacity: hidden ? 0.55 : 1 }]}>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel={item.label} onPress={() => open(item)} style={[s.cardAction, compactIOS && s.compactCardAction]} activeOpacity={0.8}>
-            <View style={[s.icon, compactIOS && s.compactIcon]}>{item.iconLib === 'mci' ? <MaterialCommunityIcons name={item.icon} size={compactIOS ? 22 : 27} color={Colors.onAccent} /> : <Ionicons name={item.icon as any} size={compactIOS ? 22 : 27} color={Colors.onAccent} />}</View>
-            <Text style={[s.group, compactIOS && s.compactGroup]} maxFontSizeMultiplier={compactIOS ? 1.2 : undefined}>{item.section}</Text>
-            <Text style={[s.label, compactIOS && s.compactLabel]} maxFontSizeMultiplier={compactIOS ? 1.25 : undefined} numberOfLines={compactIOS ? 3 : undefined}>{item.label}</Text>
-          </TouchableOpacity>
-          {editing && <View style={s.controls}>
-            <TouchableOpacity accessibilityRole="switch" accessibilityLabel={`Show ${item.label}`} accessibilityState={{ checked: !hidden }} style={s.control} onPress={() => save({ ...current.current, hidden: hidden ? current.current.hidden.filter(id => id !== item.id) : [...current.current.hidden, item.id] })}><Text style={s.controlLabel}>{hidden ? 'Show card' : 'Hide card'}</Text></TouchableOpacity>
-            {([-1, 1] as const).map(direction => <TouchableOpacity key={direction} accessibilityRole="button" accessibilityLabel={`Move ${item.label} ${direction === -1 ? 'earlier' : 'later'}`} accessibilityState={{ disabled: direction === -1 ? index === 0 : index === ordered.length - 1 }} disabled={direction === -1 ? index === 0 : index === ordered.length - 1} style={[s.control, (direction === -1 ? index === 0 : index === ordered.length - 1) && { opacity: 0.4 }]} onPress={() => save(moveDashboardItem(current.current, ordered.map(entry => entry.id), item.id, direction))}><Text style={s.controlLabel}>{direction === -1 ? 'Earlier' : 'Later'}</Text></TouchableOpacity>)}
-          </View>}
-        </View>;
-      })}</View>
+      {compactIOS ? (
+        <View style={s.iosGrid} testID="ios-dashboard-grid">
+          {iosRows.map((row, index) => <View key={row[0].id} style={s.iosRow} testID={`ios-dashboard-row-${index}`}>
+            {row.map(renderCard)}
+            {row.length === 1 && <View style={s.iosSpacer} testID="ios-dashboard-empty-slot" accessible={false} importantForAccessibility="no-hide-descendants" />}
+          </View>)}
+        </View>
+      ) : <View style={s.grid}>{shown.map(renderCard)}</View>}
     </>}
   </View>;
 }
@@ -132,6 +131,10 @@ const s = StyleSheet.create({
   compactHint: { fontSize: 13, lineHeight: 19, color: Colors.textSecondary }, 
   hint: { fontSize: FontSize.base - 1, lineHeight: 22, color: Colors.textSecondary }, error: { fontSize: FontSize.base - 1, color: Colors.accent, marginBottom: 8 },
   editIntro: { gap: 8 }, grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 16 },
+  iosGrid: { gap: 16, alignSelf: 'stretch' },
+  iosRow: { flexDirection: 'row', flexWrap: 'nowrap', gap: 16, alignItems: 'stretch' },
+  iosCard: { flex: 1, minWidth: 0 },
+  iosSpacer: { flex: 1, minWidth: 0 },
   card: { borderRadius: 20, borderBottomWidth: 4, borderColor: Colors.dashboardShadowBorder, overflow: 'hidden' },
   cardAction: { minHeight: 166, padding: 18, gap: 8 },
   compactCardAction: { minHeight: 132, padding: 12, gap: 5 },

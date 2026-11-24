@@ -99,42 +99,53 @@ test('dealer Saved card opens an explicit native screen, not a hidden tab or web
   await act(async () => h.tree.unmount());
 });
 
-test('iPhone personal and dealer layouts use measured grid width and preserve two columns', async () => {
-  for (const width of [375, 390, 393, 430]) {
-    for (const fontScale of [1, 1.4, 1.6]) {
+test('iPhone personal and dealer dashboards always render explicit two-card rows', async () => {
+  for (const width of [320, 339, 340, 375, 390, 393, 430, 852]) {
+    for (const fontScale of [1, 1.4, 1.75, 1.8, 2, 3.1]) {
       for (const [mode, permissions, label] of [['personal', [], 'Sell a Car'], ['dealer', ['MANAGE_INVENTORY', 'VIEW_INVENTORY', 'VIEW_TRADE'], 'Add Vehicle']]) {
         const h = await harness(mode, permissions, { width, fontScale }, 'ios');
         const press = h.press(label);
         assert.ok(press, mode);
-        assert.equal(press.parent.props.style[1].width, Math.floor((width - 56) / 2));
+        const grid = h.tree.root.findByProps({ testID: 'ios-dashboard-grid' });
+        const rows = grid.findAllByType('View').filter(x => /^ios-dashboard-row-\d+$/.test(x.props.testID || ''));
+        assert.equal(rows.length, Math.ceil(h.cards().length / 2));
+        for (const row of rows) {
+          assert.equal(row.props.style.flexDirection, 'row');
+          assert.equal(row.props.style.flexWrap, 'nowrap');
+          assert.equal(row.children.length, 2);
+          for (const slot of row.children) {
+            const style = Array.isArray(slot.props.style) ? Object.assign({}, ...slot.props.style.filter(Boolean)) : slot.props.style;
+            assert.equal(style.flex, 1);
+            assert.equal(style.minWidth, 0);
+            assert.equal(style.width, undefined);
+          }
+        }
         assert.equal(press.props.style[1].minHeight, 132);
         assert.equal(press.props.style[1].padding, 12);
-        const grid = h.tree.root.findAllByType('View').find(x => typeof x.props.onLayout === 'function');
-        const measured = width - 68.5;
-        await act(async () => grid.props.onLayout({ nativeEvent: { layout: { width: measured } } }));
-        const cardWidth = h.press(label).parent.props.style[1].width;
-        assert.equal(cardWidth, Math.floor((measured - 16) / 2));
-        assert.ok(cardWidth * 2 + 16 <= measured);
-        await act(async () => grid.props.onLayout({ nativeEvent: { layout: { width: 0 } } }));
-        assert.equal(h.press(label).parent.props.style[1].width, cardWidth);
+        assert.equal(press.parent.parent.props.testID, 'ios-dashboard-row-0');
+        assert.equal(rows.flatMap(row => row.findAllByType('Press').filter(x => x.props.accessibilityRole === 'button').map(x => x.props.accessibilityLabel)).join('|'), h.cards().join('|'));
         await act(async () => h.tree.unmount());
       }
     }
   }
 });
-test('iPhone narrow screens and large accessibility text retain a single column', async () => {
-  for (const [width, fontScale] of [[320, 1], [393, 1.8]]) {
-    const h = await harness('personal', [], { width, fontScale }, 'ios');
-    assert.equal(h.press('Sell a Car').parent.props.style[1].width, width - 40);
-    const grid = h.tree.root.findAllByType('View').find(x => typeof x.props.onLayout === 'function');
-    await act(async () => grid.props.onLayout({ nativeEvent: { layout: { width: width - 60.5 } } }));
-    assert.equal(h.press('Sell a Car').parent.props.style[1].width, Math.floor(width - 60.5));
-    await act(async () => h.tree.unmount());
-  }
+
+test('iPhone dashboard customisation keeps paired rows and does not enlarge an odd last card', async () => {
+  const h = await harness('personal', [], { width: 320, fontScale: 2 }, 'ios');
+  await act(async () => h.button('Customise').props.onPress());
+  await act(async () => h.press('Show My Cars').props.onPress());
+  await act(async () => h.press('Move Messages earlier').props.onPress());
+  await act(async () => h.button('Done').props.onPress());
+  assert.ok(!h.cards().includes('My Cars'));
+  const rows = h.tree.root.findAllByType('View').filter(x => /^ios-dashboard-row-\d+$/.test(x.props.testID || ''));
+  assert.ok(rows.every(row => row.children.length === 2));
+  if (h.cards().length % 2 === 1) assert.equal(rows.at(-1).children[1].props.testID, 'ios-dashboard-empty-slot');
+  await act(async () => h.tree.unmount());
 });
+
 test('Android ordinary dashboard dimensions remain unchanged and do not measure the iOS grid', async () => {
   const h = await harness('personal', [], { width: 393, fontScale: 1 }, 'android');
   assert.equal(h.press('Sell a Car').parent.props.style[1].width, (393 - 56) / 2);
-  assert.equal(h.tree.root.findAllByType('View').some(x => typeof x.props.onLayout === 'function'), false);
+  assert.equal(h.tree.root.findAllByType('View').some(x => x.props.testID === 'ios-dashboard-grid'), false);
   await act(async () => h.tree.unmount());
 });
