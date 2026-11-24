@@ -22,11 +22,11 @@ test('saved layout tolerates corruption, adds new tools and cannot restore revok
   const revoked = preferences.orderDashboardItems(permitted.filter(x => x.id !== 'stock'), saved);
   assert.ok(!revoked.some(x => x.id === 'stock'));
 });
-async function harness(mode = 'personal', permissions = [], dimensions = { width: 360, fontScale: 1 }) {
+async function harness(mode = 'personal', permissions = [], dimensions = { width: 360, fontScale: 1 }, platform = 'android') {
   const saved = new Map(), nav = [], writes = [];
   let userId = 'account-a', failSave = false;
   const modules = {
-    react: React, 'react-native': { ActivityIndicator: 'Loading', Text: 'Text', View: 'View', TouchableOpacity: 'Press', Platform: { OS: 'android' }, StyleSheet: { create: x => x }, useWindowDimensions: () => dimensions },
+    react: React, 'react-native': { ActivityIndicator: 'Loading', Text: 'Text', View: 'View', TouchableOpacity: 'Press', Platform: { OS: platform }, StyleSheet: { create: x => x }, useWindowDimensions: () => dimensions },
     '@react-native-async-storage/async-storage': { getItem: async key => saved.get(key) || null, setItem: async (key, value) => { writes.push(key); if (failSave) throw Error('disk'); saved.set(key, value); } },
     '@react-navigation/native': { useNavigation: () => ({ navigate: (...args) => nav.push(args) }) },
     './BrandIcon': { Ionicons: 'Icon', MaterialCommunityIcons: 'Icon' }, './Button': { Button: 'Button' },
@@ -96,5 +96,45 @@ test('dealer Saved card opens an explicit native screen, not a hidden tab or web
   assert.ok(h.cards().includes('Saved'));
   await act(async () => h.press('Saved').props.onPress());
   assert.deepEqual(h.nav.at(-1), ['DealerSaved', undefined]);
+  await act(async () => h.tree.unmount());
+});
+
+test('iPhone personal and dealer layouts use measured grid width and preserve two columns', async () => {
+  for (const width of [375, 390, 393, 430]) {
+    for (const fontScale of [1, 1.4, 1.6]) {
+      for (const [mode, permissions, label] of [['personal', [], 'Sell a Car'], ['dealer', ['MANAGE_INVENTORY', 'VIEW_INVENTORY', 'VIEW_TRADE'], 'Add Vehicle']]) {
+        const h = await harness(mode, permissions, { width, fontScale }, 'ios');
+        const press = h.press(label);
+        assert.ok(press, mode);
+        assert.equal(press.parent.props.style[1].width, Math.floor((width - 56) / 2));
+        assert.equal(press.props.style[1].minHeight, 132);
+        assert.equal(press.props.style[1].padding, 12);
+        const grid = h.tree.root.findAllByType('View').find(x => typeof x.props.onLayout === 'function');
+        const measured = width - 68.5;
+        await act(async () => grid.props.onLayout({ nativeEvent: { layout: { width: measured } } }));
+        const cardWidth = h.press(label).parent.props.style[1].width;
+        assert.equal(cardWidth, Math.floor((measured - 16) / 2));
+        assert.ok(cardWidth * 2 + 16 <= measured);
+        await act(async () => grid.props.onLayout({ nativeEvent: { layout: { width: 0 } } }));
+        assert.equal(h.press(label).parent.props.style[1].width, cardWidth);
+        await act(async () => h.tree.unmount());
+      }
+    }
+  }
+});
+test('iPhone narrow screens and large accessibility text retain a single column', async () => {
+  for (const [width, fontScale] of [[320, 1], [393, 1.8]]) {
+    const h = await harness('personal', [], { width, fontScale }, 'ios');
+    assert.equal(h.press('Sell a Car').parent.props.style[1].width, width - 40);
+    const grid = h.tree.root.findAllByType('View').find(x => typeof x.props.onLayout === 'function');
+    await act(async () => grid.props.onLayout({ nativeEvent: { layout: { width: width - 60.5 } } }));
+    assert.equal(h.press('Sell a Car').parent.props.style[1].width, Math.floor(width - 60.5));
+    await act(async () => h.tree.unmount());
+  }
+});
+test('Android ordinary dashboard dimensions remain unchanged and do not measure the iOS grid', async () => {
+  const h = await harness('personal', [], { width: 393, fontScale: 1 }, 'android');
+  assert.equal(h.press('Sell a Car').parent.props.style[1].width, (393 - 56) / 2);
+  assert.equal(h.tree.root.findAllByType('View').some(x => typeof x.props.onLayout === 'function'), false);
   await act(async () => h.tree.unmount());
 });

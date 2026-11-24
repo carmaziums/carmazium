@@ -1,5 +1,5 @@
 {
-  "reviewedAt": "2026-11-23",
+  "reviewedAt": "2026-11-24",
   "sources": {
     "backend/prisma/schema.prisma": "3db29bc3ed259489fbf85c9e9b418ec50b4b7bd57ef7879c7adfeeac6a1b57b2",
     "backend/src/admin/admin-user-filters.ts": "0f7afcf5f18e79666b69f346dda04add2024e42fbf71cca4aefb4bd5221118c4",
@@ -24,7 +24,7 @@
     "backend/src/sale-cancellations/sale-cancellations.service.ts": "0c53e375cdedb595a7afc32d0122608b34fd988717bcf1201caa5998714a1b1f",
     "backend/src/services/services.service.ts": "08e0c6a46f6a7dc267c8a39740efdf943591e6bd239f4a68136c4e21fc94d23f",
     "backend/src/services/warranty-retail-tariff.ts": "f61a609b1a5fdaea532e92b4b9f0da0b17fd91f0d5ae1f4153ed39765aedbf10",
-    "carmazium app/carmazium app/src/components/DashboardCards.tsx": "bd61ea13f10cb628fba966b5ff05d42cb968209bc0edf7d7f7c5bcdbdb5f7e72",
+    "carmazium app/carmazium app/src/components/DashboardCards.tsx": "71c97f891f29896f927e7102e8ae2f6d6087366fe6d6b9050edfc2ff4f35ef6e",
     "carmazium app/carmazium app/src/navigation/TabNavigator.tsx": "b1fcdfe8749d5e4143b649eaf66b80b40050467f157cbcfc8ebdcdb251ab6f30",
     "carmazium app/carmazium app/src/screens/account/UnifiedDashboardScreen.tsx": "09dfe812a8a0c246318bd61c92e4acd1b992972fad385e34cf8a1f456f784f4b",
     "carmazium app/carmazium app/src/screens/buyer/BuyerDashboardScreen.tsx": "18ca69747ccbe1fa176feba5d358d05a9bf61a95d651bc68d1ef9fd981b6b130",
