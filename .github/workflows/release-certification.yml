@@ -55,6 +55,9 @@ on:
       - 'scripts/test-android-apk-release-evidence.test.mjs'
       - 'scripts/verify-first-party-android-apk.mjs'
       - 'scripts/test-first-party-android-apk.test.mjs'
+      - 'scripts/stage-approved-android-downloads.mjs'
+      - 'scripts/approved-android-downloads.json'
+      - 'scripts/test-stage-approved-android-downloads.test.mjs'
       - 'scripts/test-mazium-native-greeting-parity-block8.test.mjs'
       - 'scripts/test-mazium-consent-filter-parity-block9.test.mjs'
       - 'scripts/check-customer-app-release-acceptance.mjs'
@@ -213,7 +216,7 @@ jobs:
       - name: Check signed APK evidence and tamper rejection with synthetic bytes
         run: node --test scripts/test-android-apk-release-evidence.test.mjs
       - name: Test first-party hosted APK verification without external requests
-        run: node --test scripts/test-first-party-android-apk.test.mjs
+        run: node --test scripts/test-first-party-android-apk.test.mjs scripts/test-stage-approved-android-downloads.test.mjs
       - name: Check standalone APK staging rejects tampered or mis-signed builds
         run: node --test scripts/test-stage-android-direct-download.test.mjs
       - name: Check direct APK download button remains independently approved

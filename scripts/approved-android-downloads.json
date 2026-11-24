@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "releases": [
+    {
+      "filename": "CarMazium-1.0.1-v126.apk",
+      "publication_status": "already-public",
+      "package_name": "uk.carmazium.app",
+      "version_name": "1.0.1",
+      "version_code": 126,
+      "apk_size_bytes": 103020948,
+      "apk_sha256": "c0ac76a6a14cba1e52558beb310dbbe515400e17eaf19a8acd0e711fc655a5a1",
+      "signing_certificate_sha256": "ea9b8d6733ee68d6e36ce092e81c0e360330a56dde9ed0b4edb2c421c8600f24",
+      "source_sha": "b7831ff86fdac30c91a622ce3dd585d9bfbd1cbf"
+    }
+  ]
+}

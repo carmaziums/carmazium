@@ -1,7 +1,19 @@
 import type { NextConfig } from "next";
+import approvedAndroidDownloads from "./scripts/approved-android-downloads.json";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  async headers() {
+    return approvedAndroidDownloads.releases.map((release) => ({
+      source: "/downloads/" + release.filename,
+      headers: [
+        { key: "Content-Type", value: "application/vnd.android.package-archive" },
+        { key: "Content-Disposition", value: 'attachment; filename="' + release.filename + '"' },
+        { key: "Cache-Control", value: "public, max-age=31536000, immutable, no-transform" },
+        { key: "X-Content-Type-Options", value: "nosniff" },
+      ],
+    }));
+  },
   async rewrites() {
     return [
       {
@@ -12,9 +24,9 @@ const nextConfig: NextConfig = {
         source: '/.well-known/apple-app-site-association',
         destination: '/api/app-links/apple',
       },
-      // Signed Android APK for direct download. The file is attached to a
-      // GitHub Release by publish-android-apk-release.yml; customers always
-      // use the carmazium.com URL shown on /download-app.
+      // Array rewrites run AFTER filesystem routes: verified public/downloads
+      // assets win. Keep the existing external fallback for older release links
+      // that are not retained in the reviewed static-download manifest.
       {
         source: '/downloads/:name(CarMazium-\\d+\\.\\d+\\.\\d+-v\\d+).apk',
         destination: 'https://github.com/carmaziums/carmazium/releases/download/:name/:name.apk',
