@@ -32,6 +32,7 @@ function AccountCards({ userId, mode }: { userId: string; mode: 'dealer' | 'pers
   const writes = useRef(Promise.resolve());
   const [ready, setReady] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [iosGridWidth, setIosGridWidth] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
@@ -71,7 +72,11 @@ function AccountCards({ userId, mode }: { userId: string; mode: 'dealer' | 'pers
   const columns = compactIOS
     ? (width < 340 || fontScale >= 1.75 ? 1 : 2)
     : (fontScale >= 1.3 || width < 360 ? 1 : width >= 1280 ? 3 : 2);
-  const cardWidth = (width - 40 - (columns - 1) * 16) / columns;
+  const availableWidth = compactIOS ? Math.min(width - 40, iosGridWidth ?? width - 40) : width - 40;
+  // Round down so fractional iOS layout points never push the second tile to another row.
+  const cardWidth = compactIOS
+    ? Math.max(0, Math.floor((availableWidth - (columns - 1) * 16) / columns))
+    : (width - 40 - (columns - 1) * 16) / columns;
   return <View style={s.section}>
     <View style={[s.header, compactIOS && s.compactHeader, !compactIOS && fontScale >= 1.3 && { flexDirection: 'column', alignItems: 'stretch' }]}>
       {compactIOS ? (
@@ -94,7 +99,10 @@ function AccountCards({ userId, mode }: { userId: string; mode: 'dealer' | 'pers
     {!ready ? <ActivityIndicator accessibilityLabel="Loading dashboard layout" color={Colors.accent} /> : <>
       {editing && <View style={s.editIntro}><Text style={s.hint}>Show or hide cards, then use Earlier and Later to change their order. Your layout is saved on this device.</Text><Button label="Reset layout" size="sm" variant="ghost" onPress={() => save(defaultPreferences())} /></View>}
       {!shown.length && <Text style={s.hint}>All cards are hidden. Choose Customise to show them again.</Text>}
-      <View style={s.grid}>{shown.map(item => {
+      <View style={s.grid} onLayout={compactIOS ? event => {
+        const measured = event.nativeEvent.layout.width;
+        if (Number.isFinite(measured) && measured > 0) setIosGridWidth(measured);
+      } : undefined}>{shown.map(item => {
         const color = palette[item.section || 'Account'] || Colors.dashboardAccount;
         const hidden = preferences.hidden.includes(item.id);
         const index = ordered.findIndex(entry => entry.id === item.id);
