@@ -44,7 +44,7 @@ async function mount({ acknowledged = true, nativeAcknowledged = false, failSave
   const calls = [], nav = [], notices = [];
   const auth = { user: { id: 'personal-test' }, accountRole: 'buyer', isAuthenticated: true, hasCompletedOnboarding: true };
   const state = { openFor: replay ? auth.user.id : null, replay(id) { state.openFor = id; }, close() { state.openFor = null; } };
-  let onRoute;
+  let onRoute; let actualRoute = { name: 'Profile' };
   const apiClient = async (path, options) => {
     calls.push([path, options]);
     if (options && failSave) throw Error('offline');
@@ -68,19 +68,19 @@ async function mount({ acknowledged = true, nativeAcknowledged = false, failSave
     '../store/guidedTourStore': { useGuidedTourStore: () => state },
     '../lib/guidedTourContent': content, '../lib/nativeTourRoutes': routes,
     '../lib/navigationRef': { navigationRef: { addListener(event, fn) { onRoute = fn; return () => {}; },
-      getCurrentRoute: () => ({ name: 'Profile' }), isReady: () => true, navigate: (...args) => nav.push(args) } },
+      getCurrentRoute: () => actualRoute, isReady: () => true, navigate: (...args) => nav.push(args) } },
     '../lib/apiClient': { apiClient }, './NativeTourVoice': { NativeTourVoice: 'Voice' },
   };
   const { NativeGuidedTour } = compile('components/NativeGuidedTour.tsx', modules);
   let tree; const rerender = () => act(async () => { tree.update(React.createElement(NativeGuidedTour)); });
   await act(async () => { tree = create(React.createElement(NativeGuidedTour)); });
   const press = label => act(async () => tree.root.findAllByType('TouchableOpacity').find(node => node.props.accessibilityLabel === label).props.onPress());
-  return { tree, calls, nav, notices, auth, state, press, rerender, onRoute: () => act(async () => onRoute()) };
+  return { tree, calls, nav, notices, auth, state, press, rerender, onRoute: () => act(async () => onRoute()), focus: route => act(async () => { actualRoute = route; onRoute(); }) };
 }
 test('tour Next, Back and topic navigation do not submit business mutations', async () => {
   const h = await mount();
   await h.press('Start tour'); assert.equal(h.nav.at(-1)[1].screen, 'UnifiedDashboard');
-  await h.press('Next'); assert.equal(h.nav.at(-1)[1].screen, 'Search');
+  await h.press('Next'); assert.equal(h.nav.at(-1)[1].screen, 'Tabs'); assert.equal(h.nav.at(-1)[1].params.screen, 'Search');
   await h.press('Back'); assert.equal(h.nav.at(-1)[1].screen, 'UnifiedDashboard');
   await h.press('Jump to a topic');
   const settings = h.tree.root.findAllByType('TouchableOpacity').find(node => /Personal details/.test(node.props.accessibilityLabel ?? ''));
@@ -135,4 +135,30 @@ test('completed native tour does not repeat automatically, but manual replay sti
   await h.rerender();
   assert.equal(h.tree.root.findAllByType('Modal').length, 1);
   await act(async () => h.tree.unmount());
+});
+
+test('tour pauses voice and hides incorrect background until actual leaf route and section match', async () => {
+  const h = await mount();
+  await h.press('Start tour');
+  assert.equal(h.tree.root.findByType('Voice').props.ready, false);
+  await h.focus({ name: 'UnifiedDashboard' });
+  assert.equal(h.tree.root.findByType('Voice').props.ready, true);
+  await h.press('Next');
+  assert.equal(h.tree.root.findByType('Voice').props.ready, false);
+  await h.focus({ name: 'Search' });
+  assert.equal(h.tree.root.findByType('Voice').props.ready, true);
+  assert.equal(routes.nativeTourRouteMatches(routes.nativeTourDestination('/dashboard/service/jobs?tab=mine'), { name: 'ProviderJobs', params: { initialTab: 'open' } }), false);
+  assert.equal(routes.nativeTourRouteMatches(routes.nativeTourDestination('/dashboard/service/jobs?tab=mine'), { name: 'ProviderJobs', params: { initialTab: 'assigned' } }), true);
+  await act(async () => h.tree.unmount());
+});
+test('dealer auctions open the real dealer tab and contractor business opens its native setup', () => {
+  const dealer = routes.nativeTourDestination('/auctions/browse', 'dealer');
+  assert.equal(dealer.screen, 'Tabs');
+  assert.equal(dealer.params.screen, 'DealerBuyBid');
+  assert.equal(dealer.params.params.initialSection, 'live');
+  assert.equal(routes.nativeTourRouteMatches(dealer, { name: 'DealerBuyBid', params: { initialSection: 'bids' } }), false);
+  assert.equal(routes.nativeTourRouteMatches(dealer, { name: 'DealerBuyBid', params: { initialSection: 'live' } }), true);
+  const contractor = routes.nativeTourDestination('/profile?section=business', 'contractor');
+  assert.equal(contractor.screen, 'PartnerDashboard');
+  assert.equal(contractor.params.openSection, 'business');
 });
