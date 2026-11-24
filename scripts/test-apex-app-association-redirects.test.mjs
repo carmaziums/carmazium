@@ -6,14 +6,14 @@ import { createRequire } from 'node:module';
 import { fileURLToPath, parse as parseUrl, format as formatUrl } from 'node:url';
 import { runInNewContext } from 'node:vm';
 
-const require = createRequire(import.meta.url);
+const require = createRequire(new URL('../next.config.ts', import.meta.url));
 // Match Next's server bootstrap before loading its production routing helpers.
 require('next/dist/server/node-environment-baseline');
 const ts = require('typescript');
 const { unstable_getResponseFromNextConfig } = require('next/experimental/testing/server');
 const configPath = fileURLToPath(new URL('../next.config.ts', import.meta.url));
 const compiled = ts.transpileModule(readFileSync(configPath, 'utf8'), {
-  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
 }).outputText;
 const configModule = { exports: {} };
 runInNewContext(compiled, { module: configModule, exports: configModule.exports, require }, { filename: configPath });

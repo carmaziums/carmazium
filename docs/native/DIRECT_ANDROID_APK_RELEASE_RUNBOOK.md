@@ -1,6 +1,6 @@
 # CarMazium Android APK — direct first-party installation
 
-**Status: preparation only.** No public customer APK has been built or approved yet. This checklist deliberately keeps the customer website download disabled until the exact installed binary is tested and approved.
+**Current hosting scope (24 November 2026):** original customer build 126 is already publicly distributed. The verified-static hosting correction retains that exact historical APK; it does not approve a new release or claim new physical-device acceptance. Build 127 remains unpublished pending the required acceptance evidence. The release gates below still apply to every new customer release.
 
 ## Architecture and current controls
 
@@ -12,7 +12,7 @@ Existing pipeline:
 - scripts/verify-first-party-android-apk.mjs — independently validates signed bytes served from the production CarMazium HTTPS URL.
 - src/lib/mobileAppDownloads.ts — fail-closed website download flag, URL and SHA-256. No arbitrary external installer.
 - scripts/stage-android-direct-download.mjs — prepares the exact signed candidate privately for a later approved public download; does **not** publish or approve anything.
-- The candidate workflow disables Expo OTA; later sideloaded updates require a higher Android versionCode signed with the **same** release key.
+- Later sideloaded updates require a higher Android versionCode signed with the **same** release key. Current native source allows compatible Expo updates only after an explicit Update now choice; it does not silently fetch/reload or replace native-version distribution.
 
 
 **GitHub artifact visibility warning:** CarMazium's source repository is currently **public**. GitHub Actions artifacts can be downloaded by anyone who has read access to the repository; do NOT treat a 3-day internal artifact as confidential storage. If the owner requires pre-release binaries to remain confidential, first use a private repository or separately controlled encrypted artifact destination. Do not run a signed production candidate until this exposure is acceptable. See GitHub's official artifact download permissions.
@@ -71,6 +71,10 @@ This checks signer/package/version with apksigner + aapt, compares binary SHA-25
 
 1. After owner approval and physical-device acceptance, arrange hosting of the exact APK at https://www.carmazium.com/downloads/<versioned-name>.apk. Choose hosting capable of the **actual size** and download volume; do not assume Vercel's file size limits will support it.
 2. The exact URL must return HTTP 200, no redirect, application/vnd.android.package-archive, identity/no compression and **exact approved bytes**. No QA, debug, preview or REVIEW-ONLY installer may be served.
+
+   **Verified static hosting:** after a version has satisfied the approval/device gates and its exact release is published, append its immutable filename, version, source, signer, size and SHA-256 to scripts/approved-android-downloads.json. Retain build 126 when adding a later accepted version; never replace existing versioned bytes. Build 127 must not be added or published before its required acceptance. The Vercel build helper stages every manifest entry into public/downloads only after checking the complete bytes, APK ZIP signature, exact size and SHA-256. Those generated binaries and private temporary files are ignored by Git. The helper skips ordinary local/CI builds; Vercel previews stage the already-public manifest even without download-advertisement variables. Production approval=true requires an exact manifest URL/hash match, and missing or inconsistent approved settings or upstream failures stop the build. Existing legacy external rewrites stay after filesystem routes so retained static files win without breaking older bookmarks.
+
+   Validate actual Vercel preview capacity with the full 103,020,948-byte build 126 and confirm direct GET/HEAD, APK MIME, unchanged length, no redirect/content encoding, and range delivery. Preview capacity or a staging success does not replace the unchanged production hosted-byte verifier below. Keep the current advertisement until that final gate passes for the intended customer version.
 3. On the operator's computer, verify hosted bytes again:
 
        node scripts/verify-first-party-android-apk.mjs https://www.carmazium.com/downloads/<versioned-name>.apk /path/release-evidence.json
