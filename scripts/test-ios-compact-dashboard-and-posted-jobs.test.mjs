@@ -97,8 +97,9 @@ test('iPhone provider overview uses the existing mobile website two-column densi
   const overview = read(native + 'screens/main/ProviderOverviewScreen.tsx');
   const website = read('src/app/dashboard/service/page.tsx');
   assert.match(website, /grid grid-cols-2 xl:grid-cols-4/);
-  assert.match(overview, /Platform\.OS === 'ios' && width < 600/);
-  assert.match(overview, /width < 340 \|\| fontScale >= 1\.75/);
+  assert.match(overview, /Platform\.OS === 'ios' && \(width < 600 \|\| !Platform\.isPad\)/);
+  assert.match(overview, /iosMetricRow: \{ flexDirection: 'row', flexWrap: 'nowrap'/);
+  assert.match(overview, /metrics\.slice\(0, 2\), metrics\.slice\(2\)/);
   assert.match(overview, /fontScale >= 1\.3/);
   assert.match(overview, /width: singleMetricColumn \? '100%' : '48%'/);
   // No second iOS-only page or forked layout was introduced.
@@ -129,4 +130,18 @@ test('iPhone job booking date picker remains compact until opened and keeps the 
   assert.match(jobForm, /onPress=\{\(\) => setPickerVisible\(false\)\}/);
   assert.match(jobForm, /minHeight: 48, backgroundColor: Colors\.accent/);
   assert.match(jobForm, /if \(value\) setPickerVisible\(false\)/);
+});
+
+test('Native gated auction scroll clears the bottom tab bar and preserves the free seller action', () => {
+  const live = read(native + 'screens/main/LiveScreen.tsx');
+  const gated = live.slice(live.indexOf('if (!hasTradeAccess) {'), live.indexOf('return (', live.indexOf('Sell My Car at Auction (FREE)')));
+  assert.match(gated, /paddingBottom: tabBarClearance \+ 24/);
+  assert.match(gated, /Sell My Car at Auction \(FREE\)/);
+  assert.match(gated, /<ScrollView/);
+});
+test('Both native wizard layouts scroll the progress and start-fresh controls with all five steps', () => {
+  const sell = read(native + 'screens/sell/SellCarFlowScreen.tsx');
+  assert.equal((sell.match(/\{renderWizardChrome\(\)\}/g) || []).length, 5);
+  assert.doesNotMatch(sell, /Platform\.OS !== 'ios' && renderWizardChrome\(\)/);
+  assert.match(sell, /function renderWizardChrome\(\)[\s\S]*?renderStepper\(\)[\s\S]*?START FRESH/);
 });

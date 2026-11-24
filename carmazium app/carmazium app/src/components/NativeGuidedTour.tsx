@@ -7,7 +7,7 @@ import { FontSize } from '../constants/typography';
 import { useAuthStore } from '../store/authStore';
 import { useGuidedTourStore } from '../store/guidedTourStore';
 import { getGuidedWebsiteSteps } from '../lib/guidedTourContent';
-import { nativeTourDestination } from '../lib/nativeTourRoutes';
+import { nativeTourDestination, nativeTourRouteMatches } from '../lib/nativeTourRoutes';
 import { navigationRef } from '../lib/navigationRef';
 import { apiClient } from '../lib/apiClient';
 import { nativeGuidedTourKey, shouldAutoRunNativeTour } from '../lib/nativeTourCompletion';
@@ -31,7 +31,8 @@ export function NativeGuidedTour() {
   const seen = useRef(new Set<string>());
   const [index, setIndex] = useState(0);
   const [topics, setTopics] = useState(false);
-  const [routeName, setRouteName] = useState('');
+  const [currentRoute, setCurrentRoute] = useState<{ name: string; params?: object } | null>(null);
+  const routeName = currentRoute?.name ?? '';
   const [unavailable, setUnavailable] = useState(false);
   const [failed, setFailed] = useState<{ userId: string; action: FinishAction } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -43,9 +44,10 @@ export function NativeGuidedTour() {
     dealerProfile: accountRole === 'dealer' && !user?.isDealerStaff ? {} : undefined,
   }), [user?.id, user?.isDealerStaff, accountRole]);
   const step = steps[Math.min(index, steps.length - 1)];
+  const destinationReady = !step?.href || nativeTourRouteMatches(nativeTourDestination(step.href, accountRole), currentRoute);
 
   useEffect(() => {
-    const update = () => setRouteName(navigationRef.getCurrentRoute()?.name ?? '');
+    const update = () => { const route = navigationRef.getCurrentRoute(); setCurrentRoute(route ? { name: route.name, params: route.params } : null); };
     const unsubscribe = navigationRef.addListener('state', update);
     const timer = setTimeout(update, 300);
     return () => { clearTimeout(timer); unsubscribe(); };
@@ -78,9 +80,13 @@ export function NativeGuidedTour() {
   const go = (next: number) => {
     if (!user || useAuthStore.getState().user?.id !== user.id) return;
     setIndex(next); setTopics(false); scroll.current?.scrollTo({ y: 0, animated: false });
-    const destination = nativeTourDestination(steps[next]?.href);
+    const destination = nativeTourDestination(steps[next]?.href, accountRole);
     setUnavailable(!!steps[next]?.href && !destination);
-    if (destination && navigationRef.isReady()) navigationRef.navigate('Main', destination);
+    if (destination && navigationRef.isReady()) {
+      navigationRef.navigate('Main', destination);
+      const actual = navigationRef.getCurrentRoute();
+      setCurrentRoute(actual ? { name: actual.name, params: actual.params } : null);
+    }
   };
   const persist = async (action: FinishAction, userId: string) => {
     if (useAuthStore.getState().user?.id !== userId) return;
@@ -106,10 +112,10 @@ export function NativeGuidedTour() {
     <TourButton title="Dismiss message" onPress={() => setFailed(null)} />
   </View> : null;
   return <Modal transparent animationType="fade" visible onRequestClose={() => finish('tour_skipped')}>
-    <View style={[styles.overlay, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 8 }]}>
+    <View style={[styles.overlay, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 8 }, !destinationReady && { backgroundColor: Colors.bgPrimary }]}>
       {/* The current native page stays visible. The modal prevents tour taps
           from operating forms, bidding controls or payment buttons beneath it. */}
-      <View accessible={false} style={styles.pageOutline} />
+      <View accessible={false} style={[styles.pageOutline, !destinationReady && { borderWidth: 0 }]} />
       <View accessibilityViewIsModal style={[styles.panel, { maxHeight: height * 0.65 }]}>
         <View style={styles.row}>
           <Text style={styles.progress}>Website tour · {index + 1} of {steps.length}</Text>
@@ -118,8 +124,9 @@ export function NativeGuidedTour() {
         <ScrollView ref={scroll} contentContainerStyle={{ paddingBottom: 8 }}>
           <Text accessibilityRole="header" style={styles.heading}>{step.title}</Text>
           <Text style={styles.description}>{step.description}</Text>
-          {unavailable && <Text style={styles.description}>This page is not available in the app yet. You can continue to the next topic.</Text>}
-          <NativeTourVoice text={`${step.title}. ${step.description}`} />
+          {!destinationReady && <Text accessibilityLiveRegion="polite" style={styles.description}>{unavailable ? "This page is not available in the app yet." : "The requested page is not in view yet. Check account access or retry this topic."} You can continue to the next topic.</Text>}
+          {!destinationReady && !unavailable && <TourButton title="Retry page" onPress={() => go(index)} />}
+          <NativeTourVoice ready={destinationReady} text={`${step.title}. ${step.description}`} />
           <TourButton title="Jump to a topic" onPress={() => setTopics(value => !value)} />
           {topics && steps.map((item, position) => <TourButton key={item.id} title={`${position + 1}. ${item.title}`} onPress={() => go(position)} />)}
         </ScrollView>

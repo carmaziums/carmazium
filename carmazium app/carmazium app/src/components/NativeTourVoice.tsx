@@ -6,7 +6,7 @@ import { getAccessToken } from '../lib/supabase';
 import { Colors } from '../constants/colors';
 
 /** The same approved, hashed public narration as the website. No microphone. */
-export function NativeTourVoice({ text }: { text: string }) {
+export function NativeTourVoice({ text, ready = true }: { text: string; ready?: boolean }) {
   const [enabled, setEnabled] = useState(false);
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -16,6 +16,7 @@ export function NativeTourVoice({ text }: { text: string }) {
 
   useEffect(() => {
     if (!enabled) return;
+    if (!ready) { pendingAutoPlay.current = false; if (player.isLoaded) player.pause(); return; }
     // Advancing the tour must never unload or release the native player.
     // Expo Audio owns the player's lifetime; only pause a loaded player.
     pendingAutoPlay.current = false;
@@ -58,13 +59,13 @@ export function NativeTourVoice({ text }: { text: string }) {
       // In particular, do not call replace(null), pause(), or release() here:
       // the useAudioPlayer hook may already have disposed its native handle.
     };
-  }, [enabled, text, retry, player]);
+  }, [enabled, ready, text, retry, player]);
 
   useEffect(() => {
-    if (!enabled || error || !pendingAutoPlay.current || !status.isLoaded || !player.isLoaded) return;
+    if (!enabled || !ready || error || !pendingAutoPlay.current || !status.isLoaded || !player.isLoaded) return;
     pendingAutoPlay.current = false;
     try { player.play(); } catch { setError(true); }
-  }, [enabled, error, status.isLoaded, player, text, retry]);
+  }, [enabled, ready, error, status.isLoaded, player, text, retry]);
 
   return <View style={{ gap: 8, marginVertical: 10 }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -77,10 +78,11 @@ export function NativeTourVoice({ text }: { text: string }) {
     </View>
     {enabled && <>
       <Text accessibilityLiveRegion="polite" style={{ color: Colors.textSecondary, fontSize: 14 }}>
-        {error ? 'Audio could not start. You can still follow the text.' : status.playing ? 'Playing voice guidance.' : status.isLoaded ? 'Natural British-English AI narration.' : 'Preparing voice guidance…'}
+        {!ready ? 'Waiting for the correct page.' : error ? 'Audio could not start. You can still follow the text.' : status.playing ? 'Playing voice guidance.' : status.isLoaded ? 'Natural British-English AI narration.' : 'Preparing voice guidance…'}
       </Text>
-      <TouchableOpacity accessibilityRole="button" disabled={!error && !status.isLoaded}
+      <TouchableOpacity accessibilityRole="button" disabled={!ready || (!error && !status.isLoaded)}
         style={{ minHeight: 44, justifyContent: 'center', opacity: !error && !status.isLoaded ? 0.5 : 1 }} onPress={() => {
+        if (!ready) return;
         if (error) { setRetry(value => value + 1); return; }
         if (!status.isLoaded || !player.isLoaded) return;
         try {

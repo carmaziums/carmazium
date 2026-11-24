@@ -291,7 +291,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
       <View style={styles.container}>
         <StatusBar barStyle={themeStatusBarStyle} translucent backgroundColor="transparent" />
         {dealerMode && !embeddedDealerHub && <WebsiteTopBar />}
-        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: dealerMode ? 12 : insets.top + 16 }]}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.scrollContent, { paddingTop: dealerMode ? 12 : insets.top + 16, paddingBottom: tabBarClearance + 24 }]} showsVerticalScrollIndicator>
           <View style={styles.header}>
             <View>
               <Text style={styles.headerMeta}>VERIFIED DEALERS</Text>

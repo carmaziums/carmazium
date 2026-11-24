@@ -2672,6 +2672,27 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     setBadgeTier(method === 'AUCTION' ? 'FREE' : 'BASIC');
   }
 
+  function renderWizardChrome() {
+    return <>
+          {renderStepper()}
+
+          {!editMode && (
+            <View style={s.freshActionRow}>
+              <TouchableOpacity
+                onPress={handleStartFresh}
+                activeOpacity={0.75}
+                style={s.freshActionBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Start a fresh vehicle listing"
+              >
+                <Ionicons name="refresh-outline" size={13} color={Colors.accent} />
+                <Text style={s.freshActionText}>START FRESH</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+    </>;
+  }
+
   function renderStepper() {
     const icons = ['car-outline', 'camera-outline', 'cash-outline', ...(isAuction ? ['hammer-outline'] : []), 'checkmark-circle-outline'];
     return (
@@ -2684,10 +2705,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             const active = index < step;
             return (
               <View key={label} style={s.wizardStep}>
-                <View style={[s.wizardStepCircle, active && s.wizardStepCircleActive]}>
+                <View style={[s.wizardStepCircle, active && s.wizardStepCircleActive, Platform.OS === 'ios' && { width: 34, height: 34, borderRadius: 17 }]}>
                   <Ionicons name={icons[index] as any} size={19} color={active ? Colors.onAccent : Colors.textMuted} />
                 </View>
-                <Text style={[s.wizardStepText, active && s.wizardStepTextActive]} numberOfLines={1}>{label}</Text>
+                <Text style={[s.wizardStepText, active && s.wizardStepTextActive, Platform.OS === 'ios' && { fontSize: 10, textAlign: 'center' }]} numberOfLines={Platform.OS === 'ios' ? 2 : 1} maxFontSizeMultiplier={Platform.OS === 'ios' ? 1.2 : undefined}>{label}</Text>
               </View>
             );
           })}
@@ -2771,6 +2792,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   function renderStep1() {
     return (
       <ScrollView ref={stepScrollRef} scrollEnabled={!scrollLocked} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+        {renderWizardChrome()}
         {renderStepGuidance()}
 
         {!editMode && (
@@ -3465,6 +3487,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
     return (
       <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+        {renderWizardChrome()}
         {renderStepGuidance()}
 
         {/* Photo Tracker */}
@@ -3695,6 +3718,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
     return (
       <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+        {renderWizardChrome()}
         {renderStepGuidance()}
 
         {/* Listing Method — tapping a pricing tier used to silently flip
@@ -4014,6 +4038,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const askNum = auctionMarketValue;
     return (
       <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+        {renderWizardChrome()}
         {renderStepGuidance()}
 
         <SectionBox title="Live Auction — 24-Hour Fixed Duration" accent={Colors.lightOrange_f97316}>
@@ -4158,6 +4183,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
     return (
       <ScrollView style={{ flex: 1, backgroundColor: Colors.bgPrimary }} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 140 }]}>
+        {renderWizardChrome()}
         {renderStepGuidance()}
         <Text style={s.reviewHeading}>Review Your Listing</Text>
 
@@ -4369,30 +4395,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         </View>
       ) : (
         <>
-          {renderStepper()}
-
-          {!editMode && (
-            <View style={s.freshActionRow}>
-              <TouchableOpacity
-                onPress={handleStartFresh}
-                activeOpacity={0.75}
-                style={s.freshActionBtn}
-                accessibilityRole="button"
-                accessibilityLabel="Start a fresh vehicle listing"
-              >
-                <Ionicons name="refresh-outline" size={13} color={Colors.accent} />
-                <Text style={s.freshActionText}>START FRESH</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
           {/* Step 3 (Pricing)'s Delivery section has TextInputs low enough on
               the page that, with no keyboard handling, the keyboard covers
               them with no resize on iOS — reads as the page "closing" behind
               the keyboard. Same pattern already proven on BuyerOffersScreen's
               inline delivery-address inputs. Wrapping only this flex:1
               content area (not the header/bottomBar siblings) keeps the
-              header pinned and Next/Back buttons in place, matching prior
+              compact header pinned and Next/Back buttons in place, preserving
               behavior for every other step. */}
           <KeyboardStickyView
             style={{ flex: 1 }}
