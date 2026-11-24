@@ -23,9 +23,13 @@ test('posted jobs scrolls the navigation heading, actions, history and empty sta
   assert.doesNotMatch(posted, /<FlatList[\s\S]*?style=\{\{ padding: 18, gap: 10 \}\}/);
 });
 
-test('iPhone phone cards retain Android-style two-column density while honouring large accessibility text', () => {
-  assert.match(cards, /Platform\.OS === 'ios' && width < 600/);
-  assert.match(cards, /width < 340 \|\| fontScale >= 1\.75 \? 1 : 2/);
+test('iPhone cards retain explicit two-column density across text scales and phone widths', () => {
+  assert.match(cards, /Platform\.OS === 'ios' && \(width < 600 \|\| !Platform\.isPad\)/);
+  assert.match(cards, /shown\.slice\(index \* 2, index \* 2 \+ 2\)/);
+  assert.match(cards, /iosRow: \{ flexDirection: 'row', flexWrap: 'nowrap'/);
+  assert.match(cards, /iosCard: \{ flex: 1, minWidth: 0 \}/);
+  assert.match(cards, /iosSpacer: \{ flex: 1, minWidth: 0 \}/);
+  assert.doesNotMatch(cards, /width < 340 \|\| fontScale >= 1\.75/);
   // Original Android system-font / narrow-device behavior is still retained.
   assert.match(cards, /fontScale >= 1\.3 \|\| width < 360 \? 1 : width >= 1280 \? 3 : 2/);
   assert.match(cards, /compactCardAction: \{ minHeight: 132, padding: 12/);
