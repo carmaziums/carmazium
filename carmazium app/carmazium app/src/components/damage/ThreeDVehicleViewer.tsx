@@ -8,10 +8,16 @@ import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import type { BuyerDamagePin, DamagePoint } from '../../lib/damageMarkers';
+import { selectDamageModel, type DamageModel } from '../../lib/damageModel';
 
 // ── Assets resolved once at module level so require() runs at build time ──────
 const HTML_MODULE = require('../../assets/3d/viewer.html');
-const GLB_MODULE  = require('../../assets/3d/vehicle.glb');
+const GLB_MODULES = {
+  sedan: require('../../assets/3d/sedan.glb'),
+  hatchback: require('../../assets/3d/hatchback.glb'),
+  suv: require('../../assets/3d/suv.glb'),
+};
+const MESHOPT_MODULE = require('../../assets/3d/meshopt-decoder.txt');
 // Bundled, dependency-free Three.js + GLTFLoader + OrbitControls (see
 // scripts/three-bundle-entry.mjs) — spliced into viewer.html in place of the
 // CDN import so the viewer works fully offline.
@@ -38,15 +44,17 @@ function loadViewerHtml(): Promise<string> {
     cachedViewerHtmlPromise = (async () => {
       const htmlAsset = Asset.fromModule(HTML_MODULE);
       const bundleAsset = Asset.fromModule(THREE_BUNDLE_MODULE);
-      await Promise.all([htmlAsset.downloadAsync(), bundleAsset.downloadAsync()]);
-      const [html, threeBundle] = await Promise.all([
+      const decoderAsset = Asset.fromModule(MESHOPT_MODULE);
+      await Promise.all([htmlAsset.downloadAsync(), bundleAsset.downloadAsync(), decoderAsset.downloadAsync()]);
+      const [html, threeBundle, decoder] = await Promise.all([
         FileSystem.readAsStringAsync(htmlAsset.localUri!),
         FileSystem.readAsStringAsync(bundleAsset.localUri!),
+        FileSystem.readAsStringAsync(decoderAsset.localUri!),
       ]);
       // A function replacer avoids String.prototype.replace's special
       // $-pattern handling (e.g. a literal "$&" in the minified bundle
       // gets read as "insert matched substring" and corrupts the splice).
-      return html.replace('/*__THREE_BUNDLE__*/', () => threeBundle);
+      return html.replace('/*__THREE_BUNDLE__*/', () => threeBundle).replace('/*__MESHOPT_DECODER__*/', () => decoder);
     })();
     // Don't cache a rejected attempt forever — let the next mount retry.
     cachedViewerHtmlPromise.catch(() => { cachedViewerHtmlPromise = null; });
@@ -55,17 +63,20 @@ function loadViewerHtml(): Promise<string> {
 }
 
 let cachedGlbBase64Promise: Promise<string> | null = null;
-function loadGlbBase64(): Promise<string> {
-  if (!cachedGlbBase64Promise) {
+let cachedModel: DamageModel | null = null;
+function loadGlbBase64(model: DamageModel): Promise<string> {
+  if (!cachedGlbBase64Promise || cachedModel !== model) {
+    cachedModel = model;
     cachedGlbBase64Promise = (async () => {
-      const glbAsset = Asset.fromModule(GLB_MODULE);
+      const glbAsset = Asset.fromModule(GLB_MODULES[model]);
       await glbAsset.downloadAsync();
       if (!glbAsset.localUri) throw new Error('no localUri for GLB');
       return FileSystem.readAsStringAsync(glbAsset.localUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
     })();
-    cachedGlbBase64Promise.catch(() => { cachedGlbBase64Promise = null; });
+    const pending = cachedGlbBase64Promise;
+    pending.catch(() => { if (cachedGlbBase64Promise === pending) { cachedGlbBase64Promise = null; cachedModel = null; } });
   }
   return cachedGlbBase64Promise;
 }
@@ -81,7 +92,12 @@ export interface ThreeDVehicleViewerProps {
   bodyTypeLabel?: string;
 }
 
-export function ThreeDVehicleViewer({ pins, selectedDamageId, onSurfaceTap, onDamagePinPress, height = 280 }: ThreeDVehicleViewerProps) {
+export function ThreeDVehicleViewer(props: ThreeDVehicleViewerProps) {
+  const model = selectDamageModel(props.bodyTypeLabel);
+  return <ThreeDVehicleViewerInstance key={model} {...props} model={model} />;
+}
+
+function ThreeDVehicleViewerInstance({ pins, selectedDamageId, onSurfaceTap, onDamagePinPress, height = 280, model }: ThreeDVehicleViewerProps & { model: DamageModel }) {
   const webViewRef = useRef<WebView>(null);
   const setScrollLocked = useScrollLockStore((st) => st.setLocked);
   const lockScroll = useCallback(() => setScrollLocked(true), [setScrollLocked]);
@@ -150,7 +166,7 @@ export function ThreeDVehicleViewer({ pins, selectedDamageId, onSurfaceTap, onDa
     transferStarted.current = true;
     const request = generation.current;
     try {
-      const base64 = await loadGlbBase64();
+      const base64 = await loadGlbBase64(model);
       if (generation.current !== request || !webViewRef.current) return;
       const chunks = base64.match(/.{1,65536}/g) || [];
       if (!chunks.length) throw new Error('Empty model');
@@ -164,7 +180,7 @@ export function ThreeDVehicleViewer({ pins, selectedDamageId, onSurfaceTap, onDa
     } catch {
       if (generation.current === request) fail();
     }
-  }, [fail]);
+  }, [fail, model]);
 
   const handleWebViewLoad = useCallback(() => {
     webViewRef.current?.injectJavaScript('if(window.reportViewerReady) window.reportViewerReady(); true;');
@@ -198,7 +214,7 @@ export function ThreeDVehicleViewer({ pins, selectedDamageId, onSurfaceTap, onDa
 
   return (
     <View>
-      <View style={styles.disclosureBanner}><Ionicons name="information-circle" size={16} color={Colors.warning} /><Text style={styles.disclosureText}>Generic reference model. Actual vehicle panels may differ.</Text></View>
+      <View style={styles.disclosureBanner}><Ionicons name="information-circle" size={16} color={Colors.warning} /><Text style={styles.disclosureText}>Generic {model === 'suv' ? 'SUV' : model} reference model. Actual vehicle panels may differ.</Text></View>
     <View
       style={[styles.wrap, { height }]}
       // Hold the page still while a finger is on the model so drags orbit

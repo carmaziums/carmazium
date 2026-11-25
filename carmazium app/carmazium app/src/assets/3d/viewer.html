@@ -32,6 +32,7 @@ window.addEventListener('unhandledrejection', viewerFailed);
 
 <script type="module">
 /*__THREE_BUNDLE__*/
+/*__MESHOPT_DECODER__*/
 const { THREE, GLTFLoader, OrbitControls } = window.__CARMAZIUM_THREE__;
 
 /* ── Renderer ── */
@@ -167,6 +168,7 @@ canvas.addEventListener("pointerup", function(e) {
 });
 
 var loader = new GLTFLoader();
+if (typeof MeshoptDecoder !== 'undefined') loader.setMeshoptDecoder(MeshoptDecoder);
 var chunks = [], expectedChunks = 0, modelStarted = false, modelReady = false;
 window.reportViewerReady = function() { report('viewerReady'); };
 window.beginModel = function(count) {

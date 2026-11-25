@@ -9,6 +9,7 @@ import {
     Query,
     UseGuards,
     HttpCode,
+    Header,
     HttpStatus,
     BadRequestException,
     UseInterceptors,
@@ -122,6 +123,14 @@ export class AuctionsController {
     @ApiOperation({ summary: 'Get one auction won by the current buyer business' })
     async findWonAuction(@CurrentUser() user: any, @Param('id') id: string) {
         return new StandardResponse(await this.auctionsService.findWonAuction(user.id, id));
+    }
+
+    @Get(':id/damage')
+    @Header('Cache-Control', 'private, no-store')
+    @UseGuards(SessionAuthGuard)
+    @ApiOperation({ summary: 'Get seller-reported damage in the authorised auction context' })
+    async getAuctionDamage(@Param('id') id: string, @CurrentUser() user: any) {
+        return new StandardResponse(await this.auctionsService.getAuctionDamageRecords(id, user?.id));
     }
 
     @Get(':id')

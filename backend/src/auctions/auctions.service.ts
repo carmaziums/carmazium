@@ -1,4 +1,5 @@
 import { capturePurchaseSnapshot } from '../dealers/purchase-listing-record';
+import { readAuctionDamageRecords } from './auction-damage-access';
 import {
     Injectable,
     NotFoundException,
@@ -809,6 +810,10 @@ export class AuctionsService {
         }
 
         return this.redactHandoverEvidence(this.clearExpiredBin(auction));
+    }
+
+    getAuctionDamageRecords(id: string, viewerId?: string) {
+        return readAuctionDamageRecords(this.prisma, id, viewerId);
     }
 
     async findMyAuctions(userId: string, page = 1, limit = 20): Promise<{ data: any[]; total: number }> {

@@ -1397,6 +1397,12 @@ export async function saveDamageRecords(listingId: string, detections: any[]): P
 /**
  * Damage Analysis: Get damage records for a listing
  */
+export async function getAuctionDamageRecords(auctionId: string): Promise<any[]> {
+    const result = await apiClient<{ success: boolean; data: any[] }>(`/auctions/${auctionId}/damage`, { method: "GET" });
+    if (!result?.success || !Array.isArray(result.data)) throw new Error("Invalid auction damage response");
+    return result.data;
+}
+
 export async function getDamageRecords(listingId: string): Promise<any[]> {
     const data = await apiClient<{ data: any[] }>(`/damage/${listingId}`, {
         method: 'GET',

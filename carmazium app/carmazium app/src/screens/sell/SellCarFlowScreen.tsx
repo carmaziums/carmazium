@@ -3597,7 +3597,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 onRemove={id => setDamageRecords(p => p.filter(r => r.id !== id))}
                 onPhoto={handleDamagePhoto}
                 onPendingChange={setDamageEditorPending}
-                bodyTypeLabel={BODY_TYPES.find(bt => bt.v === bodyType)?.l}
+                bodyTypeLabel={bodyType}
               />}
             </SectionBox>
           </View>

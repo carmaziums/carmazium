@@ -6,6 +6,8 @@ const src=new URL('../carmazium app/carmazium app/src/',import.meta.url);
 const read=p=>readFileSync(new URL(p,src),'utf8');
 function load(file,require=()=>{throw Error('Unexpected import')}){const m={exports:{}};const code=ts.transpileModule(read(file),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;new Function('require','module','exports',code)(require,m,m.exports);return m.exports;}
 const filters=load('components/filters/auctionFilters.ts');
+const {formatPrice}=load('data/listings.ts');
+test('decimal-string auction prices preserve thousands separators',()=>{assert.equal(formatPrice('38000'),'£38,000');assert.equal(formatPrice(28000),'£28,000');assert.equal(formatPrice(''),'Price unavailable');});
 const zones=load('components/damage/damageZones.ts');
 const records=load('lib/nativeDamageRecords.ts',name=>{assert.equal(name,'../components/damage/damageZones');return zones;});
 const markers=load('lib/damageMarkers.ts');
@@ -16,3 +18,8 @@ test('no saved defects means no markers; manually selected areas are approximate
 test('read-only viewer keeps model during a fetch error and distinguishes unknown from no damage',()=>{const s=read('components/damage/BuyerDamageViewer.tsx');assert.ok(s.indexOf('<ThreeDVehicleViewer')<s.indexOf('{isLoading ?'));assert.match(s,/Damage records are unavailable/);assert.match(s,/hasError \|\| isLoading \? \[\] : records/);});
 test('surface selection ignores dragging, multiple fingers, misses and read-only interactions',()=>{const h=read('assets/3d/viewer.html');assert.match(h,/start.moved \|\| touchPointers.size/);assert.match(h,/if\(!hit\) return/);assert.match(h,/if\(!_editable/);assert.match(h,/type:"surfaceTap",point/);});
 test('native editor has durable photo and draft persistence and stops failed edit from overwriting records',()=>{const w=read('screens/sell/SellCarFlowScreen.tsx');assert.match(w,/damageRecords.map\(damageEntryToRecord\)/);assert.match(w,/setDamageRecords\(store.damageRecords/);assert.match(w,/uploadImage\(uri,"damage"/);assert.match(w,/if\(damageLoadFailed\|\|damageEditorPending/);});
+
+const models=load('lib/damageModel.ts');
+test('native selects the same reference-model families as website',()=>{for(const [type,model] of Object.entries({SEDAN:'sedan',SPORTS_CAR:'sedan',HATCHBACK:'hatchback',ESTATE:'hatchback',STATION_WAGON:'hatchback',SUV:'suv',CROSSOVER:'suv',MPV:'suv',VAN:'suv',PICKUP_TRUCK:'suv'}))assert.equal(models.selectDamageModel(type),model);});
+test('each family ships as a valid, independently decodable GLB asset',()=>{for(const name of ['sedan','hatchback','suv']){const b=readFileSync(new URL('assets/3d/'+name+'.glb',src));assert.equal(b.subarray(0,4).toString(),'glTF');assert.equal(b.readUInt32LE(8),b.length);assert.ok(b.length<16*1024*1024);const json=JSON.parse(b.subarray(20,20+b.readUInt32LE(12)).toString());assert.ok(json.extensionsRequired.includes('EXT_meshopt_compression'));}assert.match(read('assets/3d/viewer.html'),/setMeshoptDecoder/);});
+test('auction details request damage via the specific auction context on native and website',()=>{assert.match(read('screens/vehicle/AuctionDetailScreen.tsx'),/\/auctions\/\$\{auctionId\}\/damage/);const web=readFileSync(new URL('../src/app/auctions/live/[id]/page.tsx',import.meta.url),'utf8');assert.match(web,/getAuctionDamageRecords\(auction.id\)/);});

@@ -39,8 +39,8 @@ function harness(){
   runInNewContext(html.slice(html.indexOf('var loader = new GLTFLoader();'),html.lastIndexOf('</script>')),context);
   return {messages,parsed,window:context.window};
 }
-test('ordered chunks reconstruct actual bundled GLB byte-for-byte before renderer acknowledgement',()=>{
-  const h=harness(), glb=readFileSync(new URL('assets/3d/vehicle.glb',native));
+for (const model of ['sedan','hatchback','suv']) test('ordered chunks reconstruct bundled '+model+' GLB before renderer acknowledgement',()=>{
+  const h=harness(), glb=readFileSync(new URL('assets/3d/'+model+'.glb',native));
   assert.equal(glb.subarray(0,4).toString(),'glTF');
   assert.equal(glb.readUInt32LE(8),glb.length);
   const chunks=glb.toString('base64').match(/.{1,65536}/g);

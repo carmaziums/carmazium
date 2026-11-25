@@ -32,7 +32,7 @@ import { HpiReportModal } from "@/components/hpi/HpiReportModal"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getAuction, acceptBidEarly, declineProvisionalOffer, triggerBuyItNow, confirmBuyItNow, declineBuyItNow, cancelBid, type Auction, type BidBroadcastPayload, type AuctionEndPayload } from "@/lib/auctionApi"
-import { placeBid, getDamageRecords, type Listing } from "@/lib/listingApi"
+import { placeBid, getAuctionDamageRecords, type Listing } from "@/lib/listingApi"
 import { buildBuyerDamagePins } from "@/lib/damageMarkers"
 import { BuyerVehicleInformation } from "@/components/listing/BuyerVehicleInformation"
 import { getWebSocketUrl, createChatRoom, getAccessToken } from "@/lib/chatApi"
@@ -332,17 +332,17 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
     // Fetch damage records when auction (and its listingId) is available
     React.useEffect(() => {
-        if (!auction?.listingId) return
+        if (!auction?.id) return
         let cancelled = false
         setDamageRecords([])
         setDamageLoadFailed(false)
         setDamageLoading(true)
-        getDamageRecords(auction.listingId)
+        getAuctionDamageRecords(auction.id)
             .then(records => { if (!cancelled) setDamageRecords(records) })
             .catch(() => { if (!cancelled) setDamageLoadFailed(true) })
             .finally(() => { if (!cancelled) setDamageLoading(false) })
         return () => { cancelled = true }
-    }, [auction?.listingId])
+    }, [auction?.id, auction?.status])
 
     // ── Socket ────────────────────────────────────────────────────────────────
     React.useEffect(() => {
