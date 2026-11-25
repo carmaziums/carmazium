@@ -137,6 +137,35 @@ window.addEventListener('resize', function() {
 });
 
 /* ── GLB loader called from RN via injectJavaScript ── */
+// Exact mesh taps; never create a mark from a drag, pinch or empty space.
+var _editable = false;
+window.setEditable = function(value) { _editable = value === true; };
+const surfaceRay = new THREE.Raycaster();
+const touchPointers = new Set();
+let tapStart = null;
+const canvas = renderer.domElement;
+canvas.addEventListener("pointerdown", function(e) {
+  touchPointers.add(e.pointerId);
+  tapStart = _editable && touchPointers.size === 1 && e.button === 0 ? {id:e.pointerId,x:e.clientX,y:e.clientY,moved:false} : null;
+});
+canvas.addEventListener("pointermove", function(e) {
+  if(tapStart && Math.hypot(e.clientX-tapStart.x,e.clientY-tapStart.y)>8) tapStart.moved=true;
+});
+canvas.addEventListener("pointercancel", function(e) { touchPointers.delete(e.pointerId); tapStart=null; });
+canvas.addEventListener("pointerup", function(e) {
+  const start=tapStart; tapStart=null; touchPointers.delete(e.pointerId);
+  if(!_editable || !_modelInfo || !start || start.id!==e.pointerId || start.moved || touchPointers.size || Math.hypot(e.clientX-start.x,e.clientY-start.y)>8) return;
+  const rect=canvas.getBoundingClientRect(); if(!rect.width || !rect.height) return;
+  const pointer=new THREE.Vector2((e.clientX-rect.left)/rect.width*2-1,1-(e.clientY-rect.top)/rect.height*2);
+  camera.updateMatrixWorld(true); _modelInfo.model.updateMatrixWorld(true);
+  surfaceRay.setFromCamera(pointer,camera);
+  const hit=surfaceRay.intersectObject(_modelInfo.model,true)[0]; if(!hit) return;
+  const m=_modelInfo, raw=hit.point.clone().divideScalar(m.scale).add(m.center);
+  const clamp=v=>Math.max(0,Math.min(1,v));
+  const point={fx:clamp((raw.x-m.min.x)/m.size.x),fy:clamp((raw.y-m.min.y)/m.size.y),fz:clamp((raw.z-m.min.z)/m.size.z)};
+  if(Object.values(point).every(Number.isFinite) && window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({type:"surfaceTap",point}));
+});
+
 var loader = new GLTFLoader();
 var chunks = [], expectedChunks = 0, modelStarted = false, modelReady = false;
 window.reportViewerReady = function() { report('viewerReady'); };

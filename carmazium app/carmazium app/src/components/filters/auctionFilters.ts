@@ -37,8 +37,8 @@ export const AUCTION_SORT_OPTIONS: { value: AuctionSort; label: string }[] = [
   // default for auctions in a way "newest" never is — urgency is the point.
   { value: 'ending_soon', label: 'Ending soonest' },
   { value: 'newest', label: 'Newest listed' },
-  { value: 'bid_low', label: 'Bid: low to high' },
-  { value: 'bid_high', label: 'Bid: high to low' },
+  { value: 'bid_low', label: 'Price: low to high' },
+  { value: 'bid_high', label: 'Price: high to low' },
 ];
 
 export interface AuctionFilterState {
@@ -171,7 +171,7 @@ export const matchesAuctionFilters = (
 };
 
 /** Sort comparator for the auction lists. */
-export const compareAuctions = <T extends { currentBid?: number | null; endsAt?: Date | string | null; createdAt?: string | null }>(
+export const compareAuctions = <T extends { currentBid?: number | null; startingBid?: number | null; endsAt?: Date | string | null; createdAt?: string | null }>(
   sortBy: AuctionSort,
 ) => (a: T, b: T): number => {
   const time = (v: Date | string | null | undefined): number => {
@@ -180,6 +180,7 @@ export const compareAuctions = <T extends { currentBid?: number | null; endsAt?:
     return Number.isFinite(t) ? t : 0;
   };
 
+  const bid = (lot: T) => Number(lot.currentBid) > 0 ? Number(lot.currentBid) : Number(lot.startingBid ?? 0);
   switch (sortBy) {
     case 'ending_soon': {
       // Auctions with no end time sort last rather than first — a missing date
@@ -191,9 +192,9 @@ export const compareAuctions = <T extends { currentBid?: number | null; endsAt?:
     case 'newest':
       return time(b.createdAt) - time(a.createdAt);
     case 'bid_low':
-      return (a.currentBid ?? 0) - (b.currentBid ?? 0);
+      return bid(a) - bid(b);
     case 'bid_high':
-      return (b.currentBid ?? 0) - (a.currentBid ?? 0);
+      return bid(b) - bid(a);
     default:
       return 0;
   }

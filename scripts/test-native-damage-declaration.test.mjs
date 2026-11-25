@@ -15,7 +15,7 @@ test('both native platforms expose damage map independently of photo category, e
   assert.match(media,/scrollEnabled=\{!scrollLocked\}/);
   assert.match(wizard,/<DamageViewerErrorBoundary height=\{280\}>/);
   assert.match(media,/onAdd=\{entry => setDamageRecords/);
-  assert.match(media,/onPhoto=\{handleZonePhoto\}/);
+  assert.match(media,/onPhoto=\{handleDamagePhoto\}/);
 });
 test('native viewer waits for readiness, transfers small chunks, acknowledges loaded model and retries a new view',()=>{
   assert.match(viewer,/msg.type === 'viewerReady'/);

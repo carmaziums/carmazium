@@ -1,5 +1,6 @@
 import { shareVehicle } from '../../lib/shareVehicle';
 import { SellerServiceBadges } from '../../components/SellerServiceBadges';
+import { mapCategory } from '../../lib/listingsApi';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useScrollLocked } from '../../lib/scrollLock';
 import {
@@ -2160,14 +2161,14 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 VehicleDetailScreen. Grade pill is the only place
                 exteriorGrade appears on this screen. */}
             <View style={s.card}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
                   <Ionicons name="warning-outline" size={13} color={Colors.warning} />
                   <Text style={[s.cardSectionTitle, { marginBottom: 0 }]}>Condition & Damage</Text>
                 </View>
                 <GradeChip grade={(auction?.listing as any)?.exteriorGrade} variant="pill" />
               </View>
-              {!['CARAVAN', 'CAMPERVAN'].includes(auction?.listing?.bodyType || '') && <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />}
+              {!['CARAVAN', 'CAMPERVAN'].includes(auction?.listing?.bodyType || '') && <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={mapCategory(auction?.listing?.bodyType ?? listing.bodyTypeRaw ?? listing.category)} hasError={damageError} onRetry={fetchDamageRecords} />}
               {(auction?.listing as any)?.mechanicalIssues ? (
                 <View style={{ marginTop: 12, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(245,158,11,0.28)', backgroundColor: 'rgba(245,158,11,0.07)' }}>
                   <Text style={[s.specKey, { color: Colors.warning, marginBottom: 5 }]}>KNOWN MECHANICAL PROBLEMS</Text>

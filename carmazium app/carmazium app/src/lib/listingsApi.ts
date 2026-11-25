@@ -223,7 +223,7 @@ export function mapTransmission(raw?: string | null): CarListing['transmission']
   return formatTransmission(raw);
 }
 
-function mapCategory(raw?: string | null): CarListing['category'] {
+export function mapCategory(raw?: string | null): CarListing['category'] {
   switch (raw) {
     case 'SUV':         return 'SUV';
     case 'HATCHBACK':   return 'Hatchback';

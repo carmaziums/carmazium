@@ -4,11 +4,10 @@ import { WebView } from 'react-native-webview';
 import { useScrollLockStore } from '../../lib/scrollLock';
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';
-import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
-import { DamageZone3D } from './damageZones';
+import type { BuyerDamagePin, DamagePoint } from '../../lib/damageMarkers';
 
 // ── Assets resolved once at module level so require() runs at build time ──────
 const HTML_MODULE = require('../../assets/3d/viewer.html');
@@ -74,37 +73,15 @@ function loadGlbBase64(): Promise<string> {
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ThreeDVehicleViewerProps {
-  zones: DamageZone3D[];
-  selectedZone: string | null;
-  markedZones: string[];
-  onZoneClick: (zoneLabel: string) => void;
-  onZoneHide?: (zoneId: string) => void;
-  onZonePhoto?: (zoneId: string, imageUri: string) => void;
+  pins: BuyerDamagePin[];
+  selectedDamageId?: string | null;
+  onSurfaceTap?: (point: DamagePoint) => void;
+  onDamagePinPress?: (id: string) => void;
   height?: number;
-  /** Friendly body type label shown in the model badge (e.g. "SUV", "Hatchback").
-   *  The GLB model itself doesn't change shape per body type yet — this only
-   *  keeps the on-screen label honest about what vehicle the listing is. */
   bodyTypeLabel?: string;
-  /** Buyer-facing viewing mode: tapping a zone only selects/highlights it —
-   *  no Mark/Hide/Photo action pill, no image picker. `onZoneHide`/`onZonePhoto`
-   *  are ignored when this is set. Defaults to false (the seller-editing behavior
-   *  SellCarFlowScreen relies on). */
-  readOnly?: boolean;
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
-
-export function ThreeDVehicleViewer({
-  zones,
-  selectedZone,
-  markedZones,
-  onZoneClick,
-  onZoneHide,
-  onZonePhoto,
-  height = 280,
-  bodyTypeLabel,
-  readOnly = false,
-}: ThreeDVehicleViewerProps) {
+export function ThreeDVehicleViewer({ pins, selectedDamageId, onSurfaceTap, onDamagePinPress, height = 280 }: ThreeDVehicleViewerProps) {
   const webViewRef = useRef<WebView>(null);
   const setScrollLocked = useScrollLockStore((st) => st.setLocked);
   const lockScroll = useCallback(() => setScrollLocked(true), [setScrollLocked]);
@@ -121,34 +98,15 @@ export function ThreeDVehicleViewer({
   const readyRef = useRef(false);
   const [modelReady, setModelReady] = useState(false);
 
-  // Zone-level actions — id-keyed so they survive independently of `markedZones`
-  const [hiddenZones, setHiddenZones] = useState<Set<string>>(new Set());
-  const [zonePhotos, setZonePhotos] = useState<Record<string, string>>({});
-  const [pillZoneId, setPillZoneId] = useState<string | null>(null);
-
-  // Live screen position of each 3D-positioned zone, projected through the
-  // WebView's camera every few frames — see viewer.html's postZonePositions.
-  // Only zones with a `box` (exterior) fraction get an entry here; interior
-  // zones have no exterior 3D position and are never rendered as hotspots.
   const [zoneScreenPos, setZoneScreenPos] = useState<Record<string, { x: number; y: number; visible: boolean }>>({});
-  // Seller: interactive predefined zones. Buyer: only seller-marked zones,
-  // never the blanket "+" hotspots the public website previously showed.
-  const hotspotZones = zones.filter((z) => z.box && (!readOnly || markedZones.includes(z.label)));
-  const hotspotZonesRef = useRef(hotspotZones);
-  hotspotZonesRef.current = hotspotZones;
-  const projectedZoneKey = hotspotZones.map((zone) => zone.id).join('|');
-
-  // Buyer damage records can arrive after the WebView has finished loading.
-  // Refresh its projected zones when those records change; otherwise the
-  // newly marked dots have no projected coordinates and never appear.
-  // Seller mode retains every editable zone and the existing upgraded GLB.
+  const pinsRef = useRef(pins); pinsRef.current = pins;
+  const tapRef = useRef(onSurfaceTap); tapRef.current = onSurfaceTap;
+  const projectedZoneKey = JSON.stringify(pins.map(p => ({ id: p.id, ...p.point })));
+  const editable = Boolean(onSurfaceTap);
   useEffect(() => {
     if (!viewerHtml || !webViewRef.current) return;
-    const wireZones = hotspotZonesRef.current.map((zone) => ({ id: zone.id, ...zone.box }));
-    webViewRef.current.injectJavaScript(
-      'if(window.setZones) window.setZones(' + JSON.stringify(JSON.stringify(wireZones)) + '); true;'
-    );
-  }, [viewerHtml, projectedZoneKey]);
+    webViewRef.current.injectJavaScript('if(window.setZones) window.setZones(' + JSON.stringify(projectedZoneKey) + '); if(window.setEditable) window.setEditable(' + editable + '); true;');
+  }, [viewerHtml, projectedZoneKey, editable]);
 
   const [glbError, setGlbError] = useState(false);
   const fail = useCallback(() => {
@@ -201,8 +159,8 @@ export function ThreeDVehicleViewer({
       for (let i = 0; i < chunks.length; i++) {
         view.injectJavaScript('window.appendModelChunk(' + i + ',' + JSON.stringify(chunks[i]) + '); true;');
       }
-      const wireZones = hotspotZonesRef.current.map(z => ({ id: z.id, ...z.box }));
-      view.injectJavaScript('window.setZones(' + JSON.stringify(JSON.stringify(wireZones)) + '); window.finishModel(); true;');
+      const wireZones = pinsRef.current.map(p => ({ id: p.id, ...p.point }));
+      view.injectJavaScript('window.setZones(' + JSON.stringify(JSON.stringify(wireZones)) + '); window.setEditable(' + Boolean(tapRef.current) + '); window.finishModel(); true;');
     } catch {
       if (generation.current === request) fail();
     }
@@ -223,9 +181,14 @@ export function ThreeDVehicleViewer({
         setGlbError(false);
         return;
       }
+      if (msg.type === 'surfaceTap' && readyRef.current && tapRef.current) {
+        const p = msg.point;
+        if (p && [p.fx, p.fy, p.fz].every(n => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 1)) tapRef.current(p);
+        return;
+      }
       if (msg.type === 'zonePositions' && readyRef.current && Array.isArray(msg.positions)) {
         setZoneScreenPos(prev => {
-          const next = { ...prev };
+          const next: typeof prev = {};
           for (const p of msg.positions) next[p.id] = { x: p.x, y: p.y, visible: p.visible };
           return next;
         });
@@ -233,38 +196,9 @@ export function ThreeDVehicleViewer({
     } catch { /* Ignore malformed messages. */ }
   }, [sendModel, fail]);
 
-  const handleHotspotPress = useCallback((zone: DamageZone3D) => {
-    onZoneClick(zone.label);
-    if (!readOnly) setPillZoneId(zone.id);
-  }, [onZoneClick, readOnly]);
-
-  const handleHideToggle = useCallback((zoneId: string) => {
-    setHiddenZones((prev) => {
-      const next = new Set(prev);
-      if (next.has(zoneId)) next.delete(zoneId); else next.add(zoneId);
-      return next;
-    });
-    onZoneHide?.(zoneId);
-  }, [onZoneHide]);
-
-  const handlePhotoPick = useCallback(async (zoneId: string) => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.85,
-    });
-    if (!result.canceled && result.assets?.[0]?.uri) {
-      const uri = result.assets[0].uri;
-      setZonePhotos((prev) => ({ ...prev, [zoneId]: uri }));
-      onZonePhoto?.(zoneId, uri);
-    }
-    setPillZoneId(null);
-  }, [onZonePhoto]);
-
-  const pillZone = zones.find((z) => z.id === pillZoneId) ?? null;
-
-  // ── Render ────────────────────────────────────────────────────────────────
-
   return (
+    <View>
+      <View style={styles.disclosureBanner}><Ionicons name="information-circle" size={16} color={Colors.warning} /><Text style={styles.disclosureText}>Generic reference model. Actual vehicle panels may differ.</Text></View>
     <View
       style={[styles.wrap, { height }]}
       // Hold the page still while a finger is on the model so drags orbit
@@ -318,126 +252,27 @@ export function ThreeDVehicleViewer({
 
       {viewerHtml && !modelReady && !glbError && <View style={styles.loading} pointerEvents="none"><ActivityIndicator color={Colors.accent} size="small" /></View>}
 
-      {/* Generic-model disclosure banner — deliberately prominent, not a small
-          corner label, so it's easy to notice regardless of the viewer's age. */}
-      <View style={styles.disclosureBanner} pointerEvents="none">
-        <Ionicons name="information-circle" size={16} color={Colors.warning} style={{ marginRight: 6 }} accessibilityElementsHidden importantForAccessibility="no" />
-        <Text style={styles.disclosureText} numberOfLines={2}>
-          Generic {bodyTypeLabel || 'vehicle'} shape shown for reference — your car's actual panels may look different.
-        </Text>
-      </View>
-
-      {/* Tap-outside-to-dismiss backdrop — only present while a pill is open,
-          so orbit drag on the WebView is unaffected the rest of the time */}
-      {pillZone && (
-        <TouchableOpacity
-          style={StyleSheet.absoluteFillObject}
-          activeOpacity={1}
-          onPress={() => setPillZoneId(null)}
-        />
-      )}
-
-      {/* Zone hotspot overlay
-          pointerEvents="box-none" lets touches that miss a hotspot fall
-          through to the WebView so orbit drag still works */}
+      {/* Only real saved records are projected. No predefined editable dots. */}
       <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
-        {hotspotZones.map((zone) => {
-          const screenPos = zoneScreenPos[zone.id];
-          // Nothing projected yet (viewer/model still loading) or the zone is
-          // on the far side of the car / off-screen from the current angle.
-          if (!screenPos || !screenPos.visible) return null;
-
-          const isMarked   = markedZones.includes(zone.label);
-          const isSelected = selectedZone === zone.label;
-          const isHidden   = hiddenZones.has(zone.id);
-          const hasPhoto   = !!zonePhotos[zone.id];
-          return (
-            <TouchableOpacity
-              key={zone.id}
-              style={[
-                styles.hotspot,
-                {
-                  left: `${screenPos.x}%` as any,
-                  top:  `${screenPos.y}%` as any,
-                },
-              ]}
-              onPress={() => handleHotspotPress(zone)}
-              activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityLabel={`${zone.label}${isMarked ? ' (damage marked)' : ''}`}
-              accessibilityRole="button"
-            >
-              {isHidden ? (
-                <View style={styles.dotHidden} />
-              ) : (
-                <View style={[
-                  styles.dot,
-                  isMarked   && styles.dotMarked,
-                  isSelected && styles.dotSelected,
-                ]} />
-              )}
-              {hasPhoto && (
-                <View style={styles.photoBadge}>
-                  <Ionicons name="camera" size={8} color={Colors.onAccent} />
-                </View>
-              )}
-            </TouchableOpacity>
-          );
+        {pins.map(pin => {
+          const position = zoneScreenPos[pin.id];
+          if (!position?.visible) return null;
+          return <TouchableOpacity key={pin.id}
+            style={[styles.hotspot, { left: position.x + "%" as any, top: position.y + "%" as any }]}
+            onPress={() => onDamagePinPress?.(pin.id)} accessibilityRole="button"
+            accessibilityLabel={"Damage " + pin.number + (pin.approximate ? ", approximate panel" : ", saved point")}>
+            <View style={[styles.numberPin, pin.approximate && styles.approximatePin, selectedDamageId === pin.id && styles.selectedPin]}>
+              <Text style={styles.pinText}>{pin.number}</Text>
+            </View>
+          </TouchableOpacity>;
         })}
-
-        {/* Action pill for the currently tapped zone — follows the zone's
-            live projected position so it stays anchored while orbiting */}
-        {pillZone && zoneScreenPos[pillZone.id]?.visible && (
-          <View
-            style={[
-              styles.pill,
-              {
-                left: `${zoneScreenPos[pillZone.id].x}%` as any,
-                top: `${zoneScreenPos[pillZone.id].y}%` as any,
-                marginTop: zoneScreenPos[pillZone.id].y > 65 ? -66 : 18,
-              },
-            ]}
-          >
-            <TouchableOpacity
-              style={[styles.pillBtn, markedZones.includes(pillZone.label) && styles.pillBtnActive]}
-              onPress={() => onZoneClick(pillZone.label)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="alert-circle-outline" size={13} color={Colors.onAccent} />
-              <Text style={styles.pillBtnText}>Mark</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.pillBtn, hiddenZones.has(pillZone.id) && styles.pillBtnActive]}
-              onPress={() => handleHideToggle(pillZone.id)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name={hiddenZones.has(pillZone.id) ? 'eye-off' : 'eye-off-outline'} size={13} color={Colors.onAccent} />
-              <Text style={styles.pillBtnText}>{hiddenZones.has(pillZone.id) ? 'Unhide' : 'Hide'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.pillBtn, zonePhotos[pillZone.id] && styles.pillBtnActive]}
-              onPress={() => handlePhotoPick(pillZone.id)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="camera-outline" size={13} color={Colors.onAccent} />
-              <Text style={styles.pillBtnText}>{zonePhotos[pillZone.id] ? 'Retake' : 'Photo'}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
-
-      {/* Hint */}
-      <View style={styles.hint} pointerEvents="none">
-        <Text style={styles.hintText}>
-          {readOnly ? 'Drag to rotate · Tap a marked zone for details' : 'Drag to rotate · Tap a zone to mark damage'}
-        </Text>
-      </View>
-
+    </View>
+      <Text style={styles.instructions}>{onSurfaceTap ? "Drag to rotate. Tap the vehicle to mark damage." : "Drag to rotate. Tap a numbered mark for details."}</Text>
+      {pins.some(pin => pin.approximate) && <Text style={styles.instructions}>Dashed marks indicate approximate panels, not exact damage locations.</Text>}
     </View>
   );
 }
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   wrap: {
@@ -485,14 +320,12 @@ const styles = StyleSheet.create({
 
   // Generic-model disclosure banner
   disclosureBanner: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(20,20,24,0.85)',
+    backgroundColor: Colors.bgCard,
+    gap: 8,
+    borderRadius: 8,
+    marginBottom: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderBottomWidth: 1,
@@ -500,12 +333,17 @@ const styles = StyleSheet.create({
   },
   disclosureText: {
     flex: 1,
-    color: Colors.onAccent,
+    color: Colors.textPrimary,
     fontSize: FontSize.xs,
     fontFamily: FontFamily.medium,
     lineHeight: 15,
   },
 
+  numberPin: { width: 24, height: 24, borderRadius: 12, backgroundColor: "#dc2626", borderWidth: 2, borderColor: "#fff", alignItems: "center", justifyContent: "center" },
+  approximatePin: { borderStyle: "dashed" },
+  selectedPin: { backgroundColor: "#7f1d1d" },
+  pinText: { color: "#fff", fontFamily: FontFamily.bold, fontSize: 11 },
+  instructions: { color: Colors.textSecondary, fontSize: FontSize.xs, marginTop: 6, lineHeight: 18 },
   // Zone hotspots (same sizing as the original SVG overlay)
   hotspot: {
     position: 'absolute',

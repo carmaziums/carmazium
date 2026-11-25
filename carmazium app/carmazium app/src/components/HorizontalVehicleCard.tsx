@@ -72,12 +72,12 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({listin
       </LinearGradient>
       <LinearGradient colors={[dark?'rgba(255,255,255,0.05)':Colors.accentAlpha05,Colors.groundClear]} style={s.details}>
         <SellerServiceBadges seller={listing.seller}/>
-        <View style={[s.titleRow,fontScale>1.2&&{flexDirection:'column'}]}><View style={{flex:1}}>
+        <View style={s.titleRow}><View style={{width:"100%"}}>
           <Text style={s.title} numberOfLines={fontScale>1.2?undefined:2}>{listing.title||`${listing.make} ${listing.model} ${listing.year}`}</Text>
           <Text style={s.makeModel} numberOfLines={fontScale>1.2?undefined:1}>{listing.make.toUpperCase()} {listing.model.toUpperCase()}</Text>
         </View><View style={s.marketplace}><Text style={s.marketplaceText}>MARKETPLACE LISTING</Text></View></View>
         <View style={{gap:4,marginBottom:12}}>
-          <Text style={s.price}>{listing.listingType==='AUCTION'?pricing.amount:new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(listing.price)}</Text>
+          <Text style={s.price} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>{listing.listingType==='AUCTION'?pricing.amount:new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(listing.price)}</Text>
           <Text style={s.priceLabel}>{pricing.label}</Text>
           {!!pricing.reserveLabel&&<Text style={s.meta}>{pricing.reserveLabel}</Text>}
           {!!pricing.buyItNowLabel&&<Text style={s.meta}>{pricing.buyItNowLabel}</Text>}
@@ -112,12 +112,12 @@ const s=StyleSheet.create({
  statusOverlay:{...StyleSheet.absoluteFillObject,alignItems:'center',justifyContent:'center'},
  statusText:{fontFamily:FontFamily.bodyBlack,fontSize:28,padding:12,backgroundColor:'rgba(0,0,0,0.65)',transform:[{rotate:'-8deg'}]},
  details:{padding:24,borderTopWidth:1,borderTopColor:Colors.border},
- titleRow:{flexDirection:'row',alignItems:'flex-start',gap:8,marginBottom:8},
- title:{fontFamily:FontFamily.bold,fontSize:18,lineHeight:28,letterSpacing:0.45,color:Colors.textPrimary},
+ titleRow:{flexDirection:'column',alignItems:'flex-start',gap:6,marginBottom:8},
+ title:{fontFamily:FontFamily.bold,fontSize:16,lineHeight:23,letterSpacing:0,color:Colors.textPrimary},
  makeModel:{fontFamily:FontFamily.semiBold,fontSize:12,lineHeight:16,letterSpacing:0.6,color:Colors.textMuted,marginTop:2},
  marketplace:{backgroundColor:Colors.accentAlpha20,borderRadius:4,paddingHorizontal:8,paddingVertical:4,flexShrink:0},
  marketplaceText:{fontFamily:FontFamily.bodyBold,fontSize:10,lineHeight:15,color:Colors.accent},
- price:{fontFamily:FontFamily.mono,fontSize:24,lineHeight:32,color:Colors.textPrimary},
+ price:{fontFamily:FontFamily.mono,fontSize:20,lineHeight:28,color:Colors.textPrimary},
  priceLabel:{fontFamily:FontFamily.bodyBold,fontSize:12,lineHeight:16,color:Colors.textMuted},
  meta:{fontFamily:FontFamily.regular,fontSize:12,lineHeight:16,color:Colors.textMuted},
  offers:{alignSelf:'flex-start',marginTop:4,borderRadius:999,borderWidth:1,borderColor:Colors.accentAlpha30,backgroundColor:Colors.accentAlpha10,paddingHorizontal:8,paddingVertical:2},

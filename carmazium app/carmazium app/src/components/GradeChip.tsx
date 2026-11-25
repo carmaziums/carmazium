@@ -65,8 +65,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     alignSelf: 'flex-start',
+    maxWidth: '100%',
+    flexShrink: 1,
   },
   pillText: {
+    flexShrink: 1,
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xs,
     letterSpacing: 0.2,

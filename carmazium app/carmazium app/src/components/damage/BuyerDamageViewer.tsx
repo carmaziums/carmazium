@@ -6,6 +6,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { ThreeDVehicleViewer } from './ThreeDVehicleViewer';
 import { DAMAGE_ZONES_3D } from './damageZones';
+import { buildBuyerDamagePins, type DamagePoint } from '../../lib/damageMarkers';
 import { DamageViewerErrorBoundary } from './DamageViewerErrorBoundary';
 
 interface DamageRecord {
@@ -14,6 +15,7 @@ interface DamageRecord {
   type: string;
   size?: string | null;
   imageUrl?: string | null;
+  coords?: { surfacePoint?: DamagePoint | null } | null;
 }
 
 interface Props {
@@ -46,19 +48,27 @@ const formatPart = (part: string): string =>
 // by selection — this mirrors that layout instead of the flat 2D DamageMapViewer that
 // used to render here (see mobile-production-readiness-plan.md F8).
 export const BuyerDamageViewer: React.FC<Props> = ({ records, isLoading, bodyTypeLabel, hasError, onRetry }) => {
-  const [selectedZone, setSelectedZone] = useState<string | null>(null);
+  const [selectedDamageId, setSelectedDamageId] = useState<string | null>(null);
+  const pins = buildBuyerDamagePins(hasError || isLoading ? [] : records);
+  const toggleRecord = (id: string) => setSelectedDamageId(previous => previous === id ? null : id);
 
-  if (isLoading) {
-    return <View style={[styles.skeletonRect, { height: 280 }]} />;
-  }
+  return (
+    <View>
+      <DamageViewerErrorBoundary height={280}>
+        <ThreeDVehicleViewer
+          pins={pins}
+          selectedDamageId={selectedDamageId}
+          onDamagePinPress={toggleRecord}
+          bodyTypeLabel={bodyTypeLabel}
+        />
+      </DamageViewerErrorBoundary>
 
-  if (hasError) {
-    return (
-      <View style={styles.errorState}>
+      {isLoading ? <Text style={styles.listHeading}>Loading damage records...</Text> : hasError ? (
+        <View style={styles.errorState}>
         <Ionicons name="alert-circle-outline" size={22} color={Colors.warning} />
         <View style={styles.emptyTextBlock}>
           <Text style={styles.emptyTitle}>Couldn't load damage info</Text>
-          <Text style={styles.emptySubtitle}>Check your connection and try again</Text>
+          <Text style={styles.emptySubtitle}>Damage records are unavailable. The model above does not confirm the vehicle condition.</Text>
         </View>
         {onRetry && (
           <TouchableOpacity style={styles.retryBtn} onPress={onRetry} activeOpacity={0.75}>
@@ -66,36 +76,7 @@ export const BuyerDamageViewer: React.FC<Props> = ({ records, isLoading, bodyTyp
           </TouchableOpacity>
         )}
       </View>
-    );
-  }
-
-  const markedZoneLabels = records
-    .map(r => DAMAGE_ZONES_3D.find(z => z.id === r.part)?.label)
-    .filter((l): l is string => !!l);
-
-  const toggleZone = (label: string) =>
-    setSelectedZone(prev => (prev === label ? null : label));
-
-  // The 3D model always renders — even with zero damage records — so the
-  // section never looks broken/missing. Copy adapts instead of the model
-  // disappearing (Prompt 6). There's only one GLB model in the app
-  // regardless of body type (CLAUDE.md); bodyTypeLabel is just the on-screen
-  // text badge, so "defaulting to a generic body model" is already the only
-  // behavior that exists.
-  return (
-    <View>
-      <DamageViewerErrorBoundary height={280}>
-        <ThreeDVehicleViewer
-          zones={DAMAGE_ZONES_3D}
-          selectedZone={selectedZone}
-          markedZones={markedZoneLabels}
-          onZoneClick={toggleZone}
-          bodyTypeLabel={bodyTypeLabel}
-          readOnly
-        />
-      </DamageViewerErrorBoundary>
-
-      {records.length === 0 ? (
+      ) : records.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="shield-checkmark-outline" size={22} color={Colors.success} />
           <View style={styles.emptyTextBlock}>
@@ -110,15 +91,13 @@ export const BuyerDamageViewer: React.FC<Props> = ({ records, isLoading, bodyTyp
           </Text>
           <View style={styles.list}>
             {records.map(record => {
-              const zone = DAMAGE_ZONES_3D.find(z => z.id === record.part);
-              const isSelected = !!zone && selectedZone === zone.label;
+              const isSelected = selectedDamageId === record.id;
               return (
                 <TouchableOpacity
                   key={record.id}
                   style={[styles.listRow, isSelected && styles.listRowSelected]}
                   activeOpacity={0.75}
-                  onPress={() => zone && toggleZone(zone.label)}
-                  disabled={!zone}
+                  onPress={() => toggleRecord(record.id)}
                 >
                   {record.imageUrl ? (
                     <Image
