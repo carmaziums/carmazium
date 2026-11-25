@@ -35,16 +35,18 @@ test('DVLA and MOT records survive landing-to-wizard and wizard-to-listing', () 
   assert.match(wizard, /vrm:\s*isCaravan\s*\?\s*''\s*:/);
 });
 
-test('public 3D only shows seller-marked zones and projects late arriving damage', () => {
+test('public 3D only shows saved seller damage and projects late arriving records', () => {
   const viewer = source('components/damage/ThreeDVehicleViewer.tsx');
   const buyer = source('components/damage/BuyerDamageViewer.tsx');
-  assert.match(viewer, /!readOnly\s*\|\|\s*markedZones\.includes\(z\.label\)/);
-  assert.match(viewer, /const projectedZoneKey = hotspotZones\.map/);
+  const html = source('assets/3d/viewer.html');
+  assert.match(viewer, /projectedZoneKey = JSON.stringify\(pins.map/);
   assert.match(viewer, /webViewRef\.current\.injectJavaScript\(/);
-  assert.match(viewer, /\[viewerHtml, projectedZoneKey\]/);
-  assert.match(viewer, /vehicle\.glb/);
-  assert.match(buyer, /markedZones=\{markedZoneLabels\}/);
-  assert.match(buyer, /readOnly/);
+  assert.match(viewer, /\[viewerHtml, projectedZoneKey, editable\]/);
+  for (const model of ['sedan', 'hatchback', 'suv']) assert.ok(viewer.includes(model + '.glb'));
+  assert.match(buyer, /buildBuyerDamagePins\(hasError \|\| isLoading \? \[\] : records\)/);
+  assert.match(buyer, /pins=\{pins\}/);
+  assert.doesNotMatch(buyer, /onSurfaceTap=/);
+  assert.match(html, /if\(!_editable/);
   assert.match(buyer, /not an independent inspection/);
 });
 
