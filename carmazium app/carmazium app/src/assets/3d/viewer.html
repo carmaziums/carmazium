@@ -18,19 +18,16 @@ body{background:#111113;overflow:hidden;width:100vw;height:100vh}
 <div id="msg">Loading 3D model...</div>
 
 <script>
-/* Sync stub — captures data URL before the module script below has run */
-window._pendingGLB = null;
-window.loadGLB = function(d) { window._pendingGLB = d; };
-window._pendingZones = null;
-window.setZones = function(json) { window._pendingZones = json; };
-window.onerror = function() {
+function report(type) {
+  if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({type:type}));
+}
+function viewerFailed() {
   var m = document.getElementById('msg');
   if (m) { m.textContent = '3D viewer unavailable'; m.style.display = 'flex'; }
-};
-window.addEventListener('unhandledrejection', function() {
-  var m = document.getElementById('msg');
-  if (m) { m.textContent = '3D viewer unavailable'; m.style.display = 'flex'; }
-});
+  report('viewerError');
+}
+window.onerror = viewerFailed;
+window.addEventListener('unhandledrejection', viewerFailed);
 </script>
 
 <script type="module">
@@ -141,46 +138,54 @@ window.addEventListener('resize', function() {
 
 /* ── GLB loader called from RN via injectJavaScript ── */
 var loader = new GLTFLoader();
-function doLoad(dataUrl) {
-  var msgEl = document.getElementById('msg');
-  if (msgEl) msgEl.style.display = 'none';
-
-  loader.load(
-    dataUrl,
-    function(gltf) {
-      var model = gltf.scene;
-      var box = new THREE.Box3().setFromObject(model);
-      var center = box.getCenter(new THREE.Vector3());
-      var size = box.getSize(new THREE.Vector3());
-      var scale = 3 / Math.max(size.x, size.y, size.z);
-      // Captured before `center` is mutated below — zone projection needs
-      // the original box/center to resolve fx/fy/fz fractions correctly.
-      _modelInfo = { model: model, min: box.min.clone(), size: size.clone(), center: center.clone(), scale: scale };
-      model.scale.setScalar(scale);
-      model.position.copy(center.multiplyScalar(-scale));
-      scene.add(model);
-      controls.target.set(0, size.y * scale * 0.3, 0);
-      controls.update();
-    },
-    undefined,
-    function() {
-      var m = document.getElementById('msg');
-      if (m) { m.textContent = 'Could not load 3D model'; m.style.display = 'flex'; }
-    }
-  );
-}
-
-function doSetZones(json) {
-  try { _zones = JSON.parse(json); } catch (e) { _zones = []; }
-}
-
-/* Pick up anything that arrived while the module was still loading */
-if (window._pendingGLB) { doLoad(window._pendingGLB); }
-if (window._pendingZones) { doSetZones(window._pendingZones); }
-
-/* Override stubs with real implementations */
-window.loadGLB = doLoad;
-window.setZones = doSetZones;
+var chunks = [], expectedChunks = 0, modelStarted = false, modelReady = false;
+window.reportViewerReady = function() { report('viewerReady'); };
+window.beginModel = function(count) {
+  if (modelStarted || !Number.isInteger(count) || count < 1 || count > 1024) return;
+  chunks = []; expectedChunks = count;
+};
+window.appendModelChunk = function(index, value) {
+  if (modelStarted || index !== chunks.length || index >= expectedChunks || typeof value !== 'string') { viewerFailed(); return; }
+  chunks.push(value);
+};
+window.finishModel = function() {
+  if (modelStarted) return;
+  if (chunks.length !== expectedChunks || !expectedChunks) { viewerFailed(); return; }
+  modelStarted = true;
+  try {
+    var raw = atob(chunks.join(''));
+    chunks = [];
+    var bytes = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    loader.parse(bytes.buffer, '', function(gltf) {
+      try {
+        var model = gltf.scene;
+        var box = new THREE.Box3().setFromObject(model);
+        var center = box.getCenter(new THREE.Vector3());
+        var size = box.getSize(new THREE.Vector3());
+        var scale = 3 / Math.max(size.x, size.y, size.z);
+        if (!Number.isFinite(scale) || scale <= 0) throw new Error('Invalid model bounds');
+        _modelInfo = { model: model, min: box.min.clone(), size: size.clone(), center: center.clone(), scale: scale };
+        model.scale.setScalar(scale);
+        model.position.copy(center.multiplyScalar(-scale));
+        scene.add(model);
+        controls.target.set(0, size.y * scale * 0.3, 0);
+        controls.update();
+        renderer.render(scene, camera);
+        modelReady = true;
+        var m = document.getElementById('msg');
+        if (m) m.style.display = 'none';
+        report('modelReady');
+        postZonePositions();
+      } catch (e) { viewerFailed(); }
+    }, viewerFailed);
+  } catch (e) { viewerFailed(); }
+};
+window.setZones = function(json) {
+  try { _zones = JSON.parse(json); if (modelReady) postZonePositions(); } catch (e) { _zones = []; }
+};
+renderer.domElement.addEventListener('webglcontextlost', function(e) { e.preventDefault(); viewerFailed(); });
+window.reportViewerReady();
 </script>
 
 </body>

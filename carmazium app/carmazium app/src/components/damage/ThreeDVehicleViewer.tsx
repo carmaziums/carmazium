@@ -115,6 +115,11 @@ export function ThreeDVehicleViewer({
   // viewerHtml drives whether the WebView mounts at all; null = still loading
   const [viewerHtml, setViewerHtml] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const generation = useRef(0);
+  const transferStarted = useRef(false);
+  const readyRef = useRef(false);
+  const [modelReady, setModelReady] = useState(false);
 
   // Zone-level actions — id-keyed so they survive independently of `markedZones`
   const [hiddenZones, setHiddenZones] = useState<Set<string>>(new Set());
@@ -141,67 +146,92 @@ export function ThreeDVehicleViewer({
     if (!viewerHtml || !webViewRef.current) return;
     const wireZones = hotspotZonesRef.current.map((zone) => ({ id: zone.id, ...zone.box }));
     webViewRef.current.injectJavaScript(
-      'window.setZones(' + JSON.stringify(JSON.stringify(wireZones)) + '); true;'
+      'if(window.setZones) window.setZones(' + JSON.stringify(JSON.stringify(wireZones)) + '); true;'
     );
   }, [viewerHtml, projectedZoneKey]);
 
-  // GLB injection can fail after the WebView has already mounted (unlike
-  // loadError below, which blocks the WebView from mounting at all) — needs
-  // its own visible state + manual retry, see handleWebViewLoad.
   const [glbError, setGlbError] = useState(false);
+  const fail = useCallback(() => {
+    readyRef.current = false;
+    generation.current++;
+    setModelReady(false);
+    setGlbError(true);
+    setZoneScreenPos({});
+    unlockScroll();
+  }, [unlockScroll]);
 
-  // ── Load viewer.html + the vendored Three.js bundle on mount ────────────────
+  const retry = useCallback(() => {
+    generation.current++;
+    readyRef.current = false;
+    transferStarted.current = false;
+    setModelReady(false);
+    setViewerHtml(null);
+    setLoadError(null);
+    setGlbError(false);
+    setZoneScreenPos({});
+    unlockScroll();
+    setAttempt(value => value + 1);
+  }, [unlockScroll]);
+
   useEffect(() => {
     let cancelled = false;
     loadViewerHtml()
-      .then((html) => { if (!cancelled) setViewerHtml(html); })
+      .then(html => { if (!cancelled) setViewerHtml(html); })
       .catch(() => { if (!cancelled) setLoadError('Could not initialise 3D viewer'); });
-    return () => { cancelled = true; };
-  }, []);
+    return () => { cancelled = true; generation.current++; };
+  }, [attempt]);
 
-  // ── Once the WebView has loaded the HTML, inject the GLB as a data URL ───────
-  const handleWebViewLoad = useCallback(async () => {
-    setGlbError(false);
+  useEffect(() => {
+    if (modelReady || loadError || glbError) return;
+    const timeout = setTimeout(fail, 45000);
+    return () => clearTimeout(timeout);
+  }, [attempt, modelReady, loadError, glbError, fail]);
+
+  const sendModel = useCallback(async () => {
+    if (transferStarted.current || !webViewRef.current) return;
+    transferStarted.current = true;
+    const request = generation.current;
     try {
       const base64 = await loadGlbBase64();
-
-      // Base64 uses only A-Za-z0-9+/= — safe inside a JS double-quoted string
-      webViewRef.current?.injectJavaScript(
-        'window.loadGLB("data:model/gltf-binary;base64,' + base64 + '"); true;'
-      );
-
-      const zonesForWire = hotspotZonesRef.current.map((z) => ({ id: z.id, ...z.box }));
-      webViewRef.current?.injectJavaScript(
-        'window.setZones(' + JSON.stringify(JSON.stringify(zonesForWire)) + '); true;'
-      );
+      if (generation.current !== request || !webViewRef.current) return;
+      const chunks = base64.match(/.{1,65536}/g) || [];
+      if (!chunks.length) throw new Error('Empty model');
+      const view = webViewRef.current;
+      view.injectJavaScript('window.beginModel(' + chunks.length + '); true;');
+      for (let i = 0; i < chunks.length; i++) {
+        view.injectJavaScript('window.appendModelChunk(' + i + ',' + JSON.stringify(chunks[i]) + '); true;');
+      }
+      const wireZones = hotspotZonesRef.current.map(z => ({ id: z.id, ...z.box }));
+      view.injectJavaScript('window.setZones(' + JSON.stringify(JSON.stringify(wireZones)) + '); window.finishModel(); true;');
     } catch {
-      // Previously silent — the comment here used to claim "the viewer.html
-      // error overlay handles the visible failure state," which is only
-      // true if injectJavaScript above actually ran. If asset resolution
-      // itself throws (e.g. loadGlbBase64 rejects), the WebView never even
-      // gets told to try loading a model, so its own error UI never fires
-      // either — the user was left staring at a permanent blank/loading
-      // viewer with no signal at all (F41).
-      setGlbError(true);
+      if (generation.current === request) fail();
     }
+  }, [fail]);
+
+  const handleWebViewLoad = useCallback(() => {
+    webViewRef.current?.injectJavaScript('if(window.reportViewerReady) window.reportViewerReady(); true;');
   }, []);
 
   const handleWebViewMessage = useCallback((event: { nativeEvent: { data: string } }) => {
     try {
       const msg = JSON.parse(event.nativeEvent.data);
-      if (msg.type === 'zonePositions' && Array.isArray(msg.positions)) {
-        setZoneScreenPos((prev) => {
+      if (msg.type === 'viewerReady') { void sendModel(); return; }
+      if (msg.type === 'viewerError') { fail(); return; }
+      if (msg.type === 'modelReady') {
+        readyRef.current = true;
+        setModelReady(true);
+        setGlbError(false);
+        return;
+      }
+      if (msg.type === 'zonePositions' && readyRef.current && Array.isArray(msg.positions)) {
+        setZoneScreenPos(prev => {
           const next = { ...prev };
           for (const p of msg.positions) next[p.id] = { x: p.x, y: p.y, visible: p.visible };
           return next;
         });
       }
-    } catch {
-      // Ignore malformed messages
-    }
-  }, []);
-
-  // ── Zone actions: mark / hide / photo ────────────────────────────────────────
+    } catch { /* Ignore malformed messages. */ }
+  }, [sendModel, fail]);
 
   const handleHotspotPress = useCallback((zone: DamageZone3D) => {
     onZoneClick(zone.label);
@@ -239,7 +269,7 @@ export function ThreeDVehicleViewer({
       style={[styles.wrap, { height }]}
       // Hold the page still while a finger is on the model so drags orbit
       // the car instead of scrolling the screen (see lib/scrollLock.ts).
-      onTouchStart={lockScroll}
+      onTouchStart={() => { if (readyRef.current) lockScroll(); }}
       onTouchEnd={unlockScroll}
       onTouchCancel={unlockScroll}
     >
@@ -247,10 +277,14 @@ export function ThreeDVehicleViewer({
       {/* 3D viewer — only mounts once the HTML string is ready */}
       {viewerHtml ? (
         <WebView
+          key={attempt}
           ref={webViewRef}
           source={{ html: viewerHtml }}
           onLoad={handleWebViewLoad}
           onMessage={handleWebViewMessage}
+          onError={fail}
+          onContentProcessDidTerminate={fail}
+          onRenderProcessGone={fail}
           scrollEnabled={false}
           javaScriptEnabled
           originWhitelist={['*']}
@@ -259,8 +293,9 @@ export function ThreeDVehicleViewer({
           allowsInlineMediaPlayback
         />
       ) : loadError ? (
-        <View style={styles.errorState} pointerEvents="none">
+        <View style={styles.errorState}>
           <Text style={styles.errorText}>{loadError}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={retry}><Text style={styles.retryBtnText}>Retry</Text></TouchableOpacity>
         </View>
       ) : (
         <View style={styles.loading} pointerEvents="none">
@@ -274,12 +309,14 @@ export function ThreeDVehicleViewer({
       {glbError && (
         <View style={styles.errorState}>
           <Text style={styles.errorText}>Couldn't load the 3D model.</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={handleWebViewLoad} activeOpacity={0.75}>
+          <TouchableOpacity style={styles.retryBtn} onPress={retry} activeOpacity={0.75}>
             <Ionicons name="refresh" size={14} color={Colors.onAccent} />
             <Text style={styles.retryBtnText}>Retry</Text>
           </TouchableOpacity>
         </View>
       )}
+
+      {viewerHtml && !modelReady && !glbError && <View style={styles.loading} pointerEvents="none"><ActivityIndicator color={Colors.accent} size="small" /></View>}
 
       {/* Generic-model disclosure banner — deliberately prominent, not a small
           corner label, so it's easy to notice regardless of the viewer's age. */}

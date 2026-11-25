@@ -31,6 +31,7 @@ import { haptics } from '../../lib/haptics';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../../lib/paymentsApi';
 import { ThreeDVehicleViewer } from '../../components/damage/ThreeDVehicleViewer';
+import { DamageViewerErrorBoundary } from '../../components/damage/DamageViewerErrorBoundary';
 import { DAMAGE_ZONES_3D, DAMAGE_ZONE_SECTIONS } from '../../components/damage/damageZones';
 import {
   convertAuctionToRetail,
@@ -527,7 +528,7 @@ function Damage3DMapper({
       </View>
 
       {/* 3D vehicle viewer with tappable damage hotspots */}
-      <ThreeDVehicleViewer
+      <DamageViewerErrorBoundary height={280}><ThreeDVehicleViewer
         zones={DAMAGE_ZONES_3D}
         selectedZone={addingZone}
         markedZones={markedLabels}
@@ -535,7 +536,7 @@ function Damage3DMapper({
         onZoneHide={onHide}
         onZonePhoto={onPhoto}
         bodyTypeLabel={bodyTypeLabel}
-      />
+      /></DamageViewerErrorBoundary>
 
       {/* Quick-add button list — every zone the web app offers, for faster
           input than hunting for a precise spot on the 3D model */}
@@ -3486,7 +3487,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const remaining = minPhotos - totalCount;
 
     return (
-      <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+      <ScrollView ref={stepScrollRef} scrollEnabled={!scrollLocked} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
         {renderWizardChrome()}
         {renderStepGuidance()}
 
@@ -3545,7 +3546,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </View>
         )}
 
-        {photoTab !== 'Damage' || isLeisure ? (
+        {(
           <>
             {/* Upload Zone */}
             <TouchableOpacity
@@ -3629,8 +3630,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               </View>
             )}
           </>
-        ) : (
-          /* Damage Map */
+        )}
+
+        {/* Separate damage declaration, matching the website Media step. */}
+        {!isLeisure ? (
           <View>
             <SectionBox title="Damage Map — Select Damaged Areas" accent={Colors.warning}>
               <Text style={s.fieldHint}>
@@ -3646,7 +3649,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               />
             </SectionBox>
           </View>
-        )}
+        ) : <Text style={s.fieldHint}>Photograph every damaged area of your caravan or campervan and describe any known faults.</Text>}
 
         {/* Video Links */}
         <SectionBox title="Video Links (optional)">
