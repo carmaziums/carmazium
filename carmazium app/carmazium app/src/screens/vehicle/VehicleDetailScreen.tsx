@@ -214,6 +214,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // ── Full-screen viewer state + gesture values ───────────────────────────────
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
+  const [stickyCTAHeight, setStickyCTAHeight] = useState(96);
   const [fullscreenIndex, setFullscreenIndex] = useState(0);
   const pinchScale = useSharedValue(1);
   const pinchFocalX = useSharedValue(0);
@@ -932,7 +933,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 120 },
+          { paddingBottom: Math.max(insets.bottom + 120, stickyCTAHeight + 24) },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -2093,7 +2094,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       {/* The kit fades the content out under the CTA rather than cutting it
           with a hairline and an opaque slab — the bar reads as floating over
           the page instead of bolted to the bottom of it. */}
-      <View style={[styles.stickyCTAOuter, { paddingBottom: insets.bottom + 12 }]} pointerEvents="box-none">
+      <View style={[styles.stickyCTAOuter, { paddingBottom: insets.bottom + 12 }]} pointerEvents="box-none"
+        onLayout={event => setStickyCTAHeight(event.nativeEvent.layout.height)}>
         <LinearGradient
           colors={[Colors.groundClear, Colors.bgPrimary, Colors.bgPrimary]}
           locations={[0, 0.45, 1]}
@@ -2125,6 +2127,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           return isActive ? (
             <TouchableOpacity
               style={styles.makeOfferButton}
+              accessibilityRole="button"
               activeOpacity={0.8}
               onPress={() => {
                 if (myOffer?.status === 'COUNTERED') {
@@ -3511,7 +3514,10 @@ const styles = StyleSheet.create({
   },
   makeOfferButton: {
     flex: 1,
-    height: 52,
+    minWidth: 0,
+    minHeight: 52,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     borderRadius: Radius.inline,
     backgroundColor: Colors.accent,
     flexDirection: 'row',
@@ -3582,12 +3588,15 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   makeOfferText: {
+    flexShrink: 1,
+    textAlign: 'center',
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size14,
     color: Colors.onAccent,
-    letterSpacing: 1,
+    letterSpacing: 0.3,
   },
   offerArrow: {
+    flexShrink: 0,
     marginLeft: 6,
     marginTop: 1,
   },
