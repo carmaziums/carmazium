@@ -16,6 +16,7 @@ jobs:
     env:
       CI: '1'
       EXPO_NO_TELEMETRY: '1'
+      MAESTRO_CLI_NO_ANALYTICS: '1'
       APP_ENV: production
       SENTRY_DISABLE_AUTO_UPLOAD: 'true'
       # Exact merged source, including the validated non-VAT company correction.
@@ -151,29 +152,42 @@ jobs:
           maestro --device "$DEVICE_ID" test --test-output-dir "$RUNNER_TEMP/screenshot-evidence/maestro/$SIZE/home" "$RUNNER_TEMP/home.yaml"
           sleep 5
           xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshot-evidence/screenshots/$SIZE/01-home.png"
-          for PAGE in auctions services; do
-          if [ "$PAGE" = auctions ]; then LINK='carmazium://auctions/browse'; EXPECT='.*Ending soonest.*'; FILE=02-auctions; else LINK='carmazium://services'; EXPECT='Everything your vehicle needs. One marketplace.'; FILE=03-services; fi
-          export CAPTURE_LINK="$LINK" CAPTURE_EXPECT="$EXPECT"
-          cat > "$RUNNER_TEMP/page.yaml" <<'FLOW'
+          # Public retail browsing does not require dealer credentials.
+          cat > "$RUNNER_TEMP/retail.yaml" <<'FLOW'
           appId: uk.carmazium.app
           ---
-          - openLink: ${CAPTURE_LINK}
+          - tapOn: Buy Cars
+          - extendedWaitUntil:
+              visible: Find Your Perfect Car
+              timeout: 60000
+          - extendedWaitUntil:
+              visible: "Showing 1.*vehicles"
+              timeout: 60000
+          - assertNotVisible: Unable to load vehicles
+          - waitForAnimationToEnd
+          FLOW
+          maestro --device "$DEVICE_ID" test --test-output-dir "$RUNNER_TEMP/screenshot-evidence/maestro/$SIZE/retail" "$RUNNER_TEMP/retail.yaml"
+          sleep 5
+          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshot-evidence/screenshots/$SIZE/02-retail.png"
+          cat > "$RUNNER_TEMP/services.yaml" <<'FLOW'
+          appId: uk.carmazium.app
+          ---
+          - openLink: carmazium://services
           - runFlow:
               when:
                 visible: Open
               commands:
                 - tapOn: Open
           - extendedWaitUntil:
-              visible: ${CAPTURE_EXPECT}
+              visible: Everything your vehicle needs. One marketplace.
               timeout: 60000
           - assertNotVisible: GET STARTED
           - assertNotVisible: Open
           - waitForAnimationToEnd
           FLOW
-          maestro --device "$DEVICE_ID" test -e CAPTURE_LINK="$LINK" -e CAPTURE_EXPECT="$EXPECT" --test-output-dir "$RUNNER_TEMP/screenshot-evidence/maestro/$SIZE/$PAGE" "$RUNNER_TEMP/page.yaml"
+          maestro --device "$DEVICE_ID" test --test-output-dir "$RUNNER_TEMP/screenshot-evidence/maestro/$SIZE/services" "$RUNNER_TEMP/services.yaml"
           sleep 5
-          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshot-evidence/screenshots/$SIZE/$FILE.png"
-          done
+          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshot-evidence/screenshots/$SIZE/03-services.png"
           xcrun simctl shutdown "$DEVICE_ID"
           done
           sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP/screenshot-evidence/screenshots/"*/*.png
@@ -185,6 +199,7 @@ jobs:
           name: CarMazium-iOS-current-native-screenshots
           path: |
             ${{ runner.temp }}/screenshot-evidence/screenshots/
+            ${{ runner.temp }}/screenshot-evidence/maestro/
             ${{ runner.temp }}/screenshot-evidence/provenance.json
             ${{ runner.temp }}/screenshot-evidence/screenshots.sha256
             ${{ runner.temp }}/screenshot-evidence/xcodebuild.log
