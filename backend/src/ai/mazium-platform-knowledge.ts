@@ -351,6 +351,8 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         triggers: /\b(?:mobile app|android|iphone|ios|apple app|play store|apk|download app|install app|app login|mobile menu|phone app|browser app)\b/i,
         facts: [
             'Use /download-app for CarMazium mobile-app download and current installation choices. An installed native app can differ from the latest mobile website until a new app release is distributed.',
+            'Android customers choose between separate Google Play and direct APK download buttons when those public destinations are available. The Android heading opens the choices rather than selecting a download method for the customer. An approved direct APK remains available independently of the store option.',
+            'Google Play manages updates for the Play distribution. The direct APK distribution checks for approved CarMazium APK updates and Android asks the customer to confirm installation. A store button must not be described as live before its public listing has been verified and enabled.',
             'Account information and listing status come from CarMazium account services; a screenshot from an older app build is not proof that an updated website feature is present in that app.',
             'For device-specific issues, ask whether the customer is using Android, iPhone, or a browser, and request the precise screen/error. Never invent a Play Store or App Store release date.'
         ].join(' '),
