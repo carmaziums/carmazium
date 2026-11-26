@@ -13,7 +13,7 @@
     "backend/src/auctions/auctions.service.ts": "f47435f78b0ea13a70c95f2a0a184586babd16b399160efc26aed2ddde5b6536",
     "backend/src/auctions/trade-access.ts": "9e6569f726e8ecb3233fa2b4f8dea0c83e76b7b7e19ebb2fac9f41784585d201",
     "backend/src/auth/guards/verified-dealer.guard.ts": "a5173c35f932827d9eb757ffe6274bfe3ca479d00042485d685ff28b250bfbea",
-    "backend/src/chat/chat.service.ts": "e167a48000c60845b0932053953cb8fbcc247f936771fc8b995e9bb10689661d",
+    "backend/src/chat/chat.service.ts": "989d48fae66ea01e6ae218e288f8e14b40fdd92bb9e7998726bea3f8293f8114",
     "backend/src/chat/support-automatic-responses.ts": "b06cb0169af9691ff4ee4117c9a869a01342cb95f73221d835bb7a1c97717bef",
     "backend/src/core/listing-contact-visibility.ts": "ced6846c1a6e95ec5b2e16f62eff8ae467b6860f6361ad89882441dcc3a72ea8",
     "backend/src/dealers/dealer-access.ts": "450e71e07124c41ff9fbe30cf041e264110e4a0142584eff3c9a2e8e3f8cabdf",
