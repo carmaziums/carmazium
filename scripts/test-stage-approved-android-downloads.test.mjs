@@ -35,8 +35,8 @@ async function assertCleanFailure(root) {
   assert.equal((await readdir(root)).some(name => name.startsWith('.android-download-stage-')), false);
 }
 
-test('the hosting manifest retains only the exact already-public original build 126', () => {
-  assert.deepEqual(validateApprovedDownloads(manifest), [{
+test('the hosting manifest preserves the exact already-public original build 126', () => {
+  assert.deepEqual(validateApprovedDownloads(manifest).filter(release => release.version_code === 126), [{
     filename: 'CarMazium-1.0.1-v126.apk', publication_status: 'already-public',
     package_name: 'uk.carmazium.app', version_name: '1.0.1', version_code: 126,
     apk_size_bytes: 103020948,
@@ -61,7 +61,10 @@ test('approved advertisement must bind the canonical filename and checksum in th
   const releases = validateApprovedDownloads(manifest);
   assert.equal(validateAdvertisedDownload({}, releases), null);
   assert.equal(validateAdvertisedDownload({ NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_RELEASE_APPROVED: 'false' }, releases), null);
-  assert.equal(validateAdvertisedDownload(envFor(published), releases), published);
+  for (const release of releases) {
+    assert.equal(validateAdvertisedDownload(envFor(release), releases), release);
+    assert.equal(release.signing_certificate_sha256, published.signing_certificate_sha256);
+  }
   for (const change of [
     { NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_SHA256: undefined },
     { NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_URL: undefined },
