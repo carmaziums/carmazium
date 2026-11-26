@@ -5,7 +5,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Dimensions,
+  useWindowDimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
@@ -14,15 +14,18 @@ import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
 import { IconButton } from './IconButton';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { clampPhotoIndex, fullscreenPhotoCounter, fullscreenPhotoAccessibilityLabel } from '../lib/fullscreenGalleryNavigation';
+import { parseVehicleImagePresentation } from '../lib/vehicleImagePresentation';
 
 interface ImageLightboxProps {
   visible: boolean;
   images: string[];
   initialIndex?: number;
   onClose: () => void;
+  onIndexChange?: (index: number) => void;
 }
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Full-screen image viewer opened from a card's image tap — mobile
 // equivalent of web's ImageLightbox.tsx (Prompt: "full-screen image
@@ -36,26 +39,34 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
   images,
   initialIndex = 0,
   onClose,
+  onIndexChange,
 }) => {
-  const [index, setIndex] = useState(initialIndex);
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const [index, setIndex] = useState(() => clampPhotoIndex(initialIndex, images.length));
+  const selectedIndex = clampPhotoIndex(index, images.length);
   const listRef = useRef<FlatList<string>>(null);
 
-  // Reset to the tapped photo every time the lightbox re-opens, and jump the
-  // FlatList there without an animated scroll (which would visibly play out
-  // ± an image mid-transition right as the modal appears).
+  // Reopening starts at the tapped photo. Rotation keeps the selected photo.
   useEffect(() => {
-    if (visible) {
-      setIndex(initialIndex);
-      requestAnimationFrame(() => {
-        listRef.current?.scrollToOffset({ offset: initialIndex * SCREEN_WIDTH, animated: false });
-      });
-    }
-  }, [visible, initialIndex]);
+    if (visible) setIndex(clampPhotoIndex(initialIndex, images.length));
+  }, [visible, initialIndex, images.length]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const frame = requestAnimationFrame(() => {
+      listRef.current?.scrollToOffset({ offset: selectedIndex * width, animated: false });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [visible, selectedIndex, width]);
 
   const onMomentumScrollEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const i = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-    setIndex(Math.max(0, Math.min(i, images.length - 1)));
-  }, [images.length]);
+    const next = clampPhotoIndex(Math.round(e.nativeEvent.contentOffset.x / width), images.length);
+    setIndex(next);
+    onIndexChange?.(next);
+  }, [images.length, width, onIndexChange]);
+
+  if (!images.length) return null;
 
   return (
     <Modal
@@ -64,6 +75,8 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
       animationType="fade"
       onRequestClose={onClose}
       statusBarTranslucent
+      navigationBarTranslucent
+      presentationStyle="overFullScreen"
     >
       <View style={styles.backdrop}>
         <FlatList
@@ -72,15 +85,16 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
-          initialScrollIndex={initialIndex}
-          getItemLayout={(_, i) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * i, index: i })}
+          initialScrollIndex={clampPhotoIndex(initialIndex, images.length)}
+          getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
+          extraData={width}
           onMomentumScrollEnd={onMomentumScrollEnd}
           keyExtractor={(uri, i) => `${uri}-${i}`}
           renderItem={({ item }) => (
-            <View style={styles.page}>
+            <View style={[styles.page, { width, height }]}>
               <Image
-                source={{ uri: item }}
-                style={styles.image}
+                source={{ uri: parseVehicleImagePresentation(item).src }}
+                style={{ width, height: Math.max(0, height - insets.top - insets.bottom - 100) }}
                 contentFit="contain"
                 transition={150}
               />
@@ -89,15 +103,16 @@ export const ImageLightbox: React.FC<ImageLightboxProps> = ({
         />
 
         <IconButton
-          style={styles.closeBtn}
+          style={[styles.closeBtn, { top: insets.top + 12 }]}
           icon={<Ionicons name="close" size={22} color={Colors.onAccent} />}
           onPress={onClose}
           accessibilityLabel="Close"
         />
 
         {images.length > 1 && (
-          <View style={styles.counterBadge} pointerEvents="none">
-            <Text style={styles.counterText}>{index + 1} / {images.length}</Text>
+          <View style={[styles.counterBadge, { bottom: insets.bottom + 16 }]} pointerEvents="none"
+            accessible accessibilityRole="text" accessibilityLabel={fullscreenPhotoAccessibilityLabel(selectedIndex, images.length)}>
+            <Text style={styles.counterText}>{fullscreenPhotoCounter(selectedIndex, images.length)}</Text>
           </View>
         )}
       </View>
@@ -111,18 +126,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.black,
   },
   page: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  image: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.8,
-  },
   closeBtn: {
     position: 'absolute',
-    top: 48,
     right: 16,
     width: 40,
     height: 40,
@@ -133,7 +141,6 @@ const styles = StyleSheet.create({
   },
   counterBadge: {
     position: 'absolute',
-    bottom: 40,
     alignSelf: 'center',
     backgroundColor: Colors.blackAlpha75,
     paddingHorizontal: 12,

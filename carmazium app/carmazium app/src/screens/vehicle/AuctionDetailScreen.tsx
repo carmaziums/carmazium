@@ -14,6 +14,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ImageCarousel } from '../../components/ImageCarousel';
+import { ImageLightbox } from '../../components/ImageLightbox';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Animated, {
@@ -225,6 +226,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // ── Auction state ──
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [lightboxPhotoIndex, setLightboxPhotoIndex] = useState<number | null>(null);
   const [heroWidth, setHeroWidth] = useState(0);
   const [auction, setAuction] = useState<AuctionDetail | null>(null);
   const [dealerAccess, setDealerAccess] = useState<DealerAccess | null>(null);
@@ -1458,6 +1460,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               showIndicator={false}
               activeIndex={activePhotoIndex}
               onIndexChange={setActivePhotoIndex}
+              onPress={setLightboxPhotoIndex}
             />
           )}
           <LinearGradient pointerEvents="none" colors={['transparent', 'rgba(10,10,12,0.9)']} style={[StyleSheet.absoluteFillObject, { top: '40%' }]} />
@@ -1776,11 +1779,11 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           ) : (
             <View style={{ gap: 10 }}>
               {/* Current bid / zero-bid first-offer info */}
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.specKey}>{hasRealBids ? 'CURRENT BID' : 'NO BIDS YET'}</Text>
-                  <Text style={[s.currentBidVal, { fontFamily: FontFamily.mono }]}>
-                    {hasRealBids ? fmt(currentBid) : `Starting ${fmt(startingBidAmount)}`}
+              <View style={{ gap: 6 }}>
+                <View style={{ minWidth: 0 }}>
+                  <Text style={s.specKey}>{hasRealBids ? 'CURRENT BID' : 'STARTING BID'}</Text>
+                  <Text style={s.currentBidVal} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                    {fmt(displayBidAmount)}
                   </Text>
                 </View>
                 <Text style={[s.minNextBid, !hasRealBids && { color: Colors.warning }]}>
@@ -2393,7 +2396,13 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={{ height: insets.bottom + 24 }} />
       </ScrollView>
 
-
+      <ImageLightbox
+        visible={lightboxPhotoIndex !== null}
+        images={photoGallery}
+        initialIndex={lightboxPhotoIndex ?? 0}
+        onIndexChange={setActivePhotoIndex}
+        onClose={() => setLightboxPhotoIndex(null)}
+      />
     </ScreenWrapper>
   );
 };

@@ -41,6 +41,7 @@ import { useAuthStore } from '../../store/authStore';
 import { openSignIn } from '../../components/SignInRequired';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { ImageCarousel } from '../../components/ImageCarousel';
+import { ImageLightbox } from '../../components/ImageLightbox';
 import { GradeChip } from '../../components/GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/AuctionCardBadges';
 import { WishlistHeart } from '../../components/WishlistHeart';
@@ -141,6 +142,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
   const [filters, setFilters] = useState<AuctionFilterState>(INITIAL_AUCTION_FILTERS);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [photoViewer, setPhotoViewer] = useState<{ images: string[]; index: number } | null>(null);
 
   const fetchData = useCallback(async () => {
     setAuctionLoadError(null);
@@ -361,7 +363,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
                   images={auction.images}
                   width={SCREEN_WIDTH - 48}
                   height={196}
-                  onPress={() => navigation.navigate('LiveAuctionDetailed', { listing: auction })}
+                  onPress={index => setPhotoViewer({ images: auction.images, index })}
                 />
 
                 <View style={styles.liveBadge} pointerEvents="none">
@@ -704,7 +706,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
                     images={auc.listing.images ?? []}
                     width={58}
                     height={58}
-                    onPress={() => navigation.navigate('LiveAuctionDetailed', { listing: mappedListing })}
+                    onPress={index => setPhotoViewer({ images: auc.listing.images ?? [], index })}
                     showIndicator={false}
                   />
                   <WishlistHeart
@@ -772,6 +774,12 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
         </>}
       />
 
+      <ImageLightbox
+        visible={photoViewer !== null}
+        images={photoViewer?.images ?? []}
+        initialIndex={photoViewer?.index ?? 0}
+        onClose={() => setPhotoViewer(null)}
+      />
       <AuctionFilterSheet
         visible={filterSheetOpen}
         onClose={() => setFilterSheetOpen(false)}
