@@ -11,28 +11,47 @@ const flow = read('.github/workflows/carmazium-android-play-candidate.yml');
 const app = JSON.parse(read('carmazium app/carmazium app/app.json')).expo;
 const eas = JSON.parse(read('carmazium app/carmazium app/eas.json'));
 
-test('Google Play AAB candidate builds only on an approved exact main SHA', () => {
+test('Play workflow retains exact-main manual approval and never submits', () => {
   assert.match(flow, /workflow_dispatch:/);
-  assert.doesNotMatch(flow, /\bon:\s*push:/);
   assert.match(flow, /if: github\.ref == 'refs\/heads\/main' && github\.event_name == 'workflow_dispatch'/);
-  assert.match(flow, /REVIEW_SOURCE_SHA.*GITHUB_SHA/);
+  assert.match(flow, /CARMAZIUM_CANDIDATE_SOURCE_SHA: \$\{\{ inputs.source_sha \}\}/);
+  assert.match(flow, /node ..\/..\/scripts\/check-android-release-candidate.mjs/);
   assert.match(flow, /INTERNAL_REVIEW_ONLY/);
-  assert.match(flow, /\^\[a-f0-9\]\{40\}\$/);
-  assert.doesNotMatch(flow, /\beas submit\b/);
-  assert.doesNotMatch(flow, /\bautoSubmit\s*:\s*true/);
+  assert.doesNotMatch(flow, /\beas submit\b|\bautoSubmit\s*:\s*true/);
   assert.match(flow, /This workflow does \*\*not\*\* submit to Google Play/);
 });
 
-test('Google Play candidate is an Android AAB with correct identity and EAS credentials', () => {
+test('Play bundle and generated test APK use the retained customer signing key', () => {
   assert.equal(app.android.package, 'uk.carmazium.app');
   assert.equal(eas.build.production.channel, 'production');
   assert.equal(eas.build.production.android.buildType, 'app-bundle');
   assert.equal(eas.build.production.env.APP_ENV, 'production');
-  assert.equal(eas.cli.appVersionSource, 'remote');
   assert.match(flow, /npm ci/);
   assert.match(flow, /npm audit --omit=dev --audit-level=critical/);
   assert.match(flow, /npm run typescript/);
-  assert.match(flow, /secrets\.EXPO_TOKEN \|\| secrets\.EAS_TOKEN/);
-  assert.match(flow, /eas-cli@16\.18\.0 build --platform android --profile production --non-interactive --wait --json/);
+  assert.match(flow, /secrets\.CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64/);
+  assert.match(flow, /verify-android-release-keystore.mjs/);
+  assert.ok(flow.indexOf('verify-android-release-keystore.mjs') < flow.indexOf(':app:bundleRelease'));
+  assert.match(flow, /:app:bundleRelease/);
+  assert.doesNotMatch(flow, /eas-cli.*build/);
+  assert.match(flow, /VerifyAndroidAppBundle.java/);
+  assert.match(flow, /build-apks.*--mode=universal/);
+  assert.match(flow, /--ks=keystores\/customer-release.jks/);
+  assert.match(flow, /--ks-pass="file:/);
+  assert.doesNotMatch(flow, /--ks-pass="?pass:/);
+  assert.match(flow, /apksigner" verify --verbose/);
+  assert.match(flow, /android-apk-release-evidence.mjs verify/);
   assert.match(flow, /Play App Signing identity/);
+  assert.match(flow, /if: always\(\)/);
+});
+
+test('bundletool is checksum-pinned and AAB identity is read from its manifest', () => {
+  assert.match(flow, /a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29/);
+  assert.match(flow, /sha256sum --check --strict/);
+  assert.ok(flow.indexOf('sha256sum --check --strict') < flow.indexOf('validate --bundle'));
+  for (const attribute of ['package', 'android:versionCode', 'android:versionName'])
+    assert.ok(flow.includes('/manifest/@' + attribute));
+  assert.match(flow, /play-release-evidence.json/);
+  assert.match(flow, /sha256sum \*\.apk \*\.aab/);
+  assert.doesNotMatch(flow, /continue-on-error|\|\| true/);
 });

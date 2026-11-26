@@ -1,29 +1,29 @@
 name: CarMazium Google Play production AAB candidate (internal review only)
-
-# Manual Google Play candidate build. No automatic Play submission, store
-# rollout, OTA update or public APK distribution. Paid EAS use is opt-in.
+# Manual only. Never publishes a website APK, store release, or OTA update.
 on:
   workflow_dispatch:
     inputs:
       source_sha:
-        description: Exact reviewed 40-character main commit SHA to build
+        description: Exact 40-character main source SHA for candidate
         type: string
         required: true
       approval:
-        description: Internal review AAB only; never public release
+        description: Candidate only; not customer distribution
         type: choice
         required: true
         options: [NOT_APPROVED, INTERNAL_REVIEW_ONLY]
-
+      version_code:
+        description: Unique, increasing Android release versionCode (1 to 2147483647)
+        type: string
+        required: true
 permissions:
   contents: read
-
 concurrency:
   group: carmazium-android-play-review
   cancel-in-progress: false
-
 jobs:
   candidate:
+    # Do not expose signing secrets on non-main manual dispatches.
     if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 110
@@ -31,13 +31,13 @@ jobs:
       run:
         working-directory: 'carmazium app/carmazium app'
     env:
-      CI: '1'
-      APP_ENV: production
+      CI: 'true'
       EXPO_NO_TELEMETRY: '1'
       SENTRY_DISABLE_AUTO_UPLOAD: 'true'
-      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || secrets.EAS_TOKEN }}
-      REVIEW_SOURCE_SHA: ${{ inputs.source_sha }}
-      REVIEW_APPROVAL: ${{ inputs.approval }}
+      APP_ENV: 'production'
+      CARMAZIUM_CANDIDATE_SOURCE_SHA: ${{ inputs.source_sha }}
+      CARMAZIUM_ANDROID_CANDIDATE_APPROVAL: ${{ inputs.approval }}
+      CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE: ${{ inputs.version_code }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,75 +47,195 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
-      - name: Verify exact main revision, approval, app ID and production AAB profile
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ ! "$REVIEW_SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]] || [[ "$REVIEW_SOURCE_SHA" != "$GITHUB_SHA" ]] || [[ "$REVIEW_APPROVAL" != 'INTERNAL_REVIEW_ONLY' ]]; then
-            echo '::error::Google Play candidate requires the exact checked-out main revision and INTERNAL_REVIEW_ONLY approval.'
-            exit 1
-          fi
-          node - <<'NODE'
-          const app = require('./app.json').expo;
-          const eas = require('./eas.json');
-          if (app.android?.package !== 'uk.carmazium.app' ||
-              eas.build?.production?.channel !== 'production' ||
-              eas.build?.production?.android?.buildType !== 'app-bundle' ||
-              eas.build?.production?.distribution === 'internal' ||
-              eas.cli?.appVersionSource !== 'remote' ||
-              !app.extra?.eas?.projectId ||
-              app.updates?.requestHeaders?.['expo-channel-name']) {
-            throw new Error('Unexpected Android release identity, build format or channel');
-          }
-          if (eas.build.production.env.APP_ENV !== 'production' ||
-              !String(eas.build.production.env.EXPO_PUBLIC_API_URL || '').startsWith('https://')) {
-            throw new Error('Missing production API endpoint');
-          }
-          console.log('Google Play candidate package, EAS project and production profile verified');
-          NODE
-      - name: Require owner-connected EAS credential
-        shell: bash
-        run: |
-          if [ -z "$EXPO_TOKEN" ]; then
-            echo '::error::EXPO_TOKEN or EAS_TOKEN repository secret required for signed Google Play AAB.'
-            exit 1
-          fi
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - name: Install locked native packages
         run: npm ci
-      - name: Verify native types
-        run: npm run typescript
-      - name: Block known critical production dependency advisories before paid build
+      - name: Block critical production dependency advisories
         run: npm audit --omit=dev --audit-level=critical
-      - name: Confirm authorised Expo project
-        run: npx --yes eas-cli@16.18.0 whoami --non-interactive
-      - name: Build signed Google Play AAB candidate without store distribution
+      - name: Reject missing keystore, unsigned candidate and wrong source SHA
+        env:
+          CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS }}
+          CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD }}
+          CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD }}
+          CARMAZIUM_ANDROID_RELEASE_CERT_SHA256: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256 }}
+        run: node ../../scripts/check-android-release-candidate.mjs
+      - name: Restore keystore in ephemeral runner only
+        env:
+          CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS }}
+          CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD }}
+          CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD }}
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes eas-cli@16.18.0 build --platform android --profile production --non-interactive --wait --json > "$RUNNER_TEMP/carmazium-play-candidate.json"
-          node - "$RUNNER_TEMP/carmazium-play-candidate.json" <<'NODE'
-          const fs = require('fs');
-          const raw = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-          const build = Array.isArray(raw) ? raw[0] : raw;
-          const id = build?.id;
-          const status = String(build?.status || '').toUpperCase();
-          const url = build?.artifacts?.buildUrl || build?.artifacts?.applicationArchiveUrl || build?.buildUrl;
-          if (status !== 'FINISHED' || !id || !url?.startsWith('https://')) {
-            throw new Error('No completed, downloadable Google Play AAB candidate was returned');
+          umask 077
+          mkdir -p keystores
+          printf '%s' "$CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64" | base64 --decode > keystores/customer-release.jks
+          test -s keystores/customer-release.jks
+          node - <<'NODE'
+          const fs=require('fs');
+          const keys={
+            MYAPP_RELEASE_STORE_FILE:'customer-release.jks',
+            MYAPP_RELEASE_KEY_ALIAS:process.env.CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS,
+            MYAPP_RELEASE_STORE_PASSWORD:process.env.CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD,
+            MYAPP_RELEASE_KEY_PASSWORD:process.env.CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD,
+          };
+          for(const [k,v] of Object.entries(keys))
+            if(!v || /[\r\n]/.test(v)) throw Error('Malformed signing property: '+k);
+          fs.writeFileSync('keystores/release.keystore.properties',
+            Object.entries(keys).map(([k,v])=>k+'='+v).join('\n')+'\n',{mode:0o600});
+          const app=JSON.parse(fs.readFileSync('app.json','utf8'));
+          // Since v126 was an APK-only release with Expo OTA disabled, a new
+          // 1.0.2 native runtime and original-signed build are required first.
+          // Only the company's production channel can deliver compatible
+          // JavaScript updates after a separately approved publish.
+          const updateUrl='https://u.expo.dev/9c77bb81-205c-42f8-913e-b69a0953ec10';
+          if(app.expo.owner!=='carmazium' ||
+             app.expo.version!=='1.0.2' ||
+             app.expo.runtimeVersion?.policy!=='appVersion' ||
+             app.expo.updates?.enabled!==true ||
+             app.expo.updates?.url!==updateUrl ||
+             app.expo.updates?.requestHeaders?.['expo-channel-name'] ||
+             Number(process.env.CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE)<127){
+            throw Error('A new source-locked v127+ OTA runtime is required; source must not pin the preview channel');
           }
-          const summary = [
-            '### CarMazium Android Google Play AAB — INTERNAL REVIEW ONLY',
-            '- Reviewed main source SHA: ' + process.env.GITHUB_SHA,
-            '- EAS build ID: ' + id,
-            '- Status: ' + status,
-            '- Application ID: uk.carmazium.app',
-            '- Output profile: production app-bundle (AAB)',
-            '- [Review Google Play candidate](' + url + ')',
-            '',
-            'This workflow does **not** submit to Google Play or publish an update.',
-            'Before upload: verify the actual artifact format, upload certificate/Play App Signing identity and incrementing versionCode in the Play Console.',
-            'The candidate uses the live backend. Do not perform synthetic bids or payments against real accounts.',
-          ];
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary.join('\n') + '\n');
-          console.log('Google Play AAB candidate built for internal review; EAS ID: ' + id);
+          // The signed APK is built outside EAS Build; explicitly embed the
+          // company production channel at native prebuild time only. Source
+          // preview/TestFlight profiles must retain their own EAS channels.
+          app.expo.updates.requestHeaders={'expo-channel-name':'production'};
+          // Android sideloaded updates must have a higher versionCode than the prior APK.
+          app.expo.android.versionCode=Number(process.env.CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE);
+          fs.writeFileSync('app.json',JSON.stringify(app,null,2)+'\n');
+          const eas=JSON.parse(fs.readFileSync('eas.json','utf8'));
+          for(const key of ['EXPO_PUBLIC_API_URL','EXPO_PUBLIC_SUPABASE_URL',
+            'EXPO_PUBLIC_SUPABASE_ANON_KEY','EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY']){
+            const value=eas.build.production.env[key];
+            if(!value||/[\r\n]/.test(value))throw Error('Missing production client variable: '+key);
+            fs.appendFileSync(process.env.GITHUB_ENV,key+'='+value+'\n');
+          }
           NODE
+      - name: Verify owner-pinned certificate and private signing key before build
+        env:
+          CARMAZIUM_ANDROID_RELEASE_KEYSTORE_PATH: keystores/customer-release.jks
+          CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS }}
+          CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD }}
+          CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD }}
+          CARMAZIUM_ANDROID_RELEASE_CERT_SHA256: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256 }}
+        run: node ../../scripts/verify-android-release-keystore.mjs
+      - name: Ensure Android API 36 and signing tools exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ANDROID_HOME:-}"
+          sdkmanager_bin="$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | sort -V | tail -1)"
+          test -n "$sdkmanager_bin"
+          "$sdkmanager_bin" --install 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
+          test -x "$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          test -x "$ANDROID_HOME/build-tools/36.0.0/aapt"
+      - name: Prepare Android project and assert release signing
+        run: |
+          npm run typescript
+          npx expo prebuild --platform android --non-interactive --clean
+          grep -F 'signingConfig signingConfigs.release' android/app/build.gradle
+          test "$(node -p "require('./app.json').expo.android.package")" = 'uk.carmazium.app'
+          test "$(node -p "require('./app.json').expo.updates.enabled")" = 'true'
+          test "$(node -p "require('./app.json').expo.updates.requestHeaders['expo-channel-name']")" = 'production'
+          test "$(node -p "require('./app.json').expo.runtimeVersion.policy")" = 'appVersion'
+          test "$(node -p "require('./app.json').expo.version")" = '1.0.2'
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "$CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE"
+      - name: Build AAB with retained release signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd android
+          chmod +x gradlew
+          ./gradlew :app:bundleRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a,x86_64 --max-workers 2 --no-daemon
+      - name: Verify signed bundle and generate retained-signer installation APK
+        env:
+          CARMAZIUM_ANDROID_RELEASE_CERT_SHA256: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256 }}
+          CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS }}
+          CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD }}
+          CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          bundle="android/app/build/outputs/bundle/release/app-release.aab"
+          test -s "$bundle"
+          tool="$RUNNER_TEMP/bundletool-all-1.18.3.jar"
+          curl --fail --location --retry 3 --proto '=https' --proto-redir '=https'             https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar -o "$tool"
+          printf '%s  %s\n' a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29 "$tool" | sha256sum --check --strict
+          java -jar "$tool" validate --bundle="$bundle"
+          test "$(java -jar "$tool" dump manifest --bundle="$bundle" --xpath='/manifest/@package')" = uk.carmazium.app
+          test "$(java -jar "$tool" dump manifest --bundle="$bundle" --xpath='/manifest/@android:versionCode')" = "$CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE"
+          test "$(java -jar "$tool" dump manifest --bundle="$bundle" --xpath='/manifest/@android:versionName')" = 1.0.2
+          mkdir -p "$GITHUB_WORKSPACE/review-only-apk"
+          java ../../scripts/VerifyAndroidAppBundle.java "$bundle" "$CARMAZIUM_ANDROID_RELEASE_CERT_SHA256"             > "$GITHUB_WORKSPACE/review-only-apk/aab-signature-verification.json"
+          # Never pass password values as command arguments or use bundletool's debug-key fallback.
+          printf '%s' "$CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD" > "$RUNNER_TEMP/play-store-password"
+          printf '%s' "$CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD" > "$RUNNER_TEMP/play-key-password"
+          java -jar "$tool" build-apks --bundle="$bundle" --output="$RUNNER_TEMP/play-universal.apks" --mode=universal             --ks=keystores/customer-release.jks --ks-key-alias="$CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS"             --ks-pass="file:$RUNNER_TEMP/play-store-password" --key-pass="file:$RUNNER_TEMP/play-key-password"
+          mkdir -p android/app/build/outputs/apk/release
+          unzip -p "$RUNNER_TEMP/play-universal.apks" universal.apk > android/app/build/outputs/apk/release/app-release.apk
+          cp "$bundle" "$GITHUB_WORKSPACE/review-only-apk/CarMazium-Google-Play-REVIEW-ONLY.aab"
+      - name: Reject debug signer and verify production package and checksum
+        env:
+          CARMAZIUM_ANDROID_RELEASE_CERT_SHA256: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$(find android/app/build/outputs/apk/release -name '*.apk' -type f -print -quit)"
+          test -s "$apk"
+          tools="$ANDROID_HOME/build-tools/36.0.0"
+          test -x "$tools/apksigner"
+          "$tools/apksigner" verify --verbose "$apk"
+          actual="$("$tools/apksigner" verify --print-certs "$apk" | sed -n 's/.*Signer #1 certificate SHA-256 digest: //p' | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          expected="$(printf '%s' "$CARMAZIUM_ANDROID_RELEASE_CERT_SHA256" | sed -E 's/^[[:space:]]*[Ss][Hh][Aa]-?256[[:space:]]*:?//' | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')"
+          if [ -z "$actual" ] || [ "$actual" != "$expected" ]; then
+            echo '::error::APK signer mismatch; NOT distributing debug or unsigned APK.'
+            exit 1
+          fi
+          "$tools/aapt" dump badging "$apk" | grep -F "package: name='uk.carmazium.app' versionCode='${CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE}'"
+          echo "Source revision: $GITHUB_SHA; candidate versionCode: $CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE" >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p "$GITHUB_WORKSPACE/review-only-apk"
+          cp "$apk" "$GITHUB_WORKSPACE/review-only-apk/CarMazium-Android-REVIEW-ONLY.apk"
+          review_apk="$GITHUB_WORKSPACE/review-only-apk/CarMazium-Android-REVIEW-ONLY.apk"
+          evidence="$GITHUB_WORKSPACE/review-only-apk/release-evidence.json"
+          # Read the actual, signer-verified APK after copying, then re-check it.
+          node ../../scripts/android-apk-release-evidence.mjs create "$review_apk" "$evidence"
+          node ../../scripts/android-apk-release-evidence.mjs verify "$review_apk" "$evidence"
+          (cd "$GITHUB_WORKSPACE/review-only-apk" && sha256sum CarMazium-Android-REVIEW-ONLY.apk > SHA256SUMS.txt)
+          echo 'Verified private artifact manifest: release-evidence.json, APK and SHA256SUMS.txt.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Release signer verified. INTERNAL REVIEW ONLY; no public distribution authorised.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Bind AAB checksum to verified source and APK evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - "$GITHUB_WORKSPACE/review-only-apk" <<'NODE'
+          const fs=require('fs'),path=require('path'),crypto=require('crypto');
+          const dir=process.argv[2];
+          const file='CarMazium-Google-Play-REVIEW-ONLY.aab';
+          const aab=fs.readFileSync(path.join(dir,file));
+          const apk=JSON.parse(fs.readFileSync(path.join(dir,'release-evidence.json'),'utf8'));
+          const signature=JSON.parse(fs.readFileSync(path.join(dir,'aab-signature-verification.json'),'utf8'));
+          const evidence={schemaVersion:1,sourceSha:process.env.GITHUB_SHA,runId:process.env.GITHUB_RUN_ID,packageName:'uk.carmazium.app',versionName:'1.0.2',versionCode:Number(process.env.CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE),file,size:aab.length,sha256:crypto.createHash('sha256').update(aab).digest('hex'),signature,installationApkEvidence:apk,distribution:'INTERNAL_REVIEW_ONLY'};
+          fs.writeFileSync(path.join(dir,'play-release-evidence.json'),JSON.stringify(evidence,null,2)+'\n');
+          NODE
+          (cd "$GITHUB_WORKSPACE/review-only-apk" && sha256sum *.apk *.aab > SHA256SUMS.txt)
+          echo 'This workflow does **not** submit to Google Play. Verify Play App Signing identity before upload; retain the original customer signing key.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Store verified Google Play bundle and installation test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarMazium-Google-Play-REVIEW-ONLY
+          path: review-only-apk/*
+          retention-days: 7
+          if-no-files-found: error
+      - name: Remove signing material from temporary runner
+        if: always()
+        shell: bash
+        run: |
+          rm -f keystores/customer-release.jks keystores/release.keystore.properties android/app/customer-release.jks "$RUNNER_TEMP/play-store-password" "$RUNNER_TEMP/play-key-password"
