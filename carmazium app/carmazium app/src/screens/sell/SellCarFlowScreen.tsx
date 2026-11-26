@@ -735,6 +735,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   const selectCaravanBodyType = () => {
     if (bodyType === 'CARAVAN') return;
+    if (damageRecords.length > 0) {
+      Alert.alert('Review existing damage first', 'Keep the original vehicle type or review and remove its saved damage declarations before changing it to a caravan.');
+      return;
+    }
     setVehicleType('CAR');
     vehicleTypeRef.current = 'CAR';
     setBodyType('CARAVAN');

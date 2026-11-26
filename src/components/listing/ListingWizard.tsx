@@ -898,6 +898,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // A touring caravan is a VIN/CRiS-identified trailer, not a DVLA-registered motor vehicle.
     const chooseBodyType = (key: BodyTypeValue) => {
         if (formData.bodyType === key) return
+        if (key === 'CARAVAN' && damageRecords.length > 0) {
+            alert('This listing has saved vehicle damage declarations. Keep the original vehicle type or review and remove those declarations before changing it to a caravan.')
+            return
+        }
         lookupRequestRef.current += 1
         setDvlaLoading(false)
         if (key === 'CARAVAN') {

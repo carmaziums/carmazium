@@ -257,7 +257,7 @@ test('switching to caravan clears motor facts and valuation while preserving the
     let next;
     const noop = () => {};
     wizardFunction(wizardFile, 'chooseBodyType', {
-      formData: original, lookupRequestRef: { current: 0 }, registrationLookupReset,
+      formData: original, damageRecords: [], lookupRequestRef: { current: 0 }, registrationLookupReset,
       setFormData: fn => { next = fn(original); }, set: noop,
       setDvlaLoading: noop, setDvlaSuccess: noop, setMotFeedback: noop,
       setDvlaError: noop, setBaseValuation: noop, setValuation: noop, setDamageRecords: noop,
@@ -335,4 +335,14 @@ test('editing cannot advance past damage after a failed load, but succeeds after
     context.damageEditLoaded = true;
     assert.equal(wizardFunction(wizardFile, 'getStepValidationError', context)(2), null);
   }
+});
+
+
+test('changing to a caravan cannot silently erase existing vehicle damage', () => {
+  let warning = '';
+  wizardFunction(wizardFile, 'chooseBodyType', {
+    formData: completeForm, damageRecords: [{ id: 'saved-damage' }],
+    alert: text => { warning = text; },
+  })('CARAVAN');
+  assert.match(warning, /saved vehicle damage/);
 });

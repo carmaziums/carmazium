@@ -87,7 +87,7 @@
     "src/components/features/MaziumWidget.tsx": "de0c77cbe41d31e10b46b2067411573b3b5c8be192441ad45ea5e86e4254997f",
     "src/components/finance/FinanceReferralForm.tsx": "dc6f3aa26dffcdfb462ce180024c4a5e9e1e9b1a0cc6e41c5b9a2cd124244df4",
     "src/components/layout/Header.tsx": "2e928bf29762e1367252ad4ea63b49494c5f3bad2563ea77e34e1580e2e290de",
-    "src/components/listing/ListingWizard.tsx": "9a38bd7f5d92086777e5878027fb8fdba9442aed5ac9d9fb2d65c003eb4cf739",
+    "src/components/listing/ListingWizard.tsx": "4dea136aec5319e698dd271322d1c52af9c6a1f00db61bc28a53589e5f2a74fe",
     "src/components/services/VehicleServicesPanel.tsx": "1ca041c34cd581e8b76ff3806f838144a05daf266d08e17c829d628a5891e6ab",
     "src/data/dashboardCards.json": "b8ccb8f4f56eb6b41b6cde0756933b3e025de1355bd8ef57519be1b3ed48d0c2",
     "src/lib/auctionApi.ts": "48c90cdcd9a33229b80e76ccbb32acde2d343da7f7ad2342ccfb2853f496ceed",
