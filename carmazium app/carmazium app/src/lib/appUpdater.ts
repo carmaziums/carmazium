@@ -16,6 +16,8 @@ import * as IntentLauncher from 'expo-intent-launcher';
 const VERSION_URL = 'https://www.carmazium.com/api/app-version';
 const PRODUCTION_PACKAGE = 'uk.carmazium.app';
 
+export function isGooglePlayDistribution(): boolean { return false; }
+
 export interface AvailableUpdate {
   versionName: string;
   versionCode: number;

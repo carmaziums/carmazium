@@ -49,6 +49,8 @@ on:
       - 'scripts/test-ios-candidate-metadata.test.mjs'
       - 'scripts/test-ios-candidate-archive.py'
       - 'scripts/test-google-play-candidate.test.mjs'
+      - 'scripts/test-google-play-distribution.test.mjs'
+      - 'scripts/prepare-google-play-distribution.mjs'
       - '.github/workflows/carmazium-android-play-candidate.yml'
       - '.github/workflows/carmazium-ios-release-candidate.yml'
       - 'scripts/verify-android-release-keystore.mjs'
@@ -320,7 +322,7 @@ jobs:
       - name: Verify exact reviewed IPA bytes and packaged iPhone identity with rejection fixtures
         run: python3 scripts/test-ios-candidate-archive.py
       - name: Validate Google Play AAB candidate and approval safety
-        run: node --test scripts/test-google-play-candidate.test.mjs
+        run: node --test scripts/test-google-play-candidate.test.mjs scripts/test-google-play-distribution.test.mjs
       - name: Self-test signed-evidence validator
         env:
           CARMAZIUM_RELEASE_SHA: ${{ github.sha }}
@@ -386,6 +388,10 @@ jobs:
       - run: npm run typescript
       - name: Verify native website-parity interactions and photo selection
         run: node --test scripts/*.test.mjs
+      - name: Typecheck the prepared Google Play distribution
+        run: |
+          node ../../scripts/prepare-google-play-distribution.mjs
+          npm run typescript
 
   backend:
     name: Backend typecheck + tests + build

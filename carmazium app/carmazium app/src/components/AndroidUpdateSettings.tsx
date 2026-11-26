@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
 import {
   canSelfUpdate,
+  isGooglePlayDistribution,
   checkForUpdateStatus,
   currentVersionCode,
   downloadAndInstall,
@@ -64,6 +65,19 @@ export const AndroidUpdateSettings: React.FC = () => {
     }
   };
 
+  if (isGooglePlayDistribution()) return (
+    <View style={styles.container} accessibilityLabel="Android app version and updates">
+      <Text style={styles.title}>APP UPDATES</Text>
+      <Text style={styles.body}>Installed CarMazium build {currentVersionCode()}. Updates are managed by Google Play.</Text>
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open Google Play"
+        style={[styles.button, styles.checkButton]}
+        onPress={() => { void Linking.openURL('https://play.google.com/store/apps/details?id=uk.carmazium.app')
+          .catch(() => setMessage('Could not open Google Play. Please open the Play Store app to check for updates.')); }}>
+        <Text style={styles.checkText}>Open Google Play</Text>
+      </TouchableOpacity>
+      {!!message && <Text accessibilityLiveRegion="polite" style={styles.feedback}>{message}</Text>}
+    </View>
+  );
   if (!supported) return null;
 
   return (
