@@ -66,7 +66,7 @@ const KYC_FIELDS = [
 function fieldsFor(kyc: any) {
   const soleTrader = kyc?.businessType === "SOLE_PROPRIETORSHIP";
   return KYC_FIELDS.filter((f: any) =>
-    soleTrader ? !f.ltdOnly : !f.soleTraderOnly,
+    (soleTrader ? !f.ltdOnly : !f.soleTraderOnly) && !(f.id === "vatProof" && kyc?.vatRegistered === false),
   );
 }
 
@@ -653,7 +653,7 @@ export default function AdminDealerVerificationPage() {
               </h4>
               <div className="grid grid-cols-1 gap-3">
                 {catFields.map((field) => {
-                  const val = item[field.id];
+                  const val = field.id === "vatNumber" && item.vatRegistered === false ? "Not VAT registered" : item[field.id];
                   const decision = decisions[field.id] || { status: "APPROVED", note: "" };
                   const isApproved = decision.status === "APPROVED";
                   const isRejected = decision.status === "REJECTED";

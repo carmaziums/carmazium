@@ -2957,8 +2957,8 @@ export class AdminService {
             ? [...commonFields, 'proofOfAddress']
             : [
                 ...commonFields,
-                'vatNumber',
-                'vatProof',
+                'vatNumber', // Admin reviews the explicit non-registration declaration here.
+                ...(kyc.vatRegistered === false ? [] : ['vatProof']),
                 'companyRegistrationNumber',
                 'companyRegistrationProof',
                 'personOfSignificantControl',

@@ -44,6 +44,19 @@ describe('DealersService purchase seller details', () => {
         },
     });
 
+    it.each([
+        ['PENDING-NOT-VAT-company-1', null],
+        ['PENDING-account-1', null],
+        ['SOLE-TRADER-NOT-VAT-company-1', null],
+        ['GB123456789', 'GB123456789'],
+    ])('never reports internal VAT placeholder %s as a seller VAT number', async (vatNumber, expected) => {
+        const record = sale(null, 'CLASSIFIED');
+        (record.seller as any).dealerProfile = { companyName: 'Example Motors Ltd', vatNumber };
+        prisma.sale.findFirst.mockResolvedValue(record);
+        const details = await service.getPurchaseSellerDetails('dealer-owner', 'sale-1');
+        expect(details.sellerVatNumber).toBe(expected);
+    });
+
     it('rejects users without dealership purchase permission before reading a sale', async () => {
         prisma.dealerProfile.findUnique.mockResolvedValue(null);
         await expect(service.getPurchaseSellerDetails('unknown-user', 'sale-1'))

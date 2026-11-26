@@ -599,6 +599,49 @@ describe('AdminService platform statistics', () => {
 
 
 describe('AdminService dealer KYC review', () => {
+
+    it.each([
+        [false, false, 'APPROVED'],
+        [true, false, 'PENDING'],
+        [null, false, 'PENDING'],
+        [false, true, 'PENDING'],
+    ])('reviews a company VAT declaration (%s) without waiving ID approval (%s)', async (vatRegistered, omitIdApproval, expectedStatus) => {
+        const kyc = {
+            id: 'kyc-vat', dealerProfileId: 'profile-vat', businessType: 'PRIVATE_LIMITED',
+            vatRegistered, documentStatuses: {},
+            dealerProfile: { id: 'profile-vat', companyName: 'Test Motors Ltd',
+                user: { id: 'user-vat', email: 'review@example.com', firstName: 'Test', lastName: 'Reviewer' } },
+        };
+        const prisma: any = {
+            dealerKyc: {
+                findUnique: jest.fn().mockResolvedValue(kyc),
+                update: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ ...kyc, ...data })),
+            },
+            dealerProfile: { update: jest.fn().mockResolvedValue({}) },
+        };
+        const email = { sendKycApprovedDealerAlert: jest.fn(), sendKycRejectedDealerAlert: jest.fn() };
+        email.sendKycApprovedDealerAlert.mockResolvedValue(undefined);
+        email.sendKycRejectedDealerAlert.mockResolvedValue(undefined);
+        const service = new AdminService(prisma, {} as any, email as any,
+            { sendNotification: jest.fn() } as any, { create: jest.fn().mockResolvedValue(null) } as any,
+            {} as any, {} as any, {} as any);
+        const fields = [
+            'companyHouseName', 'representativeName', 'representativePosition', 'directorName',
+            'directorIdProof', 'businessWebsite', 'businessRegisteredAddress', 'tradingAddress',
+            'googleReviewsLink', 'paymentReference', 'paymentScreenshot',
+            'vatNumber', 'companyRegistrationNumber', 'companyRegistrationProof', 'personOfSignificantControl',
+        ].filter(field => !omitIdApproval || field !== 'directorIdProof')
+            .map(field => ({ field, status: 'APPROVED' as const, note: '' }));
+        const result = await service.reviewKyc(kyc.id, { fields } as any);
+        expect(result.status).toBe(expectedStatus);
+        if (expectedStatus === 'PENDING') {
+            expect(prisma.dealerProfile.update).not.toHaveBeenCalledWith(expect.objectContaining({
+                data: expect.objectContaining({ isVerified: true }),
+            }));
+        }
+    });
+
+
     it('can approve a sole trader without Companies House, VAT or PSC fields', async () => {
         const user = { id: 'dealer-user-1', email: 'sole@example.com', firstName: 'Sam', lastName: 'Trader' };
         const kyc = {

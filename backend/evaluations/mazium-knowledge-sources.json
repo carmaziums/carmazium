@@ -1,7 +1,7 @@
 {
   "reviewedAt": "2026-11-26",
   "sources": {
-    "backend/prisma/schema.prisma": "3db29bc3ed259489fbf85c9e9b418ec50b4b7bd57ef7879c7adfeeac6a1b57b2",
+    "backend/prisma/schema.prisma": "f7a24e6bc2f784d7feb12e4876079e729ebff172d79e03bbaa4ae6f6d6141d3b",
     "backend/src/admin/admin-user-filters.ts": "0f7afcf5f18e79666b69f346dda04add2024e42fbf71cca4aefb4bd5221118c4",
     "backend/src/admin/admin.controller.ts": "b45767e52f91b61362a4156efe382dc69eb48f483d97a96d58d08351ef175705",
     "backend/src/ai/ai.controller.ts": "9ff65932480e9a99085249bed84354ac513965877b380b25f54f1c6293ad4011",
@@ -17,7 +17,7 @@
     "backend/src/chat/support-automatic-responses.ts": "b06cb0169af9691ff4ee4117c9a869a01342cb95f73221d835bb7a1c97717bef",
     "backend/src/core/listing-contact-visibility.ts": "ced6846c1a6e95ec5b2e16f62eff8ae467b6860f6361ad89882441dcc3a72ea8",
     "backend/src/dealers/dealer-access.ts": "450e71e07124c41ff9fbe30cf041e264110e4a0142584eff3c9a2e8e3f8cabdf",
-    "backend/src/dealers/dealers.service.ts": "1995c4cfa3ac32edc7412f234036624824f604c2f16f780f489958366ec04eca",
+    "backend/src/dealers/dealers.service.ts": "7e9279a71b407637936ea0d600b29c72964e6024102c77d841c8a0d8707b6c3f",
     "backend/src/listings/caravan-listings.spec.ts": "a6e463ff47452a2845d4dd91379f74ce07ef36db696180d2e371d90facec7ded",
     "backend/src/listings/guest-enquiry.service.ts": "f4fd3ae029424b5d7259d7b0b8c348394061fb558d0274b8087f9fe9b7801ce6",
     "backend/src/listings/listings.service.ts": "60f102d1bf4ddf8ff08bda602e7060d475d82cfa4b1b54b12676ed209fda4148",

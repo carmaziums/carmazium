@@ -158,7 +158,6 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
 
     const nextFieldErrors: { tradingName?: string; vatNumber?: string } = {};
     if (!trimmedName) nextFieldErrors.tradingName = isSoleTrader ? 'Trading name is required' : 'Company name is required';
-    if (!isSoleTrader && !trimmedVat) nextFieldErrors.vatNumber = 'VAT number is required';
     setFieldErrors(nextFieldErrors);
     if (Object.keys(nextFieldErrors).length > 0) return;
     setSubmitting(true);
@@ -343,7 +342,7 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
             </View>
   
             <View style={styles.formGroup}>
-               <Text style={styles.inputLabel}>VAT NUMBER</Text>
+               <Text style={styles.inputLabel}>VAT NUMBER (IF REGISTERED)</Text>
                <View style={styles.inputWrap}>
                   <MaterialCommunityIcons name="file-document-outline" size={18} color={Colors.iconMuted} style={styles.inputIcon} />
                   <TextInput
