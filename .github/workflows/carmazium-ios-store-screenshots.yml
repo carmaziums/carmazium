@@ -8,7 +8,7 @@ permissions:
   contents: read
 concurrency:
   group: ios-store-screenshots-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   capture:
     runs-on: macos-15
@@ -81,13 +81,16 @@ jobs:
         run: |
           set -euo pipefail
           xcrun simctl list devices available -j > "$RUNNER_TEMP/screenshot-evidence/devices.json"
+          for SIZE in medium large; do
+          export SCREENSHOT_SIZE="$SIZE"
           DEVICE_ID=$(node - <<'NODE'
           const fs = require('fs');
           const all = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/screenshot-evidence/devices.json'));
           const devices = Object.values(all.devices).flat();
-          const device = devices.find(d => d.name === 'iPhone 16 Pro Max') ||
-                         devices.find(d => d.name === 'iPhone 17 Pro Max');
-          if (!device) throw new Error('Required large-display iPhone simulator is unavailable');
+          const suffix = process.env.SCREENSHOT_SIZE === 'medium' ? 'Pro' : 'Pro Max';
+          const device = devices.find(d => d.name === 'iPhone 16 ' + suffix) ||
+                         devices.find(d => d.name === 'iPhone 17 ' + suffix);
+          if (!device) throw new Error('Required iPhone simulator is unavailable');
           console.log(device.udid);
           NODE
           )
@@ -100,17 +103,18 @@ jobs:
           xcrun simctl install "$DEVICE_ID" "$APP"
           xcrun simctl launch "$DEVICE_ID" uk.carmazium.app
           sleep 30
-          mkdir -p "$RUNNER_TEMP/screenshot-evidence/screenshots"
-          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshot-evidence/screenshots/01-home.png"
+          mkdir -p "$RUNNER_TEMP/screenshot-evidence/screenshots/$SIZE"
+          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshot-evidence/screenshots/$SIZE/01-home.png"
           xcrun simctl openurl "$DEVICE_ID" 'carmazium://auctions/browse'
           sleep 15
-          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshot-evidence/screenshots/02-auctions.png"
+          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshot-evidence/screenshots/$SIZE/02-auctions.png"
           xcrun simctl openurl "$DEVICE_ID" 'carmazium://services'
           sleep 15
-          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshot-evidence/screenshots/03-services.png"
-          sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP/screenshot-evidence/screenshots/"*.png
-          shasum -a 256 "$RUNNER_TEMP/screenshot-evidence/screenshots/"*.png > "$RUNNER_TEMP/screenshot-evidence/screenshots.sha256"
+          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshot-evidence/screenshots/$SIZE/03-services.png"
           xcrun simctl shutdown "$DEVICE_ID"
+          done
+          sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP/screenshot-evidence/screenshots/"*/*.png
+          shasum -a 256 "$RUNNER_TEMP/screenshot-evidence/screenshots/"*/*.png > "$RUNNER_TEMP/screenshot-evidence/screenshots.sha256"
       - name: Save screenshots and build evidence for visual review
         if: always()
         uses: actions/upload-artifact@v4
