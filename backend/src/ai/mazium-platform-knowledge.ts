@@ -274,6 +274,19 @@ export const PLATFORM_KNOWLEDGE: readonly PlatformKnowledgeTopic[] = [
         sources: ['src/components/listing/ListingWizard.tsx','src/lib/vehiclePhotoCompression.ts','backend/src/listings/listings.service.ts','src/app/dashboard/dealer/inventory/page.tsx']
     },
     {
+        id: 'seller-reported-damage',
+        triggers: /\b(?:damage|3d|surface point|condition report|inspection|blue dots|hotspots|ended auction|sold auction|approximate marker)\b/i,
+        facts: [
+            'The 3D condition viewer displays current seller-reported damage, not an independent inspection or an immutable auction-time snapshot. A generic saloon, hatchback or SUV reference model is not a scan of the actual vehicle.',
+            'The upgraded native declaration viewer lets sellers tap a surface point and save individual damage descriptions and photographs. Multiple records on the same panel have separate IDs and can be edited or removed; rotating the model should not declare damage.',
+            'Buyer marker numbers correspond to saved damage records. Older panel-only records may use clearly labelled approximate positions; a marker without exact saved coordinates must not be described as an exact impact location.',
+            'Auction damage is retrieved through the authorised auction route, including eligible ended unsold auctions whose listing has returned to Draft and published sold lots. The seller can view their own auction; other viewers need the relevant verified dealer Trade Exchange permission or authorised admin access. This does not open unrelated private drafts.',
+            'Deleted or withdrawn stock and cancelled auctions are unavailable through this route. A failed damage request means the condition information could not be loaded; it is not evidence that the vehicle is damage-free. A generic model may still be visible.',
+            'For an independent assessment, use the separate inspection service; do not call a seller declaration a certified inspection. Native changes only appear after the updated app is distributed.'
+        ].join(' '),
+        sources: ['backend/src/auctions/auctions.service.ts','backend/src/auctions/auction-damage-access.ts','backend/src/auctions/trade-access.ts','src/app/auctions/live/[id]/page.tsx','carmazium app/carmazium app/src/components/damage/ThreeDVehicleViewer.tsx','carmazium app/carmazium app/src/lib/nativeDamageRecords.ts','carmazium app/carmazium app/src/lib/damageMarkers.ts']
+    },
+    {
         id: 'listing-status-and-relisting',
         triggers: /\b(?:relist|re-list|list again|withdraw|remove listing|mark sold|mark as sold|sold elsewhere|expired|auction ended|reserve not met|draft to retail|convert to retail|switch to retail|also list retail|listing status)\b/i,
         facts: [
@@ -369,6 +382,7 @@ export function platformKnowledgeFor(query: string, maxTopics = 5): string {
         'edit-existing-listing': 110,
         'listing-status-and-relisting': 105,
         'listing-validation-review': 100,
+        'seller-reported-damage': 102,
         'dealer-purchase-destinations': 100,
         'bidding-reserve-and-provisional': 95,
         'sale-handover-reward': 95,
