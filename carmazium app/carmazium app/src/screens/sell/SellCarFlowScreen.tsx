@@ -501,10 +501,9 @@ function Damage3DMapper({ records, onAdd, onRemove, onPhoto, bodyTypeLabel, onPe
     setAddingZone(zone);setPoint(p);setEditing(record??null);setPhoto(record?.imageUrl);setDmgType(record?.type??"SCRATCH");setDmgDesc(record?.description??"");setManualOpen(false);onPendingChange(true);
   };
   const editRecord=(id:string)=>{const item=records.find(r=>r.id===id);if(item)start(item.zone,item.surfacePoint,item);};
-  const pickPhoto=async(camera=false)=>{if(uploading)return;setUploading(true);try{
-    if(camera){const permission=await ImagePicker.requestCameraPermissionsAsync();if(!permission.granted){Alert.alert('Camera access required','Allow camera access or choose a photo from your gallery.');return;}}
+  const pickPhoto=async()=>{if(uploading)return;setUploading(true);try{
     const options={mediaTypes:ImagePicker.MediaTypeOptions.Images,quality:0.85};
-    const result=camera?await ImagePicker.launchCameraAsync(options):await ImagePicker.launchImageLibraryAsync(options);
+    const result=await ImagePicker.launchImageLibraryAsync(options);
     const uri=result.assets?.[0]?.uri;
     if(!result.canceled&&uri){const uploaded=await onPhoto(uri);if(!uploaded?.startsWith('https://'))throw new Error('Photo upload did not return a durable URL');setPhoto(uploaded);setPhotoUploadFailed(false);}
   }catch{setPhotoUploadFailed(true);Alert.alert('Photo upload failed','Retry the photo upload before saving this damage report.');}finally{setUploading(false);}};
@@ -565,7 +564,7 @@ function Damage3DMapper({ records, onAdd, onRemove, onPhoto, bodyTypeLabel, onPe
             placeholderTextColor={Colors.inputPlaceholder}
           />
           {photo && <ExpoImage source={{uri:photo}} style={{width:100,height:76,borderRadius:8,marginBottom:8}} />}
-          <View style={{flexDirection:"row",gap:8,flexWrap:"wrap",marginBottom:12}}><TouchableOpacity style={s.pill} disabled={uploading} onPress={()=>void pickPhoto()}><Text style={s.pillText}>{uploading?"Uploading...":photo?"Replace photo":"Attach photo"}</Text></TouchableOpacity><TouchableOpacity style={s.pill} disabled={uploading} onPress={()=>void pickPhoto(true)}><Text style={s.pillText}>Take photo</Text></TouchableOpacity>{photo&&<TouchableOpacity style={s.pill} disabled={uploading} onPress={()=>setPhoto(undefined)}><Text style={s.pillText}>Remove photo</Text></TouchableOpacity>}</View>
+          <View style={{flexDirection:"row",gap:8,flexWrap:"wrap",marginBottom:12}}><TouchableOpacity style={s.pill} disabled={uploading} onPress={()=>void pickPhoto()}><Text style={s.pillText}>{uploading?"Uploading...":photo?"Replace photo":"Attach photo"}</Text></TouchableOpacity>{photo&&<TouchableOpacity style={s.pill} disabled={uploading} onPress={()=>setPhoto(undefined)}><Text style={s.pillText}>Remove photo</Text></TouchableOpacity>}</View>
           {photoUploadFailed && <View><Text style={s.fieldHint}>The photo was not uploaded. Retry, or choose to keep this report without the failed photo.</Text><TouchableOpacity style={s.pill} onPress={()=>setPhotoUploadFailed(false)}><Text style={s.pillText}>{photo?'Keep existing photo':'Continue without photo'}</Text></TouchableOpacity></View>}
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <TouchableOpacity style={[s.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12 }]} onPress={reset} disabled={uploading} activeOpacity={0.8}>
