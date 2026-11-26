@@ -147,7 +147,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 return
             }
 
-            if (previousUserId && previousUserId !== userId) {
+            // A fresh login starts from a resolved anonymous session (loading=false).
+            // Keep verification in its loading state until the real profile request
+            // finishes; absence of a profile during that request is not a failure.
+            if (previousUserId !== userId) {
                 bridgedTokenRef.current = null
                 bridgeInFlightRef.current = null
                 setProfile(null)
@@ -175,9 +178,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Keep a cold-start fallback for browsers that do not deliver the
         // INITIAL_SESSION event promptly (e.g. a blocked storage/auth SDK).
-        // After the cap, route guards show their safe retry/login UI.
+        // This only caps SDK session discovery. Once a user is known, the bounded
+        // bridge/profile requests own loading; a mount-time timer must not turn
+        // an in-progress login into a false verification failure.
         const watchdog = setTimeout(() => {
-            if (!disposed) setLoading(false)
+            if (!disposed && !activeUserIdRef.current) setLoading(false)
         }, 18000)
 
         supabase.auth.getSession().then(({ data: { session } }) => {
