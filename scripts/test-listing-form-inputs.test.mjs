@@ -72,7 +72,7 @@ const completeForm = {
 }
 function wizardContext(formData) {
   return {
-    formData, currentStep: 1, listingDetailsInputIssue, faultDeclarationError, missingSellerDeclarations: getMissingSellerDeclarations(formData), bodyTypeKeys: ['SUV', 'CARAVAN'],
+    formData, editId: null, damageEditLoaded: true, damageEntryPending: false, currentStep: 1, listingDetailsInputIssue, faultDeclarationError, missingSellerDeclarations: getMissingSellerDeclarations(formData), bodyTypeKeys: ['SUV', 'CARAVAN'],
     isCaravan: formData.bodyType === 'CARAVAN',
     normalizeSellerTransmission: value => value, normalizeSellerBodyType: value => value,
   }
@@ -326,3 +326,13 @@ test('native doors/seats validation rejects empty or invalid counts and preserve
     }
   }
 })
+
+
+test('editing cannot advance past damage after a failed load, but succeeds after a complete load', () => {
+  for (const listingType of ['AUCTION', 'CLASSIFIED']) {
+    const context = { ...wizardContext({ ...completeForm, listingType, images: Array(10).fill('photo') }), editId: 'existing-listing', damageEditLoaded: false };
+    assert.match(wizardFunction(wizardFile, 'getStepValidationError', context)(2), /damage/i);
+    context.damageEditLoaded = true;
+    assert.equal(wizardFunction(wizardFile, 'getStepValidationError', context)(2), null);
+  }
+});

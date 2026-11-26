@@ -43,7 +43,7 @@ test('public 3D only shows saved seller damage and projects late arriving record
   assert.match(viewer, /webViewRef\.current\.injectJavaScript\(/);
   assert.match(viewer, /\[viewerHtml, projectedZoneKey, editable\]/);
   for (const model of ['sedan', 'hatchback', 'suv']) assert.ok(viewer.includes(model + '.glb'));
-  assert.match(buyer, /buildBuyerDamagePins\(hasError \|\| isLoading \? \[\] : records\)/);
+  assert.match(buyer, /buildBuyerDamagePins\(hasError \|\| isLoading \? \[\] : records, bodyTypeLabel\)/);
   assert.match(buyer, /pins=\{pins\}/);
   assert.doesNotMatch(buyer, /onSurfaceTap=/);
   assert.match(html, /if\(!_editable/);
