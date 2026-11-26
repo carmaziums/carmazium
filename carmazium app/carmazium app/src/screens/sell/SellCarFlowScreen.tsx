@@ -491,8 +491,9 @@ function Damage3DMapper({ records, onAdd, onRemove, onPhoto, bodyTypeLabel, onPe
   const [photo, setPhoto] = useState<string>();
   const [editing, setEditing] = useState<DamageEntry | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [photoUploadFailed, setPhotoUploadFailed] = useState(false);
   const [manualOpen,setManualOpen]=useState(false);
-  const reset=()=>{setAddingZone(null);setPoint(undefined);setPhoto(undefined);setEditing(null);setDmgType("SCRATCH");setDmgDesc("");onPendingChange(false);};
+  const reset=()=>{setAddingZone(null);setPoint(undefined);setPhoto(undefined);setEditing(null);setDmgType("SCRATCH");setDmgDesc("");setPhotoUploadFailed(false);onPendingChange(false);};
   const start=(zone:string,p?:DamagePoint,record?:DamageEntry)=>{
     if(uploading)return;
     if(addingZone){Alert.alert("Finish the current damage report","Save or cancel the current report before adding another.");return;}
@@ -500,15 +501,22 @@ function Damage3DMapper({ records, onAdd, onRemove, onPhoto, bodyTypeLabel, onPe
     setAddingZone(zone);setPoint(p);setEditing(record??null);setPhoto(record?.imageUrl);setDmgType(record?.type??"SCRATCH");setDmgDesc(record?.description??"");setManualOpen(false);onPendingChange(true);
   };
   const editRecord=(id:string)=>{const item=records.find(r=>r.id===id);if(item)start(item.zone,item.surfacePoint,item);};
-  const pickPhoto=async()=>{if(uploading)return;setUploading(true);try{const result=await ImagePicker.launchImageLibraryAsync({mediaTypes:ImagePicker.MediaTypeOptions.Images,quality:0.85});const uri=result.assets?.[0]?.uri;if(!result.canceled&&uri)setPhoto(await onPhoto(uri));}catch{Alert.alert("Photo upload failed","Please try again before saving the damage report.");}finally{setUploading(false);}};
+  const pickPhoto=async(camera=false)=>{if(uploading)return;setUploading(true);try{
+    if(camera){const permission=await ImagePicker.requestCameraPermissionsAsync();if(!permission.granted){Alert.alert('Camera access required','Allow camera access or choose a photo from your gallery.');return;}}
+    const options={mediaTypes:ImagePicker.MediaTypeOptions.Images,quality:0.85};
+    const result=camera?await ImagePicker.launchCameraAsync(options):await ImagePicker.launchImageLibraryAsync(options);
+    const uri=result.assets?.[0]?.uri;
+    if(!result.canceled&&uri){const uploaded=await onPhoto(uri);if(!uploaded?.startsWith('https://'))throw new Error('Photo upload did not return a durable URL');setPhoto(uploaded);setPhotoUploadFailed(false);}
+  }catch{setPhotoUploadFailed(true);Alert.alert('Photo upload failed','Retry the photo upload before saving this damage report.');}finally{setUploading(false);}};
   function confirmAdd(){
     if(!addingZone||uploading)return;
+    if(photoUploadFailed){Alert.alert('Photo upload incomplete','Retry the upload or explicitly continue without the failed photo before saving.');return;}
     const unchanged=editing && editing.type===dmgType && editing.description===dmgDesc.trim();
-    onAdd({id:editing?.id??createValuationJourneyId(),zone:addingZone,type:dmgType,description:dmgDesc.trim(),surfacePoint:point,imageUrl:photo,size:editing?.size,coords:editing?.zone===addingZone?editing?.coords:undefined,originalType:unchanged?editing?.originalType:undefined});
+    onAdd({id:editing?.id??createValuationJourneyId(),zone:addingZone,type:dmgType,description:dmgDesc.trim(),surfacePoint:point,referenceBodyType:editing?.surfacePoint?editing.referenceBodyType:bodyTypeLabel,imageUrl:photo,size:editing?.size,coords:editing?.zone===addingZone?editing?.coords:undefined,originalType:unchanged?editing?.originalType:undefined});
     reset();
   }
   const markedLabels = records.map(r => r.zone);
-  const pins = buildBuyerDamagePins(records.map(damageEntryToRecord));
+  const pins = buildBuyerDamagePins(records.map(damageEntryToRecord),bodyTypeLabel);
   const grade = computeExteriorGradeFromDefectCount(records.length);
   const gradeLabel = EXTERIOR_GRADE_OPTIONS.find(item => item.value === grade)?.label ?? 'Unknown';
 
@@ -557,7 +565,8 @@ function Damage3DMapper({ records, onAdd, onRemove, onPhoto, bodyTypeLabel, onPe
             placeholderTextColor={Colors.inputPlaceholder}
           />
           {photo && <ExpoImage source={{uri:photo}} style={{width:100,height:76,borderRadius:8,marginBottom:8}} />}
-          <View style={{flexDirection:"row",gap:8,flexWrap:"wrap",marginBottom:12}}><TouchableOpacity style={s.pill} disabled={uploading} onPress={()=>void pickPhoto()}><Text style={s.pillText}>{uploading?"Uploading...":photo?"Replace photo":"Attach photo"}</Text></TouchableOpacity>{photo&&<TouchableOpacity style={s.pill} disabled={uploading} onPress={()=>setPhoto(undefined)}><Text style={s.pillText}>Remove photo</Text></TouchableOpacity>}</View>
+          <View style={{flexDirection:"row",gap:8,flexWrap:"wrap",marginBottom:12}}><TouchableOpacity style={s.pill} disabled={uploading} onPress={()=>void pickPhoto()}><Text style={s.pillText}>{uploading?"Uploading...":photo?"Replace photo":"Attach photo"}</Text></TouchableOpacity><TouchableOpacity style={s.pill} disabled={uploading} onPress={()=>void pickPhoto(true)}><Text style={s.pillText}>Take photo</Text></TouchableOpacity>{photo&&<TouchableOpacity style={s.pill} disabled={uploading} onPress={()=>setPhoto(undefined)}><Text style={s.pillText}>Remove photo</Text></TouchableOpacity>}</View>
+          {photoUploadFailed && <View><Text style={s.fieldHint}>The photo was not uploaded. Retry, or choose to keep this report without the failed photo.</Text><TouchableOpacity style={s.pill} onPress={()=>setPhotoUploadFailed(false)}><Text style={s.pillText}>{photo?'Keep existing photo':'Continue without photo'}</Text></TouchableOpacity></View>}
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <TouchableOpacity style={[s.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12 }]} onPress={reset} disabled={uploading} activeOpacity={0.8}>
               <Text style={s.pillText}>CANCEL</Text>
@@ -856,6 +865,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // effect. handlePublish below treats this draft the same way it treats an
   // existing edit target: PATCH it rather than creating a second listing.
   const [hpiDraftListingId, setHpiDraftListingId] = useState<string | null>(null);
+  const savedAuctionCreatedRef = useRef(false);
   const [hpiUnlocking, setHpiUnlocking] = useState(false);
   const [hpiUnlocked, setHpiUnlocked] = useState(false);
   const [hpiSummary, setHpiSummary] = useState<{ isClear?: boolean } | null>(null);
@@ -1113,6 +1123,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             setYear(store.year);
             setMileage(store.mileage);
             setTitle(store.title);
+            setHpiDraftListingId(store.savedListingId ?? null);
+            savedAuctionCreatedRef.current = store.savedAuctionCreated === true;
             setFuelType(store.fuelType);
             setTransmission(normalizeNativeTransmission(store.transmission));
             setBodyType(normalizeNativeBodyType(store.bodyType, draftVehicleType));
@@ -1144,7 +1156,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             setPhotoOrder(store.photoOrder ?? []);
             setInteriorImages(store.interiorImages ?? []);
             setDamageImages(store.damageImages ?? []);
-            setDamageRecords(store.damageRecords ?? []);
+            setDamageRecords((store.damageRecords ?? []).map(r=>({...r,referenceBodyType:r.referenceBodyType??store.bodyType})));
             setAuctionStartMode(store.auctionStartMode || 'NOW');
             setAuctionStartDate(store.auctionStartDate || '');
             setReservePrice(store.reservePrice || '');
@@ -1302,7 +1314,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         try {
           const dmgRes=await apiClient<{success:boolean;data:any[]}>(`/damage/${editListingId}`);
           if(!dmgRes?.success || !Array.isArray(dmgRes.data)) throw Error("Invalid damage response");
-          if(!cancelled){setDamageRecords(dmgRes.data.map(damageRecordToEntry));setDamageLoadFailed(false);}
+          if(!cancelled){setDamageRecords(dmgRes.data.map(r=>damageRecordToEntry(r,l.bodyType)));setDamageLoadFailed(false);}
         } catch(err){ if(!cancelled)setDamageLoadFailed(true); console.warn("Failed to load existing damage records",err); }
 
         setStep(1);
@@ -2244,7 +2256,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         // of this branch (auction scheduling / listing-fee payment /
         // publish) is unchanged either way.
         let newListingId: string | null | undefined;
-        let initialAuctionCreatedAtomically = false;
+        let initialAuctionCreatedAtomically = savedAuctionCreatedRef.current;
         if (hpiDraftListingId) {
           await apiClient(`/listings/${hpiDraftListingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
           newListingId = hpiDraftListingId;
@@ -2322,7 +2334,15 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           newListingId = res?.data?.id;
         }
 
-        const damageSaved = newListingId ? await saveDamageRecords(newListingId) : true;
+        if (!newListingId) throw new Error('No saved listing was returned. Publication has not started.');
+        setHpiDraftListingId(newListingId);
+        savedAuctionCreatedRef.current = initialAuctionCreatedAtomically;
+        updateDraft({ savedListingId: newListingId, savedAuctionCreated: initialAuctionCreatedAtomically, damageRecords });
+        const damageSaved = await saveDamageRecords(newListingId);
+        if (!damageSaved) {
+          Alert.alert('Draft saved - damage details need retry', DAMAGE_SAVE_FAILED_MSG);
+          return;
+        }
 
         if (isAuction && newListingId) {
           // Brand-new auctions are already paired with their Auction row by the
@@ -2351,6 +2371,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             Object.keys(auctionPayload).forEach(k => auctionPayload[k] === undefined && delete auctionPayload[k]);
             try {
               await apiClient('/auctions', { method: 'POST', body: JSON.stringify(auctionPayload) });
+              savedAuctionCreatedRef.current = true;
+              updateDraft({ savedAuctionCreated: true });
             } catch (auctionErr: any) {
               Alert.alert(
                 'Listing created',

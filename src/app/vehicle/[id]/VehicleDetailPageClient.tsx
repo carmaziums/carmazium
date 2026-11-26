@@ -1108,7 +1108,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                             const damageRecords = damageDataAvailable ? (listing as any).damageRecords as any[] : []
                             // Show exact seller-saved 3D points; for old/manual exterior
                             // reports, use clearly labelled approximate panel markers.
-                            const positionedDamage = buildBuyerDamagePins(damageRecords)
+                            const positionedDamage = buildBuyerDamagePins(damageRecords, listing.bodyType)
                             // exteriorGrade is computed automatically by the platform from the
                             // seller's reported damage zones — not seller-chosen. Same value
                             // drives the "Grade N" chip on the card and the Buy Cars detail page.

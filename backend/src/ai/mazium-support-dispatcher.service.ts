@@ -7,12 +7,11 @@ import { MaziumSupportAutoReplyService } from './mazium-support-auto-reply.servi
 import { SupportMessageEvents } from '../chat/support-message-events';
 import { requestsHumanSupport } from '../chat/mazium-support-policy';
 
-/** Inbound events reply immediately; polling recovers missed events, never old conversations. */
+/** Inbound events reply immediately; bounded polling recovers recent unanswered messages. */
 @Injectable()
 export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
     private readonly logger = new Logger(MaziumSupportDispatcher.name);
     private running = false;
-    private startedAt = new Date();
     private lastPollAt: Date | null = null;
     private lastSuccessfulPollAt: Date | null = null;
     private lastPollError: string | null = null;
@@ -64,7 +63,6 @@ export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
     }
     async onModuleInit() {
         if (!this.enabled()) return;
-        this.startedAt = new Date();
         this.unsubscribe = this.events.subscribe((roomId, messageId) => {
             void this.processOne(roomId, messageId).catch(() => this.logger.warn('Support event deferred to polling'));
         });
@@ -94,10 +92,10 @@ export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
         if (!this.enabled() || !(await this.ensureBot())) return;
         const eligible = await this.autoReply.inspect(roomId, messageId);
         if (!eligible.eligible || !this.allowedCustomer(eligible.customerId)) return;
-        // The normal live window starts at boot. Explicit human handoffs must
-        // survive a backend restart, but do not backfill old conversations.
+        // Recover recent unanswered questions and explicit human handoffs across
+        // restarts without replaying an unbounded conversation history.
         const handoff = typeof eligible.content === 'string' && requestsHumanSupport(eligible.content);
-        const minCreatedAt = handoff ? new Date(Date.now() - 24 * 60 * 60 * 1000) : this.startedAt;
+        const minCreatedAt = new Date(Date.now() - (handoff ? 24 * 60 * 60 * 1000 : 15 * 60 * 1000));
         const claimed = await this.prisma.$transaction(async tx => {
             await tx.$queryRaw`SELECT pg_advisory_xact_lock(186729, 2)::text`;
             const maxDaily = Math.min(1000, Math.max(1, Number(this.config.get<string>('MAZIUM_SUPPORT_MAX_DAILY_REPLIES') || 200) || 200));
@@ -123,7 +121,9 @@ export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
         this.running = true;
         this.lastPollAt = new Date();
         try {
-            const since = new Date(Math.max(this.startedAt.getTime(), Date.now() - 2 * 60 * 1000));
+            // Recover recent unanswered questions across worker restarts. Eligibility
+            // still requires the latest customer message in an open official room.
+            const since = new Date(Date.now() - 15 * 60 * 1000);
             const testUsers = (this.config.get<string>('MAZIUM_SUPPORT_TEST_USER_IDS') || '').split(',').map(id => id.trim()).filter(Boolean);
             if (this.config.get<string>('MAZIUM_SUPPORT_AUDIENCE') !== 'all' && !testUsers.length) return;
             const messages = await this.prisma.message.findMany({
@@ -133,6 +133,27 @@ export class MaziumSupportDispatcher implements OnModuleInit, OnModuleDestroy {
                 orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 20, select: { id: true, chatRoomId: true },
             });
             for (const message of messages) await this.processOne(message.chatRoomId, message.id);
+
+            // A crash after the durable claim must not leave a customer with silence.
+            // Recover only a local receipt after a five-minute lease, never repeat a
+            // potentially billed model call. Persistence rechecks opt-out, room state,
+            // latest message and duplicate source IDs under its transaction lock.
+            const stalled = await this.prisma.message.findMany({
+                where: { createdAt: { gte: since }, deletedAt: null, aiGenerated: false,
+                    aiSourceMessageId: null, aiSupportAttemptedAt: { lt: new Date(Date.now() - 5 * 60 * 1000) },
+                    senderId: { not: this.config.get<string>('MAZIUM_SUPPORT_BOT_USER_ID'),
+                        ...(this.config.get<string>('MAZIUM_SUPPORT_AUDIENCE') !== 'all' ? { in: testUsers } : {}) },
+                    sender: { role: { not: 'ADMIN' } },
+                    chatRoom: { context: ChatContext.SUPPORT, deletedAt: null, supportClosedAt: null } },
+                orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 20,
+                select: { id: true, chatRoomId: true },
+            });
+            for (const message of stalled) {
+                const eligible = await this.autoReply.inspect(message.chatRoomId, message.id);
+                if (eligible.eligible && this.allowedCustomer(eligible.customerId)) {
+                    await this.autoReply.processCustomerMessage(message.chatRoomId, message.id, false);
+                }
+            }
 
             // A restart can occur between saving a request and dispatching its
             // receipt. Recover recent explicit human requests even if the

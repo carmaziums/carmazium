@@ -11,6 +11,7 @@ import { prepareImageForUpload } from "@/lib/vehiclePhotoCompression"
 import type { ThreeDVehicleViewerProps, SurfacePoint } from "./ThreeDVehicleViewer"
 import { ThreeDErrorBoundary } from "./ThreeDErrorBoundary"
 import { computeExteriorGradeFromDefectCount } from "@/lib/exteriorGrade"
+import { buildBuyerDamagePins } from "@/lib/damageMarkers"
 
 // Dynamic import — Three.js must not run on the server
 const ThreeDVehicleViewer = dynamic<ThreeDVehicleViewerProps>(
@@ -71,6 +72,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, onP
 
   const [bodyType, setBodyType] = React.useState<string>(() => resolveBodyType(initialBodyType))
   const [records, setRecords] = React.useState<DamageRecord[]>(existingRecords)
+  React.useEffect(() => { setBodyType(resolveBodyType(initialBodyType)) }, [initialBodyType])
 
   // Sync existing records when the parent loads them asynchronously (edit mode)
   React.useEffect(() => {
@@ -234,7 +236,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, onP
       photoUrl: pendingPhoto,
       type: pendingType,
       ...(pendingSurfacePoint ? { surfacePoint: pendingSurfacePoint } : {}),
-      bodyType,
+      bodyType: edited?.surfacePoint ? edited.bodyType : bodyType,
       view: edited?.view ?? "TOP",
       x: edited?.x ?? zone?.position[0] ?? 0,
       y: edited?.y ?? zone?.position[1] ?? 0,
@@ -256,9 +258,8 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, onP
     return ALL_ZONES.find(z => z.id === zoneId)?.label ?? zoneId
   }
 
-  const pins = records.flatMap((item, index) => item.surfacePoint
-    ? [{ id: item.id, number: index + 1, point: item.surfacePoint,
-      type: item.type, hasPhoto: Boolean(item.photoUrl) }] : [])
+  const pins = buildBuyerDamagePins(records.map(item => ({ id: item.id, part: item.zone, type: item.type, imageUrl: item.photoUrl,
+    coords: { surfacePoint: item.surfacePoint, referenceBodyType: item.bodyType } })), bodyType)
   const photoCount = records.filter(item => Boolean(item.photoUrl)).length
   const grade = computeExteriorGradeFromDefectCount(records.length)
   const GRADE_META: Record<number, { label: string; desc: string; color: string; bg: string }> = {
@@ -302,7 +303,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, onP
             <button
               key={bt}
               type="button"
-              onClick={() => setBodyType(bt)}
+              onClick={() => { if (!blockUnfinishedEditor()) setBodyType(bt) }}
               className={`flex-1 py-2 rounded-xl border text-xs font-bold transition-all ${
                 bodyType === bt
                   ? "border-primary bg-primary/10 text-primary"

@@ -211,7 +211,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         () => damageRecords.map((r: any) => r.imageUrl).filter(Boolean),
         [damageRecords]
     )
-    const buyerDamagePins = React.useMemo(() => buildBuyerDamagePins(damageRecords), [damageRecords])
+    const buyerDamagePins = React.useMemo(() => buildBuyerDamagePins(damageRecords, auction?.listing?.bodyType), [damageRecords, auction?.listing?.bodyType])
     const [acceptingBid, setAcceptingBid] = React.useState<BidEntry | null>(null)
     const [acceptLoading, setAcceptLoading] = React.useState(false)
     const [acceptError, setAcceptError] = React.useState<string | null>(null)

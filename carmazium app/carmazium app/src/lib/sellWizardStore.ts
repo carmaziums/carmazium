@@ -26,6 +26,8 @@ export interface SellWizardDraft {
   auctionStartMode: 'NOW' | 'SCHEDULED'; auctionStartDate: string;
   reservePrice: string; startingBid: string; minIncrement: string;
   buyItNowPrice: string;
+  savedListingId?: string;
+  savedAuctionCreated?: boolean;
   lastStep: number;
   clearDraft: () => void;
   updateDraft: (partial: Partial<Omit<SellWizardDraft, 'clearDraft' | 'updateDraft'>>) => void;
@@ -48,6 +50,8 @@ export const EMPTY_SELL_DRAFT = {
   damageRecords: [] as DamageEntry[],
   auctionStartMode: 'NOW' as const, auctionStartDate: '',
   reservePrice: '', startingBid: '', minIncrement: '100', buyItNowPrice: '',
+  savedListingId: undefined as string | undefined,
+  savedAuctionCreated: false,
   lastStep: 1,
 };
 
@@ -93,6 +97,7 @@ export const useSellWizardStore = create<SellWizardDraft>()(
         auctionStartMode: state.auctionStartMode, auctionStartDate: state.auctionStartDate,
         reservePrice: state.reservePrice, startingBid: state.startingBid,
         minIncrement: state.minIncrement, buyItNowPrice: state.buyItNowPrice,
+        savedListingId: state.savedListingId, savedAuctionCreated: state.savedAuctionCreated,
         lastStep: state.lastStep,
       }),
     },

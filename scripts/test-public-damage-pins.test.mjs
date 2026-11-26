@@ -59,3 +59,5 @@ test('unknown custom areas and interior reports remain in detail cards; no inven
 test('no records means no markers; no public blanket plus controls', () => {
   assert.deepEqual(buildBuyerDamagePins([]), [])
 })
+
+test('changed reference family cannot reuse an exact point as a precise marker',()=>{const r={id:'a',part:'boot',coords:{surfacePoint:{fx:.5,fy:.4,fz:.1},referenceBodyType:'SUV'}};assert.equal(buildBuyerDamagePins([r],'SEDAN')[0].approximate,true);assert.equal(buildBuyerDamagePins([r],'CROSSOVER')[0].approximate,false);assert.deepEqual(r.coords.surfacePoint,{fx:.5,fy:.4,fz:.1});});

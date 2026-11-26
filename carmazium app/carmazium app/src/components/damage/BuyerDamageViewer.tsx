@@ -49,7 +49,7 @@ const formatPart = (part: string): string =>
 // used to render here (see mobile-production-readiness-plan.md F8).
 export const BuyerDamageViewer: React.FC<Props> = ({ records, isLoading, bodyTypeLabel, hasError, onRetry }) => {
   const [selectedDamageId, setSelectedDamageId] = useState<string | null>(null);
-  const pins = buildBuyerDamagePins(hasError || isLoading ? [] : records);
+  const pins = buildBuyerDamagePins(hasError || isLoading ? [] : records, bodyTypeLabel);
   const toggleRecord = (id: string) => setSelectedDamageId(previous => previous === id ? null : id);
 
   return (

@@ -46,6 +46,7 @@ describe('support dispatcher', () => {
         await dispatcher.onModuleInit();
         prisma.message.findMany
             .mockResolvedValueOnce([])
+            .mockResolvedValueOnce([])
             .mockResolvedValueOnce([
                 { id: 'handoff', chatRoomId: 'room', content: "I'd like to speak to a human support agent, please." },
                 { id: 'unrelated', chatRoomId: 'room', content: 'How much to list?' },
@@ -56,8 +57,8 @@ describe('support dispatcher', () => {
             plan: { kind: 'FIXED' },
         });
         await dispatcher.dispatch();
-        expect(prisma.message.findMany).toHaveBeenCalledTimes(2);
-        expect(prisma.message.findMany.mock.calls[1][0].where.chatRoom.supportAiOptedOutAt).toEqual({ not: null });
+        expect(prisma.message.findMany).toHaveBeenCalledTimes(3);
+        expect(prisma.message.findMany.mock.calls[2][0].where.chatRoom.supportAiOptedOutAt).toEqual({ not: null });
         expect(auto.processCustomerMessage).toHaveBeenCalledTimes(1);
         dispatcher.onModuleDestroy();
     });
@@ -70,6 +71,36 @@ describe('support dispatcher', () => {
     it('recovers missed events only from fresh official support customer messages', async () => {
         const { dispatcher, prisma } = setup(); await dispatcher.onModuleInit(); await dispatcher.dispatch();
         expect(prisma.message.findMany.mock.calls[0][0].where).toMatchObject({ aiGenerated: false, sender: { role: { not: 'ADMIN' } }, chatRoom: { context: 'SUPPORT', deletedAt: null, supportClosedAt: null } });
+        dispatcher.onModuleDestroy();
+    });
+    it('recovers only recent unclaimed questions across restart', async () => {
+        const { dispatcher, prisma, auto } = setup();
+        await dispatcher.onModuleInit();
+        auto.inspect.mockResolvedValue({ eligible: true, customerId: 'customer', content: 'How do I list?', plan: { kind: 'AI' } });
+        await dispatcher.processOne('room', 'message');
+        const earliest = prisma.message.updateMany.mock.calls[0][0].where.createdAt.gte as Date;
+        expect(Date.now() - earliest.getTime()).toBeGreaterThanOrEqual(15 * 60_000);
+        expect(Date.now() - earliest.getTime()).toBeLessThan(16 * 60_000);
+        dispatcher.onModuleDestroy();
+    });
+    it('recovers a stalled claim without another model call', async () => {
+        const { dispatcher, prisma, auto } = setup();
+        await dispatcher.onModuleInit();
+        prisma.message.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: 'stalled', chatRoomId: 'room' }]).mockResolvedValueOnce([]);
+        await dispatcher.dispatch();
+        expect(auto.processCustomerMessage).toHaveBeenCalledWith('room', 'stalled', false);
+        const query = prisma.message.findMany.mock.calls[1][0].where;
+        expect(query.aiSupportAttemptedAt.lt).toBeInstanceOf(Date);
+        expect(query.chatRoom).toMatchObject({ context: 'SUPPORT', deletedAt: null, supportClosedAt: null });
+        dispatcher.onModuleDestroy();
+    });
+    it('does not recover stalled claims after customer opt-out or a newer reply', async () => {
+        const { dispatcher, prisma, auto } = setup();
+        await dispatcher.onModuleInit();
+        prisma.message.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: 'stalled', chatRoomId: 'room' }]).mockResolvedValueOnce([]);
+        auto.inspect.mockResolvedValue({ eligible: false } as any);
+        await dispatcher.dispatch();
+        expect(auto.processCustomerMessage).not.toHaveBeenCalled();
         dispatcher.onModuleDestroy();
     });
     it('exposes ready only after a successful scheduled worker poll', async () => {
