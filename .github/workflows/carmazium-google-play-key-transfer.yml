@@ -1,0 +1,115 @@
+name: CarMazium original signing key encrypted Google Play transfer
+# Manual key enrolment only. Does not generate a signer or publish an app.
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact reviewed main SHA
+        type: string
+        required: true
+      approval:
+        description: Transfer only the original signer encrypted to Google's pinned public key
+        type: choice
+        required: true
+        options: [NOT_APPROVED, OWNER_APPROVED_ORIGINAL_KEY_TRANSFER]
+permissions:
+  contents: read
+concurrency:
+  group: carmazium-google-play-key-transfer
+  cancel-in-progress: false
+jobs:
+  encrypted-transfer:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      REVIEW_SOURCE_SHA: ${{ inputs.source_sha }}
+      TRANSFER_APPROVAL: ${{ inputs.approval }}
+      ORIGINAL_CERT_SHA256: ea9b8d6733ee68d6e36ce092e81c0e360330a56dde9ed0b4edb2c421c8600f24
+      RECIPIENT_SHA256: fc19fb8616f29cdd636e38b4f7d8a39d0d3287deb106782e8570c6c6845cfbe5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Require owner-authorised original-key transfer from exact main
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$REVIEW_SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$REVIEW_SOURCE_SHA" == "$GITHUB_SHA" ]]
+          [[ "$TRANSFER_APPROVAL" == OWNER_APPROVED_ORIGINAL_KEY_TRANSFER ]]
+          echo "$RECIPIENT_SHA256  docs/native/google-play-encryption-public-key.txt" | sha256sum -c -
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Download and checksum Google's PEPK tool
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --proto '=https' --tlsv1.2 --retry 3 \
+            https://www.gstatic.com/play-apps-publisher-rapid/signing-tool/prod/pepk.jar \
+            --output "$RUNNER_TEMP/pepk.jar"
+          echo "aaccc0774b240aa5304bdad2a49865e92f229ca73209ecb6eaafe75dc858e24e  $RUNNER_TEMP/pepk.jar" | sha256sum -c -
+      - name: Exercise encryption and fail-closed checks with disposable test keys
+        run: python3 scripts/test-play-key-transfer.py "$RUNNER_TEMP/pepk.jar"
+      - name: Restore retained keystore only in temporary runner
+        env:
+          KEYSTORE_BASE64: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$KEYSTORE_BASE64"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/retained-release.jks"
+          mkdir "$RUNNER_TEMP/play-encrypted-transfer"
+      - name: Verify original certificate and encrypt for Google without secret command arguments
+        env:
+          CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS }}
+          CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD }}
+          CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          java --class-path "$RUNNER_TEMP/pepk.jar" scripts/ExportPlaySigningKey.java \
+            "$RUNNER_TEMP/retained-release.jks" docs/native/google-play-encryption-public-key.txt \
+            "$RUNNER_TEMP/play-encrypted-transfer/original-signer-google-encrypted.zip" \
+            "$ORIGINAL_CERT_SHA256" "$RECIPIENT_SHA256"
+      - name: Record encrypted artifact provenance
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, zipfile, ssl
+          folder=pathlib.Path(os.environ['RUNNER_TEMP'])/'play-encrypted-transfer'
+          archive=folder/'original-signer-google-encrypted.zip'
+          with zipfile.ZipFile(archive) as bundle:
+              names=bundle.namelist()
+              if set(names) != {'encryptedPrivateKey','certificate.pem'} or len(names) != 2:
+                  raise RuntimeError('Unexpected export contents')
+              cert=ssl.PEM_cert_to_DER_cert(bundle.read('certificate.pem').decode())
+              if hashlib.sha256(cert).hexdigest() != os.environ['ORIGINAL_CERT_SHA256']:
+                  raise RuntimeError('Export certificate mismatch')
+              if not bundle.read('encryptedPrivateKey'):
+                  raise RuntimeError('Missing encrypted key')
+          evidence={'sourceSha':os.environ['GITHUB_SHA'],'runId':os.environ['GITHUB_RUN_ID'],
+            'originalCertificateSha256':os.environ['ORIGINAL_CERT_SHA256'],
+            'googleRecipientFileSha256':os.environ['RECIPIENT_SHA256'],
+            'encryptedZipSha256':hashlib.sha256(archive.read_bytes()).hexdigest(),
+            'purpose':'Google Play original signer enrolment; no public app release'}
+          (folder/'transfer-evidence.json').write_text(json.dumps(evidence,indent=2)+'\n')
+          print('Google-encrypted transfer prepared; no app published.')
+          PY
+      - name: Remove private signing material
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/retained-release.jks"
+      - name: Retain only Google-encrypted transfer and public provenance for owner upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarMazium-Google-Encrypted-Original-Signer
+          path: |
+            ${{ runner.temp }}/play-encrypted-transfer/original-signer-google-encrypted.zip
+            ${{ runner.temp }}/play-encrypted-transfer/transfer-evidence.json
+          if-no-files-found: error
+          retention-days: 1
