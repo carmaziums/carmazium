@@ -18,12 +18,12 @@ jobs:
       EXPO_NO_TELEMETRY: '1'
       APP_ENV: production
       SENTRY_DISABLE_AUTO_UPLOAD: 'true'
-      # Exact source of the already reviewed App Store/TestFlight build 13.
-      SOURCE_SHA: d3bee0fae6ac13b7d4ff2c8534395017cf2c783c
+      # Exact merged source, including the validated non-VAT company correction.
+      SOURCE_SHA: cb26225d3196ca4e14708f53f1de0c6f8858e4f5
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: d3bee0fae6ac13b7d4ff2c8534395017cf2c783c
+          ref: cb26225d3196ca4e14708f53f1de0c6f8858e4f5
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -48,7 +48,7 @@ jobs:
               app.extra.eas.projectId !== '9c77bb81-205c-42f8-913e-b69a0953ec10') {
             throw new Error('Original iOS identity or version mismatch');
           }
-          // Match build 13's public production configuration. No credentials.
+          // Match the original app's public production configuration. No credentials.
           for (const [key, value] of Object.entries(env)) {
             if (!(key === 'APP_ENV' || key.startsWith('EXPO_PUBLIC_'))) continue;
             if (/[\r\n]/.test(String(value))) throw new Error('Multiline environment value');
@@ -64,7 +64,25 @@ jobs:
           npm ci
           npm run typescript
           npm audit --omit=dev --audit-level=critical
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install pinned UI automation
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 https://github.com/mobile-dev-inc/Maestro/releases/download/cli-2.12.1/maestro.zip -o "$RUNNER_TEMP/maestro.zip"
+          echo '54dbb0716425626604973cbb374c585ca30272375d9ce15177a1152765ddd9d7  '"$RUNNER_TEMP/maestro.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/maestro.zip" -d "$RUNNER_TEMP/maestro-cli"
+          echo "$RUNNER_TEMP/maestro-cli/maestro/bin" >> "$GITHUB_PATH"
+      - uses: actions/cache/restore@v4
+        id: simulator-cache
+        with:
+          path: ${{ runner.temp }}/carmazium-simulator
+          key: ios-store-sim-v2-${{ runner.os }}-${{ runner.arch }}-${{ env.SOURCE_SHA }}
       - name: Generate iOS project and build Release for the simulator
+        if: steps.simulator-cache.outputs.cache-hit != 'true'
         working-directory: ${{ runner.temp }}/carmazium-screenshots
         shell: bash
         run: |
@@ -75,7 +93,15 @@ jobs:
             -configuration Release -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$RUNNER_TEMP/carmazium-derived" \
-            CODE_SIGNING_ALLOWED=NO build > "$RUNNER_TEMP/screenshot-evidence/xcodebuild.log" 2>&1
+            CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=YES ARCHS="$(uname -m)" build > "$RUNNER_TEMP/screenshot-evidence/xcodebuild.log" 2>&1
+          mkdir -p "$RUNNER_TEMP/carmazium-simulator"
+          cp -R "$RUNNER_TEMP/carmazium-derived/Build/Products/Release-iphonesimulator/CarMazium.app" "$RUNNER_TEMP/carmazium-simulator/"
+          printf '%s' "$SOURCE_SHA" > "$RUNNER_TEMP/carmazium-simulator/source-sha.txt"
+      - uses: actions/cache/save@v4
+        if: steps.simulator-cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ runner.temp }}/carmazium-simulator
+          key: ios-store-sim-v2-${{ runner.os }}-${{ runner.arch }}-${{ env.SOURCE_SHA }}
       - name: Capture the running iPhone app
         shell: bash
         run: |
@@ -97,20 +123,57 @@ jobs:
           xcrun simctl boot "$DEVICE_ID"
           xcrun simctl bootstatus "$DEVICE_ID" -b
           xcrun simctl status_bar "$DEVICE_ID" override --time '9:41' --batteryState charged --batteryLevel 100
-          APP="$RUNNER_TEMP/carmazium-derived/Build/Products/Release-iphonesimulator/CarMazium.app"
+          APP="$RUNNER_TEMP/carmazium-simulator/CarMazium.app"
           test -d "$APP"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")" = 'uk.carmazium.app'
+          test "$(cat "$RUNNER_TEMP/carmazium-simulator/source-sha.txt")" = "$SOURCE_SHA"
           xcrun simctl install "$DEVICE_ID" "$APP"
-          xcrun simctl launch "$DEVICE_ID" uk.carmazium.app
-          sleep 30
           mkdir -p "$RUNNER_TEMP/screenshot-evidence/screenshots/$SIZE"
+          cat > "$RUNNER_TEMP/home.yaml" <<'FLOW'
+          appId: uk.carmazium.app
+          ---
+          - launchApp
+          - extendedWaitUntil:
+              visible: SKIP
+              timeout: 60000
+          - tapOn: SKIP
+          - extendedWaitUntil:
+              visible: Home
+              timeout: 60000
+          - runFlow:
+              when:
+                visible: Not now
+              commands:
+                - tapOn: Not now
+          - assertNotVisible: GET STARTED
+          - waitForAnimationToEnd
+          FLOW
+          maestro --device "$DEVICE_ID" test --test-output-dir "$RUNNER_TEMP/screenshot-evidence/maestro/$SIZE/home" "$RUNNER_TEMP/home.yaml"
+          sleep 5
           xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshot-evidence/screenshots/$SIZE/01-home.png"
-          xcrun simctl openurl "$DEVICE_ID" 'carmazium://auctions/browse'
-          sleep 15
-          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshot-evidence/screenshots/$SIZE/02-auctions.png"
-          xcrun simctl openurl "$DEVICE_ID" 'carmazium://services'
-          sleep 15
-          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshot-evidence/screenshots/$SIZE/03-services.png"
+          for PAGE in auctions services; do
+          if [ "$PAGE" = auctions ]; then LINK='carmazium://auctions/browse'; EXPECT='.*Ending soonest.*'; FILE=02-auctions; else LINK='carmazium://services'; EXPECT='Everything your vehicle needs. One marketplace.'; FILE=03-services; fi
+          export CAPTURE_LINK="$LINK" CAPTURE_EXPECT="$EXPECT"
+          cat > "$RUNNER_TEMP/page.yaml" <<'FLOW'
+          appId: uk.carmazium.app
+          ---
+          - openLink: ${CAPTURE_LINK}
+          - runFlow:
+              when:
+                visible: Open
+              commands:
+                - tapOn: Open
+          - extendedWaitUntil:
+              visible: ${CAPTURE_EXPECT}
+              timeout: 60000
+          - assertNotVisible: GET STARTED
+          - assertNotVisible: Open
+          - waitForAnimationToEnd
+          FLOW
+          maestro --device "$DEVICE_ID" test -e CAPTURE_LINK="$LINK" -e CAPTURE_EXPECT="$EXPECT" --test-output-dir "$RUNNER_TEMP/screenshot-evidence/maestro/$SIZE/$PAGE" "$RUNNER_TEMP/page.yaml"
+          sleep 5
+          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshot-evidence/screenshots/$SIZE/$FILE.png"
+          done
           xcrun simctl shutdown "$DEVICE_ID"
           done
           sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP/screenshot-evidence/screenshots/"*/*.png
@@ -119,7 +182,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: CarMazium-iOS-build13-native-screenshots
+          name: CarMazium-iOS-current-native-screenshots
           path: |
             ${{ runner.temp }}/screenshot-evidence/screenshots/
             ${{ runner.temp }}/screenshot-evidence/provenance.json
