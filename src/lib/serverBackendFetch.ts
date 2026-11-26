@@ -29,6 +29,12 @@ export function serverBackendFetch(
   options: RetryableFetchInit = {},
   config: ServerBackendFetchConfig = {},
 ): Promise<Response> {
+  // All cached public blog reads (including paginated sitemap reads) share a
+  // tag so an admin save expires their data together. Uncached/auth reads are
+  // deliberately excluded and retain their original request options.
+  if (/^\/blog(?:[/?]|$)/.test(pathOrUrl) && options.next && options.cache !== 'no-store') {
+    options = { ...options, next: { ...options.next, tags: [...new Set([...(options.next.tags || []), 'public-blog'])] } };
+  }
   return fetchWithRetry(resolveBackendUrl(pathOrUrl), options, {
     timeoutMs: config.timeoutMs ?? 8_000,
     retries: config.retries ?? 2,

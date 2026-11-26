@@ -76,7 +76,7 @@ async function getLatestBlogPosts(): Promise<BlogPostSummary[]> {
     try {
         const res = await fetchWithRetry(
             `${API_URL}/blog?page=1&limit=3`,
-            { next: { revalidate: 300 } },
+            { next: { revalidate: 300, tags: ["public-blog"] } },
             { timeoutMs: 7000, retries: 2, retryDelayMs: 300 },
         )
 

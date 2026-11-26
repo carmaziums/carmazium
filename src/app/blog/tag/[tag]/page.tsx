@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import Image from "next/image"
+import { BlogCoverImage } from "@/components/blog/BlogCoverImage"
 import { notFound } from "next/navigation"
 import { ArrowLeft, ArrowRight, Calendar, Newspaper, Tag } from "lucide-react"
 import type { BlogPost } from "@/lib/blogApi"
@@ -103,7 +103,7 @@ export default async function BlogTagPage({ params, searchParams }: { params: Pr
                             <div className="h-48 overflow-hidden relative bg-[var(--bg-input)]">
                                 <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/10 transition-colors z-10" />
                                 {post.coverImage ? (
-                                    <Image
+                                    <BlogCoverImage
                                         src={post.coverImage}
                                         alt={post.title}
                                         width={400}

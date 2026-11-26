@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { PageJsonLd, SEO_SITE } from "@/components/seo/PageJsonLd"
 import Link from "next/link"
-import Image from "next/image"
+import { BlogCoverImage } from "@/components/blog/BlogCoverImage"
 import { notFound } from "next/navigation"
 import { ArrowRight, BookOpen, Calendar, Clock, Newspaper } from "lucide-react"
 import { buttonVariants } from "@/components/ui/buttonVariants"
@@ -9,6 +9,7 @@ import type { BlogPost } from "@/lib/blogApi"
 import { serverBackendFetch } from "@/lib/serverBackendFetch"
 import { GooglePreferredSourceButton } from "@/components/blog/GooglePreferredSourceButton"
 import { SellerGuideLinks } from "@/components/blog/SellerGuideLinks"
+import { BlogTopicGuides } from "@/components/blog/BlogTopicGuides"
 import { GoogleAdBanner } from "@/components/analytics/GoogleAdSense"
 
 // Canonical SEO origin. The apex domain permanently redirects to www.
@@ -92,7 +93,7 @@ function ArticleCard({ post }: { post: BlogPost }) {
         <Link href={`/blog/${post.slug}`} className="group overflow-hidden rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] hover:border-primary/35 hover:-translate-y-1 transition-all duration-300 shadow-lg shadow-black/5">
             <div className="relative aspect-video overflow-hidden bg-[var(--bg-input)]">
                 {post.coverImage ? (
-                    <Image src={post.coverImage} alt={post.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
+                    <BlogCoverImage src={post.coverImage} alt={post.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
                 ) : (
                     <div className="absolute inset-0 flex items-center justify-center"><Newspaper className="w-10 h-10 text-[var(--text-muted)]" /></div>
                 )}
@@ -208,7 +209,7 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Pr
                                 <Link href={`/blog/${featured.slug}`} className="group grid md:grid-cols-[1.2fr_1fr] overflow-hidden rounded-3xl border border-[var(--border-default)] bg-[var(--bg-card)] hover:border-primary/35 transition-all duration-300 shadow-xl shadow-black/10">
                                     <div className="relative aspect-video md:aspect-auto md:min-h-[390px] overflow-hidden bg-[var(--bg-input)]">
                                         {featured.coverImage ? (
-                                            <Image src={featured.coverImage} alt={featured.title} fill sizes="(max-width: 768px) 100vw, 58vw" className="object-cover transition-transform duration-700 group-hover:scale-[1.03]" priority />
+                                            <BlogCoverImage src={featured.coverImage} alt={featured.title} fill sizes="(max-width: 768px) 100vw, 58vw" className="object-cover transition-transform duration-700 group-hover:scale-[1.03]" priority />
                                         ) : (
                                             <div className="absolute inset-0 flex items-center justify-center"><Newspaper className="w-14 h-14 text-[var(--text-muted)]" /></div>
                                         )}
@@ -262,6 +263,7 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Pr
                         )}
                     </>
                 )}
+                {page === 1 && <BlogTopicGuides />}
             </div>
         </div>
     )

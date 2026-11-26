@@ -198,6 +198,21 @@ async function directUploadToSupabase(
  * @param folder - Optional sub-folder path inside the bucket (e.g. 'kyc', 'handover/123')
  * @returns Public URL of the uploaded file
  */
+export async function uploadBlogCover(file: File): Promise<string> {
+    const userId = await getAuthenticatedUserId();
+    if (!userId) throw new Error('Please sign in before uploading a cover.');
+    const { prepareBlogCover } = await import('./blogCoverCompression');
+    const variants = await prepareBlogCover(file);
+    const prefix = `${userId}/blog/${crypto.randomUUID()}-blogcover`;
+    let fullSizeUrl = '';
+    // Return the canonical URL only after EVERY referenced size exists. If an
+    // upload fails, the editor keeps its previous cover and can safely retry.
+    for (const variant of variants) {
+        fullSizeUrl = await directUploadToSupabase(variant.file, 'listings', `${prefix}-w${variant.width}.webp`);
+    }
+    return fullSizeUrl;
+}
+
 export async function uploadImage(
     file: File,
     bucket: string = 'listings',
