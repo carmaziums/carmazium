@@ -38,6 +38,13 @@ describe('automatic support delivery', () => {
         expect(ai.draftSupportReply).not.toHaveBeenCalled();
         expect(chat.persistSupportAutoReply).toHaveBeenCalledWith('room', 'source', 'bot', SUPPORT_UNAVAILABLE_REPLY, 'FIXED');
     });
+    it('sends a guarded local receipt when model generation throws', async () => {
+        const { service, chat, ai, gateway } = setup({ kind: 'AI' });
+        ai.draftSupportReply.mockRejectedValueOnce(new Error('Provider timeout'));
+        expect(await service.processCustomerMessage('room', 'source')).toBe(true);
+        expect(chat.persistSupportAutoReply).toHaveBeenCalledWith('room', 'source', 'bot', SUPPORT_UNAVAILABLE_REPLY, 'FIXED');
+        expect(gateway.broadcastMessage).toHaveBeenCalledTimes(1);
+    });
     it('never broadcasts a reply rejected by the final race/duplicate check', async () => {
         const { service, chat, gateway } = setup({ kind: 'AI' });
         chat.persistSupportAutoReply.mockResolvedValue({ created: false, reason: 'SOURCE_CHANGED_OR_SENSITIVE' } as any);

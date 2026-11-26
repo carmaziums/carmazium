@@ -2236,10 +2236,13 @@ export class ChatService {
 
     /** Read only server-authored offers; customer text cannot forge handoff state. */
     private async planSupportReply(db: PrismaService | Prisma.TransactionClient, room: any, content: string, createdAt: Date) {
+        // Recovered messages must re-evaluate the staff-only window at delivery
+        // time; their original send time would keep them blocked indefinitely.
+        const decisionAt = new Date();
         const couldConfirm = /^(?:yes(?: please)?|please do|go ahead|pass it on|connect me|no(?: thanks?)?|you can help(?: me)?|help me instead|let'?s try|no thanks?[, ]*human please)[.!? ]*$/i.test(content.trim());
-        if (!requestsHumanSupport(content) && !couldConfirm) return supportReplyPlan(room, content, createdAt);
+        if (!requestsHumanSupport(content) && !couldConfirm) return supportReplyPlan(room, content, decisionAt);
         const botId = process.env.MAZIUM_SUPPORT_BOT_USER_ID;
-        if (!botId) return supportReplyPlan(room, content, createdAt);
+        if (!botId) return supportReplyPlan(room, content, decisionAt);
         const offer = await db.message.findFirst({
             where: { chatRoomId: room.id, senderId: botId, aiGenerated: true, deletedAt: null, content: SUPPORT_HELP_OFFER },
             orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -2255,7 +2258,7 @@ export class ChatService {
             pending = lastBot?.content === SUPPORT_HELP_OFFER;
         }
         return supportReplyPlan({ ...room, supportHelpOffered: offer?.content === SUPPORT_HELP_OFFER,
-            supportHelpOfferPending: pending }, content, createdAt);
+            supportHelpOfferPending: pending }, content, decisionAt);
     }
 
     /**

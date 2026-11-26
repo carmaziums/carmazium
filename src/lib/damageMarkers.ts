@@ -14,7 +14,7 @@ export interface PublicDamageRecord {
   part?: string | null
   type?: string | null
   imageUrl?: string | null
-  coords?: { surfacePoint?: DamagePoint | null } | null
+  coords?: { surfacePoint?: DamagePoint | null; referenceBodyType?: string | null } | null
 }
 
 export interface BuyerDamagePin {
@@ -78,10 +78,19 @@ function validPoint(value: DamagePoint | null | undefined): value is DamagePoint
     && value[key] >= 0 && value[key] <= 1))
 }
 
-export function buildBuyerDamagePins(records: readonly PublicDamageRecord[]): BuyerDamagePin[] {
+export function damageReferenceModel(bodyType?: string | null): string {
+  const value = String(bodyType ?? '').toUpperCase().replace(/[ -]/g, '_');
+  if (['HATCHBACK','ESTATE','STATION_WAGON','WAGON'].includes(value)) return 'hatchback';
+  if (['SUV','CROSSOVER','PICKUP_TRUCK','PICKUP','MINIVAN','MPV','VAN'].includes(value)) return 'suv';
+  return 'sedan';
+}
+
+export function buildBuyerDamagePins(records: readonly PublicDamageRecord[], currentBodyType?: string | null): BuyerDamagePin[] {
   return records.flatMap((record, index) => {
     const zone = String(record.part ?? '')
-    const exactPoint = record.coords?.surfacePoint
+    const sameModel = !record.coords?.referenceBodyType || !currentBodyType
+      || damageReferenceModel(record.coords.referenceBodyType) === damageReferenceModel(currentBodyType)
+    const exactPoint = sameModel ? record.coords?.surfacePoint : undefined
     const anchor = !validPoint(exactPoint) ? panelPoints[normalizedPanel(zone)] : undefined
     if (!validPoint(exactPoint) && !anchor) return []
     const point: DamagePoint = validPoint(exactPoint)

@@ -25,8 +25,13 @@ export class MaziumSupportAutoReplyService {
             let kind: 'FIXED' | 'AI' = 'FIXED';
             let reply = eligible.plan.kind === 'FIXED' ? eligible.plan.reply : SUPPORT_UNAVAILABLE_REPLY;
             if (eligible.plan.kind === 'AI' && allowGeneration) {
-                const draft = await this.ai.draftSupportReply(eligible.conversation, { automatic: true, userId: eligible.customerId });
-                if (draft && safeAutomaticSupportReply(draft)) { reply = draft; kind = 'AI'; }
+                try {
+                    const draft = await this.ai.draftSupportReply(eligible.conversation, { automatic: true, userId: eligible.customerId });
+                    if (draft && safeAutomaticSupportReply(draft)) { reply = draft; kind = 'AI'; }
+                } catch {
+                    // A provider exception must still reach the guarded local receipt path.
+                    this.logger.warn('MaziuM generation unavailable; sending support receipt');
+                }
             }
             let saved = await this.chat.persistSupportAutoReply(roomId, sourceMessageId, botUserId, reply, kind);
             if (!saved.created && ['DAILY_LIMIT_REACHED', 'ROOM_COOLDOWN'].includes(saved.reason)) {

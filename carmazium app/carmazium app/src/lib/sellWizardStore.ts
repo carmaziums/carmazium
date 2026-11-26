@@ -1,3 +1,4 @@
+import type { DamageEntry } from "./nativeDamageRecords";
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,9 +22,12 @@ export interface SellWizardDraft {
   // Already-uploaded public URLs only; never temporary local file:// URIs.
   exteriorImages: string[]; interiorImages: string[]; damageImages: string[];
   photoOrder: string[];
+  damageRecords: DamageEntry[];
   auctionStartMode: 'NOW' | 'SCHEDULED'; auctionStartDate: string;
   reservePrice: string; startingBid: string; minIncrement: string;
   buyItNowPrice: string;
+  savedListingId?: string;
+  savedAuctionCreated?: boolean;
   lastStep: number;
   clearDraft: () => void;
   updateDraft: (partial: Partial<Omit<SellWizardDraft, 'clearDraft' | 'updateDraft'>>) => void;
@@ -43,8 +47,11 @@ export const EMPTY_SELL_DRAFT = {
   departedRelSelect: '', departedRelOther: '', declAcknowledged: false,
   exteriorImages: [] as string[], interiorImages: [] as string[], damageImages: [] as string[],
   photoOrder: [] as string[],
+  damageRecords: [] as DamageEntry[],
   auctionStartMode: 'NOW' as const, auctionStartDate: '',
   reservePrice: '', startingBid: '', minIncrement: '100', buyItNowPrice: '',
+  savedListingId: undefined as string | undefined,
+  savedAuctionCreated: false,
   lastStep: 1,
 };
 
@@ -85,10 +92,12 @@ export const useSellWizardStore = create<SellWizardDraft>()(
         declAcknowledged: state.declAcknowledged,
         exteriorImages: state.exteriorImages,
         photoOrder: state.photoOrder,
+        damageRecords: state.damageRecords,
         interiorImages: state.interiorImages, damageImages: state.damageImages,
         auctionStartMode: state.auctionStartMode, auctionStartDate: state.auctionStartDate,
         reservePrice: state.reservePrice, startingBid: state.startingBid,
         minIncrement: state.minIncrement, buyItNowPrice: state.buyItNowPrice,
+        savedListingId: state.savedListingId, savedAuctionCreated: state.savedAuctionCreated,
         lastStep: state.lastStep,
       }),
     },

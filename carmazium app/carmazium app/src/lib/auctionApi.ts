@@ -1,6 +1,6 @@
 import { apiClient } from './apiClient';
 import { CarListing } from '../data/listings';
-import { mapTransmission } from './listingsApi';
+import { mapTransmission, mapCategory } from './listingsApi';
 
 /**
  * Grace period a declared auction winner has to pay the £125 buyer fee before
@@ -194,7 +194,8 @@ export function auctionToListingParam(a: AuctionDetail): CarListing & { auctionI
     mileage: l?.mileage ?? 0,
     fuelType: l?.fuelType ?? 'Petrol',
     transmission: mapTransmission(l?.transmission),
-    category: 'Saloon',
+    category: mapCategory(l?.bodyType ?? l?.category),
+      bodyTypeRaw: l?.bodyType ?? null,
     condition: 'Used',
     colour: l?.colour ?? l?.color ?? '',
     bhp: l?.bhp ?? 0,

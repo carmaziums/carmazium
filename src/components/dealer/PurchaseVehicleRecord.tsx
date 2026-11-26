@@ -46,7 +46,7 @@ export function PurchaseVehicleRecord({ record, title, purchasedAt = null }: { r
     const [missing, setMissing] = React.useState<Set<number>>(() => new Set())
     const [selectedDamageId, setSelectedDamageId] = React.useState<string | null>(null)
     const damagePins = React.useMemo(
-        () => buildBuyerDamagePins(record.damage as unknown as PublicDamageRecord[]), [record.damage])
+        () => buildBuyerDamagePins(record.damage as unknown as PublicDamageRecord[], record.bodyType), [record.damage, record.bodyType])
     const d = record.sellerDeclarations
     const features = Array.isArray(record.features) ? (record.features as unknown[]).filter(f => typeof f === "string") as string[] : []
 

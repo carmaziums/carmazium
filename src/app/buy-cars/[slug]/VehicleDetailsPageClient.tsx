@@ -269,7 +269,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     const [damageLoading, setDamageLoading] = React.useState(true)
     const [selectedDamageId, setSelectedDamageId] = React.useState<string | null>(null)
     const selectedDamageZone = damageRecords.find((r: any) => r.id === selectedDamageId)?.part ?? null
-    const buyerDamagePins = buildBuyerDamagePins(damageRecords)
+    const buyerDamagePins = buildBuyerDamagePins(damageRecords, listing?.bodyType)
     const [deliveryDistanceInfo, setDeliveryDistanceInfo] = React.useState<{ distanceMiles: number } | null>(null)
 
     const handleDealerPhoneClick = React.useCallback(() => {

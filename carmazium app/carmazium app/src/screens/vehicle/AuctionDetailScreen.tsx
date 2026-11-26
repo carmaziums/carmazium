@@ -1,5 +1,6 @@
 import { shareVehicle } from '../../lib/shareVehicle';
 import { SellerServiceBadges } from '../../components/SellerServiceBadges';
+import { mapCategory } from '../../lib/listingsApi';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useScrollLocked } from '../../lib/scrollLock';
 import {
@@ -446,20 +447,18 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // can re-run the exact same fetch — a failed fetch used to be swallowed
   // silently and render identically to "no damage recorded," indistinguishable
   // from the 3D model failing to load (mobile-production-readiness-plan.md F41).
+  const damageRequest = useRef(0);
   const fetchDamageRecords = useCallback(() => {
-    const listingId = listingObj?.id;
-    if (!listingId) return;
-    setDamageLoading(true);
-    setDamageError(false);
-    apiClient<{ success: boolean; data: any[] }>(`/damage/${listingId}`)
-      .then(res => { if (res?.success) setDamageRecords(res.data || []); })
-      .catch(() => setDamageError(true))
-      .finally(() => setDamageLoading(false));
-  }, [listingObj?.id]);
+    const request = ++damageRequest.current;
+    setDamageLoading(true); setDamageError(false); setDamageRecords([]);
+    if (!auctionId) { setDamageError(true); setDamageLoading(false); return; }
+    apiClient<{ success: boolean; data: any[] }>(`/auctions/${auctionId}/damage`)
+      .then(res => { if (request !== damageRequest.current) return; if (!res?.success || !Array.isArray(res.data)) throw Error("Invalid damage response"); setDamageRecords(res.data); })
+      .catch(() => { if(request === damageRequest.current) setDamageError(true); })
+      .finally(() => { if(request === damageRequest.current) setDamageLoading(false); });
+  }, [auctionId, auction?.status]);
 
-  useEffect(() => {
-    fetchDamageRecords();
-  }, [fetchDamageRecords]);
+  useEffect(() => { fetchDamageRecords(); return () => { damageRequest.current++; }; }, [fetchDamageRecords]);
 
   // ─── Socket ───────────────────────────────────────────────────────────────
 
@@ -2160,14 +2159,14 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 VehicleDetailScreen. Grade pill is the only place
                 exteriorGrade appears on this screen. */}
             <View style={s.card}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
                   <Ionicons name="warning-outline" size={13} color={Colors.warning} />
                   <Text style={[s.cardSectionTitle, { marginBottom: 0 }]}>Condition & Damage</Text>
                 </View>
                 <GradeChip grade={(auction?.listing as any)?.exteriorGrade} variant="pill" />
               </View>
-              {!['CARAVAN', 'CAMPERVAN'].includes(auction?.listing?.bodyType || '') && <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />}
+              {!['CARAVAN', 'CAMPERVAN'].includes(auction?.listing?.bodyType || '') && <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={auction?.listing?.bodyType ?? listing.bodyTypeRaw ?? listing.category} hasError={damageError} onRetry={fetchDamageRecords} />}
               {(auction?.listing as any)?.mechanicalIssues ? (
                 <View style={{ marginTop: 12, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(245,158,11,0.28)', backgroundColor: 'rgba(245,158,11,0.07)' }}>
                   <Text style={[s.specKey, { color: Colors.warning, marginBottom: 5 }]}>KNOWN MECHANICAL PROBLEMS</Text>

@@ -56,8 +56,8 @@ test('public viewers render exact and approximate damage pins, not blanket plus 
   assert.ok(helper.includes('surfacePoint'));
   assert.ok(helper.includes('panelPoints'));
   assert.ok(buyer.includes('damagePins={buyerDamagePins}'));
-  assert.ok(buyer.includes('buildBuyerDamagePins(damageRecords)'));
-  assert.ok(vehicle.includes('const positionedDamage = buildBuyerDamagePins(damageRecords)'));
+  assert.ok(buyer.includes('buildBuyerDamagePins(damageRecords, listing?.bodyType)'));
+  assert.ok(vehicle.includes('const positionedDamage = buildBuyerDamagePins(damageRecords, listing.bodyType)'));
   assert.ok(vehicle.includes('damagePins={positionedDamage}'));
   assert.ok(liveAuction.includes('damagePins={buyerDamagePins}'));
   assert.ok(liveAuction.includes('selectedDamageId={selectedDamageId}'));
@@ -68,7 +68,7 @@ test('public viewers render exact and approximate damage pins, not blanket plus 
 test('buyer can inspect individual seller-reported damage without editing it', () => {
   assert.match(buyer,/const \[selectedDamageId, setSelectedDamageId\]/);
   assert.match(buyer,/damagePins=\{buyerDamagePins\}/);
-  assert.ok(buyer.includes('buildBuyerDamagePins(damageRecords)'));
+  assert.ok(buyer.includes('buildBuyerDamagePins(damageRecords, listing?.bodyType)'));
   assert.ok(read('src/lib/damageMarkers.ts').includes('record.coords?.surfacePoint'));
   assert.match(buyer,/No damage reported by the seller/);
 });
@@ -81,3 +81,5 @@ test('server authenticates owner or authorized dealer role inside transaction; e
   assert.match(backend,/validExistingUrl/);
   assert.match(backend,/BadRequestException\('Damage photo must belong to this listing\.'/);
 });
+
+test('failed existing damage load blocks website submission instead of replacing records with empty data',()=>{assert.match(wizard,/setDamageEditLoaded\(false\)/);assert.match(wizard,/if \(!Array.isArray\(damageData\)\) throw/);assert.match(wizard,/setDamageRecords\(mapped\)\s+setDamageEditLoaded\(true\)/);assert.match(wizard,/if \(editId && !damageEditLoaded\) return/);assert.match(wizard,/referenceBodyType: record.bodyType/);});

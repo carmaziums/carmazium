@@ -12,6 +12,7 @@ export interface DamageDetection {
     view: 'FRONT' | 'SIDE' | 'REAR' | 'TOP' | 'INTERIOR';
     /** Exact position on the generic GLB box, independent of the 2D map. */
     surfacePoint?: { fx: number; fy: number; fz: number };
+    referenceBodyType?: string;
   };
   imageUrl: string;
 }
@@ -130,6 +131,9 @@ export class DamageAnalysisService {
           || coords.x < -10 || coords.x > 100 || coords.y < -10 || coords.y > 100
           || !['FRONT', 'SIDE', 'REAR', 'TOP', 'INTERIOR'].includes(coords.view)) {
           throw new BadRequestException('Invalid damage map coordinates.');
+        }
+        if (coords.referenceBodyType !== undefined && (typeof coords.referenceBodyType !== 'string' || coords.referenceBodyType.length > 80)) {
+          throw new BadRequestException('Invalid damage reference body type.');
         }
         const point = d.coords?.surfacePoint;
         if (point !== undefined && (!point || ![point.fx, point.fy, point.fz].every(

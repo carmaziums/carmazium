@@ -410,6 +410,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [damageImageCount, setDamageImageCount] = React.useState(0)
     const [damageRecords, setDamageRecords] = React.useState<DamageRecord[]>([])
     const [damageEntryPending, setDamageEntryPending] = React.useState(false)
+    const [damageEditLoaded, setDamageEditLoaded] = React.useState(false)
     // One canonical serializer shared across edit, new auction, new retail
     // and auction→retail conversion. The previous four separate mappings
     // discarded stable IDs, typed categories and precise 3D hit positions.
@@ -422,6 +423,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         size: "MEDIUM",
         coords: {
             x: record.x, y: record.y, view: record.view,
+            ...(record.bodyType ? { referenceBodyType: record.bodyType } : {}),
             ...(record.surfacePoint ? { surfacePoint: record.surfacePoint } : {}),
         },
         imageUrl: record.photoUrl?.startsWith("https://") ? record.photoUrl : "",
@@ -479,9 +481,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     React.useEffect(() => {
         if (!editId) return
         setEditLoading(true)
+        setDamageEditLoaded(false)
+        let loadedBodyType = ''
         apiClient<{ data: any }>(`/listings/${editSlug || editId}`)
             .then(res => {
                 const l = res.data
+                loadedBodyType = l.bodyType || ''
                 setFormData(prev => ({
                     ...prev,
                     vrm: l.vrm || '',
@@ -589,7 +594,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 return getDamageRecords(editId!)
             })
             .then(damageData => {
-                if (!damageData) return
+                if (!Array.isArray(damageData)) throw new Error('Existing damage information is unavailable')
                 const mapped = damageData.map((r: any) => {
                     const originalType = String(r.type ?? '')
                     const match = originalType.match(/^(SCRATCH|SCUFF|DENT|CRACK|OTHER)(?: - (.*))?$/i)
@@ -605,7 +610,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         description: match ? match[2] || '' : originalType,
                         photoUrl: typeof r.imageUrl === 'string' && r.imageUrl.startsWith('https://')
                             ? r.imageUrl : undefined,
-                        bodyType: r.bodyType || '',
+                        bodyType: r.coords?.referenceBodyType || r.bodyType || loadedBodyType,
                         view: (r.coords?.view ?? 'TOP') as 'TOP' | 'FRONT',
                         x: r.coords?.x ?? 0,
                         y: r.coords?.y ?? 0,
@@ -613,6 +618,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     }
                 })
                 setDamageRecords(mapped)
+                setDamageEditLoaded(true)
             })
             .catch(err => console.error('Failed to load listing for edit:', err))
             .finally(() => setEditLoading(false))
@@ -892,6 +898,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // A touring caravan is a VIN/CRiS-identified trailer, not a DVLA-registered motor vehicle.
     const chooseBodyType = (key: BodyTypeValue) => {
         if (formData.bodyType === key) return
+        if (key === 'CARAVAN' && damageRecords.length > 0) {
+            alert('This listing has saved vehicle damage declarations. Keep the original vehicle type or review and remove those declarations before changing it to a caravan.')
+            return
+        }
         lookupRequestRef.current += 1
         setDvlaLoading(false)
         if (key === 'CARAVAN') {
@@ -1305,6 +1315,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     : null
             }
             case 2: {
+                if (editId && !damageEditLoaded) return 'Existing damage information could not be loaded. Reopen this listing before saving; your saved records have not been changed.'
                 if (damageEntryPending) {
                     return 'Please save or cancel the open damage entry before leaving Photos. Wait for any photo upload to finish.'
                 }
@@ -2308,6 +2319,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
     const confirmRetailConversion = async () => {
         if (!retailConversion) return
+        if (editId && !damageEditLoaded) { setSubmitError('Reopen the listing to load its existing damage information before converting.'); return }
 
         setIsConvertingToRetail(true)
         setSubmitError(null)
@@ -3609,6 +3621,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">Select damaged areas on your vehicle</p>
                                     </div>
                                 </div>
+                                {editId && !damageEditLoaded && <p role="alert">Existing damage information is unavailable. Reopen this listing before editing or saving its condition report.</p>}
                                 <VehicleDamageMapper
                                     bodyType={formData.bodyType || undefined}
                                     existingRecords={damageRecords}

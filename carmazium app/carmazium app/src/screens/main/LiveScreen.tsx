@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
@@ -18,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { formatPrice, AuctionListing } from '../../data/listings';
+import { mapCategory } from '../../lib/listingsApi';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Colors, themeStatusBarStyle } from '../../constants/colors';
@@ -140,6 +140,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<AuctionFilterState>(INITIAL_AUCTION_FILTERS);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     setAuctionLoadError(null);
@@ -184,7 +185,8 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
           mileage: a.listing.mileage,
           fuelType: a.listing.fuelType as any,
           transmission: mapTransmission(a.listing.transmission),
-          category: (a.listing.category as any) || 'Sports',
+          category: mapCategory(a.listing.bodyType ?? a.listing.category),
+          bodyTypeRaw: a.listing.bodyType ?? null,
           condition: (a.listing.condition as any) || 'Used',
           colour: a.listing.colour || '',
           bhp: a.listing.bhp || 0,
@@ -267,7 +269,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
 
   const filteredActive = useMemo(() => {
     const out = activeList.filter(
-      (a) => matchesQuery(a.make, a.model) && matchesAuctionFilters(a, filters, a.currentBid),
+      (a) => matchesQuery(a.make, a.model) && matchesAuctionFilters(a, filters, a.totalBids > 0 ? a.currentBid : a.startingBid),
     );
     return out.sort(compareAuctions(filters.sortBy));
   }, [activeList, q, filters]);
@@ -360,14 +362,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
                   width={SCREEN_WIDTH - 48}
                   height={196}
                   onPress={() => navigation.navigate('LiveAuctionDetailed', { listing: auction })}
-                  // The bottom strip is already occupied by the make/model
-                  // name overlay below — showing the dots/counter there too
-                  // would collide with that text.
-                  showIndicator={false}
                 />
-                <View style={styles.imageGradient} pointerEvents="none" />
-                {/* Darker band behind the make/model so it reads on any photo. */}
-                <LinearGradient colors={['transparent', 'rgba(0,0,0,0.72)']} style={styles.imageNameScrim} pointerEvents="none" />
 
                 <View style={styles.liveBadge} pointerEvents="none">
                   <View style={styles.liveDot} />
@@ -383,18 +378,18 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
                   />
                 </View>
 
-                <View style={styles.imageNameContainer} pointerEvents="none">
+              </View>
+              <View style={styles.imageNameContainer}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Text style={styles.imageCarMake}>
                       {auction.make.toUpperCase()}
                     </Text>
                     <GradeChip grade={auction.exteriorGrade} />
                   </View>
-                  <Text style={styles.imageCarModel}>
+                  <Text style={styles.imageCarModel} numberOfLines={3}>
                     {auction.model} {auction.variant}
                   </Text>
                 </View>
-              </View>
 
               {/* Meta chips — year / mileage / fuel / body / location / delivery */}
               <View style={{ paddingHorizontal: 18, paddingTop: 14 }}>
@@ -413,7 +408,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
               <View style={styles.statsRow}>
                 <View style={styles.statsLeft}>
                   <Text style={styles.statsLabel}>{auction.totalBids > 0 ? 'CURRENT BID' : 'STARTING BID'}</Text>
-                  <Text style={styles.statsPrice}>
+                  <Text style={styles.statsPrice} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>
                     {formatPrice(auction.totalBids > 0 ? auction.currentBid : auction.startingBid)}
                   </Text>
                   {auction.totalBids === 0 && (
@@ -540,9 +535,10 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
             )}
           </TouchableOpacity>
 
-          <Text style={styles.sortLabel} numberOfLines={1}>
-            {AUCTION_SORT_OPTIONS.find((o) => o.value === filters.sortBy)?.label}
-          </Text>
+          <TouchableOpacity style={styles.sortControl} onPress={() => setSortMenuOpen(v => !v)} accessibilityRole="button" accessibilityLabel="Sort live auctions" accessibilityState={{ expanded: sortMenuOpen }}>
+            <Text style={styles.sortLabel}>{AUCTION_SORT_OPTIONS.find(o => o.value === filters.sortBy)?.label}</Text>
+            <Ionicons name={sortMenuOpen ? 'chevron-up' : 'chevron-down'} size={15} color={Colors.textSecondary} />
+          </TouchableOpacity>
 
           {activeFilterCount > 0 && (
             <TouchableOpacity
@@ -557,6 +553,15 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
           )}
         </View>
 
+        {sortMenuOpen && <View style={styles.sortOptions}>
+          {AUCTION_SORT_OPTIONS.map(option => (
+            <TouchableOpacity key={option.value} style={[styles.filterBtn, filters.sortBy === option.value && styles.filterBtnActive]}
+              accessibilityRole="button" accessibilityState={{ selected: filters.sortBy === option.value }}
+              onPress={() => { setFilters(previous => ({ ...previous, sortBy: option.value })); setSortMenuOpen(false); }}>
+              <Text style={[styles.filterBtnText, filters.sortBy === option.value && styles.filterBtnTextActive]}>{option.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>}
         {/* Dealer staff without MANAGE_INVENTORY must not see a seller CTA. */}
         {canCreateAuction && (
         <TouchableOpacity
@@ -659,7 +664,8 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; headerContent?:
               mileage: auc.listing.mileage,
               fuelType: auc.listing.fuelType as any,
               transmission: mapTransmission(auc.listing.transmission),
-              category: (auc.listing.category as any) || 'Sports',
+              category: mapCategory(auc.listing.bodyType ?? auc.listing.category),
+              bodyTypeRaw: auc.listing.bodyType ?? null,
               condition: (auc.listing.condition as any) || 'Used',
               colour: auc.listing.colour || '',
               bhp: auc.listing.bhp || 0,
@@ -842,6 +848,8 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size9,
     color: Colors.accent,
   },
+  sortControl: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 6, minHeight: 40, borderWidth: 1, borderColor: Colors.border, borderRadius: 10, paddingHorizontal: 10 },
+  sortOptions: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingHorizontal: 20, paddingBottom: 12 },
   sortLabel: {
     flex: 1,
     fontFamily: FontFamily.medium,
@@ -1098,44 +1106,22 @@ const styles = StyleSheet.create({
 
   // Car name overlay on image
   imageNameScrim: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '55%' },
-  imageNameContainer: {
-    position: 'absolute',
-    bottom: 14,
-    left: 14,
-    right: 14,
-  },
-  imageCarMake: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size10,
-    color: Colors.onAccentMuted,
-    textShadowColor: Colors.blackAlpha75, textShadowRadius: 6, textShadowOffset: { width: 0, height: 1 },
-    letterSpacing: 1.2,
-    marginBottom: 2,
-  },
-  imageCarModel: {
-    fontFamily: FontFamily.extraBold,
-    fontSize: FontSize.xl,
-    // Fixed white: this text sits on the photo in both themes.
-    color: Colors.onAccent,
-    textShadowColor: Colors.blackAlpha75, textShadowRadius: 8, textShadowOffset: { width: 0, height: 1 },
-    letterSpacing: -0.3,
-  },
+  imageNameContainer: { paddingHorizontal: 16, paddingTop: 12, gap: 3 },
+  imageCarMake: { fontFamily: FontFamily.semiBold, fontSize: 11, color: Colors.textMuted, flexShrink: 1 },
+  imageCarModel: { fontFamily: FontFamily.bold, fontSize: 16, lineHeight: 23, color: Colors.textPrimary },
 
   // Stats row (below image)
   statsRow: {
-    flexDirection: 'row',
+    flexDirection: 'column',
+    gap: 10,
     paddingHorizontal: 18,
     paddingTop: 16,
     paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: Colors.deepBlue_1e1e26,
   },
-  statsLeft: {
-    flex: 1,
-  },
-  statsRight: {
-    alignItems: 'flex-end',
-  },
+  statsLeft: { width: '100%' },
+  statsRight: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 },
   statsLabel: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size8,
@@ -1145,8 +1131,8 @@ const styles = StyleSheet.create({
   },
   statsPrice: {
     fontFamily: FontFamily.mono,
-    fontSize: FontSize['2xl'],
-    color: Colors.white,
+    fontSize: 20,
+    color: Colors.textPrimary,
     marginBottom: 3,
     letterSpacing: -0.5,
   },

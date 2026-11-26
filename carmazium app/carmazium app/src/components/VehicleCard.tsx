@@ -177,7 +177,7 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
 
         {/* Price tag */}
         <View style={styles.priceTag}>
-          <Text style={styles.priceText}>{getNativeListingPrice(listing).amount}</Text>
+          <Text style={styles.priceText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>{getNativeListingPrice(listing).amount}</Text>
           <Text style={{ fontSize: 10, color: Colors.textMuted }}>{getNativeListingPrice(listing).label}</Text>
         </View>
       </View>
@@ -386,6 +386,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.whiteAlpha15,
   },
   priceTag: {
+    maxWidth: '85%',
     position: 'absolute',
     bottom: 12,
     right: 12,

@@ -31,6 +31,8 @@ import { haptics } from '../../lib/haptics';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../../lib/paymentsApi';
 import { ThreeDVehicleViewer } from '../../components/damage/ThreeDVehicleViewer';
+import { buildBuyerDamagePins, type DamagePoint } from '../../lib/damageMarkers';
+import { damageEntryToRecord, damageRecordToEntry, suggestDamageZone, type DamageEntry } from '../../lib/nativeDamageRecords';
 import { DamageViewerErrorBoundary } from '../../components/damage/DamageViewerErrorBoundary';
 import { DAMAGE_ZONES_3D, DAMAGE_ZONE_SECTIONS } from '../../components/damage/damageZones';
 import {
@@ -95,12 +97,6 @@ function createValuationJourneyId(): string {
   });
 }
 
-interface DamageEntry {
-  id: string;
-  zone: string;
-  type: 'SCRATCH' | 'SCUFF' | 'DENT' | 'CRACK' | 'OTHER';
-  description: string;
-}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -483,35 +479,43 @@ function SectionBox({ title, children, accent, action, onLayout }: {
 
 // ─── Interactive Damage Map ───────────────────────────────────────────────────
 
-function Damage3DMapper({
-  records, onAdd, onRemove, onHide, onPhoto, bodyTypeLabel,
-}: {
-  records: DamageEntry[];
-  onAdd: (entry: DamageEntry) => void;
-  onRemove: (id: string) => void;
-  onHide: (zoneId: string) => void;
-  onPhoto: (zoneId: string, uri: string) => void;
-  bodyTypeLabel?: string;
+function Damage3DMapper({ records, onAdd, onRemove, onPhoto, bodyTypeLabel, onPendingChange }: {
+ records: DamageEntry[]; onAdd:(entry:DamageEntry)=>void; onRemove:(id:string)=>void;
+ onPhoto:(uri:string)=>Promise<string>; bodyTypeLabel?:string; onPendingChange:(pending:boolean)=>void;
 }) {
   const [addingZone, setAddingZone] = useState<string | null>(null);
-  const [dmgType, setDmgType] = useState<DamageEntry['type']>('SCRATCH');
-  const [dmgDesc, setDmgDesc] = useState('');
-  const [customZoneText, setCustomZoneText] = useState('');
-
-  function confirmAdd() {
-    if (!addingZone) return;
-    onAdd({
-      id: `${Date.now()}`,
-      zone: addingZone,
-      type: dmgType,
-      description: dmgDesc.trim(),
-    });
-    setAddingZone(null);
-    setDmgType('SCRATCH');
-    setDmgDesc('');
+  const [dmgType, setDmgType] = useState<DamageEntry["type"]>("SCRATCH");
+  const [dmgDesc, setDmgDesc] = useState("");
+  const [customZoneText, setCustomZoneText] = useState("");
+  const [point, setPoint] = useState<DamagePoint>();
+  const [photo, setPhoto] = useState<string>();
+  const [editing, setEditing] = useState<DamageEntry | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [photoUploadFailed, setPhotoUploadFailed] = useState(false);
+  const [manualOpen,setManualOpen]=useState(false);
+  const reset=()=>{setAddingZone(null);setPoint(undefined);setPhoto(undefined);setEditing(null);setDmgType("SCRATCH");setDmgDesc("");setPhotoUploadFailed(false);onPendingChange(false);};
+  const start=(zone:string,p?:DamagePoint,record?:DamageEntry)=>{
+    if(uploading)return;
+    if(addingZone){Alert.alert("Finish the current damage report","Save or cancel the current report before adding another.");return;}
+    if(!record && records.length>=100){Alert.alert("Damage report limit","A listing can have up to 100 damage records.");return;}
+    setAddingZone(zone);setPoint(p);setEditing(record??null);setPhoto(record?.imageUrl);setDmgType(record?.type??"SCRATCH");setDmgDesc(record?.description??"");setManualOpen(false);onPendingChange(true);
+  };
+  const editRecord=(id:string)=>{const item=records.find(r=>r.id===id);if(item)start(item.zone,item.surfacePoint,item);};
+  const pickPhoto=async()=>{if(uploading)return;setUploading(true);try{
+    const options={mediaTypes:ImagePicker.MediaTypeOptions.Images,quality:0.85};
+    const result=await ImagePicker.launchImageLibraryAsync(options);
+    const uri=result.assets?.[0]?.uri;
+    if(!result.canceled&&uri){const uploaded=await onPhoto(uri);if(!uploaded?.startsWith('https://'))throw new Error('Photo upload did not return a durable URL');setPhoto(uploaded);setPhotoUploadFailed(false);}
+  }catch{setPhotoUploadFailed(true);Alert.alert('Photo upload failed','Retry the photo upload before saving this damage report.');}finally{setUploading(false);}};
+  function confirmAdd(){
+    if(!addingZone||uploading)return;
+    if(photoUploadFailed){Alert.alert('Photo upload incomplete','Retry the upload or explicitly continue without the failed photo before saving.');return;}
+    const unchanged=editing && editing.type===dmgType && editing.description===dmgDesc.trim();
+    onAdd({id:editing?.id??createValuationJourneyId(),zone:addingZone,type:dmgType,description:dmgDesc.trim(),surfacePoint:point,referenceBodyType:editing?.surfacePoint?editing.referenceBodyType:bodyTypeLabel,imageUrl:photo,size:editing?.size,coords:editing?.zone===addingZone?editing?.coords:undefined,originalType:unchanged?editing?.originalType:undefined});
+    reset();
   }
-
   const markedLabels = records.map(r => r.zone);
+  const pins = buildBuyerDamagePins(records.map(damageEntryToRecord),bodyTypeLabel);
   const grade = computeExteriorGradeFromDefectCount(records.length);
   const gradeLabel = EXTERIOR_GRADE_OPTIONS.find(item => item.value === grade)?.label ?? 'Unknown';
 
@@ -527,20 +531,56 @@ function Damage3DMapper({
         </View>
       </View>
 
-      {/* 3D vehicle viewer with tappable damage hotspots */}
       <DamageViewerErrorBoundary height={280}><ThreeDVehicleViewer
-        zones={DAMAGE_ZONES_3D}
-        selectedZone={addingZone}
-        markedZones={markedLabels}
-        onZoneClick={zoneLabel => setAddingZone(zoneLabel)}
-        onZoneHide={onHide}
-        onZonePhoto={onPhoto}
-        bodyTypeLabel={bodyTypeLabel}
+        pins={pins} selectedDamageId={editing?.id} onSurfaceTap={p=>start(suggestDamageZone(p),p)}
+        onDamagePinPress={editRecord} bodyTypeLabel={bodyTypeLabel}
       /></DamageViewerErrorBoundary>
+      {/* Inline add form */}
+      {addingZone && (
+        <View style={s.dmgForm}>
+          <Text style={s.dmgFormTitle}>{editing ? "Edit damage:" : "Mark damage:"} <Text style={{ color: Colors.accent }}>{addingZone}</Text></Text>
+          <Text style={s.fieldHint}>{point?"Suggested panel from the 3D reference. Confirm or change the panel below.":"Manually selected area."}</Text>
+          <TouchableOpacity style={s.pill} onPress={()=>setManualOpen(v=>!v)} disabled={uploading}><Text style={s.pillText}>Change panel</Text></TouchableOpacity>
+          <SL label="DAMAGE TYPE" />
+          <ScrollView horizontal
+        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 12 }}>
+            {DAMAGE_TYPES.map(t => (
+              <TouchableOpacity
+                key={t}
+                style={[s.pill, dmgType === t && s.pillActive]}
+                onPress={() => setDmgType(t as DamageEntry['type'])}
+                activeOpacity={0.7}
+              >
+                <Text style={[s.pillText, dmgType === t && s.pillTextActive]}>{t}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <SL label="DESCRIPTION (optional)" />
+          <TextInput
+            style={[s.input, { marginBottom: 12 }]}
+            value={dmgDesc}
+            onChangeText={setDmgDesc}
+            placeholder="e.g. Small scratch on lower section"
+            placeholderTextColor={Colors.inputPlaceholder}
+          />
+          {photo && <ExpoImage source={{uri:photo}} style={{width:100,height:76,borderRadius:8,marginBottom:8}} />}
+          <View style={{flexDirection:"row",gap:8,flexWrap:"wrap",marginBottom:12}}><TouchableOpacity style={s.pill} disabled={uploading} onPress={()=>void pickPhoto()}><Text style={s.pillText}>{uploading?"Uploading...":photo?"Replace photo":"Attach photo"}</Text></TouchableOpacity>{photo&&<TouchableOpacity style={s.pill} disabled={uploading} onPress={()=>setPhoto(undefined)}><Text style={s.pillText}>Remove photo</Text></TouchableOpacity>}</View>
+          {photoUploadFailed && <View><Text style={s.fieldHint}>The photo was not uploaded. Retry, or choose to keep this report without the failed photo.</Text><TouchableOpacity style={s.pill} onPress={()=>setPhotoUploadFailed(false)}><Text style={s.pillText}>{photo?'Keep existing photo':'Continue without photo'}</Text></TouchableOpacity></View>}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity style={[s.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12 }]} onPress={reset} disabled={uploading} activeOpacity={0.8}>
+              <Text style={s.pillText}>CANCEL</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[s.pill, s.pillActive, { flex: 2, justifyContent: 'center', paddingVertical: 12 }]} onPress={confirmAdd} disabled={uploading} activeOpacity={0.8}>
+              <Text style={s.pillTextActive}>MARK DAMAGE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
+      {!addingZone && <TouchableOpacity style={[s.pill,{marginTop:12}]} onPress={()=>setManualOpen(v=>!v)}><Text style={s.pillText}>{manualOpen?"Hide manual selection":"Select a damage area manually"}</Text></TouchableOpacity>}
       {/* Quick-add button list — every zone the web app offers, for faster
           input than hunting for a precise spot on the 3D model */}
-      <View style={{ marginTop: 16 }}>
+      {manualOpen && <View style={{ marginTop: 16 }}>
         {DAMAGE_ZONE_SECTIONS.map(section => (
           <View key={section} style={{ marginBottom: 14 }}>
             <SL label={section.toUpperCase()} />
@@ -556,7 +596,7 @@ function Damage3DMapper({
                   <TouchableOpacity
                     key={zone.id}
                     style={[s.pill, (isMarked || isSelected) && s.pillActive]}
-                    onPress={() => setAddingZone(zone.label)}
+                    onPress={() => { if(addingZone){setAddingZone(zone.label);setManualOpen(false);}else start(zone.label); }}
                     activeOpacity={0.7}
                   >
                     <Text style={[s.pillText, (isMarked || isSelected) && s.pillTextActive]}>{zone.label}</Text>
@@ -582,7 +622,7 @@ function Damage3DMapper({
               style={[s.pill, { justifyContent: 'center', paddingHorizontal: 18 }, !customZoneText.trim() && { opacity: 0.5 }]}
               disabled={!customZoneText.trim()}
               onPress={() => {
-                setAddingZone(customZoneText.trim());
+                if(addingZone){setAddingZone(customZoneText.trim());setManualOpen(false);}else start(customZoneText.trim());
                 setCustomZoneText('');
               }}
               activeOpacity={0.7}
@@ -592,44 +632,7 @@ function Damage3DMapper({
           </View>
           <Text style={s.zoneHint}>Not in the list above? Type any area and press Mark to describe the damage.</Text>
         </View>
-      </View>
-
-      {/* Inline add form */}
-      {addingZone && (
-        <View style={s.dmgForm}>
-          <Text style={s.dmgFormTitle}>Mark damage: <Text style={{ color: Colors.accent }}>{addingZone}</Text></Text>
-          <SL label="DAMAGE TYPE" />
-          <ScrollView horizontal
-        style={Layout.hScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 12 }}>
-            {DAMAGE_TYPES.map(t => (
-              <TouchableOpacity
-                key={t}
-                style={[s.pill, dmgType === t && s.pillActive]}
-                onPress={() => setDmgType(t as DamageEntry['type'])}
-                activeOpacity={0.7}
-              >
-                <Text style={[s.pillText, dmgType === t && s.pillTextActive]}>{t}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          <SL label="DESCRIPTION (optional)" />
-          <TextInput
-            style={[s.input, { marginBottom: 12 }]}
-            value={dmgDesc}
-            onChangeText={setDmgDesc}
-            placeholder="e.g. Small scratch on lower section"
-            placeholderTextColor={Colors.inputPlaceholder}
-          />
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity style={[s.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12 }]} onPress={() => setAddingZone(null)} activeOpacity={0.8}>
-              <Text style={s.pillText}>CANCEL</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[s.pill, s.pillActive, { flex: 2, justifyContent: 'center', paddingVertical: 12 }]} onPress={confirmAdd} activeOpacity={0.8}>
-              <Text style={s.pillTextActive}>MARK DAMAGE</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+      </View>}
 
       {/* Damage list */}
       {records.length > 0 && (
@@ -637,14 +640,16 @@ function Damage3DMapper({
           <SL label={`DAMAGE RECORDS (${records.length})`} />
           {records.map(r => (
             <View key={r.id} style={s.dmgRecord}>
+              {r.imageUrl && <ExpoImage source={{uri:r.imageUrl}} style={{width:56,height:48,borderRadius:6}} />}
               <View style={{ flex: 1 }}>
-                <Text style={s.dmgRecordZone}>{r.zone}</Text>
+                <Text style={s.dmgRecordZone}>{records.indexOf(r)+1}. {r.zone}</Text>
                 <Text style={s.dmgRecordMeta}>{r.type}{r.description ? ` · ${r.description}` : ''}</Text>
               </View>
+              <IconButton icon={<Ionicons name="pencil" size={16} color={Colors.accent}/>} accessibilityLabel={"Edit damage report for "+r.zone} onPress={()=>editRecord(r.id)} />
               <IconButton
                 icon={<Ionicons name="trash-outline" size={16} color={Colors.accent} />}
                 accessibilityLabel={`Remove damage record for ${r.zone}`}
-                onPress={() => onRemove(r.id)}
+                onPress={() => {if(!addingZone&&!uploading)onRemove(r.id);}}
               />
             </View>
           ))}
@@ -730,6 +735,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   const selectCaravanBodyType = () => {
     if (bodyType === 'CARAVAN') return;
+    if (damageRecords.length > 0) {
+      Alert.alert('Review existing damage first', 'Keep the original vehicle type or review and remove its saved damage declarations before changing it to a caravan.');
+      return;
+    }
     setVehicleType('CAR');
     vehicleTypeRef.current = 'CAR';
     setBodyType('CARAVAN');
@@ -807,8 +816,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [interiorImages, setInteriorImages] = useState<string[]>([]);
   const [damageImages, setDamageImages] = useState<string[]>([]);
   const [damageRecords, setDamageRecords] = useState<DamageEntry[]>([]);
-  const [hiddenZoneIds, setHiddenZoneIds] = useState<string[]>([]);
-  const [zonePhotos, setZonePhotos] = useState<Record<string, string>>({});
+  const [damageLoadFailed,setDamageLoadFailed]=useState(false);
+  const [damageEditorPending,setDamageEditorPending]=useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoOrder, setPhotoOrder] = useState<string[]>([]);
   const [coverSelectionMessage, setCoverSelectionMessage] = useState('');
@@ -859,6 +868,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // effect. handlePublish below treats this draft the same way it treats an
   // existing edit target: PATCH it rather than creating a second listing.
   const [hpiDraftListingId, setHpiDraftListingId] = useState<string | null>(null);
+  const savedAuctionCreatedRef = useRef(false);
   const [hpiUnlocking, setHpiUnlocking] = useState(false);
   const [hpiUnlocked, setHpiUnlocked] = useState(false);
   const [hpiSummary, setHpiSummary] = useState<{ isClear?: boolean } | null>(null);
@@ -1116,6 +1126,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             setYear(store.year);
             setMileage(store.mileage);
             setTitle(store.title);
+            setHpiDraftListingId(store.savedListingId ?? null);
+            savedAuctionCreatedRef.current = store.savedAuctionCreated === true;
             setFuelType(store.fuelType);
             setTransmission(normalizeNativeTransmission(store.transmission));
             setBodyType(normalizeNativeBodyType(store.bodyType, draftVehicleType));
@@ -1147,6 +1159,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             setPhotoOrder(store.photoOrder ?? []);
             setInteriorImages(store.interiorImages ?? []);
             setDamageImages(store.damageImages ?? []);
+            setDamageRecords((store.damageRecords ?? []).map(r=>({...r,referenceBodyType:r.referenceBodyType??store.bodyType})));
             setAuctionStartMode(store.auctionStartMode || 'NOW');
             setAuctionStartDate(store.auctionStartDate || '');
             setReservePrice(store.reservePrice || '');
@@ -1300,31 +1313,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         if (l.badgeTier && l.badgeTier !== 'FREE') setBadgeTier(l.badgeTier);
         if (l.linkedListing?.type === 'AUCTION' || (l as any).type === 'AUCTION') setListingType('AUCTION');
 
-        // Load existing damage records (separate endpoint, not part of /listings).
+        // Preserve every existing record, including its unique ID, exact point and photo.
         try {
-          const dmgRes = await apiClient<{ success: boolean; data: any[] }>(`/damage/${editListingId}`);
-          const records = dmgRes?.data ?? [];
-          if (records.length && !cancelled) {
-            const mappedEntries: DamageEntry[] = [];
-            // Note: the backend's damageRecord model has no `hidden` column, so
-            // that toggle has never been persisted — nothing to restore here.
-            const nextPhotos: Record<string, string> = {};
-            records.forEach((r: any) => {
-              const zone = DAMAGE_ZONES_3D.find(z => z.id === r.part);
-              mappedEntries.push({
-                id: `${r.part}-${Date.now()}-${Math.random()}`,
-                zone: zone?.label ?? r.part,
-                type: (r.type as DamageEntry['type']) || 'OTHER',
-                description: '',
-              });
-              if (zone && r.imageUrl) nextPhotos[zone.id] = r.imageUrl;
-            });
-            setDamageRecords(mappedEntries);
-            if (Object.keys(nextPhotos).length) setZonePhotos(nextPhotos);
-          }
-        } catch (err) {
-          console.warn(`Failed to load damage records for listing ${editListingId}:`, err);
-        }
+          const dmgRes=await apiClient<{success:boolean;data:any[]}>(`/damage/${editListingId}`);
+          if(!dmgRes?.success || !Array.isArray(dmgRes.data)) throw Error("Invalid damage response");
+          if(!cancelled){setDamageRecords(dmgRes.data.map(r=>damageRecordToEntry(r,l.bodyType)));setDamageLoadFailed(false);}
+        } catch(err){ if(!cancelled)setDamageLoadFailed(true); console.warn("Failed to load existing damage records",err); }
 
         setStep(1);
       } catch (err) {
@@ -1727,14 +1721,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }
 
   // ─── Damage zone hide / photo (from the 3D viewer's action pill) ──────────────
-  function handleZoneHide(zoneId: string) {
-    setHiddenZoneIds(prev => prev.includes(zoneId) ? prev.filter(id => id !== zoneId) : [...prev, zoneId]);
+  async function handleDamagePhoto(uri:string):Promise<string>{
+    setUploadingPhoto(true);
+    try {return parseVehicleImageMetadata(await uploadImage(uri,"damage",damageRecords.length)).src;}
+    finally {setUploadingPhoto(false);}
   }
-  function handleZonePhoto(zoneId: string, uri: string) {
-    setZonePhotos(prev => ({ ...prev, [zoneId]: uri }));
-  }
-
-  // ─── Photo Handling ───────────────────────────────────────────────────────────
 
   /**
    * Upload a single image with per-image progress tracking.
@@ -2138,6 +2129,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   async function handlePublish() {
     if (publishingInFlightRef.current) return;
+    if(damageLoadFailed||damageEditorPending||uploadingPhoto){Alert.alert("Review damage information","Finish the damage report or reopen the listing if existing records could not be loaded.");return;}
     // A restored review screen may not have passed Step 1 in this session.
     // Validate before any mutation, checkout or fee/grant consumption.
     if (!validateStep(1)) {
@@ -2236,37 +2228,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         return apiClient(`/damage/${listingId}/save`, {
           method: 'POST',
           body: JSON.stringify({
-            // `part` sends the zone id (e.g. "front-bumper") to match the web app's
-            // convention (VehicleDamageMapper.tsx sends r.zone = a zoneId string) —
-            // fall back to the raw label for manually-typed zones with no matching id.
-            //
-            // Field names below match damage.service.ts's DamageDetection interface
-            // exactly (part/type/size/coords/imageUrl) — the previous payload sent
-            // severity/description/hidden/photoUrl, none of which the backend reads
-            // (it destructures d.size/d.coords/d.imageUrl), and never sent `coords`
-            // at all. That meant every damage pin saved from mobile silently lost
-            // its position and photo — DamageMapViewer.tsx positions pins from
-            // record.coords, which was always empty. `hidden` has no column on the
-            // backend's damageRecord model, so it's intentionally not sent.
-            detections: damageRecords.map(r => {
-              const zone = DAMAGE_ZONES_3D.find(z => z.label === r.zone);
-              // `type` is a free-form string on the backend (no enum) — web
-              // sends the user's typed description directly as `type`. Mobile
-              // additionally collects a category picker (Scratch/Dent/etc),
-              // which used to win outright and silently drop whatever the
-              // user typed in the description box. Keep the category as a
-              // prefix so it isn't lost, but no longer discard the text.
-              const type = r.description.trim() ? `${r.type} - ${r.description.trim()}` : r.type;
-              return {
-                part: zone?.id ?? r.zone,
-                type,
-                size: 'MODERATE',
-                coords: zone?.coords,
-                imageUrl: zone ? zonePhotos[zone.id] : undefined,
-              };
-            }),
+            detections: damageRecords.map(damageEntryToRecord),
           }),
-        }).then(() => true).catch((err) => {
+        }).then((result:any) => {if(!result?.success)throw Error("Damage save rejected");return true;}).catch((err) => {
           console.error(`Failed to save damage records for listing ${listingId}:`, err);
           return false;
         });
@@ -2295,7 +2259,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         // of this branch (auction scheduling / listing-fee payment /
         // publish) is unchanged either way.
         let newListingId: string | null | undefined;
-        let initialAuctionCreatedAtomically = false;
+        let initialAuctionCreatedAtomically = savedAuctionCreatedRef.current;
         if (hpiDraftListingId) {
           await apiClient(`/listings/${hpiDraftListingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
           newListingId = hpiDraftListingId;
@@ -2373,7 +2337,15 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           newListingId = res?.data?.id;
         }
 
-        const damageSaved = newListingId ? await saveDamageRecords(newListingId) : true;
+        if (!newListingId) throw new Error('No saved listing was returned. Publication has not started.');
+        setHpiDraftListingId(newListingId);
+        savedAuctionCreatedRef.current = initialAuctionCreatedAtomically;
+        updateDraft({ savedListingId: newListingId, savedAuctionCreated: initialAuctionCreatedAtomically, damageRecords });
+        const damageSaved = await saveDamageRecords(newListingId);
+        if (!damageSaved) {
+          Alert.alert('Draft saved - damage details need retry', DAMAGE_SAVE_FAILED_MSG);
+          return;
+        }
 
         if (isAuction && newListingId) {
           // Brand-new auctions are already paired with their Auction row by the
@@ -2402,6 +2374,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             Object.keys(auctionPayload).forEach(k => auctionPayload[k] === undefined && delete auctionPayload[k]);
             try {
               await apiClient('/auctions', { method: 'POST', body: JSON.stringify(auctionPayload) });
+              savedAuctionCreatedRef.current = true;
+              updateDraft({ savedAuctionCreated: true });
             } catch (auctionErr: any) {
               Alert.alert(
                 'Listing created',
@@ -2578,6 +2552,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   function handleNext() {
     if (uploadingPhoto) return;
+    if(damageEditorPending||damageLoadFailed){Alert.alert("Review damage information","Save or cancel the damage report, or reopen the listing to load existing records.");return;}
     // Touch pricing fields on step 3 so errors become visible before validateStep runs
     if (step === 3) {
       setTouched(prev => ({ ...prev, priceAsking: true, priceMin: priceMin.trim() ? true : prev.priceMin }));
@@ -2595,7 +2570,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       stolenRecovered, outstandingFinance, isLegalKeeper,
       notOwnerRelationship, notOwnerRelSelect, notOwnerRelOther,
       isDepartedSale, departedRelationship, departedRelSelect, departedRelOther, declAcknowledged,
-      exteriorImages, interiorImages, damageImages, photoOrder: allImages,
+      exteriorImages, interiorImages, damageImages, damageRecords, photoOrder: allImages,
       auctionStartMode, auctionStartDate, reservePrice, startingBid, minIncrement, buyItNowPrice,
       lastStep: nextStep,
     });
@@ -2604,6 +2579,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   function handleBack() {
     if (uploadingPhoto) return;
+    if(damageEditorPending){Alert.alert("Finish damage report","Save or cancel the current report before leaving.");return;}
     setValidationIssue(null);
     validationSectionYRef.current = {};
     if (step > 1) setStep((step - 1) as Step);
@@ -2635,6 +2611,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // any step beyond the first instead of only auto-saving on Next (SE8).
   function handleSaveDraftExit() {
     if (uploadingPhoto) return;
+    if(damageEditorPending){Alert.alert("Finish damage report","Save or cancel the current report before leaving.");return;}
     if (editMode) { navigation?.goBack(); return; }
     updateDraft({
       vrm, vehicleType, make, model, year, mileage, title, fuelType, transmission, bodyType, colour, doors, seats,
@@ -2644,7 +2621,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       stolenRecovered, outstandingFinance, isLegalKeeper,
       notOwnerRelationship, notOwnerRelSelect, notOwnerRelOther,
       isDepartedSale, departedRelationship, departedRelSelect, departedRelOther, declAcknowledged,
-      exteriorImages, interiorImages, damageImages, photoOrder: allImages,
+      exteriorImages, interiorImages, damageImages, damageRecords, photoOrder: allImages,
       auctionStartMode, auctionStartDate, reservePrice, startingBid, minIncrement, buyItNowPrice,
       lastStep: step,
     });
@@ -3637,16 +3614,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <View>
             <SectionBox title="Damage Map — Select Damaged Areas" accent={Colors.warning}>
               <Text style={s.fieldHint}>
-                Drag to rotate the 3D model. Tap a zone to mark damage, hide it, or attach a photo.
+                Drag to rotate. Touch the exact location to add a description and photo.
               </Text>
-              <Damage3DMapper
+              {damageLoadFailed ? <Text style={s.fieldHint}>Existing damage records could not be loaded. Reopen this listing before editing.</Text> : <Damage3DMapper
                 records={damageRecords}
-                onAdd={entry => setDamageRecords(p => [...p, entry])}
+                onAdd={entry => setDamageRecords(p => p.some(r=>r.id===entry.id)?p.map(r=>r.id===entry.id?entry:r):[...p,entry])}
                 onRemove={id => setDamageRecords(p => p.filter(r => r.id !== id))}
-                onHide={handleZoneHide}
-                onPhoto={handleZonePhoto}
-                bodyTypeLabel={BODY_TYPES.find(bt => bt.v === bodyType)?.l}
-              />
+                onPhoto={handleDamagePhoto}
+                onPendingChange={setDamageEditorPending}
+                bodyTypeLabel={bodyType}
+              />}
             </SectionBox>
           </View>
         ) : <Text style={s.fieldHint}>Photograph every damaged area of your caravan or campervan and describe any known faults.</Text>}

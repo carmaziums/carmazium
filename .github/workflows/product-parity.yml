@@ -50,6 +50,8 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - run: node scripts/check-auction-seller-sequencing.mjs
+      - name: Native card, sort and precise 3D damage parity
+        run: node --test scripts/test-native-card-damage-parity.test.mjs scripts/test-native-damage-declaration.test.mjs scripts/test-public-damage-pins.test.mjs scripts/test-web-damage-release.test.mjs
       - name: Verify app installation buttons, links and release gating
         run: node --test scripts/test-website-mobile-app-downloads.test.mjs
       - name: Verify consistent compact homepage app marketing

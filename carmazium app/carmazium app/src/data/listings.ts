@@ -232,8 +232,10 @@ export interface AuctionListing extends CarListing {
   buyItNowPrice?: number | null;
 }
 
-export const formatPrice = (price: number): string =>
-  `£${price.toLocaleString('en-GB')}`;
+export const formatPrice = (price: number | string): string => {
+  const value = typeof price === "number" || (typeof price === "string" && price.trim()) ? Number(price) : NaN;
+  return Number.isFinite(value) ? `£${value.toLocaleString("en-GB")}` : "Price unavailable";
+};
 
 export const formatMileage = (miles: number): string =>
   `${miles.toLocaleString('en-GB')} mi`;

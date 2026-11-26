@@ -17,7 +17,7 @@ describe('MaziuM source-verified public platform knowledge', () => {
             'tradexchange-jobs', 'dealer-services-and-partners',
             'search-buying', 'account-security-privacy',
             'cancellations-disputes',
-            'vehicle-valuation-and-dvla', 'listing-validation-review',
+            'vehicle-valuation-and-dvla', 'listing-validation-review', 'seller-reported-damage',
             'listing-status-and-relisting', 'bidding-reserve-and-provisional',
             'checkout-and-platform-payments', 'dealer-purchase-destinations',
             'messaging-notifications', 'mobile-app-and-installation',
@@ -59,6 +59,16 @@ describe('MaziuM source-verified public platform knowledge', () => {
         ['I want to cancel my auction purchase', 'cancellations-disputes'],
     ])('retrieves verified %s guidance: %s', (question, topic) => {
         expect(platformKnowledgeFor(question)).toContain('[' + topic + ']');
+    });
+
+    it('retrieves truthful damage guidance without promising an inspection or historical snapshot', () => {
+        const answer = platformKnowledgeFor('Can I see damage on an ended auction?', 1);
+        expect(answer).toContain('[seller-reported-damage]');
+        expect(answer).toContain('current seller-reported damage');
+        expect(answer).toContain('not an independent inspection');
+        expect(answer).toContain('not evidence that the vehicle is damage-free');
+        expect(answer).toContain('approximate positions');
+        expect(answer).toContain('does not open unrelated private drafts');
     });
 
     it('has an existing first-party source file for every knowledge claim', () => {

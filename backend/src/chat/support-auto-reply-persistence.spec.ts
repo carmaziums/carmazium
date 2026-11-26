@@ -26,6 +26,20 @@ describe('support reply persistence and identity', () => {
         const service = new ChatService(prisma, notifications as any, { sendNotification: jest.fn() } as any, {} as any, {} as any, {} as any, {} as any);
         return { service, prisma, source, room };
     };
+    it('recovers a follow-up after the staff-only window expires without overriding opt-out or active staff', async () => {
+        const now = Date.now();
+        const {service,room,source,prisma} = setup('How can I add photos?', {supportHumanTakeoverAt: new Date(now - 16 * 60_000)});
+        source.createdAt = new Date(now - 14 * 60_000);
+        const reply = 'Open your listing and select Edit to add vehicle photos.';
+        expect((await service.persistSupportAutoReply('room',sourceId,botId,reply,'AI')).created).toBe(true);
+        prisma.message.create.mockClear();
+        room.supportHumanTakeoverAt = new Date(now - 60_000);
+        expect((await service.persistSupportAutoReply('room',sourceId,botId,reply,'AI')).created).toBe(false);
+        room.supportHumanTakeoverAt = new Date(now - 16 * 60_000);
+        room.supportAiOptedOutAt = new Date(now - 16 * 60_000);
+        expect((await service.persistSupportAutoReply('room',sourceId,botId,reply,'AI')).created).toBe(false);
+        expect(prisma.message.create).not.toHaveBeenCalled();
+    });
     it('saves exactly the canonical handoff even after a customer opts out', async () => {
         const {service, prisma} = setup('I want a human agent', {supportAiOptedOutAt: new Date(), supportHumanTakeoverAt: new Date()});
         expect((await service.persistSupportAutoReply('room', sourceId, botId, HUMAN_HANDOFF_REPLY, 'FIXED')).created).toBe(true);

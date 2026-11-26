@@ -167,7 +167,7 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
         <View style={styles.bidSection}>
           <View>
             <Text style={styles.bidLabel}>{hasRealBids ? 'CURRENT BID' : 'STARTING BID'}</Text>
-            <Text style={styles.bidAmount}>{formatPrice(displayBid)}</Text>
+            <Text style={styles.bidAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>{formatPrice(displayBid)}</Text>
             <View style={styles.bidMeta}>
               {/* Bid counts are not shown on browse cards (owner decision): a fresh lot reading "0 bids" undersold the trade buyer base. */}
               {!hasRealBids && firstOfferFloor > 0 && (
@@ -303,16 +303,13 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   modelText: {
+    flexShrink: 1,
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.lg,
+    fontSize: FontSize.md,
     color: Colors.textPrimary,
     letterSpacing: -0.3,
   },
-  bidSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
+  bidSection: { gap: 10 },
   bidLabel: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
@@ -352,9 +349,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   // Countdown
-  countdown: {
-    alignItems: 'flex-end',
-  },
+  countdown: { alignItems: 'flex-start' },
   endsLabel: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,

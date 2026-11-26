@@ -206,6 +206,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Install locked contract-test dependencies
+        run: npm ci --no-audit --no-fund
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
