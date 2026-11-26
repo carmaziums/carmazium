@@ -6,7 +6,7 @@ const SITE_URL = "https://www.carmazium.com"
 
 async function getLatestPosts(): Promise<BlogPost[]> {
     try {
-        const res = await fetch(`${API_BASE}/blog?page=1&limit=50`, { next: { revalidate: 600 } })
+        const res = await fetch(`${API_BASE}/blog?page=1&limit=50`, { next: { revalidate: 600, tags: ['public-blog'] } })
         if (!res.ok) return []
         const json = await res.json()
         return json.data ?? []

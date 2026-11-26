@@ -24,7 +24,7 @@ import {
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { BlogContent } from "@/components/blog/BlogContent"
-import { uploadImage } from "@/lib/supabase"
+import { uploadImage, uploadBlogCover } from "@/lib/supabase"
 import { createBlogPost, updateBlogPost, type BlogPost, type BlogPostStatus } from "@/lib/blogApi"
 import { extractBlogContentInsights } from "@/lib/blogContentInsights"
 import { stripCarMaziumBrandSuffix, validateBlogPost } from "@/lib/blogValidation"
@@ -169,7 +169,7 @@ export function BlogPostForm({ post }: BlogPostFormProps) {
         setUploading(true)
         setError(null)
         try {
-            const url = await uploadImage(file, "listings", "blog")
+            const url = await uploadBlogCover(file)
             setCoverSize(null)
             setCoverImage(url)
         } catch (err) {
