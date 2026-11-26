@@ -36,6 +36,11 @@ export class DealersService {
         private readonly config: ConfigService,
     ) {}
 
+    private publicVatNumber(value?: string | null): string | null {
+        const number = value?.trim();
+        return !number || /^(?:PENDING-|SOLE-TRADER-NOT-VAT-)/i.test(number) ? null : number;
+    }
+
     private readonly allDealerPermissions: DealerPermission[] = [
         'VIEW_TRADE',
         'PLACE_BID',
@@ -204,6 +209,7 @@ export class DealersService {
 
         const fieldsList = [
             'businessType',
+            'vatRegistered',
             'companyHouseName',
             'representativeName',
             'representativePosition',
@@ -253,11 +259,16 @@ export class DealersService {
         const businessType = dto.businessType ?? 'PRIVATE_LIMITED';
         const previousBusinessType = ((profile.kyc as any)?.businessType ?? 'PRIVATE_LIMITED') as string;
         const businessTypeChanged = !!profile.kyc && previousBusinessType !== businessType;
+        const vatRegistered = businessType === 'SOLE_PROPRIETORSHIP'
+            ? null : (dto.vatRegistered ?? (profile.kyc as any)?.vatRegistered ?? null);
+        const vatRegistrationChanged = businessType !== 'SOLE_PROPRIETORSHIP' && !!profile.kyc
+            && ((profile.kyc as any).vatRegistered ?? true) !== (vatRegistered ?? true);
+        const requiresReverification = businessTypeChanged || vatRegistrationChanged;
         const wasVerifiedIdentity = !!profile.isVerified || (profile.kyc as any)?.status === 'APPROVED';
 
-        if ((profile.kyc as any)?.status === 'APPROVED' && !businessTypeChanged) {
+        if ((profile.kyc as any)?.status === 'APPROVED' && !requiresReverification) {
             throw new BadRequestException(
-                'This business is already verified. Choose a different business type to start re-verification.',
+                'This business is already verified. Change the business type or VAT registration status to start re-verification.',
             );
         }
 
@@ -270,16 +281,16 @@ export class DealersService {
                     'Sole traders must upload photo ID and proof of address before submitting KYC.',
                 );
             }
-        } else if (businessTypeChanged) {
+        } else if (requiresReverification || vatRegistered === false) {
             // A sole trader becoming a registered company needs fresh company
             // evidence before the old verified identity can be replaced.
             const existingKyc = profile.kyc as any;
             const hasPhotoId = !!(existingKyc?.directorIdProofPath || existingKyc?.directorIdProof);
             const hasVatProof = !!(existingKyc?.vatProofPath || existingKyc?.vatProof);
             const hasCompanyProof = !!(existingKyc?.companyRegistrationProofPath || existingKyc?.companyRegistrationProof);
-            if (!hasPhotoId || !hasVatProof || !hasCompanyProof) {
+            if (!hasPhotoId || (vatRegistered !== false && !hasVatProof) || !hasCompanyProof) {
                 throw new BadRequestException(
-                    'Registered companies must upload director ID, VAT evidence and Companies House evidence before re-verification.',
+                    'Companies must upload director ID and Companies House evidence, plus VAT evidence when VAT registered.',
                 );
             }
         }
@@ -298,7 +309,7 @@ export class DealersService {
 
                 const isPaymentField = field === 'paymentReference' || field === 'paymentScreenshot';
 
-                if (existingFieldStatus === 'APPROVED' && (!businessTypeChanged || isPaymentField)) {
+                if (existingFieldStatus === 'APPROVED' && (!requiresReverification || isPaymentField)) {
                     // Normal resubmissions keep approved fields locked. A legal
                     // business-type change deliberately reopens identity fields,
                     // while preserving the once-only verification payment.
@@ -319,6 +330,10 @@ export class DealersService {
                         ['vatNumber', 'companyRegistrationNumber', 'personOfSignificantControl'].includes(field);
                     const value = field === 'businessType'
                         ? businessType
+                        : field === 'vatRegistered'
+                            ? vatRegistered
+                            : field === 'vatNumber' && vatRegistered === false
+                                ? ''
                         : isPaymentField && verificationFeeAlreadyPaid
                             ? existingValue
                             : soleTraderCompanyOnly
@@ -353,7 +368,7 @@ export class DealersService {
             });
 
             let updatedKyc: any;
-            if (businessTypeChanged && wasVerifiedIdentity) {
+            if (requiresReverification && wasVerifiedIdentity) {
                 // Legal identity changed: remove the verified badge atomically
                 // with the KYC reset. The dealer account remains intact and the
                 // badge/features return only after the new identity is approved.
@@ -393,6 +408,10 @@ export class DealersService {
                     ['vatNumber', 'companyRegistrationNumber', 'personOfSignificantControl'].includes(field);
                 updatedFields[field] = field === 'businessType'
                     ? businessType
+                    : field === 'vatRegistered'
+                        ? vatRegistered
+                        : field === 'vatNumber' && vatRegistered === false
+                            ? ''
                     : soleTraderCompanyOnly
                         ? ''
                         : KYC_UPLOAD_FIELDS.has(field)
@@ -617,7 +636,11 @@ export class DealersService {
         } else {
             if (kycFields.companyRegistrationNumber) updates.registrationNumber = kycFields.companyRegistrationNumber;
             if (kycFields.businessWebsite) updates.website = kycFields.businessWebsite;
-            if (kycFields.vatNumber && !kycFields.vatNumber.startsWith('PENDING-')) {
+            if (kycFields.vatRegistered === false) {
+                // Internal placeholder for the legacy unique, non-null column.
+                // It is never a VAT number; the KYC declaration is authoritative.
+                updates.vatNumber = `PENDING-NOT-VAT-${profileId}`;
+            } else if (kycFields.vatNumber && !kycFields.vatNumber.startsWith('PENDING-')) {
                 updates.vatNumber = kycFields.vatNumber;
             }
         }
@@ -1971,7 +1994,7 @@ export class DealersService {
             sellerAddress: address,
             sellerAddressSource: address ? (businessAddress ? 'BUSINESS' as const : 'VERIFIED_POSTAL' as const) : null,
             sellerCompanyRegistrationNumber: company?.registrationNumber || null,
-            sellerVatNumber: company?.vatNumber || null,
+            sellerVatNumber: this.publicVatNumber(company?.vatNumber),
             contactUnlocked: true,
         };
     }
@@ -2444,7 +2467,7 @@ export class DealersService {
             sellerCompanyRegistrationNumber: contactUnlocked
                 ? seller.dealerProfile?.registrationNumber || null : null,
             sellerVatNumber: contactUnlocked
-                ? seller.dealerProfile?.vatNumber || null : null,
+                ? this.publicVatNumber(seller.dealerProfile?.vatNumber) : null,
             contactUnlocked,
             buyerFeeRequired: isAuctionPurchase,
             sellerEmail: contactUnlocked ? seller.email : null,

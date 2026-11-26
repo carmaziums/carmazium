@@ -289,6 +289,7 @@ export function KycOverlayForm({
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   // ── Text Form Fields ──
+  const [vatRegistered, setVatRegistered] = useState(true);
   const [formData, setFormData] = useState({
     businessType: "PRIVATE_LIMITED" as BusinessType,
     companyHouseName: "",
@@ -319,6 +320,7 @@ export function KycOverlayForm({
         const kyc = await getDealerKyc();
         setKycData(kyc);
         if (kyc) {
+          setVatRegistered(kyc.vatRegistered !== false);
           setFormData({
             // Records created before the toggle existed have no businessType —
             // they are all limited companies, so that is the right fallback.
@@ -383,12 +385,15 @@ export function KycOverlayForm({
 
   const originalBusinessType = (kycData?.businessType || "PRIVATE_LIMITED") as BusinessType;
   const businessTypeChanged = !!kycData && formData.businessType !== originalBusinessType;
+  const vatRegistrationChanged = !!kycData && formData.businessType !== "SOLE_PROPRIETORSHIP"
+    && (kycData.vatRegistered !== false) !== vatRegistered;
+  const verificationDetailsChanged = businessTypeChanged || vatRegistrationChanged;
 
   const isFieldApproved = (fieldName: string): boolean => {
     if (!kycData?.documentStatuses) return false;
     // A legal-identity change must reopen previously approved identity fields.
     // Payment is handled separately and remains verified once paid.
-    if (businessTypeChanged) return false;
+    if (verificationDetailsChanged) return false;
     return kycData.documentStatuses[fieldName]?.status === "APPROVED";
   };
 
@@ -454,11 +459,11 @@ export function KycOverlayForm({
         if (!fileUrls.directorIdProof) { setErrorMsg("Please upload your driving licence or passport."); return false; }
         if (!fileUrls.proofOfAddress) { setErrorMsg("Please upload a proof of address."); return false; }
       } else {
-        if (!formData.vatNumber.trim()) { setErrorMsg("VAT Number is required."); return false; }
+        if (vatRegistered && !formData.vatNumber.trim()) { setErrorMsg("VAT Number is required."); return false; }
         if (!formData.companyRegistrationNumber.trim()) { setErrorMsg("Company Registration Number is required."); return false; }
         if (!formData.businessWebsite.trim()) { setErrorMsg("Business Website is required."); return false; }
         if (!fileUrls.directorIdProof) { setErrorMsg("Please upload the director photo ID."); return false; }
-        if (!fileUrls.vatProof) { setErrorMsg("Please upload VAT evidence."); return false; }
+        if (vatRegistered && !fileUrls.vatProof) { setErrorMsg("Please upload VAT evidence."); return false; }
         if (!fileUrls.companyRegistrationProof) { setErrorMsg("Please upload Companies House evidence."); return false; }
       }
       if (!formData.businessRegisteredAddress.trim()) { setErrorMsg(isSoleTrader ? "Business Address is required." : "Registered Business Address is required."); return false; }
@@ -478,8 +483,8 @@ export function KycOverlayForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (kycData?.status === "APPROVED" && allowApprovedReverification && !businessTypeChanged) {
-      setErrorMsg("Choose a different business type to start re-verification.");
+    if (kycData?.status === "APPROVED" && allowApprovedReverification && !verificationDetailsChanged) {
+      setErrorMsg("Change the business type or VAT registration status to start re-verification.");
       setActiveStep(1);
       return;
     }
@@ -498,7 +503,7 @@ export function KycOverlayForm({
       // POST /dealers/kyc/documents/:field, and the values held here are
       // 10-minute signed URLs. Sending them would persist a link that dies
       // before a reviewer opens it. The server ignores them either way.
-      const payload: Partial<DealerKycData> = { ...formData };
+      const payload: Partial<DealerKycData> = { ...formData, ...(isSoleTrader ? {} : { vatRegistered }) };
       const response = await submitDealerKyc(payload);
       setKycData(response);
 
@@ -1055,11 +1060,24 @@ export function KycOverlayForm({
                   <h3 className="text-base font-extrabold uppercase text-[var(--text-primary)] tracking-tight border-b border-[var(--border-default)] pb-2">
                     Step 2: Business Registration &amp; Address
                   </h3>
+                  {!isSoleTrader && (
+                    <fieldset className="space-y-3 rounded-xl border border-[var(--border-default)] p-4">
+                      <legend className="px-2 font-semibold">VAT registration status</legend>
+                      {[{ value: true, label: "VAT registered" }, { value: false, label: "Not VAT registered" }].map((option) => (
+                        <label key={String(option.value)} className="flex items-center gap-3 text-[var(--text-primary)]">
+                          <input type="radio" name="vatRegistered" checked={vatRegistered === option.value}
+                            onChange={() => { setVatRegistered(option.value); setErrorMsg(""); }} disabled={submitting} />
+                          {option.label}
+                        </label>
+                      ))}
+                      {!vatRegistered && <p className="text-sm text-[var(--text-secondary)]">No VAT number or certificate is needed. Director ID and Companies House evidence are still required.</p>}
+                    </fieldset>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {/* Limited-company registrations. A sole trader has neither,
                         so these are removed rather than shown and left blank. */}
-                    {!isSoleTrader && renderInput({ label: "VAT Registration Number", name: "vatNumber", value: formData.vatNumber, placeholder: "e.g. GB 123456789", icon: FileSpreadsheet })}
+                    {!isSoleTrader && vatRegistered && renderInput({ label: "VAT Registration Number", name: "vatNumber", value: formData.vatNumber, placeholder: "e.g. GB 123456789", icon: FileSpreadsheet })}
                     {!isSoleTrader && renderInput({ label: "Company House Registration Number", name: "companyRegistrationNumber", value: formData.companyRegistrationNumber, placeholder: "e.g. 12345678", icon: FileSpreadsheet })}
                     {renderInput({
                       label: isSoleTrader ? "Business Website URL (Optional)" : "Corporate Website URL",
@@ -1131,7 +1149,7 @@ export function KycOverlayForm({
                         </>
                       ) : (
                         <>
-                          <FileUploadField
+                          {vatRegistered && <FileUploadField
                             label="VAT Certificate / Registration Proof"
                             hint="HMRC VAT registration letter or certificate · JPG, PNG, PDF · Max 10MB"
                             fieldName="vatProof"
@@ -1142,7 +1160,7 @@ export function KycOverlayForm({
                             rejectionNote={getFieldRejectionNote("vatProof")}
                             isSubmitting={submitting}
                             icon={FileCheck}
-                          />
+                          />}
                           <FileUploadField
                             label="Company House Certificate"
                             hint="Certificate of Incorporation or Companies House printout · JPG, PNG, PDF · Max 10MB"
@@ -1265,7 +1283,7 @@ export function KycOverlayForm({
             ) : (
               <button
                 type="submit"
-                disabled={submitting || (allowApprovedReverification && kycData?.status === "APPROVED" && !businessTypeChanged)}
+                disabled={submitting || (allowApprovedReverification && kycData?.status === "APPROVED" && !verificationDetailsChanged)}
                 className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-[var(--bg-input)] disabled:text-[var(--text-muted)] text-white font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.3)]"
               >
                 {submitting ? (

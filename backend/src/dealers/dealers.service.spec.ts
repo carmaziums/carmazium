@@ -254,6 +254,80 @@ describe('DealersService — KYC: submitKyc', () => {
         emailService = module.get(EmailService);
     });
 
+
+    function mockVatCompany(overrides: Record<string, any> = {}, verified = false) {
+        const profile = {
+            id: 'profile-1', userId: 'user-1', companyName: 'Test Motors Ltd', isVerified: verified,
+            user: { id: 'user-1', role: 'DEALER', firstName: 'John', lastName: 'Doe' },
+            kyc: {
+                id: 'kyc-vat', businessType: 'PRIVATE_LIMITED', status: verified ? 'APPROVED' : 'PENDING',
+                directorIdProofPath: 'profile-1/directorIdProof/id.png',
+                companyRegistrationProofPath: 'profile-1/companyRegistrationProof/company.pdf',
+                documentStatuses: {},
+                ...overrides,
+            },
+        };
+        prisma.dealerProfile.findUnique.mockResolvedValue(profile);
+        prisma.dealerKyc.update.mockImplementation(({ data }: any) => Promise.resolve({ ...profile.kyc, ...data }));
+        prisma.dealerProfile.update.mockResolvedValue({});
+        prisma.user.findMany.mockResolvedValue([]);
+        return profile;
+    }
+
+    it('accepts a non-VAT company declaration without a VAT certificate but keeps normal KYC and payment review pending', async () => {
+        mockVatCompany();
+        const result = await service.submitKyc('user-1', { ...baseDto, vatRegistered: false, vatNumber: '' } as any);
+        expect(result).toMatchObject({ vatRegistered: false, vatNumber: '', status: 'PENDING' });
+        expect(result.documentStatuses.directorIdProof.status).toBe('PENDING');
+        expect(result.documentStatuses.companyRegistrationProof.status).toBe('PENDING');
+        expect(result.documentStatuses.paymentReference.status).toBe('PENDING');
+        expect(prisma.dealerProfile.update).not.toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ isVerified: true }),
+        }));
+        expect(prisma.dealerProfile.update).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ vatNumber: 'PENDING-NOT-VAT-profile-1', registrationNumber: '12345678' }),
+        }));
+    });
+
+    it.each(['directorIdProofPath', 'companyRegistrationProofPath'])('does not waive %s for a non-VAT company or accept a body-supplied document URL', async (missingField) => {
+        mockVatCompany({ [missingField]: null });
+        await expect(service.submitKyc('user-1', {
+            ...baseDto, vatRegistered: false,
+            directorIdProof: 'https://example.com/not-evidence.png',
+            companyRegistrationProof: 'https://example.com/not-evidence.pdf',
+        } as any)).rejects.toThrow('director ID and Companies House evidence');
+        expect(prisma.dealerKyc.update).not.toHaveBeenCalled();
+    });
+
+    it('preserves non-VAT status when an older client omits the new declaration field', async () => {
+        mockVatCompany({ vatRegistered: false, vatNumber: '', vatProof: null });
+        const result = await service.submitKyc('user-1', { ...baseDto, vatNumber: undefined } as any);
+        expect(result).toMatchObject({ vatRegistered: false, vatNumber: '', vatProof: null });
+    });
+
+    it('reopens approval after a verified company changes VAT status and preserves its paid verification fee', async () => {
+        mockVatCompany({
+            vatRegistered: true, vatNumber: 'GB123456789', stripeChargedAt: new Date('2026-11-01'),
+            documentStatuses: { vatNumber: { status: 'APPROVED' }, paymentReference: { status: 'APPROVED' } },
+        }, true);
+        const result = await service.submitKyc('user-1', { ...baseDto, vatRegistered: false } as any);
+        expect(result).toMatchObject({ status: 'PENDING', vatRegistered: false, vatNumber: '' });
+        expect(result.documentStatuses.vatNumber.status).toBe('PENDING');
+        expect(result.documentStatuses.paymentReference.status).toBe('APPROVED');
+        expect(prisma.$transaction).toHaveBeenCalled();
+        expect(prisma.dealerProfile.update).toHaveBeenCalledWith(expect.objectContaining({
+            data: { isVerified: false, verificationDate: null },
+        }));
+        expect(mockSessionsCreate).not.toHaveBeenCalled();
+    });
+
+    it('requires VAT evidence when changing from not registered to registered', async () => {
+        mockVatCompany({ vatRegistered: false, vatProof: null, vatProofPath: null });
+        await expect(service.submitKyc('user-1', { ...baseDto, vatRegistered: true } as any))
+            .rejects.toThrow('VAT evidence when VAT registered');
+        expect(prisma.dealerKyc.update).not.toHaveBeenCalled();
+    });
+
     it('first submission: saves fields as PENDING and does NOT alert admins yet (fee unpaid)', async () => {
         prisma.dealerProfile.findUnique.mockResolvedValue({
             id: 'profile-1',
@@ -396,7 +470,7 @@ describe('DealersService — KYC: submitKyc', () => {
         await expect(service.submitKyc('user-1', {
             ...baseDto,
             businessType: 'PRIVATE_LIMITED',
-        } as any)).rejects.toThrow(/different business type/i);
+        } as any)).rejects.toThrow(/already verified.*business type or VAT registration status/i);
         expect(prisma.dealerKyc.update).not.toHaveBeenCalled();
     });
 

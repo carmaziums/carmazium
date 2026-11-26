@@ -14,6 +14,7 @@ export interface DealerKycData {
   companyHouseName: string;
   representativeName: string;
   representativePosition: string;
+  vatRegistered?: boolean | null;
   vatNumber: string;
   vatProof?: string;
   companyRegistrationNumber: string;

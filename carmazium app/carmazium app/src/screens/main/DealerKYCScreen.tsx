@@ -195,6 +195,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
   const [docUrls, setDocUrls] = useState<Record<string, string>>({});
   const [docUploading, setDocUploading] = useState<Record<string, boolean>>({});
 
+  const [vatRegistered, setVatRegistered] = useState(true);
   const [form, setForm] = useState({
     companyHouseName: '',
     representativeName: '',
@@ -216,6 +217,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
         if (res.success && res.data) {
           setExistingKyc(res.data);
           const k = res.data;
+          setVatRegistered(k.vatRegistered !== false);
           setBusinessType(k.businessType === 'SOLE_PROPRIETORSHIP' ? 'SOLE_PROPRIETORSHIP' : 'PRIVATE_LIMITED');
           setForm({
             companyHouseName: k.companyHouseName || '',
@@ -327,9 +329,12 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
     const originalBusinessType: BusinessType =
       existingKyc?.businessType === 'SOLE_PROPRIETORSHIP' ? 'SOLE_PROPRIETORSHIP' : 'PRIVATE_LIMITED';
     const businessTypeChanged = !!existingKyc && businessType !== originalBusinessType;
+    const vatRegistrationChanged = !!existingKyc && !isSoleTrader
+      && (existingKyc.vatRegistered !== false) !== vatRegistered;
+    const verificationDetailsChanged = businessTypeChanged || vatRegistrationChanged;
 
-    if (existingKyc?.status === 'APPROVED' && reverifyRequested && !businessTypeChanged) {
-      setSubmitError('Choose a different business type to start re-verification.');
+    if (existingKyc?.status === 'APPROVED' && reverifyRequested && !verificationDetailsChanged) {
+      setSubmitError('Change the business type or VAT registration status to start re-verification.');
       return;
     }
 
@@ -341,7 +346,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
       'businessRegisteredAddress',
     ];
     const companyRequired: (keyof typeof form)[] = [
-      'vatNumber',
+      ...(vatRegistered ? ['vatNumber' as const] : []),
       'companyRegistrationNumber',
       'personOfSignificantControl',
       'businessWebsite',
@@ -357,8 +362,8 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
       setSubmitError('Sole traders must upload photo ID and proof of address.');
       return;
     }
-    if (!isSoleTrader && (!docUrls.directorIdProof || !docUrls.vatProof || !docUrls.companyRegistrationProof)) {
-      setSubmitError('Registered companies must upload director ID, VAT evidence and Companies House evidence.');
+    if (!isSoleTrader && (!docUrls.directorIdProof || (vatRegistered && !docUrls.vatProof) || !docUrls.companyRegistrationProof)) {
+      setSubmitError('Companies need director ID and Companies House evidence, plus VAT evidence when VAT registered.');
       return;
     }
     setFieldErrors({});
@@ -366,7 +371,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const payload: any = { ...form, businessType };
+      const payload: any = { ...form, businessType, ...(isSoleTrader ? {} : { vatRegistered }) };
       if (!payload.tradingAddress) delete payload.tradingAddress;
       if (!payload.googleReviewsLink) delete payload.googleReviewsLink;
 
@@ -510,6 +515,9 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
   const originalBusinessType: BusinessType =
     existingKyc?.businessType === 'SOLE_PROPRIETORSHIP' ? 'SOLE_PROPRIETORSHIP' : 'PRIVATE_LIMITED';
   const businessTypeChanged = !!existingKyc && businessType !== originalBusinessType;
+  const vatRegistrationChanged = !!existingKyc && !isSoleTrader
+    && (existingKyc.vatRegistered !== false) !== vatRegistered;
+  const verificationDetailsChanged = businessTypeChanged || vatRegistrationChanged;
   // Requires stripeChargedAt too — a PENDING record with fields saved but the £1 fee
   // unpaid (e.g. the dealer backgrounded the app or cancelled the Stripe checkout)
   // must fall through to the form below so they can retry payment, not get stuck
@@ -794,13 +802,25 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                   placeholder="e.g. 12345678"
                   error={fieldErrors.companyRegistrationNumber}
                 />
-                <FormField
+                <SectionLabel title="VAT REGISTRATION STATUS" />
+                <View style={styles.businessTypeRow}>
+                  {[{ value: true, title: 'VAT registered' }, { value: false, title: 'Not VAT registered' }].map((option) => (
+                    <TouchableOpacity key={String(option.value)}
+                      style={[styles.businessTypeCard, vatRegistered === option.value && styles.businessTypeCardSelected]}
+                      onPress={() => { setVatRegistered(option.value); setFieldErrors({}); setSubmitError(null); }}
+                      accessibilityRole="radio" accessibilityState={{ checked: vatRegistered === option.value }}>
+                      <Text style={[styles.businessTypeTitle, vatRegistered === option.value && styles.businessTypeTitleSelected]}>{option.title}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                {!vatRegistered && <Text style={styles.businessTypeHelp}>No VAT number or certificate is needed. Director ID and Companies House evidence are still required.</Text>}
+                {vatRegistered && <FormField
                   label="VAT Number"
                   value={form.vatNumber}
                   onChange={setField('vatNumber')}
                   placeholder="e.g. GB123456789"
                   error={fieldErrors.vatNumber}
-                />
+                />}
               </>
             ) : null}
             <FormField
@@ -884,7 +904,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                   { field: 'proofOfAddress', label: 'Proof of Address', type: 'pdf' as const },
                 ]
               : [
-                  { field: 'vatProof', label: 'VAT Certificate', type: 'pdf' as const },
+                  ...(vatRegistered ? [{ field: 'vatProof', label: 'VAT Certificate', type: 'pdf' as const }] : []),
                   { field: 'companyRegistrationProof', label: 'Company Registration Certificate', type: 'pdf' as const },
                   { field: 'directorIdProof', label: 'Director ID / Passport Photo', type: 'image' as const },
                 ]
@@ -990,7 +1010,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                   isLoading={submitting}
                   disabled={
                     submitting ||
-                    (isApproved && reverifyRequested && !businessTypeChanged) ||
+                    (isApproved && reverifyRequested && !verificationDetailsChanged) ||
                     !form.companyHouseName.trim() ||
                     !form.representativeName.trim() ||
                     !form.representativePosition.trim() ||
@@ -998,12 +1018,12 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                     !form.businessRegisteredAddress.trim() ||
                     (isSoleTrader
                       ? (!docUrls.directorIdProof || !docUrls.proofOfAddress)
-                      : (!form.vatNumber.trim() ||
+                      : ((vatRegistered && !form.vatNumber.trim()) ||
                          !form.companyRegistrationNumber.trim() ||
                          !form.personOfSignificantControl.trim() ||
                          !form.businessWebsite.trim() ||
                          !docUrls.directorIdProof ||
-                         !docUrls.vatProof ||
+                         (vatRegistered && !docUrls.vatProof) ||
                          !docUrls.companyRegistrationProof))
                   }
                 />

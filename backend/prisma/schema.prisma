@@ -565,6 +565,8 @@ model DealerKyc {
   companyHouseName           String
   representativeName         String
   representativePosition     String
+  /// Null preserves the VAT requirements for legacy company applications.
+  vatRegistered              Boolean?
   vatNumber                  String
   vatProof                   String? // Optional URL to stored VAT proof image
   companyRegistrationNumber  String

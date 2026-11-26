@@ -68,16 +68,16 @@ const normalizeBusinessType = (value: unknown): DealerKycBusinessType =>
   value === 'SOLE_PROPRIETORSHIP' ? 'SOLE_PROPRIETORSHIP' : 'PRIVATE_LIMITED';
 
 /** Web fieldsFor: records without businessType are limited companies. */
-function fieldsFor(businessType: DealerKycBusinessType): KycField[] {
+function fieldsFor(businessType: DealerKycBusinessType, vatRegistered?: boolean | null): KycField[] {
   const soleTrader = businessType === 'SOLE_PROPRIETORSHIP';
-  return KYC_FIELDS.filter((f) => (soleTrader ? !f.ltdOnly : !f.soleTraderOnly));
+  return KYC_FIELDS.filter((f) => (soleTrader ? !f.ltdOnly : !f.soleTraderOnly) && !(f.id === 'vatProof' && vatRegistered === false));
 }
 
 /** Web buildDecisionsForKyc — default to approved, keep earlier rejections. */
 function buildDecisions(kyc: any, businessType: DealerKycBusinessType, current: Decisions = {}): Decisions {
   const out: Decisions = {};
   const existingStatuses = kyc.documentStatuses || {};
-  fieldsFor(businessType).forEach((field) => {
+  fieldsFor(businessType, kyc.vatRegistered).forEach((field) => {
     if (current[field.id]) {
       out[field.id] = current[field.id];
       return;
@@ -232,7 +232,7 @@ export const AdminDealerKycScreen: React.FC<Props> = ({ navigation }) => {
     const submitted = normalizeBusinessType(kyc.businessType);
     const selected = businessTypes[kyc.id] ?? submitted;
     const soleTrader = selected === 'SOLE_PROPRIETORSHIP';
-    const fields = fieldsFor(selected);
+    const fields = fieldsFor(selected, kyc.vatRegistered);
     return (
       <View>
         <View style={adminStyles.divider} />
@@ -294,7 +294,7 @@ export const AdminDealerKycScreen: React.FC<Props> = ({ navigation }) => {
                 return (
                   <View key={field.id} style={[styles.fieldCard, rejected && styles.fieldCardRejected]}>
                     <Text style={adminStyles.fieldLabel}>{field.label}</Text>
-                    <View style={styles.valueWrap}>{renderFieldValue(field, kyc[field.id])}</View>
+                    <View style={styles.valueWrap}>{renderFieldValue(field, field.id === 'vatNumber' && kyc.vatRegistered === false ? 'Not VAT registered' : kyc[field.id])}</View>
                     <View style={styles.toggleRow}>
                       <TouchableOpacity
                         style={[styles.toggle, !rejected && styles.toggleApproved]}

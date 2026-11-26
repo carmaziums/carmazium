@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNotEmpty, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsNotEmpty, IsEnum, IsBoolean } from 'class-validator';
 import { BusinessType } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -26,7 +26,12 @@ export class CreateKycDto {
     @IsNotEmpty()
     representativePosition: string;
 
-    @ApiPropertyOptional({ description: 'VAT Number — limited companies only; sole traders have none' })
+    @ApiPropertyOptional({ description: 'Whether the limited company is VAT registered. Omission preserves the existing declaration.' })
+    @IsOptional()
+    @IsBoolean()
+    vatRegistered?: boolean;
+
+    @ApiPropertyOptional({ description: 'VAT number when the company is VAT registered' })
     @IsOptional()
     @IsString()
     vatNumber?: string;
