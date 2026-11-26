@@ -94,20 +94,25 @@ export async function apiClient<T>(
     };
     const requestUrl = `${API_URL}${endpoint}`;
 
-    // IPv6 to Fly.io is unreachable on some desktop networks. For the *one*
-    // read-only login profile check, an authenticated same-origin Vercel relay
-    // offers an IPv4 server-side route without changing cookie/session roles.
-    // Never proxy writes, payments, bids, arbitrary URLs, or unauthenticated
-    // profile lookups.
+    // Desktop browser connections to Fly can stall/reset even after TLS connects.
+    // Use the existing fixed, authenticated same-origin route FIRST for this one
+    // profile read, rather than after three failed direct attempts. The backend
+    // still validates the bearer identity and supplies all roles/permissions.
+    // Writes, payments, bids and unauthenticated requests retain their own routes.
     const canRecoverProfile = endpoint === '/users/me' && method === 'GET'
         && typeof window !== 'undefined' && Boolean(token);
-    const readProfileFromSameOrigin = () => fetchWithRetry('/api/account-profile', {
+    const readProfileFromSameOrigin = (accessToken = token) => fetchWithRetry('/api/account-profile', {
         method: 'GET',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
         credentials: 'same-origin',
         cache: 'no-store',
         signal: options.signal,
     }, { timeoutMs: 16000, retries: 0 });
+    let triedDirectProfile = false;
+    const readProfileDirectly = () => {
+        triedDirectProfile = true;
+        return fetchWithRetry(requestUrl, config, { timeoutMs: 4000, retries: 0 });
+    };
 
     let response: Response;
     try {
@@ -118,7 +123,9 @@ export async function apiClient<T>(
         const isReadOnlyDvlaLookup = method === 'POST' && endpoint === '/dvla/lookup';
         const isQuoteHistory = method === 'GET' && endpoint.startsWith('/analytics/valuations/history?');
         const isValuationReport = method === 'GET' && endpoint === '/analytics/valuations/live';
-        if (method === 'GET' || method === 'HEAD' || isReadOnlyDvlaLookup) {
+        if (canRecoverProfile) {
+            response = await readProfileFromSameOrigin();
+        } else if (method === 'GET' || method === 'HEAD' || isReadOnlyDvlaLookup) {
             response = await fetchWithRetry(requestUrl, config, {
                 timeoutMs: isReadOnlyDvlaLookup ? 18000 : (isQuoteHistory || isValuationReport) ? 30000 : 10000,
                 retries: isReadOnlyDvlaLookup || isQuoteHistory || isValuationReport ? 1 : 2,
@@ -126,11 +133,14 @@ export async function apiClient<T>(
                 retryReadOnlyPost: isReadOnlyDvlaLookup,
             });
         } else {
-            // Keep mutations single-attempt with the existing 30 s ceiling.
+            // Keep mutations single-attempt. The optional browser cookie bridge
+            // gets a shorter wait: /users/me can authenticate independently using
+            // the same verified bearer token. Never replay an ambiguous POST.
             const controller = new AbortController();
             const timer = setTimeout(
                 () => controller.abort(new Error('Request timed out')),
-                endpoint === '/ai/chat' ? 190000 : 30000,
+                endpoint === '/ai/chat' ? 190000
+                    : endpoint === '/auth/supabase-session' && typeof window !== 'undefined' ? 5000 : 30000,
             );
 
             try {
@@ -146,7 +156,7 @@ export async function apiClient<T>(
         let recovered: Response | null = null;
         if (canRecoverProfile && !options.signal?.aborted) {
             try {
-                recovered = await readProfileFromSameOrigin();
+                recovered = await readProfileDirectly();
             } catch {
                 // Preserve the initial network failure for diagnostics.
             }
@@ -164,9 +174,9 @@ export async function apiClient<T>(
 
     // An upstream gateway error is also a transport outage, not a 401 or
     // permission denial. Try the read-only alternate network path once.
-    if (canRecoverProfile && !options.signal?.aborted && [502, 503, 504].includes(response.status)) {
+    if (canRecoverProfile && !triedDirectProfile && !options.signal?.aborted && [502, 503, 504].includes(response.status)) {
         try {
-            const recovered = await readProfileFromSameOrigin();
+            const recovered = await readProfileDirectly();
             if (recovered.ok) response = recovered;
         } catch {
             // Keep the original upstream status if the relay is also down.
@@ -202,7 +212,9 @@ export async function apiClient<T>(
             );
 
             try {
-                response = await fetch(requestUrl, {
+                response = canRecoverProfile
+                    ? await readProfileFromSameOrigin(freshToken)
+                    : await fetch(requestUrl, {
                     ...config,
                     headers: {
                         ...headers,
