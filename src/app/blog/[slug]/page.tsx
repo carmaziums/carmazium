@@ -3,6 +3,7 @@ import Link from "next/link"
 import { buttonVariants } from "@/components/ui/buttonVariants"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
+import { BlogCoverImage } from "@/components/blog/BlogCoverImage"
 import { notFound } from "next/navigation"
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, Clock, Gavel, Search, User } from "lucide-react"
 import type { BlogPost } from "@/lib/blogApi"
@@ -310,7 +311,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
                     {cover && (
                         <div className="relative w-full aspect-video rounded-2xl md:rounded-[2rem] overflow-hidden mt-9 bg-[var(--bg-input)] border border-[var(--border-default)] shadow-2xl shadow-black/10">
-                            <Image src={cover} alt={post.title} fill sizes="(max-width: 1200px) 100vw, 1150px" className="object-cover" priority />
+                            <BlogCoverImage src={cover} alt={post.title} fill sizes="(max-width: 1200px) 100vw, 1150px" className="object-cover" priority />
                         </div>
                     )}
                 </header>
@@ -416,7 +417,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                                     <Link key={related.id} href={`/blog/${related.slug}`} className="group overflow-hidden rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] hover:border-primary/35 hover:-translate-y-1 transition-all duration-300">
                                         <div className="relative aspect-video overflow-hidden bg-[var(--bg-input)]">
                                             {related.coverImage ? (
-                                                <Image src={related.coverImage} alt={related.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
+                                                <BlogCoverImage src={related.coverImage} alt={related.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
                                             ) : (
                                                 <div className="absolute inset-0 flex items-center justify-center"><BookOpen className="text-[var(--text-muted)]" /></div>
                                             )}

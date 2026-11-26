@@ -1,3 +1,4 @@
+import { BlogTopicGuides } from "@/components/blog/BlogTopicGuides"
 import type { Metadata } from "next"
 import Link from "next/link"
 import {
@@ -158,6 +159,7 @@ export default function TraderPricingPage() {
                     </Button>
                 </div>
             </section>
+            <div className="container mx-auto max-w-5xl px-5"><BlogTopicGuides dealersOnly /></div>
         </div>
     )
 }

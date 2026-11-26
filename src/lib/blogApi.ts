@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import { getAccessToken } from './supabase';
 import {
     slugifyBlogTitle,
     stripCarMaziumBrandSuffix,
@@ -128,6 +129,27 @@ export async function getRelatedBlogPosts(slug: string): Promise<BlogPost[]> {
 
 // ─── Admin ──────────────────────────────────────────────────────────────────
 
+async function refreshBlogDiscovery(): Promise<void> {
+    // A completed save must never be retried because cache refresh failed.
+    // The existing timed revalidation remains a fallback for backend-only jobs
+    // and temporary network errors.
+    try {
+        const token = await getAccessToken();
+        if (!token) throw new Error('Sign in required');
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
+        try {
+            const response = await fetch('/api/blog/revalidate', {
+                method: 'POST', headers: { Authorization: `Bearer ${token}` },
+                cache: 'no-store', signal: controller.signal,
+            });
+            if (!response.ok) throw new Error('Cache refresh unavailable');
+        } finally { clearTimeout(timer); }
+    } catch {
+        console.warn('Article saved; public discovery will refresh on the next scheduled cache update.');
+    }
+}
+
 export async function getAdminBlogPosts(page = 1, limit = 20): Promise<Paginated<BlogPost>> {
     return apiClient<Paginated<BlogPost>>(`/blog/admin/all?page=${page}&limit=${limit}`);
 }
@@ -143,6 +165,7 @@ export async function createBlogPost(input: CreateBlogPostInput): Promise<BlogPo
         method: 'POST',
         body: JSON.stringify(sanitizedInput),
     });
+    await refreshBlogDiscovery();
     return result.data;
 }
 
@@ -152,9 +175,11 @@ export async function updateBlogPost(id: string, input: UpdateBlogPostInput): Pr
         method: 'PATCH',
         body: JSON.stringify(sanitizedInput),
     });
+    await refreshBlogDiscovery();
     return result.data;
 }
 
 export async function deleteBlogPost(id: string): Promise<void> {
     await apiClient<{ data: BlogPost }>(`/blog/${id}`, { method: 'DELETE' });
+    await refreshBlogDiscovery();
 }

@@ -27,6 +27,7 @@ on:
       - 'scripts/test-native-web-vehicle-parity-20261015.test.mjs'
       - 'scripts/test-home-retail-inventory-truth.test.mjs'
       - 'scripts/test-seo-indexing-contract.test.mjs'
+      - 'scripts/test-blog-discovery-refresh.test.mjs'
       - 'scripts/test-seo-trust-reviews.test.mjs'
       - 'scripts/test-public-contact-parity.test.mjs'
       - 'scripts/test-seo-honest-auction-guide.test.mjs'
@@ -227,6 +228,8 @@ jobs:
         run: node --test scripts/test-home-retail-inventory-truth.test.mjs
       - name: Ensure SEO sitemap respects published article noindex and retail status
         run: node --test scripts/test-seo-indexing-contract.test.mjs
+      - name: Verify authenticated blog cache refresh and responsive cover sizes
+        run: node --test scripts/test-blog-discovery-refresh.test.mjs
       - name: Ensure customer reviews are genuine and accessible
         run: node --test scripts/test-seo-trust-reviews.test.mjs
       - name: Verify public contact enquiries and native contact detail parity
