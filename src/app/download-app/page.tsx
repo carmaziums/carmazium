@@ -52,9 +52,9 @@ const FEATURES = {
 export default function DownloadAppPage() {
   const links = getMobileAppLinks()
   const iosHref = links.ios.href ?? links.iosTestFlight.href
-  const androidHref = links.androidApk.href ?? links.android.href
+  const androidAvailable = Boolean(links.android.href || links.androidApk.href)
   const windowsHref = links.microsoftStore.href
-  const anyAvailable = Boolean(iosHref || androidHref || windowsHref)
+  const anyAvailable = Boolean(iosHref || androidAvailable || windowsHref)
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#101c44] pb-20 pt-24 text-white sm:pt-28">
@@ -72,11 +72,11 @@ export default function DownloadAppPage() {
                 </span>
                 <ArrowRight className="ml-auto h-4 w-4 shrink-0" aria-hidden="true" />
               </a>
-              <a href={androidHref ?? "#android"} className={appPromoButtonClass}
-                aria-label={androidHref ? "Open verified CarMazium Android installation" : "See Android installation status"}>
+              <a href="#android" className={appPromoButtonClass}
+                aria-label="Choose Google Play or direct APK installation for Android">
                 <FaAndroid className="h-7 w-7 shrink-0 text-emerald-300" aria-hidden="true" />
                 <span className="min-w-0 text-xs leading-4">
-                  {androidHref ? "Install for" : "Explore"} <strong className="block text-base">Android</strong>
+                  {androidAvailable ? "Choose download for" : "Explore"} <strong className="block text-base">Android</strong>
                 </span>
                 <ArrowRight className="ml-auto h-4 w-4 shrink-0" aria-hidden="true" />
               </a>
@@ -148,24 +148,40 @@ export default function DownloadAppPage() {
                   <FaAndroid className="h-10 w-10" aria-hidden="true" />
                 </div>
                 <h3 id="android-app-title" className="text-2xl font-black">CarMazium for Android</h3>
-                <p className="mt-3 text-sm leading-6 text-blue-100">Download the CarMazium app straight to your Android phone.</p>
+                <p className="mt-3 text-sm leading-6 text-blue-100">
+                  Choose how to install CarMazium: from Google Play when available, or download the APK directly.
+                  Both use your existing CarMazium account.
+                </p>
                 <FeatureList items={[...FEATURES.android]} />
-                <div className="mt-auto pt-6">
+                <div className="mt-auto space-y-5 pt-6">
                   {links.android.href ? (
-                    <a href={links.android.href} className={installButtonClass}
-                      aria-label="Install CarMazium from Google Play">
-                      <FaGooglePlay className="h-5 w-5" aria-hidden="true" />
-                      Get it on Google Play <ExternalLink className="h-4 w-4" aria-hidden="true" />
-                    </a>
-                  ) : links.androidApk.href ? (
-                    <TrackedDownloadLink href={links.androidApk.href} platform="android" className={installButtonClass}
-                      ariaLabel="Download the CarMazium Android app">
-                      <ArrowDownToLine className="h-5 w-5" aria-hidden="true" />
-                      Download for Android
-                    </TrackedDownloadLink>
+                    <div>
+                      <a href={links.android.href} className={installButtonClass}
+                        aria-label="Install CarMazium from Google Play">
+                        <FaGooglePlay className="h-5 w-5" aria-hidden="true" />
+                        Get it on Google Play <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                      </a>
+                      <p className="mt-2 text-xs leading-5 text-blue-100">Install and receive updates through Google Play.</p>
+                    </div>
                   ) : (
-                    <InstallWebAppButton platform="android" />
+                    <p className="text-sm leading-6 text-blue-100">Google Play download is coming soon.</p>
                   )}
+                  {links.androidApk.href ? (
+                    <div id="android-apk" className="scroll-mt-28">
+                      <TrackedDownloadLink href={links.androidApk.href} platform="android" className={installButtonClass}
+                        ariaLabel="Download CarMazium APK directly">
+                        <ArrowDownToLine className="h-5 w-5" aria-hidden="true" />
+                        Download APK directly
+                      </TrackedDownloadLink>
+                      <p className="mt-2 text-xs leading-5 text-blue-100">
+                        Official signed APK from CarMazium. Android asks you to confirm installation.
+                        The APK app checks for approved direct-download updates.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm leading-6 text-blue-100">The direct APK download is not currently available.</p>
+                  )}
+                  {!androidAvailable && <InstallWebAppButton platform="android" />}
                 </div>
               </div>
             </section>
