@@ -1,0 +1,125 @@
+name: CarMazium iPhone store screenshots
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/carmazium-ios-store-screenshots.yml'
+permissions:
+  contents: read
+concurrency:
+  group: ios-store-screenshots-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  capture:
+    runs-on: macos-15
+    timeout-minutes: 75
+    env:
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+      APP_ENV: production
+      SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+      # Exact source of the already reviewed App Store/TestFlight build 13.
+      SOURCE_SHA: d3bee0fae6ac13b7d4ff2c8534395017cf2c783c
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: d3bee0fae6ac13b7d4ff2c8534395017cf2c783c
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify source and stage the original app without spaces in its path
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          git merge-base --is-ancestor HEAD origin/main
+          mkdir -p "$RUNNER_TEMP/carmazium-screenshots" "$RUNNER_TEMP/screenshot-evidence"
+          git archive HEAD 'carmazium app/carmazium app' | tar -x -C "$RUNNER_TEMP/screenshot-evidence"
+          rsync -a "$RUNNER_TEMP/screenshot-evidence/carmazium app/carmazium app/" "$RUNNER_TEMP/carmazium-screenshots/"
+          cd "$RUNNER_TEMP/carmazium-screenshots"
+          node - <<'NODE'
+          const fs = require('fs');
+          const app = require('./app.json').expo;
+          const env = require('./eas.json').build.production.env;
+          if (app.ios.bundleIdentifier !== 'uk.carmazium.app' ||
+              app.owner !== 'carmazium' || app.version !== '1.0.2' ||
+              app.extra.eas.projectId !== '9c77bb81-205c-42f8-913e-b69a0953ec10') {
+            throw new Error('Original iOS identity or version mismatch');
+          }
+          // Match build 13's public production configuration. No credentials.
+          for (const [key, value] of Object.entries(env)) {
+            if (!(key === 'APP_ENV' || key.startsWith('EXPO_PUBLIC_'))) continue;
+            if (/[\r\n]/.test(String(value))) throw new Error('Multiline environment value');
+            fs.appendFileSync(process.env.GITHUB_ENV, key + '=' + value + '\n');
+          }
+          fs.writeFileSync(process.env.RUNNER_TEMP + '/screenshot-evidence/provenance.json',
+            JSON.stringify({sourceSha: process.env.SOURCE_SHA, appVersion: app.version,
+              bundleId: app.ios.bundleIdentifier, purpose: 'Native iPhone simulator screenshots; not a signed release or physical-device acceptance'}, null, 2));
+          NODE
+      - name: Install locked dependencies and check the native app
+        working-directory: ${{ runner.temp }}/carmazium-screenshots
+        run: |
+          npm ci
+          npm run typescript
+          npm audit --omit=dev --audit-level=critical
+      - name: Generate iOS project and build Release for the simulator
+        working-directory: ${{ runner.temp }}/carmazium-screenshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx expo prebuild --platform ios --clean --no-install
+          (cd ios && pod install)
+          xcodebuild -workspace ios/CarMazium.xcworkspace -scheme CarMazium \
+            -configuration Release -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/carmazium-derived" \
+            CODE_SIGNING_ALLOWED=NO build > "$RUNNER_TEMP/screenshot-evidence/xcodebuild.log" 2>&1
+      - name: Capture the running iPhone app
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun simctl list devices available -j > "$RUNNER_TEMP/screenshot-evidence/devices.json"
+          DEVICE_ID=$(node - <<'NODE'
+          const fs = require('fs');
+          const all = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/screenshot-evidence/devices.json'));
+          const devices = Object.values(all.devices).flat();
+          const device = devices.find(d => d.name === 'iPhone 16 Pro Max') ||
+                         devices.find(d => d.name === 'iPhone 17 Pro Max');
+          if (!device) throw new Error('Required large-display iPhone simulator is unavailable');
+          console.log(device.udid);
+          NODE
+          )
+          xcrun simctl boot "$DEVICE_ID"
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+          xcrun simctl status_bar "$DEVICE_ID" override --time '9:41' --batteryState charged --batteryLevel 100
+          APP="$RUNNER_TEMP/carmazium-derived/Build/Products/Release-iphonesimulator/CarMazium.app"
+          test -d "$APP"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")" = 'uk.carmazium.app'
+          xcrun simctl install "$DEVICE_ID" "$APP"
+          xcrun simctl launch "$DEVICE_ID" uk.carmazium.app
+          sleep 30
+          mkdir -p "$RUNNER_TEMP/screenshot-evidence/screenshots"
+          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshot-evidence/screenshots/01-home.png"
+          xcrun simctl openurl "$DEVICE_ID" 'carmazium://auctions/browse'
+          sleep 15
+          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshot-evidence/screenshots/02-auctions.png"
+          xcrun simctl openurl "$DEVICE_ID" 'carmazium://services'
+          sleep 15
+          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshot-evidence/screenshots/03-services.png"
+          sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP/screenshot-evidence/screenshots/"*.png
+          shasum -a 256 "$RUNNER_TEMP/screenshot-evidence/screenshots/"*.png > "$RUNNER_TEMP/screenshot-evidence/screenshots.sha256"
+          xcrun simctl shutdown "$DEVICE_ID"
+      - name: Save screenshots and build evidence for visual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarMazium-iOS-build13-native-screenshots
+          path: |
+            ${{ runner.temp }}/screenshot-evidence/screenshots/
+            ${{ runner.temp }}/screenshot-evidence/provenance.json
+            ${{ runner.temp }}/screenshot-evidence/screenshots.sha256
+            ${{ runner.temp }}/screenshot-evidence/xcodebuild.log
+          if-no-files-found: warn
+          retention-days: 14
