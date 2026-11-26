@@ -1,5 +1,23 @@
 import NetInfo from '@react-native-community/netinfo';
 
+// Android's system validation can stay false even while HTTPS requests work
+// (observed on the production app in BlueStacks). Probe our own unauthenticated
+// endpoint instead of relying on that flag or a third-party connectivity host.
+// Configure once, before any listeners: reconfiguration removes subscriptions.
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
+NetInfo.configure({
+  useNativeReachability: false,
+  reachabilityUrl: API_URL.replace(/\/$/, '') + '/health',
+  reachabilityMethod: 'GET',
+  // An HTTP error still proves the connection works. API errors must remain
+  // server errors, not be relabelled as a customer's internet outage.
+  reachabilityTest: async (response) =>
+    !response.redirected && response.status >= 200 && response.status < 600,
+  reachabilityRequestTimeout: 10_000,
+  reachabilityShortTimeout: 10_000,
+  reachabilityLongTimeout: 60_000,
+});
+
 /**
  * Reachability, kept deliberately small (CROSS-015, OQ-28).
  *

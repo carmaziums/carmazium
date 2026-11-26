@@ -23,6 +23,7 @@ on:
       - 'scripts/test-native-app-audit-block9.test.mjs'
       - 'scripts/test-native-app-audit-block4.test.mjs'
       - 'scripts/test-native-app-integration-block6.test.mjs'
+      - 'scripts/test-native-network-reachability.test.mjs'
       - 'scripts/test-native-visual-parity-block7.test.mjs'
       - 'scripts/test-native-web-vehicle-parity-20261015.test.mjs'
       - 'scripts/test-home-retail-inventory-truth.test.mjs'
@@ -271,7 +272,7 @@ jobs:
       - name: Audit bid confirmation and listing submission
         run: node --test scripts/test-native-app-audit-block5.test.mjs
       - name: Confirm integrated native audit guards remain consistent
-        run: node --test scripts/test-native-app-integration-block6.test.mjs
+        run: node --test scripts/test-native-app-integration-block6.test.mjs scripts/test-native-network-reachability.test.mjs
       - name: Audit standalone Android test-build safety, channel and real release isolation
         run: node --test scripts/test-native-app-audit-block7.test.mjs
       - name: Audit easy-to-find unified settings and source-labelled Android QA feedback
