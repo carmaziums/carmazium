@@ -28,11 +28,11 @@ export const OfflineBanner: React.FC = () => {
       // a status, and stealing focus mid-task to say so would be worse than the
       // problem it reports.
       accessibilityRole="alert"
-      accessibilityLabel="No internet connection"
+      accessibilityLabel="Unable to reach CarMazium"
       pointerEvents="none"
     >
       <Ionicons name="cloud-offline-outline" size={14} color={Colors.warning} />
-      <Text style={styles.text}>No internet connection</Text>
+      <Text style={styles.text}>Unable to reach CarMazium</Text>
     </View>
   );
 };
