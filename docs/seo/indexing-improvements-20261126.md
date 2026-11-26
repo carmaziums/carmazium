@@ -26,3 +26,5 @@ All 96 URLs from the discovered/crawled report were checked against current publ
 ## Follow-up
 
 After deployment, re-upload the six original covers through the new admin upload path and save them, verify the three public variants and sitemap membership, then submit the sitemap and selected useful unindexed pages in Search Console. Google controls whether and when those pages are indexed; do not repeatedly submit the same URLs or validate intentional noindex/robots exclusions as errors.
+
+CI follow-up: the executable cache/cover tests run in the web job after dependency installation. Reviewed the trader-pricing addition: it only adds existing guide links; pricing, permissions and payment facts are unchanged. Refreshed its MaziuM knowledge-source fingerprint.

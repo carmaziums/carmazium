@@ -228,8 +228,6 @@ jobs:
         run: node --test scripts/test-home-retail-inventory-truth.test.mjs
       - name: Ensure SEO sitemap respects published article noindex and retail status
         run: node --test scripts/test-seo-indexing-contract.test.mjs
-      - name: Verify authenticated blog cache refresh and responsive cover sizes
-        run: node --test scripts/test-blog-discovery-refresh.test.mjs
       - name: Ensure customer reviews are genuine and accessible
         run: node --test scripts/test-seo-trust-reviews.test.mjs
       - name: Verify public contact enquiries and native contact detail parity
@@ -352,6 +350,8 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      - name: Verify authenticated blog cache refresh and responsive cover sizes
+        run: node --test scripts/test-blog-discovery-refresh.test.mjs
       - name: Verify bounded, jittered backend read reconnection without duplicate writes
         run: node --test scripts/test-backend-connection-recovery.test.mjs
       - name: Verify login session rebridge, token freshness and identity safeguards
